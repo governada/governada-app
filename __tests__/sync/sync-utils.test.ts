@@ -26,7 +26,7 @@ describe('sync-utils', () => {
       expect(errMsg(new Error('test'))).toBe('test');
     });
     it('converts non-Error to string', () => {
-      expect(errMsg(42)).toBe('42');
+      expect(errMsg(42)).toBe('[number] 42');
     });
   });
 

@@ -58,7 +58,7 @@ Before any plan is finalized, answer:
 
 ## Deployment Protocol
 
-**Every feature that reaches main MUST complete the full deploy pipeline.** Stopping at "PR created" or "merged" is not acceptable — the feature is not done until it's validated in production.
+**Every feature that reaches main MUST complete the full deploy pipeline.** Stopping at "code changes done", "PR created", or "merged" is not acceptable — the feature is not done until it's validated in production. **This pipeline must be initiated automatically by the agent after implementation is complete — never wait for the user to say "deploy it."**
 
 - **Branching**: Follow the worktree workflow in `git-branch-hygiene.mdc`. Never build features on `main` — use worktrees. Merges to main happen via squash-merge PRs.
 - **Pre-push**: The husky pre-push hook runs `type-check` + `test` (~25s). Railway handles the production build — don't run it locally unless debugging a build failure.
@@ -72,6 +72,7 @@ Before any plan is finalized, answer:
 - **Files Changed tab**: For code-heavy PRs, navigate directly to the "Files changed" tab (`/pull/N/files`) so the user can start reviewing diffs immediately.
 
 ## Completion Protocol
+- **Auto-deploy is mandatory**: When all implementation tasks are complete and TypeScript compiles clean, IMMEDIATELY: create a feature branch → commit → push → open PR → merge → monitor Railway deploy → validate production. Do NOT stop at "code changes complete" and wait for the user to tell you to deploy. The feature is not done until it is live and validated.
 - Never mark a task complete without proving it works (query results, curl output, UI verification)
 - Check if something was learned during the build → update lessons.md
 - Clean up: no stale status report files, no debug console.logs left behind

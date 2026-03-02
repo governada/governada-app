@@ -329,6 +329,10 @@ button:not(:disabled):active,
   text-shadow: 0 0 20px rgba(10, 11, 20, 0.8), 0 2px 8px rgba(10, 11, 20, 0.6);
 }
 
+.nav-text-shadow {
+  text-shadow: 0 0 12px rgba(10, 11, 20, 0.9), 0 1px 4px rgba(10, 11, 20, 0.7);
+}
+
 /* Pillar bar stagger animation */
 @keyframes grow {
   from { transform: scaleY(0); }

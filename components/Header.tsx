@@ -89,10 +89,10 @@ export function Header() {
     return pathname === href || pathname.startsWith(href + '/');
   };
   const navLinkClass = (href: string) =>
-    `hidden sm:flex items-center gap-1 text-sm transition-colors relative ${
+    `hidden sm:flex items-center gap-1 text-sm transition-colors relative ${headerTransparent ? 'nav-text-shadow' : ''} ${
       isActive(href)
         ? 'font-medium text-primary after:absolute after:bottom-[-18px] after:left-0 after:right-0 after:h-[2px] after:bg-primary after:rounded-full dark:after:shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]'
-        : 'text-muted-foreground hover:text-foreground'
+        : headerTransparent ? 'text-white/80 hover:text-white' : 'text-muted-foreground hover:text-foreground'
     }`;
 
   useEffect(() => {
@@ -128,6 +128,17 @@ export function Header() {
   }, [ownDRepId]);
 
   const [skipPushPrompt, setSkipPushPrompt] = useState(false);
+  const [scrolledDown, setScrolledDown] = useState(false);
+  const isHomepage = pathname === '/';
+  const headerTransparent = isHomepage && !scrolledDown;
+
+  useEffect(() => {
+    if (!isHomepage) return;
+    const onScroll = () => setScrolledDown(window.scrollY > 32);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isHomepage]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -139,7 +150,11 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 dark:border-b-0 dark:shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.06)] border-b">
+    <header className={`sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ${
+      headerTransparent
+        ? 'bg-transparent border-b border-transparent'
+        : 'bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 dark:border-b-0 dark:shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.06)] border-b'
+    }`}>
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center space-x-2">

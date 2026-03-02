@@ -325,6 +325,10 @@ button:not(:disabled):active,
 .animation-delay-400 { animation-delay: 0.4s; }
 .animation-delay-500 { animation-delay: 0.5s; }
 
+.hero-text-shadow {
+  text-shadow: 0 0 20px rgba(10, 11, 20, 0.8), 0 2px 8px rgba(10, 11, 20, 0.6);
+}
+
 /* Pillar bar stagger animation */
 @keyframes grow {
   from { transform: scaleY(0); }

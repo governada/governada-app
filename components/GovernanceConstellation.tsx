@@ -444,7 +444,7 @@ function ShootingStars() {
     <group ref={groupRef}>
       {Array.from({ length: METEOR_POOL }, (_, i) => (
         <mesh key={i} visible={false}>
-          <cylinderGeometry args={[0.03, 0.003, 1.5, 4]} />
+          <cylinderGeometry args={[0.03, 0.003, 1.5, 8]} />
           <meshBasicMaterial
             color="#e8dcc8"
             transparent

@@ -216,21 +216,21 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
 
       {/* Text Overlay */}
       {!showPersonalCard && (
-        <div className="absolute inset-0 flex flex-col items-center justify-start pt-[14vh] md:justify-center md:pt-0 z-10 pointer-events-none px-4">
+        <div className={`absolute inset-0 flex flex-col items-center justify-start pt-[14vh] md:justify-center md:pt-0 z-10 pointer-events-none px-4 transition-opacity duration-700 ${constellationReady ? 'opacity-100' : 'opacity-0'}`}>
           <h1
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center max-w-4xl leading-tight animate-fade-in-up"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center max-w-4xl leading-tight animate-fade-in-up hero-text-shadow"
           >
             <span className="text-white">
               This is what decentralized governance looks like.
             </span>
           </h1>
 
-          <p className="mt-4 text-sm sm:text-base md:text-lg text-white/60 text-center max-w-2xl animate-fade-in-up animation-delay-200">
+          <p className="mt-4 text-sm sm:text-base md:text-lg text-white/60 text-center max-w-2xl animate-fade-in-up animation-delay-200 hero-text-shadow">
             {stats.activeDReps.toLocaleString()} representatives. {stats.totalAdaGoverned} ADA. Every vote shapes Cardano&apos;s future.
           </p>
 
           {/* Live stats strip */}
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs sm:text-sm text-white/40 animate-fade-in-up animation-delay-200">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs sm:text-sm text-white/40 animate-fade-in-up animation-delay-200 hero-text-shadow">
             <span>{stats.activeDReps.toLocaleString()} Active DReps</span>
             <span className="hidden sm:inline text-white/20">|</span>
             <span>{stats.totalAdaGoverned} ADA Governed</span>

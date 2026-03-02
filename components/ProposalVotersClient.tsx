@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { CopyableAddress } from '@/components/CopyableAddress';
+import { GovernanceRadar } from '@/components/GovernanceRadar';
 
 interface ProposalVotersClientProps {
   votes: ProposalVoteDetail[];
@@ -142,6 +143,19 @@ export function ProposalVotersClient({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
+                      {v.alignments && (
+                        <GovernanceRadar
+                          alignments={{
+                            treasuryConservative: v.alignments.treasuryConservative,
+                            treasuryGrowth: v.alignments.treasuryGrowth,
+                            decentralization: v.alignments.decentralization,
+                            security: v.alignments.security,
+                            innovation: v.alignments.innovation,
+                            transparency: v.alignments.transparency,
+                          }}
+                          size="mini"
+                        />
+                      )}
                       <Badge
                         variant={v.vote === 'Yes' ? 'default' : v.vote === 'No' ? 'destructive' : 'secondary'}
                         className="shrink-0"
@@ -238,8 +252,8 @@ export function ProposalVotersClient({
         {filtered.length === 0 && (
           <EmptyState
             icon="search"
-            title="No Votes Match"
-            message="No votes match the current filter. Try selecting a different vote type."
+            title="No votes here yet"
+            message="No votes match the current filter. Try selecting a different vote type to see how DReps weighed in."
             action={filter !== 'all' ? { label: 'Show All Votes', onClick: () => setFilter('all') } : undefined}
             compact
             component="ProposalVotersClient"

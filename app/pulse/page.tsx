@@ -7,7 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ShareActions } from '@/components/ShareActions';
 import { TreasuryHealthWidget } from '@/components/TreasuryHealthWidget';
 import { GovernanceSubNav } from '@/components/GovernanceSubNav';
+import { GovernanceHealthIndex } from '@/components/GovernanceHealthIndex';
+import { NarrativeSummary } from '@/components/NarrativeSummary';
+import { ActivityFeed } from '@/components/ActivityFeed';
+import { CrossProposalInsights } from '@/components/CrossProposalInsights';
 import { PulseLeaderboardClient } from '@/components/PulseLeaderboardClient';
+import { generatePulseNarrative } from '@/lib/narratives';
 import {
   Landmark,
   ScrollText,
@@ -161,6 +166,14 @@ async function LeaderboardSection() {
 export default async function PulsePage() {
   const pulse = await fetchPulseData();
 
+  const pulseNarrative = pulse ? generatePulseNarrative({
+    votesThisWeek: pulse.votesThisWeek,
+    activeProposals: pulse.activeProposals,
+    activeDReps: pulse.activeDReps,
+    totalAdaGoverned: pulse.totalAdaGoverned,
+    avgParticipationRate: pulse.avgParticipationRate,
+  }) : null;
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-10 max-w-6xl">
       <div className="text-center space-y-2">
@@ -171,6 +184,18 @@ export default async function PulsePage() {
       </div>
 
       <GovernanceSubNav />
+
+      {/* GHI Hero + Narrative */}
+      <div className="flex flex-col md:flex-row items-center gap-8 py-4">
+        <GovernanceHealthIndex size="hero" />
+        <div className="flex-1 space-y-3">
+          <h2 className="text-lg font-semibold">Governance Health Index</h2>
+          <NarrativeSummary text={pulseNarrative} />
+          <p className="text-xs text-muted-foreground">
+            A composite score measuring participation, rationale quality, delegation spread, and DRep diversity.
+          </p>
+        </div>
+      </div>
 
       <TreasuryHealthWidget />
 
@@ -209,6 +234,9 @@ export default async function PulsePage() {
           </Card>
         </div>
       )}
+
+      {/* Live Activity Feed */}
+      <ActivityFeed limit={10} />
 
       {/* Community Sentiment */}
       {pulse && pulse.communityGap.length > 0 && (
@@ -258,6 +286,9 @@ export default async function PulsePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Cross-Proposal Insights */}
+      <CrossProposalInsights />
 
       {/* Leaderboard + Movers + Hall of Fame (with Suspense) */}
       <Suspense fallback={<LeaderboardSkeleton />}>

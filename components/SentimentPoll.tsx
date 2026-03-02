@@ -182,6 +182,11 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {community.total > 0 && (
+          <p className="text-sm font-semibold text-foreground">
+            {community.total} {community.total === 1 ? 'person has' : 'people have'} shared their opinion
+          </p>
+        )}
         {revealed && hasVoted ? (
           <ResultsView
             community={community}
@@ -190,13 +195,9 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
             onChangeVote={() => setChangingVote(true)}
           />
         ) : (
-          <div className="text-sm text-muted-foreground">
-            {community.total > 0 ? (
-              <p>{community.total} holder{community.total !== 1 ? 's have' : ' has'} weighed in</p>
-            ) : (
-              <p>Be the first to share your opinion</p>
-            )}
-          </div>
+          community.total === 0 && (
+            <p className="text-sm text-muted-foreground">Be the first to share your opinion</p>
+          )
         )}
 
         {showButtons && connected && (

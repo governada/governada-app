@@ -5,6 +5,7 @@ import { ConstellationHero } from '@/components/ConstellationHero';
 import { PersonalGovernanceCard } from '@/components/PersonalGovernanceCard';
 import { HowItWorksV2 } from '@/components/HowItWorksV2';
 import { DRepDiscoveryPreview } from '@/components/DRepDiscoveryPreview';
+import { CardanoGovernanceExplainer } from '@/components/CardanoGovernanceExplainer';
 
 interface PreviewDRep {
   drepId: string;
@@ -66,11 +67,20 @@ export function HomepageDualMode({ pulseData, topDReps, ssrHolderData, ssrWallet
 
       <div className="container mx-auto px-4 space-y-12 py-8">
         <HowItWorksV2 />
+
+        {!personalCard && (
+          <CardanoGovernanceExplainer
+            activeDReps={pulseData.activeDReps}
+            activeProposals={pulseData.activeProposals}
+            totalAdaGoverned={pulseData.totalAdaGoverned}
+          />
+        )}
+
         <DRepDiscoveryPreview dreps={topDReps} />
 
         <footer className="text-center py-8 space-y-2">
           <p className="text-sm font-medium text-muted-foreground">
-            Governance intelligence for Cardano.
+            Governance intelligence for Cardano
           </p>
           <a
             href="https://www.cardano.org/governance/"
@@ -78,7 +88,7 @@ export function HomepageDualMode({ pulseData, topDReps, ssrHolderData, ssrWallet
             rel="noopener noreferrer"
             className="text-xs text-muted-foreground/60 hover:text-primary transition-colors"
           >
-            New to Cardano?
+            New to Cardano governance?
           </a>
         </footer>
       </div>

@@ -44,6 +44,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { MobileNav } from './MobileNav';
+import { GovernanceHeartbeat } from './GovernanceHeartbeat';
 
 const ALERT_ICONS: Record<AlertType, typeof TrendingDown> = {
   'representation-shift': TrendingDown,
@@ -139,9 +140,12 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 dark:border-b-0 dark:shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.06)] border-b">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center space-x-2">
-          <span className="text-2xl font-bold text-primary dark:drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.3)]">$drepscore</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center space-x-2">
+            <span className="text-2xl font-bold text-primary dark:drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.3)]">$drepscore</span>
+          </Link>
+          <GovernanceHeartbeat />
+        </div>
 
         <nav className="flex items-center space-x-2 sm:space-x-4">
           <Link href="/discover" className={navLinkClass('/discover')}>

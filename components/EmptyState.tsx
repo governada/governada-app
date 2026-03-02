@@ -16,6 +16,8 @@ interface EmptyStateProps {
   icon?: LucideIcon | 'search' | 'database';
   compact?: boolean;
   component?: string;
+  /** Optional accent color for a subtle gradient background */
+  accentColor?: string;
 }
 
 export function EmptyState({
@@ -25,6 +27,7 @@ export function EmptyState({
   icon = Search,
   compact = false,
   component,
+  accentColor,
 }: EmptyStateProps) {
   const Icon = icon === 'search' ? Search : icon === 'database' ? Database : icon;
 
@@ -52,9 +55,16 @@ export function EmptyState({
     )
   ) : null;
 
+  const gradientStyle = accentColor
+    ? { background: `radial-gradient(ellipse at center, ${accentColor}08 0%, transparent 70%)` }
+    : undefined;
+
   if (compact) {
     return (
-      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+      <div
+        className="flex flex-col items-center justify-center py-6 px-4 text-center rounded-lg"
+        style={gradientStyle}
+      >
         <Icon className="h-8 w-8 text-muted-foreground mb-2" />
         <p className="text-sm font-medium mb-1">{title}</p>
         <p className="text-xs text-muted-foreground max-w-sm mb-3">{message}</p>
@@ -64,9 +74,17 @@ export function EmptyState({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className="rounded-full bg-muted p-6 mb-4">
-        <Icon className="h-12 w-12 text-muted-foreground" />
+    <div
+      className="flex flex-col items-center justify-center py-16 px-4 text-center rounded-xl"
+      style={gradientStyle}
+    >
+      <div
+        className="rounded-full p-6 mb-4"
+        style={accentColor
+          ? { background: `${accentColor}10` }
+          : undefined}
+      >
+        <Icon className="h-12 w-12 text-muted-foreground" style={accentColor ? { color: `${accentColor}80` } : undefined} />
       </div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-muted-foreground max-w-md mb-6">{message}</p>

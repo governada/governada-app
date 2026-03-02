@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StanceSkeleton } from '@/components/ui/content-skeletons';
 import { Landmark, ThumbsUp, ThumbsDown, Scale, Award } from 'lucide-react';
 import { formatAda, type DRepTreasuryRecord } from '@/lib/treasury';
 import { posthog } from '@/lib/posthog';
@@ -35,7 +35,7 @@ export function DRepTreasuryStance({ drepId, compact = false }: Props) {
     });
   }, [drepId]);
 
-  if (loading) return compact ? null : <Skeleton className="h-24 w-full" />;
+  if (loading) return compact ? null : <StanceSkeleton />;
   if (!record || record.totalProposals === 0) return null;
 
   const stance = record.approvedAda > record.opposedAda * 2 ? 'Growth'

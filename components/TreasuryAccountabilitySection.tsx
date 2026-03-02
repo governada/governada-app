@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PollSkeleton } from '@/components/ui/content-skeletons';
 import { CheckCircle2, AlertCircle, Clock, XCircle, Scale, TrendingUp } from 'lucide-react';
 import { formatAda } from '@/lib/treasury';
 import { posthog } from '@/lib/posthog';
@@ -88,7 +88,7 @@ export function TreasuryAccountabilitySection() {
       }));
   }, [data]);
 
-  if (loading) return <Skeleton className="h-64 w-full" />;
+  if (loading) return <PollSkeleton />;
 
   if (!data || data.totalEnacted === 0) {
     return (

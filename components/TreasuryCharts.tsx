@@ -5,7 +5,7 @@ import { scaleLinear } from 'd3-scale';
 import { area as d3area, line as d3line, curveMonotoneX } from 'd3-shape';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ChartSkeleton } from '@/components/ui/content-skeletons';
 import { TrendingUp, BarChart3 } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 import { useChartDimensions } from '@/lib/charts/useChartDimensions';
@@ -206,7 +206,7 @@ export function TreasuryCharts() {
       .catch(() => setLoading(false));
   }, [range]);
 
-  if (loading) return <Skeleton className="h-80 w-full" />;
+  if (loading) return <ChartSkeleton height="h-80" />;
   if (!data || !data.snapshots.length) return null;
 
   return (

@@ -557,6 +557,14 @@ export interface ProposalVoteDetail {
   rationaleAiSummary: string | null;
   hashVerified: boolean | null;
   metaUrl: string | null;
+  alignments?: {
+    treasuryConservative: number | null;
+    treasuryGrowth: number | null;
+    decentralization: number | null;
+    security: number | null;
+    innovation: number | null;
+    transparency: number | null;
+  } | null;
 }
 
 /**
@@ -644,17 +652,26 @@ export async function getVotesByProposal(
 
     if (error || !votes) return [];
 
-    // Fetch DRep names
+    // Fetch DRep names and alignment data
     const drepIds = [...new Set(votes.map(v => v.drep_id))];
     const { data: dreps } = await supabase
       .from('dreps')
-      .select('id, info')
+      .select('id, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency')
       .in('id', drepIds);
 
     const drepNameMap = new Map<string, string | null>();
+    const drepAlignmentMap = new Map<string, ProposalVoteDetail['alignments']>();
     if (dreps) {
       for (const d of dreps) {
         drepNameMap.set(d.id, (d.info as any)?.name || null);
+        drepAlignmentMap.set(d.id, {
+          treasuryConservative: d.alignment_treasury_conservative,
+          treasuryGrowth: d.alignment_treasury_growth,
+          decentralization: d.alignment_decentralization,
+          security: d.alignment_security,
+          innovation: d.alignment_innovation,
+          transparency: d.alignment_transparency,
+        });
       }
     }
 
@@ -688,6 +705,7 @@ export async function getVotesByProposal(
         rationaleAiSummary: rat?.summary || null,
         hashVerified: rat?.verified ?? null,
         metaUrl: v.meta_url,
+        alignments: drepAlignmentMap.get(v.drep_id) || null,
       };
     });
   } catch (err) {

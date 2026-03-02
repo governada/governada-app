@@ -415,7 +415,7 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Takeaway**: Always design null-safe rendering for data that depends on background sync. Show meaningful empty states, not broken UI. The Inngest `generate-epoch-summary` function seeds epoch data on first run.
 
 ### 2026-03-02: Squash merges are invisible to `git branch --no-merged`
-**Promoted to rule**: Yes — `workflow.md` session-start hygiene check now includes `gh pr list --head <branch> --state merged` verification.
+**Promoted to rule**: Yes — `workflow.md` Session Start step 5 and Git Hygiene Policy section. The session-start check now requires `gh pr list --head <branch> --state merged` cross-reference for any branch that appears unmerged. Ship It step 8 enforces `--delete-branch` on merge, and the "After deploying" section mandates immediate local branch deletion.
 **Issue**: 6 feature branches appeared "unmerged" for weeks because they were squash-merged via PR. Git's `--no-merged` flag only detects merge commits in the ancestry chain — squash merges create a new commit, so the original branch commits never appear in main's history. This caused 6 branches to accumulate as apparent debt when they were all already shipped.
 **Takeaway**: Never trust `git branch --no-merged` alone for squash-merge repos. Cross-reference with `gh pr list --head <branch> --state merged` to detect squash-merged branches. Clean up immediately after merge — don't rely on later audits to catch them.
 

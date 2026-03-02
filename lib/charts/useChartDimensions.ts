@@ -3,17 +3,24 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { chartTheme } from './theme';
 
+interface ChartMargin {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 interface Dimensions {
   width: number;
   height: number;
   innerWidth: number;
   innerHeight: number;
-  margin: typeof chartTheme.margin;
+  margin: ChartMargin;
 }
 
 export function useChartDimensions(
   fixedHeight = 250,
-  customMargin?: Partial<typeof chartTheme.margin>,
+  customMargin?: Partial<ChartMargin>,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState<Dimensions>({

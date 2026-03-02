@@ -133,9 +133,9 @@ function GuidanceNote({ type, children }: {
   type: 'auto-heals' | 'action-needed' | 'expected'; children: React.ReactNode;
 }) {
   const config = {
-    'auto-heals': { icon: RotateCw, label: 'Auto-heals', cls: 'text-green-600 bg-green-500/10 border-green-500/20' },
+    'auto-heals': { icon: RotateCw, label: 'Auto-heals', cls: 'text-primary bg-primary/10 border-primary/20' },
     'action-needed': { icon: Wrench, label: 'Action needed', cls: 'text-amber-600 bg-amber-500/10 border-amber-500/20' },
-    'expected': { icon: Lightbulb, label: 'Expected', cls: 'text-blue-600 bg-blue-500/10 border-blue-500/20' },
+    'expected': { icon: Lightbulb, label: 'Expected', cls: 'text-accent-foreground bg-accent border-accent/40' },
   }[type];
   const BadgeIcon = config.icon;
   return (
@@ -182,7 +182,7 @@ function DeltaBadge({ delta, invertColor, unit = '' }: {
   }
   const isPositive = delta > 0;
   const isGood = invertColor ? !isPositive : isPositive;
-  const colorCls = isGood ? 'text-green-600' : 'text-red-500';
+  const colorCls = isGood ? 'text-primary' : 'text-destructive';
   const DeltaIcon = isPositive ? TrendingUp : TrendingDown;
   const formatted = Math.abs(delta) < 0.1
     ? Math.abs(delta).toFixed(2)
@@ -203,9 +203,9 @@ function MetricCard({ title, value, subtitle, icon: Icon, status, tooltip, delta
   delta?: { value: number; invertColor?: boolean; unit?: string; label?: string };
 }) {
   const statusColors = {
-    good: 'text-green-500',
+    good: 'text-primary',
     warning: 'text-amber-500',
-    critical: 'text-red-500',
+    critical: 'text-destructive',
   };
 
   return (
@@ -262,10 +262,10 @@ function SyncRow({ entry }: { entry: IntegrityData['sync_history'][0] }) {
       <td className="py-1.5 pr-3 font-mono">{formatDuration(entry.duration_ms)}</td>
       <td className="py-1.5">
         {entry.success
-          ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+          ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
           : <Tooltip>
               <TooltipTrigger asChild>
-                <XCircle className="h-3.5 w-3.5 text-red-500 cursor-help" />
+                <XCircle className="h-3.5 w-3.5 text-destructive cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-[300px] text-xs">
                 {entry.error_message || 'Unknown error'}
@@ -273,6 +273,53 @@ function SyncRow({ entry }: { entry: IntegrityData['sync_history'][0] }) {
             </Tooltip>}
       </td>
     </tr>
+  );
+}
+
+// ── Power Source SVG Bar ─────────────────────────────────────────────────────
+
+const POWER_SEGMENTS = [
+  { key: 'exact', label: 'Exact', color: 'oklch(0.68 0.16 160)', tip: 'Power matched to the exact epoch the vote was cast in.' },
+  { key: 'nearest', label: 'Nearest', color: 'oklch(0.75 0.14 80)', tip: 'Power from the closest available epoch (within 1-2 epochs).' },
+  { key: 'null', label: 'NULL', color: 'oklch(0.60 0.20 25)', tip: 'No power data available from Koios for this vote\'s epoch range.' },
+] as const;
+
+function PowerSourceBar({ exact, nearest, nullPower, total }: {
+  exact: number; nearest: number; nullPower: number; total: number;
+}) {
+  const counts = { exact, nearest, null: nullPower };
+  const barW = 100; // percent-based via viewBox
+  const barH = 10;
+  const pcts = total > 0
+    ? { exact: exact / total * barW, nearest: nearest / total * barW, null: nullPower / total * barW }
+    : { exact: 0, nearest: 0, null: 0 };
+
+  let x = 0;
+  const rects = POWER_SEGMENTS.map((seg) => {
+    const w = pcts[seg.key];
+    const rect = { x, w, color: seg.color };
+    x += w;
+    return { ...seg, ...rect };
+  });
+
+  return (
+    <>
+      <div className="flex gap-4 text-xs flex-wrap">
+        {POWER_SEGMENTS.map((seg) => (
+          <div key={seg.key} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: seg.color }} />
+            <span>{seg.label}: <strong>{fmt(counts[seg.key])}</strong></span>
+            <InfoTip text={seg.tip} />
+          </div>
+        ))}
+      </div>
+      <svg viewBox={`0 0 ${barW} ${barH}`} className="mt-2 w-full h-3 rounded-full overflow-hidden" preserveAspectRatio="none">
+        <rect width={barW} height={barH} rx={5} className="fill-muted" />
+        {rects.map((r) => (
+          r.w > 0 && <rect key={r.key} x={r.x} y={0} width={r.w} height={barH} fill={r.color} />
+        ))}
+      </svg>
+    </>
   );
 }
 
@@ -314,7 +361,7 @@ export function IntegrityDashboard({ adminAddress }: { adminAddress: string }) {
     return (
       <Card className="border-red-500/30">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-2 text-red-500">
+          <div className="flex items-center gap-2 text-destructive">
             <XCircle className="h-5 w-5" />
             <p>Failed to load integrity data: {error}</p>
           </div>
@@ -461,28 +508,12 @@ export function IntegrityDashboard({ adminAddress }: { adminAddress: string }) {
           />
           <Card>
             <CardContent className="pt-4 pb-3">
-              <div className="flex gap-4 text-xs flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                  <span>Exact: <strong>{fmt(vpc.exact_count)}</strong></span>
-                  <InfoTip text="Power matched to the exact epoch the vote was cast in." />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <span>Nearest: <strong>{fmt(vpc.nearest_count)}</strong></span>
-                  <InfoTip text="Power from the closest available epoch (within 1-2 epochs)." />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                  <span>NULL: <strong>{fmt(vpc.null_power)}</strong></span>
-                  <InfoTip text="No power data available from Koios for this vote's epoch range." />
-                </div>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden flex">
-                <div className="bg-green-500 h-full" style={{ width: `${vpc.total_votes ? vpc.exact_count / vpc.total_votes * 100 : 0}%` }} />
-                <div className="bg-amber-500 h-full" style={{ width: `${vpc.total_votes ? vpc.nearest_count / vpc.total_votes * 100 : 0}%` }} />
-                <div className="bg-red-500 h-full" style={{ width: `${vpc.total_votes ? vpc.null_power / vpc.total_votes * 100 : 0}%` }} />
-              </div>
+              <PowerSourceBar
+                exact={vpc.exact_count}
+                nearest={vpc.nearest_count}
+                nullPower={vpc.null_power}
+                total={vpc.total_votes}
+              />
             </CardContent>
           </Card>
           <GuidancePanel>
@@ -577,15 +608,15 @@ export function IntegrityDashboard({ adminAddress }: { adminAddress: string }) {
                     </div>
                     <div className="mt-1.5 flex items-center gap-3 text-xs">
                       {s.last_success
-                        ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                        : <XCircle className="h-3.5 w-3.5 text-red-500" />}
+                        ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                        : <XCircle className="h-3.5 w-3.5 text-destructive" />}
                       <span className="font-mono">{formatDuration(s.last_duration_ms)}</span>
                       <span className="text-muted-foreground">
                         {fmt(s.success_count)} ok / {fmt(s.failure_count)} fail
                       </span>
                     </div>
                     {s.last_error && (
-                      <p className="text-[10px] text-red-400 mt-1 truncate">{s.last_error}</p>
+                      <p className="text-[10px] text-destructive/80 mt-1 truncate">{s.last_error}</p>
                     )}
                   </CardContent>
                 </Card>

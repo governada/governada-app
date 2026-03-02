@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  turbopack: {
+    resolveAlias: {
+      'libsodium-wrappers-sumo': path.resolve(
+        './node_modules/libsodium-wrappers-sumo/dist/modules-sumo/libsodium-wrappers.js'
+      ).replace(/\\/g, '/'),
+    },
+  },
   async headers() {
     return [
       {

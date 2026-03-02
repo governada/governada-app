@@ -22,7 +22,7 @@ const ARM_ANGLES: Record<AlignmentDimension, number> = (() => {
 })();
 
 const ARM_PITCH = [0.26, -0.26, 0.26, -0.26, 0.26, -0.26]; // ~15° alternating tilt
-const ARM_FAN_ARC = Math.PI / 4;
+const ARM_FAN_ARC = Math.PI / 3;
 const MAX_RADIUS = 12;
 const ANCHOR_RADIUS = MAX_RADIUS * 0.3;
 const MIN_VISIBLE_SCALE = 0.06;
@@ -65,7 +65,7 @@ export function computeLayout(
       dominant: dim,
       alignments: [50, 50, 50, 50, 50, 50],
       position: [x, y, z],
-      scale: MAX_VISIBLE_SCALE * 1.5,
+      scale: MAX_VISIBLE_SCALE * 1.2,
       isAnchor: true,
     };
     anchorNodes.push(anchor);
@@ -84,6 +84,9 @@ export function computeLayout(
     nodes.push(node);
     nodeMap.set(node.id, node);
   }
+
+  rebalanceAngular(nodes);
+  repulse(nodes);
 
   const edges = computeEdges(nodes, anchorNodes);
   return { nodes, edges, nodeMap };
@@ -106,9 +109,10 @@ function computeNodePosition(input: LayoutInput): [number, number, number] {
   const hashNorm = (hash % 10000) / 10000;
 
   if (totalWeight < 1) {
-    const r = 0.5 + hashNorm * 1.5;
-    const a = hashNorm * Math.PI * 2;
-    return [Math.cos(a) * r, Math.sin(a) * r, (hashNorm - 0.5) * 2];
+    const hashAngle = ((hash >> 8) % 10000) / 10000;
+    const r = 0.8 + hashNorm * 1.8;
+    const a = hashAngle * Math.PI * 2;
+    return [Math.cos(a) * r, Math.sin(a) * r, (hashAngle - 0.5) * 2.5];
   }
 
   const dirAngle = Math.atan2(wy, wx);
@@ -139,14 +143,8 @@ function computeEdges(
   anchorNodes: ConstellationNode3D[]
 ): ConstellationEdge3D[] {
   const edges: ConstellationEdge3D[] = [];
-  const origin: [number, number, number] = [0, 0, 0];
 
-  // H3: Hub-spoke edges — core to each anchor
-  for (const anchor of anchorNodes) {
-    edges.push({ from: origin, to: anchor.position });
-  }
-
-  // H2: Anchor ring — connect each anchor to its neighbors (hexagonal ring)
+  // Anchor ring — connect each anchor to its neighbors (hexagonal ring)
   for (let i = 0; i < anchorNodes.length; i++) {
     const next = anchorNodes[(i + 1) % anchorNodes.length];
     edges.push({ from: anchorNodes[i].position, to: next.position });
@@ -185,6 +183,90 @@ function dist3D(a: [number, number, number], b: [number, number, number]): numbe
   const dy = a[1] - b[1];
   const dz = a[2] - b[2];
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function rebalanceAngular(nodes: ConstellationNode3D[]): void {
+  const realNodes = nodes.filter(n => !n.isAnchor);
+  if (realNodes.length < 2) return;
+
+  const NUM_SECTORS = 12;
+  const sectorArc = (Math.PI * 2) / NUM_SECTORS;
+
+  const sectors: ConstellationNode3D[][] = Array.from({ length: NUM_SECTORS }, () => []);
+  for (const node of realNodes) {
+    let angle = Math.atan2(node.position[1], node.position[0]);
+    if (angle < 0) angle += Math.PI * 2;
+    const sector = Math.min(NUM_SECTORS - 1, Math.floor(angle / sectorArc));
+    sectors[sector].push(node);
+  }
+
+  const avgPerSector = realNodes.length / NUM_SECTORS;
+  const cap = Math.ceil(avgPerSector * 1.8);
+
+  for (let s = 0; s < NUM_SECTORS; s++) {
+    if (sectors[s].length <= cap) continue;
+
+    sectors[s].sort((a, b) => {
+      const dA = a.position[0] ** 2 + a.position[1] ** 2;
+      const dB = b.position[0] ** 2 + b.position[1] ** 2;
+      return dB - dA;
+    });
+
+    const overflow = sectors[s].length - cap;
+    for (let i = 0; i < overflow; i++) {
+      const node = sectors[s][i];
+      const left = (s - 1 + NUM_SECTORS) % NUM_SECTORS;
+      const right = (s + 1) % NUM_SECTORS;
+      const target = sectors[left].length <= sectors[right].length ? left : right;
+
+      const currentAngle = Math.atan2(node.position[1], node.position[0]);
+      const targetCenter = (target + 0.5) * sectorArc;
+
+      let delta = targetCenter - currentAngle;
+      while (delta > Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+
+      const shift = delta * 0.4;
+      const r = Math.sqrt(node.position[0] ** 2 + node.position[1] ** 2);
+      const newAngle = currentAngle + shift;
+
+      node.position[0] = Math.cos(newAngle) * r;
+      node.position[1] = Math.sin(newAngle) * r;
+
+      sectors[target].push(node);
+    }
+    sectors[s].splice(0, overflow);
+  }
+}
+
+function repulse(nodes: ConstellationNode3D[]): void {
+  const realNodes = nodes.filter(n => !n.isAnchor);
+  const MIN_DIST = 0.8;
+  const STRENGTH = 0.4;
+
+  for (let iter = 0; iter < 3; iter++) {
+    for (let i = 0; i < realNodes.length; i++) {
+      for (let j = i + 1; j < realNodes.length; j++) {
+        const a = realNodes[i].position;
+        const b = realNodes[j].position;
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        const dz = b[2] - a[2];
+        const distSq = dx * dx + dy * dy + dz * dz;
+
+        if (distSq < MIN_DIST * MIN_DIST && distSq > 0.0001) {
+          const dist = Math.sqrt(distSq);
+          const force = (MIN_DIST - dist) / dist * STRENGTH;
+          a[0] -= dx * force;
+          a[1] -= dy * force;
+          a[2] -= dz * force;
+          b[0] += dx * force;
+          b[1] += dy * force;
+          b[2] += dz * force;
+        }
+      }
+    }
+  }
 }
 
 function simpleHash(str: string): number {

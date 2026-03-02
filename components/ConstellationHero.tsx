@@ -216,7 +216,7 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
 
       {/* Text Overlay */}
       {!showPersonalCard && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none px-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-start pt-[14vh] md:justify-center md:pt-0 z-10 pointer-events-none px-4">
           <h1
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center max-w-4xl leading-tight animate-fade-in-up"
           >

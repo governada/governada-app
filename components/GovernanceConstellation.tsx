@@ -162,6 +162,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
               pulseId={sceneState.pulseId}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            <ShootingStars />
 
             {quality !== 'low' && (
               <EffectComposer>
@@ -200,14 +201,20 @@ function ConstellationNodes({
   dimmed: boolean;
   pulseId: string | null;
 }) {
-  if (nodes.length === 0) return null;
+  const [frameReady, setFrameReady] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setFrameReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  if (nodes.length === 0 || !frameReady) return null;
 
   const regularNodes = nodes.filter(n => !n.isAnchor);
   const anchorNodes = nodes.filter(n => n.isAnchor);
 
   return (
     <>
-      {/* Regular DRep nodes */}
       <Instances limit={regularNodes.length + 10} frustumCulled={false}>
         <sphereGeometry args={[1, 10, 10]} />
         <meshStandardMaterial
@@ -233,7 +240,6 @@ function ConstellationNodes({
         })}
       </Instances>
 
-      {/* Anchor nodes — brighter emissive for inner hexagonal ring */}
       <Instances limit={anchorNodes.length + 2} frustumCulled={false}>
         <sphereGeometry args={[1, 12, 12]} />
         <meshStandardMaterial
@@ -340,7 +346,6 @@ function AmbientStarfield({ count }: { count: number }) {
 
 function GovernanceCore() {
   const coreRef = useRef<THREE.Mesh>(null);
-  const discRef = useRef<THREE.Mesh>(null);
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
@@ -348,35 +353,108 @@ function GovernanceCore() {
       const breath = 0.95 + 0.05 * Math.sin(t * 1.57);
       coreRef.current.scale.setScalar(breath);
     }
-    if (discRef.current) {
-      discRef.current.rotation.z = -t * 0.08;
-    }
   });
 
   return (
     <group>
-      {/* Luminous governance sun */}
       <mesh ref={coreRef}>
-        <sphereGeometry args={[0.6, 24, 24]} />
+        <sphereGeometry args={[1.1, 32, 32]} />
         <meshStandardMaterial
           emissive="#ffd280"
-          emissiveIntensity={4}
+          emissiveIntensity={3.5}
           color="#ffd280"
           toneMapped={false}
         />
       </mesh>
-      {/* Accretion disc */}
-      <mesh ref={discRef} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.8, 0.02, 8, 64]} />
-        <meshStandardMaterial
-          emissive="#ffd280"
-          emissiveIntensity={2}
-          color="#ffd280"
-          transparent
-          opacity={0.15}
-          toneMapped={false}
-        />
-      </mesh>
+      <pointLight color="#ffd280" intensity={8} distance={18} decay={2} />
+    </group>
+  );
+}
+
+const METEOR_POOL = 4;
+const SPAWN_MIN_S = 4;
+const SPAWN_MAX_S = 10;
+
+function ShootingStars() {
+  const groupRef = useRef<THREE.Group>(null);
+  const stateRef = useRef({
+    meteors: Array.from({ length: METEOR_POOL }, () => ({
+      active: false,
+      start: new THREE.Vector3(),
+      end: new THREE.Vector3(),
+      progress: 0,
+      speed: 0,
+    })),
+    timer: SPAWN_MIN_S + Math.random() * (SPAWN_MAX_S - SPAWN_MIN_S),
+  });
+
+  const _pos = useRef(new THREE.Vector3());
+  const _dir = useRef(new THREE.Vector3());
+  const _up = useRef(new THREE.Vector3(0, 1, 0));
+
+  useFrame((_, delta) => {
+    const group = groupRef.current;
+    if (!group) return;
+    const { meteors } = stateRef.current;
+
+    stateRef.current.timer -= delta;
+    if (stateRef.current.timer <= 0) {
+      stateRef.current.timer = SPAWN_MIN_S + Math.random() * (SPAWN_MAX_S - SPAWN_MIN_S);
+      const slot = meteors.find(m => !m.active);
+      if (slot) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = 13 + Math.random() * 5;
+        slot.start.set(Math.cos(angle) * r, Math.sin(angle) * r, (Math.random() - 0.5) * 8);
+        const endAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
+        const endR = 1 + Math.random() * 6;
+        slot.end.set(Math.cos(endAngle) * endR, Math.sin(endAngle) * endR, (Math.random() - 0.5) * 6);
+        slot.progress = 0;
+        slot.speed = 0.5 + Math.random() * 0.4;
+        slot.active = true;
+      }
+    }
+
+    for (let i = 0; i < METEOR_POOL; i++) {
+      const m = meteors[i];
+      const mesh = group.children[i] as THREE.Mesh;
+      if (!mesh) continue;
+
+      if (!m.active) { mesh.visible = false; continue; }
+
+      m.progress += delta * m.speed;
+      if (m.progress >= 1) { m.active = false; mesh.visible = false; continue; }
+
+      _pos.current.lerpVectors(m.start, m.end, m.progress);
+      mesh.position.copy(_pos.current);
+
+      _dir.current.subVectors(m.end, m.start).normalize();
+      mesh.quaternion.setFromUnitVectors(_up.current, _dir.current);
+
+      const fadeIn = Math.min(1, m.progress * 8);
+      const fadeOut = 1 - m.progress * m.progress;
+      const opacity = fadeIn * fadeOut * 0.8;
+      mesh.scale.set(1, 0.4 + opacity * 0.8, 1);
+
+      (mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+      mesh.visible = true;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      {Array.from({ length: METEOR_POOL }, (_, i) => (
+        <mesh key={i} visible={false}>
+          <cylinderGeometry args={[0.03, 0.003, 1.5, 4]} />
+          <meshBasicMaterial
+            color="#e8dcc8"
+            transparent
+            opacity={0}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }

@@ -54,6 +54,9 @@ analytics/src/.observablehq/cache
 analytics/dist
 analytics/.env
 
+# Vercel (legacy, no longer used)
+.vercel/
+
 # Cursor plans
 .cursor/plans/
 

@@ -414,5 +414,10 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Issue**: `governance_stats.treasury_balance_lovelace` starts as NULL. Components that depend on treasury data (FinancialImpactCard treasury section, TreasuryHealth) gracefully return null, but the UX is invisible until the first sync runs. Same for `current_epoch` and `epoch_end_time`.
 **Takeaway**: Always design null-safe rendering for data that depends on background sync. Show meaningful empty states, not broken UI. The Inngest `generate-epoch-summary` function seeds epoch data on first run.
 
+### 2026-03-02: Squash merges are invisible to `git branch --no-merged`
+**Promoted to rule**: Yes — `workflow.md` session-start hygiene check now includes `gh pr list --head <branch> --state merged` verification.
+**Issue**: 6 feature branches appeared "unmerged" for weeks because they were squash-merged via PR. Git's `--no-merged` flag only detects merge commits in the ancestry chain — squash merges create a new commit, so the original branch commits never appear in main's history. This caused 6 branches to accumulate as apparent debt when they were all already shipped.
+**Takeaway**: Never trust `git branch --no-merged` alone for squash-merge repos. Cross-reference with `gh pr list --head <branch> --state merged` to detect squash-merged branches. Clean up immediately after merge — don't rely on later audits to catch them.
+
 *Last updated: 2026-03-02*
 *Review this file at the start of every session.*

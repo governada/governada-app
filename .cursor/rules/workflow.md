@@ -11,10 +11,11 @@ alwaysApply: true
 2. Read `tasks/todo.md` for any in-progress work from prior sessions
 3. Orient to current state: check git status, recent commits, any open PRs
 4. **Orphan audit**: Check `git status` for untracked/uncommitted files from prior sessions. Look for unwired components, unregistered Inngest functions, and missing migrations. These are free value — flag them for inclusion in the current session's first commit or plan
-5. **Git hygiene check** (run all three, flag anything that needs a decision):
+5. **Git hygiene check** (run all four, flag anything that needs a decision):
    - `git stash list` — any stash older than the current session is either recoverable work (create a branch) or noise (drop it). Never carry stashes across more than one session.
-   - `git branch --merged origin/main | Where-Object { $_ -notmatch "^\* |main" }` — delete any local branches that are fully merged
-   - `git branch -r --no-merged origin/main | Where-Object { $_ -notmatch "dependabot" }` — if any non-dependabot branch is unmerged and older than ~2 sessions, flag it for triage (ship, close, or rebase) before starting new work
+   - `git worktree list` — any worktree besides the main checkout that isn't actively being worked on should be removed (`git worktree remove <path>`) and its branch deleted.
+   - `git branch --merged origin/main | Where-Object { $_ -notmatch "^\* |main" }` — delete any local branches that are fully merged.
+   - `git branch -r --no-merged origin/main | Where-Object { $_ -notmatch "dependabot" }` — for each result, check if it was **squash-merged** by running `gh pr list --head <branch> --state merged --json number --jq length`. Squash merges are invisible to `--no-merged`. If merged, delete. If genuinely unmerged and older than ~2 sessions, flag for triage (ship, close, or rebase) before starting new work.
 
 ## Planning Phase (Required for 3+ step tasks)
 1. Review `tasks/lessons.md` for patterns that appeared 2+ times — propose promoting to cursor rule before proceeding

@@ -4,7 +4,6 @@ import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 300;
 
 export async function GET() {
   try {
@@ -147,6 +146,8 @@ export async function GET() {
       } : null,
       currentEpoch,
       communityGap,
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
     });
   } catch (err) {
     console.error('[Governance Pulse API] Error:', err);

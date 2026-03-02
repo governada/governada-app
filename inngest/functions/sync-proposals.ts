@@ -25,7 +25,7 @@ export const syncProposals = inngest.createFunction(
       key: '"koios-frequent"',
     },
   },
-  { cron: '*/30 * * * *' },
+  [{ cron: '*/30 * * * *' }, { event: 'drepscore/sync.proposals' }],
   async ({ step }) => {
 
     // Step 1: Fetch proposals from Koios, classify, upsert to DB

@@ -34,9 +34,24 @@ export function getKoiosMetrics() {
   };
 }
 
+const MAX_RETRIES = 4;
+const CIRCUIT_BREAKER_COOLDOWN_MS = 60_000;
+let _lastKoios503 = 0;
+
+function retryDelay(attempt: number, status?: number): number {
+  // 429 rate limits need longer cooldowns: 2s, 8s, 30s, 30s
+  if (status === 429) {
+    const base = Math.min(Math.pow(4, attempt) * 2000, 30_000);
+    return base + Math.random() * 2000;
+  }
+  // 503 / timeouts: 2s, 4s, 8s, 16s with jitter
+  const base = Math.pow(2, attempt) * 2000;
+  return base + Math.random() * 1000;
+}
+
 /**
- * Base fetch wrapper with per-request timeout, cache bypass, and rate-limit retry.
- * Always fetches fresh (cache: no-store) — callers are sync paths that require live data.
+ * Base fetch wrapper with per-request timeout, cache bypass, rate-limit retry,
+ * and circuit breaker for 503 Service Unavailable.
  */
 async function koiosFetch<T>(
   endpoint: string,
@@ -45,6 +60,13 @@ async function koiosFetch<T>(
 ): Promise<T> {
   const url = `${KOIOS_BASE_URL}${endpoint}`;
   const isDev = process.env.NODE_ENV === 'development';
+
+  // Circuit breaker: if Koios returned 503 recently, wait before hammering it
+  if (_lastKoios503 && Date.now() - _lastKoios503 < CIRCUIT_BREAKER_COOLDOWN_MS && retryCount === 0) {
+    const waitMs = CIRCUIT_BREAKER_COOLDOWN_MS - (Date.now() - _lastKoios503);
+    console.warn(`[Koios] Circuit breaker active, waiting ${Math.round(waitMs / 1000)}s before ${endpoint}`);
+    await new Promise(r => setTimeout(r, waitMs));
+  }
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -78,11 +100,11 @@ async function koiosFetch<T>(
     }
 
     if (!response.ok) {
-      if (response.status === 429 && retryCount < 3) {
-        const waitTime = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
-        if (isDev) {
-          console.warn(`[Koios] Rate limited, retrying in ${waitTime}ms...`);
-        }
+      if (response.status === 503) _lastKoios503 = Date.now();
+
+      if ((response.status === 429 || response.status === 503) && retryCount < MAX_RETRIES) {
+        const waitTime = retryDelay(retryCount, response.status);
+        console.warn(`[Koios] ${response.status} on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         return koiosFetch<T>(endpoint, options, retryCount + 1);
       }
@@ -90,14 +112,18 @@ async function koiosFetch<T>(
       throw new Error(`Koios API error: ${response.status} ${response.statusText}`);
     }
 
+    // Clear circuit breaker on success
+    if (_lastKoios503) _lastKoios503 = 0;
+
     const data = await response.json();
     return data as T;
   } catch (error) {
     clearTimeout(timeoutId);
 
-    // Retry on timeout (AbortError) with same backoff as rate limits
-    if (error instanceof Error && error.name === 'AbortError' && retryCount < 3) {
-      console.warn(`[Koios] Request timeout for ${endpoint}, retrying (${retryCount + 1}/3)...`);
+    if (error instanceof Error && error.name === 'AbortError' && retryCount < MAX_RETRIES) {
+      const waitTime = retryDelay(retryCount);
+      console.warn(`[Koios] Timeout on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`);
+      await new Promise(r => setTimeout(r, waitTime));
       return koiosFetch<T>(endpoint, options, retryCount + 1);
     }
 
@@ -110,7 +136,7 @@ async function koiosFetch<T>(
     const msg = errorMessage || 'Unknown error fetching from Koios';
     console.error(`[Koios] API Error: ${msg}`, {
       endpoint,
-      retryable: retryCount < 3,
+      retryable: retryCount < MAX_RETRIES,
       retryCount,
       stack: errorStack,
     });

@@ -7,7 +7,6 @@ import { HomepageDualMode } from '@/components/HomepageDualMode';
 import { PageViewTracker } from '@/components/PageViewTracker';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 300;
 
 async function getGovernancePulse() {
   const supabase = createClient();

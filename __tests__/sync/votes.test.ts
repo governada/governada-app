@@ -90,7 +90,7 @@ describe('GET /api/sync/votes', () => {
     const res = await GET(req);
     const body = (await parseJson(res)) as any;
 
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(500);
     expect(body.success).toBe(false);
     expect(body.error).toContain('500');
   });

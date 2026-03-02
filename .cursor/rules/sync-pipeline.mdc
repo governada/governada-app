@@ -24,11 +24,17 @@ Proposals sync runs first (most frequent). Other syncs have cron offsets to stag
 
 If dreps runs long and overlaps with votes, the `koios-batch` key (limit 2) allows them to run simultaneously.
 
+## Execution Model
+
+All sync types (dreps, votes, secondary, slow) export an `execute*Sync()` function from their route file (e.g. `executeDrepsSync` from `app/api/sync/dreps/route.ts`). Inngest functions import and call these directly inside `step.run()` — no HTTP round-trip. This makes syncs durable: if Railway restarts mid-sync, Inngest retries the step.
+
+The HTTP routes remain as manual trigger endpoints (authenticated via `CRON_SECRET`). Each sync function also listens for an Inngest event (`drepscore/sync.<type>`) in addition to its cron trigger.
+
 ## Self-Healing
 
 Two layers of self-healing:
 
-1. **sync-freshness-guard** (every 30 min): Checks `v_sync_health` against tight thresholds. Retriggers stale syncs via `callSyncRoute`. Skips if a recent failure exists within 15 min (lets Inngest retry handle it first).
+1. **sync-freshness-guard** (every 30 min): Checks `v_sync_health` against tight thresholds. Retriggers stale syncs via `inngest.send()` (fires the `drepscore/sync.<type>` event). Skips if a recent failure exists within 15 min (lets Inngest retry handle it first).
 
 2. **integrity alert** (every 6h): Broader health checks including data quality (vote power coverage, hash verification, AI summaries). Acts as a backstop.
 
@@ -63,7 +69,9 @@ All Koios responses are validated via Zod schemas (`utils/koios-schemas.ts`) bef
 - `batchUpsert` retries once on transient Supabase errors (ECONNRESET, 503, etc.)
 - The monolith route `/api/sync/route.ts` returns 410 Gone — do not use
 - Treasury sync has no HTTP route; it runs directly in Inngest
-- `callSyncRoute` treats 207 as degraded (alerts Discord + PostHog) but does not throw
+- `callSyncRoute` in `inngest/helpers.ts` is still used by alert functions (integrity, inbox, api-health) but NOT by sync functions
+- Sync functions are called directly via `execute*Sync()` — never via HTTP from Inngest
+- `koiosFetch` includes a circuit breaker for 503s (60s cooldown) and longer backoff for 429s (up to 30s)
 
 ## Manual Testing
 

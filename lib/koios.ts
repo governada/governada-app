@@ -228,10 +228,15 @@ export async function getEnrichedDReps(
       console.log(`[DRepScore] Current epoch: ${currentEpoch}, active proposal epochs: ${activeProposalEpochs.size}, actual proposals: ${actualProposalCount}`);
     }
 
-    const drepList = await fetchAllDReps();
+    let drepList = await fetchAllDReps();
     if (!drepList || drepList.length === 0) {
-      if (isDev) console.warn('[DRepScore] No DReps found');
-      return { dreps: [], allDReps: [], error: false, totalAvailable: 0 };
+      console.warn('[DRepScore] Empty DRep list from Koios — retrying once after 3s');
+      await new Promise(r => setTimeout(r, 3000));
+      drepList = await fetchAllDReps();
+    }
+    if (!drepList || drepList.length === 0) {
+      console.error('[DRepScore] No DReps found after retry');
+      return { dreps: [], allDReps: [], error: true, totalAvailable: 0 };
     }
 
     const registeredDReps = drepList.filter((d) => d.registered);

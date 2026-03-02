@@ -6,7 +6,7 @@ import { GovernanceSubNav } from '@/components/GovernanceSubNav';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { generateProposalsNarrative } from '@/lib/narratives';
 
-export const revalidate = 900; // 15 min cache
+export const dynamic = 'force-dynamic';
 
 export default async function ProposalsPage() {
   let proposals = await getAllProposalsWithVoteSummary();

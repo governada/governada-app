@@ -382,5 +382,24 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Pattern**: Introduced `lib/featureFlags.ts` with Supabase `feature_flags` table, 60s in-memory cache, env var overrides (`FF_<KEY>=true|false`), and admin UI at `/admin/flags`. Server components use `getFeatureFlag(key)`, client components use `<FeatureGate flag="key">` or `useFeatureFlag(key)`.
 **Takeaway**: Always gate risky or controversial features behind flags before shipping. Wrap at the call site (server component) or with `<FeatureGate>` (client component). The Inngest cron check ensures background jobs also respect flags. Upgrading to per-user targeting later only requires changes in `lib/featureFlags.ts`.
 
+### 2026-03-02: Transparent sticky headers require hero overlap
+**Issue**: Made the homepage header `bg-transparent` over the constellation, but the hero section started below the `sticky top-0` header in document flow. The "transparent" header just showed the body background, not the constellation behind it.
+**Fix**: Add `-mt-16` (negative margin equal to header height) on the hero wrapper so it extends up behind the header. The absolute-positioned constellation canvas then fills the area behind the nav links.
+**Takeaway**: Whenever making a sticky header transparent over a hero/background section, the hero must overlap the header via negative margin or the header must use `fixed` positioning. `bg-transparent` alone does nothing if there's no content behind the element.
+
+### 2026-03-02: useMemo/useCallback require inline function expressions
+**Issue**: `useMemo(makeCircleTexture, [])` — passing a named function reference directly as the first argument — was rejected by the `react-hooks` lint rule. Cost an extra CI round-trip.
+**Fix**: Wrap in arrow function: `useMemo(() => makeCircleTexture(), [])`.
+**Takeaway**: React hooks lint always expects an inline function expression as the first argument to `useMemo` and `useCallback`. Never pass a bare function reference even if the signature matches.
+
+### 2026-03-02: Sync failures from deployment restarts — move logic into Inngest steps
+**Issue**: 58% of all sync failures (11/19 in the past week) were caused by Railway deployments killing in-flight HTTP sync requests. The Inngest functions delegated to API routes via `callSyncRoute()` HTTP fetch, which died when Railway restarted the server during a deploy. Combined with `revalidate` ISR caching (still present despite architecture rules banning it), staleness windows extended to 45+ minutes.
+**Fix**: Extracted `execute*Sync()` functions from each sync route. Inngest functions now import and call these directly inside `step.run()` — no HTTP round-trip. Added `drepscore/sync.<type>` event triggers so the freshness guard retriggers via `inngest.send()` (also no HTTP). Removed all `revalidate` exports (8 files). Added circuit breaker for Koios 503s.
+**Takeaway**: Never use HTTP self-calls for durable background work. If the orchestrator (Inngest) and the worker (Next.js route) are on the same server, a restart kills both. Import the logic directly. HTTP routes remain only for manual/debug triggers.
+
+### 2026-03-02: Always commit + PR + deploy as part of the implementation
+**Issue**: Completed a 6-phase sync staleness fix across 20+ files, ran `tsc --noEmit` clean, but stopped at "code written" without committing, pushing, creating a PR, or validating deploy. This has been flagged in prior lessons but the pattern recurred.
+**Takeaway**: Implementation is not complete until the code is committed, pushed, CI passes, and (if on main or merging) deploy is confirmed. Add Ship It steps to the todo list from the start.
+
 *Last updated: 2026-03-02*
 *Review this file at the start of every session.*

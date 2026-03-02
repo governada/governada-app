@@ -9,7 +9,6 @@ import {
   DelegationHealthCard,
   RepresentationScoreCard,
   ActiveProposalsSection,
-  RedelegationNudge,
   type DashboardData,
 } from '@/components/governance-cards';
 import { GovernanceCalendar } from '@/components/GovernanceCalendar';
@@ -17,6 +16,8 @@ import { GovernanceBriefCard } from '@/components/GovernanceBriefCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Compass, ArrowRight } from 'lucide-react';
+import { GovernanceRiskSignals } from '@/components/GovernanceRiskSignals';
+import { DelegationIntelligence } from '@/components/DelegationIntelligence';
 
 interface HomepageAuthProps {
   previousVisitAt: string | null;
@@ -71,6 +72,11 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
 
       {data ? (
         <>
+          <GovernanceRiskSignals
+            health={data.delegationHealth as never}
+            activeProposals={data.activeProposals as never}
+          />
+
           <div className="grid gap-6 md:grid-cols-2">
             <DelegationHealthCard health={data.delegationHealth} scoreDelta={data.repScoreDelta} />
             <RepresentationScoreCard rep={data.representationScore} />
@@ -78,21 +84,18 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
 
           <GovernanceCalendar />
 
-          <ActiveProposalsSection proposals={data.activeProposals} />
-
-          {data.redelegationSuggestions.length > 0 &&
-            data.representationScore.score !== null &&
-            data.representationScore.score < 50 && (
-              <RedelegationNudge
-                repScore={data.representationScore.score}
-                misaligned={data.representationScore.misaligned}
-                total={data.representationScore.total}
-                suggestions={data.redelegationSuggestions}
-              />
-            )}
+          <DelegationIntelligence
+            currentDrepName={data.delegationHealth?.drepName}
+            currentMatchScore={data.representationScore.score}
+            suggestions={data.redelegationSuggestions.map(s => ({ ...s, drepName: s.drepName ?? '' }))}
+            totalPollVotes={data.pollHistory?.length ?? 0}
+          />
         </>
       ) : (
-        <DelegationHealthCard health={null} />
+        <>
+          <GovernanceRiskSignals health={null} activeProposals={[]} />
+          <DelegationHealthCard health={null} />
+        </>
       )}
 
       <Link

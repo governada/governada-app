@@ -23,6 +23,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { resolveRewardAddress } from '@meshsdk/core';
+import { PollFeedback } from '@/components/PollFeedback';
 import type { PollResultsResponse } from '@/types/supabase';
 
 interface SentimentPollProps {
@@ -42,6 +43,7 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
   const [changingVote, setChangingVote] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedbackVote, setFeedbackVote] = useState<VoteChoice | null>(null);
 
   const hasVoted = results?.hasVoted ?? false;
   const userVote = results?.userVote ?? null;
@@ -121,6 +123,7 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
       });
       setRevealed(true);
       setChangingVote(false);
+      setFeedbackVote(vote);
 
       import('@/lib/posthog').then(({ posthog }) => {
         posthog.capture('sentiment_voted', {
@@ -238,6 +241,17 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
         )}
 
         {error && <p className="text-xs text-destructive">{error}</p>}
+
+        {feedbackVote && revealed && results && (
+          <PollFeedback
+            txHash={txHash}
+            proposalIndex={proposalIndex}
+            userVote={feedbackVote}
+            communityYes={results.community.yes}
+            communityNo={results.community.no}
+            communityTotal={results.community.total}
+          />
+        )}
       </CardContent>
     </Card>
   );

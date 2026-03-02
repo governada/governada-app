@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProposalDescription } from '@/components/ProposalDescription';
 import { ProposalAiSummary } from '@/components/ProposalAiSummary';
-import { ProposalExplainer } from '@/components/ProposalExplainer';
-import { ProposalContextInsight } from '@/components/ProposalContextInsight';
 import { ThresholdMeter } from '@/components/ThresholdMeter';
 import { VoteTimeline } from '@/components/VoteTimeline';
 import { ArrowLeft, ExternalLink, Shield, Zap, Landmark, Eye, Scale } from 'lucide-react';
@@ -23,10 +21,7 @@ import {
 import { getProposalStatus } from '@/utils/proposalPriority';
 import { DRepVoteCallout } from '@/components/DRepVoteCallout';
 import { SentimentPoll } from '@/components/SentimentPoll';
-import { FinancialImpactCard } from '@/components/FinancialImpactCard';
-import { TreasuryAccountabilityPoll } from '@/components/TreasuryAccountabilityPoll';
-import { SimilarProposalsCard } from '@/components/SimilarProposalsCard';
-import { SocialProofBadge } from '@/components/SocialProofBadge';
+import { ProposalOutcomeSection } from '@/components/ProposalOutcomeSection';
 
 interface ProposalDetailPageProps {
   params: Promise<{ txHash: string; index: string }>;
@@ -132,51 +127,40 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
         </div>
 
         {proposal.withdrawalAmount && (
-          <FinancialImpactCard
-            withdrawalAda={proposal.withdrawalAmount}
-            treasuryTier={proposal.treasuryTier || null}
-          />
+          <p className="text-sm font-medium">
+            Withdrawal: {proposal.withdrawalAmount.toLocaleString()} ADA
+          </p>
         )}
       </div>
 
       {/* AI Summary - immediately after header for at-a-glance understanding */}
       <ProposalAiSummary summary={proposal.aiSummary} />
 
-      {/* AI Deep Explainer */}
-      <ProposalExplainer
-        txHash={txHash}
-        index={proposalIndex}
-        cachedExplanation={(proposal as any).metaJson?.ai_explanation ?? null}
-      />
-
-      {/* Contextual intelligence */}
-      <ProposalContextInsight proposalType={proposal.proposalType} />
-
       {/* DRep Vote Callout */}
       <DRepVoteCallout txHash={txHash} proposalIndex={proposalIndex} />
-
-      {/* Community Engagement */}
-      <SocialProofBadge proposalTxHash={txHash} proposalIndex={proposalIndex} variant="poll" />
 
       {/* Community Sentiment Poll */}
       <SentimentPoll txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
 
-      {/* Treasury Accountability (enacted withdrawals) */}
-      {proposal.proposalType === 'TreasuryWithdrawals' && (
-        <TreasuryAccountabilityPoll
-          txHash={txHash}
-          proposalIndex={proposalIndex}
-          isEnacted={!!proposal.enactedEpoch}
-        />
-      )}
-
-      {/* Similar Past Proposals (treasury withdrawals) */}
-      {proposal.proposalType === 'TreasuryWithdrawals' && proposal.withdrawalAmount && (
-        <SimilarProposalsCard
-          title={proposal.title || ''}
-          withdrawalAda={proposal.withdrawalAmount}
-          treasuryTier={proposal.treasuryTier || null}
-          excludeTxHash={txHash}
+      {/* Proposal Outcome Card — only for closed proposals */}
+      {!isOpen && (
+        <ProposalOutcomeSection
+          proposal={{
+            txHash,
+            proposalIndex,
+            title: proposal.title || `Proposal ${txHash.slice(0, 12)}...`,
+            proposalType: proposal.proposalType,
+            withdrawalAmount: proposal.withdrawalAmount,
+            outcome: (status as 'ratified' | 'enacted' | 'dropped' | 'expired'),
+          }}
+          votes={votes.map(v => ({ drepId: v.drepId, vote: v.vote }))}
+          majorityVote={
+            proposal.yesCount >= proposal.noCount && proposal.yesCount >= proposal.abstainCount
+              ? 'Yes'
+              : proposal.noCount >= proposal.abstainCount
+                ? 'No'
+                : 'Abstain'
+          }
         />
       )}
 

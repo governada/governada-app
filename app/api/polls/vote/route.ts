@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { blockTimeToEpoch } from '@/lib/koios';
 
 const VALID_VOTES = ['yes', 'no', 'abstain'] as const;
 type Vote = (typeof VALID_VOTES)[number];
@@ -147,6 +148,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to record vote' }, { status: 500 });
     }
   }
+
+  // Write governance event for timeline (fire-and-forget, don't block the response)
+  const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+  let proposalTitle: string | null = null;
+  try {
+    const { data: proposal } = await supabase
+      .from('proposals')
+      .select('title')
+      .eq('tx_hash', proposalTxHash)
+      .eq('proposal_index', proposalIndex)
+      .single();
+    proposalTitle = proposal?.title || null;
+  } catch { /* non-critical */ }
+
+  supabase
+    .from('governance_events')
+    .insert({
+      wallet_address: walletAddress,
+      event_type: 'poll_vote',
+      event_data: { vote, proposalTitle },
+      related_proposal_tx_hash: proposalTxHash,
+      related_proposal_index: proposalIndex,
+      epoch: currentEpoch,
+    })
+    .then(({ error: evtErr }) => {
+      if (evtErr) console.error('[Poll Vote] governance_event write failed:', evtErr);
+    });
 
   const { data: allVotes } = await supabase
     .from('poll_responses')

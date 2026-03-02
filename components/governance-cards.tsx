@@ -86,6 +86,8 @@ export interface DashboardData {
     proposalTxHash: string;
     proposalIndex: number;
     proposalTitle: string | null;
+    proposalType: string | null;
+    withdrawalAmount: number | null;
     userVote: string;
     communityConsensus: string | null;
     drepVote: string | null;

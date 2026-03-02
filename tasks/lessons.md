@@ -260,6 +260,7 @@ Patterns, mistakes, and architectural decisions captured during development. Rev
 
 Server-side API routes also need `captureServerEvent` for success + error tracking. OG image routes on Edge runtime are the exception — track via the client share event, not the server render.
 
+<<<<<<< Updated upstream
 ### 2026-03-01: dreps table uses `id` not `drep_id`, and name/ticker/handle are in `info` JSON
 **Promoted to rule**: Yes — `architecture.md` now has a `dreps` Table Schema Convention section.
 **Issue**: Leaderboard route queried `dreps.drep_id`, `dreps.name`, `dreps.ticker`, `dreps.handle` — none of which exist as columns. Caused Supabase 400 errors. Took 3 fix iterations to fully diagnose because each column absence surfaced separately.
@@ -400,6 +401,18 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 ### 2026-03-02: Always commit + PR + deploy as part of the implementation
 **Issue**: Completed a 6-phase sync staleness fix across 20+ files, ran `tsc --noEmit` clean, but stopped at "code written" without committing, pushing, creating a PR, or validating deploy. This has been flagged in prior lessons but the pattern recurred.
 **Takeaway**: Implementation is not complete until the code is committed, pushed, CI passes, and (if on main or merging) deploy is confirmed. Add Ship It steps to the todo list from the start.
+
+### 2026-03-01: Session 5 — Subagent pattern for large feature sessions
+**Issue**: Session 5 delivered 20 new components, 5 API routes, 3 libraries, 1 migration, 1 Inngest function, and a strategy doc update. Sequential execution would have taken hours.
+**Takeaway**: For large sessions (>10 deliverables), batch independent work into parallel subagent groups of 4. Group by dependency: migration first, then API routes + components that share no files, then integration. Each subagent gets: project path, import patterns, architecture rules (`force-dynamic`, PostHog inline, shadcn patterns), and specific file contents to read/modify.
+
+### 2026-03-01: governance_events RLS uses JWT claim — only works with service role for writes
+**Issue**: The `governance_events` table has RLS that reads `wallet_address` from `request.jwt.claims`. Client-side inserts via anon key won't have the JWT claim set correctly. Server-side writes (API routes, Inngest) must use `getSupabaseAdmin()` to bypass RLS.
+**Takeaway**: Any table with wallet-based RLS requires admin client for writes. Poll vote event writes, Inngest sync writes, and timeline population all use admin client.
+
+### 2026-03-01: Treasury balance is null until Inngest sync populates it
+**Issue**: `governance_stats.treasury_balance_lovelace` starts as NULL. Components that depend on treasury data (FinancialImpactCard treasury section, TreasuryHealth) gracefully return null, but the UX is invisible until the first sync runs. Same for `current_epoch` and `epoch_end_time`.
+**Takeaway**: Always design null-safe rendering for data that depends on background sync. Show meaningful empty states, not broken UI. The Inngest `generate-epoch-summary` function seeds epoch data on first run.
 
 *Last updated: 2026-03-02*
 *Review this file at the start of every session.*

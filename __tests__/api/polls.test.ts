@@ -36,7 +36,7 @@ vi.mock('@/lib/supabase', () => ({
       },
       insert: (data: unknown) => {
         mockInsert(data);
-        return mockInsert;
+        return Promise.resolve({ error: null });
       },
       update: (data: unknown) => {
         mockUpdate(data);

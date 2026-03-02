@@ -15,6 +15,9 @@ import {
   XCircle,
   History,
   ArrowRight,
+  TrendingUp,
+  TrendingDown,
+  Equal,
 } from 'lucide-react';
 import {
   DelegationHealthCard,
@@ -24,6 +27,8 @@ import {
   VoteBadge,
   type DashboardData,
 } from '@/components/governance-cards';
+import { GovernanceCitizenPanels } from '@/components/GovernanceCitizenPanels';
+import { DelegatorShareCard } from '@/components/DelegatorShareCard';
 
 export function GovernanceDashboard() {
   const { connected, isAuthenticated, reconnecting, delegatedDrepId, address } = useWallet();
@@ -106,9 +111,20 @@ export function GovernanceDashboard() {
 
       <ActiveProposalsSection proposals={data.activeProposals} />
 
+      <GovernanceCitizenPanels />
+
+      <DelegatorShareCard />
+
       <PollHistorySection history={data.pollHistory} />
     </div>
   );
+}
+
+function formatAda(lovelace: number): string {
+  const ada = lovelace / 1_000_000;
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${(ada / 1_000).toFixed(0)}K`;
+  return ada.toLocaleString();
 }
 
 function PollHistorySection({ history }: { history: DashboardData['pollHistory'] }) {
@@ -121,14 +137,30 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
     const alignedWithDrep = withDrep.filter(h => h.alignedWithDrep).length;
     const withConsensus = history.filter(h => h.communityConsensus);
     const matchedCommunity = withConsensus.filter(h => h.userVote === h.communityConsensus).length;
+    const alignmentPct = withDrep.length > 0 ? Math.round((alignedWithDrep / withDrep.length) * 100) : null;
 
     return {
       total: history.length,
       alignedWithDrep,
       drepComparisons: withDrep.length,
+      alignmentPct,
       matchedCommunity,
       communityComparisons: withConsensus.length,
     };
+  }, [history]);
+
+  const trend = useMemo(() => {
+    if (history.length < 5) return null;
+    const withDrep = history.filter(h => h.alignedWithDrep !== null);
+    if (withDrep.length < 5) return null;
+
+    const recent = withDrep.slice(0, Math.ceil(withDrep.length / 2));
+    const older = withDrep.slice(Math.ceil(withDrep.length / 2));
+    const recentRate = recent.filter(h => h.alignedWithDrep).length / recent.length;
+    const olderRate = older.filter(h => h.alignedWithDrep).length / older.length;
+    const diff = recentRate - olderRate;
+    if (Math.abs(diff) < 0.05) return 'stable' as const;
+    return diff > 0 ? 'improving' as const : 'declining' as const;
   }, [history]);
 
   if (history.length === 0) {
@@ -137,7 +169,7 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <History className="h-4 w-4 text-primary" />
-            Your Voice
+            DRep Accountability
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -155,60 +187,113 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
     );
   }
 
+  const alignmentColor = stats?.alignmentPct != null
+    ? stats.alignmentPct >= 75 ? 'text-green-600 dark:text-green-400'
+      : stats.alignmentPct >= 50 ? 'text-amber-600 dark:text-amber-400'
+        : 'text-red-600 dark:text-red-400'
+    : '';
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <History className="h-4 w-4 text-primary" />
-          Your Voice
+          DRep Accountability
           <Badge variant="secondary" className="text-xs">{stats?.total} votes</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {stats && (
-          <div className="flex gap-6 text-xs">
-            {stats.drepComparisons > 0 && (
-              <div>
-                <span className="text-muted-foreground">DRep agreed</span>
-                <p className="font-semibold tabular-nums">
-                  {stats.alignedWithDrep}/{stats.drepComparisons}
-                </p>
+        {stats && stats.drepComparisons > 0 && (
+          <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+            <div className="flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-bold tabular-nums ${alignmentColor}`}>
+                  {stats.alignmentPct}%
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  aligned with your DRep
+                </span>
               </div>
-            )}
-            {stats.communityComparisons > 0 && (
-              <div>
-                <span className="text-muted-foreground">With community</span>
-                <p className="font-semibold tabular-nums">
-                  {stats.matchedCommunity}/{stats.communityComparisons}
-                </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {stats.alignedWithDrep}/{stats.drepComparisons} votes matched
+                {stats.communityComparisons > 0 && (
+                  <> · {stats.matchedCommunity}/{stats.communityComparisons} with community</>
+                )}
+              </p>
+            </div>
+            {trend && (
+              <div className="flex items-center gap-1 text-xs">
+                {trend === 'improving' && (
+                  <><TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /><span className="text-green-600 dark:text-green-400">Improving</span></>
+                )}
+                {trend === 'declining' && (
+                  <><TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" /><span className="text-red-600 dark:text-red-400">Declining</span></>
+                )}
+                {trend === 'stable' && (
+                  <><Equal className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-muted-foreground">Stable</span></>
+                )}
               </div>
             )}
           </div>
         )}
 
         <div className="space-y-1">
-          {visible.map((h) => (
-            <Link
-              key={`${h.proposalTxHash}-${h.proposalIndex}`}
-              href={`/proposals/${h.proposalTxHash}/${h.proposalIndex}`}
-              className="flex items-center gap-2 text-xs hover:bg-muted/50 rounded px-2 py-1.5 -mx-2 transition-colors"
-            >
-              <VoteBadge vote={h.userVote} />
-              <span className="truncate flex-1">
-                {h.proposalTitle || `${h.proposalTxHash.slice(0, 12)}...`}
-              </span>
-              {h.alignedWithDrep !== null && (
-                h.alignedWithDrep ? (
-                  <span className="text-[10px] text-green-600 dark:text-green-400">DRep agreed</span>
-                ) : (
-                  <span className="text-[10px] text-red-600 dark:text-red-400">DRep differed</span>
-                )
-              )}
-              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                {new Date(h.votedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            </Link>
-          ))}
+          {visible.map((h) => {
+            const diverged = h.alignedWithDrep === false;
+            return (
+              <Link
+                key={`${h.proposalTxHash}-${h.proposalIndex}`}
+                href={`/proposals/${h.proposalTxHash}/${h.proposalIndex}`}
+                className={`flex items-center gap-2 text-xs rounded px-2 py-2 -mx-2 transition-colors ${
+                  diverged
+                    ? 'bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium">
+                      {h.proposalTitle || `${h.proposalTxHash.slice(0, 12)}...`}
+                    </span>
+                    {h.proposalType === 'TreasuryWithdrawals' && h.withdrawalAmount && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {formatAda(h.withdrawalAmount)} ADA treasury
+                      </span>
+                    )}
+                  </div>
+
+                  {diverged && h.drepVote && (
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400">
+                      You voted {h.userVote}. Your DRep voted {h.drepVote}.
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <VoteBadge vote={h.userVote} label="You" />
+                  {h.drepVote && (
+                    <VoteBadge vote={h.drepVote} label="DRep" />
+                  )}
+                  {h.alignedWithDrep !== null && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] px-1 py-0 ${
+                        h.alignedWithDrep
+                          ? 'border-green-300 text-green-700 dark:border-green-800 dark:text-green-400'
+                          : 'border-red-300 text-red-700 dark:border-red-800 dark:text-red-400'
+                      }`}
+                    >
+                      {h.alignedWithDrep ? (
+                        <><CheckCircle2 className="h-2 w-2 mr-0.5" />Aligned</>
+                      ) : (
+                        <><XCircle className="h-2 w-2 mr-0.5" />Misaligned</>
+                      )}
+                    </Badge>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         {history.length > 8 && (

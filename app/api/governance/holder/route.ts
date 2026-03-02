@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { createClient } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { getDRepById } from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
@@ -38,8 +39,10 @@ export async function GET(request: NextRequest) {
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
   try {
-    // Parallel fetch: user's poll votes, DRep data, open proposals, DRep votes
-    const [pollResult, drepData, proposalsResult, drepVotesResult] = await Promise.all([
+    const admin = getSupabaseAdmin();
+
+    // Parallel fetch: user's poll votes, DRep data, open proposals, DRep votes, user profile
+    const [pollResult, drepData, proposalsResult, drepVotesResult, userResult] = await Promise.all([
       supabase
         .from('poll_responses')
         .select('proposal_tx_hash, proposal_index, vote, initial_vote, created_at')
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
       delegatedDrepId ? getDRepById(delegatedDrepId) : Promise.resolve(null),
       supabase
         .from('proposals')
-        .select('tx_hash, proposal_index, title, proposal_type, block_time, proposed_epoch, expiration_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch')
+        .select('tx_hash, proposal_index, title, proposal_type, withdrawal_amount, block_time, proposed_epoch, expiration_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch')
         .order('block_time', { ascending: false }),
       delegatedDrepId
         ? supabase
@@ -56,6 +59,11 @@ export async function GET(request: NextRequest) {
             .select('proposal_tx_hash, proposal_index, vote, block_time')
             .eq('drep_id', delegatedDrepId)
         : Promise.resolve({ data: [], error: null }),
+      admin
+        .from('users')
+        .select('governance_level, poll_count, visit_streak, last_epoch_visited')
+        .eq('wallet_address', walletAddress)
+        .single(),
     ]);
 
     const pollVotes = pollResult.data || [];
@@ -115,6 +123,7 @@ export async function GET(request: NextRequest) {
         votedOnOpen: votedOnOpen,
         openProposalCount: openCount,
         representationScore: repScore,
+        votingPowerLovelace: (drepData as { votingPower?: number }).votingPower ?? 0,
       };
     }
 
@@ -194,6 +203,8 @@ export async function GET(request: NextRequest) {
         proposalTxHash: pv.proposal_tx_hash,
         proposalIndex: pv.proposal_index,
         proposalTitle: proposal?.title || null,
+        proposalType: proposal?.proposal_type || null,
+        withdrawalAmount: proposal?.withdrawal_amount ? Number(proposal.withdrawal_amount) : null,
         userVote: normalizedUserVote,
         communityConsensus: consensus,
         drepVote,
@@ -212,11 +223,11 @@ export async function GET(request: NextRequest) {
       matchRate: number;
     }[] = [];
 
-    if (repScore !== null && repScore < 50 && pollVotes.length >= 3) {
+    if (pollVotes.length >= 3) {
       const { matches } = await findBestMatchDReps(walletAddress, {
         excludeDrepId: delegatedDrepId,
         minOverlap: 2,
-        minMatchRate: 0.6,
+        minMatchRate: 0.5,
         limit: 5,
       });
 
@@ -244,6 +255,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const userProfile = userResult.data;
+
     return NextResponse.json({
       delegationHealth,
       representationScore: {
@@ -258,6 +271,9 @@ export async function GET(request: NextRequest) {
       redelegationSuggestions,
       currentEpoch,
       repScoreDelta,
+      governanceLevel: userProfile?.governance_level ?? 'observer',
+      pollCount: userProfile?.poll_count ?? 0,
+      visitStreak: userProfile?.visit_streak ?? 0,
     });
   } catch (error) {
     console.error('[Governance Dashboard API] Error:', error);

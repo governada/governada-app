@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { HexScore } from '@/components/HexScore';
 import { extractAlignments, getDominantDimension, getIdentityColor } from '@/lib/drepIdentity';
 
 interface PreviewDRep {
@@ -17,31 +18,6 @@ interface PreviewDRep {
   alignmentSecurity?: number | null;
   alignmentInnovation?: number | null;
   alignmentTransparency?: number | null;
-}
-
-function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
-  const radius = 16;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-
-  const color = score >= 80 ? 'text-green-500' : score >= 60 ? 'text-blue-500' : score >= 40 ? 'text-amber-500' : 'text-red-500';
-
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 36 36" className={`w-full h-full -rotate-90`}>
-        <circle cx="18" cy="18" r={radius} fill="none" stroke="currentColor" className="text-muted/20" strokeWidth="3" />
-        <circle
-          cx="18" cy="18" r={radius} fill="none" stroke="currentColor"
-          className={color}
-          strokeWidth="3"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{score}</span>
-    </div>
-  );
 }
 
 function DRepCard({ drep }: { drep: PreviewDRep }) {
@@ -67,7 +43,7 @@ function DRepCard({ drep }: { drep: PreviewDRep }) {
         className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
         style={{ backgroundColor: identityColor.hex }}
       />
-      <ScoreRing score={drep.drepScore} />
+      <HexScore score={drep.drepScore} alignments={alignments} size="card" animate={false} />
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{displayName}</p>
         <div className="flex items-center gap-2 mt-1">

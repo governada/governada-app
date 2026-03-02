@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScoreRing } from '@/components/ScoreRing';
+import { HexScore } from '@/components/HexScore';
+import { extractAlignments } from '@/lib/drepIdentity';
 import {
   Tooltip,
   TooltipContent,
@@ -312,7 +313,7 @@ export function RepresentationScoreCard({ rep }: { rep: RepresentationData }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-6">
-          <ScoreRing score={rep.score} size={100} strokeWidth={8} />
+          <HexScore score={rep.score} alignments={{ treasuryConservative: null, treasuryGrowth: null, decentralization: null, security: null, innovation: null, transparency: null }} size="card" />
           <div className="space-y-1">
             <p className="text-sm">
               Your DRep voted with you <strong>{rep.aligned}</strong> of <strong>{rep.total}</strong> times.

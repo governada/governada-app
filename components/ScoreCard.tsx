@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lightbulb } from 'lucide-react';
 import { type PillarStatus } from '@/utils/scoring';
 import { useWallet } from '@/utils/wallet';
-import { ScoreRing } from '@/components/ScoreRing';
+import { HexScore } from '@/components/HexScore';
+import { extractAlignments } from '@/lib/drepIdentity';
 import { PillarCard } from '@/components/PillarCard';
 import { MethodologyAccordion } from '@/components/MethodologyAccordion';
 import { ShareActions } from '@/components/ShareActions';
@@ -18,6 +19,7 @@ interface ScoreCardProps {
     effectiveParticipation: number;
     reliabilityScore: number;
     profileCompleteness: number;
+    [key: string]: unknown;
   };
   adjustedRationale: number;
   pillars: { value: number; label: string; weight: string; maxPoints: number }[];
@@ -80,9 +82,9 @@ export function ScoreCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Score ring + percentile */}
+        {/* Score hex + percentile */}
         <div className="flex flex-col items-center gap-3">
-          <ScoreRing score={drep.drepScore} />
+          <HexScore score={drep.drepScore} alignments={extractAlignments(drep as Record<string, unknown>)} size="hero" />
           {percentile > 0 && (
             <span className="text-xs text-muted-foreground">
               Higher than {percentile}% of DReps

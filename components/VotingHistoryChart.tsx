@@ -6,20 +6,16 @@
  * plus clickable vote cards with alignment flags and detail sheet.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, type MouseEvent } from 'react';
+import { scaleLinear, scalePoint } from 'd3-scale';
+import { area as d3area, curveMonotoneX } from 'd3-shape';
 import { VoteRecord, UserPrefKey, VoteAlignment } from '@/types/drep';
 import { evaluateVoteAlignment } from '@/lib/alignment';
 import { VoteDetailSheet } from '@/components/VoteDetailSheet';
 import { stripMarkdown } from '@/utils/text';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { useChartDimensions } from '@/lib/charts/useChartDimensions';
+import { AreaGradient } from '@/lib/charts/GlowDefs';
+import { chartTheme, VOTE_CHART_COLORS } from '@/lib/charts/theme';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -179,6 +175,138 @@ function AlignmentFlag({ alignment }: { alignment: VoteAlignment }) {
 
 type VoteFilterType = 'all' | 'Yes' | 'No' | 'Abstain';
 
+function StackedAreaChart({
+  monthlyData,
+}: {
+  monthlyData: { month: string; Yes: number; No: number; Abstain: number; total: number }[];
+}) {
+  const { containerRef, dimensions } = useChartDimensions(200);
+  const { width, innerWidth, innerHeight, margin } = dimensions;
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const xScale = useMemo(
+    () => scalePoint<string>().domain(monthlyData.map((d) => d.month)).range([0, innerWidth]).padding(0.1),
+    [monthlyData, innerWidth],
+  );
+
+  const yMax = useMemo(
+    () => Math.max(...monthlyData.map((d) => d.total), 1),
+    [monthlyData],
+  );
+
+  const yScale = useMemo(
+    () => scaleLinear().domain([0, yMax]).range([innerHeight, 0]),
+    [yMax, innerHeight],
+  );
+
+  const layers = useMemo(() => {
+    const keys: ('Yes' | 'No' | 'Abstain')[] = ['Yes', 'No', 'Abstain'];
+    return keys.map((key) => {
+      const gen = d3area<(typeof monthlyData)[0]>()
+        .x((d) => xScale(d.month) ?? 0)
+        .y0((d) => {
+          let base = 0;
+          for (const k of keys) {
+            if (k === key) break;
+            base += d[k];
+          }
+          return yScale(base);
+        })
+        .y1((d) => {
+          let top = 0;
+          for (const k of keys) {
+            top += d[k];
+            if (k === key) break;
+          }
+          return yScale(top);
+        })
+        .curve(curveMonotoneX);
+      return { key, path: gen(monthlyData) ?? '', color: VOTE_CHART_COLORS[key] };
+    });
+  }, [monthlyData, xScale, yScale]);
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent<SVGRectElement>) => {
+      const svg = e.currentTarget.closest('svg');
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const relX = e.clientX - rect.left - margin.left;
+      const step = innerWidth / Math.max(1, monthlyData.length - 1);
+      const idx = Math.round(relX / step);
+      setHoveredIndex(Math.max(0, Math.min(monthlyData.length - 1, idx)));
+    },
+    [monthlyData.length, innerWidth, margin.left],
+  );
+
+  const hovered = hoveredIndex !== null ? monthlyData[hoveredIndex] : null;
+  const xTicks = monthlyData.length <= 6 ? monthlyData : monthlyData.filter((_, i) => i % Math.ceil(monthlyData.length / 6) === 0);
+  const ticks = yScale.ticks(4);
+
+  return (
+    <div ref={containerRef} className="relative w-full" style={{ height: 200 }}>
+      {width > 0 && (
+        <svg width={width} height={200}>
+          <defs>
+            {(['Yes', 'No', 'Abstain'] as const).map((key) => (
+              <AreaGradient key={key} id={`vote-area-${key}`} color={VOTE_CHART_COLORS[key]} topOpacity={0.3} />
+            ))}
+          </defs>
+          <g transform={`translate(${margin.left},${margin.top})`}>
+            {ticks.map((t) => (
+              <g key={t}>
+                <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
+                <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{t}</text>
+              </g>
+            ))}
+            {xTicks.map((d) => (
+              <text key={d.month} x={xScale(d.month) ?? 0} y={innerHeight + 18} textAnchor="middle" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{d.month}</text>
+            ))}
+
+            {layers.map(({ key, path, color }) => (
+              <path key={key} d={path} fill={`url(#vote-area-${key})`} stroke={color} strokeWidth={1.5} />
+            ))}
+
+            {hoveredIndex !== null && (
+              <line
+                x1={xScale(monthlyData[hoveredIndex].month) ?? 0}
+                x2={xScale(monthlyData[hoveredIndex].month) ?? 0}
+                y1={0} y2={innerHeight}
+                stroke="currentColor" strokeWidth={0.5} strokeDasharray="3 3" className="text-muted-foreground"
+              />
+            )}
+
+            <rect x={0} y={0} width={innerWidth} height={innerHeight} fill="transparent" onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)} />
+          </g>
+        </svg>
+      )}
+
+      {hovered && hoveredIndex !== null && width > 0 && (
+        <div
+          className="absolute z-50 pointer-events-none"
+          style={{
+            left: margin.left + (xScale(hovered.month) ?? 0),
+            top: 40,
+            transform: `translate(${(xScale(hovered.month) ?? 0) > innerWidth * 0.7 ? '-110%' : '10%'}, 0)`,
+          }}
+        >
+          <div className="rounded-lg border bg-card p-2.5 shadow-xl text-xs backdrop-blur-sm dark:border-border/60 dark:bg-card/95">
+            <p className="font-medium mb-1">{hovered.month}</p>
+            {(['Yes', 'No', 'Abstain'] as const).map((key) => (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: VOTE_CHART_COLORS[key] }} />
+                  {key}
+                </span>
+                <span className="font-mono tabular-nums">{hovered[key]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChartProps) {
   const [showAllVotes, setShowAllVotes] = useState(false);
   const [selectedVote, setSelectedVote] = useState<VoteRecord | null>(null);
@@ -192,22 +320,24 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
   const total = votes.length;
 
   const segments: DonutSegment[] = [
-    { name: 'Yes', value: yesCount, color: '#10b981', percentage: total > 0 ? (yesCount / total) * 100 : 0 },
-    { name: 'No', value: noCount, color: '#ef4444', percentage: total > 0 ? (noCount / total) * 100 : 0 },
-    { name: 'Abstain', value: abstainCount, color: '#f59e0b', percentage: total > 0 ? (abstainCount / total) * 100 : 0 },
+    { name: 'Yes', value: yesCount, color: VOTE_CHART_COLORS.Yes, percentage: total > 0 ? (yesCount / total) * 100 : 0 },
+    { name: 'No', value: noCount, color: VOTE_CHART_COLORS.No, percentage: total > 0 ? (noCount / total) * 100 : 0 },
+    { name: 'Abstain', value: abstainCount, color: VOTE_CHART_COLORS.Abstain, percentage: total > 0 ? (abstainCount / total) * 100 : 0 },
   ];
 
-  const monthlyVotes = votes.reduce((acc, vote) => {
-    const month = vote.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-    if (!acc[month]) {
-      acc[month] = { month, dateObj: new Date(vote.date.getFullYear(), vote.date.getMonth(), 1), Yes: 0, No: 0, Abstain: 0, total: 0 };
-    }
-    acc[month][vote.vote]++;
-    acc[month].total++;
-    return acc;
-  }, {} as Record<string, { month: string; dateObj: Date; Yes: number; No: number; Abstain: number; total: number }>);
+  const monthlyData = useMemo(() => {
+    const monthlyVotes = votes.reduce((acc, vote) => {
+      const month = vote.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      if (!acc[month]) {
+        acc[month] = { month, dateObj: new Date(vote.date.getFullYear(), vote.date.getMonth(), 1), Yes: 0, No: 0, Abstain: 0, total: 0 };
+      }
+      acc[month][vote.vote]++;
+      acc[month].total++;
+      return acc;
+    }, {} as Record<string, { month: string; dateObj: Date; Yes: number; No: number; Abstain: number; total: number }>);
 
-  const monthlyData = Object.values(monthlyVotes).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    return Object.values(monthlyVotes).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+  }, [votes]);
 
   const proposalTypes = useMemo(() => {
     const set = new Set(votes.map(v => v.proposalType).filter(Boolean) as string[]);
@@ -260,13 +390,9 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
   if (votes.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Voting History</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Voting History</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-center text-muted-foreground py-8">
-            No voting history available yet.
-          </p>
+          <p className="text-center text-muted-foreground py-8">No voting history available yet.</p>
         </CardContent>
       </Card>
     );
@@ -276,9 +402,7 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
     <div className="space-y-6">
       {/* Voting Analytics */}
       <Card>
-        <CardHeader>
-          <CardTitle>Voting Analytics</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Voting Analytics</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="flex flex-col items-center lg:items-start">
@@ -289,51 +413,7 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
             {monthlyData.length > 1 && (
               <div className="flex flex-col">
                 <p className="text-sm font-medium text-muted-foreground mb-4">Activity Over Time</p>
-                <div className="h-[200px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="gradientYes" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="gradientNo" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="gradientAbstain" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
-                      <XAxis 
-                        dataKey="month" 
-                        tick={{ fontSize: 11 }} 
-                        className="text-muted-foreground"
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 11 }} 
-                        className="text-muted-foreground"
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <RechartsTooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                          fontSize: '12px'
-                        }}
-                      />
-                      <Area type="monotone" dataKey="Yes" stackId="1" stroke="#10b981" fill="url(#gradientYes)" strokeWidth={2} />
-                      <Area type="monotone" dataKey="No" stackId="1" stroke="#ef4444" fill="url(#gradientNo)" strokeWidth={2} />
-                      <Area type="monotone" dataKey="Abstain" stackId="1" stroke="#f59e0b" fill="url(#gradientAbstain)" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                <StackedAreaChart monthlyData={monthlyData} />
               </div>
             )}
           </div>
@@ -410,7 +490,6 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1.5 flex-1 min-w-0">
-                      {/* Vote badge + type + date + alignment */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant={
                           vote.vote === 'Yes' ? 'default' : 
@@ -434,19 +513,16 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
                         </span>
                       </div>
                       
-                      {/* Proposal title */}
                       <p className="font-medium text-sm group-hover:text-primary transition-colors">
                         {vote.title || 'Untitled Proposal'}
                       </p>
                       
-                      {/* Proposal summary */}
                       {(vote.aiSummary || vote.abstract) && (
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {stripMarkdown(vote.aiSummary || vote.abstract || '')}
                         </p>
                       )}
 
-                      {/* Rationale summary */}
                       {(vote.rationaleAiSummary || vote.rationaleText) && (
                         <div className="bg-muted/30 rounded p-2 mt-1">
                           <p className="text-xs text-foreground/80 line-clamp-2">
@@ -457,7 +533,6 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
                       )}
                     </div>
                     
-                    {/* Right side: alignment flag + external link */}
                     <div className="flex flex-col items-center gap-2 shrink-0 pt-0.5">
                       <AlignmentFlag alignment={alignment} />
                       <TooltipProvider>
@@ -493,7 +568,6 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
             />
           )}
 
-          {/* Show All button */}
           {filteredVotes.length > 10 && (
             <div className="mt-4 pt-4 border-t">
               <Button
@@ -512,7 +586,6 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
         </CardContent>
       </Card>
 
-      {/* Vote Detail Sheet */}
       <VoteDetailSheet
         vote={selectedVote}
         open={!!selectedVote}

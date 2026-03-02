@@ -6,6 +6,8 @@ import { getDRepDisplayName } from '@/utils/display';
 import { formatAda, getDRepScoreBadgeClass, getSizeBadgeClass } from '@/utils/scoring';
 import { getDRepTraitTags } from '@/lib/alignment';
 import { ScoreBreakdownTooltip } from './ScoreBreakdown';
+import { HexScore } from './HexScore';
+import { extractAlignments } from '@/lib/drepIdentity';
 import { Heart, Vote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -50,18 +52,15 @@ export function DRepCard({
     >
       {/* Top row: score + name + size */}
       <div className="flex items-start gap-3">
-        {/* Score circle */}
+        {/* Score hex */}
         <ScoreBreakdownTooltip drep={drep}>
           <div className="flex flex-col items-center min-w-[48px] cursor-help">
-            <span className="text-2xl font-bold tabular-nums leading-none">
-              {score}
-            </span>
-            <Badge
-              variant="outline"
-              className={cn('text-[10px] px-1 py-0 h-4 font-medium mt-1', getDRepScoreBadgeClass(score))}
-            >
-              {score >= 80 ? 'Strong' : score >= 60 ? 'Good' : 'Low'}
-            </Badge>
+            <HexScore
+              score={score}
+              alignments={extractAlignments(drep as unknown as Record<string, unknown>)}
+              size="card"
+              animate={false}
+            />
           </div>
         </ScoreBreakdownTooltip>
 

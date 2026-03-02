@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { ArrowRight, TrendingUp, TrendingDown, Minus, Clock, Users as UsersIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { getIdentityColor, type AlignmentDimension } from '@/lib/drepIdentity';
+import { HexScore } from '@/components/HexScore';
+import { getIdentityColor, type AlignmentDimension, type AlignmentScores, extractAlignments } from '@/lib/drepIdentity';
 
 export type UserSegment = 'delegated' | 'undelegated' | 'drep';
 
@@ -16,6 +17,7 @@ interface DelegatedData {
   openProposals: number;
   epochCountdown: string;
   dominant: AlignmentDimension;
+  alignments?: AlignmentScores;
 }
 
 interface DRepData {
@@ -27,6 +29,7 @@ interface DRepData {
   delegatorCount: number;
   pendingProposals: number;
   dominant: AlignmentDimension;
+  alignments?: AlignmentScores;
 }
 
 interface UndelegatedData {
@@ -63,12 +66,12 @@ function DelegatedCard({ data }: { data: DelegatedData }) {
       <CardContent className="p-5 pl-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ backgroundColor: color.hex }}
-            >
-              {data.drepScore}
-            </div>
+            <HexScore
+              score={data.drepScore}
+              alignments={data.alignments ?? { treasuryConservative: null, treasuryGrowth: null, decentralization: null, security: null, innovation: null, transparency: null }}
+              size="badge"
+              animate={false}
+            />
             <div>
               <Link href={`/drep/${data.drepId}`} className="font-semibold hover:text-primary transition-colors">
                 {data.drepName}

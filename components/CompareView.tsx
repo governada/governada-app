@@ -3,21 +3,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-} from 'recharts';
+import { scaleLinear, scalePoint } from 'd3-scale';
+import { line as d3line, curveMonotoneX } from 'd3-shape';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,9 +15,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ScoreRing } from '@/components/ScoreRing';
+import { HexScore } from '@/components/HexScore';
+import { GovernanceRadar } from '@/components/GovernanceRadar';
 import { ShareActions } from '@/components/ShareActions';
 import { useWallet } from '@/utils/wallet';
+import { extractAlignments, type AlignmentScores } from '@/lib/drepIdentity';
+import { useChartDimensions } from '@/lib/charts/useChartDimensions';
+import { GlowFilter } from '@/lib/charts/GlowDefs';
+import { chartTheme } from '@/lib/charts/theme';
 import {
   ArrowLeft,
   GitCompareArrows,
@@ -230,22 +222,13 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
   const compareShareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const compareOgUrl = data ? `/api/og/compare?dreps=${data.dreps.map(d => d.drepId).join(',')}` : '';
 
-  // Radar chart data for pillar comparison
-  const radarData = useMemo(() => {
-    if (!data) return [];
-    const pillars = [
-      { key: 'effectiveParticipation', label: 'Participation' },
-      { key: 'rationaleRate', label: 'Rationale' },
-      { key: 'reliabilityScore', label: 'Reliability' },
-      { key: 'profileCompleteness', label: 'Profile' },
-    ];
-    return pillars.map(p => {
-      const row: Record<string, unknown> = { pillar: p.label, fullMark: 100 };
-      data.dreps.forEach(d => {
-        row[d.drepId] = d.pillars[p.key as keyof CompareProfile['pillars']];
-      });
-      return row;
-    });
+  const drepAlignments = useMemo(() => {
+    if (!data) return new Map<string, AlignmentScores>();
+    const map = new Map<string, AlignmentScores>();
+    for (const d of data.dreps) {
+      map.set(d.drepId, extractAlignments(d as unknown as Record<string, unknown>));
+    }
+    return map;
   }, [data]);
 
   // Score history merged for multi-line chart
@@ -339,7 +322,7 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
               <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: DREP_COLORS[i] }} />
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-start gap-3">
-                  <ScoreRing score={drep.drepScore} size={72} strokeWidth={6} />
+                  <HexScore score={drep.drepScore} alignments={drepAlignments.get(drep.drepId) ?? { treasuryConservative: null, treasuryGrowth: null, decentralization: null, security: null, innovation: null, transparency: null }} size="card" />
                   <div className="min-w-0 flex-1">
                     <Link href={`/drep/${drep.drepId}`} className="hover:underline">
                       <h3 className="font-bold text-sm truncate">
@@ -370,33 +353,31 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
           ))}
         </div>
 
-        {/* Radar Chart - Pillar Comparison */}
+        {/* Governance Radar - Alignment Comparison */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Score Breakdown</CardTitle>
+            <CardTitle className="text-sm">Governance Identity</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-6 items-center">
-              <div className="w-full md:w-1/2 h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData}>
-                    <PolarGrid strokeDasharray="3 3" />
-                    <PolarAngleAxis dataKey="pillar" tick={{ fontSize: 11 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
-                    {data.dreps.map((d, i) => (
-                      <Radar
+              <div className="w-full md:w-1/2 flex items-center justify-center">
+                {data.dreps.length === 2 && drepAlignments.get(data.dreps[0].drepId) ? (
+                  <GovernanceRadar
+                    alignments={drepAlignments.get(data.dreps[0].drepId)!}
+                    compareAlignments={drepAlignments.get(data.dreps[1].drepId)}
+                    size="full"
+                  />
+                ) : (
+                  <div className="flex gap-4">
+                    {data.dreps.map((d) => (
+                      <GovernanceRadar
                         key={d.drepId}
-                        name={d.name || d.drepId.slice(0, 12)}
-                        dataKey={d.drepId}
-                        stroke={DREP_COLORS[i]}
-                        fill={DREP_COLORS[i]}
-                        fillOpacity={0.12}
-                        strokeWidth={2}
+                        alignments={drepAlignments.get(d.drepId) ?? { treasuryConservative: null, treasuryGrowth: null, decentralization: null, security: null, innovation: null, transparency: null }}
+                        size="medium"
                       />
                     ))}
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                  </RadarChart>
-                </ResponsiveContainer>
+                  </div>
+                )}
               </div>
               <div className="w-full md:w-1/2 space-y-3">
                 {['effectiveParticipation', 'rationaleRate', 'reliabilityScore', 'profileCompleteness'].map((pillarKey, pi) => {
@@ -433,45 +414,7 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
 
         {/* Score Trend */}
         {trendData.length > 1 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Score Trend (Last 30 Days)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 10 }}
-                      tickFormatter={(v: string) => {
-                        const d = new Date(v);
-                        return `${d.getMonth() + 1}/${d.getDate()}`;
-                      }}
-                    />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                    <RechartsTooltip
-                      contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                      labelFormatter={(v) => new Date(String(v)).toLocaleDateString()}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {data.dreps.map((d, i) => (
-                      <Line
-                        key={d.drepId}
-                        type="monotone"
-                        dataKey={d.drepId}
-                        name={d.name || d.drepId.slice(0, 12)}
-                        stroke={DREP_COLORS[i]}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <CompareScoreTrend trendData={trendData} dreps={data.dreps} />
         )}
 
         {/* Voting Overlap */}
@@ -662,6 +605,96 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
         </div>
       </div>
     </TooltipProvider>
+  );
+}
+
+function CompareScoreTrend({
+  trendData,
+  dreps,
+}: {
+  trendData: Record<string, unknown>[];
+  dreps: CompareProfile[];
+}) {
+  const { containerRef, dimensions } = useChartDimensions(200);
+  const { width, innerWidth, innerHeight, margin } = dimensions;
+
+  const dates = useMemo(() => trendData.map((d) => d.date as string), [trendData]);
+
+  const xScale = useMemo(
+    () => scalePoint<string>().domain(dates).range([0, innerWidth]).padding(0.1),
+    [dates, innerWidth],
+  );
+
+  const yScale = useMemo(
+    () => scaleLinear().domain([0, 100]).range([innerHeight, 0]),
+    [innerHeight],
+  );
+
+  const paths = useMemo(
+    () =>
+      dreps.map((d, i) => {
+        const gen = d3line<Record<string, unknown>>()
+          .defined((row) => row[d.drepId] != null)
+          .x((row) => xScale(row.date as string) ?? 0)
+          .y((row) => yScale(row[d.drepId] as number))
+          .curve(curveMonotoneX);
+        return { drepId: d.drepId, name: d.name || d.drepId.slice(0, 12), d: gen(trendData) ?? '', color: DREP_COLORS[i] };
+      }),
+    [dreps, trendData, xScale, yScale],
+  );
+
+  const ticks = yScale.ticks(4);
+  const xTicks = dates.length <= 8 ? dates : dates.filter((_, i) => i % Math.ceil(dates.length / 6) === 0);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">Score Trend (Last 30 Days)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div ref={containerRef} className="w-full" style={{ height: 200 }}>
+          {width > 0 && (
+            <svg width={width} height={200}>
+              <defs>
+                {dreps.map((_, i) => (
+                  <GlowFilter key={i} id={`compare-glow-${i}`} stdDeviation={2} />
+                ))}
+              </defs>
+              <g transform={`translate(${margin.left},${margin.top})`}>
+                {ticks.map((t) => (
+                  <g key={t}>
+                    <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
+                    <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={10} className="fill-muted-foreground">{t}</text>
+                  </g>
+                ))}
+                {xTicks.map((date) => {
+                  const d = new Date(date);
+                  return (
+                    <text key={date} x={xScale(date) ?? 0} y={innerHeight + 16} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
+                      {d.getMonth() + 1}/{d.getDate()}
+                    </text>
+                  );
+                })}
+                {paths.map((p, i) => (
+                  <g key={p.drepId}>
+                    <path d={p.d} fill="none" stroke={p.color} strokeWidth={2} filter={`url(#compare-glow-${i})`} opacity={0.3} />
+                    <path d={p.d} fill="none" stroke={p.color} strokeWidth={2} strokeLinecap="round" />
+                  </g>
+                ))}
+              </g>
+            </svg>
+          )}
+        </div>
+        <div className="flex gap-4 mt-2 justify-center">
+          {paths.map((p) => (
+            <div key={p.drepId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-3 h-0.5 rounded" style={{ backgroundColor: p.color }} />
+              {p.name}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

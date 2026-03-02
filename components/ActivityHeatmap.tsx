@@ -77,9 +77,9 @@ export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
 
   function getColor(entry: EpochActivity | null): string {
     if (!entry || entry.votes === 0) return 'bg-muted';
-    if (entry.votes >= 4) return 'bg-green-500';
-    if (entry.votes >= 2) return 'bg-green-400 dark:bg-green-600';
-    return 'bg-green-300 dark:bg-green-700';
+    if (entry.votes >= 4) return 'bg-primary';
+    if (entry.votes >= 2) return 'bg-primary/70';
+    return 'bg-primary/40';
   }
 
   if (loading) {
@@ -158,9 +158,9 @@ export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
           <span className="text-[10px] text-muted-foreground">Less</span>
           <div className="flex gap-0.5">
             <div className="w-2.5 h-2.5 rounded-sm bg-muted" />
-            <div className="w-2.5 h-2.5 rounded-sm bg-green-300 dark:bg-green-700" />
-            <div className="w-2.5 h-2.5 rounded-sm bg-green-400 dark:bg-green-600" />
-            <div className="w-2.5 h-2.5 rounded-sm bg-green-500" />
+            <div className="w-2.5 h-2.5 rounded-sm bg-primary/40" />
+            <div className="w-2.5 h-2.5 rounded-sm bg-primary/70" />
+            <div className="w-2.5 h-2.5 rounded-sm bg-primary" />
           </div>
           <span className="text-[10px] text-muted-foreground">More</span>
         </div>

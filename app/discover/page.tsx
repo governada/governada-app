@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'Find and compare Cardano DReps by score, participation, rationale quality, and alignment with your governance values.',
 };
 
-export const revalidate = 300; // 5 min ISR
+export const dynamic = 'force-dynamic';
 
 export default async function DiscoverPage() {
   const { dreps, allDReps, totalAvailable } = await getAllDReps();

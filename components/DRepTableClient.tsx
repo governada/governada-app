@@ -321,6 +321,27 @@ export function DRepTableClient({
       <ErrorBanner
         message={error}
         retryable={true}
+        onRetry={() => {
+          setError(null);
+          setLoading(true);
+          fetch('/api/dreps')
+            .then(res => {
+              if (!res.ok) throw new Error('Failed to fetch DReps');
+              return res.json();
+            })
+            .then(data => {
+              setWellDocDReps(data.dreps || []);
+              setAllDReps(data.allDReps || []);
+              setTotalAvailable(data.totalAvailable || 0);
+              setLoading(false);
+              if (data.error) setError('Data may be stale - try refreshing');
+            })
+            .catch(err => {
+              console.error('Error fetching DReps:', err);
+              setError('Failed to load DReps. Please try refreshing the page.');
+              setLoading(false);
+            });
+        }}
       />
     );
   }

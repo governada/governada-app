@@ -8,6 +8,7 @@ import { Providers } from "@/components/Providers";
 import { BrandedLoader } from "@/components/BrandedLoader";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { NavDirectionProvider } from "@/components/NavDirectionProvider";
+import { SyncFreshnessBanner } from "@/components/SyncFreshnessBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,6 +65,7 @@ export default function RootLayout({
                 Skip to main content
               </a>
               <HeaderClient />
+              <SyncFreshnessBanner />
               <main id="main-content" className="min-h-screen pb-16 sm:pb-0" tabIndex={-1}>
                 {children}
               </main>

@@ -1,20 +1,19 @@
 /**
  * Sync Freshness Guard — rapid self-healing cron.
- * Runs every 30 min, checks v_sync_health for stale syncs, and retriggers them.
- * Much faster recovery than the 6h integrity alert.
+ * Runs every 30 min, checks v_sync_health for stale syncs, and retriggers them
+ * via Inngest events (durable, no HTTP round-trip vulnerability).
  */
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { callSyncRoute } from '@/inngest/helpers';
 import { alertDiscord, errMsg, emitPostHog, type SyncType } from '@/lib/sync-utils';
 
-const FRESHNESS_THRESHOLDS: Record<string, { mins: number; route: string }> = {
-  proposals: { mins: 90, route: '/api/sync/proposals' },
-  dreps:     { mins: 480, route: '/api/sync/dreps' },
-  votes:     { mins: 480, route: '/api/sync/votes' },
-  secondary: { mins: 480, route: '/api/sync/secondary' },
-  slow:      { mins: 1800, route: '/api/sync/slow' },
+const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {
+  proposals: { mins: 90, event: 'drepscore/sync.proposals' },
+  dreps:     { mins: 480, event: 'drepscore/sync.dreps' },
+  votes:     { mins: 480, event: 'drepscore/sync.votes' },
+  secondary: { mins: 480, event: 'drepscore/sync.secondary' },
+  slow:      { mins: 1800, event: 'drepscore/sync.slow' },
 };
 
 const RECENT_FAILURE_WINDOW_MS = 15 * 60 * 1000;
@@ -61,19 +60,19 @@ export const syncFreshnessGuard = inngest.createFunction(
       if (!rows) return [];
 
       const now = Date.now();
-      const stale: { syncType: string; staleMins: number; route: string }[] = [];
+      const stale: { syncType: string; staleMins: number; event: string }[] = [];
 
       for (const row of rows) {
         const config = FRESHNESS_THRESHOLDS[row.sync_type];
         if (!config) continue;
         if (!row.last_run) {
-          stale.push({ syncType: row.sync_type, staleMins: Infinity, route: config.route });
+          stale.push({ syncType: row.sync_type, staleMins: Infinity, event: config.event });
           continue;
         }
 
         const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60_000);
         if (staleMins > config.mins) {
-          stale.push({ syncType: row.sync_type, staleMins, route: config.route });
+          stale.push({ syncType: row.sync_type, staleMins, event: config.event });
         }
       }
 
@@ -84,7 +83,7 @@ export const syncFreshnessGuard = inngest.createFunction(
       return { recovered: 0, message: 'All syncs fresh' };
     }
 
-    for (const { syncType, staleMins, route } of staleTypes) {
+    for (const { syncType, staleMins, event } of staleTypes) {
       const recovered = await step.run(`recover-${syncType}`, async () => {
         const supabase = getSupabaseAdmin();
 
@@ -102,31 +101,22 @@ export const syncFreshnessGuard = inngest.createFunction(
           return null;
         }
 
-        console.log(`[FreshnessGuard] Retriggering ${syncType} (${staleMins}m stale)`);
-        try {
-          const { status } = await callSyncRoute(route, 300_000);
-          emitPostHog(true, syncType as SyncType, 0, {
-            event_override: 'sync_self_healed',
-            staleness_minutes: staleMins,
-            retrigger_status: status,
-          });
-          await alertDiscord(
-            `Self-Healed: ${syncType}`,
-            `Sync was ${staleMins}m stale. Retriggered via freshness guard → ${status}.`,
-          );
-          return { syncType, status, staleMins };
-        } catch (e) {
-          console.error(`[FreshnessGuard] Failed to retrigger ${syncType}:`, errMsg(e));
-          await alertDiscord(
-            `Self-Heal Failed: ${syncType}`,
-            `Sync was ${staleMins}m stale. Retrigger failed: ${errMsg(e)}`,
-          );
-          return null;
-        }
+        console.log(`[FreshnessGuard] Retriggering ${syncType} (${staleMins}m stale) via Inngest event`);
+        await inngest.send({ name: event });
+
+        emitPostHog(true, syncType as SyncType, 0, {
+          event_override: 'sync_self_healed',
+          staleness_minutes: staleMins,
+        });
+        await alertDiscord(
+          `Self-Healed: ${syncType}`,
+          `Sync was ${staleMins}m stale. Retriggered via freshness guard (Inngest event).`,
+        );
+        return { syncType, staleMins };
       });
 
       if (recovered) {
-        recoveries.push(`${recovered.syncType}: ${recovered.status}`);
+        recoveries.push(`${recovered.syncType}: ${recovered.staleMins}m stale`);
       }
     }
 

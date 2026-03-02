@@ -1,5 +1,5 @@
 import { inngest } from '@/lib/inngest';
-import { callSyncRoute } from '@/inngest/helpers';
+import { executeVotesSync } from '@/app/api/sync/votes/route';
 import { pingHeartbeat } from '@/lib/sync-utils';
 
 export const syncVotes = inngest.createFunction(
@@ -8,11 +8,9 @@ export const syncVotes = inngest.createFunction(
     retries: 2,
     concurrency: { limit: 2, scope: 'env', key: '"koios-batch"' },
   },
-  { cron: '15 */6 * * *' },
+  [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.votes' }],
   async ({ step }) => {
-    const result = await step.run('execute-votes-sync', () =>
-      callSyncRoute('/api/sync/votes', 300_000)
-    );
+    const result = await step.run('execute-votes-sync', () => executeVotesSync());
     await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_BATCH'));
     return result;
   },

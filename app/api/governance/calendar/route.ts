@@ -4,7 +4,6 @@ import { blockTimeToEpoch } from '@/lib/koios';
 import { captureServerEvent } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 300;
 
 const SHELLEY_GENESIS_TIMESTAMP = 1596491091;
 const EPOCH_LENGTH_SECONDS = 432000;
@@ -60,6 +59,8 @@ export async function GET() {
       secondsRemaining,
       epochProgress,
       upcoming,
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
     });
   } catch (err) {
     console.error('[Governance Calendar API] Error:', err);

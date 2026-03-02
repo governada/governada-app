@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnrichedDReps } from '@/lib/koios';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchProposals, resolveADAHandles, resetKoiosMetrics, getKoiosMetrics } from '@/utils/koios';
 import { classifyProposals, computeAllCategoryScores } from '@/lib/alignment';
-import { authorizeCron, initSupabase, SyncLogger, batchUpsert, errMsg, emitPostHog, triggerAnalyticsDeploy, alertDiscord } from '@/lib/sync-utils';
+import { authorizeCron, SyncLogger, batchUpsert, errMsg, emitPostHog, triggerAnalyticsDeploy, alertDiscord } from '@/lib/sync-utils';
 import { KoiosProposalSchema, validateArray } from '@/utils/koios-schemas';
 import type { ClassifiedProposal, ProposalListResponse } from '@/types/koios';
 import type { ProposalContext } from '@/utils/scoring';
@@ -32,14 +33,12 @@ interface SupabaseDRepRow {
   anchor_hash: string | null;
 }
 
-export async function GET(request: NextRequest) {
-  const authError = authorizeCron(request);
-  if (authError) return authError;
-
-  const init = initSupabase();
-  if ('error' in init) return init.error;
-  const { supabase } = init;
-
+/**
+ * Core DReps sync logic — callable from both Inngest and the HTTP route.
+ * Throws on fatal errors (Inngest retries); returns result on success/degraded.
+ */
+export async function executeDrepsSync(): Promise<Record<string, unknown>> {
+  const supabase = getSupabaseAdmin();
   const logger = new SyncLogger(supabase, 'dreps');
   await logger.start();
   resetKoiosMetrics();
@@ -78,33 +77,23 @@ export async function GET(request: NextRequest) {
     }
     phaseTiming.step1_proposals_ms = Date.now() - step1Start;
 
-    // Step 2: Fetch enriched DReps
+    // Step 2: Fetch enriched DReps (fatal if no data)
     const step2Start = Date.now();
-    let allDReps;
-    let rawVotesMap: Record<string, DRepVote[]> | undefined;
+    const result = await getEnrichedDReps(false, {
+      includeRawVotes: true,
+      proposalContextMap: proposalContextMap.size > 0 ? proposalContextMap : undefined,
+    });
 
-    try {
-      const result = await getEnrichedDReps(false, {
-        includeRawVotes: true,
-        proposalContextMap: proposalContextMap.size > 0 ? proposalContextMap : undefined,
-      });
-
-      if (result.error || !result.allDReps?.length) {
-        const msg = 'Koios DRep fetch returned no data';
-        syncErrors.push(msg);
-        await logger.finalize(false, syncErrors.join('; '), phaseTiming);
-        return NextResponse.json({ success: false, error: msg }, { status: 502 });
-      }
-
-      allDReps = result.allDReps;
-      rawVotesMap = result.rawVotesMap as Record<string, DRepVote[]> | undefined;
-      console.log(`[dreps] Enriched ${allDReps.length} DReps`);
-    } catch (err) {
-      const msg = errMsg(err);
-      syncErrors.push(`DRep enrichment: ${msg}`);
+    if (result.error || !result.allDReps?.length) {
+      const msg = 'Koios DRep fetch returned no data';
+      syncErrors.push(msg);
       await logger.finalize(false, syncErrors.join('; '), phaseTiming);
-      return NextResponse.json({ success: false, error: `DRep enrichment failed: ${msg}` }, { status: 500 });
+      throw new Error(msg);
     }
+
+    const allDReps = result.allDReps;
+    const rawVotesMap = result.rawVotesMap as Record<string, DRepVote[]> | undefined;
+    console.log(`[dreps] Enriched ${allDReps.length} DReps`);
     phaseTiming.step2_enrich_ms = Date.now() - step2Start;
 
     // Step 3: ADA Handle resolution (non-fatal)
@@ -245,27 +234,33 @@ export async function GET(request: NextRequest) {
 
     await logger.finalize(success, syncErrors.length > 0 ? syncErrors.join('; ') : null, metrics);
     await emitPostHog(success, 'dreps', logger.elapsed, metrics);
-    triggerAnalyticsDeploy('dreps'); // fire-and-forget
+    triggerAnalyticsDeploy('dreps');
 
-    return NextResponse.json({
+    return {
       success,
       dreps: { synced: drepResult.success, errors: drepResult.errors },
       handlesResolved,
       durationSeconds: duration,
       timestamp: new Date().toISOString(),
-    }, { status: success ? 200 : 207 });
+    };
 
   } catch (outerErr) {
     const msg = errMsg(outerErr);
     syncErrors.push(`Fatal: ${msg}`);
     console.error('[dreps] Fatal error:', msg);
-
     await logger.finalize(false, syncErrors.join('; '), phaseTiming);
+    throw outerErr;
+  }
+}
 
-    return NextResponse.json({
-      success: false,
-      error: msg,
-      durationSeconds: ((logger.elapsed) / 1000).toFixed(1),
-    }, { status: 500 });
+export async function GET(request: NextRequest) {
+  const authError = authorizeCron(request);
+  if (authError) return authError;
+
+  try {
+    const result = await executeDrepsSync();
+    return NextResponse.json(result, { status: (result.success as boolean) ? 200 : 207 });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: errMsg(err) }, { status: 500 });
   }
 }

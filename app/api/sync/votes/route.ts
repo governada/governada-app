@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DRepVote } from '@/types/koios';
 import { blockTimeToEpoch } from '@/lib/koios';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchAllVotesBulk, resetKoiosMetrics, getKoiosMetrics } from '@/utils/koios';
 import {
   authorizeCron,
-  initSupabase,
   SyncLogger,
   batchUpsert,
   errMsg,
@@ -29,14 +29,12 @@ interface SupabaseVoteRow {
   meta_hash: string | null;
 }
 
-export async function GET(request: NextRequest) {
-  const authError = authorizeCron(request);
-  if (authError) return authError;
-
-  const init = initSupabase();
-  if ('error' in init) return init.error;
-  const { supabase } = init;
-
+/**
+ * Core votes sync logic — callable from both Inngest and the HTTP route.
+ * Throws on fatal errors (Inngest retries); returns result on success/degraded.
+ */
+export async function executeVotesSync(): Promise<Record<string, unknown>> {
+  const supabase = getSupabaseAdmin();
   const logger = new SyncLogger(supabase, 'votes');
   await logger.start();
   resetKoiosMetrics();
@@ -45,21 +43,9 @@ export async function GET(request: NextRequest) {
   let reconciled = 0;
 
   try {
-    // ── Step 1: Fetch all votes in bulk ─────────────────────────────────────
-
-    let bulkVotesMap: Record<string, DRepVote[]>;
-    try {
-      bulkVotesMap = await fetchAllVotesBulk();
-      const totalVotes = Object.values(bulkVotesMap).reduce((sum, v) => sum + v.length, 0);
-      console.log(`[VoteSync] Bulk votes fetched: ${totalVotes} votes across ${Object.keys(bulkVotesMap).length} DReps`);
-    } catch (err) {
-      const msg = errMsg(err);
-      console.error('[VoteSync] fetchAllVotesBulk failed:', msg);
-      await logger.finalize(false, msg, {});
-      return NextResponse.json({ success: false, error: msg }, { status: 502 });
-    }
-
-    // ── Step 2: Build vote rows and upsert ──────────────────────────────────
+    const bulkVotesMap: Record<string, DRepVote[]> = await fetchAllVotesBulk();
+    const totalVotes = Object.values(bulkVotesMap).reduce((sum, v) => sum + v.length, 0);
+    console.log(`[VoteSync] Bulk votes fetched: ${totalVotes} votes across ${Object.keys(bulkVotesMap).length} DReps`);
 
     const voteRows: SupabaseVoteRow[] = [];
     for (const [drepId, votes] of Object.entries(bulkVotesMap)) {
@@ -100,8 +86,7 @@ export async function GET(request: NextRequest) {
       console.log(`[VoteSync] Upserted ${result.success} votes (${result.errors} errors)`);
     }
 
-    // ── Step 3: Vote count reconciliation ───────────────────────────────────
-
+    // Vote count reconciliation
     const drepIds = Object.keys(bulkVotesMap);
 
     const computedCounts = new Map<string, { yes: number; no: number; abstain: number; total: number }>();
@@ -161,27 +146,36 @@ export async function GET(request: NextRequest) {
       console.log(`[VoteSync] Vote count reconciliation: ${reconciled} DReps updated`);
     }
 
-    // ── Finalize ────────────────────────────────────────────────────────────
-
     const metrics = { votes_synced: votesSynced, reconciled, validation_errors: validationErrors, ...getKoiosMetrics() };
     await logger.finalize(true, null, metrics);
     await emitPostHog(true, 'votes', logger.elapsed, metrics);
-    triggerAnalyticsDeploy('votes'); // fire-and-forget
+    triggerAnalyticsDeploy('votes');
 
-    return NextResponse.json({
+    return {
       success: true,
       votesSynced,
       reconciled,
       durationSeconds: (logger.elapsed / 1000).toFixed(1),
       timestamp: new Date().toISOString(),
-    });
+    };
   } catch (err) {
     const msg = errMsg(err);
     console.error('[VoteSync] Fatal error:', msg);
     const metrics = { votes_synced: votesSynced, reconciled };
     await logger.finalize(false, msg, metrics);
     await emitPostHog(false, 'votes', logger.elapsed, metrics);
+    throw err;
+  }
+}
 
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+export async function GET(request: NextRequest) {
+  const authError = authorizeCron(request);
+  if (authError) return authError;
+
+  try {
+    const result = await executeVotesSync();
+    return NextResponse.json(result);
+  } catch (err) {
+    return NextResponse.json({ success: false, error: errMsg(err) }, { status: 500 });
   }
 }

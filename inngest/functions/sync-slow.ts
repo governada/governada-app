@@ -1,5 +1,5 @@
 import { inngest } from '@/lib/inngest';
-import { callSyncRoute } from '@/inngest/helpers';
+import { executeSlowSync } from '@/app/api/sync/slow/route';
 import { pingHeartbeat } from '@/lib/sync-utils';
 
 export const syncSlow = inngest.createFunction(
@@ -8,11 +8,9 @@ export const syncSlow = inngest.createFunction(
     retries: 1,
     concurrency: { limit: 1, scope: 'env', key: '"slow-sync"' },
   },
-  { cron: '0 4 * * *' },
+  [{ cron: '0 4 * * *' }, { event: 'drepscore/sync.slow' }],
   async ({ step }) => {
-    const result = await step.run('execute-slow-sync', () =>
-      callSyncRoute('/api/sync/slow', 300_000)
-    );
+    const result = await step.run('execute-slow-sync', () => executeSlowSync());
     await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_DAILY'));
     return result;
   },

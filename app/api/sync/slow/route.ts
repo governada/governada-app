@@ -5,7 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authorizeCron, initSupabase, SyncLogger, errMsg, emitPostHog, batchUpsert } from '@/lib/sync-utils';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { authorizeCron, SyncLogger, errMsg, emitPostHog, batchUpsert } from '@/lib/sync-utils';
 import { blake2bHex } from 'blakejs';
 import { fetchDRepVotingPowerHistory, fetchDRepInfo } from '@/utils/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
@@ -529,16 +530,14 @@ async function runCriticalProposalNotifications(supabase: SupabaseClient) {
   return { sent, skipped: false };
 }
 
-// ── Main Handler ────────────────────────────────────────────────────────────
+// ── Exported runner (callable from Inngest or HTTP) ─────────────────────────
 
-export async function GET(request: NextRequest) {
-  const authErr = authorizeCron(request);
-  if (authErr) return authErr;
-
-  const init = initSupabase();
-  if ('error' in init) return init.error;
-  const { supabase } = init;
-
+/**
+ * Core slow sync logic — callable from both Inngest and the HTTP route.
+ * Throws on fatal errors (Inngest retries); returns result on success/degraded.
+ */
+export async function executeSlowSync(): Promise<Record<string, unknown>> {
+  const supabase = getSupabaseAdmin();
   const logger = new SyncLogger(supabase, 'slow');
   await logger.start();
 
@@ -613,11 +612,25 @@ export async function GET(request: NextRequest) {
   await logger.finalize(success, syncErrors.length > 0 ? syncErrors.join('; ') : null, metrics);
   await emitPostHog(success, 'slow', logger.elapsed, metrics);
 
-  return NextResponse.json({
+  return {
     success,
     metrics,
     durationSeconds: duration,
     errors: syncErrors.length > 0 ? syncErrors : undefined,
     timestamp: new Date().toISOString(),
-  }, { status: success ? 200 : 207 });
+  };
+}
+
+// ── Main Handler ────────────────────────────────────────────────────────────
+
+export async function GET(request: NextRequest) {
+  const authErr = authorizeCron(request);
+  if (authErr) return authErr;
+
+  try {
+    const result = await executeSlowSync();
+    return NextResponse.json(result, { status: (result.success as boolean) ? 200 : 207 });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: errMsg(err) }, { status: 500 });
+  }
 }

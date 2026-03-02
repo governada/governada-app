@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authorizeCron, initSupabase, SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { authorizeCron, SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
 import { fetchDRepDelegatorCount } from '@/utils/koios';
 import { blockTimeToEpoch } from '@/lib/koios';
 
@@ -9,14 +10,12 @@ export const maxDuration = 300;
 const BATCH_SIZE = 100;
 const DELEGATOR_CONCURRENCY = 20;
 
-export async function GET(request: NextRequest) {
-  const authError = authorizeCron(request);
-  if (authError) return authError;
-
-  const init = initSupabase();
-  if ('error' in init) return init.error;
-  const { supabase } = init;
-
+/**
+ * Core secondary sync logic — callable from both Inngest and the HTTP route.
+ * Throws on fatal errors (Inngest retries); returns result on success/degraded.
+ */
+export async function executeSecondarySync(): Promise<Record<string, unknown>> {
+  const supabase = getSupabaseAdmin();
   const logger = new SyncLogger(supabase, 'secondary');
   await logger.start();
 
@@ -146,11 +145,31 @@ export async function GET(request: NextRequest) {
   await logger.finalize(success, errors.length > 0 ? errors.join('; ') : null, metrics);
   await emitPostHog(success, 'secondary', logger.elapsed, metrics);
 
-  return NextResponse.json({
+  if (!success) {
+    throw new Error(errors.join('; '));
+  }
+
+  return {
     success,
     ...metrics,
-    errors: errors.length > 0 ? errors : undefined,
     durationSeconds: (logger.elapsed / 1000).toFixed(1),
     timestamp: new Date().toISOString(),
-  }, { status: success ? 200 : 207 });
+  };
+}
+
+export async function GET(request: NextRequest) {
+  const authError = authorizeCron(request);
+  if (authError) return authError;
+
+  try {
+    const result = await executeSecondarySync();
+    return NextResponse.json(result);
+  } catch (err) {
+    const errorMsg = errMsg(err);
+    return NextResponse.json({
+      success: false,
+      error: errorMsg,
+      timestamp: new Date().toISOString(),
+    }, { status: 207 });
+  }
 }

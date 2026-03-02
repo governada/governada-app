@@ -59,20 +59,25 @@ function transformSupabaseRowToDRep(row: any): EnrichedDRep {
   };
 }
 
+let lastSyncTrigger = 0;
+const SYNC_TRIGGER_COOLDOWN_MS = 10 * 60 * 1000; // 10 min debounce
+
 /**
- * Trigger background sync without blocking
- * Note: In production, this should be handled by a cron job or external trigger
+ * Trigger background sync without blocking.
+ * In production, fires an Inngest event to retrigger the DReps sync.
+ * Debounced to avoid spamming events on every stale read.
  */
 async function triggerBackgroundSync() {
-  const isDev = process.env.NODE_ENV === 'development';
-  
-  if (isDev) {
-    console.log('[Data] ⚠ Data is stale (>15min), sync recommended');
-    console.log('[Data] Run: npm run sync');
+  if (Date.now() - lastSyncTrigger < SYNC_TRIGGER_COOLDOWN_MS) return;
+  lastSyncTrigger = Date.now();
+
+  try {
+    const { inngest } = await import('@/lib/inngest');
+    await inngest.send({ name: 'drepscore/sync.dreps' });
+    console.log('[Data] Stale data detected — triggered background DReps sync via Inngest');
+  } catch (e) {
+    console.warn('[Data] Failed to trigger background sync:', e);
   }
-  
-  // In production, this would trigger a webhook or queue job
-  // For now, we just log a warning
 }
 
 /**

@@ -7,11 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllDReps, getDRepById } from '@/lib/data';
 
-// Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
-
-// Revalidate every 15 minutes (900 seconds)
-export const revalidate = 900;
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +27,8 @@ export async function GET(request: NextRequest) {
       allDReps,
       error,
       totalAvailable,
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
     });
   } catch (error) {
     console.error('[API] Error fetching DReps:', error);

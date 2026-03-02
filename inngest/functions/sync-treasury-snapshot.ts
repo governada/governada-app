@@ -14,7 +14,7 @@ export const syncTreasurySnapshot = inngest.createFunction(
     retries: 3,
     concurrency: { limit: 1, scope: 'env', key: '"treasury-sync"' },
   },
-  { cron: '30 22 * * *' },
+  [{ cron: '30 22 * * *' }, { event: 'drepscore/sync.treasury' }],
   async ({ step }) => {
     const supabase = getSupabaseAdmin();
     const logger = new SyncLogger(supabase, 'treasury');

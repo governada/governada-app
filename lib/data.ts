@@ -60,6 +60,7 @@ function transformSupabaseRowToDRep(row: any): EnrichedDRep {
 }
 
 let lastSyncTrigger = 0;
+let lastProposalsSyncTrigger = 0;
 const SYNC_TRIGGER_COOLDOWN_MS = 10 * 60 * 1000; // 10 min debounce
 
 /**
@@ -77,6 +78,19 @@ async function triggerBackgroundSync() {
     console.log('[Data] Stale data detected — triggered background DReps sync via Inngest');
   } catch (e) {
     console.warn('[Data] Failed to trigger background sync:', e);
+  }
+}
+
+async function triggerProposalsSync() {
+  if (Date.now() - lastProposalsSyncTrigger < SYNC_TRIGGER_COOLDOWN_MS) return;
+  lastProposalsSyncTrigger = Date.now();
+
+  try {
+    const { inngest } = await import('@/lib/inngest');
+    await inngest.send({ name: 'drepscore/sync.proposals' });
+    console.log('[Data] Empty proposals — triggered background proposals sync via Inngest');
+  } catch (e) {
+    console.warn('[Data] Failed to trigger proposals sync:', e);
   }
 }
 
@@ -493,6 +507,12 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
 
     if (pError || !proposals) {
       console.warn('[Data] getAllProposals query failed:', pError?.message);
+      triggerProposalsSync();
+      return [];
+    }
+
+    if (proposals.length === 0) {
+      triggerProposalsSync();
       return [];
     }
 

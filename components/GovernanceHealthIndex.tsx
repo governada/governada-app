@@ -34,6 +34,8 @@ export function GovernanceHealthIndex({ size = 'hero', className = '' }: Governa
   const [history, setHistory] = useState<GHIHistoryPoint[]>([]);
   const [trend, setTrend] = useState<GHITrend | null>(null);
 
+  const [failed, setFailed] = useState(false);
+
   useEffect(() => {
     fetch('/api/governance/health-index/history?epochs=20')
       .then(r => r.ok ? r.json() : null)
@@ -42,16 +44,19 @@ export function GovernanceHealthIndex({ size = 'hero', className = '' }: Governa
           setData(res.current);
           setHistory(res.history ?? []);
           setTrend(res.trend ?? null);
+        } else {
+          setFailed(true);
         }
       })
       .catch(() => {
         fetch('/api/governance/health-index')
           .then(r => r.ok ? r.json() : null)
-          .then(setData)
-          .catch(() => {});
+          .then(d => { if (d) setData(d); else setFailed(true); })
+          .catch(() => setFailed(true));
       });
   }, []);
 
+  if (failed) return <GHIUnavailable size={size} />;
   if (!data) return <GHISkeleton size={size} />;
 
   return size === 'hero'
@@ -63,6 +68,17 @@ function GHISkeleton({ size }: { size: 'hero' | 'compact' }) {
   const dim = size === 'hero' ? 'h-48 w-48' : 'h-20 w-20';
   return (
     <div className={`${dim} rounded-full bg-muted/30 animate-pulse`} />
+  );
+}
+
+function GHIUnavailable({ size }: { size: 'hero' | 'compact' }) {
+  const dim = size === 'hero' ? 'h-48 w-48' : 'h-20 w-20';
+  return (
+    <div className={`${dim} rounded-full bg-muted/20 flex items-center justify-center`}>
+      <span className="text-xs text-muted-foreground text-center px-2">
+        {size === 'hero' ? 'Governance data syncing…' : '—'}
+      </span>
+    </div>
   );
 }
 

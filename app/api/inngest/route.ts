@@ -5,11 +5,18 @@ import { syncDreps } from '@/inngest/functions/sync-dreps';
 import { syncVotes } from '@/inngest/functions/sync-votes';
 import { syncSecondary } from '@/inngest/functions/sync-secondary';
 import { syncSlow } from '@/inngest/functions/sync-slow';
+import { syncTreasurySnapshot } from '@/inngest/functions/sync-treasury-snapshot';
+import { syncGovernanceBenchmarks } from '@/inngest/functions/sync-governance-benchmarks';
+import { syncFreshnessGuard } from '@/inngest/functions/sync-freshness-guard';
+import { snapshotGhi } from '@/inngest/functions/snapshot-ghi';
 import { alertIntegrity } from '@/inngest/functions/alert-integrity';
 import { alertInbox } from '@/inngest/functions/alert-inbox';
 import { alertApiHealth } from '@/inngest/functions/alert-api-health';
 import { checkNotifications } from '@/inngest/functions/check-notifications';
+import { checkAccountabilityPolls } from '@/inngest/functions/check-accountability-polls';
 import { generateEpochSummary } from '@/inngest/functions/generate-epoch-summary';
+import { generateGovernanceBrief } from '@/inngest/functions/generate-governance-brief';
+import { generateStateOfGovernance } from '@/inngest/functions/generate-state-of-governance';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -19,10 +26,17 @@ export const { GET, POST, PUT } = serve({
     syncVotes,
     syncSecondary,
     syncSlow,
+    syncTreasurySnapshot,
+    syncGovernanceBenchmarks,
+    syncFreshnessGuard,
+    snapshotGhi,
     alertIntegrity,
     alertInbox,
     alertApiHealth,
     checkNotifications,
+    checkAccountabilityPolls,
     generateEpochSummary,
+    generateGovernanceBrief,
+    generateStateOfGovernance,
   ],
 });

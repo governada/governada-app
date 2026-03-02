@@ -9,6 +9,7 @@ export interface ConstellationNode3D {
   alignments: number[];
   position: [number, number, number];
   scale: number;
+  isAnchor?: boolean;
 }
 
 export interface ConstellationEdge3D {

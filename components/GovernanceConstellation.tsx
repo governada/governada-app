@@ -36,6 +36,7 @@ interface SceneState {
   highlightId: string | null;
   dimmed: boolean;
   pulseId: string | null;
+  animating: boolean;
 }
 
 const INITIAL_CAMERA: [number, number, number] = [0, 0, 22];
@@ -47,7 +48,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
     const [ready, setReady] = useState(false);
     const [sceneState, setSceneState] = useState<SceneState>({
       nodes: [], edges: [], nodeMap: new Map(),
-      highlightId: null, dimmed: false, pulseId: null,
+      highlightId: null, dimmed: false, pulseId: null, animating: false,
     });
     const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
 
@@ -55,6 +56,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
       findMe: async (target: FindMeTarget) => {
         const controls = cameraControlsRef.current;
         if (!controls || sceneState.nodes.length === 0) return;
+        setSceneState(prev => ({ ...prev, animating: true }));
 
         if (target.type === 'undelegated') {
           const edgePos: [number, number, number] = [10, -5, 2];
@@ -71,15 +73,16 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
           const mid: [number, number, number] = [5, -2.5, 1];
           await controls.setLookAt(mid[0], mid[1], 16, mid[0], mid[1], 0, true);
           await sleep(2000);
+          setSceneState(prev => ({ ...prev, animating: false }));
           onContracted?.();
           return;
         }
 
         const drepId = target.drepId;
-        if (!drepId) { onContracted?.(); return; }
+        if (!drepId) { setSceneState(prev => ({ ...prev, animating: false })); onContracted?.(); return; }
 
         const node = sceneState.nodeMap.get(drepId);
-        if (!node) { onContracted?.(); return; }
+        if (!node) { setSceneState(prev => ({ ...prev, animating: false })); onContracted?.(); return; }
 
         setSceneState(prev => ({ ...prev, highlightId: drepId, dimmed: true }));
 
@@ -90,6 +93,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
         setSceneState(prev => ({ ...prev, highlightId: null, dimmed: false }));
         await controls.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
         await sleep(800);
+        setSceneState(prev => ({ ...prev, animating: false }));
         onContracted?.();
       },
 
@@ -134,7 +138,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
 
     return (
       <div
-        className={`relative w-full ${className || ''}`}
+        className={`relative z-0 w-full ${className || ''}`}
         style={{ minHeight: '100vh', background: '#0a0b14' }}
       >
         {ready && (
@@ -142,7 +146,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
             dpr={dpr}
             camera={{ position: INITIAL_CAMERA, fov: 60 }}
             gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
             role="img"
             aria-label="Interactive 3D visualization of Cardano governance showing DRep representatives as a glowing constellation"
           >
@@ -150,6 +154,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
             <ambientLight intensity={0.05} />
 
             <AmbientStarfield count={quality === 'low' ? 200 : 400} />
+            <GovernanceCore />
             <ConstellationNodes
               nodes={sceneState.nodes}
               highlightId={sceneState.highlightId}
@@ -174,10 +179,10 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
               ref={cameraControlsRef}
               makeDefault
               smoothTime={0.8}
-              draggingSmoothTime={0.3}
-              minDistance={5}
-              maxDistance={40}
+              mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}
+              touches={{ one: 0, two: 0, three: 0 }}
             />
+            <AutoRotate controlsRef={cameraControlsRef} enabled={!sceneState.animating} />
           </Canvas>
         )}
       </div>
@@ -197,31 +202,59 @@ function ConstellationNodes({
 }) {
   if (nodes.length === 0) return null;
 
-  return (
-    <Instances limit={nodes.length + 10} frustumCulled={false}>
-      <sphereGeometry args={[1, 10, 10]} />
-      <meshStandardMaterial
-        emissive="white"
-        emissiveIntensity={2}
-        toneMapped={false}
-        transparent
-      />
-      {nodes.map(node => {
-        const color = getIdentityColor(node.dominant);
-        const isHighlighted = highlightId === node.id;
-        const isPulsing = pulseId === node.id;
-        const s = isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale;
+  const regularNodes = nodes.filter(n => !n.isAnchor);
+  const anchorNodes = nodes.filter(n => n.isAnchor);
 
-        return (
-          <Instance
-            key={node.id}
-            position={node.position}
-            scale={s}
-            color={color.hex}
-          />
-        );
-      })}
-    </Instances>
+  return (
+    <>
+      {/* Regular DRep nodes */}
+      <Instances limit={regularNodes.length + 10} frustumCulled={false}>
+        <sphereGeometry args={[1, 10, 10]} />
+        <meshStandardMaterial
+          emissive="white"
+          emissiveIntensity={2}
+          toneMapped={false}
+          transparent
+        />
+        {regularNodes.map(node => {
+          const color = getIdentityColor(node.dominant);
+          const isHighlighted = highlightId === node.id;
+          const isPulsing = pulseId === node.id;
+          const s = isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale;
+
+          return (
+            <Instance
+              key={node.id}
+              position={node.position}
+              scale={s}
+              color={color.hex}
+            />
+          );
+        })}
+      </Instances>
+
+      {/* Anchor nodes — brighter emissive for inner hexagonal ring */}
+      <Instances limit={anchorNodes.length + 2} frustumCulled={false}>
+        <sphereGeometry args={[1, 12, 12]} />
+        <meshStandardMaterial
+          emissive="white"
+          emissiveIntensity={3.5}
+          toneMapped={false}
+          transparent
+        />
+        {anchorNodes.map(node => {
+          const color = getIdentityColor(node.dominant);
+          return (
+            <Instance
+              key={node.id}
+              position={node.position}
+              scale={node.scale}
+              color={color.hex}
+            />
+          );
+        })}
+      </Instances>
+    </>
   );
 }
 
@@ -303,6 +336,61 @@ function AmbientStarfield({ count }: { count: number }) {
       />
     </points>
   );
+}
+
+function GovernanceCore() {
+  const coreRef = useRef<THREE.Mesh>(null);
+  const discRef = useRef<THREE.Mesh>(null);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    if (coreRef.current) {
+      const breath = 0.95 + 0.05 * Math.sin(t * 1.57);
+      coreRef.current.scale.setScalar(breath);
+    }
+    if (discRef.current) {
+      discRef.current.rotation.z = -t * 0.08;
+    }
+  });
+
+  return (
+    <group>
+      {/* Luminous governance sun */}
+      <mesh ref={coreRef}>
+        <sphereGeometry args={[0.6, 24, 24]} />
+        <meshStandardMaterial
+          emissive="#ffd280"
+          emissiveIntensity={4}
+          color="#ffd280"
+          toneMapped={false}
+        />
+      </mesh>
+      {/* Accretion disc */}
+      <mesh ref={discRef} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.8, 0.02, 8, 64]} />
+        <meshStandardMaterial
+          emissive="#ffd280"
+          emissiveIntensity={2}
+          color="#ffd280"
+          transparent
+          opacity={0.15}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function AutoRotate({ controlsRef, enabled }: {
+  controlsRef: { current: { azimuthAngle: number } | null };
+  enabled: boolean;
+}) {
+  useFrame((_, delta) => {
+    if (controlsRef.current && enabled) {
+      controlsRef.current.azimuthAngle += delta * 0.05;
+    }
+  });
+  return null;
 }
 
 // --- Helpers ---

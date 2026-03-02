@@ -306,5 +306,14 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Fix**: Replaced with React Three Fiber + `@react-three/postprocessing` Bloom. GPU-accelerated instanced rendering, real bloom via mipmapBlur, cinematic camera transitions. ~200KB lazy-loaded (zero LCP impact). When visual quality is the goal, Canvas 2D is a false economy.
 **Takeaway**: For any visualization requiring glow, depth, or cinematic feel, start with WebGL (Three.js/R3F). Canvas 2D is appropriate for charts, diagrams, and simple particle effects — not for hero-level visual experiences.
 
+### 2026-03-02: R3F CameraControls captures all scroll/drag — always lock for backdrop use
+**Issue**: The R3F `CameraControls` component from drei captures trackpad scroll, mouse wheel, drag, and pinch by default. When the constellation is used as a page backdrop (not a standalone 3D viewer), this completely breaks page scrolling — users cannot scroll past the hero.
+**Fix**: Set `mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}` and `touches={{ one: 0, two: 0, three: 0 }}` to disable all user interaction. Add `pointerEvents: 'none'` to the Canvas style. Programmatic camera control (for findMe animations) still works via the ref.
+**Takeaway**: When using R3F as a visual backdrop embedded in a scrollable page, always lock CameraControls and disable pointer events on the canvas. Only allow user camera interaction in dedicated 3D viewer experiences.
+
+### 2026-03-02: Early returns in async imperative handles must clean up state
+**Issue**: The `findMe` imperative handle set `animating: true` at the start but had early-return paths (no drepId, node not found) that never set it back to `false`. This would permanently freeze auto-rotation after a failed findMe.
+**Takeaway**: When an async imperative handle sets shared state at the start, every exit path must clean it up. Use a try/finally pattern or ensure all early returns reset the flag.
+
 *Last updated: 2026-03-02*
 *Review this file at the start of every session.*

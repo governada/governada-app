@@ -11,6 +11,10 @@ alwaysApply: true
 2. Read `tasks/todo.md` for any in-progress work from prior sessions
 3. Orient to current state: check git status, recent commits, any open PRs
 4. **Orphan audit**: Check `git status` for untracked/uncommitted files from prior sessions. Look for unwired components, unregistered Inngest functions, and missing migrations. These are free value — flag them for inclusion in the current session's first commit or plan
+5. **Git hygiene check** (run all three, flag anything that needs a decision):
+   - `git stash list` — any stash older than the current session is either recoverable work (create a branch) or noise (drop it). Never carry stashes across more than one session.
+   - `git branch --merged origin/main | Where-Object { $_ -notmatch "^\* |main" }` — delete any local branches that are fully merged
+   - `git branch -r --no-merged origin/main | Where-Object { $_ -notmatch "dependabot" }` — if any non-dependabot branch is unmerged and older than ~2 sessions, flag it for triage (ship, close, or rebase) before starting new work
 
 ## Planning Phase (Required for 3+ step tasks)
 1. Review `tasks/lessons.md` for patterns that appeared 2+ times — propose promoting to cursor rule before proceeding
@@ -154,6 +158,8 @@ When all code changes compile clean (`npx tsc --noEmit`), run these steps **imme
 **After deploying:**
 - Check if something was learned during the build → update `tasks/lessons.md`
 - Clean up: no stale files, no debug `console.log`s left behind
+- **Branch cleanup**: GitHub auto-deletes the remote head branch on merge. Also delete the local branch: `git checkout main ; git branch -D <branch-name>`. Never leave a local branch pointing at merged work.
+- **Stash cleanup**: Run `git stash list`. Any stash created during this session that wasn't applied should be either dropped (`git stash drop`) or converted to a branch (`git stash branch <name>`). Do not leave stashes as parking lots.
 - Concise summary of changes unless deep review is requested
 
 **Additional rules:**
@@ -202,6 +208,16 @@ This project runs on Windows with PowerShell. **Do not attempt bash syntax and t
 | Multi-line PR body | Write to `.git/PR_BODY.md`, then `gh pr create --body-file .git/PR_BODY.md` | `gh pr create --body "line1\nline2"` |
 | Search files | Use Grep tool or `rg` | `grep`, `head`, `tail` |
 | Read files | Use Read tool | `cat`, `less`, `head` |
+
+## Git Hygiene Policy
+
+**Stashes**: Stashes are a single-session tool — use them only to temporarily set aside work during the same session (e.g., to pull, then re-apply). Never carry a stash across sessions. If you must pause mid-feature, create a WIP branch: `git checkout -b wip/<name> ; git add -p ; git commit -m "wip: ..."`. Stashes are invisible and forgettable; branches are not.
+
+**Branch age**: Any feature branch older than ~2 sessions that hasn't been merged needs a triage decision before new work starts. Options: (a) rebase onto main and ship, (b) close as superseded with a note, (c) extract only the mergeable parts. Leaving it open is not an option.
+
+**Local branches**: After a PR merges, always delete the local branch. GitHub auto-deletes the remote on merge (enabled in repo settings), but git does not clean up local refs. After any `gh pr merge`, immediately run: `git checkout main ; git pull ; git branch -D <branch-name>`.
+
+**One branch per task**: Do not work across multiple branches in parallel unless using worktrees. Parallel local branches lead to stash accumulation and conflict debt.
 
 ## Anti-Patterns (Do Not)
 - Do NOT create `*_STATUS_REPORT.md` files in the project root — use `tasks/todo.md` for tracking

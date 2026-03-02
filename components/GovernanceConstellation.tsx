@@ -313,7 +313,7 @@ function makeCircleTexture() {
 }
 
 function AmbientStarfield({ count }: { count: number }) {
-  const circleMap = useMemo(makeCircleTexture, []);
+  const circleMap = useMemo(() => makeCircleTexture(), []);
 
   const points = useMemo(() => {
     const rand = seededRandom(42);

@@ -561,8 +561,8 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
           {filteredVotes.length === 0 && (
             <EmptyState
               icon="search"
-              title="No Votes Found"
-              message="No votes in this time period. Adjust the filter to see more history."
+              title="No votes in this period"
+              message="This DRep may be new or taking a break from governance. Adjust the time filter to see more history."
               compact
               component="VotingHistoryChart"
             />

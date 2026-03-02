@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CardListSkeleton } from '@/components/ui/content-skeletons';
 import { Scale, ExternalLink, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { formatAda } from '@/lib/treasury';
@@ -52,7 +52,7 @@ export function TreasuryPendingProposals({ treasuryBalanceAda, runwayMonths }: P
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <Skeleton className="h-48 w-full" />;
+  if (loading) return <CardListSkeleton count={3} />;
   if (!data || !data.proposals.length) {
     return (
       <Card>

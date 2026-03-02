@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TimelineSkeleton } from '@/components/ui/content-skeletons';
 import { History, ArrowDown, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
@@ -41,7 +41,7 @@ export function TreasuryHistoryTimeline() {
       });
   }, []);
 
-  if (loading) return <Skeleton className="h-48 w-full" />;
+  if (loading) return <TimelineSkeleton count={4} />;
   if (!proposals.length) {
     return (
       <Card>

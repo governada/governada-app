@@ -102,9 +102,19 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
               {TYPE_LABELS[proposal.proposalType] || proposal.proposalType}
             </Badge>
             {proposal.epochsRemaining != null && (
-              <Badge variant="outline" className="text-[10px] gap-1">
+              <Badge
+                variant="outline"
+                className={`text-[10px] gap-1 ${
+                  proposal.epochsRemaining <= 2
+                    ? 'border-red-500/50 text-red-600 dark:text-red-400 bg-red-500/5 animate-pulse'
+                    : ''
+                }`}
+              >
                 <Clock className="h-2.5 w-2.5" />
-                {proposal.epochsRemaining} epoch{proposal.epochsRemaining !== 1 ? 's' : ''} left
+                {proposal.epochsRemaining <= 2
+                  ? `Voting closes in ~${proposal.epochsRemaining * 5} days`
+                  : `${proposal.epochsRemaining} epoch${proposal.epochsRemaining !== 1 ? 's' : ''} left`
+                }
               </Badge>
             )}
           </div>

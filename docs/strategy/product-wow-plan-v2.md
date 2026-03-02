@@ -451,9 +451,14 @@ DRepScore has all the data to generate insights nobody else in crypto can create
 - No cross-chain data exists currently (Koios is Cardano-only)
 - v1 API route `/api/v1/governance/health` returns aggregate stats already
 
+**8. GHI historical trend + epoch-over-epoch comparison.** Not just "the number" but "the number over time." A sparkline showing GHI across epochs makes it a trackable metric that people check back on. Store epoch-level GHI snapshots in a new `ghi_snapshots` table.
+
+**9. AI-narrated DRep profiles.** Upgrade from the template-based narrative system (built in Session 15) to AI-generated richer, more nuanced DRep summaries. Cached, not real-time — regenerate weekly per DRep. Uses the template narrative as a fallback when AI cache is stale.
+
 ### Success Criteria
 
 - GHI gets shared on X/Twitter as "the number" for Cardano governance health
+- GHI trend sparkline becomes the most-checked element on Pulse page
 - "State of Governance" report becomes the most-linked DRepScore URL within 2 months
 - Cross-proposal insights generate social media discussion
 - At least one media outlet or researcher cites DRepScore data within 3 months
@@ -486,7 +491,9 @@ DRepScore is a read-only analytical tool where all communication is one-directio
 
 **5. Developer experience for v1 API.** New `/developers` page: interactive API explorer, code examples (JS, Python, cURL), embed widget generator, use cases. API keys for Pro tier (manual approval initially). Rate limits: 100/min public, 1000/min Pro. Every Cardano dApp that integrates becomes a distribution channel.
 
-**6. Governance achievement NFTs (stretch goal).** Milestone badges as on-chain CIP-25 NFTs: mint when DRep achieves a milestone, NFT image features the milestone badge with governance identity radar. Builds minting transaction via MeshSDK. Only build if Sessions 12-16 ship cleanly.
+**6. "Governance Wrapped" — periodic summary cards.** Monthly/epoch-level summary for delegators showing their governance participation: proposals their DRep voted on, how their delegation influenced outcomes, governance level progress. Shareable card format optimized for X/Twitter. Uses existing data from `drep_votes`, `poll_responses`, `governance_events`.
+
+**7. Governance achievement NFTs (stretch goal).** Milestone badges as on-chain CIP-25 NFTs: mint when DRep achieves a milestone, NFT image features the milestone badge with governance identity radar. Builds minting transaction via MeshSDK. Only build if Sessions 12-16 ship cleanly.
 
 ### Current State (for agent context)
 
@@ -514,6 +521,41 @@ DRepScore is a read-only analytical tool where all communication is one-directio
 
 ---
 
+## Session 18 — Sensory Polish & Performance
+
+### Thesis
+
+After Sessions 15-17 deliver narrative, intelligence, and social features, Session 18 is a dedicated polish pass to push from 95 to 97+ on the wow scale. Pure quality — no new features, just refinement of everything already built.
+
+### What Changes
+
+**1. Sound design (optional, off by default).** Subtle audio cues for delegation, milestone achievement, score reveal. Think Stripe's checkout chime — so subtle you almost miss it, but it registers emotionally. Global toggle in user preferences. Uses Web Audio API for minimal bundle impact.
+
+**2. Scroll-driven storytelling on DRep profiles.** Apple-style progressive reveals — as you scroll through profile tabs, each section has a mini narrative transition. Not just fade-in but contextual (e.g., voting record section opens with a timeline animation). Uses Framer Motion `useScroll` + `useTransform`.
+
+**3. Performance audit.** Sub-100ms interactions, optimistic UI for all mutations, Core Web Vitals green across all pages. The fastest governance app in crypto. Specific targets: LCP < 2.5s, FID < 100ms, CLS < 0.1, TTI < 3.5s.
+
+**4. Haptic feedback on mobile.** `navigator.vibrate()` for key actions (delegation, vote submission, milestone achievement) on supported devices. Subtle 10-20ms pulses, never distracting.
+
+**5. Community showcase.** Curated "DRep of the Epoch" spotlight, community-submitted governance stories. This is the content flywheel that makes the platform self-sustaining. New section on Pulse page with editorial curation.
+
+**6. Advanced OG image system.** Dynamic OG images that update in real-time (e.g., DRep OG image shows current score, not cached score). Makes shared links always current. Upgrade existing OG routes to use ISR with shorter revalidation.
+
+### Success Criteria
+
+- Core Web Vitals green on all pages
+- "DRep of the Epoch" generates community engagement and repeat visits
+- Sound design, when enabled, creates memorable "moments" without being annoying
+- Scroll-driven storytelling makes DRep profiles feel like premium product pages
+
+### Risks
+
+- Sound design requires careful taste — bad audio is worse than no audio. Start with 1-2 sounds, test extensively.
+- Performance optimization may require architectural changes (RSC boundaries, streaming).
+- Community showcase requires editorial process — plan for content moderation.
+
+---
+
 ## Execution Order and Dependencies
 
 ```mermaid
@@ -522,7 +564,9 @@ graph LR
     S13 --> S14[Session 14: Architecture]
     S14 --> S15[Session 15: Narrative & Feel]
     S15 --> S16[Session 16: Intelligence]
-    S16 --> S17[Session 17: Social Layer]
+    S15 --> S17[Session 17: Social Layer]
+    S16 --> S18[Session 18: Sensory Polish]
+    S17 --> S18
 ```
 
 - **Session 12** ships first — it's the front door. Everything else is less impactful if the first impression doesn't convert.
@@ -531,6 +575,17 @@ graph LR
 - **Session 15** adds the narrative and emotional layer that makes the architecture feel alive.
 - **Session 16** builds on Session 15's narrative infrastructure with full intelligence capabilities.
 - **Sessions 16 and 17** can be parallelized once Session 15 ships.
+- **Session 18** follows both 16 and 17 — it's a polish pass that refines everything built in prior sessions.
+
+### Target Score Projections
+
+| Session | Estimated Score | Delta |
+|---------|----------------|-------|
+| Post S12-14 | ~62/100 | — |
+| Post S15 | ~83-86/100 | +21-24 |
+| Post S16 | ~88-91/100 | +5 |
+| Post S17 | ~93-95/100 | +4 |
+| Post S18 | ~97-98/100 | +3 |
 
 Each session gets its own worktree (`drepscore-<session-name>`) and detailed implementation plan (`.cursor/plans/<session>.plan.md`) before building begins.
 
@@ -561,5 +616,5 @@ In addition to all anti-patterns from v1 and v1.5:
 | Custom iconography | Lucide is high quality and consistent. Custom icons require a designer. |
 | Route-level URL restructuring for governance pages | Sub-nav achieves the same UX benefit without SEO/redirect risk. |
 | Floating compare tray while browsing DReps | Complex interaction design. Revisit post-S17. |
-| Sound design | Potential polish item after Sessions 12-16 ship. |
+| Sound design | Moved to Session 18 — Sensory Polish & Performance. |
 | Internationalization | Important but separate workstream — doesn't affect the "wow" factor for English-speaking crypto audience. |

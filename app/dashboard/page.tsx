@@ -43,6 +43,8 @@ import { ScoreChangeMoment } from '@/components/ScoreChangeMoment';
 import { DashboardUrgentBar } from '@/components/DashboardUrgentBar';
 import { AnimatedTabs, type TabDefinition } from '@/components/AnimatedTabs';
 import { applyRationaleCurve, getMissingProfileFields } from '@/utils/scoring';
+import { generateDashboardNarrative } from '@/lib/narratives';
+import { NarrativeSummary } from '@/components/NarrativeSummary';
 import type { ScoreSnapshot } from '@/lib/data';
 import type { VoteRecord } from '@/types/drep';
 
@@ -267,6 +269,18 @@ export default function MyDRepPage() {
             </Badge>
           )}
         </div>
+
+        <NarrativeSummary
+          text={generateDashboardNarrative({
+            pendingCount: inboxPendingCount,
+            drepScore: drep.drepScore,
+            scoreChange,
+            percentile,
+            delegatorCount: drep.delegatorCount,
+            drepName: drep.name || drep.drepId.slice(0, 16),
+          })}
+          className="mb-3"
+        />
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-3 px-4 rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
           <div className="flex items-center gap-2">
@@ -504,9 +518,9 @@ function ConnectWalletCTA() {
       <Card className="border-2 border-dashed">
         <CardContent className="pt-8 pb-8 space-y-4">
           <Wallet className="h-12 w-12 mx-auto text-muted-foreground" />
-          <h2 className="text-xl font-bold">Connect Your Wallet</h2>
+          <h2 className="text-xl font-bold">Enter Governance</h2>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Connect a Cardano wallet that holds your DRep credentials to access your personalized dashboard.
+            Connect your Cardano wallet to access your personalized governance command center.
           </p>
           <p className="text-xs text-muted-foreground">
             Use the wallet button in the header to connect.
@@ -525,13 +539,11 @@ function NotADRepCTA() {
           <Shield className="h-12 w-12 mx-auto text-muted-foreground" />
           <h2 className="text-xl font-bold">No DRep Profile Found</h2>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            We couldn&apos;t find a DRep profile for your wallet. If you&apos;ve registered as a DRep,
-            it may take up to 30 minutes to sync. Make sure you&apos;re using the wallet associated
-            with your DRep registration.
+            No DRep profile linked to this wallet yet. If you&apos;ve recently registered, it may take up to 30 minutes to sync.
           </p>
           <Link href="/">
             <Button variant="outline" className="gap-2 mt-2">
-              Browse DReps <ArrowRight className="h-4 w-4" />
+              Explore DReps <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </CardContent>
@@ -545,9 +557,9 @@ function ErrorState({ message }: { message: string | null }) {
     <div className="container mx-auto px-4 py-16 max-w-lg text-center">
       <Card className="border-2 border-destructive/30">
         <CardContent className="pt-8 pb-8 space-y-4">
-          <h2 className="text-xl font-bold">Something Went Wrong</h2>
+          <h2 className="text-xl font-bold">Something went sideways</h2>
           <p className="text-sm text-muted-foreground">
-            {message || 'Failed to load your dashboard. Please try again.'}
+            {message || 'The chain threw us a curveball. Try refreshing.'}
           </p>
           <Button onClick={() => window.location.reload()} variant="outline">
             Try Again

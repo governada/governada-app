@@ -325,7 +325,7 @@ export function ProposalsListClient({ proposals, watchlist = [], currentEpoch }:
               key={voteKey}
               href={`/proposals/${p.txHash}/${p.proposalIndex}`}
             >
-              <Card className={`hover:bg-muted/30 transition-colors cursor-pointer group mb-3 border-l-4 ${isUrgent ? 'border-l-red-500 bg-red-500/5' : (config?.borderColor || 'border-l-primary')}`}>
+              <Card className={`hover:bg-muted/30 transition-colors cursor-pointer group mb-3 border-l-4 ${isUrgent ? 'border-l-red-500 bg-gradient-to-r from-red-500/5 to-transparent ring-1 ring-red-500/20' : (config?.borderColor || 'border-l-primary')}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     {TypeIcon && (
@@ -343,8 +343,8 @@ export function ProposalsListClient({ proposals, watchlist = [], currentEpoch }:
                           expiredEpoch={p.expiredEpoch}
                         />
                         {isUrgent && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
-                            Urgent
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 animate-pulse">
+                            {epochsLeft <= 1 ? 'Expiring This Epoch' : 'Expiring Soon'}
                           </Badge>
                         )}
                         <PriorityBadge proposalType={p.proposalType} />
@@ -401,11 +401,11 @@ export function ProposalsListClient({ proposals, watchlist = [], currentEpoch }:
       {filtered.length === 0 && (
         <EmptyState
           icon="search"
-          title="No Proposals Match"
-          message="No proposals match your filters. Try broadening your search or view all proposals."
+          title="The pipeline is quiet"
+          message="No proposals match your filters. The governance pipeline has quiet moments — try broadening your search or check back soon."
           action={{ label: 'Clear Filters', onClick: () => { setTypeFilter('all'); setSearchQuery(''); } }}
           compact
-          component="ProposalsListClient"
+          component="proposals_list"
         />
       )}
     </div>

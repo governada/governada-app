@@ -32,13 +32,16 @@ import { AboutSection } from '@/components/AboutSection';
 import { SocialIconsLarge } from '@/components/SocialIconsLarge';
 import { CompareButton } from '@/components/CompareButton';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
+import { ProfileViewStats } from '@/components/ProfileViewStats';
 import { MilestoneBadges } from '@/components/MilestoneBadges';
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
-import { extractAlignments } from '@/lib/drepIdentity';
+import { extractAlignments, getIdentityColor, getDominantDimension } from '@/lib/drepIdentity';
 import { getDRepTraitTags } from '@/lib/alignment';
+import { generateDRepNarrative } from '@/lib/narratives';
+import { NarrativeSummary } from '@/components/NarrativeSummary';
 import {
   getDRepById,
   getVotesByDRepId,
@@ -286,6 +289,24 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
       </DRepProfileHero>
 
+      {/* Narrative summary */}
+      <NarrativeSummary
+        text={generateDRepNarrative({
+          name: drepName,
+          participationRate: drep.effectiveParticipation,
+          rationaleRate: drep.rationaleRate,
+          drepScore: drep.drepScore,
+          rank: null,
+          delegatorCount: drep.delegatorCount,
+          votingPower: drep.votingPower,
+          alignments,
+          isActive: drep.isActive,
+          totalVotes: drep.totalVotes,
+          sizeTier: drep.sizeTier,
+        })}
+        accentColor={getIdentityColor(getDominantDimension(alignments)).hex}
+      />
+
       {/* Identity metadata row */}
       <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
         {drep.ticker && (
@@ -336,6 +357,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         )}
         <SocialIconsLarge metadata={drep.metadata} brokenLinks={brokenLinks} />
         <CopyableAddress address={drep.drepId} className="text-xs" />
+        <ProfileViewStats drepId={drep.drepId} />
       </div>
 
       {/* Tabbed content — 4 tabs replacing 8 stacked sections */}

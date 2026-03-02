@@ -396,7 +396,7 @@ export function DRepTableClient({
           message={
             searchQuery
               ? `No results matching "${searchQuery}"`
-              : "Try adjusting your filters."
+              : "No DReps match. Try adjusting your filters — there are hundreds of active representatives to explore."
           }
           icon="search"
           action={

@@ -7,6 +7,8 @@ import { HowItWorksV2 } from '@/components/HowItWorksV2';
 import { DRepDiscoveryPreview } from '@/components/DRepDiscoveryPreview';
 import { CardanoGovernanceExplainer } from '@/components/CardanoGovernanceExplainer';
 import { GovernanceHealthIndex } from '@/components/GovernanceHealthIndex';
+import { GovernanceObservatory } from '@/components/GovernanceObservatory';
+import { FeatureGate } from '@/components/FeatureGate';
 
 interface PreviewDRep {
   drepId: string;
@@ -70,6 +72,10 @@ export function HomepageDualMode({ pulseData, topDReps, ssrHolderData, ssrWallet
         <div className="flex justify-center">
           <GovernanceHealthIndex size="compact" className="opacity-80 hover:opacity-100 transition-opacity" />
         </div>
+
+        <FeatureGate flag="cross_chain_observatory">
+          <GovernanceObservatory variant="compact" className="opacity-80 hover:opacity-100 transition-opacity" />
+        </FeatureGate>
 
         <HowItWorksV2 />
 

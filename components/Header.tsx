@@ -42,6 +42,7 @@ import {
   Clock,
   Activity,
   Inbox,
+  Code2,
 } from 'lucide-react';
 import { MobileNav } from './MobileNav';
 import { GovernanceHeartbeat } from './GovernanceHeartbeat';
@@ -184,6 +185,10 @@ export function Header() {
               <span>Dashboard</span>
             </Link>
           )}
+          <Link href="/developers" className={`${navLinkClass('/developers')} hidden lg:flex`}>
+            <Code2 className="h-4 w-4" />
+            <span>Developers</span>
+          </Link>
           
           {isAuthenticated && sessionAddress ? (
             <>

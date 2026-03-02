@@ -4,6 +4,7 @@ import { GovernanceCitizenSection } from '@/components/GovernanceCitizenSection'
 import { GovernanceCalendar } from '@/components/GovernanceCalendar';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { ActivityFeed } from '@/components/ActivityFeed';
+import { DelegatorGovernanceCard } from '@/components/DelegatorGovernanceCard';
 
 export const metadata: Metadata = {
   title: 'My Governance — DRepScore',
@@ -15,6 +16,7 @@ export default function GovernancePage() {
     <div className="container mx-auto px-4 py-8 space-y-8">
       <PageViewTracker event="governance_page_viewed" />
       <GovernanceDashboard />
+      <DelegatorGovernanceCard />
       <GovernanceCalendar />
       <GovernanceCitizenSection />
       <ActivityFeed limit={8} />

@@ -65,7 +65,13 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
 
       let rlHeaders: Record<string, string> = {};
       if (!options.skipRateLimit) {
-        const rl = await checkRateLimit({ keyId, ipHash });
+        const keyResult = keyId ? await import('./keys').then(m => m.getTierDefaults(tier)) : undefined;
+        const rl = await checkRateLimit({
+          keyId,
+          ipHash,
+          limit: keyResult?.rateLimit,
+          window: keyResult?.rateWindow,
+        });
         rlHeaders = rateLimitHeaders(rl);
 
         if (!rl.allowed) {

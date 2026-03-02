@@ -247,8 +247,9 @@ Patterns, mistakes, and architectural decisions captured during development. Rev
 **Takeaway**: In this workspace (Windows + PowerShell), always use `;` to chain commands or run them as separate tool calls. Never use `&&`.
 
 ### 2026-03-01: Pre-push hook runs full build — budget ~4 minutes
-**Issue**: The repo's pre-push hook runs `tsc --noEmit` + `vitest run` + `next build --webpack` sequentially. This takes ~4 minutes locally. Not just type-check — the full build catches import resolution, static generation, and module boundary errors that `tsc` alone misses.
-**Takeaway**: Budget 4-5 minutes per push. Don't background the push and assume it succeeded. Wait for the hook to complete and verify exit code 0.
+**Issue**: The repo's pre-push hook ran `tsc --noEmit` + `vitest run` + `next build --webpack` sequentially (~4 minutes per push).
+**Resolution**: Build was dropped from pre-push in `81c2c12`. Hooks were removed entirely in S17 — CI is the sole gate. This lesson is retained for historical context only.
+**Takeaway**: Don't duplicate CI checks in local hooks. Budget time for CI instead (~3-5 min).
 
 ### 2026-03-01: Viral surfaces need view + share + outcome events — not just share
 **Issue**: Session 4 built 7 viral share surfaces (wrapped cards, delegation ceremony, score change moments, milestone celebrations, DNA reveal, badge embed, pulse page) with `ShareActions` wired for share clicks, but zero view/impression events. Without `*_viewed` events, we can't calculate share rates (views → shares) or identify which surfaces drive engagement.
@@ -359,9 +360,27 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Root cause**: The Ship It Checklist is documented as a post-implementation step. Agents treat "implementation complete" as their finish line because todo lists end at the last code task. The deployment pipeline is never represented in the task list.
 **Takeaway**: Every session's todo list MUST include Ship It Checklist steps as explicit tasks: (1) create branch, (2) commit, (3) push + PR, (4) CI green, (5) merge, (6) confirm deploy. These are not post-session cleanup — they ARE the session. A feature is not done until it is in production. Never report completion until the deploy is confirmed.
 
+### 2026-03-02: Local hooks removed — CI is the sole quality gate
+**Issue**: Pre-commit and pre-push hooks ran `tsc --noEmit` + `vitest run`, adding 45-75s per commit+push cycle. CI runs the same checks plus lint and build — the hooks had zero unique coverage. They also didn't run ESLint, so `react-hooks/refs` errors (like in `NavDirectionProvider.tsx`) slipped through locally but failed CI anyway.
+**Fix**: Removed husky, pre-commit, and pre-push hooks entirely. CI (branch protection) is the sole quality gate. For early local feedback, run `npm run type-check ; npm run lint` before pushing.
+**Takeaway**: Don't duplicate CI checks in local hooks unless they catch something CI doesn't. Hooks that are a strict subset of CI are pure friction.
+
+### 2026-03-02: React 19 compiler lint — no ref access during render
+**Issue**: `NavDirectionProvider` used `useRef` + `useCallback` to compute direction during render by reading `prevPathRef.current`. The `react-hooks/refs` rule flags this as an error: "Cannot access refs during render."
+**Fix**: Convert to `useState` + `useEffect`. The ref is only read inside the effect (not during render), and direction is stored in state so the provider re-renders when it changes.
+**Takeaway**: Any component that reads `.current` from a ref during the render body (not inside an effect or event handler) will fail lint. The pattern of "compute from ref in render" is dead under React 19 compiler rules. Use `useState` for values that affect rendering; use refs only in effects and handlers.
+
+### 2026-03-02: Branch protection "not up to date" adds ~5 min to Ship It
+**Issue**: `gh pr merge --squash` failed with "head branch is not up to date with the base branch" because a prior hotfix had advanced `main`. Required stash → `git rebase origin/main` → stash pop → force-push → full CI re-run (~5 min).
+**Takeaway**: When branch protection requires up-to-date branches, budget time for a rebase cycle if main has moved. Fetch and rebase before pushing the initial PR to avoid the round-trip.
+
 ### 2026-03-02: Shell tool calls don't preserve working directory or branch across invocations
 **Pattern**: `git checkout -b feat/...` ran in one Shell call, but subsequent Shell calls reverted to `main` because each Shell invocation starts fresh. This caused the first commit attempt to only partially stage files and the branch context was lost.
 **Takeaway**: Always chain branch-dependent git commands in a single Shell call or verify `git branch --show-current` at the start of each new Shell call. Never assume a prior checkout persists.
+
+### 2026-03-02: Feature flags — Supabase-backed for instant toggles
+**Pattern**: Introduced `lib/featureFlags.ts` with Supabase `feature_flags` table, 60s in-memory cache, env var overrides (`FF_<KEY>=true|false`), and admin UI at `/admin/flags`. Server components use `getFeatureFlag(key)`, client components use `<FeatureGate flag="key">` or `useFeatureFlag(key)`.
+**Takeaway**: Always gate risky or controversial features behind flags before shipping. Wrap at the call site (server component) or with `<FeatureGate>` (client component). The Inngest cron check ensures background jobs also respect flags. Upgrading to per-user targeting later only requires changes in `lib/featureFlags.ts`.
 
 *Last updated: 2026-03-02*
 *Review this file at the start of every session.*

@@ -11,8 +11,10 @@ import { GovernanceHealthIndex } from '@/components/GovernanceHealthIndex';
 import { NarrativeSummary } from '@/components/NarrativeSummary';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { CrossProposalInsights } from '@/components/CrossProposalInsights';
+import { GovernanceObservatory } from '@/components/GovernanceObservatory';
 import { PulseLeaderboardClient } from '@/components/PulseLeaderboardClient';
 import { generatePulseNarrative } from '@/lib/narratives';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import {
   Landmark,
   ScrollText,
@@ -164,7 +166,10 @@ async function LeaderboardSection() {
 }
 
 export default async function PulsePage() {
-  const pulse = await fetchPulseData();
+  const [pulse, showCrossChain] = await Promise.all([
+    fetchPulseData(),
+    getFeatureFlag('cross_chain_observatory'),
+  ]);
 
   const pulseNarrative = pulse ? generatePulseNarrative({
     votesThisWeek: pulse.votesThisWeek,
@@ -307,6 +312,9 @@ export default async function PulsePage() {
 
       {/* Cross-Proposal Insights */}
       <CrossProposalInsights />
+
+      {/* Cross-Chain Governance Observatory (feature-flagged) */}
+      {showCrossChain && <GovernanceObservatory />}
 
       {/* Leaderboard + Movers + Hall of Fame (with Suspense) */}
       <Suspense fallback={<LeaderboardSkeleton />}>

@@ -16,6 +16,7 @@ import { generateGovernanceBrief } from '@/inngest/functions/generate-governance
 import { syncFreshnessGuard } from '@/inngest/functions/sync-freshness-guard';
 import { snapshotGhi } from '@/inngest/functions/snapshot-ghi';
 import { generateStateOfGovernance } from '@/inngest/functions/generate-state-of-governance';
+import { syncGovernanceBenchmarks } from '@/inngest/functions/sync-governance-benchmarks';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -36,5 +37,6 @@ export const { GET, POST, PUT } = serve({
     syncFreshnessGuard,
     snapshotGhi,
     generateStateOfGovernance,
+    syncGovernanceBenchmarks,
   ],
 });

@@ -1,6 +1,6 @@
 # Product "Wow" Plan v2 — DRepScore
 
-> From comprehensive governance tool to the app that makes the entire crypto space say "wow." Sessions 12-19 transform the product through emotional design, visual identity, architecture, narrative, intelligence, social mechanics, cross-chain positioning, and sensory polish.
+> From comprehensive governance tool to the app that makes the entire crypto space say "wow." Sessions 12-21 transform the product through emotional design, visual identity, architecture, narrative, intelligence, social mechanics, cross-chain positioning, developer distribution, community flywheel, on-chain actions, and sensory polish.
 
 **Created:** March 2, 2026
 **Predecessors:** `product-wow-plan.md` (Sessions 1-7), `product-wow-plan-v1.5.md` (Sessions 8-11)
@@ -20,11 +20,13 @@
 8. [Session 15 — The Narrative & Feel Layer](#session-15--the-narrative--feel-layer)
 9. [Session 16 — Governance Intelligence Engine](#session-16--governance-intelligence-engine)
 10. [Session 17 — The Live Social Layer](#session-17--the-live-social-layer)
-11. [Session 18 — Cross-Chain Intelligence & Developer Platform](#session-18--cross-chain-intelligence--developer-platform)
+11. [Session 18 — Cross-Chain Governance Intelligence Hub](#session-18--cross-chain-governance-intelligence-hub)
 12. [Session 19 — Sensory Polish & Performance](#session-19--sensory-polish--performance)
-13. [Execution Order](#execution-order-and-dependencies)
-14. [Anti-Patterns](#anti-patterns)
-15. [Deferred Items](#deferred-items)
+13. [Session 20 — Governance Wrapped & Community Flywheel](#session-20--governance-wrapped--community-flywheel)
+14. [Session 21 — On-Chain Actions & Real-Time](#session-21--on-chain-actions--real-time)
+15. [Execution Order](#execution-order-and-dependencies)
+16. [Anti-Patterns](#anti-patterns)
+17. [Deferred Items](#deferred-items)
 
 ---
 
@@ -87,8 +89,10 @@ Our north star is getting DRepScore as close to 100/100 on a "wow" factor scale 
 | S15 | ~69-72 | +7-10 | Narrative layer, GHI number, basic insights, empty states (note: page transitions, social proof not built) |
 | S16 | ~78-82 | +9-10 | Intelligence engine, GHI trend/sparkline, AI narratives, State of Governance report, expanded insights |
 | S17 | ~87 | +5 | Social layer, page transitions (S15 gap), activity feeds, sharing culture |
-| S18 | ~91 | +4 | Cross-chain intelligence, developer platform, API explorer |
-| S19 | ~95-96 | +4-5 | Sensory polish, sound design, scroll storytelling, performance audit, community showcase |
+| S18 | ~92-93 | +5-6 | Cross-chain intelligence hub, developer platform, embeddable widgets, delegator identity, feature flags |
+| S19 | ~96 | +3-4 | Sensory polish, sound design, scroll storytelling, Cmd+K, PWA, performance, community showcase |
+| S20 | ~97 | +1 | Governance Wrapped, community flywheel, editorial content |
+| S21 | ~98+ | +1 | On-chain actions, real-time WebSocket, offline-first |
 
 All agents working on sessions should internalize this scoring framework and proactively identify opportunities to push the score higher within their session's scope.
 
@@ -565,30 +569,59 @@ DRepScore is a read-only analytical tool where all communication is one-directio
 
 ---
 
-## Session 18 — Cross-Chain Intelligence & Developer Platform
+## Session 18 — Cross-Chain Governance Intelligence Hub
 
 ### Thesis
 
-With S16's intelligence engine and S17's social layer in place, Session 18 positions DRepScore beyond Cardano. Cross-chain governance benchmarking (automated via public APIs) and a developer platform make DRepScore THE governance intelligence hub, not just a Cardano tool.
+With S16's intelligence engine and S17's social layer in place, Session 18 positions DRepScore beyond Cardano. The original scope was three items (cross-chain benchmarking, developer page, API docs). The expanded session transforms DRepScore into a governance intelligence hub with five pillars: cross-chain observatory, developer platform, embeddable widget ecosystem, delegator governance identity, and feature flag infrastructure for safe rollout. This is the "not just Cardano" moment.
 
-### What Changes
+### What Was Built (S18 Delivery)
 
-**1. Cross-chain governance benchmarking.** Automated data collection from public APIs: Tally (Ethereum governance), SubSquare (Polkadot OpenGov). Comparison dashboard showing participation rates, delegate counts, proposal throughput across chains. New `governance_benchmarks` table with automated sync. Positions DRepScore as cross-chain governance authority.
+**1. Cross-Chain Governance Observatory.** Automated data collection from Tally (Ethereum) and SubSquare (Polkadot) via weekly Inngest cron. New `governance_benchmarks` table stores participation rates, delegate counts, proposal throughput, computed governance scores (0-100), and letter grades per chain. `lib/crossChain.ts` centralizes adapters, scoring, and grade computation. `CrossChainReportCard` components display each chain with sparkline trends, identity colors, and Framer Motion animations. `GovernanceObservatory` orchestrates the three-chain display on both the Pulse page (full) and Homepage (compact stat strip). OG image route at `/api/og/cross-chain` for social sharing.
 
-**2. Developer experience page (`/developers`).** Interactive API explorer, code examples (JS, Python, cURL), embed widget generator. API keys for Pro tier. Rate limits: 100/min public, 1000/min Pro.
+**2. Developer Experience Platform (`/developers`).** Stripe-quality developer page with: guided quick-start flow (get key → install → query), interactive `ApiExplorer` component with endpoint browser, parameter docs, and live "Try It" with real responses. Multi-language `CodeExample` component (cURL, JavaScript, Python) with copy-to-clipboard. Rate limit tiers documented: Anonymous (30/min), Free (100/min), Pro (1000/min), Enterprise (unlimited). Fixed critical rate limit bug where authenticated API keys were incorrectly using anonymous limits. Added `/developers` link to main navigation header.
 
-**3. API documentation and explorer.** Full documentation of the v1 API with interactive try-it-out interface.
+**3. Embeddable Widget Ecosystem.** Four embed types: DRep Card (`/embed/drep/[drepId]`), GHI Gauge (`/embed/ghi`), Cross-Chain Comparison (`/embed/cross-chain`), and Governance Radar (existing). Dedicated `app/embed/layout.tsx` strips global chrome for clean iframe rendering. Self-contained embed components (`EmbedDRepCard`, `EmbedGHI`, `EmbedCrossChain`) with theme support (dark/light). `public/embed.js` script loader for zero-code integration via data attributes. Widget builder section on the developer page with copy-paste iframe/script snippets.
+
+**4. Delegator Governance Identity Card.** `DelegatorGovernanceCard` component on the Governance page shows a user's governance age, delegated DRep (with score), quiz alignment match, and delegation streak. OG image route at `/api/og/governance-identity` generates personalized shareable cards. Share prompt encourages delegators to broadcast their governance participation.
+
+**5. Feature Flag Infrastructure.** Supabase-backed `feature_flags` table with admin UI at `/admin/flags` for instant toggles without redeployment. `lib/featureFlags.ts` provides server-side `getFeatureFlag()` and client-side `<FeatureGate>` wrapper with 60s in-memory cache, env var overrides (`FF_<KEY>=true|false`), and upgrade path to per-user targeting. Cross-chain features gated by three flags: `cross_chain_observatory`, `cross_chain_embed`, `cross_chain_sync`. Critical capability for pre-market feature management.
+
+### Current State (for agent context)
+
+- `lib/crossChain.ts` — Chain types, adapters (Tally GraphQL, SubSquare REST), scoring, grading, identities
+- `inngest/functions/sync-governance-benchmarks.ts` — Weekly cron with feature flag check
+- `app/api/governance/benchmarks/route.ts` — Benchmarks API (flag-gated)
+- `components/CrossChainReportCard.tsx` — Single chain report card with sparkline
+- `components/GovernanceObservatory.tsx` — Three-chain orchestrator (full + compact variants)
+- `app/developers/page.tsx` + `components/DeveloperPage.tsx` — Developer platform shell + content
+- `components/ApiExplorer.tsx` — Interactive endpoint browser with try-it
+- `components/CodeExample.tsx` — Multi-language code snippets
+- `app/embed/layout.tsx` — Minimal embed layout
+- `app/embed/drep/[drepId]/page.tsx`, `app/embed/ghi/page.tsx`, `app/embed/cross-chain/page.tsx` — Embed pages
+- `components/EmbedDRepCard.tsx`, `components/EmbedGHI.tsx`, `components/EmbedCrossChain.tsx` — Embed components
+- `public/embed.js` — Script loader for zero-code embedding
+- `components/DelegatorGovernanceCard.tsx` — Delegator identity card
+- `lib/featureFlags.ts` — Feature flag system
+- `components/FeatureGate.tsx` — Client-side feature gate wrapper
+- `app/admin/flags/page.tsx` + `components/admin/FeatureFlagAdmin.tsx` — Admin toggle UI
+- Database: `governance_benchmarks` table, `feature_flags` table
+- Feature flags: `cross_chain_observatory`, `cross_chain_embed`, `cross_chain_sync` (all default ON)
 
 ### Success Criteria
 
 - Cross-chain benchmarking brings non-Cardano users to DRepScore
 - At least 3 external integrations from developer platform within 3 months
-- API documentation reduces support burden
+- Embeddable widgets appear on at least 5 external sites within 6 months
+- Delegator identity cards generate social sharing within Cardano community
+- Feature flags enable safe rollout of controversial features without code changes
 
 ### Risks
 
-- Cross-chain API reliability: Tally and SubSquare APIs may change without notice. Build with fallback/caching.
-- Developer platform requires API key management infrastructure.
+- **Cross-chain API reliability**: Tally and SubSquare APIs may change without notice. Built with 7-day cache, graceful degradation, and feature flags for instant kill switch.
+- **Cross-chain governance score methodology**: Different chains have fundamentally different structures. The "grade" is inherently opinionated. Methodology should be published transparently and community feedback solicited before removing feature flag.
+- **Developer platform adoption**: Interactive explorer could balloon in scope. Shipped functional v1; iterate based on actual developer feedback.
+- **Embed security**: iframes are sandboxed but script loader requires trust. CSP headers and origin validation planned for v2.
 
 ---
 
@@ -596,7 +629,7 @@ With S16's intelligence engine and S17's social layer in place, Session 18 posit
 
 ### Thesis
 
-After Sessions 15-18 deliver narrative, intelligence, social, and cross-chain features, Session 19 is a dedicated polish pass to push from 91 to 95+ on the wow scale. Pure quality — no new features, just refinement of everything already built.
+After Sessions 15-18 deliver narrative, intelligence, social, cross-chain, and developer features, Session 19 is a dedicated polish pass to push from ~92-93 to ~96. Pure quality — no new features, just refinement of everything already built, plus pro-tool power-user touches.
 
 ### What Changes
 
@@ -612,18 +645,96 @@ After Sessions 15-18 deliver narrative, intelligence, social, and cross-chain fe
 
 **6. Advanced OG image system.** Dynamic OG images that update in real-time (e.g., DRep OG image shows current score, not cached score). Makes shared links always current. Upgrade existing OG routes to use ISR with shorter revalidation.
 
+**7. Cmd+K command palette.** Keyboard-first search and navigation using `cmdk` library (~5KB). Search DReps, jump to proposals, toggle dark mode, navigate to any page. Power user delight. Think Linear/Raycast — fast, beautiful, and addictive.
+
+**8. PWA installability.** `manifest.json`, service worker for offline shell, install prompt. For users who check governance daily — the app should live on their homescreen/dock.
+
+**9. Keyboard shortcuts.** `?` for help overlay, `d` for discover, `p` for proposals, `g` for governance. Pro-tool feel that rewards frequent users.
+
+**10. Micro-interaction Easter eggs.** Subtle surprises: hover a perfect 100 score for a confetti burst, delegation anniversary celebration, secret konami code for constellation fireworks. Delight moments that reward exploration.
+
 ### Success Criteria
 
 - Core Web Vitals green on all pages
 - "DRep of the Epoch" generates community engagement and repeat visits
 - Sound design, when enabled, creates memorable "moments" without being annoying
 - Scroll-driven storytelling makes DRep profiles feel like premium product pages
+- Cmd+K becomes the primary navigation method for power users
+- At least 100 PWA installs within first month
 
 ### Risks
 
 - Sound design requires careful taste — bad audio is worse than no audio. Start with 1-2 sounds, test extensively.
 - Performance optimization may require architectural changes (RSC boundaries, streaming).
 - Community showcase requires editorial process — plan for content moderation.
+- Cmd+K requires careful index of all navigable content to be useful.
+
+---
+
+## Session 20 — Governance Wrapped & Community Flywheel
+
+### Thesis
+
+Session 19 polishes the product to near-perfection. Session 20 adds the community and content flywheel that makes DRepScore self-sustaining — users create content that attracts more users. The centerpiece is a full "Governance Wrapped" annual experience that becomes the most shared Cardano governance artifact of the year.
+
+### What Changes
+
+**1. Governance Wrapped — annual shareable experience.** Full multi-slide interactive story (deferred from S17) showing a user's governance year: votes influenced, proposals they cared about, DRep loyalty, governance personality evolution, community impact. Each slide is a shareable OG image. Think Spotify Wrapped for governance. This is the single highest-virality feature in the roadmap.
+
+**2. Community showcase expansion.** "DRep of the Epoch" editorial system with community nomination and voting. Spotlight page with DRep's governance story, identity radar, and key votes. Drives repeat visits and DRep engagement.
+
+**3. Community-submitted governance stories.** Moderated submission flow for delegators and DReps to share governance experiences, case studies, and perspectives. Curated on the Pulse page. Creates owned content that compounds over time.
+
+**4. Governance leaderboards with seasonal resets.** Epoch-based leaderboard seasons with historical archives. Seasonal badges for top performers. Gamification that resets ensures ongoing engagement rather than permanent dominance by early adopters.
+
+**5. User-generated insights and commentary.** Moderated proposal commentary system — lightweight annotations on proposals from community members. Not full discussion threads (deferred), but curated perspectives that add context.
+
+### Success Criteria
+
+- Governance Wrapped generates >1000 shares in first week
+- Community showcase drives 20%+ increase in DRep profile claims
+- Seasonal leaderboards increase weekly active users by 15%+
+- Community stories become a cited resource in Cardano forums
+
+### Risks
+
+- Governance Wrapped requires careful data pipeline to aggregate a full year of user activity. Plan data collection early.
+- Editorial content requires moderation infrastructure and human review — not fully automatable.
+- Seasonal leaderboards must balance competitiveness with inclusivity — avoid rewarding only whale DReps.
+
+---
+
+## Session 21 — On-Chain Actions & Real-Time
+
+### Thesis
+
+DRepScore has been a read-only intelligence layer. Session 21 closes the loop by enabling direct on-chain governance actions from within the app and upgrading the entire experience to real-time. This is the final "wow" — DRepScore becomes the command center where governance actually happens, not just where it's observed.
+
+### What Changes
+
+**1. Direct vote casting from DRepScore.** If GovTool adoption patterns confirm demand (monitor through S18-S20), build native vote submission. DReps can cast votes, submit rationale, and delegate — all without leaving DRepScore. Uses MeshSDK (already integrated for delegation).
+
+**2. Real-time WebSocket governance feed.** Replace all polling (activity ticker, feeds, social proof, GHI) with Supabase Realtime subscriptions. Governance events appear instantly. The entire platform feels alive — not periodically refreshed.
+
+**3. Full offline-first PWA.** Service worker caching of governance data, proposals, and DRep profiles. Users can browse cached data offline and sync when reconnected. Critical for users in regions with unreliable connectivity.
+
+**4. Actionable push notifications.** Deep-link notifications that take users directly to the relevant action: "Proposal X expires in 2 hours — vote now" links directly to the proposal with vote UI ready. Reduces friction from awareness to action.
+
+**5. Floating compare tray.** While browsing DReps on Discover, pin candidates to a floating comparison tray at the bottom. Click to expand into full comparison view. Deferred since S14 — now the interaction design is mature enough to build it well.
+
+### Success Criteria
+
+- >50% of DRep votes cast through DRepScore within 3 months of launch
+- Real-time feed creates a "live dashboard" sensation — users keep the tab open
+- Offline-first enables governance participation in connectivity-constrained environments
+- Actionable notifications achieve >30% click-through rate
+
+### Risks
+
+- On-chain transaction signing requires extensive wallet compatibility testing (Eternl, Lace, Nami, Flint, etc.)
+- Real-time subscriptions at scale require Supabase Realtime capacity planning
+- Offline-first PWA with real-time creates complex sync conflict scenarios
+- Vote casting carries legal/liability considerations — ensure clear disclaimers
 
 ---
 
@@ -636,20 +747,23 @@ graph LR
     S14 --> S15[Session 15: Narrative & Feel]
     S15 --> S16[Session 16: Intelligence]
     S15 --> S17[Session 17: Social Layer]
-    S16 --> S18[Session 18: Cross-Chain & Platform]
+    S16 --> S18[Session 18: Cross-Chain Intelligence Hub]
     S17 --> S18
     S18 --> S19[Session 19: Sensory Polish]
+    S19 --> S20[Session 20: Governance Wrapped]
+    S19 --> S21[Session 21: On-Chain Actions]
 ```
 
-- **Sessions 12-15** are shipped and deployed.
-- **Session 16** builds the intelligence engine — GHI trends, AI narratives, State of Governance report, expanded insights. **Shipped.**
-- **Session 17** adds the social layer + page transitions (S15 gap) — this is where "feel" and "wow" compound.
-- **Session 18** extends intelligence cross-chain and builds the developer platform — the "not just Cardano" moment.
-- **Session 19** is pure polish: sound, scroll storytelling, performance, community showcase — pushing past 95.
+- **Sessions 12-17** are shipped and deployed.
+- **Session 18** expands DRepScore beyond Cardano — cross-chain observatory, developer platform, embeddable widgets, delegator identity, feature flags. **Shipped.**
+- **Session 19** is pure polish: sound, scroll storytelling, Cmd+K, PWA, performance, community showcase — pushing from ~93 to ~96.
+- **Session 20** adds the community flywheel: Governance Wrapped, editorial content, seasonal leaderboards — pushing to ~97.
+- **Session 21** closes the loop with on-chain actions, real-time WebSocket, and offline-first PWA — pushing to ~98+.
+- **S20 and S21** are independent of each other and could be parallelized or reordered based on demand signals (on-chain actions require monitoring GovTool adoption; community flywheel requires editorial capacity).
 
 ### Target Score Projections (Revised March 2026)
 
-> Corrected to reflect honest post-S15 baseline and S16 delivery.
+> Updated post-S18 to reflect expanded session scope, feature flag infrastructure, and new future sessions.
 
 | Session | Estimated Score | Delta | Key Contributions |
 |---------|----------------|-------|-------------------|
@@ -657,8 +771,10 @@ graph LR
 | Post S15 | ~69-72/100 | +7-10 | Narrative layer, GHI number, basic insights |
 | Post S16 | ~78-82/100 | +9-10 | Intelligence engine, AI narratives, State of Governance, GHI trend |
 | Post S17 | ~87/100 | +5-9 | Page transitions, social layer, sharing culture |
-| Post S18 | ~91/100 | +4 | Cross-chain benchmarking, developer platform |
-| Post S19 | ~95-96/100 | +4-5 | Sound design, scroll storytelling, performance, community showcase |
+| Post S18 | ~92-93/100 | +5-6 | Cross-chain intelligence, developer platform, widget distribution, delegator identity, feature flags |
+| Post S19 | ~96/100 | +3-4 | Sound design, scroll storytelling, Cmd+K, PWA, performance, community showcase |
+| Post S20 | ~97/100 | +1 | Governance Wrapped, community flywheel, editorial content |
+| Post S21 | ~98+/100 | +1 | On-chain actions, real-time WebSocket, offline-first |
 
 Each session gets its own worktree (`drepscore-<session-name>`) and detailed implementation plan (`.cursor/plans/<session>.plan.md`) before building begins.
 
@@ -681,14 +797,16 @@ In addition to all anti-patterns from v1 and v1.5:
 
 | Item | Rationale |
 |------|-----------|
-| On-chain rationale/voting submission | Monitor GovTool usage patterns first. If DReps consistently draft in DRepScore then context-switch to GovTool, demand signal is clear. |
+| On-chain rationale/voting submission | Planned for Session 21 — contingent on GovTool adoption patterns confirming demand. |
 | AI score coach chatbot | Score Simulator + AI brief cover the "how do I improve" use case. Revisit when demand signal emerges. |
 | Proposal discussion threads | Q&A channel in Session 17 is the lightweight version. Full threading has high moderation overhead. |
 | Multi-DRep team dashboard | Very few organizations run team DReps. Revisit when demand signals emerge. |
 | View Transitions API | Browser support still experimental in 2026. Framer Motion (Session 13) covers animation needs. |
 | Custom iconography | Lucide is high quality and consistent. Custom icons require a designer. |
 | Route-level URL restructuring for governance pages | Sub-nav achieves the same UX benefit without SEO/redirect risk. |
-| Floating compare tray while browsing DReps | Complex interaction design. Revisit post-S17. |
-| Sound design | Moved to Session 19 — Sensory Polish & Performance. |
-| Cross-chain governance benchmarking | Originally Session 16, moved to Session 18 — Cross-Chain Intelligence & Developer Platform. |
+| Floating compare tray while browsing DReps | Planned for Session 21 — interaction design matured enough to build well. |
+| Sound design | Planned for Session 19 — Sensory Polish & Performance. |
+| Cross-chain governance benchmarking | Built in Session 18 (feature-flagged). **Shipped.** |
+| Full Governance Wrapped experience | Planned for Session 20 — annual timing makes more sense. |
+| Real-time WebSocket governance feed | Planned for Session 21 — replaces polling architecture. |
 | Internationalization | Important but separate workstream — doesn't affect the "wow" factor for English-speaking crypto audience. |

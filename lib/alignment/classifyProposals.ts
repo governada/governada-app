@@ -39,9 +39,17 @@ function buildClassifyPrompt(proposal: ProposalInfo): string {
   const motivation = proposal.meta_json?.body?.motivation || proposal.meta_json?.motivation || '';
   const type = proposal.proposal_type;
 
-  const withdrawalInfo = proposal.withdrawal?.length
-    ? `Withdrawal amount: ${proposal.withdrawal.reduce((sum, w) => sum + BigInt(w.amount || '0'), BigInt(0)) / BigInt(1_000_000)} ADA`
-    : '';
+  let withdrawalInfo = '';
+  if (proposal.withdrawal?.length) {
+    try {
+      const total =
+        proposal.withdrawal.reduce((sum, w) => sum + BigInt(w.amount || '0'), BigInt(0)) /
+        BigInt(1_000_000);
+      withdrawalInfo = `Withdrawal amount: ${total} ADA`;
+    } catch {
+      withdrawalInfo = 'Withdrawal amount: unknown';
+    }
+  }
 
   const paramInfo = proposal.param_proposal
     ? `Parameter changes: ${JSON.stringify(proposal.param_proposal).slice(0, 500)}`
@@ -167,19 +175,18 @@ export async function classifyProposalsAI(
     (p) => !existingMap.has(`${p.proposal_tx_hash}-${p.proposal_index}`),
   );
 
-  // Classify new proposals
+  // Classify new proposals in parallel batches to avoid step timeouts
   const newClassifications: ProposalClassification[] = [];
+  const AI_CONCURRENCY = 10;
 
-  for (const proposal of unclassified) {
-    let classification: ProposalClassification;
-
+  async function classifyOne(proposal: ProposalInfo): Promise<ProposalClassification> {
     const aiResult = await generateJSON<AIClassificationResponse>(buildClassifyPrompt(proposal), {
       system: CLASSIFY_SYSTEM,
       maxTokens: 256,
     });
 
     if (aiResult) {
-      classification = {
+      return {
         proposalTxHash: proposal.proposal_tx_hash,
         proposalIndex: proposal.proposal_index,
         dimTreasuryConservative: clamp01(aiResult.treasury_conservative),
@@ -190,16 +197,24 @@ export async function classifyProposalsAI(
         dimTransparency: clamp01(aiResult.transparency),
         aiSummary: aiResult.summary?.slice(0, 500) || null,
       };
-    } else {
-      const fallback = ruleBasedClassify(proposal);
-      classification = {
-        proposalTxHash: proposal.proposal_tx_hash,
-        proposalIndex: proposal.proposal_index,
-        ...fallback,
-      };
     }
 
-    newClassifications.push(classification);
+    const fallback = ruleBasedClassify(proposal);
+    return {
+      proposalTxHash: proposal.proposal_tx_hash,
+      proposalIndex: proposal.proposal_index,
+      ...fallback,
+    };
+  }
+
+  for (let i = 0; i < unclassified.length; i += AI_CONCURRENCY) {
+    const batch = unclassified.slice(i, i + AI_CONCURRENCY);
+    const results = await Promise.allSettled(batch.map(classifyOne));
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        newClassifications.push(result.value);
+      }
+    }
   }
 
   // Persist new classifications (archive to classification_history first)

@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { MobileNav } from './MobileNav';
 import { GovernanceHeartbeat } from './GovernanceHeartbeat';
+import { StreakBadge } from './StreakBadge';
 
 const ALERT_ICONS: Record<AlertType, typeof TrendingDown> = {
   'representation-shift': TrendingDown,
@@ -143,6 +144,24 @@ export function Header() {
       .catch(() => {});
   }, [ownDRepId]);
 
+  const [visitStreak, setVisitStreak] = useState(0);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setVisitStreak(0);
+      return;
+    }
+    const token = getStoredSession();
+    if (!token) return;
+    fetch('/api/governance/holder', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.visitStreak) setVisitStreak(data.visitStreak);
+      })
+      .catch(() => {});
+  }, [isAuthenticated]);
+
   const [skipPushPrompt, setSkipPushPrompt] = useState(false);
   const [scrolledDown, setScrolledDown] = useState(false);
   const isHomepage = pathname === '/';
@@ -228,6 +247,7 @@ export function Header() {
 
           {isAuthenticated && sessionAddress ? (
             <>
+              <StreakBadge streak={visitStreak} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button

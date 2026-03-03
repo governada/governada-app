@@ -8,10 +8,27 @@ import Link from 'next/link';
 
 interface PoolData {
   poolId: string;
+  ticker: string | null;
+  poolName: string | null;
+  governanceScore: number | null;
   voteCount: number;
-  yesCount: number;
-  noCount: number;
-  abstainCount: number;
+  participationPct: number | null;
+  delegatorCount: number;
+  liveStakeAda: number;
+}
+
+function formatAda(ada: number): string {
+  if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${Math.round(ada / 1_000)}K`;
+  return String(ada);
+}
+
+function scoreColor(score: number | null): string {
+  if (score === null) return 'bg-muted text-muted-foreground';
+  if (score >= 70) return 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30';
+  if (score >= 40) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30';
+  return 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30';
 }
 
 function PoolsSkeleton() {
@@ -21,9 +38,10 @@ function PoolsSkeleton() {
         <Card key={i}>
           <CardContent className="pt-6 space-y-3">
             <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-6 w-16 rounded-full" />
             </div>
+            <Skeleton className="h-3 w-40" />
             <Skeleton className="h-3 w-32" />
           </CardContent>
         </Card>
@@ -62,18 +80,44 @@ export function PoolsDiscovery() {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {pools.map((pool) => (
         <Link key={pool.poolId} href={`/pool/${pool.poolId}`}>
-          <Card className="hover:border-cyan-500/40 transition-colors cursor-pointer">
+          <Card className="hover:border-cyan-500/40 transition-colors cursor-pointer h-full">
             <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-sm truncate">{pool.poolId.slice(0, 16)}…</span>
-                <Badge variant="outline" className="text-cyan-500 border-cyan-500/40">
-                  {pool.voteCount} votes
-                </Badge>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  {pool.ticker ? (
+                    <span className="font-semibold text-sm">{pool.ticker}</span>
+                  ) : (
+                    <span className="font-mono text-sm truncate">
+                      {pool.poolId.slice(0, 16)}&hellip;
+                    </span>
+                  )}
+                  {pool.poolName && pool.ticker && (
+                    <p className="text-xs text-muted-foreground truncate">{pool.poolName}</p>
+                  )}
+                </div>
+                {pool.governanceScore !== null ? (
+                  <Badge
+                    variant="outline"
+                    className={`tabular-nums shrink-0 ${scoreColor(pool.governanceScore)}`}
+                  >
+                    {pool.governanceScore}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-cyan-500 border-cyan-500/40 shrink-0">
+                    {pool.voteCount} votes
+                  </Badge>
+                )}
               </div>
-              <div className="flex gap-3 text-xs text-muted-foreground">
-                <span className="text-green-500">{pool.yesCount} Yes</span>
-                <span className="text-red-500">{pool.noCount} No</span>
-                <span>{pool.abstainCount} Abstain</span>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span>{pool.voteCount} votes</span>
+                {pool.participationPct !== null && (
+                  <span>{pool.participationPct}% participation</span>
+                )}
+                {pool.delegatorCount > 0 && (
+                  <span>{pool.delegatorCount.toLocaleString()} delegators</span>
+                )}
+                {pool.liveStakeAda > 0 && <span>{formatAda(pool.liveStakeAda)} ADA</span>}
               </div>
             </CardContent>
           </Card>

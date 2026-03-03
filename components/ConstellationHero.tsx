@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { ActivityTicker } from '@/components/ActivityTicker';
+import { PersonalizedStatsStrip } from '@/components/PersonalizedStatsStrip';
 
 import type { UserSegment } from '@/components/PersonalGovernanceCard';
 import { getStoredSession } from '@/lib/supabaseAuth';
@@ -254,6 +255,18 @@ export function ConstellationHero({
             <span className="hidden sm:inline text-white/20">|</span>
             <span>{stats.ccMembers} CC Members</span>
           </div>
+
+          {segment !== null && !showPersonalCard && (
+            <PersonalizedStatsStrip
+              drepName={holderData?.delegationHealth?.drepName}
+              drepScore={holderData?.delegationHealth?.drepScore}
+              scoreTrend={holderData?.repScoreDelta}
+              openProposals={holderData?.activeProposals?.length}
+              governanceLevel={holderData?.governanceLevel}
+              visitStreak={holderData?.visitStreak}
+              walletAddress={ssrWalletAddress || ''}
+            />
+          )}
 
           {/* Tri-body legend */}
           <div className="mt-3 flex items-center justify-center gap-4 text-xs text-white/40 animate-fade-in-up animation-delay-200">

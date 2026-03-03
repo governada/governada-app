@@ -56,7 +56,12 @@ export async function GET() {
         .select('score, info', { count: 'exact', head: false })
         .eq('info->>isActive', 'true'),
 
-      supabase.from('spo_votes').select('pool_id').limit(1000),
+      supabase
+        .from('pools')
+        .select(
+          'pool_id, ticker, pool_name, governance_score, vote_count, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+        )
+        .gt('vote_count', 0),
 
       supabase.from('cc_votes').select('cc_hot_id').limit(100),
     ]);
@@ -105,20 +110,30 @@ export async function GET() {
       };
     });
 
-    const spoPoolIds = [
-      ...new Set((spoVotesResult.data || []).map((v: any) => v.pool_id as string)),
-    ];
+    const poolsData = spoVotesResult.data || [];
     const ccIds = [...new Set((ccVotesResult.data || []).map((v: any) => v.cc_hot_id as string))];
 
-    const spoNodes: ConstellationApiData['nodes'] = spoPoolIds.map((poolId) => ({
-      id: poolId.slice(0, 16),
-      name: null,
-      power: 0.3,
-      score: 50,
-      dominant: 'transparency' as AlignmentDimension,
-      alignments: [50, 50, 50, 50, 50, 50],
-      nodeType: 'spo' as const,
-    }));
+    const maxPoolVotes = Math.max(...poolsData.map((p: any) => p.vote_count || 0), 1);
+    const spoNodes: ConstellationApiData['nodes'] = poolsData.map((p: any) => {
+      const aligns = {
+        treasuryConservative: p.alignment_treasury_conservative ?? 50,
+        treasuryGrowth: p.alignment_treasury_growth ?? 50,
+        decentralization: p.alignment_decentralization ?? 50,
+        security: p.alignment_security ?? 50,
+        innovation: p.alignment_innovation ?? 50,
+        transparency: p.alignment_transparency ?? 50,
+      };
+      const arr = alignmentsToArray(aligns);
+      return {
+        id: (p.pool_id as string).slice(0, 16),
+        name: p.ticker || p.pool_name || null,
+        power: (p.vote_count || 0) / maxPoolVotes,
+        score: p.governance_score ?? 50,
+        dominant: getDominantDimension(aligns),
+        alignments: arr,
+        nodeType: 'spo' as const,
+      };
+    });
 
     const ccNodes: ConstellationApiData['nodes'] = ccIds.map((ccId) => ({
       id: ccId.slice(0, 16),
@@ -177,7 +192,7 @@ export async function GET() {
         activeProposals: openProposals.length,
         votesThisWeek: votes.length,
         activeDReps: dreps.length,
-        activeSpOs: spoPoolIds.length,
+        activeSpOs: poolsData.length,
         ccMembers: ccIds.length,
       },
     };

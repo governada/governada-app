@@ -20,6 +20,7 @@ import { generateStateOfGovernance } from '@/inngest/functions/generate-state-of
 import { syncAlignment } from '@/inngest/functions/sync-alignment';
 import { syncDrepScores } from '@/inngest/functions/sync-drep-scores';
 import { syncSpoAndCcVotes } from '@/inngest/functions/sync-spo-cc-votes';
+import { syncSpoScores } from '@/inngest/functions/sync-spo-scores';
 import { checkSnapshotCompleteness } from '@/inngest/functions/check-snapshot-completeness';
 
 export const { GET, POST, PUT } = serve({
@@ -45,6 +46,7 @@ export const { GET, POST, PUT } = serve({
     syncAlignment,
     syncDrepScores,
     syncSpoAndCcVotes,
+    syncSpoScores,
     checkSnapshotCompleteness,
   ],
 });

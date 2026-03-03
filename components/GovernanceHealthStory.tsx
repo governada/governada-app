@@ -33,7 +33,9 @@ import { GovernanceBriefCard } from '@/components/GovernanceBriefCard';
 import { GovernanceCitizenPanels } from '@/components/GovernanceCitizenPanels';
 import { GovernanceLevelBadge } from '@/components/GovernanceLevelBadge';
 import { GovernanceFootprintCard } from '@/components/GovernanceFootprintCard';
+import { ForYouProposals } from '@/components/ForYouProposals';
 import { DelegatorShareCard } from '@/components/DelegatorShareCard';
+import { EpochReviewCard } from '@/components/EpochReviewCard';
 
 import { posthog } from '@/lib/posthog';
 import type { GovernanceLevel } from '@/lib/governanceLevels';
@@ -340,6 +342,10 @@ function GovernanceStorySection({
       <h2 className="text-lg font-bold tracking-tight border-b pb-2">Your Governance Story</h2>
 
       {stakeAddress && <GovernanceFootprintCard stakeAddress={stakeAddress} />}
+
+      <EpochReviewCard />
+
+      <ForYouProposals />
 
       {/* DRep Voted Feed */}
       {data.delegationHealth && data.pollHistory.length > 0 && (

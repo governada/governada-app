@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react';
 import { ConstellationHero } from '@/components/ConstellationHero';
 import { PersonalGovernanceCard } from '@/components/PersonalGovernanceCard';
+import { OnboardingOverlay } from '@/components/OnboardingOverlay';
+import { WelcomeBackToast } from '@/components/WelcomeBackToast';
 
 interface PulseData {
   totalAdaGoverned: string;
@@ -36,6 +38,8 @@ export function HomepageDualMode({
 
   return (
     <div>
+      <OnboardingOverlay />
+      <WelcomeBackToast streak={ssrHolderData?.visitStreak} />
       <ConstellationHero
         stats={{
           totalAdaGoverned: pulseData.totalAdaGoverned,

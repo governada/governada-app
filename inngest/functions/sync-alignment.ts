@@ -24,6 +24,7 @@ import {
   type DimensionInput,
   type DRepContext,
 } from '@/lib/alignment/dimensions';
+import { scoreRationalesBatch } from '@/lib/alignment/rationaleQuality';
 import { normalizeToPercentiles, type RawScoreRow } from '@/lib/alignment/normalize';
 import { computePCA, storePCAResults } from '@/lib/alignment/pca';
 import { validateDimensionIndependence } from '@/lib/alignment/validate';
@@ -143,9 +144,24 @@ export const syncAlignment = inngest.createFunction(
       return { success: true, skipped: true };
     }
 
-    // Step 2: score rationales — SKIPPED until rationale text ingestion is implemented.
-    // The DB only stores meta_url (a link), not actual rationale text.
-    const rationaleResult = { scored: 0 };
+    // Step 2: score rationales (AI, cached)
+    const rationaleResult = await step.run('score-rationales', async () => {
+      const sb = getSupabaseAdmin();
+      const { data: voteRows } = await sb
+        .from('drep_votes')
+        .select('drep_id, proposal_tx_hash, proposal_index, meta_url, rationale_quality')
+        .not('meta_url', 'is', null)
+        .is('rationale_quality', null);
+      if (!voteRows?.length) return { scored: 0 };
+      const forScoring = voteRows.map((v: any) => ({
+        drepId: v.drep_id,
+        proposalTxHash: v.proposal_tx_hash,
+        proposalIndex: v.proposal_index,
+        rationaleText: v.meta_url,
+      }));
+      const scores = await scoreRationalesBatch(forScoring);
+      return { scored: scores.size };
+    });
 
     // Step 3: compute dimension scores + normalize (CPU-bound, no DB writes)
     const computeResult = await step.run('compute-scores', async () => {
@@ -269,7 +285,6 @@ export const syncAlignment = inngest.createFunction(
 
       return {
         skipped: false,
-        reason: null as string | null,
         scores,
         classificationsCount: classMap.size,
         dimensionsIndependent: validation.allIndependent,
@@ -288,8 +303,8 @@ export const syncAlignment = inngest.createFunction(
             finished_at: new Date().toISOString(),
             duration_ms: Date.now() - startTime,
             success: true,
-            error_message: capMsg('skipped: ' + (computeResult.reason || 'unknown')),
-            metrics: { skipped: true, reason: computeResult.reason },
+            error_message: capMsg('skipped: ' + ((computeResult as any).reason || 'unknown')),
+            metrics: { skipped: true, reason: (computeResult as any).reason },
           })
           .eq('id', logId);
       });

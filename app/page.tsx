@@ -118,7 +118,7 @@ async function getSSRHolderData(): Promise<{ data: any; walletAddress: string } 
 
     const { data: userData } = await supabase
       .from('users')
-      .select('delegated_drep_id, claimed_drep_id')
+      .select('delegated_drep_id, claimed_drep_id, visit_streak')
       .eq('wallet_address', session.walletAddress)
       .single();
 
@@ -159,6 +159,7 @@ async function getSSRHolderData(): Promise<{ data: any; walletAddress: string } 
         representationScore: { score: null },
         activeProposals: [],
         repScoreDelta: null,
+        visitStreak: userData?.visit_streak ?? 0,
       },
       walletAddress: session.walletAddress,
     };

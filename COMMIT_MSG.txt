@@ -1,4 +1,0 @@
-fix: format new files + remove unused fetchCirculatingSupply to fix CI
-
-Prettier formatting on 4 new files. Remove unused convenience function
-that dropped koios.ts coverage below the 13% threshold.

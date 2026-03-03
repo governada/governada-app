@@ -161,7 +161,7 @@ export function DelegationGraph() {
         .slice(0, 20)
         .map((n) => n.id),
     );
-  }, [data?.nodes]);
+  }, [data]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGElement>, node: DelegationGraphNode) => {

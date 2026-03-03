@@ -9,7 +9,9 @@ interface ActivityEvent {
   drepName: string | null;
   detail: string | null;
   vote?: 'Yes' | 'No' | 'Abstain';
-  timestamp: number; // unix seconds
+  timestamp: number;
+  proposalTxHash?: string;
+  proposalIndex?: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     let votesQuery = supabase
       .from('drep_votes')
-      .select('drep_id, vote, block_time, proposal_tx_hash')
+      .select('drep_id, vote, block_time, proposal_tx_hash, proposal_index')
       .gt('block_time', oneWeekAgo)
       .order('block_time', { ascending: false })
       .limit(limit);
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
       supabase
         .from('proposals')
         .select(
-          'tx_hash, title, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+          'tx_hash, proposal_index, title, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
         )
         .order('created_at', { ascending: false })
         .limit(Math.ceil(limit / 3)),
@@ -73,13 +75,15 @@ export async function GET(request: NextRequest) {
       proposalHashes.size > 0
         ? await supabase
             .from('proposals')
-            .select('tx_hash, title')
+            .select('tx_hash, proposal_index, title')
             .in('tx_hash', [...proposalHashes].slice(0, 50))
         : { data: [] };
 
     const titleMap = new Map<string, string>();
+    const proposalIndexMap = new Map<string, number>();
     for (const p of proposalTitlesResult.data || []) {
       titleMap.set(p.tx_hash, p.title);
+      proposalIndexMap.set(p.tx_hash, p.proposal_index ?? 0);
     }
 
     const events: ActivityEvent[] = [];
@@ -92,6 +96,8 @@ export async function GET(request: NextRequest) {
         detail: titleMap.get(v.proposal_tx_hash) || null,
         vote: v.vote as 'Yes' | 'No' | 'Abstain',
         timestamp: v.block_time,
+        proposalTxHash: v.proposal_tx_hash ?? undefined,
+        proposalIndex: v.proposal_index ?? proposalIndexMap.get(v.proposal_tx_hash) ?? undefined,
       });
     }
 
@@ -117,6 +123,8 @@ export async function GET(request: NextRequest) {
         drepName: null,
         detail: p.title,
         timestamp: Math.floor(new Date(p.created_at).getTime() / 1000),
+        proposalTxHash: p.tx_hash ?? undefined,
+        proposalIndex: p.proposal_index ?? 0,
       });
     }
 
@@ -136,6 +144,8 @@ export async function GET(request: NextRequest) {
             drepName: null,
             detail: `${p.title || 'Proposal'} — ${o.label}`,
             timestamp: Math.floor(new Date(p.created_at).getTime() / 1000),
+            proposalTxHash: p.tx_hash ?? undefined,
+            proposalIndex: p.proposal_index ?? 0,
           });
         }
       }

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ShareActions } from '@/components/ShareActions';
 import { MILESTONES, type MilestoneDefinition } from '@/lib/milestones';
 import { posthog } from '@/lib/posthog';
+import { playMilestoneChime } from '@/lib/sounds';
 import { spring } from '@/lib/animations';
 
 interface MilestoneCelebrationProps {
@@ -37,6 +38,7 @@ export function MilestoneCelebration({
   useEffect(() => {
     if (firedRef.current) return;
     firedRef.current = true;
+    playMilestoneChime();
     confetti({
       particleCount: 80,
       spread: 70,

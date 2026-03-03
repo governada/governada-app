@@ -9,6 +9,7 @@ import { ArrowRight, Loader2, Sparkles, ChevronRight } from 'lucide-react';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { hapticLight } from '@/lib/haptics';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 
 interface QuickMatchResult {
@@ -149,6 +150,7 @@ export function QuickMatch() {
 
   const handleAnswer = useCallback(
     async (questionId: string, value: string) => {
+      hapticLight();
       const newAnswers = { ...answers, [questionId]: value };
       setAnswers(newAnswers);
 

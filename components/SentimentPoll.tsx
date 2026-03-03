@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { resolveRewardAddress } from '@meshsdk/core';
 import { PollFeedback } from '@/components/PollFeedback';
+import { hapticLight } from '@/lib/haptics';
 import type { PollResultsResponse } from '@/types/supabase';
 
 interface SentimentPollProps {
@@ -72,6 +73,7 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
   }, [fetchResults]);
 
   const castVote = async (vote: VoteChoice) => {
+    hapticLight();
     if (!isAuthenticated) {
       const ok = await authenticate();
       if (!ok) return;

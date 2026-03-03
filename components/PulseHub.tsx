@@ -13,6 +13,7 @@ import { PulseLeaderboardClient } from '@/components/PulseLeaderboardClient';
 import { GovernanceObservatory } from '@/components/GovernanceObservatory';
 import { ProposalTrends } from '@/components/ProposalTrends';
 import { GovernanceSparklines } from '@/components/GovernanceSparklines';
+import { LiveVoteFeed } from '@/components/LiveVoteFeed';
 
 import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
@@ -250,22 +251,27 @@ export function PulseHub() {
             </motion.div>
           )}
 
-          {/* 2. Governance Over Time (sparklines) */}
+          {/* 2. Live Governance Activity */}
+          <motion.div variants={fadeInUp}>
+            <LiveVoteFeed limit={10} />
+          </motion.div>
+
+          {/* 3. Governance Over Time (sparklines) */}
           <motion.div variants={fadeInUp}>
             <GovernanceSparklines />
           </motion.div>
 
-          {/* 3. Cross-Proposal Insights */}
+          {/* 4. Cross-Proposal Insights */}
           <motion.div variants={fadeInUp}>
             <CrossProposalInsights maxInsights={3} />
           </motion.div>
 
-          {/* 4. Evolution of Governance (proposal trends) */}
+          {/* 5. Evolution of Governance (proposal trends) */}
           <motion.div variants={fadeInUp}>
             <ProposalTrends />
           </motion.div>
 
-          {/* 3. Inter-Body Pulse */}
+          {/* 6. Inter-Body Pulse */}
           <motion.div variants={fadeInUp}>
             <InterBodyPulse />
           </motion.div>
@@ -275,7 +281,7 @@ export function PulseHub() {
             <TreasuryHealthWidget />
           </motion.div>
 
-          {/* 5. Decentralization */}
+          {/* 8. Decentralization */}
           {edi && (
             <motion.div variants={fadeInUp}>
               <Card>
@@ -318,14 +324,14 @@ export function PulseHub() {
             </motion.div>
           )}
 
-          {/* 6. Leaderboard */}
+          {/* 9. Leaderboard */}
           {leaderboard && (
             <motion.div variants={fadeInUp}>
               <PulseLeaderboardClient initialLeaderboard={leaderboard.leaderboard} />
             </motion.div>
           )}
 
-          {/* 7. Cross-Chain Observatory */}
+          {/* 10. Cross-Chain Observatory */}
           <motion.div variants={fadeInUp}>
             <GovernanceObservatory variant="compact" />
           </motion.div>

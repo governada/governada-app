@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dna, ArrowRight, Loader2, ChevronRight } from 'lucide-react';
 import { GovernanceDNAReveal, type QuizResult } from '@/components/GovernanceDNAReveal';
+import { hapticLight } from '@/lib/haptics';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,7 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
 
   const handleVote = useCallback(
     async (vote: VoteChoice) => {
+      hapticLight();
       const proposal = proposals[currentIdx];
       if (!proposal) return;
 

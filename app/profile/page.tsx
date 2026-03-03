@@ -33,11 +33,14 @@ import {
   Bell,
   BellOff,
   Compass,
+  Volume2,
 } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
 import { CopyableAddress } from '@/components/CopyableAddress';
 import { subscribeToPush, unsubscribeFromPush, isPushSubscribed } from '@/lib/pushSubscription';
+import { getSoundEnabled, setSoundEnabled } from '@/lib/sounds';
 import { NotificationPreferences } from '@/components/NotificationPreferences';
+import { Switch } from '@/components/ui/switch';
 
 const PREF_LABELS: Record<UserPrefKey, string> = {
   'treasury-conservative': 'Treasury Conservative',
@@ -62,10 +65,14 @@ export default function ProfilePage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushToggling, setPushToggling] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabledState] = useState(false);
 
-  // Check push subscription status
   useEffect(() => {
     isPushSubscribed().then(setPushEnabled);
+  }, []);
+
+  useEffect(() => {
+    setSoundEnabledState(getSoundEnabled());
   }, []);
 
   const handlePushToggle = async () => {
@@ -458,6 +465,30 @@ export default function ProfilePage() {
               <Plus className="h-4 w-4" />
               Add Wallet (Coming Soon)
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Volume2 className="h-5 w-5" />
+              Sound Effects
+            </CardTitle>
+            <CardDescription>
+              Play sounds for delegation success and milestone achievements
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Sound effects</span>
+              <Switch
+                checked={soundEnabled}
+                onCheckedChange={(checked) => {
+                  setSoundEnabled(checked);
+                  setSoundEnabledState(checked);
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
 

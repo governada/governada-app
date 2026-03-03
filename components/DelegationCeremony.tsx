@@ -18,6 +18,7 @@ import {
   getIdentityGradient,
   getPersonalityLabel,
 } from '@/lib/drepIdentity';
+import { playDelegationChime } from '@/lib/sounds';
 
 interface DelegationCeremonyProps {
   drepId: string;
@@ -57,6 +58,7 @@ export function DelegationCeremony({
   useEffect(() => {
     if (firedRef.current) return;
     firedRef.current = true;
+    playDelegationChime();
     const duration = 3000;
     const end = Date.now() + duration;
     function frame() {

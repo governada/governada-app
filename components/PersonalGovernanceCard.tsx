@@ -84,6 +84,7 @@ function DelegatedCard({ data }: { data: DelegatedData }) {
             <div>
               <Link
                 href={`/drep/${data.drepId}`}
+                prefetch
                 className="font-semibold hover:text-primary transition-colors"
               >
                 {data.drepName}

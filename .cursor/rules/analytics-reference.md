@@ -50,6 +50,7 @@ Use `<PageViewTracker event="..." />` in server-rendered pages.
 | `compare_page_viewed`     | `app/compare/page.tsx`    |
 | `governance_page_viewed`  | `app/governance/page.tsx` |
 | `quick_match_page_viewed` | `app/match/page.tsx`      |
+| `simulator_viewed`       | `app/simulate/page.tsx`   |
 
 ### Observable Data Loaders
 

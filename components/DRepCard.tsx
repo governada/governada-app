@@ -7,6 +7,7 @@ import { formatAda, getDRepScoreBadgeClass, getSizeBadgeClass } from '@/utils/sc
 import { getDRepTraitTags } from '@/lib/alignment';
 import { ScoreBreakdownTooltip } from './ScoreBreakdown';
 import { HexScore } from './HexScore';
+import { hapticLight } from '@/lib/haptics';
 import { extractAlignments } from '@/lib/drepIdentity';
 import { Heart, Vote } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -155,6 +156,7 @@ export function DRepCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              hapticLight();
               onWatchlistToggle(drep.drepId);
             }}
             className="p-1.5 hover:bg-muted rounded-full transition-colors"

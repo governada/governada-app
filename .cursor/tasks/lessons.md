@@ -154,3 +154,28 @@
 - **Fix**: Added "Post-Build: Ship It" section to `workflow.md` that explicitly triggers after every build — not just hotfixes. Updated `critical.md #2` to say "Corrected 5 times."
 - **The real lesson**: A build is not done until production is running the new code. Code compiling locally is ~60% of the job. The other 40% is PR → CI → merge → migrate → deploy → verify.
 - **Promoted to rule**: `workflow.md` Post-Build section, `critical.md` #2 correction count.
+
+## 2026-03-03 — Alignment Sync Fix (8 Consecutive Failures)
+
+### Cloudflare 524 timeout kills Inngest steps over 100 seconds
+
+- **Context**: Railway runs behind Cloudflare, which has a hard 100-second timeout on proxied HTTP requests. Inngest invokes functions via HTTP POST to `/api/inngest`. If any single step takes >100s, Cloudflare returns 524 and kills the connection. The step appears to succeed partially (e.g., DB writes go through) but Inngest sees a failure.
+- **Fix**: Split heavy steps into smaller sub-steps. Each step should target <60s wall time.
+- **Pattern**: When an Inngest step does data load + compute + multiple batchUpserts, split into: (1) compute step, (2) persist step(s). Pass serializable data between steps. Never put >1 batchUpsert of 1000+ rows in a single step.
+
+### DB columns != API type columns — never cast select('*') to external types
+
+- **Context**: `select('*')` from `proposals` table was cast to `ProposalInfo` (Koios API type). The DB uses `tx_hash`, the API uses `proposal_tx_hash`. All downstream code got `undefined` for the tx hash, silently failing every DB write.
+- **Fix**: Explicit select columns + `mapDBProposal()` helper that translates DB names to API names.
+- **Pattern**: Always use explicit column selects and a mapping function when crossing the DB/API type boundary.
+
+### Supabase PostgREST default row limit is 1000
+
+- **Context**: `drep_votes` has 15K rows but `sb.from('drep_votes').select(...)` only returns 1000 by default. PCA computation got a truncated vote matrix.
+- **Pattern**: For large tables, always add `.range(0, 99999)` or paginate. Known affected tables: `drep_votes` (15K+), could affect any table that grows past 1000 rows.
+
+### onFailure handler is essential for Inngest sync_log cleanup
+
+- **Context**: When a step fails and retries exhaust, Inngest kills the function. No catch block or finalize step runs. sync_log entries remain with `finished_at: null` forever ("ghost entries").
+- **Fix**: Added `onFailure` handler that updates all unfinalised alignment sync_log entries.
+- **Pattern**: Every Inngest function that creates a sync_log entry MUST have an onFailure handler to clean up ghost entries.

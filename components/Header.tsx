@@ -203,26 +203,26 @@ export function Header() {
         </div>
 
         <nav className="flex items-center space-x-2 sm:space-x-4">
-          <Link href="/discover" className={navLinkClass('/discover')}>
+          <Link href="/discover" prefetch className={navLinkClass('/discover')}>
             <Compass className="h-4 w-4" />
             <span>Discover</span>
           </Link>
-          <Link href="/proposals" className={navLinkClass('/proposals')}>
+          <Link href="/proposals" prefetch className={navLinkClass('/proposals')}>
             <ScrollText className="h-4 w-4" />
             <span>Proposals</span>
           </Link>
-          <Link href="/pulse" className={navLinkClass('/pulse')}>
+          <Link href="/pulse" prefetch className={navLinkClass('/pulse')}>
             <Activity className="h-4 w-4" />
             <span>Pulse</span>
           </Link>
           {isAuthenticated && (
-            <Link href="/governance" className={navLinkClass('/governance')}>
+            <Link href="/governance" prefetch className={navLinkClass('/governance')}>
               <Vote className="h-4 w-4" />
               <span>My Governance</span>
             </Link>
           )}
           {(ownDRepId || isAdmin) && (
-            <Link href="/dashboard" className={navLinkClass('/dashboard')}>
+            <Link href="/dashboard" prefetch className={navLinkClass('/dashboard')}>
               <Sparkles className="h-4 w-4" />
               <span>Dashboard</span>
             </Link>

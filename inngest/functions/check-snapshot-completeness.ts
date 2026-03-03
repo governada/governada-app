@@ -220,6 +220,40 @@ export const checkSnapshotCompleteness = inngest.createFunction(
         detail: recapRow ? `epoch ${epoch} present` : `epoch ${epoch} MISSING`,
       });
 
+      // 14. SPO score snapshots for current epoch
+      const { count: spoScoreCount } = await supabase
+        .from('spo_score_snapshots')
+        .select('pool_id', { count: 'exact', head: true })
+        .eq('epoch', epoch);
+      results.push({
+        name: 'spo_score_snapshots',
+        passed: (spoScoreCount ?? 0) > 0,
+        detail: `${spoScoreCount ?? 0} pools for epoch ${epoch}`,
+      });
+
+      // 15. SPO alignment snapshots for current epoch
+      const { count: spoAlignCount } = await supabase
+        .from('spo_alignment_snapshots')
+        .select('pool_id', { count: 'exact', head: true })
+        .eq('epoch', epoch);
+      results.push({
+        name: 'spo_alignment_snapshots',
+        passed: (spoAlignCount ?? 0) > 0,
+        detail: `${spoAlignCount ?? 0} pools for epoch ${epoch}`,
+      });
+
+      // 16. Governance epoch stats for current epoch
+      const { data: govStatsRow } = await supabase
+        .from('governance_epoch_stats')
+        .select('epoch')
+        .eq('epoch', epoch)
+        .maybeSingle();
+      results.push({
+        name: 'governance_epoch_stats',
+        passed: !!govStatsRow,
+        detail: govStatsRow ? `epoch ${epoch} present` : `epoch ${epoch} MISSING`,
+      });
+
       return results;
     });
 

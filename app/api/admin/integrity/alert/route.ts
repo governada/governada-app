@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getSupabaseAdmin } from '@/lib/supabase';
+import { inngest } from '@/lib/inngest';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -12,28 +13,28 @@ interface Alert {
   action: string;
 }
 
-const ACTIVE_SYNC_TYPES = new Set(['proposals', 'dreps', 'votes', 'secondary', 'slow']);
-
 const SYNC_CONFIG: Record<
   string,
-  { mins: number; schedule: string; route: string; label: string }
+  { mins: number; schedule: string; event: string; label: string }
 > = {
-  proposals: {
-    mins: 90,
-    schedule: 'every 30m',
-    route: '/api/sync/proposals',
-    label: 'Proposals Sync',
-  },
-  dreps: { mins: 720, schedule: 'every 6h', route: '/api/sync/dreps', label: 'DReps Sync' },
-  votes: { mins: 720, schedule: 'every 6h', route: '/api/sync/votes', label: 'Votes Sync' },
-  secondary: {
-    mins: 720,
-    schedule: 'every 6h',
-    route: '/api/sync/secondary',
-    label: 'Secondary Sync',
-  },
-  slow: { mins: 2160, schedule: 'daily', route: '/api/sync/slow', label: 'Slow Sync' },
+  proposals: { mins: 90, schedule: 'every 30m', event: 'drepscore/sync.proposals', label: 'Proposals Sync' },
+  dreps: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.dreps', label: 'DReps Sync' },
+  votes: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.votes', label: 'Votes Sync' },
+  secondary: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.secondary', label: 'Secondary Sync' },
+  slow: { mins: 2160, schedule: 'daily', event: 'drepscore/sync.slow', label: 'Slow Sync' },
+  treasury: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.treasury', label: 'Treasury Sync' },
+  scoring: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.scores', label: 'Scoring Sync' },
+  alignment: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.alignment', label: 'Alignment Sync' },
+  ghi: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.ghi', label: 'GHI Sync' },
+  benchmarks: { mins: 11520, schedule: 'weekly', event: 'drepscore/sync.benchmarks', label: 'Benchmarks Sync' },
+  spo_votes: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.spo-votes', label: 'SPO Votes Sync' },
+  cc_votes: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.cc-votes', label: 'CC Votes Sync' },
+  epoch_recaps: { mins: 8640, schedule: 'per epoch', event: 'drepscore/sync.epoch-recaps', label: 'Epoch Recaps' },
+  spo_scores: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.spo-scores', label: 'SPO Scores' },
+  governance_epoch_stats: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.governance-epoch-stats', label: 'Governance Epoch Stats' },
 };
+
+const ACTIVE_SYNC_TYPES = new Set(Object.keys(SYNC_CONFIG));
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
         metric: `${config.label} — No runs in ${staleHuman}`,
         value: `Last run: ${staleHuman} ago`,
         threshold: config.schedule,
-        action: `Trigger manually: curl -H "Authorization: Bearer $CRON_SECRET" https://drepscore.io${config.route}. Check Inngest dashboard if recurring.`,
+        action: `Trigger via Inngest Cloud (event: ${config.event}). Check Inngest dashboard if recurring.`,
       });
     }
 
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
         action =
           'Koios returned empty response. Check Koios API status at api.koios.rest. Retry in a few minutes.';
       } else {
-        action = `Check Railway logs for ${config.route} in the dashboard. Then retry manually.`;
+        action = `Check Railway/Inngest logs for ${config.label}. Retrigger via Inngest Cloud (event: ${config.event}).`;
       }
 
       alerts.push({
@@ -179,52 +180,38 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // ── Self-healing: trigger stale syncs ──
+  // ── Self-healing: trigger stale syncs via Inngest events ──
 
   const recoveries: string[] = [];
-  const cronSecret = process.env.CRON_SECRET;
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || null;
 
-  if (cronSecret && baseUrl) {
-    const staleTypes: {
-      syncType: string;
-      staleMins: number;
-      config: (typeof SYNC_CONFIG)[string];
-    }[] = [];
-    for (const row of sh || []) {
-      if (!ACTIVE_SYNC_TYPES.has(row.sync_type)) continue;
-      if (!row.last_run) continue;
-      const config = SYNC_CONFIG[row.sync_type];
-      if (!config) continue;
-      const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60000);
-      if (staleMins > config.mins) {
-        staleTypes.push({ syncType: row.sync_type, staleMins, config });
-      }
+  const staleTypes: {
+    syncType: string;
+    staleMins: number;
+    config: (typeof SYNC_CONFIG)[string];
+  }[] = [];
+  for (const row of sh || []) {
+    if (!ACTIVE_SYNC_TYPES.has(row.sync_type)) continue;
+    if (!row.last_run) continue;
+    const config = SYNC_CONFIG[row.sync_type];
+    if (!config) continue;
+    const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60000);
+    if (staleMins > config.mins) {
+      staleTypes.push({ syncType: row.sync_type, staleMins, config });
     }
+  }
 
-    const recoveryResults = await Promise.allSettled(
-      staleTypes.map(async ({ syncType, staleMins, config }) => {
-        console.log(
-          `[AlertCron] Self-healing: triggering ${syncType} (${staleMins}m stale > ${config.mins}m threshold)`,
-        );
-        const res = await fetch(`${baseUrl}${config.route}`, {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${cronSecret}` },
-          signal: AbortSignal.timeout(5000),
-        });
-        return { syncType, status: res.status };
-      }),
-    );
-
-    for (const result of recoveryResults) {
-      if (result.status === 'fulfilled') {
-        recoveries.push(`${result.value.syncType}: ${result.value.status}`);
-        console.log(`[AlertCron] Recovery ${result.value.syncType}: ${result.value.status}`);
-      } else {
-        const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-        recoveries.push(`unknown: failed (${msg})`);
-        console.warn(`[AlertCron] Recovery failed:`, msg);
-      }
+  for (const { syncType, staleMins, config } of staleTypes) {
+    try {
+      console.log(
+        `[AlertCron] Self-healing: triggering ${syncType} (${staleMins}m stale > ${config.mins}m threshold) via Inngest`,
+      );
+      await inngest.send({ name: config.event });
+      recoveries.push(`${syncType}: triggered`);
+      console.log(`[AlertCron] Recovery ${syncType}: Inngest event sent`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      recoveries.push(`${syncType}: failed (${msg})`);
+      console.warn(`[AlertCron] Recovery failed for ${syncType}:`, msg);
     }
   }
 

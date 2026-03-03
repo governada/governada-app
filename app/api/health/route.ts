@@ -15,6 +15,11 @@ const THRESHOLDS: Record<string, number> = {
   alignment: 720,
   ghi: 2880,
   benchmarks: 11520,
+  spo_votes: 720,
+  cc_votes: 720,
+  epoch_recaps: 8640,
+  spo_scores: 2880,
+  governance_epoch_stats: 2880,
 };
 
 export async function GET() {
@@ -67,27 +72,58 @@ export async function GET() {
 
       if (epoch > 0) {
         const snapshotTables = [
+          { name: 'drep_score_history', col: 'snapshot_date', isDate: true },
+          { name: 'ghi_snapshots', col: 'epoch_no' },
+          { name: 'decentralization_snapshots', col: 'epoch_no' },
+          { name: 'treasury_snapshots', col: 'epoch_no' },
           { name: 'treasury_health_snapshots', col: 'epoch' },
           { name: 'inter_body_alignment_snapshots', col: 'epoch' },
           { name: 'governance_participation_snapshots', col: 'epoch' },
+          { name: 'drep_power_snapshots', col: 'epoch_no' },
+          { name: 'delegation_snapshots', col: 'epoch' },
+          { name: 'alignment_snapshots', col: 'epoch' },
+          { name: 'spo_score_snapshots', col: 'epoch' },
+          { name: 'spo_alignment_snapshots', col: 'epoch' },
+          { name: 'governance_epoch_stats', col: 'epoch' },
         ];
 
         const snapshotChecks = await Promise.all(
-          snapshotTables.map(async ({ name, col }) => {
+          snapshotTables.map(async ({ name, col, isDate }: { name: string; col: string; isDate?: boolean }) => {
             const { data: latest } = await supabase
               .from(name)
               .select(col)
               .order(col, { ascending: false })
               .limit(1)
               .maybeSingle();
+
+            if (isDate) {
+              const latestDate = latest
+                ? ((latest as unknown as Record<string, string>)[col] ?? null)
+                : null;
+              const today = new Date().toISOString().slice(0, 10);
+              const dayGap = latestDate
+                ? Math.round(
+                    (new Date(today).getTime() - new Date(latestDate).getTime()) / 86_400_000,
+                  )
+                : null;
+              return {
+                table: name,
+                latest_value: latestDate,
+                expected: today,
+                gap: dayGap,
+                level:
+                  dayGap === null ? 'unknown' : dayGap <= 1 ? 'healthy' : dayGap <= 3 ? 'degraded' : 'critical',
+              };
+            }
+
             const latestEpoch = latest
               ? ((latest as unknown as Record<string, number>)[col] ?? null)
               : null;
             const gap = latestEpoch != null ? epoch - latestEpoch : null;
             return {
               table: name,
-              latest_epoch: latestEpoch,
-              expected_epoch: epoch,
+              latest_value: latestEpoch,
+              expected: epoch,
               gap,
               level:
                 gap === null

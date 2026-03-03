@@ -520,23 +520,10 @@ export async function fetchProposalCount(): Promise<number> {
  */
 export async function fetchDelegatedDRep(stakeAddress: string): Promise<string | null> {
   try {
-    const url = `${KOIOS_BASE_URL}/account_info`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(KOIOS_API_KEY && { Authorization: `Bearer ${KOIOS_API_KEY}` }),
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ _stake_addresses: [stakeAddress] }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(KOIOS_REQUEST_TIMEOUT_MS),
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
+    const data = await koiosFetch<Array<{ vote_delegation?: string; delegated_drep?: string }>>(
+      '/account_info',
+      { method: 'POST', body: JSON.stringify({ _stake_addresses: [stakeAddress] }) },
+    );
     const account = Array.isArray(data) ? data[0] : null;
     return account?.vote_delegation || account?.delegated_drep || null;
   } catch (err) {
@@ -546,41 +533,17 @@ export async function fetchDelegatedDRep(stakeAddress: string): Promise<string |
 }
 
 /**
- * Fetch delegator count for a DRep using Prefer: count=exact header.
- * Single request per DRep regardless of delegator count.
+ * Fetch delegator count for a DRep.
+ * Uses koiosFetch for retry/circuit-breaker, then counts returned rows.
  * Throws on API failure — callers must handle errors.
  */
 export async function fetchDRepDelegatorCount(drepId: string): Promise<number> {
-  const url = `${KOIOS_BASE_URL}/drep_delegators?_drep_id=${encodeURIComponent(drepId)}&select=stake_address&limit=1`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), KOIOS_REQUEST_TIMEOUT_MS);
-
   try {
-    const response = await fetch(url, {
-      headers: {
-        Prefer: 'count=exact',
-        ...(KOIOS_API_KEY && { Authorization: `Bearer ${KOIOS_API_KEY}` }),
-      },
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`Koios drep_delegators error: ${response.status} ${response.statusText}`);
-    }
-
-    const range = response.headers.get('content-range');
-    if (range) {
-      const match = range.match(/\/(\d+)$/);
-      if (match) return parseInt(match[1], 10);
-    }
-
-    // Fallback: count the returned rows (only 1 due to limit=1, but 0 means genuinely 0 delegators)
-    const data = await response.json();
+    const data = await koiosFetch<Array<{ stake_address: string }>>(
+      `/drep_delegators?_drep_id=${encodeURIComponent(drepId)}&select=stake_address`,
+    );
     return Array.isArray(data) ? data.length : 0;
   } catch (error) {
-    clearTimeout(timeoutId);
     const msg = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to fetch delegator count for ${drepId}: ${msg}`);
   }
@@ -764,16 +727,13 @@ export async function fetchProposalVotingSummary(
 }
 
 /**
- * Check if Koios API is available
+ * Check if Koios API is available.
+ * Uses koiosFetch for consistency but catches all errors to return boolean.
  */
 export async function checkKoiosHealth(): Promise<boolean> {
   try {
-    const response = await fetch(`${KOIOS_BASE_URL}/tip`, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: AbortSignal.timeout(10_000),
-    });
-    return response.ok;
+    await koiosFetch<unknown[]>('/tip');
+    return true;
   } catch {
     return false;
   }
@@ -1031,27 +991,25 @@ export async function fetchAllCCVotesBulk(): Promise<CCVote[]> {
 
 /**
  * Fetch full account info for a stake address, including balance, rewards, and delegation.
- * Extends the existing fetchDelegatedDRep pattern with more fields.
  */
 export async function fetchAccountInfo(stakeAddress: string): Promise<KoiosAccountInfo | null> {
   try {
-    const url = `${KOIOS_BASE_URL}/account_info`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(KOIOS_API_KEY && { Authorization: `Bearer ${KOIOS_API_KEY}` }),
-    };
-
-    const response = await fetch(url, {
+    const data = await koiosFetch<
+      Array<{
+        stake_address?: string;
+        status?: string;
+        delegated_pool?: string;
+        total_balance?: string;
+        utxo?: string;
+        rewards_available?: string;
+        vote_delegation?: string;
+        delegated_drep?: string;
+      }>
+    >('/account_info', {
       method: 'POST',
-      headers,
       body: JSON.stringify({ _stake_addresses: [stakeAddress] }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(KOIOS_REQUEST_TIMEOUT_MS),
     });
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
     const account = Array.isArray(data) ? data[0] : null;
     if (!account) return null;
 

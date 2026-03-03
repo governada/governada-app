@@ -19,10 +19,17 @@ const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {
   alignment: { mins: 480, event: 'drepscore/sync.alignment' },
   ghi: { mins: 1500, event: 'drepscore/sync.ghi' },
   benchmarks: { mins: 11520, event: 'drepscore/sync.benchmarks' },
+  spo_votes: { mins: 480, event: 'drepscore/sync.spo-votes' },
+  cc_votes: { mins: 480, event: 'drepscore/sync.cc-votes' },
+  epoch_recaps: { mins: 8640, event: 'drepscore/sync.epoch-recaps' },
+  spo_scores: { mins: 1500, event: 'drepscore/sync.spo-scores' },
+  governance_epoch_stats: { mins: 1500, event: 'drepscore/sync.governance-epoch-stats' },
 };
 
 const RECENT_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const GHOST_THRESHOLD_MS = 30 * 60 * 1000;
+const SELF_HEAL_MAX_TRIGGERS = 3;
+const SELF_HEAL_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 export const syncFreshnessGuard = inngest.createFunction(
   {
@@ -105,6 +112,23 @@ export const syncFreshnessGuard = inngest.createFunction(
         if (recentFail) {
           console.log(
             `[FreshnessGuard] Skipping ${syncType} — recent failure within 15m, letting Inngest retry handle it`,
+          );
+          return null;
+        }
+
+        const { count: recentTriggerCount } = await supabase
+          .from('sync_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('sync_type', syncType)
+          .gte('started_at', new Date(Date.now() - SELF_HEAL_WINDOW_MS).toISOString());
+
+        if ((recentTriggerCount ?? 0) >= SELF_HEAL_MAX_TRIGGERS) {
+          console.log(
+            `[FreshnessGuard] Throttling ${syncType} — ${recentTriggerCount} runs in last 2h, max ${SELF_HEAL_MAX_TRIGGERS}`,
+          );
+          await alertDiscord(
+            `Self-Heal Throttled: ${syncType}`,
+            `${recentTriggerCount} runs in last 2h but still stale (${staleMins}m). Possible persistent failure — needs manual investigation.`,
           );
           return null;
         }

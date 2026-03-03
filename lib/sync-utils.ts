@@ -25,7 +25,11 @@ export type SyncType =
   | 'governance_epoch_stats';
 
 const BATCH_SIZE = 100;
-const UPSERT_RETRY_DELAY_MS = 2_000;
+const MAX_UPSERT_RETRIES = 3;
+
+function upsertRetryDelay(attempt: number): number {
+  return Math.pow(2, attempt + 1) * 1000 + Math.random() * 500;
+}
 
 export function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message;
@@ -75,7 +79,7 @@ export async function batchUpsert<T extends Record<string, unknown>>(
     const batch = rows.slice(i, i + BATCH_SIZE);
     let lastError: string | null = null;
 
-    for (let attempt = 0; attempt <= 1; attempt++) {
+    for (let attempt = 0; attempt < MAX_UPSERT_RETRIES; attempt++) {
       const { error } = await supabase
         .from(table)
         .upsert(batch, { onConflict, ignoreDuplicates: false });
@@ -85,12 +89,13 @@ export async function batchUpsert<T extends Record<string, unknown>>(
         break;
       }
       lastError = error.message;
-      if (attempt === 0 && isTransientError(error.message)) {
+      if (attempt < MAX_UPSERT_RETRIES - 1 && isTransientError(error.message)) {
+        const delay = upsertRetryDelay(attempt);
         console.warn(
-          `[Sync] ${label} batch transient error, retrying in ${UPSERT_RETRY_DELAY_MS}ms:`,
+          `[Sync] ${label} batch transient error, retrying in ${Math.round(delay)}ms (${attempt + 1}/${MAX_UPSERT_RETRIES}):`,
           error.message,
         );
-        await new Promise((r) => setTimeout(r, UPSERT_RETRY_DELAY_MS));
+        await new Promise((r) => setTimeout(r, delay));
       } else {
         break;
       }
@@ -135,6 +140,7 @@ export function initSupabase():
 
 const ANOMALY_THRESHOLD = 0.5;
 const ANOMALY_MIN_RECORDS = 20;
+const CONSECUTIVE_DROP_RUNS = 3;
 
 export class SyncLogger {
   private id: number | null = null;
@@ -184,60 +190,62 @@ export class SyncLogger {
     }
   }
 
-  private async checkRecordCountAnomaly(metrics: Record<string, unknown>) {
-    const currentCount =
-      typeof metrics.records === 'number'
-        ? metrics.records
-        : typeof metrics.proposals_synced === 'number'
-          ? metrics.proposals_synced
-          : typeof metrics.votes_synced === 'number'
-            ? metrics.votes_synced
-            : typeof metrics.dreps_enriched === 'number'
-              ? metrics.dreps_enriched
-              : null;
+  private extractRecordCount(m: Record<string, unknown>): number | null {
+    if (typeof m.records === 'number') return m.records;
+    if (typeof m.proposals_synced === 'number') return m.proposals_synced;
+    if (typeof m.votes_synced === 'number') return m.votes_synced;
+    if (typeof m.dreps_enriched === 'number') return m.dreps_enriched;
+    return null;
+  }
 
+  private async checkRecordCountAnomaly(metrics: Record<string, unknown>) {
+    const currentCount = this.extractRecordCount(metrics);
     if (currentCount === null) return;
 
     try {
-      const { data: prev } = await this.supabase
+      const { data: prevRuns } = await this.supabase
         .from('sync_log')
         .select('metrics')
         .eq('sync_type', this.syncType)
         .eq('success', true)
         .neq('id', this.id)
         .order('finished_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(CONSECUTIVE_DROP_RUNS);
 
-      if (!prev?.metrics) return;
-      const m = prev.metrics as Record<string, unknown>;
-      const prevCount =
-        typeof m.records === 'number'
-          ? m.records
-          : typeof m.proposals_synced === 'number'
-            ? m.proposals_synced
-            : typeof m.votes_synced === 'number'
-              ? m.votes_synced
-              : typeof m.dreps_enriched === 'number'
-                ? m.dreps_enriched
-                : null;
+      if (!prevRuns || prevRuns.length === 0) return;
 
-      if (prevCount === null || prevCount < ANOMALY_MIN_RECORDS) return;
+      const prevCounts = prevRuns
+        .map((r) => this.extractRecordCount((r.metrics ?? {}) as Record<string, unknown>))
+        .filter((c): c is number => c !== null && c >= ANOMALY_MIN_RECORDS);
 
+      if (prevCounts.length === 0) return;
+
+      const prevCount = prevCounts[0];
       const ratio = currentCount / prevCount;
+
       if (ratio < ANOMALY_THRESHOLD) {
+        const consecutiveDrops = prevCounts.filter(
+          (c, i) => i > 0 && prevCounts[i - 1] > 0 && c / prevCounts[i - 1] < ANOMALY_THRESHOLD,
+        ).length;
+        const totalDrops = consecutiveDrops + 1;
+
+        const severity =
+          totalDrops >= CONSECUTIVE_DROP_RUNS ? 'persistent degradation' : 'single-run drop';
+
         console.warn(
-          `[${this.syncType}] Record count anomaly: ${currentCount} vs previous ${prevCount} (ratio: ${ratio.toFixed(2)})`,
+          `[${this.syncType}] Record count anomaly (${severity}): ${currentCount} vs previous ${prevCount} (ratio: ${ratio.toFixed(2)}, streak: ${totalDrops})`,
         );
         await alertDiscord(
           `Record Count Anomaly — ${this.syncType}`,
-          `Current: ${currentCount}, Previous: ${prevCount} (${Math.round(ratio * 100)}% of expected). Possible truncated API response.`,
+          `Current: ${currentCount}, Previous: ${prevCount} (${Math.round(ratio * 100)}% of expected). ${severity} (streak: ${totalDrops}). Possible truncated API response.`,
         );
         await emitPostHog(true, this.syncType, 0, {
           event_override: 'sync_anomaly_detected',
           current_count: currentCount,
           previous_count: prevCount,
           ratio,
+          consecutive_drops: totalDrops,
+          severity,
         });
       }
     } catch {

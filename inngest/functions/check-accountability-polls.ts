@@ -5,6 +5,7 @@
  */
 
 import { inngest } from '@/lib/inngest';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { captureServerEvent } from '@/lib/posthog-server';
@@ -22,6 +23,9 @@ export const checkAccountabilityPolls = inngest.createFunction(
   },
   { cron: '0 23 * * *' },
   async ({ step }) => {
+    const treasuryEnabled = await step.run('check-flag', async () => getFeatureFlag('treasury_intelligence'));
+    if (!treasuryEnabled) return { skipped: true, reason: 'treasury_intelligence flag disabled' };
+
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
     // 1. Open new polls for enacted proposals that have passed the gating delay

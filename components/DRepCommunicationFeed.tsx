@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquare, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { QuestionForm } from '@/components/QuestionForm';
+import { useFeatureFlag } from '@/components/FeatureGate';
 
 interface DRepCommunicationFeedProps {
   drepId: string;
@@ -52,6 +53,7 @@ type FeedItem =
 type TabKey = 'feed' | 'qa';
 
 export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
+  const drepQaEnabled = useFeatureFlag('drep_qa');
   const [data, setData] = useState<FeedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [philosophyOpen, setPhilosophyOpen] = useState(false);
@@ -146,22 +148,24 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
           >
             Statements
           </button>
-          <button
-            onClick={() => { setActiveTab('qa'); posthog.capture('drep_qa_tab_clicked', { drepId }); }}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-              activeTab === 'qa'
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <HelpCircle className="h-3.5 w-3.5" />
-            Q&A
-            {questions.length > 0 && (
-              <span className="text-[10px] bg-muted rounded-full px-1.5 py-0.5 tabular-nums">
-                {questions.length}
-              </span>
-            )}
-          </button>
+          {drepQaEnabled && (
+            <button
+              onClick={() => { setActiveTab('qa'); posthog.capture('drep_qa_tab_clicked', { drepId }); }}
+              className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+                activeTab === 'qa'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              Q&A
+              {questions.length > 0 && (
+                <span className="text-[10px] bg-muted rounded-full px-1.5 py-0.5 tabular-nums">
+                  {questions.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -250,7 +254,7 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
           </>
         )}
 
-        {activeTab === 'qa' && (
+        {drepQaEnabled && activeTab === 'qa' && (
           <div className="space-y-4">
             <QuestionForm drepId={drepId} onSubmitted={fetchQuestions} />
 

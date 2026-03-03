@@ -69,9 +69,11 @@ export function HomepageDualMode({ pulseData, topDReps, ssrHolderData, ssrWallet
       )}
 
       <div className="container mx-auto px-4 space-y-12 py-8">
-        <div className="flex justify-center">
-          <GovernanceHealthIndex size="compact" className="opacity-80 hover:opacity-100 transition-opacity" />
-        </div>
+        <FeatureGate flag="governance_health_index">
+          <div className="flex justify-center">
+            <GovernanceHealthIndex size="compact" className="opacity-80 hover:opacity-100 transition-opacity" />
+          </div>
+        </FeatureGate>
 
         <FeatureGate flag="cross_chain_observatory">
           <GovernanceObservatory variant="compact" className="opacity-80 hover:opacity-100 transition-opacity" />

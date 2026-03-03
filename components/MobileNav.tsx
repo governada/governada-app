@@ -19,6 +19,7 @@ import {
   User,
   Inbox,
   Shield,
+  ToggleLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { posthog } from '@/lib/posthog';
@@ -129,6 +130,39 @@ export function MobileNav({
               </>
             )}
           </nav>
+
+          {isAdmin && (
+            <div className="px-2">
+              <div className="my-2 border-t" />
+              <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Admin
+              </p>
+              <Link
+                href="/admin/integrity"
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
+                  isActive('/admin/integrity')
+                    ? 'bg-primary/10 font-medium text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Activity className="h-4 w-4" />
+                Data Integrity
+              </Link>
+              <Link
+                href="/admin/flags"
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
+                  isActive('/admin/flags')
+                    ? 'bg-primary/10 font-medium text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <ToggleLeft className="h-4 w-4" />
+                Feature Flags
+              </Link>
+            </div>
+          )}
 
           <div className="mt-auto border-t px-2 pt-4">
             {isAuthenticated && sessionAddress ? (

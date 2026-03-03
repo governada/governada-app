@@ -5,12 +5,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import { generateText } from '@/lib/ai';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
+  const enabled = await getFeatureFlag('ai_proposal_explainer');
+  if (!enabled) return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
+
   try {
     const { txHash, index } = await request.json();
     if (!txHash || index == null) {

@@ -13,18 +13,30 @@ export async function GET() {
     return NextResponse.json({ flags, details: allFlags }, {
       headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Failed to load flags' }, { status: 500 });
   }
+}
+
+function isAdminWallet(address: string): boolean {
+  const adminWallets = (process.env.ADMIN_WALLETS || '')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+  return adminWallets.includes(address.toLowerCase());
 }
 
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { key, enabled } = body;
+    const { key, enabled, address } = body;
 
     if (typeof key !== 'string' || typeof enabled !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid body: { key: string, enabled: boolean }' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid body: { key: string, enabled: boolean, address: string }' }, { status: 400 });
+    }
+
+    if (!address || typeof address !== 'string' || !isAdminWallet(address)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const success = await setFeatureFlag(key, enabled);
@@ -35,7 +47,7 @@ export async function PATCH(request: NextRequest) {
     invalidateFlagCache();
 
     return NextResponse.json({ key, enabled });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

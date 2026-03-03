@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { ChevronDown } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { ActivityTicker } from '@/components/ActivityTicker';
+import { FeatureGate } from '@/components/FeatureGate';
 import type { UserSegment } from '@/components/PersonalGovernanceCard';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
@@ -195,12 +196,19 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
       role={!isAuthenticated && !ssrWalletAddress ? 'button' : undefined}
       style={!isAuthenticated && !ssrWalletAddress ? { cursor: 'pointer' } : undefined}
     >
-      <GovernanceConstellation
-        ref={constellationRef}
-        onReady={handleConstellationReady}
-        onContracted={handleConstellationContracted}
-        className={contracted ? 'h-[40vh]' : 'h-[85vh]'}
-      />
+      <FeatureGate
+        flag="constellation_3d"
+        fallback={
+          <div className={`w-full bg-gradient-to-b from-[#0a0b14] via-[#0f1225] to-[#0a0b14] ${contracted ? 'h-[40vh]' : 'h-[85vh]'}`} />
+        }
+      >
+        <GovernanceConstellation
+          ref={constellationRef}
+          onReady={handleConstellationReady}
+          onContracted={handleConstellationContracted}
+          className={contracted ? 'h-[40vh]' : 'h-[85vh]'}
+        />
+      </FeatureGate>
 
       {/* SSR gradient fallback */}
       <div
@@ -256,7 +264,9 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
         </div>
       )}
 
-      <ActivityTicker onEventVisible={handleTickerEvent} />
+      <FeatureGate flag="activity_feeds">
+        <ActivityTicker onEventVisible={handleTickerEvent} />
+      </FeatureGate>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { SizeTier } from '@/utils/scoring';
 import { GitCompareArrows, X } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { cn } from '@/lib/utils';
+import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 
 export type SortKey = 'drepScore' | 'votingPower' | 'sizeTier' | 'match';
 export type SortDirection = 'asc' | 'desc';
@@ -62,6 +63,7 @@ export function DRepTableClient({
 }: DRepTableClientProps) {
   const router = useRouter();
   const { delegatedDrepId } = useWallet();
+  const quickViewEnabled = useFeatureFlag('drep_quick_view');
 
   // Quick view state
   const [quickViewDrep, setQuickViewDrep] = useState<EnrichedDRep | null>(null);
@@ -441,16 +443,20 @@ export function DRepTableClient({
             onWatchlistToggle={onWatchlistToggle}
             delegatedDrepId={delegatedDrepId}
             onCardClick={(drep) => {
-              setQuickViewDrep(drep);
-              setQuickViewOpen(true);
-              import('@/lib/posthog').then(({ posthog }) => {
-                posthog.capture('drep_quick_view_opened', {
-                  drep_id: drep.drepId,
-                  drep_score: drep.drepScore,
-                  has_match: !!matchData[drep.drepId],
-                  view_mode: viewMode,
-                });
-              }).catch(() => {});
+              if (quickViewEnabled) {
+                setQuickViewDrep(drep);
+                setQuickViewOpen(true);
+                import('@/lib/posthog').then(({ posthog }) => {
+                  posthog.capture('drep_quick_view_opened', {
+                    drep_id: drep.drepId,
+                    drep_score: drep.drepScore,
+                    has_match: !!matchData[drep.drepId],
+                    view_mode: viewMode,
+                  });
+                }).catch(() => {});
+              } else {
+                router.push(`/drep/${encodeURIComponent(drep.drepId)}`);
+              }
             }}
           />
           {visibleCardCount < sortedDReps.length && (
@@ -507,7 +513,8 @@ export function DRepTableClient({
       )}
 
       {/* Quick View Sheet */}
-      <DRepQuickView
+      <FeatureGate flag="drep_quick_view">
+        <DRepQuickView
         drep={quickViewDrep}
         open={quickViewOpen}
         onOpenChange={setQuickViewOpen}
@@ -521,6 +528,7 @@ export function DRepTableClient({
         onWatchlistToggle={onWatchlistToggle}
         isDelegated={quickViewDrep?.drepId === delegatedDrepId}
       />
+      </FeatureGate>
 
       {/* Floating Compare Bar */}
       {compareSelection.size >= 2 && (

@@ -24,6 +24,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { ClaimCelebration } from '@/components/ClaimCelebration';
+import { useFeatureFlag } from '@/components/FeatureGate';
 
 interface ClaimPageClientProps {
   drepId: string;
@@ -101,6 +102,7 @@ export function ClaimPageClient({
 }: ClaimPageClientProps) {
   const router = useRouter();
   const { isAuthenticated, ownDRepId, connecting, reconnecting } = useWallet();
+  const claimExperience = useFeatureFlag('claim_experience');
   const [pulse, setPulse] = useState<PulseData | null>(null);
   const [topDreps, setTopDreps] = useState<TopDRep[]>([]);
   const [claiming, setClaiming] = useState(false);
@@ -153,16 +155,28 @@ export function ClaimPageClient({
   }
 
   if (showCelebration) {
+    if (claimExperience === true) {
+      return (
+        <ClaimCelebration
+          name={name}
+          score={score}
+          participation={participation}
+          rationale={rationale}
+          reliability={reliability}
+          profile={profile}
+          onContinue={() => router.push('/dashboard')}
+        />
+      );
+    }
     return (
-      <ClaimCelebration
-        name={name}
-        score={score}
-        participation={participation}
-        rationale={rationale}
-        reliability={reliability}
-        profile={profile}
-        onContinue={() => router.push('/dashboard')}
-      />
+      <div className="container mx-auto px-4 py-24 max-w-lg text-center space-y-4">
+        <Shield className="h-12 w-12 mx-auto text-green-600 dark:text-green-400" />
+        <h1 className="text-2xl font-bold">Claim successful</h1>
+        <p className="text-sm text-muted-foreground">Your DRep profile has been claimed.</p>
+        <Button onClick={() => router.push('/dashboard')} className="gap-2">
+          Go to Dashboard <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
     );
   }
 

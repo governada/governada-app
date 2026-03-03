@@ -166,9 +166,24 @@ async function LeaderboardSection() {
 }
 
 export default async function PulsePage() {
-  const [pulse, showCrossChain] = await Promise.all([
+  const [
+    pulse,
+    showCrossChain,
+    showGHI,
+    showNarratives,
+    showActivityFeeds,
+    showInsights,
+    showReports,
+    showLeaderboard,
+  ] = await Promise.all([
     fetchPulseData(),
     getFeatureFlag('cross_chain_observatory'),
+    getFeatureFlag('governance_health_index'),
+    getFeatureFlag('narrative_summaries'),
+    getFeatureFlag('activity_feeds'),
+    getFeatureFlag('cross_proposal_insights'),
+    getFeatureFlag('state_of_governance_reports'),
+    getFeatureFlag('leaderboard'),
   ]);
 
   const pulseNarrative = pulse ? generatePulseNarrative({
@@ -191,34 +206,38 @@ export default async function PulsePage() {
       <GovernanceSubNav />
 
       {/* GHI Hero + Narrative */}
-      <div className="flex flex-col md:flex-row items-center gap-8 py-4">
-        <GovernanceHealthIndex size="hero" />
-        <div className="flex-1 space-y-3">
-          <h2 className="text-lg font-semibold">Governance Health Index</h2>
-          <NarrativeSummary text={pulseNarrative} />
-          <p className="text-xs text-muted-foreground">
-            A composite score measuring participation, rationale quality, delegation spread, and DRep diversity.
-          </p>
+      {showGHI && (
+        <div className="flex flex-col md:flex-row items-center gap-8 py-4">
+          <GovernanceHealthIndex size="hero" />
+          <div className="flex-1 space-y-3">
+            <h2 className="text-lg font-semibold">Governance Health Index</h2>
+            {showNarratives && <NarrativeSummary text={pulseNarrative} />}
+            <p className="text-xs text-muted-foreground">
+              A composite score measuring participation, rationale quality, delegation spread, and DRep diversity.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Latest Report Link */}
-      <Link href="/pulse/report/latest" className="block">
-        <Card className="border-primary/20 hover:border-primary/40 transition-colors">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                <BarChart3 className="h-5 w-5 text-primary" />
+      {showReports && (
+        <Link href="/pulse/report/latest" className="block">
+          <Card className="border-primary/20 hover:border-primary/40 transition-colors">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">State of Governance Report</p>
+                  <p className="text-xs text-muted-foreground">Weekly intelligence report with AI analysis</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold">State of Governance Report</p>
-                <p className="text-xs text-muted-foreground">Weekly intelligence report with AI analysis</p>
-              </div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </Link>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       <TreasuryHealthWidget />
 
@@ -259,7 +278,7 @@ export default async function PulsePage() {
       )}
 
       {/* Live Activity Feed */}
-      <ActivityFeed limit={10} />
+      {showActivityFeeds && <ActivityFeed limit={10} />}
 
       {/* Community Sentiment */}
       {pulse && pulse.communityGap.length > 0 && (
@@ -311,15 +330,17 @@ export default async function PulsePage() {
       )}
 
       {/* Cross-Proposal Insights */}
-      <CrossProposalInsights />
+      {showInsights && <CrossProposalInsights />}
 
       {/* Cross-Chain Governance Observatory (feature-flagged) */}
       {showCrossChain && <GovernanceObservatory />}
 
       {/* Leaderboard + Movers + Hall of Fame (with Suspense) */}
-      <Suspense fallback={<LeaderboardSkeleton />}>
-        <LeaderboardSection />
-      </Suspense>
+      {showLeaderboard && (
+        <Suspense fallback={<LeaderboardSkeleton />}>
+          <LeaderboardSection />
+        </Suspense>
+      )}
 
       {/* Share section */}
       <div className="flex items-center justify-center gap-4 py-4">

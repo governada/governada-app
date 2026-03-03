@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import Link from 'next/link';
 import { getProposalByKey, getVotesByProposal } from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -72,6 +73,8 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
     blockTime: v.blockTime,
   }));
 
+  const sentimentPollsEnabled = await getFeatureFlag('sentiment_polls');
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
       {/* Back */}
@@ -140,7 +143,9 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
       <DRepVoteCallout txHash={txHash} proposalIndex={proposalIndex} />
 
       {/* Community Sentiment Poll */}
-      <SentimentPoll txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
+      {sentimentPollsEnabled && (
+        <SentimentPoll txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
+      )}
 
       {/* Proposal Outcome Card — only for closed proposals */}
       {!isOpen && (

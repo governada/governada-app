@@ -8,6 +8,7 @@ import { CohortIdentity } from '@/components/CohortIdentity';
 import { DelegatorShareCard } from '@/components/DelegatorShareCard';
 import { DelegationAnniversaryCard } from '@/components/DelegationAnniversaryCard';
 import { EpochSummaryCard } from '@/components/EpochSummaryCard';
+import { FeatureGate } from '@/components/FeatureGate';
 import { GovernanceLevelBadge } from '@/components/GovernanceLevelBadge';
 import { checkDelegationMilestones } from '@/lib/delegationMilestones';
 import { checkLevel, type GovernanceLevel } from '@/lib/governanceLevels';
@@ -123,15 +124,19 @@ export function GovernanceCitizenSection() {
       )}
 
       {state.epochSummary && (
-        <EpochSummaryCard
-          epoch={state.epochSummary.epoch}
-          summary={state.epochSummary.summary}
-        />
+        <FeatureGate flag="sharing_surfaces">
+          <EpochSummaryCard
+            epoch={state.epochSummary.epoch}
+            summary={state.epochSummary.summary}
+          />
+        </FeatureGate>
       )}
 
       <GovernanceCitizenPanels />
       <GovernanceTimeline />
-      <DelegatorShareCard />
+      <FeatureGate flag="sharing_surfaces">
+        <DelegatorShareCard />
+      </FeatureGate>
     </div>
   );
 }

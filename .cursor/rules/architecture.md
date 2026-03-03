@@ -16,7 +16,7 @@ Cardano governance tool for casual ADA holders to discover DReps aligned with th
 - **Data**: Koios API (mainnet) → Supabase (cache) → Next.js (reads)
 - **Hosting**: Railway (Docker, health checks, auto-deploy from `main`). **NOT Vercel** — see Platform Constraints below
 - **CDN/DNS**: Cloudflare
-- **Background Jobs**: Inngest Cloud (16 durable functions — syncs, integrity, notifications, treasury, cross-chain benchmarks)
+- **Background Jobs**: Inngest Cloud (16 durable functions — syncs, integrity, notifications, treasury, cross-chain benchmarks, all feature-flagged)
 - **Error Tracking**: Sentry (Next.js SDK)
 - **Analytics**: PostHog (JS + Node SDKs)
 
@@ -60,21 +60,33 @@ Next.js App (server components + API routes + client components)
 | DRep types | `types/drep.ts`, `types/koios.ts` |
 | Alignment scoring | `lib/alignment.ts`, `utils/scoring.ts` |
 | Admin integrity | `app/api/admin/integrity/route.ts`, `app/admin/integrity/page.tsx` |
-| Feature flags | `lib/featureFlags.ts`, `components/FeatureGate.tsx`, `app/api/admin/feature-flags/route.ts` |
+| Feature flags | `lib/featureFlags.ts`, `components/FeatureGate.tsx`, `app/api/admin/feature-flags/route.ts`, `app/admin/flags/page.tsx` |
 | Cross-chain governance | `lib/crossChain.ts`, `inngest/functions/sync-governance-benchmarks.ts` |
 | Developer platform | `app/developers/page.tsx`, `components/DeveloperPage.tsx`, `components/ApiExplorer.tsx` |
 | Embeddable widgets | `app/embed/layout.tsx`, `public/embed.js`, `components/Embed*.tsx` |
 
 ## Feature Flags
-Supabase-backed `feature_flags` table with admin UI at `/admin/flags`. Flags are cached in-memory for 60s and can be overridden via env vars (`FF_<KEY>=true|false`).
+Supabase-backed `feature_flags` table (41 flags across 14 categories) with admin UI at `/admin/flags`. Flags have a `category` column for grouping in the admin UI. Cached in-memory for 60s, overridable via env vars (`FF_<KEY>=true|false`).
 
 - **Server components**: `const enabled = await getFeatureFlag('flag_key')` from `lib/featureFlags.ts`
 - **Client components**: `<FeatureGate flag="flag_key">{children}</FeatureGate>` from `components/FeatureGate.tsx`, or `useFeatureFlag('flag_key')` hook
 - **Inngest functions**: Check flag inside a `step.run()` and early-return if disabled
 - **API routes**: Check flag and return empty/404 if disabled
-- **Admin API**: `GET/PATCH /api/admin/feature-flags` for reading and toggling
+- **Admin API**: `GET /api/admin/feature-flags` (public read), `PATCH` (admin-only, requires `address` in body)
 
-Current flags: `cross_chain_observatory`, `cross_chain_embed`, `cross_chain_sync`. New risky or controversial features should always ship behind a flag.
+**Flag categories:** AI (4), Cross-Chain (3), Platform (3), Social (5), Intelligence (3), Narrative (2), Discovery (5), DRep Tools (3), Governance (5), Treasury (1), Visual (1), Dashboard (3), Sharing (1), Notifications (2)
+
+**Key convention:** Flat namespace, underscores, descriptive: `category_feature`. All default to `enabled: true`. When adding a new feature that is controversial, untested, or costly — add a flag with an appropriate category.
+
+## Admin Pages
+All admin-only pages and tools follow a standard pattern:
+
+- **Route prefix**: `app/admin/*` (e.g., `/admin/integrity`, `/admin/flags`)
+- **Client-side auth**: Each page uses `useWallet()` → `POST /api/admin/check` to verify the connected wallet against `ADMIN_WALLETS` env var. Shows "Admin Access Required" if not authorized.
+- **Server-side auth (write APIs)**: All admin `PATCH/POST/DELETE` endpoints validate the `address` field in the request body against `ADMIN_WALLETS`.
+- **Navigation**: Admin pages are grouped under an "Admin" section in the Header wallet dropdown (desktop `DropdownMenu`) and MobileNav sheet. The section only renders when `isAdmin` is true.
+- **Sitemap exclusion**: `robots.ts` already disallows `/admin/`
+- **When adding a new admin page**: Add the route under `app/admin/`, implement the auth guard, and add a nav link to both `Header.tsx` (wallet dropdown Admin section) and `MobileNav.tsx` (Admin section).
 
 ## Scoring Model (V3, Feb 2026)
 ```
@@ -95,7 +107,7 @@ DRep Score (0-100) =
 - **Integrity alerts** (`/api/admin/integrity/alert`): Every 6 hours, Slack/Discord webhooks
 
 ## Database (Supabase)
-25+ migrations. Key tables: `dreps`, `drep_votes`, `vote_rationales`, `proposals`, `drep_score_history`, `proposal_voting_summary`, `drep_power_snapshots`, `poll_responses`, `sync_log`, `integrity_snapshots`, `api_keys`, `api_usage_log`, `drep_milestones`, `position_statements`, `vote_explanations`, `governance_philosophy`, `governance_benchmarks`, `feature_flags`
+28+ migrations. Key tables: `dreps`, `drep_votes`, `vote_rationales`, `proposals`, `drep_score_history`, `proposal_voting_summary`, `drep_power_snapshots`, `poll_responses`, `sync_log`, `integrity_snapshots`, `api_keys`, `api_usage_log`, `drep_milestones`, `position_statements`, `vote_explanations`, `governance_philosophy`, `governance_benchmarks`, `feature_flags` (with `category` column, 41 rows)
 
 ### `dreps` Table Schema Convention
 The `dreps` table uses `id` as its primary key (the full `drep1...` bech32 string). All other tables use `drep_id` as their foreign key column. **Do not query `dreps.drep_id` — it does not exist.**

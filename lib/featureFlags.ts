@@ -17,6 +17,7 @@ export interface FeatureFlag {
   key: string;
   enabled: boolean;
   description: string | null;
+  category: string;
   targeting: Record<string, unknown>;
   updatedAt: string;
 }
@@ -78,7 +79,8 @@ export async function getAllFlags(): Promise<FeatureFlag[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('feature_flags')
-      .select('key, enabled, description, targeting, updated_at')
+      .select('key, enabled, description, category, targeting, updated_at')
+      .order('category')
       .order('key');
 
     if (error || !data) return [];
@@ -87,6 +89,7 @@ export async function getAllFlags(): Promise<FeatureFlag[]> {
       key: row.key,
       enabled: row.enabled,
       description: row.description,
+      category: row.category ?? 'Uncategorized',
       targeting: row.targeting ?? {},
       updatedAt: row.updated_at,
     }));

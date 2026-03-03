@@ -425,6 +425,12 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Fix**: All 17 Inngest functions now registered in serve(). Added treasury to freshness guard thresholds. Added event trigger to treasury snapshot. Created `/api/sync/treasury` manual route. Added proposals self-heal (trigger sync on empty data, same pattern as DReps). Improved empty states (GHI shows "syncing" instead of infinite skeleton; proposals distinguishes "not synced" from "filters hiding results").
 **Takeaway**: Every new Inngest function must be registered in `app/api/inngest/route.ts` in the same commit that creates it. The orphan audit at session start should explicitly compare `ls inngest/functions/` against the `serve()` functions array. If counts don't match, something is missing.
 
+### 2026-03-02: Critical rules need a separate, short file
+**Promoted to rule**: Yes — created `.cursor/rules/critical.md` with `alwaysApply: true`.
+**Issue**: `workflow.md` is 230+ lines. Agents reliably miss the most important rules (commit to main, ship after execution, PowerShell syntax, Vercel references) because they're buried in a wall of guidelines. The rules that have been violated 3+ times are not visually differentiated from nice-to-haves.
+**Fix**: Created `critical.md` with 12 non-negotiable rules — every one has been violated at least once. Added a callout at the top of `workflow.md` pointing to it.
+**Takeaway**: Rule files over ~50 lines lose enforcement power. Critical rules need to be short, numbered, and in their own `alwaysApply` file. Keep `critical.md` under 15 items or it becomes another wall.
+
 ### 2026-03-02: Always ship after completing all todos
 **Promoted to rule**: Reinforces existing workflow.md "Ship It" step.
 **Issue**: After completing all 14 implementation todos, I reported completion but did not automatically create a branch, commit, open a PR, merge, or verify the deploy. The user had to explicitly ask.

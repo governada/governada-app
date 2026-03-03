@@ -6,6 +6,8 @@ alwaysApply: true
 
 # DRepScore Workflow Protocol
 
+> **Read `.cursor/rules/critical.md` FIRST.** It contains 12 non-negotiable rules that override everything in this file when in conflict. Every rule there has caused a production failure or wasted session.
+
 ## Session Start
 1. Read `tasks/lessons.md` for relevant patterns before doing anything
 2. Read `tasks/todo.md` for any in-progress work from prior sessions

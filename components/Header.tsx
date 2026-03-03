@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { MobileNav } from './MobileNav';
 import { GovernanceHeartbeat } from './GovernanceHeartbeat';
+import { FeatureGate } from '@/components/FeatureGate';
 
 const ALERT_ICONS: Record<AlertType, typeof TrendingDown> = {
   'representation-shift': TrendingDown,
@@ -185,10 +186,12 @@ export function Header() {
               <span>Dashboard</span>
             </Link>
           )}
-          <Link href="/developers" className={`${navLinkClass('/developers')} hidden lg:flex`}>
-            <Code2 className="h-4 w-4" />
-            <span>Developers</span>
-          </Link>
+          <FeatureGate flag="developer_platform">
+            <Link href="/developers" className={`${navLinkClass('/developers')} hidden lg:flex`}>
+              <Code2 className="h-4 w-4" />
+              <span>Developers</span>
+            </Link>
+          </FeatureGate>
           
           {isAuthenticated && sessionAddress ? (
             <>
@@ -303,9 +306,14 @@ export function Header() {
                   {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Admin</DropdownMenuLabel>
                       <DropdownMenuItem onSelect={() => router.push('/admin/integrity')} className="cursor-pointer">
                         <Activity className="h-4 w-4 mr-2" />
                         Data Integrity
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => router.push('/admin/flags')} className="cursor-pointer">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Feature Flags
                       </DropdownMenuItem>
                     </>
                   )}

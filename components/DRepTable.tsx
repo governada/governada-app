@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ScoreBreakdownTooltip } from './ScoreBreakdown';
 import { SocialIcons } from './SocialIcons';
+import { useFeatureFlag } from '@/components/FeatureGate';
 import { cn } from '@/lib/utils';
 
 interface DRepTableProps {
@@ -52,7 +53,8 @@ export function DRepTable({
   matchData = {},
 }: DRepTableProps) {
   const router = useRouter();
-  const hasMatch = Object.keys(matchData).length > 0;
+  const representationMatching = useFeatureFlag('representation_matching');
+  const hasMatch = Object.keys(matchData).length > 0 && representationMatching === true;
   const showCompare = !!onCompareToggle;
 
   if (dreps.length === 0) {

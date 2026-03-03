@@ -13,6 +13,7 @@ import {
 } from '@/components/governance-cards';
 import { GovernanceCalendar } from '@/components/GovernanceCalendar';
 import { GovernanceBriefCard } from '@/components/GovernanceBriefCard';
+import { FeatureGate } from '@/components/FeatureGate';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Compass, ArrowRight } from 'lucide-react';
@@ -68,7 +69,9 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
         />
       )}
 
-      <GovernanceBriefCard />
+      <FeatureGate flag="ai_governance_brief">
+        <GovernanceBriefCard />
+      </FeatureGate>
 
       {data ? (
         <>
@@ -82,7 +85,9 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
             <RepresentationScoreCard rep={data.representationScore} />
           </div>
 
-          <GovernanceCalendar />
+          <FeatureGate flag="governance_calendar">
+            <GovernanceCalendar />
+          </FeatureGate>
 
           <DelegationIntelligence
             currentDrepName={data.delegationHealth?.drepName}

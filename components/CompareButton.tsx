@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { GitCompareArrows, Search, Check } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
+import { useFeatureFlag } from '@/components/FeatureGate';
 import { computeOverallAlignment } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
 import type { UserPrefKey } from '@/types/drep';
@@ -26,6 +27,9 @@ interface CompareButtonProps {
 export function CompareButton({ currentDrepId, currentDrepName }: CompareButtonProps) {
   const router = useRouter();
   const { delegatedDrepId, connected } = useWallet();
+  const compareEnabled = useFeatureFlag('compare_page');
+
+  if (compareEnabled === false || compareEnabled === null) return null;
   const [open, setOpen] = useState(false);
   const [allDreps, setAllDreps] = useState<EnrichedDRep[]>([]);
   const [loading, setLoading] = useState(false);

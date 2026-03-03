@@ -425,5 +425,16 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Fix**: All 17 Inngest functions now registered in serve(). Added treasury to freshness guard thresholds. Added event trigger to treasury snapshot. Created `/api/sync/treasury` manual route. Added proposals self-heal (trigger sync on empty data, same pattern as DReps). Improved empty states (GHI shows "syncing" instead of infinite skeleton; proposals distinguishes "not synced" from "filters hiding results").
 **Takeaway**: Every new Inngest function must be registered in `app/api/inngest/route.ts` in the same commit that creates it. The orphan audit at session start should explicitly compare `ls inngest/functions/` against the `serve()` functions array. If counts don't match, something is missing.
 
+### 2026-03-02: Feature flags need categories at scale (41 flags)
+**Issue**: With 41 feature flags, the flat list admin UI became unnavigable. The original 3-flag implementation had no grouping mechanism.
+**Fix**: Added `category TEXT` column to `feature_flags` table. Upgraded `FeatureFlagAdmin` to group flags by category with collapsible sections, showing enabled/total counts per category. Added admin auth guard (page + PATCH endpoint) matching the integrity dashboard pattern.
+**Takeaway**: When a flat list grows past ~10 items, add a grouping dimension from the start. For feature flags: every new flag must specify a category in the INSERT statement. Categories are: AI, Cross-Chain, Platform, Social, Intelligence, Narrative, Discovery, DRep Tools, Governance, Treasury, Visual, Dashboard, Sharing, Notifications.
+
+### 2026-03-02: Admin pages need a standard pattern
+**Promoted to rule**: Yes — `architecture.md` Admin Pages section.
+**Issue**: `/admin/flags` initially shipped with zero auth — anyone could toggle feature flags. The admin integrity page had auth but there was no convention ensuring future admin pages would follow suit.
+**Fix**: Standardized: all admin pages under `app/admin/`, all use `POST /api/admin/check` client-side auth, all write endpoints validate `address` against `ADMIN_WALLETS`, all linked in Header dropdown + MobileNav Admin section.
+**Takeaway**: Admin pages are a security surface. The convention must be followed for every new admin page — auth guard, API validation, nav integration. The architecture.md rule now documents this.
+
 *Last updated: 2026-03-02*
 *Review this file at the start of every session.*

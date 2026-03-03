@@ -25,6 +25,7 @@ import { TreasuryPendingProposals } from '@/components/TreasuryPendingProposals'
 import { TreasurySimulator } from '@/components/TreasurySimulator';
 import { TreasuryAccountabilitySection } from '@/components/TreasuryAccountabilitySection';
 import { TreasuryHistoryTimeline } from '@/components/TreasuryHistoryTimeline';
+import { useFeatureFlag } from '@/components/FeatureGate';
 
 interface TreasuryData {
   balance: number;
@@ -40,6 +41,7 @@ interface TreasuryData {
 }
 
 export function TreasuryDashboard() {
+  const treasuryIntelligenceEnabled = useFeatureFlag('treasury_intelligence');
   const [data, setData] = useState<TreasuryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'simulator' | 'accountability'>('overview');
@@ -186,22 +188,49 @@ export function TreasuryDashboard() {
 
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b pb-px">
-        {(['overview', 'simulator', 'accountability'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => {
-              setActiveTab(tab);
-              posthog.capture('treasury_tab_changed', { tab });
-            }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab === 'overview' ? 'Overview' : tab === 'simulator' ? 'What-If Simulator' : 'Accountability'}
-          </button>
-        ))}
+        <button
+          onClick={() => {
+            setActiveTab('overview');
+            posthog.capture('treasury_tab_changed', { tab: 'overview' });
+          }}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'overview'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Overview
+        </button>
+        {treasuryIntelligenceEnabled && (
+          <>
+            <button
+              onClick={() => {
+                setActiveTab('simulator');
+                posthog.capture('treasury_tab_changed', { tab: 'simulator' });
+              }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'simulator'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              What-If Simulator
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('accountability');
+                posthog.capture('treasury_tab_changed', { tab: 'accountability' });
+              }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'accountability'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Accountability
+            </button>
+          </>
+        )}
       </div>
 
       {/* Tab Content */}
@@ -213,7 +242,7 @@ export function TreasuryDashboard() {
         </div>
       )}
 
-      {activeTab === 'simulator' && (
+      {treasuryIntelligenceEnabled && activeTab === 'simulator' && (
         <TreasurySimulator
           currentBalance={data.balance}
           burnRate={data.burnRatePerEpoch}
@@ -221,7 +250,7 @@ export function TreasuryDashboard() {
         />
       )}
 
-      {activeTab === 'accountability' && (
+      {treasuryIntelligenceEnabled && activeTab === 'accountability' && (
         <TreasuryAccountabilitySection />
       )}
     </div>

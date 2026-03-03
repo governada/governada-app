@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SlidersHorizontal, Info, RotateCcw, Heart, UserCheck } from 'lucide-react';
+import { useFeatureFlag } from '@/components/FeatureGate';
 import { SizeTier } from '@/utils/scoring';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +57,8 @@ export function FilterPanel({
   onSortByMatch,
 }: FilterPanelProps) {
   const [expanded, setExpanded] = useState(false);
+  const representationMatching = useFeatureFlag('representation_matching');
+  const showBestMatch = hasMatch && representationMatching === true;
 
   const activeCount =
     (sizeFilters.size < 4 ? 1 : 0) +
@@ -67,7 +70,7 @@ export function FilterPanel({
     <div className="space-y-2">
       {/* Always visible: quick filter buttons */}
       <div className="flex items-center gap-2 flex-wrap">
-        {hasMatch && (
+        {showBestMatch && (
           <Button
             variant={sortKey === 'match' ? 'default' : 'outline'}
             size="sm"

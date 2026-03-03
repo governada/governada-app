@@ -1,4 +1,5 @@
 import { getAllProposalsWithVoteSummary } from '@/lib/data';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { ProposalsPageClient } from '@/components/ProposalsPageClient';
 import { ProposalsHero } from '@/components/ProposalsHero';
@@ -42,6 +43,8 @@ export default async function ProposalsPage() {
     narrativeText = null;
   }
 
+  const proposalsHeroEnabled = await getFeatureFlag('proposals_hero');
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="space-y-2 mb-6">
@@ -51,12 +54,14 @@ export default async function ProposalsPage() {
         </p>
       </div>
       <GovernanceSubNav />
-      <ProposalsHero
-        openCount={openProposals.length}
-        expiringCount={expiringProposals.length}
-        totalAdaAtStake={totalAdaAtStake}
-        narrativeText={narrativeText}
-      />
+      {proposalsHeroEnabled && (
+        <ProposalsHero
+          openCount={openProposals.length}
+          expiringCount={expiringProposals.length}
+          totalAdaAtStake={totalAdaAtStake}
+          narrativeText={narrativeText}
+        />
+      )}
       <PageViewTracker event="proposals_page_viewed" />
       <ProposalsPageClient proposals={proposals} currentEpoch={currentEpoch} />
     </div>

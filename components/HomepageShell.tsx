@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { DRepTableClient } from '@/components/DRepTableClient';
+import { FeatureGate } from '@/components/FeatureGate';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { EnrichedDRep } from '@/lib/koios';
@@ -114,7 +115,9 @@ export function HomepageShell({
     <div className="space-y-6">
       <GovernanceWidget />
 
-      <GovernanceDNAQuiz onQuizComplete={setMatchData} />
+      <FeatureGate flag="governance_dna_quiz">
+        <GovernanceDNAQuiz onQuizComplete={setMatchData} />
+      </FeatureGate>
 
       <div id="drep-table" />
       <DRepTableClient

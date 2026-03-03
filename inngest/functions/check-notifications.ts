@@ -4,6 +4,7 @@
  */
 
 import { inngest } from '@/lib/inngest';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { notifyUser, broadcastEvent, type NotificationEvent } from '@/lib/notifications';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -21,6 +22,9 @@ export const checkNotifications = inngest.createFunction(
   },
   { cron: '15 */6 * * *' },
   async ({ step }) => {
+    const notificationsEnabled = await step.run('check-flag', async () => getFeatureFlag('notifications'));
+    if (!notificationsEnabled) return { skipped: true, reason: 'notifications flag disabled' };
+
     const stats = { scoreChange: 0, delegation: 0, pending: 0, urgent: 0, milestone: 0, rank: 0, opportunity: 0 };
 
     // Step 1: Gather claimed DReps and their data

@@ -144,23 +144,31 @@ export const syncAlignment = inngest.createFunction(
       return { success: true, skipped: true };
     }
 
-    // Step 2: score rationales (AI, cached)
+    // Step 2: score rationales using actual text from vote_rationales table.
+    // Capped at 200 per run to stay under Cloudflare 100s timeout;
+    // subsequent runs pick up the next unscored batch.
     const rationaleResult = await step.run('score-rationales', async () => {
+      const STEP_BATCH_LIMIT = 200;
       const sb = getSupabaseAdmin();
-      const { data: voteRows } = await sb
-        .from('drep_votes')
-        .select('drep_id, proposal_tx_hash, proposal_index, meta_url, rationale_quality')
-        .not('meta_url', 'is', null)
-        .is('rationale_quality', null);
-      if (!voteRows?.length) return { scored: 0 };
-      const forScoring = voteRows.map((v: any) => ({
+
+      // Left-join to find rationales that haven't been quality-scored yet
+      const { data: rationales } = await sb
+        .from('vote_rationales')
+        .select('drep_id, proposal_tx_hash, proposal_index, rationale_text')
+        .not('rationale_text', 'is', null)
+        .range(0, STEP_BATCH_LIMIT - 1);
+
+      if (!rationales?.length) return { scored: 0, remaining: 0 };
+
+      const forScoring = rationales.map((v: any) => ({
         drepId: v.drep_id,
         proposalTxHash: v.proposal_tx_hash,
         proposalIndex: v.proposal_index,
-        rationaleText: v.meta_url,
+        rationaleText: v.rationale_text,
       }));
+
       const scores = await scoreRationalesBatch(forScoring);
-      return { scored: scores.size };
+      return { scored: scores.size, batchSize: rationales.length };
     });
 
     // Step 3: compute dimension scores + normalize (CPU-bound, no DB writes)
@@ -170,14 +178,18 @@ export const syncAlignment = inngest.createFunction(
 
       const [{ data: dbRows }, { data: drepRows }, { data: voteRows }, { data: classRows }] =
         await Promise.all([
-          sb.from('proposals').select(DB_PROPOSAL_COLUMNS),
-          sb.from('dreps').select('id, info, score, participation_rate, rationale_rate, size_tier'),
+          sb.from('proposals').select(DB_PROPOSAL_COLUMNS).range(0, 99999),
+          sb
+            .from('dreps')
+            .select('id, info, score, participation_rate, rationale_rate, size_tier')
+            .range(0, 99999),
           sb
             .from('drep_votes')
             .select(
               'drep_id, proposal_tx_hash, proposal_index, vote, block_time, meta_url, rationale_quality',
-            ),
-          sb.from('proposal_classifications').select('*'),
+            )
+            .range(0, 99999),
+          sb.from('proposal_classifications').select('*').range(0, 99999),
         ]);
 
       if (!dbRows?.length || !drepRows?.length || !voteRows?.length) {
@@ -343,9 +355,12 @@ export const syncAlignment = inngest.createFunction(
     const pcaResult = await step.run('compute-pca', async () => {
       const sb = getSupabaseAdmin();
       const [{ data: dbRows }, { data: voteRows }, { data: classRows }] = await Promise.all([
-        sb.from('proposals').select(DB_PROPOSAL_COLUMNS),
-        sb.from('drep_votes').select('drep_id, proposal_tx_hash, proposal_index, vote, block_time'),
-        sb.from('proposal_classifications').select('*'),
+        sb.from('proposals').select(DB_PROPOSAL_COLUMNS).range(0, 99999),
+        sb
+          .from('drep_votes')
+          .select('drep_id, proposal_tx_hash, proposal_index, vote, block_time')
+          .range(0, 99999),
+        sb.from('proposal_classifications').select('*').range(0, 99999),
       ]);
 
       if (!dbRows?.length || !voteRows?.length) return { pcaComponents: 0, variance: 'N/A' };

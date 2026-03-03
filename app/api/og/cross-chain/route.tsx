@@ -1,7 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { createClient } from '@/lib/supabase';
 import { CHAIN_IDENTITIES, type Chain } from '@/lib/crossChain';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +37,6 @@ const TAGLINES: Record<Chain, string> = {
 
 export async function GET() {
   try {
-    const enabled = await getFeatureFlag('cross_chain_embed');
-    if (!enabled) {
-      return new Response('Feature disabled', { status: 404 });
-    }
-
     const supabase = createClient();
 
     const { data: rows } = await supabase

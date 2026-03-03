@@ -66,7 +66,6 @@ import {
 } from '@/lib/data';
 import { createClient } from '@/lib/supabase';
 import { BASE_URL } from '@/lib/constants';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { Suspense } from 'react';
 
 interface DRepDetailPageProps {
@@ -292,36 +291,12 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
   const matchScore = match ? parseInt(match, 10) : null;
 
-  const [
-    scoreHistory,
-    percentile,
-    linkChecks,
-    isClaimed,
-    spoAlignPct,
-    showSocialProof,
-    showActivityFeeds,
-    showScoreHistory,
-    showHeatmap,
-    showFinancialImpact,
-    showAuthoring,
-    showComparePage,
-    showNarratives,
-    showSpoVotes,
-  ] = await Promise.all([
+  const [scoreHistory, percentile, linkChecks, isClaimed, spoAlignPct] = await Promise.all([
     getScoreHistory(drep.drepId),
     getDRepPercentile(drep.drepScore),
     getSocialLinkChecks(drep.drepId),
     isDRepClaimed(drep.drepId),
     getSpoAlignment(drep.votes),
-    getFeatureFlag('social_proof'),
-    getFeatureFlag('activity_feeds'),
-    getFeatureFlag('score_history'),
-    getFeatureFlag('activity_heatmap'),
-    getFeatureFlag('financial_impact'),
-    getFeatureFlag('drep_authoring'),
-    getFeatureFlag('compare_page'),
-    getFeatureFlag('narrative_summaries'),
-    getFeatureFlag('spo_cc_votes', false),
   ]);
 
   const brokenLinks = new Set(linkChecks.filter((c) => c.status === 'broken').map((c) => c.uri));
@@ -402,30 +377,26 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         matchScore={matchScore}
       >
         <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
-        {showComparePage && (
-          <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
-        )}
+        <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
       </DRepProfileHero>
 
       {/* 2. Narrative summary */}
-      {showNarratives && (
-        <NarrativeSummary
-          text={generateDRepNarrative({
-            name: drepName,
-            participationRate: drep.effectiveParticipation,
-            rationaleRate: drep.rationaleRate,
-            drepScore: drep.drepScore,
-            rank: null,
-            delegatorCount: drep.delegatorCount,
-            votingPower: drep.votingPower,
-            alignments,
-            isActive: drep.isActive,
-            totalVotes: drep.totalVotes,
-            sizeTier: drep.sizeTier,
-          })}
-          accentColor={getIdentityColor(getDominantDimension(alignments)).hex}
-        />
-      )}
+      <NarrativeSummary
+        text={generateDRepNarrative({
+          name: drepName,
+          participationRate: drep.effectiveParticipation,
+          rationaleRate: drep.rationaleRate,
+          drepScore: drep.drepScore,
+          rank: null,
+          delegatorCount: drep.delegatorCount,
+          votingPower: drep.votingPower,
+          alignments,
+          isActive: drep.isActive,
+          totalVotes: drep.totalVotes,
+          sizeTier: drep.sizeTier,
+        })}
+        accentColor={getIdentityColor(getDominantDimension(alignments)).hex}
+      />
 
       {/* 3. Key Facts Strip */}
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 border-y border-border">
@@ -437,7 +408,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         <KeyFact label="Participation" value={`${drep.effectiveParticipation}%`} />
         <KeyFact label="Rationale" value={`${drep.rationaleRate}%`} />
         <KeyFact label="Alignment" value={identityLabel} />
-        {showSpoVotes && spoAlignPct !== null && (
+        {spoAlignPct !== null && (
           <KeyFact label="SPO Alignment" value={`${spoAlignPct}%`} subtext="of the time" />
         )}
       </div>
@@ -496,14 +467,14 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         <SocialIconsLarge metadata={drep.metadata} brokenLinks={brokenLinks} />
         <CopyableAddress address={drep.drepId} className="text-xs" />
         <ProfileViewStats drepId={drep.drepId} />
-        {showSocialProof && <SocialProofBadge drepId={drep.drepId} variant="views" />}
+        <SocialProofBadge drepId={drep.drepId} variant="views" />
       </div>
 
       {/* 5. Treasury Stance (compact in VP1) */}
-      {showFinancialImpact && <DRepTreasuryStance drepId={drep.drepId} compact />}
+      <DRepTreasuryStance drepId={drep.drepId} compact />
 
       {/* 6. Activity feed */}
-      {showActivityFeeds && <ActivitySideWidget drepId={drep.drepId} limit={5} />}
+      <ActivitySideWidget drepId={drep.drepId} limit={5} />
 
       {/* ════════════════════════════════════════════
           VP2 — "The Record" (below fold, tabbed)
@@ -532,8 +503,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
               profileHint={profileHint}
             />
             <MilestoneBadges drepId={drep.drepId} compact />
-            {showScoreHistory && <ScoreHistoryChart history={scoreHistory} />}
-            {showHeatmap && <ActivityHeatmap drepId={drep.drepId} />}
+            <ScoreHistoryChart history={scoreHistory} />
+            <ActivityHeatmap drepId={drep.drepId} />
           </div>
         }
         trajectoryContent={
@@ -543,8 +514,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         }
         communityContent={
           <div className="space-y-6">
-            {showFinancialImpact && <DRepTreasuryStance drepId={drep.drepId} />}
-            {showAuthoring && <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />}
+            <DRepTreasuryStance drepId={drep.drepId} />
+            <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />
             <AboutSection
               description={drep.description}
               bio={drep.metadata?.bio}

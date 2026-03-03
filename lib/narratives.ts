@@ -6,7 +6,6 @@
  * friend who speaks plainly. Never corporate, never academic.
  */
 
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { getDimensionLabel, type AlignmentScores, getDominantDimension } from './drepIdentity';
 
 // ---------------------------------------------------------------------------
@@ -77,9 +76,6 @@ export interface DRepNarrativeData {
  * Call from cron jobs or server-side; results should be cached.
  */
 export async function generateAIDRepNarrative(data: DRepNarrativeData): Promise<string | null> {
-  const aiEnabled = await getFeatureFlag('ai_narratives');
-  if (!aiEnabled) return null;
-
   const template = generateDRepNarrative(data);
   if (!template || !data.isActive || data.totalVotes < 3) return template;
 

@@ -29,7 +29,6 @@ import {
 } from '@/components/governance-cards';
 import { GovernanceCitizenPanels } from '@/components/GovernanceCitizenPanels';
 import { DelegatorShareCard } from '@/components/DelegatorShareCard';
-import { FeatureGate } from '@/components/FeatureGate';
 
 export function GovernanceDashboard() {
   const { connected, isAuthenticated, reconnecting, delegatedDrepId, address } = useWallet();
@@ -119,9 +118,7 @@ export function GovernanceDashboard() {
 
       <GovernanceCitizenPanels />
 
-      <FeatureGate flag="sharing_surfaces">
-        <DelegatorShareCard />
-      </FeatureGate>
+      <DelegatorShareCard />
 
       <PollHistorySection history={data.pollHistory} />
     </div>

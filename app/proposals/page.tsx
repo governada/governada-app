@@ -1,5 +1,4 @@
 import { getAllProposalsWithVoteSummary } from '@/lib/data';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { ProposalsPageClient } from '@/components/ProposalsPageClient';
 import { ProposalsHero } from '@/components/ProposalsHero';
@@ -100,7 +99,6 @@ export default async function ProposalsPage() {
   }
 
   const crossBodyInsight = generateCrossBodyInsight(openProposals);
-  const proposalsHeroEnabled = await getFeatureFlag('proposals_hero');
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -110,17 +108,15 @@ export default async function ProposalsPage() {
           Track Cardano governance proposals, DRep votes, and treasury decisions in real time.
         </p>
       </div>
-      {proposalsHeroEnabled && (
-        <ProposalsHero
-          openCount={openProposals.length}
-          expiringCount={expiringProposals.length}
-          totalAdaAtStake={totalAdaAtStake}
-          narrativeText={narrativeText}
-          epochProgress={epochProgress}
-          currentEpoch={currentEpoch}
-          crossBodyInsight={crossBodyInsight}
-        />
-      )}
+      <ProposalsHero
+        openCount={openProposals.length}
+        expiringCount={expiringProposals.length}
+        totalAdaAtStake={totalAdaAtStake}
+        narrativeText={narrativeText}
+        epochProgress={epochProgress}
+        currentEpoch={currentEpoch}
+        crossBodyInsight={crossBodyInsight}
+      />
       <PageViewTracker event="proposals_page_viewed" />
       <ProposalsPageClient proposals={proposals} currentEpoch={currentEpoch} />
     </div>

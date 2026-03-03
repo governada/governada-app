@@ -43,7 +43,7 @@ import {
 } from '@/components/ProposalStatusBadge';
 import { ThresholdMeter } from '@/components/ThresholdMeter';
 import { TriBodyVoteBar } from '@/components/TriBodyVoteBar';
-import { FeatureGate } from '@/components/FeatureGate';
+
 import { getProposalStatus } from '@/utils/proposalPriority';
 
 interface ProposalsListClientProps {
@@ -480,22 +480,20 @@ export function ProposalsListClient({
                       />
 
                       {p.triBody && (
-                        <FeatureGate flag="tri_body_votes">
-                          <TriBodyVoteBar
-                            size="sm"
-                            drep={p.triBody.drep}
-                            spo={
-                              p.triBody.spo.yes + p.triBody.spo.no + p.triBody.spo.abstain > 0
-                                ? p.triBody.spo
-                                : undefined
-                            }
-                            cc={
-                              p.triBody.cc.yes + p.triBody.cc.no + p.triBody.cc.abstain > 0
-                                ? p.triBody.cc
-                                : undefined
-                            }
-                          />
-                        </FeatureGate>
+                        <TriBodyVoteBar
+                          size="sm"
+                          drep={p.triBody.drep}
+                          spo={
+                            p.triBody.spo.yes + p.triBody.spo.no + p.triBody.spo.abstain > 0
+                              ? p.triBody.spo
+                              : undefined
+                          }
+                          cc={
+                            p.triBody.cc.yes + p.triBody.cc.no + p.triBody.cc.abstain > 0
+                              ? p.triBody.cc
+                              : undefined
+                          }
+                        />
                       )}
 
                       {p.withdrawalAmount != null && p.withdrawalAmount > 0 && (

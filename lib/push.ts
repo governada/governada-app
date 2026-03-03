@@ -8,7 +8,6 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const webpush = require('web-push');
 
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { type NotificationPayload } from './channelRenderers';
 import { getSupabaseAdmin } from './supabase';
 
@@ -71,8 +70,6 @@ export async function sendPushToUser(
   walletAddress: string,
   payload: NotificationPayload,
 ): Promise<boolean> {
-  const pushEnabled = await getFeatureFlag('push_notifications');
-  if (!pushEnabled) return false;
   if (!ensureVapid()) return false;
 
   const supabase = getSupabaseAdmin();

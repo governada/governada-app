@@ -5,7 +5,6 @@
  * personalized weekly brief for DReps and holders.
  */
 
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { getSupabaseAdmin } from './supabase';
 
 export interface DRepBriefContext {
@@ -185,9 +184,6 @@ export async function assembleHolderBriefContext(
 // ── Brief Generation ──────────────────────────────────────────────────────────
 
 export async function generateAIDRepBrief(ctx: DRepBriefContext): Promise<GeneratedBrief> {
-  const aiEnabled = await getFeatureFlag('ai_narratives');
-  if (!aiEnabled) return generateDRepBriefTemplate(ctx);
-
   const template = generateDRepBriefTemplate(ctx);
   try {
     const { generateText } = await import('./ai');
@@ -219,9 +215,6 @@ Open proposals: ${ctx.proposalsOpen}${ctx.proposalsCritical > 0 ? ` (${ctx.propo
 }
 
 export async function generateAIHolderBrief(ctx: HolderBriefContext): Promise<GeneratedBrief> {
-  const aiEnabled = await getFeatureFlag('ai_narratives');
-  if (!aiEnabled) return generateHolderBriefTemplate(ctx);
-
   const template = generateHolderBriefTemplate(ctx);
   try {
     const { generateText } = await import('./ai');

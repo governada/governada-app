@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +20,6 @@ interface BenchmarkRow {
 
 export async function GET() {
   try {
-    const enabled = await getFeatureFlag('cross_chain_observatory');
-    if (!enabled) {
-      return NextResponse.json({ benchmarks: {}, history: [], disabled: true }, { status: 200 });
-    }
-
     const supabase = createClient();
 
     const { data: latest, error: latestErr } = await supabase

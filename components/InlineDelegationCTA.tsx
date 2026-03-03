@@ -12,7 +12,7 @@ const DelegationCeremony = dynamic(
   () => import('./DelegationCeremony').then((m) => m.DelegationCeremony),
   { ssr: false },
 );
-import { useFeatureFlag } from '@/components/FeatureGate';
+
 import { type AlignmentScores } from '@/lib/drepIdentity';
 
 interface InlineDelegationCTAProps {
@@ -28,7 +28,6 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAProps) {
-  const delegationCeremonyEnabled = useFeatureFlag('delegation_ceremony');
   const { connected } = useWallet();
   const {
     phase,
@@ -58,7 +57,6 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
   const handleConfirm = async () => {
     const result = await confirmDelegation(drepId);
     if (result) {
-      if (!delegationCeremonyEnabled) return;
       fetch(`/api/dreps/${encodeURIComponent(drepId)}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
@@ -94,7 +92,7 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
 
   // Success — show delegation ceremony overlay or simple message
   if (phase.status === 'success') {
-    if (delegationCeremonyEnabled && showCeremony) {
+    if (showCeremony) {
       return (
         <DelegationCeremony
           drepId={drepId}

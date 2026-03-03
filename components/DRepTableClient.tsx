@@ -17,7 +17,6 @@ import { SizeTier } from '@/utils/scoring';
 import { GitCompareArrows, X } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { cn } from '@/lib/utils';
-import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 
 export type SortKey = 'drepScore' | 'votingPower' | 'sizeTier' | 'match';
 export type SortDirection = 'asc' | 'desc';
@@ -67,7 +66,7 @@ export function DRepTableClient({
 }: DRepTableClientProps) {
   const router = useRouter();
   const { delegatedDrepId } = useWallet();
-  const quickViewEnabled = useFeatureFlag('drep_quick_view');
+  const quickViewEnabled = true;
 
   // Quick view state
   const [quickViewDrep, setQuickViewDrep] = useState<EnrichedDRep | null>(null);
@@ -562,27 +561,25 @@ export function DRepTableClient({
       )}
 
       {/* Quick View Sheet */}
-      <FeatureGate flag="drep_quick_view">
-        <DRepQuickView
-          drep={quickViewDrep}
-          open={quickViewOpen}
-          onOpenChange={setQuickViewOpen}
-          matchDetail={
-            quickViewMatchDetail ??
-            (quickViewDrep && matchData[quickViewDrep.drepId] != null
-              ? {
-                  matchScore: matchData[quickViewDrep.drepId],
-                  agreed: 0,
-                  total: 0,
-                  comparisons: [],
-                }
-              : undefined)
-          }
-          isWatchlisted={quickViewDrep ? watchlist.includes(quickViewDrep.drepId) : false}
-          onWatchlistToggle={onWatchlistToggle}
-          isDelegated={quickViewDrep?.drepId === delegatedDrepId}
-        />
-      </FeatureGate>
+      <DRepQuickView
+        drep={quickViewDrep}
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        matchDetail={
+          quickViewMatchDetail ??
+          (quickViewDrep && matchData[quickViewDrep.drepId] != null
+            ? {
+                matchScore: matchData[quickViewDrep.drepId],
+                agreed: 0,
+                total: 0,
+                comparisons: [],
+              }
+            : undefined)
+        }
+        isWatchlisted={quickViewDrep ? watchlist.includes(quickViewDrep.drepId) : false}
+        onWatchlistToggle={onWatchlistToggle}
+        isDelegated={quickViewDrep?.drepId === delegatedDrepId}
+      />
 
       {/* Floating Compare Bar */}
       {compareSelection.size >= 2 && (

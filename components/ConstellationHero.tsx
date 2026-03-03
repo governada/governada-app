@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { ActivityTicker } from '@/components/ActivityTicker';
-import { FeatureGate } from '@/components/FeatureGate';
+
 import type { UserSegment } from '@/components/PersonalGovernanceCard';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
@@ -213,21 +213,12 @@ export function ConstellationHero({
       className={`relative w-full transition-all duration-700 -mt-16 ${contracted ? 'min-h-[calc(40vh+4rem)]' : 'min-h-[calc(85vh+4rem)]'}`}
       onMouseEnter={handleConstellationHover}
     >
-      <FeatureGate
-        flag="constellation_3d"
-        fallback={
-          <div
-            className={`w-full bg-gradient-to-b from-[#0a0b14] via-[#0f1225] to-[#0a0b14] ${contracted ? 'h-[40vh]' : 'h-[85vh]'}`}
-          />
-        }
-      >
-        <GovernanceConstellation
-          ref={constellationRef}
-          onReady={handleConstellationReady}
-          onContracted={handleConstellationContracted}
-          className={contracted ? 'h-[40vh]' : 'h-[85vh]'}
-        />
-      </FeatureGate>
+      <GovernanceConstellation
+        ref={constellationRef}
+        onReady={handleConstellationReady}
+        onContracted={handleConstellationContracted}
+        className={contracted ? 'h-[40vh]' : 'h-[85vh]'}
+      />
 
       {/* SSR gradient fallback */}
       <div
@@ -305,9 +296,7 @@ export function ConstellationHero({
         </div>
       )}
 
-      <FeatureGate flag="activity_feeds">
-        <ActivityTicker onEventVisible={handleTickerEvent} />
-      </FeatureGate>
+      <ActivityTicker onEventVisible={handleTickerEvent} />
     </div>
   );
 }

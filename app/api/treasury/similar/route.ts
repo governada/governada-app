@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findSimilarProposals } from '@/lib/treasury';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const enabled = await getFeatureFlag('treasury_intelligence', true);
-    if (!enabled) {
-      return NextResponse.json({ error: 'Feature not available' }, { status: 404 });
-    }
-
     const title = request.nextUrl.searchParams.get('title');
     const amount = request.nextUrl.searchParams.get('amount');
     const tier = request.nextUrl.searchParams.get('tier');

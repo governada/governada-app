@@ -18,7 +18,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { PositionStatementEditor } from '@/components/PositionStatementEditor';
-import { FeatureGate } from '@/components/FeatureGate';
 
 interface PendingProposal {
   txHash: string;
@@ -190,14 +189,12 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
                     {p.epochsRemaining}ep
                   </span>
                 )}
-                <FeatureGate flag="drep_authoring">
-                  <PositionStatementEditor
-                    drepId={drepId}
-                    proposalTxHash={p.txHash}
-                    proposalIndex={p.proposalIndex}
-                    proposalTitle={p.title || `Proposal ${p.txHash.slice(0, 8)}...`}
-                  />
-                </FeatureGate>
+                <PositionStatementEditor
+                  drepId={drepId}
+                  proposalTxHash={p.txHash}
+                  proposalIndex={p.proposalIndex}
+                  proposalTitle={p.title || `Proposal ${p.txHash.slice(0, 8)}...`}
+                />
                 <Link
                   href={`/dashboard/inbox?drepId=${encodeURIComponent(drepId)}&proposal=${p.txHash}`}
                 >

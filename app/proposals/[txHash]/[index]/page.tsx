@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import Link from 'next/link';
 import { getProposalByKey, getVotesByProposal } from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -22,11 +21,11 @@ import { getProposalStatus } from '@/utils/proposalPriority';
 import { DRepVoteCallout } from '@/components/DRepVoteCallout';
 import { SentimentPoll } from '@/components/SentimentPoll';
 import { ProposalOutcomeSection } from '@/components/ProposalOutcomeSection';
-import { ProposalVotersWithContext } from '@/components/ProposalVotersWithContext';
+
 import { TriBodyVotePanel } from '@/components/TriBodyVotePanel';
 import { ProposalVoterTabs } from '@/components/ProposalVoterTabs';
 import { SimilarProposals } from '@/components/SimilarProposals';
-import { FeatureGate } from '@/components/FeatureGate';
+
 import { PageViewTracker } from '@/components/PageViewTracker';
 
 interface ProposalDetailPageProps {
@@ -116,8 +115,6 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
     blockTime: v.blockTime,
   }));
 
-  const sentimentPollsEnabled = await getFeatureFlag('sentiment_polls');
-
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
       <PageViewTracker
@@ -186,9 +183,7 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
       <DRepVoteCallout txHash={txHash} proposalIndex={proposalIndex} />
 
       {/* Community Sentiment Poll */}
-      {sentimentPollsEnabled && (
-        <SentimentPoll txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
-      )}
+      <SentimentPoll txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
 
       {/* Proposal Outcome Card — only for closed proposals */}
       {!isOpen && (
@@ -217,13 +212,11 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
 
       {/* Tri-Body Vote Panel */}
       {proposal.triBody && (
-        <FeatureGate flag="tri_body_votes">
-          <TriBodyVotePanel
-            triBody={proposal.triBody}
-            txHash={txHash}
-            proposalIndex={proposalIndex}
-          />
-        </FeatureGate>
+        <TriBodyVotePanel
+          triBody={proposal.triBody}
+          txHash={txHash}
+          proposalIndex={proposalIndex}
+        />
       )}
 
       {/* Vote Results with Threshold Meter (DRep stake power) */}
@@ -259,9 +252,7 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
       />
 
       {/* Voter Tabs: DReps | SPOs | CC */}
-      <FeatureGate flag="tri_body_votes" fallback={<ProposalVotersWithContext votes={votes} />}>
-        <ProposalVoterTabs votes={votes} txHash={txHash} proposalIndex={proposalIndex} />
-      </FeatureGate>
+      <ProposalVoterTabs votes={votes} txHash={txHash} proposalIndex={proposalIndex} />
 
       {/* Similar Proposals */}
       <SimilarProposals txHash={txHash} proposalIndex={proposalIndex} />

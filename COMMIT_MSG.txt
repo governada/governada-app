@@ -1,0 +1,29 @@
+refactor: delete 45 always-on feature flags, keep 4 legitimate gates
+
+Remove getFeatureFlag/FeatureGate/useFeatureFlag checks from 50 files
+for flags that have been permanently enabled. All previously-gated
+features now render unconditionally.
+
+Flags deleted (45): ai_governance_brief, ai_narratives,
+ai_proposal_explainer, ai_state_of_governance, cross_chain_embed,
+cross_chain_observatory, cross_chain_sync, activity_heatmap,
+score_history, score_simulator, compare_page, drep_quick_view,
+governance_dna_quiz, representation_matching, sentiment_polls,
+claim_experience, drep_authoring, onboarding_checklist, citizen_levels,
+financial_impact, governance_calendar, leaderboard, spo_cc_votes,
+watchlist, cross_proposal_insights, governance_health_index,
+proposal_similarity, state_of_governance_reports, epoch_recaps,
+narrative_summaries, proposals_hero, notifications, push_notifications,
+delegator_identity, developer_platform, embeddable_widgets,
+sharing_surfaces, activity_feeds, delegation_ceremony, drep_qa,
+milestone_celebrations, social_proof, treasury_intelligence,
+discover_tabs, tri_body_votes, constellation_3d
+
+Flags kept (4 with real data dependencies):
+- ghi_citizen_engagement (needs 5+ epochs of delegator snapshots)
+- governance_footprint (enabled in this migration)
+- cc_page (enable when CC data is richer)
+- spo_profiles (enable when SPO scores are populated)
+
+Migration 039: DELETE 45 rows from feature_flags, enable governance_footprint
+Net: -326 lines removed across 50 files

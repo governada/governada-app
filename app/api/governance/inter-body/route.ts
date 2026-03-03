@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { computeInterBodyAlignment, getSystemAlignment } from '@/lib/interBodyAlignment';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const enabled = await getFeatureFlag('spo_cc_votes', false);
-    if (!enabled) {
-      return NextResponse.json({ error: 'Feature not available' }, { status: 404 });
-    }
-
     const proposal = request.nextUrl.searchParams.get('proposal');
 
     if (proposal) {

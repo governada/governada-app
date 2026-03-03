@@ -2,7 +2,6 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 import { ShareActions } from '@/components/ShareActions';
 import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi';
@@ -66,26 +65,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function StateOfGovernancePage({ params }: Props) {
   const { epoch } = await params;
-
-  const reportsEnabled = await getFeatureFlag('state_of_governance_reports', false);
-  if (!reportsEnabled) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-        <Link
-          href="/pulse"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Pulse
-        </Link>
-        <div className="rounded-lg border bg-card p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2">Coming soon</h2>
-          <p className="text-muted-foreground text-sm">
-            State of Governance reports are under development.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (epoch === 'latest') {
     const report = await getReport('latest');

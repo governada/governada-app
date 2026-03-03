@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDRepTreasuryTrackRecord } from '@/lib/treasury';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const enabled = await getFeatureFlag('treasury_intelligence', true);
-    if (!enabled) {
-      return NextResponse.json({ error: 'Feature not available' }, { status: 404 });
-    }
-
     const drepId = request.nextUrl.searchParams.get('drepId');
     if (!drepId) {
       return NextResponse.json({ error: 'drepId parameter required' }, { status: 400 });

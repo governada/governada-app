@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { WatchlistIntelligence } from '@/components/WatchlistIntelligence';
-import { FeatureGate } from '@/components/FeatureGate';
+
 import { DRepCommunicationFeed } from '@/components/DRepCommunicationFeed';
 
 export function GovernanceCitizenPanels() {
@@ -36,9 +36,7 @@ export function GovernanceCitizenPanels() {
 
   return (
     <>
-      <FeatureGate flag="watchlist">
-        <WatchlistIntelligence watchlist={watchlist} currentDrepId={delegatedDrepId} />
-      </FeatureGate>
+      <WatchlistIntelligence watchlist={watchlist} currentDrepId={delegatedDrepId} />
       {delegatedDrepId && <DRepCommunicationFeed drepId={delegatedDrepId} />}
     </>
   );

@@ -33,7 +33,7 @@ import { GovernanceBriefCard } from '@/components/GovernanceBriefCard';
 import { GovernanceCitizenPanels } from '@/components/GovernanceCitizenPanels';
 import { GovernanceLevelBadge } from '@/components/GovernanceLevelBadge';
 import { DelegatorShareCard } from '@/components/DelegatorShareCard';
-import { FeatureGate } from '@/components/FeatureGate';
+
 import { posthog } from '@/lib/posthog';
 import type { GovernanceLevel } from '@/lib/governanceLevels';
 
@@ -377,9 +377,7 @@ function GovernanceStorySection({
         )}
 
       {/* Delegator Share Card */}
-      <FeatureGate flag="sharing_surfaces">
-        <DelegatorShareCard />
-      </FeatureGate>
+      <DelegatorShareCard />
     </div>
   );
 }

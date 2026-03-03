@@ -17,21 +17,76 @@ const SYNC_CONFIG: Record<
   string,
   { mins: number; schedule: string; event: string; label: string }
 > = {
-  proposals: { mins: 90, schedule: 'every 30m', event: 'drepscore/sync.proposals', label: 'Proposals Sync' },
+  proposals: {
+    mins: 90,
+    schedule: 'every 30m',
+    event: 'drepscore/sync.proposals',
+    label: 'Proposals Sync',
+  },
   dreps: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.dreps', label: 'DReps Sync' },
   votes: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.votes', label: 'Votes Sync' },
-  secondary: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.secondary', label: 'Secondary Sync' },
+  secondary: {
+    mins: 720,
+    schedule: 'every 6h',
+    event: 'drepscore/sync.secondary',
+    label: 'Secondary Sync',
+  },
   slow: { mins: 2160, schedule: 'daily', event: 'drepscore/sync.slow', label: 'Slow Sync' },
-  treasury: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.treasury', label: 'Treasury Sync' },
-  scoring: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.scores', label: 'Scoring Sync' },
-  alignment: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.alignment', label: 'Alignment Sync' },
+  treasury: {
+    mins: 1500,
+    schedule: 'daily',
+    event: 'drepscore/sync.treasury',
+    label: 'Treasury Sync',
+  },
+  scoring: {
+    mins: 480,
+    schedule: 'every 6h',
+    event: 'drepscore/sync.scores',
+    label: 'Scoring Sync',
+  },
+  alignment: {
+    mins: 480,
+    schedule: 'every 6h',
+    event: 'drepscore/sync.alignment',
+    label: 'Alignment Sync',
+  },
   ghi: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.ghi', label: 'GHI Sync' },
-  benchmarks: { mins: 11520, schedule: 'weekly', event: 'drepscore/sync.benchmarks', label: 'Benchmarks Sync' },
-  spo_votes: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.spo-votes', label: 'SPO Votes Sync' },
-  cc_votes: { mins: 480, schedule: 'every 6h', event: 'drepscore/sync.cc-votes', label: 'CC Votes Sync' },
-  epoch_recaps: { mins: 8640, schedule: 'per epoch', event: 'drepscore/sync.epoch-recaps', label: 'Epoch Recaps' },
-  spo_scores: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.spo-scores', label: 'SPO Scores' },
-  governance_epoch_stats: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.governance-epoch-stats', label: 'Governance Epoch Stats' },
+  benchmarks: {
+    mins: 11520,
+    schedule: 'weekly',
+    event: 'drepscore/sync.benchmarks',
+    label: 'Benchmarks Sync',
+  },
+  spo_votes: {
+    mins: 480,
+    schedule: 'every 6h',
+    event: 'drepscore/sync.spo-votes',
+    label: 'SPO Votes Sync',
+  },
+  cc_votes: {
+    mins: 480,
+    schedule: 'every 6h',
+    event: 'drepscore/sync.cc-votes',
+    label: 'CC Votes Sync',
+  },
+  epoch_recaps: {
+    mins: 8640,
+    schedule: 'per epoch',
+    event: 'drepscore/sync.epoch-recaps',
+    label: 'Epoch Recaps',
+  },
+  spo_scores: {
+    mins: 1500,
+    schedule: 'daily',
+    event: 'drepscore/sync.spo-scores',
+    label: 'SPO Scores',
+  },
+  governance_epoch_stats: {
+    mins: 1500,
+    schedule: 'daily',
+    event: 'drepscore/sync.governance-epoch-stats',
+    label: 'Governance Epoch Stats',
+  },
 };
 
 const ACTIVE_SYNC_TYPES = new Set(Object.keys(SYNC_CONFIG));

@@ -4,7 +4,6 @@
  */
 
 import { inngest } from '@/lib/inngest';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { notifyUser, broadcastEvent, type NotificationEvent } from '@/lib/notifications';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -22,11 +21,6 @@ export const checkNotifications = inngest.createFunction(
   },
   { cron: '15 */6 * * *' },
   async ({ step }) => {
-    const notificationsEnabled = await step.run('check-flag', async () =>
-      getFeatureFlag('notifications'),
-    );
-    if (!notificationsEnabled) return { skipped: true, reason: 'notifications flag disabled' };
-
     const stats = {
       scoreChange: 0,
       delegation: 0,

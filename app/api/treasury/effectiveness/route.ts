@@ -1,16 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSpendingEffectiveness } from '@/lib/treasury';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const enabled = await getFeatureFlag('treasury_intelligence', true);
-    if (!enabled) {
-      return NextResponse.json({ error: 'Feature not available' }, { status: 404 });
-    }
-
     const effectiveness = await getSpendingEffectiveness();
 
     return NextResponse.json(effectiveness, {

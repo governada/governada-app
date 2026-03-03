@@ -8,7 +8,7 @@
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { getFeatureFlag } from '@/lib/featureFlags';
+
 import { generateText } from '@/lib/ai';
 import { SyncLogger, errMsg } from '@/lib/sync-utils';
 import {
@@ -26,13 +26,6 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
   },
   [{ cron: '0 6 * * 0' }, { event: 'drepscore/sync.benchmarks' }],
   async ({ step }) => {
-    const enabled = await step.run('check-feature-flag', async () => {
-      return getFeatureFlag('cross_chain_sync');
-    });
-    if (!enabled) {
-      return { skipped: true, reason: 'cross_chain_sync flag is disabled' };
-    }
-
     const cardano = await step.run('fetch-cardano', async () => {
       return fetchCardanoBenchmark();
     });
@@ -106,31 +99,36 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
       results.stored,
     );
 
-    const aiInsightEnabled = await step.run('check-ai-insight-flag', async () => {
-      return getFeatureFlag('cross_chain_ai_insight');
-    });
-
     let aiInsight: string | null = null;
 
-    if (aiInsightEnabled) {
-      aiInsight = await step.run('generate-ai-insight', async () => {
-        const benchmarks = [cardano, ethereum, polkadot].filter(Boolean) as ChainBenchmark[];
-        if (benchmarks.length < 2) return null;
+    aiInsight = await step.run('generate-ai-insight', async () => {
+      const benchmarks = [cardano, ethereum, polkadot].filter(Boolean) as ChainBenchmark[];
+      if (benchmarks.length < 2) return null;
 
-        const metricsContext = benchmarks
-          .map((b) => {
-            const parts = [`${b.chain}:`];
-            if (b.delegateCount != null) parts.push(`${b.delegateCount} delegates/DReps`);
-            if (b.participationRate != null) parts.push(`${b.participationRate}% participation`);
-            if (b.proposalCount != null) parts.push(`${b.proposalCount} proposals`);
-            if (b.proposalThroughput != null) parts.push(`${b.proposalThroughput}% throughput`);
-            if (b.avgRationaleRate != null) parts.push(`${b.avgRationaleRate}% rationale rate`);
-            return parts.join(' ');
-          })
-          .join('\n');
+      const metricsContext = benchmarks
+        .map((b) => {
+          const parts = [`${b.chain}:`];
+          if (b.delegateCount != null) parts.push(`${b.delegateCount} delegates/DReps`);
+          if (b.participationRate != null) parts.push(`${b.participationRate}% participation`);
+          if (b.proposalCount != null) parts.push(`${b.proposalCount} proposals`);
+          if (b.proposalThroughput != null) parts.push(`${b.proposalThroughput}% throughput`);
+          if (b.avgRationaleRate != null) parts.push(`${b.avgRationaleRate}% rationale rate`);
+          return parts.join(' ');
+        })
+        .join('\n');
 
-        const prompt = `You are a neutral governance analyst. Given these metrics from blockchain governance systems, write ONE concise, factual observation (1-2 sentences) that highlights an interesting pattern or difference. Do not judge which is better. Do not favor any chain. Focus on what the data shows.\n\nMetrics:\n${metricsContext}`;
+      const prompt = `You are a neutral governance analyst. Given these metrics from blockchain governance systems, write ONE concise, factual observation (1-2 sentences) that highlights an interesting pattern or difference. Do not judge which is better. Do not favor any chain. Focus on what the data shows.\n\nMetrics:\n${metricsContext}`;
 
+      try {
+        return await generateText(prompt, {
+          maxTokens: 200,
+          temperature: 0.3,
+          system:
+            'You are a neutral, data-driven governance analyst. Output only the observation, no preamble.',
+        });
+      } catch (err) {
+        console.warn('[sync-benchmarks] AI insight failed, retrying once...', err);
+        await new Promise((r) => setTimeout(r, 3000));
         try {
           return await generateText(prompt, {
             maxTokens: 200,
@@ -138,36 +136,25 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
             system:
               'You are a neutral, data-driven governance analyst. Output only the observation, no preamble.',
           });
-        } catch (err) {
-          console.warn('[sync-benchmarks] AI insight failed, retrying once...', err);
-          await new Promise((r) => setTimeout(r, 3000));
-          try {
-            return await generateText(prompt, {
-              maxTokens: 200,
-              temperature: 0.3,
-              system:
-                'You are a neutral, data-driven governance analyst. Output only the observation, no preamble.',
-            });
-          } catch (retryErr) {
-            console.error('[sync-benchmarks] AI insight failed after retry:', retryErr);
-            return null;
-          }
+        } catch (retryErr) {
+          console.error('[sync-benchmarks] AI insight failed after retry:', retryErr);
+          return null;
+        }
+      }
+    });
+
+    if (aiInsight) {
+      await step.run('store-ai-insight', async () => {
+        const supabase = getSupabaseAdmin();
+        const benchmarks = [cardano, ethereum, polkadot].filter(Boolean) as ChainBenchmark[];
+        for (const b of benchmarks) {
+          await supabase
+            .from('governance_benchmarks')
+            .update({ ai_insight: aiInsight })
+            .eq('chain', b.chain)
+            .eq('period_label', b.periodLabel);
         }
       });
-
-      if (aiInsight) {
-        await step.run('store-ai-insight', async () => {
-          const supabase = getSupabaseAdmin();
-          const benchmarks = [cardano, ethereum, polkadot].filter(Boolean) as ChainBenchmark[];
-          for (const b of benchmarks) {
-            await supabase
-              .from('governance_benchmarks')
-              .update({ ai_insight: aiInsight })
-              .eq('chain', b.chain)
-              .eq('period_label', b.periodLabel);
-          }
-        });
-      }
     }
 
     return { ...results, aiInsight };

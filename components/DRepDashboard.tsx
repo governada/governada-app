@@ -31,7 +31,6 @@ import {
 } from '@/utils/recommendations';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { VoteExplanationEditor } from '@/components/VoteExplanationEditor';
-import { FeatureGate } from '@/components/FeatureGate';
 
 interface DRepDashboardProps {
   drep: {
@@ -274,18 +273,16 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
                               Done
                             </Badge>
                           ) : (
-                            <FeatureGate flag="drep_authoring">
-                              <VoteExplanationEditor
-                                drepId={drep.drepId}
-                                proposalTxHash={v.proposalTxHash}
-                                proposalIndex={v.proposalIndex}
-                                proposalTitle={v.title || 'Unknown Proposal'}
-                                vote={v.vote}
-                                onSaved={(text) =>
-                                  setExplanations((prev) => ({ ...prev, [key]: text }))
-                                }
-                              />
-                            </FeatureGate>
+                            <VoteExplanationEditor
+                              drepId={drep.drepId}
+                              proposalTxHash={v.proposalTxHash}
+                              proposalIndex={v.proposalIndex}
+                              proposalTitle={v.title || 'Unknown Proposal'}
+                              vote={v.vote}
+                              onSaved={(text) =>
+                                setExplanations((prev) => ({ ...prev, [key]: text }))
+                              }
+                            />
                           )}
                         </TableCell>
                       </TableRow>

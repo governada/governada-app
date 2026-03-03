@@ -1,5 +1,4 @@
 import { EmbedCrossChain } from '@/components/EmbedCrossChain';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,15 +7,7 @@ interface Props {
 }
 
 export default async function EmbedCrossChainPage({ searchParams }: Props) {
-  const [{ theme }, enabled] = await Promise.all([
-    searchParams,
-    getFeatureFlag('cross_chain_embed'),
-  ]);
-
-  if (!enabled) {
-    return <div style={{ padding: 16, fontSize: 12, color: '#888' }}>Widget unavailable</div>;
-  }
-
+  const { theme } = await searchParams;
   const isDark = theme !== 'light';
 
   return (

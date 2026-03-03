@@ -6,7 +6,6 @@
  */
 
 import { inngest } from '@/lib/inngest';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import {
   assembleDRepBriefContext,
@@ -30,11 +29,6 @@ export const generateGovernanceBrief = inngest.createFunction(
   },
   { cron: '0 10 * * 1' },
   async ({ step }) => {
-    const aiEnabled = await step.run('check-flag', async () =>
-      getFeatureFlag('ai_governance_brief'),
-    );
-    if (!aiEnabled) return { skipped: true, reason: 'ai_governance_brief flag disabled' };
-
     const activeUsers = await step.run('fetch-active-users', async () => {
       const supabase = getSupabaseAdmin();
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();

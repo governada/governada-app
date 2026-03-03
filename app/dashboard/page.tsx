@@ -54,7 +54,7 @@ import { AnimatedTabs, type TabDefinition } from '@/components/AnimatedTabs';
 import { applyRationaleCurve, getMissingProfileFields } from '@/utils/scoring';
 import { generateDashboardNarrative } from '@/lib/narratives';
 import { NarrativeSummary } from '@/components/NarrativeSummary';
-import { FeatureGate } from '@/components/FeatureGate';
+
 import { PageViewTracker } from '@/components/PageViewTracker';
 import type { ScoreSnapshot } from '@/lib/data';
 import type { VoteRecord } from '@/types/drep';
@@ -404,15 +404,13 @@ export default function MyDRepPage() {
 
       {/* Onboarding Checklist */}
       {sessionAddress && (
-        <FeatureGate flag="onboarding_checklist">
-          <div className="mb-4">
-            <OnboardingChecklist
-              drepId={drep.drepId}
-              walletAddress={sessionAddress}
-              profileCompleteness={drep.profileCompleteness}
-            />
-          </div>
-        </FeatureGate>
+        <div className="mb-4">
+          <OnboardingChecklist
+            drepId={drep.drepId}
+            walletAddress={sessionAddress}
+            profileCompleteness={drep.profileCompleteness}
+          />
+        </div>
       )}
 
       {/* Score Change Moment */}
@@ -429,14 +427,12 @@ export default function MyDRepPage() {
 
       {/* Milestone Celebrations */}
       {milestoneData && (
-        <FeatureGate flag="milestone_celebrations">
-          <MilestoneCelebrationManager
-            drepId={drep.drepId}
-            drepName={drep.name || drep.drepId.slice(0, 20)}
-            achievedMilestones={milestoneData.milestones}
-            lastVisit={milestoneData.lastVisit}
-          />
-        </FeatureGate>
+        <MilestoneCelebrationManager
+          drepId={drep.drepId}
+          drepName={drep.name || drep.drepId.slice(0, 20)}
+          achievedMilestones={milestoneData.milestones}
+          lastVisit={milestoneData.lastVisit}
+        />
       )}
 
       {/* Three-Tab Layout */}
@@ -477,9 +473,7 @@ function DashboardTabs({
           <GovernanceInboxWidget drepId={drep.drepId} />
           <DRepQuestionsInbox drepId={drep.drepId} />
           <DRepDashboard drep={drep} scoreHistory={scoreHistory} />
-          <FeatureGate flag="score_simulator">
-            <ScoreSimulator drepId={drep.drepId} pendingCount={inboxPendingCount} />
-          </FeatureGate>
+          <ScoreSimulator drepId={drep.drepId} pendingCount={inboxPendingCount} />
         </div>
       ),
     },
@@ -489,14 +483,10 @@ function DashboardTabs({
       icon: BarChart3,
       content: (
         <div className="space-y-6">
-          <FeatureGate flag="score_history">
-            <ScoreHistoryChart history={scoreHistory} />
-          </FeatureGate>
+          <ScoreHistoryChart history={scoreHistory} />
           <CompetitiveContext drepId={drep.drepId} />
           <RepresentationScorecard drepId={drep.drepId} />
-          <FeatureGate flag="activity_heatmap">
-            <ActivityHeatmap drepId={drep.drepId} />
-          </FeatureGate>
+          <ActivityHeatmap drepId={drep.drepId} />
           <MilestoneBadges drepId={drep.drepId} />
         </div>
       ),
@@ -513,23 +503,19 @@ function DashboardTabs({
       icon: Users,
       content: (
         <div className="space-y-6">
-          <FeatureGate flag="drep_authoring">
-            <GovernancePhilosophyEditor drepId={drep.drepId} />
-          </FeatureGate>
-          <FeatureGate flag="sharing_surfaces">
-            <WrappedShareCard
-              variant="drep"
-              drepId={drep.drepId}
-              drepName={drep.name || drep.drepId.slice(0, 20)}
-              score={drep.drepScore}
-              participation={drep.effectiveParticipation}
-              rationale={adjustedRationale}
-              reliability={drep.reliabilityScore}
-              rank={null}
-              delegators={drep.delegatorCount}
-            />
-            <BadgeEmbed drepId={drep.drepId} drepName={drep.name || drep.drepId.slice(0, 20)} />
-          </FeatureGate>
+          <GovernancePhilosophyEditor drepId={drep.drepId} />
+          <WrappedShareCard
+            variant="drep"
+            drepId={drep.drepId}
+            drepName={drep.name || drep.drepId.slice(0, 20)}
+            score={drep.drepScore}
+            participation={drep.effectiveParticipation}
+            rationale={adjustedRationale}
+            reliability={drep.reliabilityScore}
+            rank={null}
+            delegators={drep.delegatorCount}
+          />
+          <BadgeEmbed drepId={drep.drepId} drepName={drep.name || drep.drepId.slice(0, 20)} />
           <ProfileHealthCard
             profileHealthy={profileHealthy}
             missingFields={missingFields}

@@ -88,53 +88,61 @@ export async function GET() {
         ];
 
         const snapshotChecks = await Promise.all(
-          snapshotTables.map(async ({ name, col, isDate }: { name: string; col: string; isDate?: boolean }) => {
-            const { data: latest } = await supabase
-              .from(name)
-              .select(col)
-              .order(col, { ascending: false })
-              .limit(1)
-              .maybeSingle();
+          snapshotTables.map(
+            async ({ name, col, isDate }: { name: string; col: string; isDate?: boolean }) => {
+              const { data: latest } = await supabase
+                .from(name)
+                .select(col)
+                .order(col, { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            if (isDate) {
-              const latestDate = latest
-                ? ((latest as unknown as Record<string, string>)[col] ?? null)
+              if (isDate) {
+                const latestDate = latest
+                  ? ((latest as unknown as Record<string, string>)[col] ?? null)
+                  : null;
+                const today = new Date().toISOString().slice(0, 10);
+                const dayGap = latestDate
+                  ? Math.round(
+                      (new Date(today).getTime() - new Date(latestDate).getTime()) / 86_400_000,
+                    )
+                  : null;
+                return {
+                  table: name,
+                  latest_value: latestDate,
+                  expected: today,
+                  gap: dayGap,
+                  level:
+                    dayGap === null
+                      ? 'unknown'
+                      : dayGap <= 1
+                        ? 'healthy'
+                        : dayGap <= 3
+                          ? 'degraded'
+                          : 'critical',
+                };
+              }
+
+              const latestEpoch = latest
+                ? ((latest as unknown as Record<string, number>)[col] ?? null)
                 : null;
-              const today = new Date().toISOString().slice(0, 10);
-              const dayGap = latestDate
-                ? Math.round(
-                    (new Date(today).getTime() - new Date(latestDate).getTime()) / 86_400_000,
-                  )
-                : null;
+              const gap = latestEpoch != null ? epoch - latestEpoch : null;
               return {
                 table: name,
-                latest_value: latestDate,
-                expected: today,
-                gap: dayGap,
+                latest_value: latestEpoch,
+                expected: epoch,
+                gap,
                 level:
-                  dayGap === null ? 'unknown' : dayGap <= 1 ? 'healthy' : dayGap <= 3 ? 'degraded' : 'critical',
+                  gap === null
+                    ? 'unknown'
+                    : gap <= 1
+                      ? 'healthy'
+                      : gap <= 3
+                        ? 'degraded'
+                        : 'critical',
               };
-            }
-
-            const latestEpoch = latest
-              ? ((latest as unknown as Record<string, number>)[col] ?? null)
-              : null;
-            const gap = latestEpoch != null ? epoch - latestEpoch : null;
-            return {
-              table: name,
-              latest_value: latestEpoch,
-              expected: epoch,
-              gap,
-              level:
-                gap === null
-                  ? 'unknown'
-                  : gap <= 1
-                    ? 'healthy'
-                    : gap <= 3
-                      ? 'degraded'
-                      : 'critical',
-            };
-          }),
+            },
+          ),
         );
 
         snapshotHealth = { epoch, checks: snapshotChecks };

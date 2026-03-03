@@ -11,7 +11,7 @@ import { InterBodyPulse } from '@/components/InterBodyPulse';
 import { TreasuryHealthWidget } from '@/components/TreasuryHealthWidget';
 import { PulseLeaderboardClient } from '@/components/PulseLeaderboardClient';
 import { GovernanceObservatory } from '@/components/GovernanceObservatory';
-import { FeatureGate } from '@/components/FeatureGate';
+
 import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import {
@@ -255,9 +255,7 @@ export function PulseHub() {
 
           {/* 3. Inter-Body Pulse */}
           <motion.div variants={fadeInUp}>
-            <FeatureGate flag="spo_cc_votes">
-              <InterBodyPulse />
-            </FeatureGate>
+            <InterBodyPulse />
           </motion.div>
 
           {/* 4. Treasury Health */}
@@ -317,9 +315,7 @@ export function PulseHub() {
 
           {/* 7. Cross-Chain Observatory */}
           <motion.div variants={fadeInUp}>
-            <FeatureGate flag="cross_chain_observatory">
-              <GovernanceObservatory variant="compact" />
-            </FeatureGate>
+            <GovernanceObservatory variant="compact" />
           </motion.div>
         </motion.div>
       </div>

@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const enabled = await getFeatureFlag('epoch_recaps', false);
-    if (!enabled) {
-      return NextResponse.json({ error: 'Feature not available' }, { status: 404 });
-    }
-
     const epochParam = request.nextUrl.searchParams.get('epoch');
     const supabase = createClient();
 

@@ -1,0 +1,26 @@
+---
+description: Branch discipline for worktree model
+globs: ['**/*']
+alwaysApply: true
+---
+
+# Branch Safety
+
+## Golden rule
+
+**Never switch branches.** Do not run `git checkout <other-branch>`, `git switch`, or create new branches from a feature worktree. The branch you're on is the branch you work on. If you're on the wrong branch, stop and tell the user.
+
+## Main branch policy
+
+Do not commit to `main` unless the user explicitly requests a **hotfix** or the change is docs/rules-only. For all other work, use a feature branch via worktree. If on `main` and the task is not one of these exceptions, stop and create a branch first.
+
+## Before starting work
+
+1. `git branch --show-current` — confirm the branch
+2. `git fetch origin main` — check if behind
+3. If behind, warn the user and suggest rebasing before proceeding
+
+## Commits
+
+- Descriptive message, repo style
+- Use `--no-verify` (pre-commit hooks need an environment not available locally; CI is the gate)

@@ -65,8 +65,24 @@ const DB_PROPOSAL_COLUMNS =
 export const syncAlignment = inngest.createFunction(
   {
     id: 'sync-alignment',
-    retries: 3,
+    retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"alignment-compute"' },
+    onFailure: async ({ error, event }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      console.error('[alignment] Function failed permanently:', msg);
+
+      // Clean up any unfinalised sync_log entries for alignment
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'alignment')
+        .is('finished_at', null);
+    },
   },
   [{ event: 'drepscore/sync.alignment' }, { cron: '0 3 * * *' }],
   async ({ step }) => {
@@ -386,8 +402,19 @@ export const syncAlignment = inngest.createFunction(
         };
       } catch (err) {
         const msg = errMsg(err);
-        console.error('[alignment] compute-and-persist error:', msg);
-        throw err;
+        const phase = phaseTiming.persist_ms !== undefined
+          ? 'after-persist'
+          : phaseTiming.pca_ms !== undefined
+            ? 'snapshot-persist'
+            : phaseTiming.normalize_ms !== undefined
+              ? 'pca-compute'
+              : phaseTiming.dimensions_ms !== undefined
+                ? 'normalize'
+                : phaseTiming.load_ms !== undefined
+                  ? 'dimensions'
+                  : 'data-load';
+        console.error(`[alignment] compute-and-persist error in phase=${phase}:`, msg);
+        throw new Error(`[phase=${phase}] ${msg}`);
       }
     });
 

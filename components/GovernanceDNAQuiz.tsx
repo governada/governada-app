@@ -18,6 +18,9 @@ interface QuizProposal {
   summary: string | null;
   withdrawalAmount: number | null;
   treasuryTier: string | null;
+  discriminationLabel?: string;
+  stakesLabel?: string | null;
+  dimensionTags?: string[];
 }
 
 type VoteChoice = 'yes' | 'no' | 'abstain';
@@ -93,7 +96,13 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
       const newVotes = [...votes, { txHash: proposal.txHash, index: proposal.index, vote }];
       setVotes(newVotes);
 
-      submitVote(proposal, vote);
+      const isLastVote = !(currentIdx + 1 < proposals.length && newVotes.length < 7);
+
+      if (isLastVote) {
+        await submitVote(proposal, vote);
+      } else {
+        submitVote(proposal, vote);
+      }
 
       import('@/lib/posthog')
         .then(({ posthog }) => {
@@ -105,7 +114,7 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
         })
         .catch(() => {});
 
-      if (currentIdx + 1 < proposals.length && newVotes.length < 7) {
+      if (!isLastVote) {
         setCurrentIdx(currentIdx + 1);
       } else {
         setPhase('submitting');
@@ -129,8 +138,15 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
                   matchScore: m.matchScore,
                   agreed: m.agreed,
                   total: m.overlapping,
+                  confidence: m.confidence,
+                  agreeDimensions: m.agreeDimensions,
+                  differDimensions: m.differDimensions,
+                  alignments: m.alignments ?? null,
                 })),
                 currentDRepMatch: data.currentDRepMatch ?? null,
+                overallConfidence: data.overallConfidence,
+                matchMethod: data.matchMethod,
+                userAlignments: data.userAlignments ?? null,
               });
               onQuizComplete?.(matchMap);
               import('@/lib/posthog')
@@ -238,21 +254,40 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-[10px]">
               {proposal.proposalType.replace(/([A-Z])/g, ' $1').trim()}
             </Badge>
-            {proposal.withdrawalAmount && (
+            {proposal.stakesLabel && (
+              <Badge variant="secondary" className="text-[10px]">
+                {proposal.stakesLabel}
+              </Badge>
+            )}
+            {!proposal.stakesLabel && proposal.withdrawalAmount && (
               <Badge variant="secondary" className="text-[10px]">
                 {proposal.withdrawalAmount >= 1_000_000
                   ? `${(proposal.withdrawalAmount / 1_000_000).toFixed(1)}M ADA`
                   : `${Math.round(proposal.withdrawalAmount).toLocaleString()} ADA`}
               </Badge>
             )}
+            {proposal.discriminationLabel && (
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                {proposal.discriminationLabel}
+              </Badge>
+            )}
           </div>
           <h4 className="font-semibold text-base leading-snug">{proposal.title}</h4>
           {proposal.summary && (
             <p className="text-sm text-muted-foreground line-clamp-3">{proposal.summary}</p>
+          )}
+          {proposal.dimensionTags && proposal.dimensionTags.length > 0 && (
+            <div className="flex gap-1">
+              {proposal.dimensionTags.map((tag) => (
+                <span key={tag} className="text-[10px] text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded">
+                  {tag}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 

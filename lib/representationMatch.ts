@@ -202,7 +202,7 @@ export async function findBestMatchDReps(
 // PCA-BASED MATCHING (cosine similarity in PCA space)
 // ============================================================================
 
-function cosineSimilarity(a: number[], b: number[]): number {
+export function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0,
     magA = 0,
     magB = 0;
@@ -219,7 +219,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
  * Project a user's partial vote vector into PCA space using active loadings.
  * userVotes: map of proposalId ("txHash-index") → vote value (+1, -1, 0)
  */
-function projectUserVector(
+export function projectUserVector(
   userVotes: Map<string, number>,
   loadings: number[][],
   proposalIds: string[],

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
+import { updateUserProfile } from '@/lib/matching/userProfile';
 
 const VALID_VOTES = ['yes', 'no', 'abstain'] as const;
 type Vote = (typeof VALID_VOTES)[number];
@@ -186,6 +187,11 @@ export async function POST(request: NextRequest) {
     .then(({ error: evtErr }) => {
       if (evtErr) console.error('[Poll Vote] governance_event write failed:', evtErr);
     });
+
+  // Update user governance profile (fire-and-forget, don't block response)
+  updateUserProfile(walletAddress).catch((err) => {
+    console.error('[Poll Vote] Failed to update user profile:', err);
+  });
 
   const { data: allVotes } = await supabase
     .from('poll_responses')

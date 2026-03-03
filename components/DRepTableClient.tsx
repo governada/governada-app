@@ -52,6 +52,7 @@ interface DRepTableClientProps {
   onWatchlistToggle?: (drepId: string) => void;
   isConnected?: boolean;
   matchData?: Record<string, number>;
+  matchConfidence?: Record<string, number>;
 }
 
 export function DRepTableClient({
@@ -62,6 +63,7 @@ export function DRepTableClient({
   onWatchlistToggle,
   isConnected = false,
   matchData = {},
+  matchConfidence = {},
 }: DRepTableClientProps) {
   const router = useRouter();
   const { delegatedDrepId } = useWallet();
@@ -483,6 +485,7 @@ export function DRepTableClient({
           <DRepCardGrid
             dreps={sortedDReps.slice(0, visibleCardCount)}
             matchData={matchData}
+            matchConfidence={matchConfidence}
             watchlist={watchlist}
             onWatchlistToggle={onWatchlistToggle}
             delegatedDrepId={delegatedDrepId}

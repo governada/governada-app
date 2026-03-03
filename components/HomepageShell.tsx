@@ -7,6 +7,7 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { EnrichedDRep } from '@/lib/koios';
+import { GovernanceIdentityCard } from '@/components/matching/GovernanceIdentityCard';
 
 const GovernanceWidget = dynamic(
   () => import('@/components/GovernanceWidget').then((m) => m.GovernanceWidget),
@@ -47,6 +48,13 @@ export function HomepageShell({
   const { isAuthenticated, sessionAddress } = useWallet();
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [matchData, setMatchData] = useState<Record<string, number>>({});
+  const [matchConfidence, setMatchConfidence] = useState<Record<string, number>>({});
+  const [userProfile, setUserProfile] = useState<{
+    personalityLabel: string | null;
+    votesUsed: number;
+    confidence: number;
+    alignmentScores: Record<string, number | null> | null;
+  } | null>(null);
 
   useEffect(() => {
     setWatchlist(getLocalWatchlist());
@@ -78,11 +86,31 @@ export function HomepageShell({
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.matches?.length > 0) {
-          const map: Record<string, number> = {};
+          const scoreMap: Record<string, number> = {};
+          const confMap: Record<string, number> = {};
           for (const m of data.matches) {
-            map[m.drepId] = m.matchScore;
+            scoreMap[m.drepId] = m.matchScore;
+            if (m.confidence != null) confMap[m.drepId] = m.confidence;
           }
-          setMatchData(map);
+          setMatchData(scoreMap);
+          setMatchConfidence(confMap);
+        }
+      })
+      .catch(console.error);
+
+    // Fetch user governance profile for identity card
+    fetch('/api/governance/my-profile', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.votesUsed > 0) {
+          setUserProfile({
+            personalityLabel: data.personalityLabel,
+            votesUsed: data.votesUsed,
+            confidence: data.confidence,
+            alignmentScores: data.alignmentScores,
+          });
         }
       })
       .catch(console.error);
@@ -118,6 +146,15 @@ export function HomepageShell({
     <div className="space-y-6">
       <GovernanceWidget />
 
+      {userProfile && (
+        <GovernanceIdentityCard
+          personalityLabel={userProfile.personalityLabel}
+          votesUsed={userProfile.votesUsed}
+          confidence={userProfile.confidence}
+          alignmentScores={userProfile.alignmentScores}
+        />
+      )}
+
       <FeatureGate flag="governance_dna_quiz">
         <GovernanceDNAQuiz onQuizComplete={setMatchData} />
       </FeatureGate>
@@ -131,6 +168,7 @@ export function HomepageShell({
         onWatchlistToggle={handleWatchlistToggle}
         isConnected={isAuthenticated}
         matchData={matchData}
+        matchConfidence={matchConfidence}
       />
     </div>
   );

@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 interface DRepCardProps {
   drep: EnrichedDRep;
   matchScore?: number | null;
+  matchConfidence?: number | null;
   isWatchlisted?: boolean;
   onWatchlistToggle?: (drepId: string) => void;
   isDelegated?: boolean;
@@ -23,6 +24,7 @@ interface DRepCardProps {
 export function DRepCard({
   drep,
   matchScore,
+  matchConfidence,
   isWatchlisted = false,
   onWatchlistToggle,
   isDelegated = false,
@@ -105,6 +107,16 @@ export function DRepCard({
       {matchScore != null && (
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-primary/5 border border-primary/10">
           <span className="text-xs font-medium text-primary">{matchScore}% match</span>
+          {matchConfidence != null && (
+            <span
+              className={cn(
+                'text-[10px]',
+                matchConfidence >= 50 ? 'text-green-500' : 'text-amber-500',
+              )}
+            >
+              · {matchConfidence >= 80 ? 'high' : matchConfidence >= 40 ? 'med' : 'low'}
+            </span>
+          )}
         </div>
       )}
 

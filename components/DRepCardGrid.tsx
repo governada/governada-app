@@ -7,6 +7,7 @@ import { DRepCard } from '@/components/DRepCard';
 interface DRepCardGridProps {
   dreps: EnrichedDRep[];
   matchData?: Record<string, number>;
+  matchConfidence?: Record<string, number>;
   watchlist?: string[];
   onWatchlistToggle?: (drepId: string) => void;
   delegatedDrepId?: string | null;
@@ -16,6 +17,7 @@ interface DRepCardGridProps {
 export function DRepCardGrid({
   dreps,
   matchData = {},
+  matchConfidence = {},
   watchlist = [],
   onWatchlistToggle,
   delegatedDrepId,
@@ -46,6 +48,7 @@ export function DRepCardGrid({
           key={drep.drepId}
           drep={drep}
           matchScore={matchData[drep.drepId] ?? null}
+          matchConfidence={matchConfidence[drep.drepId] ?? null}
           isWatchlisted={watchlist.includes(drep.drepId)}
           onWatchlistToggle={onWatchlistToggle}
           isDelegated={delegatedDrepId === drep.drepId}

@@ -12,7 +12,7 @@ These override all other guidance when in conflict. Violations of these rules ha
 Always create a feature branch (`feat/<name>`). The only exception is hotfixes when the user explicitly says "hotfix." Check `git branch --show-current` before any `git add`.
 
 ## 2. Ship It is part of the task, not a follow-up
-Implementation is NOT complete until: branch created → committed → pushed → PR opened → merged → deploy verified healthy. Never report "all todos done" without shipping. Include Ship It steps in the FIRST `TodoWrite` call alongside implementation tasks.
+Implementation is NOT complete until: branch created → committed → pushed → PR opened → merged → deploy verified healthy. Never report "all todos done" without shipping. Include Ship It steps in the FIRST `TodoWrite` call alongside implementation tasks. **If CI or deploy fails, diagnose and fix in the same session** — create a follow-up PR and keep iterating until the pipeline is fully green and the deploy shows `state: "success"`. A red pipeline is never "done."
 
 ## 3. Railway, NOT Vercel
 This project deploys on Railway via Docker. Never reference `VERCEL_URL`, `VERCEL_ENV`, any `VERCEL_*` env var, `vercel.json`, or `@vercel/*` packages. Use `BASE_URL` from `lib/constants.ts` for all server-side URL construction.
@@ -42,4 +42,4 @@ All admin pages: `app/admin/*` route, client-side auth via `POST /api/admin/chec
 Before doing anything, read lessons for patterns that prevent repeat mistakes.
 
 ## 12. Verify deploy, don't assume it
-After merge, poll deployment status until `success` is confirmed. Hit the affected page on `drepscore.io` to smoke-test. Deploy failures from your changes are your responsibility — fix and re-push immediately.
+After merge, poll CI jobs until ALL pass (lint → test → type-check → build → sentry-release). Then poll Railway deployment status until `state: "success"`. If ANY step fails: read the logs, diagnose, fix, and push a follow-up PR in the same session. Hit the affected page on `drepscore.io` to smoke-test. **Never report completion while CI is red or deploy is pending.** A failure previously masked by an earlier failure (e.g., lint hid a build error) is still your responsibility.

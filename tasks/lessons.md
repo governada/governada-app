@@ -447,5 +447,15 @@ Server-side API routes also need `captureServerEvent` for success + error tracki
 **Fix**: Standardized: all admin pages under `app/admin/`, all use `POST /api/admin/check` client-side auth, all write endpoints validate `address` against `ADMIN_WALLETS`, all linked in Header dropdown + MobileNav Admin section.
 **Takeaway**: Admin pages are a security surface. The convention must be followed for every new admin page — auth guard, API validation, nav integration. The architecture.md rule now documents this.
 
-*Last updated: 2026-03-02*
+### 2026-03-03: Cascading CI failures — fix ALL stages, not just the first
+**Issue**: Lint errors had been failing CI for multiple commits, which masked a build error (offline page missing `'use client'` directive). When I fixed the lint errors (PR #43), the build failure was revealed (prerender crash on `/offline`). Required a second follow-up PR (#44) to fully green the pipeline.
+**Pattern**: When lint fails, build is skipped. When you fix lint, build may now expose errors that were previously invisible. After fixing any CI stage, you MUST wait for the full pipeline to complete — don't assume downstream stages will pass just because they were skipped before.
+**Takeaway**: Always monitor CI through to full green (all stages pass + deploy succeeds). Promoted to critical.md rules #2 and #12.
+
+### 2026-03-03: Hooks before early returns (react-hooks/rules-of-hooks)
+**Issue**: `CompareButton.tsx` had `useFeatureFlag()` followed by an early return before `useState`/`useEffect`/`useCallback` calls, violating React's rules of hooks. `ScrollStoryReveal.tsx` had `useTransform` calls inside ternary conditionals.
+**Fix**: CompareButton — moved early return after all hooks. ScrollStoryReveal — always call `useTransform` with no-op values when variant doesn't use that transform axis.
+**Takeaway**: When adding feature flag gates to existing client components, always place the `useFeatureFlag()` call alongside other hooks and move any early-return guard AFTER all hook calls. Never put hooks inside conditionals or ternaries.
+
+*Last updated: 2026-03-03*
 *Review this file at the start of every session.*

@@ -796,6 +796,7 @@ export async function fetchTreasuryBalance(): Promise<{
   epoch: number;
   balance: bigint;
   reserves: bigint;
+  circulation: bigint;
 }> {
   const data = await koiosFetch<KoiosTotalsRow[]>('/totals?limit=1&order=epoch_no.desc');
   if (!data || data.length === 0) {
@@ -806,7 +807,16 @@ export async function fetchTreasuryBalance(): Promise<{
     epoch: row.epoch_no,
     balance: BigInt(row.treasury),
     reserves: BigInt(row.reserves),
+    circulation: BigInt(row.circulation),
   };
+}
+
+/**
+ * Convenience: fetch just the circulating supply in lovelace.
+ */
+export async function fetchCirculatingSupply(): Promise<number> {
+  const { circulation } = await fetchTreasuryBalance();
+  return Number(circulation);
 }
 
 /**

@@ -303,8 +303,8 @@ export const syncAlignment = inngest.createFunction(
             finished_at: new Date().toISOString(),
             duration_ms: Date.now() - startTime,
             success: true,
-            error_message: capMsg('skipped: ' + (computeResult.reason || 'unknown')),
-            metrics: { skipped: true, reason: computeResult.reason },
+            error_message: capMsg('skipped: ' + ((computeResult as any).reason || 'unknown')),
+            metrics: { skipped: true, reason: (computeResult as any).reason },
           })
           .eq('id', logId);
       });

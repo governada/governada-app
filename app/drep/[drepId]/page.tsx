@@ -35,6 +35,7 @@ import { AboutSection } from '@/components/AboutSection';
 import { SocialIconsLarge } from '@/components/SocialIconsLarge';
 import { CompareButton } from '@/components/CompareButton';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
+import { PageViewTracker } from '@/components/PageViewTracker';
 import { ProfileViewStats } from '@/components/ProfileViewStats';
 import { MilestoneBadges } from '@/components/MilestoneBadges';
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
@@ -375,6 +376,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
       <ProfileViewTracker drepId={drep.drepId} />
+      <PageViewTracker event="drep_profile_viewed" properties={{ drep_id: drep.drepId }} />
 
       <Link href="/">
         <Button variant="ghost" className="gap-2 -ml-2">

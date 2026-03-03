@@ -27,6 +27,7 @@ import { TriBodyVotePanel } from '@/components/TriBodyVotePanel';
 import { ProposalVoterTabs } from '@/components/ProposalVoterTabs';
 import { SimilarProposals } from '@/components/SimilarProposals';
 import { FeatureGate } from '@/components/FeatureGate';
+import { PageViewTracker } from '@/components/PageViewTracker';
 
 interface ProposalDetailPageProps {
   params: Promise<{ txHash: string; index: string }>;
@@ -119,6 +120,10 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
+      <PageViewTracker
+        event="proposal_detail_viewed"
+        properties={{ tx_hash: txHash, index: proposalIndex }}
+      />
       {/* Back */}
       <Link href="/proposals">
         <Button variant="ghost" className="gap-2 -ml-2">

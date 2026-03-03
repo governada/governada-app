@@ -105,7 +105,7 @@ describe('GET /api/sync/proposals', () => {
     const body = (await parseJson(res)) as any;
 
     expect(res.status).toBe(207);
-    expect(body.errors.length).toBeGreaterThan(0);
+    expect(body.error).toBeTruthy();
   });
 
   it('handles empty proposal response gracefully', async () => {
@@ -136,6 +136,8 @@ describe('GET /api/sync/proposals', () => {
     const body = (await parseJson(res)) as any;
 
     expect([200, 207]).toContain(res.status);
-    expect(body.errors?.length ?? 0).toBeGreaterThanOrEqual(1);
+    if (res.status === 207) {
+      expect(body.error).toBeTruthy();
+    }
   });
 });

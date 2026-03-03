@@ -55,6 +55,7 @@ import { applyRationaleCurve, getMissingProfileFields } from '@/utils/scoring';
 import { generateDashboardNarrative } from '@/lib/narratives';
 import { NarrativeSummary } from '@/components/NarrativeSummary';
 import { FeatureGate } from '@/components/FeatureGate';
+import { PageViewTracker } from '@/components/PageViewTracker';
 import type { ScoreSnapshot } from '@/lib/data';
 import type { VoteRecord } from '@/types/drep';
 
@@ -298,6 +299,7 @@ export default function MyDRepPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
+      <PageViewTracker event="dashboard_page_viewed" />
       {/* Admin DRep Switcher */}
       {isAdmin && (
         <AdminDRepSwitcher

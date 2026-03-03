@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { GovernanceHealthStory } from '@/components/GovernanceHealthStory';
+import { PageViewTracker } from '@/components/PageViewTracker';
 import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default async function GovernancePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
+      <PageViewTracker event="governance_page_viewed" />
       <GovernanceHealthStory showCalendar={showCalendar} showCitizenPanels={showCitizenPanels} />
     </div>
   );

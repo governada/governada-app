@@ -140,7 +140,9 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
         }
 
         voteCount = deduped.length;
-        console.log(`${TAG} ${voteCount} votes upserted for ${openProposals.length} open proposals`);
+        console.log(
+          `${TAG} ${voteCount} votes upserted for ${openProposals.length} open proposals`,
+        );
       } catch (err) {
         errors.push(`Votes: ${errMsg(err)}`);
         console.error(`${TAG} Vote fetch failed:`, errMsg(err));

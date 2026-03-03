@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { PulseHub } from '@/components/PulseHub';
+import { PageViewTracker } from '@/components/PageViewTracker';
 
 export const metadata: Metadata = {
   title: 'Governance Pulse | DRepScore',
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default function PulsePage() {
-  return <PulseHub />;
+  return (
+    <>
+      <PageViewTracker event="pulse_page_viewed" />
+      <PulseHub />
+    </>
+  );
 }

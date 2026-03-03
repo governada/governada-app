@@ -54,6 +54,7 @@ import { generateDRepNarrative } from '@/lib/narratives';
 import { NarrativeSummary } from '@/components/NarrativeSummary';
 import { ActivitySideWidget } from '@/components/ActivitySideWidget';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
+import { ScoreDeepDive } from '@/components/ScoreDeepDive';
 import {
   getDRepById,
   getVotesByDRepId,
@@ -210,6 +211,15 @@ async function getDRepData(drepId: string) {
       abstainVotes: cachedDRep.abstainVotes,
       epochVoteCounts: cachedDRep.epochVoteCounts,
       votingPowerLovelace: cachedDRep.votingPowerLovelace,
+      engagementQuality: cachedDRep.engagementQuality ?? null,
+      engagementQualityRaw: cachedDRep.engagementQualityRaw ?? null,
+      effectiveParticipationV3: cachedDRep.effectiveParticipationV3 ?? null,
+      effectiveParticipationV3Raw: cachedDRep.effectiveParticipationV3Raw ?? null,
+      reliabilityV3: cachedDRep.reliabilityV3 ?? null,
+      reliabilityV3Raw: cachedDRep.reliabilityV3Raw ?? null,
+      governanceIdentity: cachedDRep.governanceIdentity ?? null,
+      governanceIdentityRaw: cachedDRep.governanceIdentityRaw ?? null,
+      scoreMomentum: cachedDRep.scoreMomentum ?? null,
     };
   } catch (error) {
     console.error('[DRepProfile] Error loading DRep data:', error);
@@ -490,6 +500,26 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         }
         scoreAnalysisContent={
           <div className="space-y-6">
+            <ScoreDeepDive
+              score={drep.drepScore}
+              engagementQuality={drep.engagementQuality}
+              engagementQualityRaw={drep.engagementQualityRaw}
+              effectiveParticipation={drep.effectiveParticipationV3}
+              effectiveParticipationRaw={drep.effectiveParticipationV3Raw}
+              reliability={drep.reliabilityV3}
+              reliabilityRaw={drep.reliabilityV3Raw}
+              governanceIdentity={drep.governanceIdentity}
+              governanceIdentityRaw={drep.governanceIdentityRaw}
+              scoreMomentum={drep.scoreMomentum}
+              rationaleRate={drep.rationaleRate}
+              deliberationModifier={drep.deliberationModifier}
+              reliabilityStreak={drep.reliabilityStreak}
+              reliabilityRecency={drep.reliabilityRecency}
+              reliabilityLongestGap={drep.reliabilityLongestGap}
+              reliabilityTenure={drep.reliabilityTenure}
+              profileCompleteness={drep.profileCompleteness}
+              delegatorCount={drep.delegatorCount}
+            />
             <ScoreCard
               drep={drep}
               adjustedRationale={adjustedRationale}

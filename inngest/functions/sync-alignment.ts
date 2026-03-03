@@ -53,9 +53,7 @@ function mapDBProposal(row: Record<string, unknown>): ProposalInfo {
     meta_json: (row.meta_json as ProposalInfo['meta_json']) || null,
     meta_comment: null,
     meta_is_valid: null,
-    withdrawal: withdrawalAmount
-      ? [{ stake_address: '', amount: String(withdrawalAmount) }]
-      : null,
+    withdrawal: withdrawalAmount ? [{ stake_address: '', amount: String(withdrawalAmount) }] : null,
     param_proposal: (row.param_changes as Record<string, unknown>) || null,
     block_time: (row.block_time as number) || 0,
   };
@@ -153,9 +151,9 @@ export const syncAlignment = inngest.createFunction(
         const [{ data: dbRows }, { data: drepRows }, { data: voteRows }, { data: classRows }] =
           await Promise.all([
             sb.from('proposals').select(DB_PROPOSAL_COLUMNS),
-            sb.from('dreps').select(
-              'id, info, score, participation_rate, rationale_rate, size_tier',
-            ),
+            sb
+              .from('dreps')
+              .select('id, info, score, participation_rate, rationale_rate, size_tier'),
             sb
               .from('drep_votes')
               .select(
@@ -193,16 +191,13 @@ export const syncAlignment = inngest.createFunction(
           const key = `${p.proposal_tx_hash}-${p.proposal_index}`;
           proposalTypeMap.set(key, p.proposal_type);
           const amount =
-            p.withdrawal?.reduce(
-              (sum, w) => {
-                try {
-                  return sum + Number(BigInt(w.amount || '0') / BigInt(1_000_000));
-                } catch {
-                  return sum;
-                }
-              },
-              0,
-            ) ?? null;
+            p.withdrawal?.reduce((sum, w) => {
+              try {
+                return sum + Number(BigInt(w.amount || '0') / BigInt(1_000_000));
+              } catch {
+                return sum;
+              }
+            }, 0) ?? null;
           proposalAmountMap.set(key, amount);
         }
 
@@ -268,16 +263,13 @@ export const syncAlignment = inngest.createFunction(
           index: p.proposal_index,
           type: p.proposal_type,
           withdrawalAmountAda:
-            p.withdrawal?.reduce(
-              (sum, w) => {
-                try {
-                  return sum + Number(BigInt(w.amount || '0') / BigInt(1_000_000));
-                } catch {
-                  return sum;
-                }
-              },
-              0,
-            ) ?? null,
+            p.withdrawal?.reduce((sum, w) => {
+              try {
+                return sum + Number(BigInt(w.amount || '0') / BigInt(1_000_000));
+              } catch {
+                return sum;
+              }
+            }, 0) ?? null,
         }));
 
         const classifications = Array.from(classMap.values());
@@ -414,8 +406,7 @@ export const syncAlignment = inngest.createFunction(
           success,
           error_message: skipped
             ? capMsg(
-                'skipped: ' +
-                  (('reason' in computeResult && computeResult.reason) || 'unknown'),
+                'skipped: ' + (('reason' in computeResult && computeResult.reason) || 'unknown'),
               )
             : null,
           metrics: {

@@ -11,6 +11,8 @@ import { InterBodyPulse } from '@/components/InterBodyPulse';
 import { TreasuryHealthWidget } from '@/components/TreasuryHealthWidget';
 import { PulseLeaderboardClient } from '@/components/PulseLeaderboardClient';
 import { GovernanceObservatory } from '@/components/GovernanceObservatory';
+import { ProposalTrends } from '@/components/ProposalTrends';
+import { GovernanceSparklines } from '@/components/GovernanceSparklines';
 
 import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
@@ -248,9 +250,19 @@ export function PulseHub() {
             </motion.div>
           )}
 
-          {/* 2. Cross-Proposal Insights */}
+          {/* 2. Governance Over Time (sparklines) */}
+          <motion.div variants={fadeInUp}>
+            <GovernanceSparklines />
+          </motion.div>
+
+          {/* 3. Cross-Proposal Insights */}
           <motion.div variants={fadeInUp}>
             <CrossProposalInsights maxInsights={3} />
+          </motion.div>
+
+          {/* 4. Evolution of Governance (proposal trends) */}
+          <motion.div variants={fadeInUp}>
+            <ProposalTrends />
           </motion.div>
 
           {/* 3. Inter-Body Pulse */}

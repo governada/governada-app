@@ -32,6 +32,7 @@ import { GovernanceCalendar } from '@/components/GovernanceCalendar';
 import { GovernanceBriefCard } from '@/components/GovernanceBriefCard';
 import { GovernanceCitizenPanels } from '@/components/GovernanceCitizenPanels';
 import { GovernanceLevelBadge } from '@/components/GovernanceLevelBadge';
+import { GovernanceFootprintCard } from '@/components/GovernanceFootprintCard';
 import { DelegatorShareCard } from '@/components/DelegatorShareCard';
 
 import { posthog } from '@/lib/posthog';
@@ -162,7 +163,11 @@ export function GovernanceHealthStory({
       />
 
       {/* VP2 — Your Governance Story (below fold) */}
-      <GovernanceStorySection data={data} showCalendar={showCalendar} />
+      <GovernanceStorySection
+        data={data}
+        showCalendar={showCalendar}
+        stakeAddress={address ?? undefined}
+      />
     </div>
   );
 }
@@ -324,13 +329,17 @@ function useActionItems(data: ExtendedDashboardData, healthStatus: HealthStatus)
 function GovernanceStorySection({
   data,
   showCalendar,
+  stakeAddress,
 }: {
   data: ExtendedDashboardData;
   showCalendar: boolean;
+  stakeAddress: string | undefined;
 }) {
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-bold tracking-tight border-b pb-2">Your Governance Story</h2>
+
+      {stakeAddress && <GovernanceFootprintCard stakeAddress={stakeAddress} />}
 
       {/* DRep Voted Feed */}
       {data.delegationHealth && data.pollHistory.length > 0 && (

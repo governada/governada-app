@@ -80,7 +80,11 @@ describe('POST /api/drep-claim', () => {
   });
 
   it('returns 401 when session is expired', async () => {
-    vi.mocked(parseSessionToken).mockReturnValue({ walletAddress: 'addr1...', exp: 0, iat: 0 } as any);
+    vi.mocked(parseSessionToken).mockReturnValue({
+      walletAddress: 'addr1...',
+      exp: 0,
+      iat: 0,
+    } as any);
     vi.mocked(isSessionExpired).mockReturnValue(true);
 
     const req = createRequest('/api/drep-claim', {
@@ -92,7 +96,11 @@ describe('POST /api/drep-claim', () => {
   });
 
   it('claims a DRep successfully', async () => {
-    vi.mocked(parseSessionToken).mockReturnValue({ walletAddress: 'addr1test', exp: Date.now() + 100000, iat: Date.now() } as any);
+    vi.mocked(parseSessionToken).mockReturnValue({
+      walletAddress: 'addr1test',
+      exp: Date.now() + 100000,
+      iat: Date.now(),
+    } as any);
     vi.mocked(isSessionExpired).mockReturnValue(false);
     mockUpdate.mockResolvedValue({ error: null });
 

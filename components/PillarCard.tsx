@@ -15,18 +15,22 @@ interface PillarCardProps {
   hint: string;
 }
 
-const STATUS_CONFIG: Record<PillarStatus, {
-  icon: typeof CheckCircle2;
-  badgeLabel: string;
-  badgeClass: string;
-  iconClass: string;
-  barGradient: string;
-  accentBorder: string;
-}> = {
+const STATUS_CONFIG: Record<
+  PillarStatus,
+  {
+    icon: typeof CheckCircle2;
+    badgeLabel: string;
+    badgeClass: string;
+    iconClass: string;
+    barGradient: string;
+    accentBorder: string;
+  }
+> = {
   strong: {
     icon: CheckCircle2,
     badgeLabel: 'Strong',
-    badgeClass: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+    badgeClass:
+      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
     iconClass: 'text-green-600 dark:text-green-400',
     barGradient: 'from-green-500 to-green-400',
     accentBorder: 'border-l-green-500',
@@ -34,7 +38,8 @@ const STATUS_CONFIG: Record<PillarStatus, {
   'needs-work': {
     icon: AlertTriangle,
     badgeLabel: 'Needs Work',
-    badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+    badgeClass:
+      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800',
     iconClass: 'text-amber-600 dark:text-amber-400',
     barGradient: 'from-amber-500 to-amber-400',
     accentBorder: 'border-l-amber-500',
@@ -42,7 +47,8 @@ const STATUS_CONFIG: Record<PillarStatus, {
   low: {
     icon: AlertCircle,
     badgeLabel: 'Low',
-    badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+    badgeClass:
+      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
     iconClass: 'text-red-600 dark:text-red-400',
     barGradient: 'from-red-500 to-red-400',
     accentBorder: 'border-l-red-500',
@@ -59,7 +65,7 @@ export function PillarCard({ label, value, weight, maxPoints, status, hint }: Pi
   const config = STATUS_CONFIG[status];
   const Icon = config.icon;
   const tierDistance = getTierDistance(value, status);
-  const contribution = Math.round(value * maxPoints / 100);
+  const contribution = Math.round((value * maxPoints) / 100);
 
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-20px' });
@@ -81,9 +87,7 @@ export function PillarCard({ label, value, weight, maxPoints, status, hint }: Pi
           <span className="text-[10px] text-muted-foreground tabular-nums">
             {contribution}/{maxPoints} pts
           </span>
-          <span className="text-sm text-muted-foreground tabular-nums font-medium">
-            {value}%
-          </span>
+          <span className="text-sm text-muted-foreground tabular-nums font-medium">{value}%</span>
         </div>
       </div>
       {/* Progress bar with gradient fill and animated width */}

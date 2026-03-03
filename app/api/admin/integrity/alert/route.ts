@@ -14,12 +14,25 @@ interface Alert {
 
 const ACTIVE_SYNC_TYPES = new Set(['proposals', 'dreps', 'votes', 'secondary', 'slow']);
 
-const SYNC_CONFIG: Record<string, { mins: number; schedule: string; route: string; label: string }> = {
-  proposals: { mins: 90, schedule: 'every 30m', route: '/api/sync/proposals', label: 'Proposals Sync' },
-  dreps:     { mins: 720, schedule: 'every 6h', route: '/api/sync/dreps', label: 'DReps Sync' },
-  votes:     { mins: 720, schedule: 'every 6h', route: '/api/sync/votes', label: 'Votes Sync' },
-  secondary: { mins: 720, schedule: 'every 6h', route: '/api/sync/secondary', label: 'Secondary Sync' },
-  slow:      { mins: 2160, schedule: 'daily', route: '/api/sync/slow', label: 'Slow Sync' },
+const SYNC_CONFIG: Record<
+  string,
+  { mins: number; schedule: string; route: string; label: string }
+> = {
+  proposals: {
+    mins: 90,
+    schedule: 'every 30m',
+    route: '/api/sync/proposals',
+    label: 'Proposals Sync',
+  },
+  dreps: { mins: 720, schedule: 'every 6h', route: '/api/sync/dreps', label: 'DReps Sync' },
+  votes: { mins: 720, schedule: 'every 6h', route: '/api/sync/votes', label: 'Votes Sync' },
+  secondary: {
+    mins: 720,
+    schedule: 'every 6h',
+    route: '/api/sync/secondary',
+    label: 'Secondary Sync',
+  },
+  slow: { mins: 2160, schedule: 'daily', route: '/api/sync/slow', label: 'Slow Sync' },
 };
 
 export async function GET(request: NextRequest) {
@@ -36,12 +49,7 @@ export async function GET(request: NextRequest) {
   const supabase = createClient();
   const alerts: Alert[] = [];
 
-  const [
-    { data: vpc },
-    { data: hv },
-    { data: ai },
-    { data: sh },
-  ] = await Promise.all([
+  const [{ data: vpc }, { data: hv }, { data: ai }, { data: sh }] = await Promise.all([
     supabase.from('v_vote_power_coverage').select('*').single(),
     supabase.from('v_hash_verification').select('*').single(),
     supabase.from('v_ai_summary_coverage').select('*').single(),
@@ -50,26 +58,34 @@ export async function GET(request: NextRequest) {
 
   if (vpc && parseFloat(vpc.coverage_pct) < 95) {
     alerts.push({
-      level: 'critical', metric: 'Vote power coverage',
-      value: `${vpc.coverage_pct}%`, threshold: '95%',
-      action: 'Run /api/sync/dreps to refresh vote power data. If persistent, check Koios drep_info endpoint.',
+      level: 'critical',
+      metric: 'Vote power coverage',
+      value: `${vpc.coverage_pct}%`,
+      threshold: '95%',
+      action:
+        'Run /api/sync/dreps to refresh vote power data. If persistent, check Koios drep_info endpoint.',
     });
   }
 
   if (hv && parseFloat(hv.mismatch_rate_pct) > 5) {
     alerts.push({
-      level: 'warning', metric: 'Hash mismatch rate',
-      value: `${hv.mismatch_rate_pct}%`, threshold: '5%',
-      action: 'Run /api/sync/slow to re-verify metadata hashes. If persistent, DReps may have updated their metadata.',
+      level: 'warning',
+      metric: 'Hash mismatch rate',
+      value: `${hv.mismatch_rate_pct}%`,
+      threshold: '5%',
+      action:
+        'Run /api/sync/slow to re-verify metadata hashes. If persistent, DReps may have updated their metadata.',
     });
   }
 
   if (ai && ai.proposals_with_abstract > 0) {
-    const pct = Math.round(ai.proposals_with_summary / ai.proposals_with_abstract * 100);
+    const pct = Math.round((ai.proposals_with_summary / ai.proposals_with_abstract) * 100);
     if (pct < 90) {
       alerts.push({
-        level: 'warning', metric: 'Proposal AI summary coverage',
-        value: `${pct}%`, threshold: '90%',
+        level: 'warning',
+        metric: 'Proposal AI summary coverage',
+        value: `${pct}%`,
+        threshold: '90%',
         action: 'Run /api/sync/slow to generate missing AI summaries.',
       });
     }
@@ -85,7 +101,8 @@ export async function GET(request: NextRequest) {
     if (!config) continue;
 
     const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60000);
-    const staleHuman = staleMins >= 60 ? `${Math.floor(staleMins / 60)}h ${staleMins % 60}m` : `${staleMins}m`;
+    const staleHuman =
+      staleMins >= 60 ? `${Math.floor(staleMins / 60)}h ${staleMins % 60}m` : `${staleMins}m`;
 
     if (staleMins > config.mins) {
       alerts.push({
@@ -101,17 +118,22 @@ export async function GET(request: NextRequest) {
       const failureCount = row.failure_count ?? '?';
       const totalCount = (row.success_count ?? 0) + (row.failure_count ?? 0);
       const errorDetail = row.last_error
-        ? (row.last_error.length > 200 ? row.last_error.slice(0, 200) + '…' : row.last_error)
+        ? row.last_error.length > 200
+          ? row.last_error.slice(0, 200) + '…'
+          : row.last_error
         : 'No error message captured';
       const runAge = staleHuman + ' ago';
 
       let action: string;
       if (row.last_error?.includes('429')) {
-        action = 'Koios rate limited. Wait 60s then retry. If recurring, reduce sync concurrency or check Koios tier.';
+        action =
+          'Koios rate limited. Wait 60s then retry. If recurring, reduce sync concurrency or check Koios tier.';
       } else if (row.last_error?.includes('timeout') || row.last_error?.includes('Timeout')) {
-        action = 'Function timed out. Check maxDuration setting and Koios response times. Consider splitting work.';
+        action =
+          'Function timed out. Check maxDuration setting and Koios response times. Consider splitting work.';
       } else if (row.last_error?.includes('no data') || row.last_error?.includes('No data')) {
-        action = 'Koios returned empty response. Check Koios API status at api.koios.rest. Retry in a few minutes.';
+        action =
+          'Koios returned empty response. Check Koios API status at api.koios.rest. Retry in a few minutes.';
       } else {
         action = `Check Railway logs for ${config.route} in the dashboard. Then retry manually.`;
       }
@@ -143,7 +165,8 @@ export async function GET(request: NextRequest) {
         metric: 'Treasury Snapshot — Stale',
         value: `Last snapshot: epoch ${latestTreasury.epoch_no}, ${Math.floor(snapshotAge / 60)}h ago`,
         threshold: 'daily (via Inngest)',
-        action: 'Check Inngest dashboard for sync-treasury-snapshot failures. The function runs at 22:30 UTC daily.',
+        action:
+          'Check Inngest dashboard for sync-treasury-snapshot failures. The function runs at 22:30 UTC daily.',
       });
     }
   } else {
@@ -163,7 +186,11 @@ export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || null;
 
   if (cronSecret && baseUrl) {
-    const staleTypes: { syncType: string; staleMins: number; config: typeof SYNC_CONFIG[string] }[] = [];
+    const staleTypes: {
+      syncType: string;
+      staleMins: number;
+      config: (typeof SYNC_CONFIG)[string];
+    }[] = [];
     for (const row of sh || []) {
       if (!ACTIVE_SYNC_TYPES.has(row.sync_type)) continue;
       if (!row.last_run) continue;
@@ -177,14 +204,16 @@ export async function GET(request: NextRequest) {
 
     const recoveryResults = await Promise.allSettled(
       staleTypes.map(async ({ syncType, staleMins, config }) => {
-        console.log(`[AlertCron] Self-healing: triggering ${syncType} (${staleMins}m stale > ${config.mins}m threshold)`);
+        console.log(
+          `[AlertCron] Self-healing: triggering ${syncType} (${staleMins}m stale > ${config.mins}m threshold)`,
+        );
         const res = await fetch(`${baseUrl}${config.route}`, {
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${cronSecret}` },
+          headers: { Authorization: `Bearer ${cronSecret}` },
           signal: AbortSignal.timeout(5000),
         });
         return { syncType, status: res.status };
-      })
+      }),
     );
 
     for (const result of recoveryResults) {
@@ -204,16 +233,21 @@ export async function GET(request: NextRequest) {
   if (alerts.length === 0) {
     try {
       await admin.from('sync_log').insert({
-        sync_type: 'integrity_check', started_at: new Date().toISOString(),
-        finished_at: new Date().toISOString(), duration_ms: 0, success: true,
+        sync_type: 'integrity_check',
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        duration_ms: 0,
+        success: true,
         metrics: { alerts: 0, recoveries },
       });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     return NextResponse.json({ alerts: 0, sent: false, recoveries });
   }
 
-  const criticals = alerts.filter(a => a.level === 'critical');
-  const warnings = alerts.filter(a => a.level === 'warning');
+  const criticals = alerts.filter((a) => a.level === 'critical');
+  const warnings = alerts.filter((a) => a.level === 'warning');
 
   const isSlack = webhookUrl.includes('hooks.slack.com');
 
@@ -227,9 +261,12 @@ export async function GET(request: NextRequest) {
     const blocks = [
       {
         type: 'header',
-        text: { type: 'plain_text', text: `DRepScore: ${criticals.length} critical, ${warnings.length} warning` },
+        text: {
+          type: 'plain_text',
+          text: `DRepScore: ${criticals.length} critical, ${warnings.length} warning`,
+        },
       },
-      ...alerts.map(a => ({
+      ...alerts.map((a) => ({
         type: 'section',
         text: {
           type: 'mrkdwn',
@@ -265,11 +302,16 @@ export async function GET(request: NextRequest) {
 
     try {
       await admin.from('sync_log').insert({
-        sync_type: 'integrity_check', started_at: new Date().toISOString(),
-        finished_at: new Date().toISOString(), duration_ms: 0, success: true,
+        sync_type: 'integrity_check',
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        duration_ms: 0,
+        success: true,
         metrics: { alerts: alerts.length, webhook_status: res.status, recoveries },
       });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
 
     try {
       const { captureServerEvent } = await import('@/lib/posthog-server');
@@ -278,13 +320,19 @@ export async function GET(request: NextRequest) {
         critical_count: criticals.length,
         warning_count: warnings.length,
       });
-    } catch { /* optional */ }
+    } catch {
+      /* optional */
+    }
 
     return NextResponse.json({ alerts: alerts.length, sent: res.ok, details: alerts, recoveries });
   } catch (err) {
-    return NextResponse.json({
-      alerts: alerts.length, sent: false,
-      error: err instanceof Error ? err.message : 'Webhook failed',
-    }, { status: 502 });
+    return NextResponse.json(
+      {
+        alerts: alerts.length,
+        sent: false,
+        error: err instanceof Error ? err.message : 'Webhook failed',
+      },
+      { status: 502 },
+    );
   }
 }

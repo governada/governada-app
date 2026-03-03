@@ -15,9 +15,19 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     const [drepResult, proposalCountResult, allDrepsResult] = await Promise.all([
-      supabase.from('dreps').select('score, info, participation_rate, rationale_rate, effective_participation, deliberation_modifier, reliability_score, profile_completeness').eq('id', drepId).single(),
+      supabase
+        .from('dreps')
+        .select(
+          'score, info, participation_rate, rationale_rate, effective_participation, deliberation_modifier, reliability_score, profile_completeness',
+        )
+        .eq('id', drepId)
+        .single(),
       supabase.from('proposals').select('id', { count: 'exact', head: true }),
-      supabase.from('dreps').select('score').not('info->isActive', 'eq', false).order('score', { ascending: false }),
+      supabase
+        .from('dreps')
+        .select('score')
+        .not('info->isActive', 'eq', false)
+        .order('score', { ascending: false }),
     ]);
 
     const drep = drepResult.data;
@@ -32,24 +42,25 @@ export async function GET(request: NextRequest) {
     const simEffParticipation = Math.round(simParticipation * (drep.deliberation_modifier || 1));
 
     const currentVotesWithRationale = Math.round((drep.rationale_rate / 100) * currentTotalVotes);
-    const simRationaleRaw = simTotalVotes > 0
-      ? Math.round(((currentVotesWithRationale + additionalRationales) / simTotalVotes) * 100)
-      : 0;
+    const simRationaleRaw =
+      simTotalVotes > 0
+        ? Math.round(((currentVotesWithRationale + additionalRationales) / simTotalVotes) * 100)
+        : 0;
     const simRationaleCurved = applyRationaleCurve(simRationaleRaw);
 
     const currentCurvedRationale = applyRationaleCurve(drep.rationale_rate);
     const currentScore = Math.round(
-      drep.effective_participation * 0.30 +
-      currentCurvedRationale * 0.35 +
-      drep.reliability_score * 0.20 +
-      drep.profile_completeness * 0.15
+      drep.effective_participation * 0.3 +
+        currentCurvedRationale * 0.35 +
+        drep.reliability_score * 0.2 +
+        drep.profile_completeness * 0.15,
     );
 
     const simScore = Math.round(
-      simEffParticipation * 0.30 +
-      simRationaleCurved * 0.35 +
-      drep.reliability_score * 0.20 +
-      drep.profile_completeness * 0.15
+      simEffParticipation * 0.3 +
+        simRationaleCurved * 0.35 +
+        drep.reliability_score * 0.2 +
+        drep.profile_completeness * 0.15,
     );
 
     // Calculate simulated rank

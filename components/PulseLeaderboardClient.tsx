@@ -44,8 +44,8 @@ export function PulseLeaderboardClient({ initialLeaderboard }: PulseLeaderboardC
       return;
     }
     fetch(`/api/governance/leaderboard?tier=${tierFilter}`)
-      .then(r => r.json())
-      .then(d => setLeaderboard(d.leaderboard))
+      .then((r) => r.json())
+      .then((d) => setLeaderboard(d.leaderboard))
       .catch(() => {});
   }, [tierFilter, initialLeaderboard]);
 
@@ -58,7 +58,7 @@ export function PulseLeaderboardClient({ initialLeaderboard }: PulseLeaderboardC
             DRep Leaderboard
           </CardTitle>
           <div className="flex gap-1.5">
-            {['all', 'Small', 'Medium', 'Large', 'Whale'].map(t => (
+            {['all', 'Small', 'Medium', 'Large', 'Whale'].map((t) => (
               <Button
                 key={t}
                 variant={tierFilter === t ? 'default' : 'outline'}
@@ -74,16 +74,21 @@ export function PulseLeaderboardClient({ initialLeaderboard }: PulseLeaderboardC
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {leaderboard.map(d => (
+          {leaderboard.map((d) => (
             <Link key={d.drepId} href={`/drep/${encodeURIComponent(d.drepId)}`} className="block">
               <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                <span className={`text-lg font-bold tabular-nums w-8 ${d.rank <= 3 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                <span
+                  className={`text-lg font-bold tabular-nums w-8 ${d.rank <= 3 ? 'text-amber-500' : 'text-muted-foreground'}`}
+                >
                   #{d.rank}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{d.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <Badge variant="outline" className={`text-[10px] ${SIZE_COLORS[d.sizeTier] || ''}`}>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${SIZE_COLORS[d.sizeTier] || ''}`}
+                    >
                       {d.sizeTier}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground">
@@ -91,7 +96,9 @@ export function PulseLeaderboardClient({ initialLeaderboard }: PulseLeaderboardC
                     </span>
                   </div>
                 </div>
-                <span className={`text-xl font-bold tabular-nums ${tierColorClass(d.score)}`}>{d.score}</span>
+                <span className={`text-xl font-bold tabular-nums ${tierColorClass(d.score)}`}>
+                  {d.score}
+                </span>
               </div>
             </Link>
           ))}

@@ -1,9 +1,21 @@
 import { Shield, Users, Vote } from 'lucide-react';
 
 const STEPS = [
-  { icon: Shield, text: 'Your ADA stays in your wallet', detail: 'Delegation is non-custodial — you keep full control.' },
-  { icon: Users, text: 'Pick a DRep who shares your values', detail: 'We score them on participation, rationale, and reliability.' },
-  { icon: Vote, text: 'They vote on proposals for you', detail: 'Track how they represent you on every governance action.' },
+  {
+    icon: Shield,
+    text: 'Your ADA stays in your wallet',
+    detail: 'Delegation is non-custodial — you keep full control.',
+  },
+  {
+    icon: Users,
+    text: 'Pick a DRep who shares your values',
+    detail: 'We score them on participation, rationale, and reliability.',
+  },
+  {
+    icon: Vote,
+    text: 'They vote on proposals for you',
+    detail: 'Track how they represent you on every governance action.',
+  },
 ];
 
 export function HowItWorks() {

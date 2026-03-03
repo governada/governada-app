@@ -53,12 +53,9 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
     .eq('id', 1)
     .single();
 
-  const epoch = targetEpoch ?? (govStats?.current_epoch ?? 0);
+  const epoch = targetEpoch ?? govStats?.current_epoch ?? 0;
 
-  const [ghi, insights] = await Promise.all([
-    computeGHI(),
-    computeInsights(),
-  ]);
+  const [ghi, insights] = await Promise.all([computeGHI(), computeInsights()]);
 
   const { data: ghiPrev } = await supabase
     .from('ghi_snapshots')
@@ -70,15 +67,27 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
 
   const { data: proposals } = await supabase
     .from('proposals')
-    .select('tx_hash, proposal_index, title, proposal_type, withdrawal_amount, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch')
-    .or(`proposed_epoch.eq.${epoch},ratified_epoch.eq.${epoch},enacted_epoch.eq.${epoch},dropped_epoch.eq.${epoch},expired_epoch.eq.${epoch}`);
+    .select(
+      'tx_hash, proposal_index, title, proposal_type, withdrawal_amount, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+    )
+    .or(
+      `proposed_epoch.eq.${epoch},ratified_epoch.eq.${epoch},enacted_epoch.eq.${epoch},dropped_epoch.eq.${epoch},expired_epoch.eq.${epoch}`,
+    );
 
-  const reportProposals: ReportProposal[] = (proposals ?? []).map(p => ({
+  const reportProposals: ReportProposal[] = (proposals ?? []).map((p) => ({
     txHash: p.tx_hash,
     index: p.proposal_index,
     title: p.title,
     type: p.proposal_type,
-    outcome: p.enacted_epoch ? 'enacted' : p.ratified_epoch ? 'ratified' : p.dropped_epoch ? 'dropped' : p.expired_epoch ? 'expired' : 'open',
+    outcome: p.enacted_epoch
+      ? 'enacted'
+      : p.ratified_epoch
+        ? 'ratified'
+        : p.dropped_epoch
+          ? 'dropped'
+          : p.expired_epoch
+            ? 'expired'
+            : 'open',
     withdrawalAda: p.withdrawal_amount ? Number(p.withdrawal_amount) / 1_000_000 : null,
   }));
 
@@ -119,14 +128,20 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
     .eq('epoch_no', epoch);
 
   const activeDreps = (currentScores ?? []).filter((d: any) => d.info?.isActive);
-  const totalAda = activeDreps.reduce((s: number, d: any) =>
-    s + parseInt(d.info?.votingPowerLovelace || '0', 10), 0) / 1_000_000;
+  const totalAda =
+    activeDreps.reduce(
+      (s: number, d: any) => s + parseInt(d.info?.votingPowerLovelace || '0', 10),
+      0,
+    ) / 1_000_000;
 
-  const formattedAda = totalAda >= 1e9 ? `${(totalAda / 1e9).toFixed(1)}B` : `${(totalAda / 1e6).toFixed(1)}M`;
+  const formattedAda =
+    totalAda >= 1e9 ? `${(totalAda / 1e9).toFixed(1)}B` : `${(totalAda / 1e6).toFixed(1)}M`;
 
-  const avgParticipation = activeDreps.length > 0
-    ? activeDreps.reduce((s: number, d: any) => s + (d.info?.effective_participation ?? 0), 0) / activeDreps.length
-    : 0;
+  const avgParticipation =
+    activeDreps.length > 0
+      ? activeDreps.reduce((s: number, d: any) => s + (d.info?.effective_participation ?? 0), 0) /
+        activeDreps.length
+      : 0;
 
   const treasuryBalance = govStats?.treasury_balance_lovelace
     ? `${(Number(govStats.treasury_balance_lovelace) / 1_000_000_000_000).toFixed(2)}B`
@@ -153,7 +168,7 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
       activeDReps: activeDreps.length,
       totalAdaGoverned: formattedAda,
       avgParticipation: Math.round(avgParticipation),
-      avgRationale: Math.round(ghi.components.find(c => c.name === 'Rationale')?.value ?? 0),
+      avgRationale: Math.round(ghi.components.find((c) => c.name === 'Rationale')?.value ?? 0),
     },
     communityGap: [],
     treasuryBalance,
@@ -162,13 +177,19 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
 
 export async function generateReportNarrative(data: ReportData): Promise<string | null> {
   const ghiDelta = data.ghiPrevScore != null ? data.ghi.score - data.ghiPrevScore : null;
-  const topInsights = data.insights.slice(0, 3).map(i => `- ${i.headline}: ${i.stat}`).join('\n');
-  const outcomesSummary = data.proposals
-    .filter(p => p.outcome !== 'open')
-    .map(p => `- "${p.title || 'Untitled'}" (${p.type}): ${p.outcome}${p.withdrawalAda ? ` — ${p.withdrawalAda.toLocaleString()} ADA` : ''}`)
+  const topInsights = data.insights
+    .slice(0, 3)
+    .map((i) => `- ${i.headline}: ${i.stat}`)
     .join('\n');
-  const gainersSummary = data.movers.gainers.map(m => `${m.name} (+${m.delta})`).join(', ');
-  const losersSummary = data.movers.losers.map(m => `${m.name} (${m.delta})`).join(', ');
+  const outcomesSummary = data.proposals
+    .filter((p) => p.outcome !== 'open')
+    .map(
+      (p) =>
+        `- "${p.title || 'Untitled'}" (${p.type}): ${p.outcome}${p.withdrawalAda ? ` — ${p.withdrawalAda.toLocaleString()} ADA` : ''}`,
+    )
+    .join('\n');
+  const gainersSummary = data.movers.gainers.map((m) => `${m.name} (+${m.delta})`).join(', ');
+  const losersSummary = data.movers.losers.map((m) => `${m.name} (${m.delta})`).join(', ');
 
   const prompt = `You are the editorial voice of DRepScore, writing the "State of Governance" report for Cardano Epoch ${data.epoch}. Write an engaging 600-800 word editorial narrative.
 
@@ -199,19 +220,22 @@ Output only the narrative. No title, no headings, no markdown formatting.`;
   return generateText(prompt, { maxTokens: 1200, model: 'FAST' });
 }
 
-export async function generateAndStoreReport(epoch?: number): Promise<{ epoch: number; stored: boolean }> {
+export async function generateAndStoreReport(
+  epoch?: number,
+): Promise<{ epoch: number; stored: boolean }> {
   const data = await assembleReportData(epoch);
   const narrative = await generateReportNarrative(data);
 
   const supabase = getSupabaseAdmin();
-  const { error } = await supabase
-    .from('state_of_governance_reports')
-    .upsert({
+  const { error } = await supabase.from('state_of_governance_reports').upsert(
+    {
       epoch_no: data.epoch,
       report_data: data as unknown as Record<string, unknown>,
       narrative_html: narrative,
       published: true,
-    }, { onConflict: 'epoch_no' });
+    },
+    { onConflict: 'epoch_no' },
+  );
 
   if (error) {
     console.error('[StateOfGovernance] Store error:', error);

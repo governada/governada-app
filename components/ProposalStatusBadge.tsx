@@ -1,10 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Clock } from 'lucide-react';
 import {
   getProposalStatus,
@@ -25,8 +20,10 @@ const STATUS_TOOLTIPS: Record<string, string> = {
 };
 
 const PRIORITY_TOOLTIPS: Record<string, string> = {
-  critical: 'Critical proposals (like hard forks) can significantly impact the network. Your DRep\'s vote matters most here.',
-  important: 'Important proposals affect protocol parameters that influence fees, rewards, and network behavior.',
+  critical:
+    "Critical proposals (like hard forks) can significantly impact the network. Your DRep's vote matters most here.",
+  important:
+    'Important proposals affect protocol parameters that influence fees, rewards, and network behavior.',
 };
 
 const TREASURY_TIER_TOOLTIPS: Record<string, string> = {
@@ -42,7 +39,12 @@ interface StatusBadgeProps {
   expiredEpoch: number | null;
 }
 
-export function ProposalStatusBadge({ ratifiedEpoch, enactedEpoch, droppedEpoch, expiredEpoch }: StatusBadgeProps) {
+export function ProposalStatusBadge({
+  ratifiedEpoch,
+  enactedEpoch,
+  droppedEpoch,
+  expiredEpoch,
+}: StatusBadgeProps) {
   const status = getProposalStatus({ ratifiedEpoch, enactedEpoch, droppedEpoch, expiredEpoch });
   const config = STATUS_STYLES[status];
   const tooltip = STATUS_TOOLTIPS[status];
@@ -89,17 +91,24 @@ export function PriorityBadge({ proposalType }: { proposalType: string }) {
   );
 }
 
-export function DeadlineBadge({ expirationEpoch, currentEpoch }: { expirationEpoch: number | null; currentEpoch: number }) {
+export function DeadlineBadge({
+  expirationEpoch,
+  currentEpoch,
+}: {
+  expirationEpoch: number | null;
+  currentEpoch: number;
+}) {
   if (expirationEpoch == null) return null;
   const remaining = Math.max(0, expirationEpoch - currentEpoch);
   if (remaining === 0) return null;
 
   const daysApprox = remaining * 5;
-  const urgentVariant = remaining <= 1
-    ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30'
-    : remaining <= 2
-    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
-    : '';
+  const urgentVariant =
+    remaining <= 1
+      ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30'
+      : remaining <= 2
+        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+        : '';
 
   return (
     <TooltipProvider>
@@ -112,7 +121,8 @@ export function DeadlineBadge({ expirationEpoch, currentEpoch }: { expirationEpo
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[240px]">
           <p className="text-xs">
-            Expires in ~{daysApprox} days. If not enough DReps vote Yes by then, it fails automatically.
+            Expires in ~{daysApprox} days. If not enough DReps vote Yes by then, it fails
+            automatically.
           </p>
         </TooltipContent>
       </Tooltip>
@@ -154,7 +164,9 @@ export function TypeExplainerTooltip({ proposalType }: { proposalType: string })
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="cursor-help text-muted-foreground hover:text-foreground transition-colors text-xs">ⓘ</span>
+          <span className="cursor-help text-muted-foreground hover:text-foreground transition-colors text-xs">
+            ⓘ
+          </span>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[260px]">
           <p className="text-xs">{explainer}</p>

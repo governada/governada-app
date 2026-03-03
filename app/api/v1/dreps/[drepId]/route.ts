@@ -13,7 +13,11 @@ function getScoreTier(score: number): string {
 async function handler(request: NextRequest, ctx: ApiContext, params?: Record<string, string>) {
   const drepId = decodeURIComponent(params?.drepId || '');
   if (!drepId) {
-    return apiError('missing_parameter', { param: 'drepId', context: 'DRep ID is required in the URL path.' }, { requestId: ctx.requestId });
+    return apiError(
+      'missing_parameter',
+      { param: 'drepId', context: 'DRep ID is required in the URL path.' },
+      { requestId: ctx.requestId },
+    );
   }
 
   const drep = await getDRepById(drepId);
@@ -31,10 +35,26 @@ async function handler(request: NextRequest, ctx: ApiContext, params?: Record<st
     score: drep.drepScore,
     score_tier: getScoreTier(drep.drepScore),
     score_breakdown: {
-      rationale_quality: { raw: drep.rationaleRate, weighted: Math.round(drep.rationaleRate * 35 * 100) / 100, weight: 0.35 },
-      effective_participation: { raw: drep.effectiveParticipation, weighted: Math.round(drep.effectiveParticipation * 30 * 100) / 100, weight: 0.30 },
-      reliability: { raw: drep.reliabilityScore, weighted: Math.round(drep.reliabilityScore * 20 * 100) / 100, weight: 0.20 },
-      profile_completeness: { raw: drep.profileCompleteness, weighted: Math.round(drep.profileCompleteness * 15 * 100) / 100, weight: 0.15 },
+      rationale_quality: {
+        raw: drep.rationaleRate,
+        weighted: Math.round(drep.rationaleRate * 35 * 100) / 100,
+        weight: 0.35,
+      },
+      effective_participation: {
+        raw: drep.effectiveParticipation,
+        weighted: Math.round(drep.effectiveParticipation * 30 * 100) / 100,
+        weight: 0.3,
+      },
+      reliability: {
+        raw: drep.reliabilityScore,
+        weighted: Math.round(drep.reliabilityScore * 20 * 100) / 100,
+        weight: 0.2,
+      },
+      profile_completeness: {
+        raw: drep.profileCompleteness,
+        weighted: Math.round(drep.profileCompleteness * 15 * 100) / 100,
+        weight: 0.15,
+      },
     },
     alignment: {
       treasury_conservative: drep.alignmentTreasuryConservative,

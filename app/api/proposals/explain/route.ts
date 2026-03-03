@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       .limit(5);
 
     const rationaleContext = (topRationales ?? [])
-      .map(r => r.ai_summary || r.rationale_text?.slice(0, 300))
+      .map((r) => r.ai_summary || r.rationale_text?.slice(0, 300))
       .filter(Boolean)
       .join('\n- ');
 

@@ -105,7 +105,9 @@ async function runRationalePipeline(supabase: SupabaseClient) {
     .in('vote_tx_hash', txHashes.slice(0, 1000))
     .not('rationale_text', 'is', null);
 
-  const alreadyCached = new Set((existingRows || []).map((r: { vote_tx_hash: string }) => r.vote_tx_hash));
+  const alreadyCached = new Set(
+    (existingRows || []).map((r: { vote_tx_hash: string }) => r.vote_tx_hash),
+  );
   const uncached = votesWithMeta
     .filter((v: { vote_tx_hash: string }) => !alreadyCached.has(v.vote_tx_hash))
     .slice(0, RATIONALE_MAX_PER_SYNC);
@@ -118,22 +120,30 @@ async function runRationalePipeline(supabase: SupabaseClient) {
   for (let i = 0; i < uncached.length; i += RATIONALE_CONCURRENCY) {
     const chunk = uncached.slice(i, i + RATIONALE_CONCURRENCY);
     const results = await Promise.all(
-      chunk.map(async (v: { vote_tx_hash: string; drep_id: string; proposal_tx_hash: string; proposal_index: number; meta_url: string }) => {
-        const text = await fetchRationaleFromUrl(v.meta_url);
-        return {
-          vote_tx_hash: v.vote_tx_hash,
-          drep_id: v.drep_id,
-          proposal_tx_hash: v.proposal_tx_hash,
-          proposal_index: v.proposal_index,
-          meta_url: v.meta_url,
-          rationale_text: text,
-        };
-      })
+      chunk.map(
+        async (v: {
+          vote_tx_hash: string;
+          drep_id: string;
+          proposal_tx_hash: string;
+          proposal_index: number;
+          meta_url: string;
+        }) => {
+          const text = await fetchRationaleFromUrl(v.meta_url);
+          return {
+            vote_tx_hash: v.vote_tx_hash,
+            drep_id: v.drep_id,
+            proposal_tx_hash: v.proposal_tx_hash,
+            proposal_index: v.proposal_index,
+            meta_url: v.meta_url,
+            rationale_text: text,
+          };
+        },
+      ),
     );
     rationaleRows.push(...results);
   }
 
-  const successRows = rationaleRows.filter(r => r.rationale_text !== null);
+  const successRows = rationaleRows.filter((r) => r.rationale_text !== null);
   if (successRows.length > 0) {
     await batchUpsert(supabase, 'vote_rationales', successRows, 'vote_tx_hash', 'Rationale URL');
   }
@@ -170,16 +180,21 @@ async function runAiSummaries(supabase: SupabaseClient) {
       const msg = await anthropic.messages.create({
         model: 'claude-sonnet-4-5',
         max_tokens: 80,
-        messages: [{
-          role: 'user',
-          content: `Summarize this Cardano governance proposal in 1-2 short sentences for a casual ADA holder. Plain language, no jargon. Neutral tone. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nTitle: ${row.title || 'Untitled'}\nType: ${row.proposal_type}${amountCtx}\nDescription: ${(row.abstract || '').slice(0, 2000)}`,
-        }],
+        messages: [
+          {
+            role: 'user',
+            content: `Summarize this Cardano governance proposal in 1-2 short sentences for a casual ADA holder. Plain language, no jargon. Neutral tone. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nTitle: ${row.title || 'Untitled'}\nType: ${row.proposal_type}${amountCtx}\nDescription: ${(row.abstract || '').slice(0, 2000)}`,
+          },
+        ],
       });
       const raw = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
       const summary = raw ? truncateToWordBoundary(stripUrls(raw), 160) : null;
       if (summary) {
-        await supabase.from('proposals').update({ ai_summary: summary })
-          .eq('tx_hash', row.tx_hash).eq('proposal_index', row.proposal_index);
+        await supabase
+          .from('proposals')
+          .update({ ai_summary: summary })
+          .eq('tx_hash', row.tx_hash)
+          .eq('proposal_index', row.proposal_index);
         proposalSummaries++;
       }
     } catch (e) {
@@ -196,32 +211,47 @@ async function runAiSummaries(supabase: SupabaseClient) {
     .limit(20);
 
   if (unsumRationales?.length) {
-    const txHashes = [...new Set(unsumRationales.map((r: { proposal_tx_hash: string }) => r.proposal_tx_hash))];
-    const { data: pRows } = await supabase.from('proposals').select('tx_hash, proposal_index, title').in('tx_hash', txHashes);
+    const txHashes = [
+      ...new Set(unsumRationales.map((r: { proposal_tx_hash: string }) => r.proposal_tx_hash)),
+    ];
+    const { data: pRows } = await supabase
+      .from('proposals')
+      .select('tx_hash, proposal_index, title')
+      .in('tx_hash', txHashes);
     const titles = new Map<string, string>();
-    for (const p of pRows || []) titles.set(`${p.tx_hash}-${p.proposal_index}`, p.title || 'Untitled');
+    for (const p of pRows || [])
+      titles.set(`${p.tx_hash}-${p.proposal_index}`, p.title || 'Untitled');
 
     const vtxs = unsumRationales.map((r: { vote_tx_hash: string }) => r.vote_tx_hash);
-    const { data: vRows } = await supabase.from('drep_votes').select('vote_tx_hash, vote').in('vote_tx_hash', vtxs);
+    const { data: vRows } = await supabase
+      .from('drep_votes')
+      .select('vote_tx_hash, vote')
+      .in('vote_tx_hash', vtxs);
     const dirs = new Map<string, string>();
     for (const v of vRows || []) dirs.set(v.vote_tx_hash, v.vote);
 
     for (const row of unsumRationales) {
       try {
-        const title = titles.get(`${row.proposal_tx_hash}-${row.proposal_index}`) || 'this proposal';
+        const title =
+          titles.get(`${row.proposal_tx_hash}-${row.proposal_index}`) || 'this proposal';
         const dir = dirs.get(row.vote_tx_hash) || 'voted';
         const msg = await anthropic.messages.create({
           model: 'claude-sonnet-4-5',
           max_tokens: 80,
-          messages: [{
-            role: 'user',
-            content: `Summarize this DRep's rationale for voting ${dir} on "${title}" in 1-2 neutral sentences. Plain language, no editorializing. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nRationale: ${(row.rationale_text || '').slice(0, 1500)}`,
-          }],
+          messages: [
+            {
+              role: 'user',
+              content: `Summarize this DRep's rationale for voting ${dir} on "${title}" in 1-2 neutral sentences. Plain language, no editorializing. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nRationale: ${(row.rationale_text || '').slice(0, 1500)}`,
+            },
+          ],
         });
         const raw = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
         const summary = raw ? truncateToWordBoundary(stripUrls(raw), 160) : null;
         if (summary) {
-          await supabase.from('vote_rationales').update({ ai_summary: summary }).eq('vote_tx_hash', row.vote_tx_hash);
+          await supabase
+            .from('vote_rationales')
+            .update({ ai_summary: summary })
+            .eq('vote_tx_hash', row.vote_tx_hash);
           rationaleSummaries++;
         }
       } catch (e) {
@@ -230,7 +260,9 @@ async function runAiSummaries(supabase: SupabaseClient) {
     }
   }
 
-  console.log(`[SlowSync] AI summaries: ${proposalSummaries} proposals, ${rationaleSummaries} rationales`);
+  console.log(
+    `[SlowSync] AI summaries: ${proposalSummaries} proposals, ${rationaleSummaries} rationales`,
+  );
   return { proposals: proposalSummaries, rationales: rationaleSummaries, skipped: false };
 }
 
@@ -267,7 +299,7 @@ async function runSocialLinkChecks(supabase: SupabaseClient) {
   const { data: existing } = await supabase
     .from('social_link_checks')
     .select('drep_id, uri, last_checked_at')
-    .in('uri', allLinks.map(l => l.uri).slice(0, 500));
+    .in('uri', allLinks.map((l) => l.uri).slice(0, 500));
 
   const freshSet = new Set<string>();
   for (const row of existing || []) {
@@ -277,7 +309,7 @@ async function runSocialLinkChecks(supabase: SupabaseClient) {
   }
 
   const toCheck = allLinks
-    .filter(l => !freshSet.has(`${l.drep_id}|${l.uri}`))
+    .filter((l) => !freshSet.has(`${l.drep_id}|${l.uri}`))
     .slice(0, LINK_CHECK_LIMIT);
 
   let checked = 0;
@@ -296,15 +328,20 @@ async function runSocialLinkChecks(supabase: SupabaseClient) {
       clearTimeout(timeout);
       httpStatus = res.status;
       status = res.ok ? 'valid' : 'broken';
-    } catch { /* stays broken */ }
+    } catch {
+      /* stays broken */
+    }
 
-    const { error: linkErr } = await supabase.from('social_link_checks').upsert({
-      drep_id: link.drep_id,
-      uri: link.uri,
-      status,
-      http_status: httpStatus,
-      last_checked_at: new Date().toISOString(),
-    }, { onConflict: 'drep_id,uri' });
+    const { error: linkErr } = await supabase.from('social_link_checks').upsert(
+      {
+        drep_id: link.drep_id,
+        uri: link.uri,
+        status,
+        http_status: httpStatus,
+        last_checked_at: new Date().toISOString(),
+      },
+      { onConflict: 'drep_id,uri' },
+    );
     if (linkErr) console.error('[SlowSync] social_link_checks upsert error:', linkErr.message);
     checked++;
   }
@@ -336,7 +373,9 @@ async function runVotePowerBackfill(supabase: SupabaseClient) {
     return { exact: 0, nearest: 0 };
   }
 
-  console.log(`[SlowSync] Backfilling voting power for ${uniqueIds.length} DReps (processing 50)...`);
+  console.log(
+    `[SlowSync] Backfilling voting power for ${uniqueIds.length} DReps (processing 50)...`,
+  );
   let exactCount = 0;
   let nearestCount = 0;
 
@@ -345,19 +384,24 @@ async function runVotePowerBackfill(supabase: SupabaseClient) {
       const history = await fetchDRepVotingPowerHistory(drepId);
       if (history.length === 0) continue;
 
-      const snapRows = history.map(h => ({
+      const snapRows = history.map((h) => ({
         drep_id: drepId,
         epoch_no: h.epoch_no,
         amount_lovelace: parseInt(h.amount, 10) || 0,
       }));
-      const { error: snapErr } = await supabase.from('drep_power_snapshots')
+      const { error: snapErr } = await supabase
+        .from('drep_power_snapshots')
         .upsert(snapRows, { onConflict: 'drep_id,epoch_no', ignoreDuplicates: true });
-      if (snapErr) console.error(`[SlowSync] power_snapshots upsert error for ${drepId}:`, snapErr.message);
+      if (snapErr)
+        console.error(`[SlowSync] power_snapshots upsert error for ${drepId}:`, snapErr.message);
 
       for (const snap of snapRows) {
         const { count } = await supabase
           .from('drep_votes')
-          .update({ voting_power_lovelace: snap.amount_lovelace, power_source: 'exact' }, { count: 'exact' })
+          .update(
+            { voting_power_lovelace: snap.amount_lovelace, power_source: 'exact' },
+            { count: 'exact' },
+          )
           .eq('drep_id', drepId)
           .eq('epoch_no', snap.epoch_no)
           .is('voting_power_lovelace', null);
@@ -373,7 +417,7 @@ async function runVotePowerBackfill(supabase: SupabaseClient) {
 
       for (const vote of remaining || []) {
         const nearest = history.reduce((best, h) =>
-          Math.abs(h.epoch_no - vote.epoch_no) < Math.abs(best.epoch_no - vote.epoch_no) ? h : best
+          Math.abs(h.epoch_no - vote.epoch_no) < Math.abs(best.epoch_no - vote.epoch_no) ? h : best,
         );
         await supabase
           .from('drep_votes')
@@ -429,12 +473,15 @@ async function runRationaleHashVerification(supabase: SupabaseClient) {
       const rawBytes = new Uint8Array(await res.arrayBuffer());
       const computedHash = blake2bHex(rawBytes, undefined, 32);
       const matches = computedHash === expectedHash;
-      await supabase.from('vote_rationales')
+      await supabase
+        .from('vote_rationales')
         .update({ hash_verified: matches })
         .eq('vote_tx_hash', row.vote_tx_hash);
       if (matches) verified++;
       else failed++;
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   console.log(`[SlowSync] Rationale hash: ${verified} verified, ${failed} mismatch`);
@@ -478,12 +525,12 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
       const rawBytes = new Uint8Array(await res.arrayBuffer());
       const computedHash = blake2bHex(rawBytes, undefined, 32);
       const matches = computedHash === anchor.hash;
-      await supabase.from('dreps')
-        .update({ metadata_hash_verified: matches })
-        .eq('id', id);
+      await supabase.from('dreps').update({ metadata_hash_verified: matches }).eq('id', id);
       if (matches) verified++;
       else failed++;
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   if (verified + failed > 0) {
@@ -504,7 +551,7 @@ async function runCriticalProposalNotifications(supabase: SupabaseClient) {
     .is('expired_epoch', null);
 
   const critical = (openCritical || []).filter(
-    (p: Record<string, unknown>) => getProposalPriority(p.proposal_type as string) === 'critical'
+    (p: Record<string, unknown>) => getProposalPriority(p.proposal_type as string) === 'critical',
   );
 
   if (critical.length === 0) return { sent: 0, skipped: false };
@@ -519,7 +566,9 @@ async function runCriticalProposalNotifications(supabase: SupabaseClient) {
     url: `${baseUrl}/proposals/${newest.tx_hash}/${newest.proposal_index}`,
     metadata: { txHash: newest.tx_hash, index: newest.proposal_index },
   };
-  await broadcastDiscord(event).catch((e) => console.error('[SlowSync] broadcastDiscord failed:', e));
+  await broadcastDiscord(event).catch((e) =>
+    console.error('[SlowSync] broadcastDiscord failed:', e),
+  );
   const sent = await broadcastEvent(event);
 
   console.log(`[SlowSync] Critical proposal notifications: ${sent} sent`);
@@ -569,12 +618,22 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
   };
 
   const allResults = [
-    rationaleResult, aiResult, socialResult,
-    powerResult, rationaleHashResult, drepHashResult, pushResult,
+    rationaleResult,
+    aiResult,
+    socialResult,
+    powerResult,
+    rationaleHashResult,
+    drepHashResult,
+    pushResult,
   ];
   const labels = [
-    'Rationales', 'AI summaries', 'Social links',
-    'Power backfill', 'Rationale hash', 'DRep hash', 'Push',
+    'Rationales',
+    'AI summaries',
+    'Social links',
+    'Power backfill',
+    'Rationale hash',
+    'DRep hash',
+    'Push',
   ];
 
   for (let i = 0; i < allResults.length; i++) {
@@ -603,7 +662,9 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
   };
 
   const duration = (logger.elapsed / 1000).toFixed(1);
-  console.log(`[SlowSync] Complete in ${duration}s${syncErrors.length > 0 ? ` (${syncErrors.length} issues)` : ''}`);
+  console.log(
+    `[SlowSync] Complete in ${duration}s${syncErrors.length > 0 ? ` (${syncErrors.length} issues)` : ''}`,
+  );
 
   await logger.finalize(success, syncErrors.length > 0 ? syncErrors.join('; ') : null, metrics);
   await emitPostHog(success, 'slow', logger.elapsed, metrics);

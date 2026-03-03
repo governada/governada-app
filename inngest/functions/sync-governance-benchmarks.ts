@@ -49,28 +49,32 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
       const supabase = getSupabaseAdmin();
       const stored: string[] = [];
 
-      const benchmarks = [cardano, ethereum, polkadot].filter(Boolean) as Omit<ChainBenchmark, 'grade' | 'governanceScore'>[];
+      const benchmarks = [cardano, ethereum, polkadot].filter(Boolean) as Omit<
+        ChainBenchmark,
+        'grade' | 'governanceScore'
+      >[];
 
       for (const b of benchmarks) {
-        const governanceScore = b.chain === 'cardano'
-          ? (b.rawData as { ghiScore?: number })?.ghiScore ?? computeGovernanceScore({
-              participationRate: b.participationRate,
-              delegateCount: b.delegateCount,
-              proposalThroughput: b.proposalThroughput,
-              rationaleRate: b.avgRationaleRate,
-            })
-          : computeGovernanceScore({
-              participationRate: b.participationRate,
-              delegateCount: b.delegateCount,
-              proposalThroughput: b.proposalThroughput,
-              rationaleRate: b.avgRationaleRate,
-            });
+        const governanceScore =
+          b.chain === 'cardano'
+            ? ((b.rawData as { ghiScore?: number })?.ghiScore ??
+              computeGovernanceScore({
+                participationRate: b.participationRate,
+                delegateCount: b.delegateCount,
+                proposalThroughput: b.proposalThroughput,
+                rationaleRate: b.avgRationaleRate,
+              }))
+            : computeGovernanceScore({
+                participationRate: b.participationRate,
+                delegateCount: b.delegateCount,
+                proposalThroughput: b.proposalThroughput,
+                rationaleRate: b.avgRationaleRate,
+              });
 
         const grade = computeGrade(governanceScore);
 
-        const { error } = await supabase
-          .from('governance_benchmarks')
-          .upsert({
+        const { error } = await supabase.from('governance_benchmarks').upsert(
+          {
             chain: b.chain,
             period_label: b.periodLabel,
             participation_rate: b.participationRate,
@@ -82,7 +86,9 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
             grade,
             raw_data: b.rawData,
             fetched_at: b.fetchedAt,
-          }, { onConflict: 'chain,period_label' });
+          },
+          { onConflict: 'chain,period_label' },
+        );
 
         if (error) {
           console.error(`[sync-benchmarks] Failed to store ${b.chain}:`, error.message);
@@ -94,7 +100,10 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
       return { stored, total: benchmarks.length };
     });
 
-    console.log(`[sync-benchmarks] Stored ${results.stored.length}/${results.total} benchmarks:`, results.stored);
+    console.log(
+      `[sync-benchmarks] Stored ${results.stored.length}/${results.total} benchmarks:`,
+      results.stored,
+    );
     return results;
   },
 );

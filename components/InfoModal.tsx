@@ -25,19 +25,19 @@ interface InfoModalProps {
   iconOnly?: boolean;
 }
 
-export function InfoModal({ 
-  title, 
-  children, 
-  triggerText = 'Learn More', 
+export function InfoModal({
+  title,
+  children,
+  triggerText = 'Learn More',
   triggerVariant = 'ghost',
-  iconOnly = false 
+  iconOnly = false,
 }: InfoModalProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button 
-          variant={triggerVariant} 
-          size={iconOnly ? 'icon' : 'sm'} 
+        <Button
+          variant={triggerVariant}
+          size={iconOnly ? 'icon' : 'sm'}
           className={iconOnly ? 'h-6 w-6' : 'gap-2'}
           aria-label={iconOnly ? title : undefined}
         >
@@ -50,9 +50,7 @@ export function InfoModal({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <DialogDescription asChild>
-          <div className="space-y-4 text-sm text-foreground">
-            {children}
-          </div>
+          <div className="space-y-4 text-sm text-foreground">{children}</div>
         </DialogDescription>
       </DialogContent>
     </Dialog>
@@ -64,12 +62,13 @@ export function WhatIsDRepModal() {
   return (
     <InfoModal title="What is a DRep?" triggerVariant="link">
       <p>
-        A <strong>Delegated Representative (DRep)</strong> is a governance participant in the Cardano blockchain 
-        who votes on behalf of ADA holders who delegate their voting power to them.
+        A <strong>Delegated Representative (DRep)</strong> is a governance participant in the
+        Cardano blockchain who votes on behalf of ADA holders who delegate their voting power to
+        them.
       </p>
       <p>
-        Think of DReps as elected representatives in traditional government, but for blockchain governance. 
-        They vote on proposals that affect the Cardano ecosystem, including:
+        Think of DReps as elected representatives in traditional government, but for blockchain
+        governance. They vote on proposals that affect the Cardano ecosystem, including:
       </p>
       <ul className="list-disc pl-6 space-y-1">
         <li>Treasury funding allocations</li>
@@ -78,8 +77,8 @@ export function WhatIsDRepModal() {
         <li>Hard fork decisions</li>
       </ul>
       <p>
-        By delegating to a DRep, you give them the power to vote with your stake weight, 
-        while you retain full control of your ADA.
+        By delegating to a DRep, you give them the power to vote with your stake weight, while you
+        retain full control of your ADA.
       </p>
     </InfoModal>
   );
@@ -89,11 +88,10 @@ export function ParticipationRateModal() {
   return (
     <InfoModal title="Understanding Effective Participation" triggerVariant="ghost" iconOnly>
       <p>
-        <strong>Effective Participation</strong> measures how actively and thoughtfully a DRep engages with governance proposals.
+        <strong>Effective Participation</strong> measures how actively and thoughtfully a DRep
+        engages with governance proposals.
       </p>
-      <p>
-        It's calculated as: (Participation Rate) × (Deliberation Modifier)
-      </p>
+      <p>It's calculated as: (Participation Rate) × (Deliberation Modifier)</p>
       <div className="bg-muted p-4 rounded-lg space-y-2">
         <p className="font-medium">Deliberation Modifier</p>
         <p className="text-sm text-muted-foreground mb-2">
@@ -107,8 +105,8 @@ export function ParticipationRateModal() {
         </ul>
       </div>
       <p>
-        A higher effective participation rate indicates a DRep who shows up consistently AND demonstrates 
-        thoughtful consideration rather than voting uniformly on every proposal.
+        A higher effective participation rate indicates a DRep who shows up consistently AND
+        demonstrates thoughtful consideration rather than voting uniformly on every proposal.
       </p>
     </InfoModal>
   );
@@ -118,33 +116,43 @@ export function DRepScoreModal() {
   return (
     <InfoModal title="Understanding DRep Score" triggerVariant="ghost" iconOnly>
       <p>
-        The <strong>DRep Score</strong> is an objective 0-100 accountability metric that measures how well a DRep fulfills their governance responsibilities.
+        The <strong>DRep Score</strong> is an objective 0-100 accountability metric that measures
+        how well a DRep fulfills their governance responsibilities.
       </p>
       <p>
-        Formula: <code className="bg-muted px-2 py-0.5 rounded">Effective Participation (45%) + Rationale (35%) + Consistency (20%)</code>
+        Formula:{' '}
+        <code className="bg-muted px-2 py-0.5 rounded">
+          Effective Participation (45%) + Rationale (35%) + Consistency (20%)
+        </code>
       </p>
       <div className="bg-muted p-4 rounded-lg space-y-3">
         <div>
           <p className="font-medium mb-1">Effective Participation (45%)</p>
           <p className="text-sm text-muted-foreground">
-            How often this DRep votes on available proposals, with a discount applied if they vote uniformly (&gt;85% one direction), which suggests rubber-stamping.
+            How often this DRep votes on available proposals, with a discount applied if they vote
+            uniformly (&gt;85% one direction), which suggests rubber-stamping.
           </p>
         </div>
         <div>
           <p className="font-medium mb-1">Rationale (35%)</p>
           <p className="text-sm text-muted-foreground">
-            How often this DRep submits on-chain rationale metadata with their votes. This measures governance transparency through the official CIP-100 standard. Some DReps share reasoning through external channels (blogs, videos) that isn&apos;t captured by this metric.
+            How often this DRep submits on-chain rationale metadata with their votes. This measures
+            governance transparency through the official CIP-100 standard. Some DReps share
+            reasoning through external channels (blogs, videos) that isn&apos;t captured by this
+            metric.
           </p>
         </div>
         <div>
           <p className="font-medium mb-1">Consistency (20%)</p>
           <p className="text-sm text-muted-foreground">
-            How steadily this DRep participates over time. A DRep who votes consistently across epochs scores higher than one who was active then disappeared.
+            How steadily this DRep participates over time. A DRep who votes consistently across
+            epochs scores higher than one who was active then disappeared.
           </p>
         </div>
       </div>
       <p className="text-sm text-muted-foreground mt-2">
-        This score is purely objective and doesn't consider your personal preferences. For personalized alignment, see the Match column.
+        This score is purely objective and doesn't consider your personal preferences. For
+        personalized alignment, see the Match column.
       </p>
     </InfoModal>
   );
@@ -158,11 +166,10 @@ export function RationaleImportanceModal() {
   return (
     <InfoModal title="Why Rationale Matters" triggerVariant="ghost" iconOnly>
       <p>
-        <strong>Rationale</strong> refers to the written explanation a DRep provides for their votes.
+        <strong>Rationale</strong> refers to the written explanation a DRep provides for their
+        votes.
       </p>
-      <p>
-        High-quality DReps provide rationale because:
-      </p>
+      <p>High-quality DReps provide rationale because:</p>
       <ul className="list-disc pl-6 space-y-2">
         <li>
           <strong>Transparency</strong> - You can understand their decision-making process
@@ -178,13 +185,13 @@ export function RationaleImportanceModal() {
         </li>
       </ul>
       <p>
-        When selecting a DRep, look for those with high rationale provision rates (80%+) and 
-        review their past rationales to ensure their reasoning aligns with your values.
+        When selecting a DRep, look for those with high rationale provision rates (80%+) and review
+        their past rationales to ensure their reasoning aligns with your values.
       </p>
       <p className="text-sm text-muted-foreground">
-        Note: Rationale is weighted by proposal importance — critical governance votes (hard forks, 
-        constitutional changes) count 3x more than routine votes. Rationale must be at least 50 
-        characters to count. DReps who list social/communication channels in their CIP-119 profile 
+        Note: Rationale is weighted by proposal importance — critical governance votes (hard forks,
+        constitutional changes) count 3x more than routine votes. Rationale must be at least 50
+        characters to count. DReps who list social/communication channels in their CIP-119 profile
         receive credit via the Profile Completeness score.
       </p>
     </InfoModal>
@@ -196,29 +203,37 @@ export function DelegationRisksModal() {
     <InfoModal title="Delegation: Risks and Myths" triggerText="Important Info">
       <div className="space-y-4">
         <div>
-          <h4 className="font-semibold text-green-600 dark:text-green-400 mb-2">Myth: Delegation Locks Your ADA</h4>
+          <h4 className="font-semibold text-green-600 dark:text-green-400 mb-2">
+            Myth: Delegation Locks Your ADA
+          </h4>
           <p>
-            <strong>FALSE.</strong> Your ADA remains in your wallet and is always accessible. 
-            You can spend, move, or redelegate at any time. Delegation only affects voting power, not ownership.
+            <strong>FALSE.</strong> Your ADA remains in your wallet and is always accessible. You
+            can spend, move, or redelegate at any time. Delegation only affects voting power, not
+            ownership.
           </p>
         </div>
-        
+
         <div>
-          <h4 className="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">Risk: Poor DRep Performance</h4>
+          <h4 className="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">
+            Risk: Poor DRep Performance
+          </h4>
           <p>
-            A DRep who rarely votes or votes against your values may not represent you well. 
-            Solution: Monitor their activity and redelegate if needed. There's no penalty for changing DReps.
+            A DRep who rarely votes or votes against your values may not represent you well.
+            Solution: Monitor their activity and redelegate if needed. There's no penalty for
+            changing DReps.
           </p>
         </div>
-        
+
         <div>
-          <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">Best Practice: Stay Informed</h4>
+          <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">
+            Best Practice: Stay Informed
+          </h4>
           <p>
-            Regularly check your DRep's voting record and rationales. The governance landscape 
+            Regularly check your DRep's voting record and rationales. The governance landscape
             evolves, and what aligned with your values yesterday may not tomorrow.
           </p>
         </div>
-        
+
         <div className="bg-muted p-4 rounded-lg">
           <p className="font-medium mb-2">Remember:</p>
           <ul className="list-disc pl-6 space-y-1 text-sm">

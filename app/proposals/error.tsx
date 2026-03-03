@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import * as Sentry from "@sentry/nextjs";
-import { useEffect } from "react";
-import Link from "next/link";
+import * as Sentry from '@sentry/nextjs';
+import { useEffect } from 'react';
+import Link from 'next/link';
 
 export default function ProposalsError({
   error,
@@ -34,8 +34,8 @@ export default function ProposalsError({
       </div>
       <h2 className="text-xl font-semibold">Couldn&apos;t load proposals</h2>
       <p className="text-muted-foreground max-w-md text-sm">
-        We had trouble loading governance proposals. This could be a temporary
-        issue with our data sync.
+        We had trouble loading governance proposals. This could be a temporary issue with our data
+        sync.
       </p>
       <div className="flex gap-3 mt-2">
         <button

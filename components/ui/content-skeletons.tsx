@@ -20,7 +20,13 @@ export function ChartSkeleton({ height = 'h-64' }: { height?: string }) {
             <Skeleton className="h-px w-full opacity-30" />
           </div>
           <svg className="w-full h-full opacity-10" viewBox="0 0 100 50" preserveAspectRatio="none">
-            <path d="M0 40 Q25 10 50 30 T100 20" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground" />
+            <path
+              d="M0 40 Q25 10 50 30 T100 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="text-muted-foreground"
+            />
           </svg>
         </div>
       </div>
@@ -89,7 +95,7 @@ export function PollSkeleton() {
       <Skeleton className="h-5 w-48" />
       <Skeleton className="h-3 w-64" />
       <div className="space-y-3">
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <div key={i} className="flex items-center gap-3">
             <Skeleton className="h-10 w-10 rounded-lg" />
             <div className="flex-1">
@@ -108,7 +114,7 @@ export function StanceSkeleton() {
     <div className="rounded-lg border bg-card/50 p-5 space-y-4">
       <Skeleton className="h-5 w-40" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4].map((i) => (
           <div key={i} className="rounded-lg border bg-card/30 p-4 space-y-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-3 w-full" />

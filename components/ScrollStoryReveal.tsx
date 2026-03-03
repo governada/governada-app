@@ -47,7 +47,11 @@ export function ScrollStoryReveal({
   const opacity = useTransform(progress, [rangeStart, rangeEnd], config.opacity);
   const yVal = useTransform(progress, [rangeStart, rangeEnd], hasY ? (config as any).y : [0, 0]);
   const xVal = useTransform(progress, [rangeStart, rangeEnd], hasX ? (config as any).x : [0, 0]);
-  const scaleVal = useTransform(progress, [rangeStart, rangeEnd], hasScale ? (config as any).scale : [1, 1]);
+  const scaleVal = useTransform(
+    progress,
+    [rangeStart, rangeEnd],
+    hasScale ? (config as any).scale : [1, 1],
+  );
 
   const y = hasY ? yVal : undefined;
   const x = hasX ? xVal : undefined;
@@ -86,9 +90,7 @@ export function ParallaxHero({ children, className, speed = 0.3 }: ParallaxHeroP
 
   return (
     <div ref={ref} className={cn('relative overflow-hidden', className)}>
-      <motion.div style={{ y, willChange: 'transform' }}>
-        {children}
-      </motion.div>
+      <motion.div style={{ y, willChange: 'transform' }}>{children}</motion.div>
     </div>
   );
 }

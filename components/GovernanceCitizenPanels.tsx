@@ -24,8 +24,8 @@ export function GovernanceCitizenPanels() {
     fetch('/api/user', {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         if (data?.watchlist) setWatchlist(data.watchlist);
       })
       .catch(() => {})
@@ -37,14 +37,9 @@ export function GovernanceCitizenPanels() {
   return (
     <>
       <FeatureGate flag="watchlist">
-        <WatchlistIntelligence
-          watchlist={watchlist}
-          currentDrepId={delegatedDrepId}
-        />
+        <WatchlistIntelligence watchlist={watchlist} currentDrepId={delegatedDrepId} />
       </FeatureGate>
-      {delegatedDrepId && (
-        <DRepCommunicationFeed drepId={delegatedDrepId} />
-      )}
+      {delegatedDrepId && <DRepCommunicationFeed drepId={delegatedDrepId} />}
     </>
   );
 }

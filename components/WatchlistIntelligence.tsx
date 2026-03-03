@@ -42,10 +42,7 @@ export function WatchlistIntelligence({ watchlist, currentDrepId }: WatchlistInt
     const dateStr = sevenDaysAgo.toISOString().split('T')[0];
 
     Promise.all([
-      supabase
-        .from('dreps')
-        .select('id, score, participation_rate, info')
-        .in('id', watchlist),
+      supabase.from('dreps').select('id, score, participation_rate, info').in('id', watchlist),
 
       supabase
         .from('drep_score_history')
@@ -82,9 +79,10 @@ export function WatchlistIntelligence({ watchlist, currentDrepId }: WatchlistInt
         const oldScore = oldScoreMap[d.id] ?? null;
         return {
           id: d.id,
-          name: (d.info as Record<string, unknown>)?.name as string | null ?? null,
+          name: ((d.info as Record<string, unknown>)?.name as string | null) ?? null,
           score: currentScore,
-          scoreDelta: currentScore != null && oldScore != null ? Math.round(currentScore - oldScore) : null,
+          scoreDelta:
+            currentScore != null && oldScore != null ? Math.round(currentScore - oldScore) : null,
           participationRate: d.participation_rate != null ? Number(d.participation_rate) : null,
           matchScore: matchMap[d.id] ?? null,
         };
@@ -115,7 +113,9 @@ export function WatchlistIntelligence({ watchlist, currentDrepId }: WatchlistInt
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
         </CardContent>
       </Card>
     );
@@ -127,20 +127,20 @@ export function WatchlistIntelligence({ watchlist, currentDrepId }: WatchlistInt
         <CardTitle className="text-base flex items-center gap-2">
           <Eye className="h-4 w-4 text-primary" />
           Watchlist Intelligence
-          <Badge variant="secondary" className="text-xs">{dreps.length}</Badge>
+          <Badge variant="secondary" className="text-xs">
+            {dreps.length}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {dreps.map(d => (
+        {dreps.map((d) => (
           <Link
             key={d.id}
             href={`/drep/${d.id}`}
             className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50 transition-colors"
           >
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">
-                {d.name || `${d.id.slice(0, 16)}...`}
-              </p>
+              <p className="text-sm font-medium truncate">{d.name || `${d.id.slice(0, 16)}...`}</p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                 {d.participationRate != null && (
                   <span>{Math.round(d.participationRate)}% participation</span>
@@ -156,14 +156,14 @@ export function WatchlistIntelligence({ watchlist, currentDrepId }: WatchlistInt
                 currentDrepMatch != null &&
                 d.id !== currentDrepId &&
                 d.matchScore > currentDrepMatch + 15 && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] border-amber-500/50 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30"
-                >
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  Better match
-                </Badge>
-              )}
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] border-amber-500/50 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30"
+                  >
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Better match
+                  </Badge>
+                )}
 
               {d.score != null && (
                 <div className="text-right">
@@ -182,7 +182,8 @@ export function WatchlistIntelligence({ watchlist, currentDrepId }: WatchlistInt
                       ) : (
                         <TrendingDown className="h-3 w-3 mr-0.5" />
                       )}
-                      {d.scoreDelta > 0 ? '+' : ''}{d.scoreDelta}
+                      {d.scoreDelta > 0 ? '+' : ''}
+                      {d.scoreDelta}
                     </Badge>
                   )}
                 </div>

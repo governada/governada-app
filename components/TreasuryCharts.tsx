@@ -14,7 +14,12 @@ import { chartTheme } from '@/lib/charts/theme';
 import { formatAda } from '@/lib/treasury';
 
 interface HistoryData {
-  snapshots: Array<{ epoch: number; balanceAda: number; withdrawalsAda: number; reservesIncomeAda: number }>;
+  snapshots: Array<{
+    epoch: number;
+    balanceAda: number;
+    withdrawalsAda: number;
+    reservesIncomeAda: number;
+  }>;
   incomeVsOutflow: Array<{ epoch: number; incomeAda: number; outflowAda: number; netAda: number }>;
 }
 
@@ -24,13 +29,19 @@ function BalanceChart({ data }: { data: HistoryData['snapshots'] }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const xScale = useMemo(
-    () => scaleLinear().domain([data[0].epoch, data[data.length - 1].epoch]).range([0, innerWidth]),
+    () =>
+      scaleLinear()
+        .domain([data[0].epoch, data[data.length - 1].epoch])
+        .range([0, innerWidth]),
     [data, innerWidth],
   );
 
   const yMax = useMemo(() => Math.max(...data.map((d) => d.balanceAda)), [data]);
   const yScale = useMemo(
-    () => scaleLinear().domain([0, yMax * 1.1]).range([innerHeight, 0]),
+    () =>
+      scaleLinear()
+        .domain([0, yMax * 1.1])
+        .range([innerHeight, 0]),
     [yMax, innerHeight],
   );
 
@@ -58,7 +69,10 @@ function BalanceChart({ data }: { data: HistoryData['snapshots'] }) {
       const rect = svg.getBoundingClientRect();
       const relX = e.clientX - rect.left - margin.left;
       const epoch = xScale.invert(relX);
-      const idx = data.reduce((best, d, i) => (Math.abs(d.epoch - epoch) < Math.abs(data[best].epoch - epoch) ? i : best), 0);
+      const idx = data.reduce(
+        (best, d, i) => (Math.abs(d.epoch - epoch) < Math.abs(data[best].epoch - epoch) ? i : best),
+        0,
+      );
       setHoveredIndex(idx);
     },
     [data, xScale, margin.left],
@@ -79,26 +93,91 @@ function BalanceChart({ data }: { data: HistoryData['snapshots'] }) {
           <g transform={`translate(${margin.left},${margin.top})`}>
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
-                <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{formatAda(t)}</text>
+                <line
+                  x1={0}
+                  x2={innerWidth}
+                  y1={yScale(t)}
+                  y2={yScale(t)}
+                  stroke="currentColor"
+                  strokeWidth={0.5}
+                  strokeDasharray="4 4"
+                  className="text-border"
+                />
+                <text
+                  x={-8}
+                  y={yScale(t)}
+                  textAnchor="end"
+                  dominantBaseline="central"
+                  fontSize={chartTheme.font.size.tick}
+                  className="fill-muted-foreground"
+                >
+                  {formatAda(t)}
+                </text>
               </g>
             ))}
             {xTicks.map((t) => (
-              <text key={t} x={xScale(t)} y={innerHeight + 18} textAnchor="middle" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{t}</text>
+              <text
+                key={t}
+                x={xScale(t)}
+                y={innerHeight + 18}
+                textAnchor="middle"
+                fontSize={chartTheme.font.size.tick}
+                className="fill-muted-foreground"
+              >
+                {t}
+              </text>
             ))}
             <path d={areaPath} fill="url(#balance-fill)" />
-            <path d={linePath} fill="none" stroke="oklch(0.72 0.14 200)" strokeWidth={2.5} filter="url(#balance-glow)" opacity={0.5} />
-            <path d={linePath} fill="none" stroke="oklch(0.72 0.14 200)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d={linePath}
+              fill="none"
+              stroke="oklch(0.72 0.14 200)"
+              strokeWidth={2.5}
+              filter="url(#balance-glow)"
+              opacity={0.5}
+            />
+            <path
+              d={linePath}
+              fill="none"
+              stroke="oklch(0.72 0.14 200)"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
 
             {hoveredIndex !== null && (
-              <line x1={xScale(data[hoveredIndex].epoch)} x2={xScale(data[hoveredIndex].epoch)} y1={0} y2={innerHeight} stroke="currentColor" strokeWidth={0.5} strokeDasharray="3 3" className="text-muted-foreground" />
+              <line
+                x1={xScale(data[hoveredIndex].epoch)}
+                x2={xScale(data[hoveredIndex].epoch)}
+                y1={0}
+                y2={innerHeight}
+                stroke="currentColor"
+                strokeWidth={0.5}
+                strokeDasharray="3 3"
+                className="text-muted-foreground"
+              />
             )}
-            <rect x={0} y={0} width={innerWidth} height={innerHeight} fill="transparent" onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)} />
+            <rect
+              x={0}
+              y={0}
+              width={innerWidth}
+              height={innerHeight}
+              fill="transparent"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
           </g>
         </svg>
       )}
       {hovered && width > 0 && (
-        <div className="absolute z-50 pointer-events-none" style={{ left: margin.left + xScale(hovered.epoch), top: 40, transform: `translate(${xScale(hovered.epoch) > innerWidth * 0.7 ? '-110%' : '10%'}, 0)` }}>
+        <div
+          className="absolute z-50 pointer-events-none"
+          style={{
+            left: margin.left + xScale(hovered.epoch),
+            top: 40,
+            transform: `translate(${xScale(hovered.epoch) > innerWidth * 0.7 ? '-110%' : '10%'}, 0)`,
+          }}
+        >
           <div className="rounded-lg border bg-card p-2.5 shadow-xl text-xs backdrop-blur-sm dark:border-border/60 dark:bg-card/95">
             <p className="font-medium mb-0.5">Epoch {hovered.epoch}</p>
             <p className="font-mono tabular-nums">{formatAda(hovered.balanceAda)} ADA</p>
@@ -115,7 +194,10 @@ function IncomeOutflowChart({ data }: { data: HistoryData['incomeVsOutflow'] }) 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const xScale = useMemo(
-    () => scaleLinear().domain([data[0].epoch, data[data.length - 1].epoch]).range([0, innerWidth]),
+    () =>
+      scaleLinear()
+        .domain([data[0].epoch, data[data.length - 1].epoch])
+        .range([0, innerWidth]),
     [data, innerWidth],
   );
 
@@ -125,7 +207,10 @@ function IncomeOutflowChart({ data }: { data: HistoryData['incomeVsOutflow'] }) 
   }, [data]);
 
   const yScale = useMemo(
-    () => scaleLinear().domain([yExtent[0] * 1.1, yExtent[1] * 1.1]).range([innerHeight, 0]),
+    () =>
+      scaleLinear()
+        .domain([yExtent[0] * 1.1, yExtent[1] * 1.1])
+        .range([innerHeight, 0]),
     [yExtent, innerHeight],
   );
 
@@ -138,7 +223,10 @@ function IncomeOutflowChart({ data }: { data: HistoryData['incomeVsOutflow'] }) 
       const rect = svg.getBoundingClientRect();
       const relX = e.clientX - rect.left - margin.left;
       const epoch = xScale.invert(relX);
-      const idx = data.reduce((best, d, i) => (Math.abs(d.epoch - epoch) < Math.abs(data[best].epoch - epoch) ? i : best), 0);
+      const idx = data.reduce(
+        (best, d, i) => (Math.abs(d.epoch - epoch) < Math.abs(data[best].epoch - epoch) ? i : best),
+        0,
+      );
       setHoveredIndex(idx);
     },
     [data, xScale, margin.left],
@@ -155,12 +243,39 @@ function IncomeOutflowChart({ data }: { data: HistoryData['incomeVsOutflow'] }) 
           <g transform={`translate(${margin.left},${margin.top})`}>
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={t === 0 ? 1 : 0.5} strokeDasharray={t === 0 ? 'none' : '4 4'} className="text-border" />
-                <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{formatAda(t)}</text>
+                <line
+                  x1={0}
+                  x2={innerWidth}
+                  y1={yScale(t)}
+                  y2={yScale(t)}
+                  stroke="currentColor"
+                  strokeWidth={t === 0 ? 1 : 0.5}
+                  strokeDasharray={t === 0 ? 'none' : '4 4'}
+                  className="text-border"
+                />
+                <text
+                  x={-8}
+                  y={yScale(t)}
+                  textAnchor="end"
+                  dominantBaseline="central"
+                  fontSize={chartTheme.font.size.tick}
+                  className="fill-muted-foreground"
+                >
+                  {formatAda(t)}
+                </text>
               </g>
             ))}
             {xTicks.map((t) => (
-              <text key={t} x={xScale(t)} y={innerHeight + 18} textAnchor="middle" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{t}</text>
+              <text
+                key={t}
+                x={xScale(t)}
+                y={innerHeight + 18}
+                textAnchor="middle"
+                fontSize={chartTheme.font.size.tick}
+                className="fill-muted-foreground"
+              >
+                {t}
+              </text>
             ))}
 
             {data.map((d, i) => {
@@ -169,23 +284,62 @@ function IncomeOutflowChart({ data }: { data: HistoryData['incomeVsOutflow'] }) 
               const outflowH = Math.abs(yScale(0) - yScale(-d.outflowAda));
               return (
                 <g key={d.epoch}>
-                  <rect x={x - barWidth * 0.1} y={yScale(d.incomeAda)} width={barWidth * 0.45} height={incomeH} fill="hsl(142, 71%, 45%)" rx={2} opacity={hoveredIndex === i ? 1 : 0.8} />
-                  <rect x={x + barWidth * 0.55} y={yScale(0)} width={barWidth * 0.45} height={outflowH} fill="hsl(0, 84%, 60%)" rx={2} opacity={hoveredIndex === i ? 1 : 0.8} />
+                  <rect
+                    x={x - barWidth * 0.1}
+                    y={yScale(d.incomeAda)}
+                    width={barWidth * 0.45}
+                    height={incomeH}
+                    fill="hsl(142, 71%, 45%)"
+                    rx={2}
+                    opacity={hoveredIndex === i ? 1 : 0.8}
+                  />
+                  <rect
+                    x={x + barWidth * 0.55}
+                    y={yScale(0)}
+                    width={barWidth * 0.45}
+                    height={outflowH}
+                    fill="hsl(0, 84%, 60%)"
+                    rx={2}
+                    opacity={hoveredIndex === i ? 1 : 0.8}
+                  />
                 </g>
               );
             })}
 
-            <rect x={0} y={0} width={innerWidth} height={innerHeight} fill="transparent" onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)} />
+            <rect
+              x={0}
+              y={0}
+              width={innerWidth}
+              height={innerHeight}
+              fill="transparent"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
           </g>
         </svg>
       )}
       {hovered && width > 0 && (
-        <div className="absolute z-50 pointer-events-none" style={{ left: margin.left + xScale(hovered.epoch), top: 40, transform: `translate(${xScale(hovered.epoch) > innerWidth * 0.7 ? '-110%' : '10%'}, 0)` }}>
+        <div
+          className="absolute z-50 pointer-events-none"
+          style={{
+            left: margin.left + xScale(hovered.epoch),
+            top: 40,
+            transform: `translate(${xScale(hovered.epoch) > innerWidth * 0.7 ? '-110%' : '10%'}, 0)`,
+          }}
+        >
           <div className="rounded-lg border bg-card p-2.5 shadow-xl text-xs backdrop-blur-sm dark:border-border/60 dark:bg-card/95">
             <p className="font-medium mb-1">Epoch {hovered.epoch}</p>
-            <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-green-500" /> Income: {formatAda(hovered.incomeAda)} ADA</div>
-            <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-red-500" /> Outflow: {formatAda(hovered.outflowAda)} ADA</div>
-            <div className="pt-1 mt-1 border-t border-border font-medium">Net: {formatAda(hovered.netAda)} ADA</div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-green-500" /> Income:{' '}
+              {formatAda(hovered.incomeAda)} ADA
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-red-500" /> Outflow:{' '}
+              {formatAda(hovered.outflowAda)} ADA
+            </div>
+            <div className="pt-1 mt-1 border-t border-border font-medium">
+              Net: {formatAda(hovered.netAda)} ADA
+            </div>
           </div>
         </div>
       )}
@@ -201,8 +355,11 @@ export function TreasuryCharts() {
   useEffect(() => {
     setLoading(true);
     fetch(`/api/treasury/history?epochs=${range}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { setData(d); setLoading(false); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        setData(d);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [range]);
 
@@ -212,12 +369,15 @@ export function TreasuryCharts() {
   return (
     <div className="space-y-6">
       <div className="flex gap-2">
-        {([30, 90, 500] as const).map(r => (
+        {([30, 90, 500] as const).map((r) => (
           <Button
             key={r}
             variant={range === r ? 'default' : 'outline'}
             size="sm"
-            onClick={() => { setRange(r); posthog.capture('treasury_chart_range_changed', { range: r }); }}
+            onClick={() => {
+              setRange(r);
+              posthog.capture('treasury_chart_range_changed', { range: r });
+            }}
           >
             {r === 500 ? 'All Time' : `${r} Epochs`}
           </Button>

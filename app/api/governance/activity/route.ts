@@ -14,10 +14,7 @@ interface ActivityEvent {
 
 export async function GET(request: NextRequest) {
   try {
-    const limit = Math.min(
-      parseInt(request.nextUrl.searchParams.get('limit') || '30', 10),
-      50
-    );
+    const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') || '30', 10), 50);
     const drepIdFilter = request.nextUrl.searchParams.get('drepId') || null;
     const supabase = createClient();
     const oneWeekAgo = Math.floor(Date.now() / 1000) - 604800;
@@ -43,7 +40,9 @@ export async function GET(request: NextRequest) {
       rationalesQuery,
       supabase
         .from('proposals')
-        .select('tx_hash, title, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch')
+        .select(
+          'tx_hash, title, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+        )
         .order('created_at', { ascending: false })
         .limit(Math.ceil(limit / 3)),
     ]);
@@ -58,12 +57,10 @@ export async function GET(request: NextRequest) {
     for (const r of rationales) drepIds.add(r.drep_id);
 
     const drepIdsArr = [...drepIds].slice(0, 100);
-    const drepsResult = drepIdsArr.length > 0
-      ? await supabase
-          .from('dreps')
-          .select('id, info')
-          .in('id', drepIdsArr)
-      : { data: [] };
+    const drepsResult =
+      drepIdsArr.length > 0
+        ? await supabase.from('dreps').select('id, info').in('id', drepIdsArr)
+        : { data: [] };
 
     const nameMap = new Map<string, string>();
     for (const d of drepsResult.data || []) {
@@ -72,12 +69,13 @@ export async function GET(request: NextRequest) {
 
     // Fetch proposal titles for referenced votes
     const proposalHashes = new Set(votes.map((v: any) => v.proposal_tx_hash));
-    const proposalTitlesResult = proposalHashes.size > 0
-      ? await supabase
-          .from('proposals')
-          .select('tx_hash, title')
-          .in('tx_hash', [...proposalHashes].slice(0, 50))
-      : { data: [] };
+    const proposalTitlesResult =
+      proposalHashes.size > 0
+        ? await supabase
+            .from('proposals')
+            .select('tx_hash, title')
+            .in('tx_hash', [...proposalHashes].slice(0, 50))
+        : { data: [] };
 
     const titleMap = new Map<string, string>();
     for (const p of proposalTitlesResult.data || []) {
@@ -103,12 +101,14 @@ export async function GET(request: NextRequest) {
         drepId: r.drep_id,
         drepName: nameMap.get(r.drep_id) || null,
         detail: null,
-        timestamp: r.fetched_at ? Math.floor(new Date(r.fetched_at).getTime() / 1000) : Math.floor(Date.now() / 1000),
+        timestamp: r.fetched_at
+          ? Math.floor(new Date(r.fetched_at).getTime() / 1000)
+          : Math.floor(Date.now() / 1000),
       });
     }
 
     const recentProposals = proposals.filter(
-      (p: any) => p.created_at && new Date(p.created_at).getTime() > Date.now() - 7 * 86400000
+      (p: any) => p.created_at && new Date(p.created_at).getTime() > Date.now() - 7 * 86400000,
     );
     for (const p of recentProposals) {
       events.push({

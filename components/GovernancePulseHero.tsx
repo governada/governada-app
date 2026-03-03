@@ -65,7 +65,12 @@ function AnimatedCounter({ value, suffix = '' }: { value: string; suffix?: strin
     requestAnimationFrame(animate);
   }, [value, suffix]);
 
-  return <span ref={ref}>{value}{suffix}</span>;
+  return (
+    <span ref={ref}>
+      {value}
+      {suffix}
+    </span>
+  );
 }
 
 interface StatCardProps {
@@ -78,7 +83,11 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, suffix, accent = 'text-primary' }: StatCardProps) {
   return (
-    <div className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl bg-card/60 backdrop-blur-sm border border-border/50" role="group" aria-label={`${label}: ${value}${suffix || ''}`}>
+    <div
+      className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl bg-card/60 backdrop-blur-sm border border-border/50"
+      role="group"
+      aria-label={`${label}: ${value}${suffix || ''}`}
+    >
       <div className={`${accent}`}>{icon}</div>
       <span className="text-2xl sm:text-3xl font-bold tabular-nums tracking-tight">
         <AnimatedCounter value={value} suffix={suffix} />
@@ -97,10 +106,12 @@ export function GovernancePulseHero({ data }: { data: PulseData }) {
       <div className="relative z-10 px-6 py-12 md:py-16 text-center space-y-8 max-w-4xl mx-auto">
         <div className="space-y-3 animate-fade-in-up">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
-            <span className="text-primary">{data.totalAdaGoverned} ADA</span> is being governed right now
+            <span className="text-primary">{data.totalAdaGoverned} ADA</span> is being governed
+            right now
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Cardano&apos;s on-chain governance is live. DReps vote on proposals that shape the protocol&apos;s future — and your ADA gives you a voice.
+            Cardano&apos;s on-chain governance is live. DReps vote on proposals that shape the
+            protocol&apos;s future — and your ADA gives you a voice.
           </p>
         </div>
 

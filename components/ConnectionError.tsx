@@ -52,15 +52,11 @@ export function ConnectionError({
       </div>
       <h3 className="text-lg font-semibold mb-2">{message}</h3>
       <p className="text-sm text-muted-foreground max-w-sm mb-6">
-        Please check your connection and try again. If the problem persists, our servers may be experiencing high demand.
+        Please check your connection and try again. If the problem persists, our servers may be
+        experiencing high demand.
       </p>
       {onRetry && (
-        <Button
-          variant="outline"
-          onClick={handleRetry}
-          disabled={retrying}
-          className="gap-2"
-        >
+        <Button variant="outline" onClick={handleRetry} disabled={retrying} className="gap-2">
           <RefreshCw className={`h-4 w-4 ${retrying ? 'animate-spin' : ''}`} />
           {retrying ? 'Retrying...' : 'Try Again'}
         </Button>

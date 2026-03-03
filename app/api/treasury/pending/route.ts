@@ -16,7 +16,8 @@ export async function GET() {
     return NextResponse.json({
       proposals: pending,
       totalAda,
-      pctOfTreasury: balance.balanceAda > 0 ? ((totalAda / balance.balanceAda) * 100).toFixed(2) : '0',
+      pctOfTreasury:
+        balance.balanceAda > 0 ? ((totalAda / balance.balanceAda) * 100).toFixed(2) : '0',
       treasuryBalanceAda: balance.balanceAda,
     });
   } catch (error) {

@@ -11,7 +11,13 @@ import { posthog } from '@/lib/posthog';
 interface Effectiveness {
   totalSpentAda: number;
   totalEnacted: number;
-  ratingBreakdown: { delivered: number; partial: number; notDelivered: number; tooEarly: number; pendingReview: number };
+  ratingBreakdown: {
+    delivered: number;
+    partial: number;
+    notDelivered: number;
+    tooEarly: number;
+    pendingReview: number;
+  };
   effectivenessRate: number | null;
   topRated: Array<{ title: string; amountAda: number; rating: string }>;
   bottomRated: Array<{ title: string; amountAda: number; rating: string }>;
@@ -37,7 +43,15 @@ function DonutChart({ data }: { data: Array<{ name: string; value: number; color
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-      <circle cx={center} cy={center} r={radius} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted/20" />
+      <circle
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        className="text-muted/20"
+      />
       {data.map((segment, i) => {
         if (segment.value === 0 || total === 0) return null;
         const pct = segment.value / total;
@@ -72,8 +86,11 @@ export function TreasuryAccountabilitySection() {
   useEffect(() => {
     posthog.capture('treasury_accountability_viewed');
     fetch('/api/treasury/accountability')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { setData(d); setLoading(false); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        setData(d);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -96,16 +113,23 @@ export function TreasuryAccountabilitySection() {
         <CardContent className="py-8 text-center text-muted-foreground">
           <Scale className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <h3 className="font-medium text-foreground mb-1">Treasury Accountability</h3>
-          <p className="text-sm">No enacted treasury proposals to evaluate yet. Accountability polls will open automatically as enacted proposals become eligible for community review.</p>
+          <p className="text-sm">
+            No enacted treasury proposals to evaluate yet. Accountability polls will open
+            automatically as enacted proposals become eligible for community review.
+          </p>
         </CardContent>
       </Card>
     );
   }
 
-  const effectivenessColor = data.effectivenessRate === null ? 'text-muted-foreground'
-    : data.effectivenessRate >= 70 ? 'text-green-500'
-    : data.effectivenessRate >= 50 ? 'text-amber-500'
-    : 'text-red-500';
+  const effectivenessColor =
+    data.effectivenessRate === null
+      ? 'text-muted-foreground'
+      : data.effectivenessRate >= 70
+        ? 'text-green-500'
+        : data.effectivenessRate >= 50
+          ? 'text-amber-500'
+          : 'text-red-500';
 
   return (
     <div className="space-y-6">
@@ -114,9 +138,12 @@ export function TreasuryAccountabilitySection() {
           <CardContent className="pt-6 pb-4 text-center">
             <div className="text-xs text-muted-foreground mb-1">Spending Effectiveness</div>
             <div className={`text-4xl font-bold tabular-nums ${effectivenessColor}`}>
-              {data.effectivenessRate ?? '—'}<span className="text-lg font-normal text-muted-foreground">%</span>
+              {data.effectivenessRate ?? '—'}
+              <span className="text-lg font-normal text-muted-foreground">%</span>
             </div>
-            <div className="text-xs text-muted-foreground mt-2">of community-assessed spending rated as delivering</div>
+            <div className="text-xs text-muted-foreground mt-2">
+              of community-assessed spending rated as delivering
+            </div>
             <div className="mt-3 text-sm">
               <span className="font-semibold">{formatAda(data.totalSpentAda)} ADA</span>
               <span className="text-muted-foreground"> across {data.totalEnacted} proposals</span>
@@ -125,7 +152,9 @@ export function TreasuryAccountabilitySection() {
         </Card>
 
         <Card className="md:col-span-2">
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Rating Breakdown</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Rating Breakdown</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="flex items-center gap-6">
               <div className="w-40 h-40 flex items-center justify-center">
@@ -160,9 +189,15 @@ export function TreasuryAccountabilitySection() {
             </CardHeader>
             <CardContent className="space-y-2">
               {data.topRated.map((p, i) => (
-                <div key={i} className="flex justify-between items-center text-sm py-1.5 border-b last:border-0">
+                <div
+                  key={i}
+                  className="flex justify-between items-center text-sm py-1.5 border-b last:border-0"
+                >
                   <span className="truncate flex-1">{p.title}</span>
-                  <Badge variant="secondary" className="ml-2 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                  <Badge
+                    variant="secondary"
+                    className="ml-2 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                  >
                     {formatAda(p.amountAda)} ADA
                   </Badge>
                 </div>
@@ -180,9 +215,15 @@ export function TreasuryAccountabilitySection() {
             </CardHeader>
             <CardContent className="space-y-2">
               {data.bottomRated.map((p, i) => (
-                <div key={i} className="flex justify-between items-center text-sm py-1.5 border-b last:border-0">
+                <div
+                  key={i}
+                  className="flex justify-between items-center text-sm py-1.5 border-b last:border-0"
+                >
                   <span className="truncate flex-1">{p.title}</span>
-                  <Badge variant="secondary" className="ml-2 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                  <Badge
+                    variant="secondary"
+                    className="ml-2 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                  >
                     {formatAda(p.amountAda)} ADA
                   </Badge>
                 </div>

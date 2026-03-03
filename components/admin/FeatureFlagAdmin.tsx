@@ -42,7 +42,9 @@ export function FeatureFlagAdmin({ adminAddress }: { adminAddress: string }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const groups = useMemo<CategoryGroup[]>(() => {
     const map = new Map<string, FlagDetail[]>();
@@ -56,7 +58,7 @@ export function FeatureFlagAdmin({ adminAddress }: { adminAddress: string }) {
       .map(([category, catFlags]) => ({
         category,
         flags: catFlags,
-        enabledCount: catFlags.filter(f => f.enabled).length,
+        enabledCount: catFlags.filter((f) => f.enabled).length,
       }));
   }, [flags]);
 
@@ -69,7 +71,7 @@ export function FeatureFlagAdmin({ adminAddress }: { adminAddress: string }) {
         body: JSON.stringify({ key, enabled, address: adminAddress }),
       });
       if (res.ok) {
-        setFlags(prev => prev.map(f => f.key === key ? { ...f, enabled } : f));
+        setFlags((prev) => prev.map((f) => (f.key === key ? { ...f, enabled } : f)));
       }
     } catch {
       // silent
@@ -79,7 +81,7 @@ export function FeatureFlagAdmin({ adminAddress }: { adminAddress: string }) {
   };
 
   const toggleCollapse = (cat: string) => {
-    setCollapsed(prev => {
+    setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
       else next.add(cat);
@@ -129,22 +131,28 @@ export function FeatureFlagAdmin({ adminAddress }: { adminAddress: string }) {
                   </Badge>
                 </div>
                 {enabledCount === catFlags.length ? (
-                  <Badge className="text-[10px] bg-green-500/15 text-green-600 border-green-500/30">All ON</Badge>
+                  <Badge className="text-[10px] bg-green-500/15 text-green-600 border-green-500/30">
+                    All ON
+                  </Badge>
                 ) : enabledCount === 0 ? (
-                  <Badge variant="destructive" className="text-[10px]">All OFF</Badge>
+                  <Badge variant="destructive" className="text-[10px]">
+                    All OFF
+                  </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-[10px]">Partial</Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    Partial
+                  </Badge>
                 )}
               </div>
             </CardHeader>
             {!isCollapsed && (
               <CardContent className="pt-0 pb-2 px-4 space-y-1">
-                {catFlags.map(flag => (
+                {catFlags.map((flag) => (
                   <div
                     key={flag.key}
                     className={cn(
                       'flex items-center gap-3 rounded-md px-3 py-2 transition-colors',
-                      'hover:bg-muted/50'
+                      'hover:bg-muted/50',
                     )}
                   >
                     <Switch
@@ -163,7 +171,9 @@ export function FeatureFlagAdmin({ adminAddress }: { adminAddress: string }) {
                         </Badge>
                       </div>
                       {flag.description && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{flag.description}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                          {flag.description}
+                        </p>
                       )}
                     </div>
                     <div className="flex items-center shrink-0">

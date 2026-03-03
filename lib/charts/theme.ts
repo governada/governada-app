@@ -34,11 +34,11 @@ export const chartTheme = {
 } as const;
 
 export const CHART_PALETTE = [
-  'oklch(0.72 0.14 200)',  // chart-1: Electric Cyan
-  'oklch(0.68 0.16 160)',  // chart-2: Teal
-  'oklch(0.60 0.18 290)',  // chart-3: Purple
-  'oklch(0.75 0.14 80)',   // chart-4: Amber
-  'oklch(0.60 0.20 25)',   // chart-5: Red
+  'oklch(0.72 0.14 200)', // chart-1: Electric Cyan
+  'oklch(0.68 0.16 160)', // chart-2: Teal
+  'oklch(0.60 0.18 290)', // chart-3: Purple
+  'oklch(0.75 0.14 80)', // chart-4: Amber
+  'oklch(0.60 0.20 25)', // chart-5: Red
 ] as const;
 
 export const VOTE_CHART_COLORS = {

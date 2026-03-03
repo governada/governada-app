@@ -37,10 +37,7 @@ interface LayoutInput {
   alignments: number[];
 }
 
-export function computeLayout(
-  inputs: LayoutInput[],
-  nodeLimit: number
-): LayoutResult {
+export function computeLayout(inputs: LayoutInput[], nodeLimit: number): LayoutResult {
   const sorted = [...inputs].sort((a, b) => b.power - a.power);
   const active = sorted.slice(0, nodeLimit);
 
@@ -95,7 +92,9 @@ export function computeLayout(
 function computeNodePosition(input: LayoutInput): [number, number, number] {
   const scores = input.alignments;
 
-  let wx = 0, wy = 0, totalWeight = 0;
+  let wx = 0,
+    wy = 0,
+    totalWeight = 0;
   for (let i = 0; i < DIMS.length; i++) {
     const score = scores[i] ?? 50;
     const weight = Math.abs(score - 50);
@@ -140,7 +139,7 @@ function computeNodePosition(input: LayoutInput): [number, number, number] {
 
 function computeEdges(
   nodes: ConstellationNode3D[],
-  anchorNodes: ConstellationNode3D[]
+  anchorNodes: ConstellationNode3D[],
 ): ConstellationEdge3D[] {
   const edges: ConstellationEdge3D[] = [];
 
@@ -151,11 +150,11 @@ function computeEdges(
   }
 
   // H2: Connect each anchor to its 3 nearest real (non-anchor) nodes in its arm
-  const realNodes = nodes.filter(n => !n.isAnchor);
+  const realNodes = nodes.filter((n) => !n.isAnchor);
   for (const anchor of anchorNodes) {
     const sameArm = realNodes
-      .filter(n => n.dominant === anchor.dominant)
-      .map(n => ({ node: n, dist: dist3D(anchor.position, n.position) }))
+      .filter((n) => n.dominant === anchor.dominant)
+      .map((n) => ({ node: n, dist: dist3D(anchor.position, n.position) }))
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 3);
     for (const { node } of sameArm) {
@@ -186,7 +185,7 @@ function dist3D(a: [number, number, number], b: [number, number, number]): numbe
 }
 
 function rebalanceAngular(nodes: ConstellationNode3D[]): void {
-  const realNodes = nodes.filter(n => !n.isAnchor);
+  const realNodes = nodes.filter((n) => !n.isAnchor);
   if (realNodes.length < 2) return;
 
   const NUM_SECTORS = 12;
@@ -240,7 +239,7 @@ function rebalanceAngular(nodes: ConstellationNode3D[]): void {
 }
 
 function repulse(nodes: ConstellationNode3D[]): void {
-  const realNodes = nodes.filter(n => !n.isAnchor);
+  const realNodes = nodes.filter((n) => !n.isAnchor);
   const MIN_DIST = 0.8;
   const STRENGTH = 0.4;
 
@@ -256,7 +255,7 @@ function repulse(nodes: ConstellationNode3D[]): void {
 
         if (distSq < MIN_DIST * MIN_DIST && distSq > 0.0001) {
           const dist = Math.sqrt(distSq);
-          const force = (MIN_DIST - dist) / dist * STRENGTH;
+          const force = ((MIN_DIST - dist) / dist) * STRENGTH;
           a[0] -= dx * force;
           a[1] -= dy * force;
           a[2] -= dz * force;

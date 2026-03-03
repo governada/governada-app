@@ -29,20 +29,19 @@ function extractValue(field: unknown): string | null {
 
 export function AboutSection({ description, bio, email, references }: AboutSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const descText = description || '';
   const bioText = extractValue(bio);
   const emailText = extractValue(email);
-  
+
   const hasContent = descText || bioText || emailText || (references && references.length > 0);
-  
+
   if (!hasContent) return null;
 
   const combinedText = [descText, bioText].filter(Boolean).join('\n\n');
   const shouldTruncate = combinedText.length > 400;
-  const displayText = shouldTruncate && !isExpanded 
-    ? combinedText.slice(0, 400) + '...' 
-    : combinedText;
+  const displayText =
+    shouldTruncate && !isExpanded ? combinedText.slice(0, 400) + '...' : combinedText;
 
   return (
     <Card>
@@ -64,28 +63,29 @@ export function AboutSection({ description, bio, email, references }: AboutSecti
                 className="mt-2 h-auto p-0 text-primary hover:bg-transparent"
               >
                 {isExpanded ? (
-                  <>Show less <ChevronUp className="h-4 w-4 ml-1" /></>
+                  <>
+                    Show less <ChevronUp className="h-4 w-4 ml-1" />
+                  </>
                 ) : (
-                  <>Read more <ChevronDown className="h-4 w-4 ml-1" /></>
+                  <>
+                    Read more <ChevronDown className="h-4 w-4 ml-1" />
+                  </>
                 )}
               </Button>
             )}
           </div>
         )}
-        
+
         {/* Contact */}
         {emailText && (
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-muted-foreground" />
-            <a
-              href={`mailto:${emailText}`}
-              className="text-sm text-primary hover:underline"
-            >
+            <a href={`mailto:${emailText}`} className="text-sm text-primary hover:underline">
               {emailText}
             </a>
           </div>
         )}
-        
+
         {/* Social Links - using larger icons for detail page */}
         {references && references.length > 0 && (
           <div className="pt-2 border-t">

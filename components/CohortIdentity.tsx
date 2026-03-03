@@ -37,7 +37,10 @@ export function CohortIdentity() {
         const res = await fetch('/api/governance/cohorts', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) { setLoading(false); return; }
+        if (!res.ok) {
+          setLoading(false);
+          return;
+        }
         const json = await res.json();
         if (!json.cohort) {
           setInsufficient(true);

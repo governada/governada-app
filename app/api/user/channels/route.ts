@@ -34,15 +34,16 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = getSupabaseAdmin();
-  const { error } = await supabase
-    .from('user_channels')
-    .upsert({
+  const { error } = await supabase.from('user_channels').upsert(
+    {
       user_wallet: wallet,
       channel,
       channel_identifier: channelIdentifier,
       config: config || {},
       connected_at: new Date().toISOString(),
-    }, { onConflict: 'user_wallet,channel' });
+    },
+    { onConflict: 'user_wallet,channel' },
+  );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -60,11 +61,7 @@ export async function DELETE(request: NextRequest) {
   if (!channel) return NextResponse.json({ error: 'Missing channel' }, { status: 400 });
 
   const supabase = getSupabaseAdmin();
-  await supabase
-    .from('user_channels')
-    .delete()
-    .eq('user_wallet', wallet)
-    .eq('channel', channel);
+  await supabase.from('user_channels').delete().eq('user_wallet', wallet).eq('channel', channel);
 
   captureServerEvent('notification_channel_disconnected', { channel }, wallet);
   return NextResponse.json({ ok: true });

@@ -30,7 +30,9 @@ export const generateGovernanceBrief = inngest.createFunction(
   },
   { cron: '0 10 * * 1' },
   async ({ step }) => {
-    const aiEnabled = await step.run('check-flag', async () => getFeatureFlag('ai_governance_brief'));
+    const aiEnabled = await step.run('check-flag', async () =>
+      getFeatureFlag('ai_governance_brief'),
+    );
     if (!aiEnabled) return { skipped: true, reason: 'ai_governance_brief flag disabled' };
 
     const activeUsers = await step.run('fetch-active-users', async () => {
@@ -43,7 +45,7 @@ export const generateGovernanceBrief = inngest.createFunction(
         .gte('last_active', thirtyDaysAgo)
         .neq('digest_frequency', 'off');
 
-      return (data ?? []).map(u => ({
+      return (data ?? []).map((u) => ({
         wallet: u.wallet_address,
         claimedDrepId: u.claimed_drep_id as string | null,
         currentDrepId: (() => {
@@ -85,11 +87,15 @@ export const generateGovernanceBrief = inngest.createFunction(
 
             batchGenerated++;
 
-            captureServerEvent('governance_brief_generated', {
-              user_type: isDRep ? 'drep' : 'holder',
-              drep_id: user.claimedDrepId,
-              brief_type: isDRep ? 'drep' : 'holder',
-            }, user.wallet);
+            captureServerEvent(
+              'governance_brief_generated',
+              {
+                user_type: isDRep ? 'drep' : 'holder',
+                drep_id: user.claimedDrepId,
+                brief_type: isDRep ? 'drep' : 'holder',
+              },
+              user.wallet,
+            );
 
             await notifyUser(user.wallet, {
               eventType: 'governance-brief',
@@ -109,9 +115,13 @@ export const generateGovernanceBrief = inngest.createFunction(
 
             batchDelivered++;
 
-            captureServerEvent('governance_brief_delivered', {
-              brief_type: isDRep ? 'drep' : 'holder',
-            }, user.wallet);
+            captureServerEvent(
+              'governance_brief_delivered',
+              {
+                brief_type: isDRep ? 'drep' : 'holder',
+              },
+              user.wallet,
+            );
           } catch (err) {
             console.error(`[GovernanceBrief] Failed for ${user.wallet}:`, err);
           }
@@ -124,7 +134,9 @@ export const generateGovernanceBrief = inngest.createFunction(
       delivered += result.delivered;
     }
 
-    console.log(`[GovernanceBrief] Complete: ${generated} generated, ${delivered} delivered for ${activeUsers.length} users`);
+    console.log(
+      `[GovernanceBrief] Complete: ${generated} generated, ${delivered} delivered for ${activeUsers.length} users`,
+    );
     return { generated, delivered, totalUsers: activeUsers.length };
   },
 );

@@ -51,12 +51,18 @@ export function EmbedDRepCard({ drep, theme }: EmbedDRepCardProps) {
           <div className="text-2xl font-black tabular-nums" style={{ color: accentColor }}>
             {drep.drepScore}
           </div>
-          <div className="text-[10px]" style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>/100</div>
+          <div className="text-[10px]" style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>
+            /100
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        <MiniStat label="Participation" value={`${drep.effectiveParticipation ?? 0}%`} isDark={isDark} />
+        <MiniStat
+          label="Participation"
+          value={`${drep.effectiveParticipation ?? 0}%`}
+          isDark={isDark}
+        />
         <MiniStat label="Rationale" value={`${drep.rationaleRate ?? 0}%`} isDark={isDark} />
         <MiniStat label="Reliability" value={`${drep.reliabilityScore ?? 0}%`} isDark={isDark} />
       </div>
@@ -82,7 +88,9 @@ export function EmbedDRepCard({ drep, theme }: EmbedDRepCardProps) {
 function MiniStat({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
   return (
     <div>
-      <div className="text-[10px]" style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>{label}</div>
+      <div className="text-[10px]" style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>
+        {label}
+      </div>
       <div className="text-xs font-semibold tabular-nums">{value}</div>
     </div>
   );

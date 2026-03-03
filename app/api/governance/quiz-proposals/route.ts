@@ -20,7 +20,10 @@ export async function GET() {
   }
 
   // Aggregate votes per proposal
-  const proposalVotes = new Map<string, { yes: number; no: number; abstain: number; total: number }>();
+  const proposalVotes = new Map<
+    string,
+    { yes: number; no: number; abstain: number; total: number }
+  >();
   for (const v of votes || []) {
     const key = `${v.proposal_tx_hash}:${v.proposal_index}`;
     const entry = proposalVotes.get(key) || { yes: 0, no: 0, abstain: 0, total: 0 };
@@ -40,7 +43,13 @@ export async function GET() {
     const discriminationScore = 1 - Math.abs(yesPct - 0.5) * 2; // 1.0 = perfect 50/50, 0.0 = unanimous
     if (discriminationScore < 0.4) continue; // at least 30-70 split
     const [txHash, indexStr] = key.split(':');
-    scored.push({ key, txHash, index: parseInt(indexStr, 10), score: discriminationScore, total: counts.total });
+    scored.push({
+      key,
+      txHash,
+      index: parseInt(indexStr, 10),
+      score: discriminationScore,
+      total: counts.total,
+    });
   }
 
   scored.sort((a, b) => b.score - a.score || b.total - a.total);
@@ -53,7 +62,9 @@ export async function GET() {
   // Fetch proposal metadata
   const { data: proposals, error: proposalError } = await supabase
     .from('proposals')
-    .select('tx_hash, proposal_index, proposal_type, title, abstract, withdrawal_amount, treasury_tier, ai_summary');
+    .select(
+      'tx_hash, proposal_index, proposal_type, title, abstract, withdrawal_amount, treasury_tier, ai_summary',
+    );
 
   if (proposalError) {
     console.error('[quiz-proposals] Failed to fetch proposals:', proposalError.message);

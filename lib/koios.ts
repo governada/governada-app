@@ -52,9 +52,9 @@ export interface DRepWeights {
 
 /** Default: rationale-forward weights */
 export const DEFAULT_WEIGHTS: DRepWeights = {
-  effectiveParticipation: 0.30,
+  effectiveParticipation: 0.3,
   rationale: 0.35,
-  reliability: 0.20,
+  reliability: 0.2,
   profileCompleteness: 0.15,
 };
 
@@ -85,7 +85,7 @@ export function calculateDRepScore(
     DRep,
     'effectiveParticipation' | 'rationaleRate' | 'reliabilityScore' | 'profileCompleteness'
   >,
-  weights: DRepWeights = DEFAULT_WEIGHTS
+  weights: DRepWeights = DEFAULT_WEIGHTS,
 ): number {
   const effectiveParticipation = drep.effectiveParticipation ?? 0;
   const rationale = applyRationaleCurve(drep.rationaleRate ?? 0);
@@ -119,37 +119,43 @@ const SHELLEY_BASE_EPOCH = 209;
  * Validated against known proposal epochs with 100% accuracy
  */
 export function blockTimeToEpoch(blockTime: number): number {
-  return Math.floor((blockTime - SHELLEY_GENESIS_TIMESTAMP) / EPOCH_LENGTH_SECONDS) + SHELLEY_BASE_EPOCH;
+  return (
+    Math.floor((blockTime - SHELLEY_GENESIS_TIMESTAMP) / EPOCH_LENGTH_SECONDS) + SHELLEY_BASE_EPOCH
+  );
 }
 
 /**
  * Compute vote counts per epoch from vote array
  * Groups votes by epoch_no (or derives from block_time if missing) and returns array of counts + first epoch
  */
-function computeEpochVoteCounts(votes: Awaited<ReturnType<typeof fetchDRepVotes>>): { counts: number[]; firstEpoch: number | undefined } {
+function computeEpochVoteCounts(votes: Awaited<ReturnType<typeof fetchDRepVotes>>): {
+  counts: number[];
+  firstEpoch: number | undefined;
+} {
   if (!votes || votes.length === 0) return { counts: [], firstEpoch: undefined };
-  
+
   const epochCounts: Record<number, number> = {};
   let minEpoch = Infinity;
   let maxEpoch = -Infinity;
-  
+
   for (const vote of votes) {
     // Use epoch_no if available, otherwise derive from block_time
-    const epoch = vote.epoch_no ?? (vote.block_time ? blockTimeToEpoch(vote.block_time) : undefined);
+    const epoch =
+      vote.epoch_no ?? (vote.block_time ? blockTimeToEpoch(vote.block_time) : undefined);
     if (epoch !== undefined && epoch !== null) {
       epochCounts[epoch] = (epochCounts[epoch] || 0) + 1;
       minEpoch = Math.min(minEpoch, epoch);
       maxEpoch = Math.max(maxEpoch, epoch);
     }
   }
-  
+
   if (minEpoch === Infinity) return { counts: [], firstEpoch: undefined };
-  
+
   const counts: number[] = [];
   for (let e = minEpoch; e <= maxEpoch; e++) {
     counts.push(epochCounts[e] || 0);
   }
-  
+
   return { counts, firstEpoch: minEpoch };
 }
 
@@ -160,7 +166,7 @@ const VOTE_CONCURRENCY = 5;
  * Fetch votes for multiple DReps with limited concurrency
  */
 async function fetchVotesBatched(
-  drepIds: string[]
+  drepIds: string[],
 ): Promise<Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>>> {
   const votesMap: Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>> = {};
   for (let i = 0; i < drepIds.length; i += VOTE_CONCURRENCY) {
@@ -174,7 +180,7 @@ async function fetchVotesBatched(
           console.error(`[DRepScore] Failed to fetch votes for ${id}:`, error);
           return { id, votes: [] };
         }
-      })
+      }),
     );
     for (const { id, votes } of results) {
       votesMap[id] = votes;
@@ -196,7 +202,7 @@ export async function getEnrichedDReps(
     includeRawVotes?: boolean;
     proposalContextMap?: Map<string, ProposalContext>;
     prefetchedVotes?: Record<string, DRepVotesResponse>;
-  }
+  },
 ): Promise<{
   dreps: EnrichedDRep[];
   allDReps: EnrichedDRep[];
@@ -208,7 +214,9 @@ export async function getEnrichedDReps(
 
   try {
     if (isDev) {
-      console.log(`[DRepScore] getEnrichedDReps(wellDocumentedOnly=${wellDocumentedOnly}) - loading ALL DReps in batches`);
+      console.log(
+        `[DRepScore] getEnrichedDReps(wellDocumentedOnly=${wellDocumentedOnly}) - loading ALL DReps in batches`,
+      );
     }
 
     const isHealthy = await checkKoiosHealth();
@@ -225,13 +233,15 @@ export async function getEnrichedDReps(
       getActualProposalCount(),
     ]);
     if (isDev) {
-      console.log(`[DRepScore] Current epoch: ${currentEpoch}, active proposal epochs: ${activeProposalEpochs.size}, actual proposals: ${actualProposalCount}`);
+      console.log(
+        `[DRepScore] Current epoch: ${currentEpoch}, active proposal epochs: ${activeProposalEpochs.size}, actual proposals: ${actualProposalCount}`,
+      );
     }
 
     let drepList = await fetchAllDReps();
     if (!drepList || drepList.length === 0) {
       console.warn('[DRepScore] Empty DRep list from Koios — retrying once after 3s');
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 3000));
       drepList = await fetchAllDReps();
     }
     if (!drepList || drepList.length === 0) {
@@ -256,7 +266,9 @@ export async function getEnrichedDReps(
       const totalBatches = Math.ceil(allDrepIds.length / BATCH_SIZE);
 
       if (isDev) {
-        console.log(`[DRepScore] Batch ${batchNum}/${totalBatches}: fetching ${batchIds.length} DReps...`);
+        console.log(
+          `[DRepScore] Batch ${batchNum}/${totalBatches}: fetching ${batchIds.length} DReps...`,
+        );
       }
 
       const { info, metadata } = await fetchDRepsWithDetails(batchIds);
@@ -267,7 +279,9 @@ export async function getEnrichedDReps(
       });
 
       const votesMap = options?.prefetchedVotes
-        ? Object.fromEntries(sortedInfo.map(i => [i.drep_id, options.prefetchedVotes![i.drep_id] || []]))
+        ? Object.fromEntries(
+            sortedInfo.map((i) => [i.drep_id, options.prefetchedVotes![i.drep_id] || []]),
+          )
         : await fetchVotesBatched(sortedInfo.map((i) => i.drep_id));
 
       if (options?.includeRawVotes) {
@@ -311,15 +325,25 @@ export async function getEnrichedDReps(
         }
 
         const deliberationModifier = calculateDeliberationModifier(yesVotes, noVotes, abstainVotes);
-        const effectiveParticipation = calculateEffectiveParticipation(participationRate, deliberationModifier);
+        const effectiveParticipation = calculateEffectiveParticipation(
+          participationRate,
+          deliberationModifier,
+        );
 
         const { counts: epochVoteCounts, firstEpoch } = computeEpochVoteCounts(votes);
-        const reliabilityResult = calculateReliability(epochVoteCounts, firstEpoch, currentEpoch, activeProposalEpochs);
+        const reliabilityResult = calculateReliability(
+          epochVoteCounts,
+          firstEpoch,
+          currentEpoch,
+          activeProposalEpochs,
+        );
         const reliabilityScore = reliabilityResult.score;
 
         // V2: Profile completeness from CIP-119 metadata
         const metadataBody = drepMetadata?.meta_json?.body || null;
-        const profileCompleteness = calculateProfileCompleteness(metadataBody as Record<string, unknown> | null);
+        const profileCompleteness = calculateProfileCompleteness(
+          metadataBody as Record<string, unknown> | null,
+        );
 
         return {
           drepId: drepInfo.drep_id,
@@ -384,9 +408,7 @@ export async function getEnrichedDReps(
       return b.votingPower - a.votingPower;
     });
 
-    const wellDocumentedDReps = sorted.filter(
-      (d) => isWellDocumented(d)
-    );
+    const wellDocumentedDReps = sorted.filter((d) => isWellDocumented(d));
 
     const drepsToReturn = wellDocumentedOnly ? wellDocumentedDReps : sorted;
 

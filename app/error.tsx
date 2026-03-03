@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import * as Sentry from "@sentry/nextjs";
-import { useEffect } from "react";
+import * as Sentry from '@sentry/nextjs';
+import { useEffect } from 'react';
 
 export default function Error({
   error,
@@ -33,8 +33,7 @@ export default function Error({
       </div>
       <h2 className="text-xl font-semibold">Something went wrong</h2>
       <p className="text-muted-foreground max-w-md text-sm">
-        An unexpected error occurred. Our team has been notified and is looking
-        into it.
+        An unexpected error occurred. Our team has been notified and is looking into it.
       </p>
       <button
         onClick={reset}

@@ -20,7 +20,9 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('dreps')
-      .select('id, score, size_tier, info, effective_participation, rationale_rate, reliability_score, profile_completeness')
+      .select(
+        'id, score, size_tier, info, effective_participation, rationale_rate, reliability_score, profile_completeness',
+      )
       .order('score', { ascending: false })
       .limit(limit);
 
@@ -80,8 +82,8 @@ export async function GET(request: NextRequest) {
       .filter((m): m is NonNullable<typeof m> => m !== null && m.delta !== 0)
       .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 
-    const gainers = movers.filter(m => m.delta > 0).slice(0, 5);
-    const losers = movers.filter(m => m.delta < 0).slice(0, 5);
+    const gainers = movers.filter((m) => m.delta > 0).slice(0, 5);
+    const losers = movers.filter((m) => m.delta < 0).slice(0, 5);
 
     const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
 
@@ -108,12 +110,14 @@ export async function GET(request: NextRequest) {
         .select('id, score, info')
         .in('id', hallOfFameIds.slice(0, 20));
 
-      hallOfFame = (hofDreps || []).map((d: any) => ({
-        drepId: d.id,
-        name: displayName(d),
-        score: d.score,
-        days: drepDayCounts.get(d.id) || 0,
-      })).sort((a, b) => b.days - a.days);
+      hallOfFame = (hofDreps || [])
+        .map((d: any) => ({
+          drepId: d.id,
+          name: displayName(d),
+          score: d.score,
+          days: drepDayCounts.get(d.id) || 0,
+        }))
+        .sort((a, b) => b.days - a.days);
     }
 
     captureServerEvent('leaderboard_api_served', {

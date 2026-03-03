@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   const { drepId } = await params;
   const supabase = getSupabaseAdmin();
@@ -21,7 +21,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   const { drepId } = await params;
   try {
@@ -31,7 +31,8 @@ export async function POST(
     }
 
     const parsed = parseSessionToken(sessionToken);
-    if (!parsed || isSessionExpired(parsed)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!parsed || isSessionExpired(parsed))
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const supabase = getSupabaseAdmin();
     const { data: user } = await supabase
@@ -40,13 +41,19 @@ export async function POST(
       .eq('wallet_address', parsed.walletAddress)
       .single();
 
-    if (!user || user.claimed_drep_id !== drepId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    if (!user || user.claimed_drep_id !== drepId)
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
 
     const { data, error } = await supabase
       .from('position_statements')
       .upsert(
-        { drep_id: drepId, proposal_tx_hash: proposalTxHash, proposal_index: proposalIndex, statement_text: statementText },
-        { onConflict: 'drep_id,proposal_tx_hash,proposal_index' }
+        {
+          drep_id: drepId,
+          proposal_tx_hash: proposalTxHash,
+          proposal_index: proposalIndex,
+          statement_text: statementText,
+        },
+        { onConflict: 'drep_id,proposal_tx_hash,proposal_index' },
       )
       .select()
       .single();

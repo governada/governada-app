@@ -8,7 +8,13 @@ vi.mock('@/lib/data', () => ({
 }));
 
 vi.mock('@/lib/api/rateLimit', () => ({
-  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, limit: 100, remaining: 99, window: 60, reset: Date.now() + 60000 }),
+  checkRateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    limit: 100,
+    remaining: 99,
+    window: 60,
+    reset: Date.now() + 60000,
+  }),
   rateLimitHeaders: vi.fn().mockReturnValue({}),
 }));
 
@@ -46,7 +52,10 @@ describe('GET /api/v1/dreps', () => {
     vi.clearAllMocks();
     mockGetAllDReps.mockResolvedValue({
       dreps: [fakeDrep],
-      allDReps: [fakeDrep, { ...fakeDrep, drepId: 'drep1inactive', isActive: false, drepScore: 30 }],
+      allDReps: [
+        fakeDrep,
+        { ...fakeDrep, drepId: 'drep1inactive', isActive: false, drepScore: 30 },
+      ],
       error: null,
       totalAvailable: 2,
     });
@@ -98,11 +107,13 @@ describe('GET /api/v1/dreps', () => {
 
   it('respects limit and offset', async () => {
     mockGetAllDReps.mockResolvedValue({
-      dreps: Array(5).fill(null).map((_, i) => ({
-        ...fakeDrep,
-        drepId: `drep1test${i}`,
-        drepScore: 80 - i,
-      })),
+      dreps: Array(5)
+        .fill(null)
+        .map((_, i) => ({
+          ...fakeDrep,
+          drepId: `drep1test${i}`,
+          drepScore: 80 - i,
+        })),
       allDReps: [],
       error: null,
       totalAvailable: 5,

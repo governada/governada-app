@@ -56,7 +56,7 @@ Every page shows numbers but no page tells a story. The DRep profile is 8 sectio
 These principles supersede all prior design guidance:
 
 - **One-viewport answers.** Every page must answer its core question in the first viewport. Everything else is progressive depth.
-- **Emotion before information.** The user should *feel* something before they *read* something. Pride, urgency, curiosity, surprise — design for the feeling first.
+- **Emotion before information.** The user should _feel_ something before they _read_ something. Pride, urgency, curiosity, surprise — design for the feeling first.
 - **Dark mode is the hero.** Crypto users overwhelmingly prefer dark mode. Design dark-first, validate light mode second.
 - **Speed is a feature.** Every interaction must feel instant. If data takes time, the UI must feel alive while waiting — not empty.
 - **Every surface is shareable.** If it can't be screenshotted and look beautiful in a tweet, it's not done.
@@ -70,30 +70,30 @@ Our north star is getting DRepScore as close to 100/100 on a "wow" factor scale 
 
 ### Scoring Dimensions
 
-| Dimension | Weight | Description |
-|-----------|--------|-------------|
-| Visual Identity | 20% | Signature visuals, animation quality, screenshot shareability |
-| Emotional Impact | 20% | First-viewport hook, narrative, personality, delight moments |
-| IA & UX | 20% | Information architecture, navigation clarity, mobile experience |
-| Technical Excellence | 15% | Performance, SSR, loading states, error handling |
-| Content & Intelligence | 15% | Data narratives, AI summaries, cross-proposal insights |
-| Community & Social | 10% | Social proof, sharing, activity feeds, engagement loops |
+| Dimension              | Weight | Description                                                     |
+| ---------------------- | ------ | --------------------------------------------------------------- |
+| Visual Identity        | 20%    | Signature visuals, animation quality, screenshot shareability   |
+| Emotional Impact       | 20%    | First-viewport hook, narrative, personality, delight moments    |
+| IA & UX                | 20%    | Information architecture, navigation clarity, mobile experience |
+| Technical Excellence   | 15%    | Performance, SSR, loading states, error handling                |
+| Content & Intelligence | 15%    | Data narratives, AI summaries, cross-proposal insights          |
+| Community & Social     | 10%    | Social proof, sharing, activity feeds, engagement loops         |
 
 ### Target Scores by Session
 
 > **Revised March 2026 (post-S16 honest assessment).** Original projections assumed all planned items shipped per session. Actual delivery differed — page-level route transitions, social proof indicators, and several other S15 items were not built. Baseline corrected from ~83-86 to ~69-72.
 
-| Session | Cumulative Score | Delta | Key Contributions |
-|---------|-----------------|-------|-------------------|
-| S12 + S13 (baseline) | ~48 | — | Visual identity, constellation, identity system |
-| S14 | ~62 | +14 | Architecture overhaul, nav, mobile-native, proposals feed |
-| S15 | ~69-72 | +7-10 | Narrative layer, GHI number, basic insights, empty states (note: page transitions, social proof not built) |
-| S16 | ~78-82 | +9-10 | Intelligence engine, GHI trend/sparkline, AI narratives, State of Governance report, expanded insights |
-| S17 | ~87 | +5 | Social layer, page transitions (S15 gap), activity feeds, sharing culture |
-| S18 | ~92-93 | +5-6 | Cross-chain intelligence hub, developer platform, embeddable widgets, delegator identity, feature flags |
-| S19 | ~96 | +3-4 | Sensory polish, sound design, scroll storytelling, Cmd+K, PWA, performance, community showcase |
-| S20 | ~97 | +1 | Governance Wrapped, community flywheel, editorial content |
-| S21 | ~98+ | +1 | On-chain actions, real-time WebSocket, offline-first |
+| Session              | Cumulative Score | Delta | Key Contributions                                                                                          |
+| -------------------- | ---------------- | ----- | ---------------------------------------------------------------------------------------------------------- |
+| S12 + S13 (baseline) | ~48              | —     | Visual identity, constellation, identity system                                                            |
+| S14                  | ~62              | +14   | Architecture overhaul, nav, mobile-native, proposals feed                                                  |
+| S15                  | ~69-72           | +7-10 | Narrative layer, GHI number, basic insights, empty states (note: page transitions, social proof not built) |
+| S16                  | ~78-82           | +9-10 | Intelligence engine, GHI trend/sparkline, AI narratives, State of Governance report, expanded insights     |
+| S17                  | ~87              | +5    | Social layer, page transitions (S15 gap), activity feeds, sharing culture                                  |
+| S18                  | ~92-93           | +5-6  | Cross-chain intelligence hub, developer platform, embeddable widgets, delegator identity, feature flags    |
+| S19                  | ~96              | +3-4  | Sensory polish, sound design, scroll storytelling, Cmd+K, PWA, performance, community showcase             |
+| S20                  | ~97              | +1    | Governance Wrapped, community flywheel, editorial content                                                  |
+| S21                  | ~98+             | +1    | On-chain actions, real-time WebSocket, offline-first                                                       |
 
 All agents working on sessions should internalize this scoring framework and proactively identify opportunities to push the score higher within their session's scope.
 
@@ -105,20 +105,20 @@ This section provides the baseline for any agent picking up a session. All of th
 
 ### Routes
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Dual-mode homepage: `ConstellationHero` (R3F WebGL constellation + text overlay + `ActivityTicker`) + `PersonalGovernanceCard` (segment-aware: delegated/undelegated/drep, below hero) + `HowItWorksV2` (SVG micro-vignettes) + `DRepDiscoveryPreview` (with identity color accents). Auth via httpOnly cookie — no skeleton flash. Old components (`GovernancePulseHero`, `HomepageAuth`, `HomepageUnauth`, `DashboardPreview`) are no longer in the render path. |
-| `/discover` | DRep discovery — card/table toggle, Governance DNA Quiz, smart search, infinite scroll |
-| `/drep/[drepId]` | DRep profile — ScoreCard, milestones, score history, treasury stance, philosophy, heatmap, about, voting history (8 sections, linear stack) |
-| `/proposals` | Proposal list with status tabs, type/sort filters |
-| `/proposals/[txHash]/[index]` | Proposal detail — voters, timeline, sentiment poll, financial impact, accountability |
-| `/pulse` | Governance Pulse — stats, leaderboard, movers, Hall of Fame, treasury health widget |
-| `/treasury` | Treasury dashboard — health score, charts, What-If simulator, accountability polls |
-| `/governance` | My Governance — delegation health, representation, calendar, citizen section (auth-gated) |
-| `/compare` | Side-by-side DRep comparison — radar (pillars), trends, vote overlap |
-| `/dashboard` | DRep Command Center — score, inbox, recommendations, competitive context, simulator, delegator analytics, milestones, philosophy, report card (15+ sections) |
-| `/claim/[drepId]` | Claim DRep profile — FOMO-driven with governance pulse stats |
-| `/profile` | User profile — prefs, watchlist, notifications |
+| Route                         | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`                           | Dual-mode homepage: `ConstellationHero` (R3F WebGL constellation + text overlay + `ActivityTicker`) + `PersonalGovernanceCard` (segment-aware: delegated/undelegated/drep, below hero) + `HowItWorksV2` (SVG micro-vignettes) + `DRepDiscoveryPreview` (with identity color accents). Auth via httpOnly cookie — no skeleton flash. Old components (`GovernancePulseHero`, `HomepageAuth`, `HomepageUnauth`, `DashboardPreview`) are no longer in the render path. |
+| `/discover`                   | DRep discovery — card/table toggle, Governance DNA Quiz, smart search, infinite scroll                                                                                                                                                                                                                                                                                                                                                                             |
+| `/drep/[drepId]`              | DRep profile — ScoreCard, milestones, score history, treasury stance, philosophy, heatmap, about, voting history (8 sections, linear stack)                                                                                                                                                                                                                                                                                                                        |
+| `/proposals`                  | Proposal list with status tabs, type/sort filters                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `/proposals/[txHash]/[index]` | Proposal detail — voters, timeline, sentiment poll, financial impact, accountability                                                                                                                                                                                                                                                                                                                                                                               |
+| `/pulse`                      | Governance Pulse — stats, leaderboard, movers, Hall of Fame, treasury health widget                                                                                                                                                                                                                                                                                                                                                                                |
+| `/treasury`                   | Treasury dashboard — health score, charts, What-If simulator, accountability polls                                                                                                                                                                                                                                                                                                                                                                                 |
+| `/governance`                 | My Governance — delegation health, representation, calendar, citizen section (auth-gated)                                                                                                                                                                                                                                                                                                                                                                          |
+| `/compare`                    | Side-by-side DRep comparison — radar (pillars), trends, vote overlap                                                                                                                                                                                                                                                                                                                                                                                               |
+| `/dashboard`                  | DRep Command Center — score, inbox, recommendations, competitive context, simulator, delegator analytics, milestones, philosophy, report card (15+ sections)                                                                                                                                                                                                                                                                                                       |
+| `/claim/[drepId]`             | Claim DRep profile — FOMO-driven with governance pulse stats                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `/profile`                    | User profile — prefs, watchlist, notifications                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ### Navigation (Header)
 
@@ -150,14 +150,14 @@ Mobile: Hamburger sheet with same items + wallet connect.
 
 ### Key Gaps From Sessions 1-11 (NOT Built)
 
-| Item | Status | Session Origin |
-|------|--------|---------------|
-| Governance Identity Radar (6-dim alignment radar chart) | **Not built** | Session 11 |
-| Cross-Proposal Intelligence (macro governance patterns) | **Not built** | Session 11 |
-| DelegationChangeCard (epoch-level delegator gain/loss) | **Not built** | Session 11 |
-| Signature visual element / governance constellation | **Built (Session 12)** — R3F WebGL constellation with bloom, Cardano starburst layout | Session 6 |
-| Page transitions (View Transitions API) | **Deferred** | Session 6 |
-| Custom iconography | **Deferred** | Session 6 |
+| Item                                                    | Status                                                                                | Session Origin |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------- |
+| Governance Identity Radar (6-dim alignment radar chart) | **Not built**                                                                         | Session 11     |
+| Cross-Proposal Intelligence (macro governance patterns) | **Not built**                                                                         | Session 11     |
+| DelegationChangeCard (epoch-level delegator gain/loss)  | **Not built**                                                                         | Session 11     |
+| Signature visual element / governance constellation     | **Built (Session 12)** — R3F WebGL constellation with bloom, Cardano starburst layout | Session 6      |
+| Page transitions (View Transitions API)                 | **Deferred**                                                                          | Session 6      |
+| Custom iconography                                      | **Deferred**                                                                          | Session 6      |
 
 ---
 
@@ -174,10 +174,11 @@ The homepage is the highest-leverage surface in the product. The rewrite makes t
 **2. ActivityTicker — Bloomberg-style scrolling governance feed.** Horizontal continuously scrolling ticker showing recent votes, delegations, rationale publications, and proposals. Data from `/api/governance/activity`. Ticker speed is dynamic based on event count (~2s per event). Connects to constellation — ticker events pulse the corresponding DRep node.
 
 **3. Segment-aware PersonalGovernanceCard.** Three variants:
+
 - **Delegated**: DRep name, score, trend, representation match, open proposals, epoch countdown
 - **Undelegated**: FOMO-driven "Your ADA is unrepresented" with governance stats
 - **DRep**: Score, rank, delegator count, pending proposals
-Rendered below the hero in normal document flow to prevent ticker overlap.
+  Rendered below the hero in normal document flow to prevent ticker overlap.
 
 **4. SSR auth via httpOnly cookie.** Dual-write session management: `localStorage` + `httpOnly secure sameSite:lax` cookie. Server component reads cookie via `cookies()` API for pre-rendered authenticated content — no skeleton flash for returning users.
 
@@ -238,6 +239,7 @@ Session 12 gave the homepage a visual identity with the R3F constellation. Sessi
 ### What Changes
 
 **1. Governance Identity Radar — custom SVG with animated geometry (NOT Recharts).** A bespoke radar visualization — no chart library. 6 axis lines radiate from center, one per alignment dimension. Data points connected by a filled polygon with:
+
 - **SVG filter glow**: `feGaussianBlur` + `feComposite` for a soft bloom matching the identity color, achieving the same premium feel as the constellation's WebGL bloom but in SVG
 - **Gradient fill**: Radial gradient from identity color center (30% opacity) to edge (5% opacity), creating depth
 - **Animated reveal**: On mount, each axis extends outward from center with Framer Motion spring physics (`stiffness: 200, damping: 20`). The polygon "unfolds" as dimensions animate to their values.
@@ -247,6 +249,7 @@ Session 12 gave the homepage a visual identity with the R3F constellation. Sessi
 - **Placement**: DRep profile hero (primary), discovery cards, quick view modal, compare page, report cards, OG images, badge embeds.
 
 **2. Hex Score — procedural generative visualization.** Replace `ScoreRing` donut with a hexagonal score display where the 6 sides map to 6 alignment dimensions. Each vertex radius is proportional to the dimension score, creating an asymmetric shape unique to each DRep:
+
 - **Generative edge particles**: Tiny dots drift along the hexagon edges using `requestAnimationFrame`, emitting from vertices at a rate proportional to the dimension's score. Creates a "living" feel.
 - **Breathing glow**: Subtle pulsing box-shadow/SVG filter in the identity color, 3s cycle, amplitude ±15%. Makes the score feel alive, not static.
 - **Noise-textured fill**: SVG `feTurbulence` filter for a subtle organic texture inside the hex, avoiding the flat-color look of standard charts.
@@ -255,12 +258,14 @@ Session 12 gave the homepage a visual identity with the R3F constellation. Sessi
 - **Sizes**: Hero (120px, full effects), card (48px, simplified — glow + number only, no particles), badge (24px, solid shape only).
 
 **3. DRep profile hero — immersive identity experience.** The profile page hero becomes a full-bleed section (similar in ambition to the homepage constellation) that immerses the visitor in the DRep's identity:
+
 - **Identity-colored ambient gradient**: Full-width background gradient using the DRep's dominant identity color at low opacity (5-10%), fading to the dark base. Creates a subtle but unmistakable "this DRep has a color" feeling.
 - **Radar as centerpiece**: The full 200px radar animates on scroll-into-view, flanked by the DRep's name, score hex, and key stats.
 - **Delegation CTA with identity accent**: Primary CTA button uses the identity color as its accent, creating visual consistency between "who they are" and "what you can do."
 - **Parallax depth**: Slight parallax between the gradient background and the foreground content for a layered feel.
 
 **4. Framer Motion animation system.** Physics-based animations as the default for all user-facing transitions:
+
 - **Spring presets** in `lib/animations.ts`: `snappy` (stiffness: 400, damping: 30 — for interactions), `smooth` (stiffness: 200, damping: 25 — for reveals), `bouncy` (stiffness: 300, damping: 15 — for celebrations/milestones).
 - **Staggered section reveals**: Profile sections animate in with 50ms stagger, sliding up with `smooth` spring.
 - **Score counting**: `useSpring` for score numbers across the app (ScoreRing replacement, hex score, stat cards).
@@ -269,18 +274,21 @@ Session 12 gave the homepage a visual identity with the R3F constellation. Sessi
 - Dependency: `framer-motion` (~30KB gzipped, mitigated via `next/dynamic` for heavy animation components).
 
 **5. DRep identity color system extension.** Extend `lib/drepIdentity.ts` with:
+
 - `getIdentityGradient(dimension)`: Returns a CSS gradient string (e.g., `linear-gradient(135deg, #a855f7 0%, #0a0b14 100%)`) for use in profile heroes and card accents.
 - `getRadarConfig(dimension)`: Returns SVG filter IDs and gradient stops for the radar's identity-colored bloom.
 - `getHexVertices(alignments, size)`: Computes the 6 vertex positions for the asymmetric hex score shape.
 - Identity color as: accent ring on score, gradient on profile header, radar fill, OG tint, card border glow, CTA button accent.
 
 **6. Custom chart aesthetic — branded Recharts.** All remaining Recharts instances (score history, vote heatmap, treasury charts) get a cohesive branded skin:
+
 - Dark background, dotted grid lines (#1a1b2e), identity-colored area fills with gradient
 - Custom dark tooltips with brand accent border
 - Consistent axis styling: muted labels, no chart chrome
 - New shared config: `lib/chartTheme.ts`
 
 **7. Dark-first design audit.** Systematic pass across all components:
+
 - Card borders: replace solid borders with subtle `box-shadow: 0 0 0 1px rgba(identity-color, 0.1)` glow
 - Stat numbers: use `text-white` with slight text-shadow in identity color for emphasis
 - Empty states: replace generic illustrations with identity-themed subtle gradients
@@ -288,6 +296,7 @@ Session 12 gave the homepage a visual identity with the R3F constellation. Sessi
 - Note: dark mode is already the default (Session 12).
 
 **8. OG images with radar + identity color.** Distinctive, shareable social images:
+
 - New route `/api/og/governance-identity/[drepId]`: Full-card image with DRep name, hex score, mini radar, identity-colored gradient background, DRepScore branding. This is what DReps share when they want to show their "governance personality."
 - Update existing `/api/og/drep/[drepId]`: Add mini radar, identity color gradient, modernized layout.
 - Update `/api/og/compare`: Both DReps' radars overlaid, dual identity-color gradients.
@@ -299,7 +308,7 @@ Session 12 gave the homepage a visual identity with the R3F constellation. Sessi
 - `lib/alignment.ts` — `computeAllCategoryScores()` computes all 6, `getDRepTraitTags()` generates text labels
 - `lib/drepIdentity.ts` — **Already exists** (created in Session 12) with 6 identity colors, `getDominantDimension()`, `getIdentityColor()`, `extractAlignments()`, `alignmentsToArray()`, `getDimensionLabel()`, `getDimensionOrder()`, `getAllIdentityColors()`. Session 13 extends this with gradient, radar, and hex vertex utilities.
 - `components/ScoreRing.tsx` — Standard SVG donut chart, color by score tier (to be replaced by HexScore)
-- `components/CompareView.tsx` — Has a Recharts RadarChart for *pillars* (not alignment); alignment shown as horizontal bars (radar to be replaced with GovernanceRadar)
+- `components/CompareView.tsx` — Has a Recharts RadarChart for _pillars_ (not alignment); alignment shown as horizontal bars (radar to be replaced with GovernanceRadar)
 - `components/GovernanceConstellation.tsx` — R3F constellation on homepage sets the visual quality bar. Session 13 visuals must match this level of polish.
 - Current animations: CSS (`animate-fade-in-up`, `animate-gradient-shift`, `animate-grow`, card hover via Tailwind transitions) + R3F `useFrame` on homepage constellation
 - Decentralization score is discrete (5 possible values based on size tier) — may need normalization for radar visual balance
@@ -309,7 +318,7 @@ Session 12 gave the homepage a visual identity with the R3F constellation. Sessi
 
 - A screenshot of any DRep's profile is instantly recognizable as DRepScore — the radar and hex score are visual signatures no other app has
 - DReps share their Governance Identity Radar on X/Twitter as their "governance personality" — the OG image is beautiful enough to share without context
-- The profile hero creates an emotional response: "this DRep has a *presence*"
+- The profile hero creates an emotional response: "this DRep has a _presence_"
 - Animations feel fast, purposeful, and premium (200-300ms spring, never floaty or delayed)
 - Dark mode looks intentional and premium across every surface — not auto-generated
 
@@ -388,6 +397,7 @@ Session 14 restructured the architecture. Session 15 makes every page tell a sto
 ### What Changes
 
 **1. Template-based narrative summaries.** `NarrativeSummary` component with smart interpolation from existing data:
+
 - DRep profile (below hero): "A transparency-focused DRep who votes on 87% of proposals and always provides reasoning..."
 - Proposals page (hero): "14 proposals are open. 3 expire this epoch, requesting 42M ADA..."
 - Dashboard (hero): "You have 3 proposals awaiting your vote. Score up 5 points..."
@@ -642,7 +652,7 @@ After Sessions 15-18 deliver narrative, intelligence, social, cross-chain, and d
 
 **4. Haptic feedback on mobile.** `navigator.vibrate()` for key actions (delegation, vote submission, milestone achievement) on supported devices. Subtle 10-20ms pulses, never distracting.
 
-**5. ~~Community showcase.~~** *Moved to Session 20 — community/editorial items belong in the Community Flywheel session, not a sensory polish pass.*
+**5. ~~Community showcase.~~** _Moved to Session 20 — community/editorial items belong in the Community Flywheel session, not a sensory polish pass._
 
 **6. Advanced OG image system.** Dynamic OG images that update in real-time (e.g., DRep OG image shows current score, not cached score). Makes shared links always current. Upgrade existing OG routes to use ISR with shorter revalidation.
 
@@ -729,7 +739,7 @@ DRepScore has been a read-only intelligence layer. Session 21 closes the loop by
 
 ### Success Criteria
 
-- >50% of DRep votes cast through DRepScore within 3 months of launch
+- > 50% of DRep votes cast through DRepScore within 3 months of launch
 - Real-time feed creates a "live dashboard" sensation — users keep the tab open
 - Offline-first enables governance participation in connectivity-constrained environments
 - Actionable notifications achieve >30% click-through rate
@@ -805,17 +815,17 @@ graph LR
 
 > Updated post-S18 to reflect expanded session scope, feature flag infrastructure, and new future sessions.
 
-| Session | Estimated Score | Delta | Key Contributions |
-|---------|----------------|-------|-------------------|
-| Post S12-14 | ~62/100 | — | Visual identity, architecture |
-| Post S15 | ~69-72/100 | +7-10 | Narrative layer, GHI number, basic insights |
-| Post S16 | ~78-82/100 | +9-10 | Intelligence engine, AI narratives, State of Governance, GHI trend |
-| Post S17 | ~87/100 | +5-9 | Page transitions, social layer, sharing culture |
-| Post S18 | ~92-93/100 | +5-6 | Cross-chain intelligence, developer platform, widget distribution, delegator identity, feature flags |
-| Post S19 | ~95-96/100 | +3-4 | Radar/Hex overhaul, Cmd+K, scroll storytelling, performance, PWA, quality sweep |
-| Post S20 | ~96-97/100 | +2 | Governance Wrapped, community showcase, sound expansion |
-| Post S21 | ~97-98/100 | +1 | On-chain actions, real-time WebSocket, offline-first |
-| Post S22 | ~98-99/100 | +1 | Personalization, governance feed intelligence |
+| Session     | Estimated Score | Delta | Key Contributions                                                                                    |
+| ----------- | --------------- | ----- | ---------------------------------------------------------------------------------------------------- |
+| Post S12-14 | ~62/100         | —     | Visual identity, architecture                                                                        |
+| Post S15    | ~69-72/100      | +7-10 | Narrative layer, GHI number, basic insights                                                          |
+| Post S16    | ~78-82/100      | +9-10 | Intelligence engine, AI narratives, State of Governance, GHI trend                                   |
+| Post S17    | ~87/100         | +5-9  | Page transitions, social layer, sharing culture                                                      |
+| Post S18    | ~92-93/100      | +5-6  | Cross-chain intelligence, developer platform, widget distribution, delegator identity, feature flags |
+| Post S19    | ~95-96/100      | +3-4  | Radar/Hex overhaul, Cmd+K, scroll storytelling, performance, PWA, quality sweep                      |
+| Post S20    | ~96-97/100      | +2    | Governance Wrapped, community showcase, sound expansion                                              |
+| Post S21    | ~97-98/100      | +1    | On-chain actions, real-time WebSocket, offline-first                                                 |
+| Post S22    | ~98-99/100      | +1    | Personalization, governance feed intelligence                                                        |
 
 Each session gets its own worktree (`drepscore-<session-name>`) and detailed implementation plan (`.cursor/plans/<session>.plan.md`) before building begins.
 
@@ -836,18 +846,18 @@ In addition to all anti-patterns from v1 and v1.5:
 
 ## Deferred Items
 
-| Item | Rationale |
-|------|-----------|
-| On-chain rationale/voting submission | Planned for Session 21 — contingent on GovTool adoption patterns confirming demand. |
-| AI score coach chatbot | Score Simulator + AI brief cover the "how do I improve" use case. Revisit when demand signal emerges. |
-| Proposal discussion threads | Q&A channel in Session 17 is the lightweight version. Full threading has high moderation overhead. |
-| Multi-DRep team dashboard | Very few organizations run team DReps. Revisit when demand signals emerge. |
-| View Transitions API | Browser support still experimental in 2026. Framer Motion (Session 13) covers animation needs. |
-| Custom iconography | Lucide is high quality and consistent. Custom icons require a designer. |
-| Route-level URL restructuring for governance pages | Sub-nav achieves the same UX benefit without SEO/redirect risk. |
-| Floating compare tray while browsing DReps | Planned for Session 21 — interaction design matured enough to build well. |
-| Sound design | Planned for Session 19 — Sensory Polish & Performance. |
-| Cross-chain governance benchmarking | Built in Session 18 (feature-flagged). **Shipped.** |
-| Full Governance Wrapped experience | Planned for Session 20 — annual timing makes more sense. |
-| Real-time WebSocket governance feed | Planned for Session 21 — replaces polling architecture. |
-| Internationalization | Important but separate workstream — doesn't affect the "wow" factor for English-speaking crypto audience. |
+| Item                                               | Rationale                                                                                                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| On-chain rationale/voting submission               | Planned for Session 21 — contingent on GovTool adoption patterns confirming demand.                       |
+| AI score coach chatbot                             | Score Simulator + AI brief cover the "how do I improve" use case. Revisit when demand signal emerges.     |
+| Proposal discussion threads                        | Q&A channel in Session 17 is the lightweight version. Full threading has high moderation overhead.        |
+| Multi-DRep team dashboard                          | Very few organizations run team DReps. Revisit when demand signals emerge.                                |
+| View Transitions API                               | Browser support still experimental in 2026. Framer Motion (Session 13) covers animation needs.            |
+| Custom iconography                                 | Lucide is high quality and consistent. Custom icons require a designer.                                   |
+| Route-level URL restructuring for governance pages | Sub-nav achieves the same UX benefit without SEO/redirect risk.                                           |
+| Floating compare tray while browsing DReps         | Planned for Session 21 — interaction design matured enough to build well.                                 |
+| Sound design                                       | Planned for Session 19 — Sensory Polish & Performance.                                                    |
+| Cross-chain governance benchmarking                | Built in Session 18 (feature-flagged). **Shipped.**                                                       |
+| Full Governance Wrapped experience                 | Planned for Session 20 — annual timing makes more sense.                                                  |
+| Real-time WebSocket governance feed                | Planned for Session 21 — replaces polling architecture.                                                   |
+| Internationalization                               | Important but separate workstream — doesn't affect the "wow" factor for English-speaking crypto audience. |

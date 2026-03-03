@@ -29,7 +29,9 @@ export async function GET() {
 
     const prevEpoch = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null;
     const trend = prevEpoch
-      ? balance.balanceAda > prevEpoch.balanceAda ? 'growing' : 'shrinking'
+      ? balance.balanceAda > prevEpoch.balanceAda
+        ? 'growing'
+        : 'shrinking'
       : 'stable';
 
     return NextResponse.json({

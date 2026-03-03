@@ -191,7 +191,9 @@ describe('classifyProposal', () => {
   it('classifies InfoAction with keyword analysis', () => {
     const proposal = makeProposal({
       proposal_type: 'InfoAction',
-      meta_json: { body: { title: 'DeFi Innovation Grant', abstract: 'Fund growth in DeFi ecosystem' } },
+      meta_json: {
+        body: { title: 'DeFi Innovation Grant', abstract: 'Fund growth in DeFi ecosystem' },
+      },
     });
     const classified = classifyProposal(proposal);
     expect(classified.relevantPrefs).toContain('innovation-defi-growth');
@@ -257,9 +259,7 @@ describe('getProposalsForPref', () => {
 
 describe('matchVotesToProposals', () => {
   it('matches votes to proposals by tx_hash and index', () => {
-    const proposals = [
-      makeClassifiedProposal({ txHash: 'tx1', index: 0 }),
-    ];
+    const proposals = [makeClassifiedProposal({ txHash: 'tx1', index: 0 })];
     const votes = [
       makeVote({ proposal_tx_hash: 'tx1', proposal_index: 0 }),
       makeVote({ proposal_tx_hash: 'tx_unknown', proposal_index: 0 }),
@@ -278,26 +278,32 @@ describe('calculateTreasuryConservativeScore', () => {
   });
 
   it('scores 100 for No on major withdrawal', () => {
-    const votesWithProposals = [{
-      vote: makeVote({ vote: 'No' }),
-      proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'major' }),
-    }];
+    const votesWithProposals = [
+      {
+        vote: makeVote({ vote: 'No' }),
+        proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'major' }),
+      },
+    ];
     expect(calculateTreasuryConservativeScore(votesWithProposals)).toBe(100);
   });
 
   it('scores 10 for Yes on major withdrawal', () => {
-    const votesWithProposals = [{
-      vote: makeVote({ vote: 'Yes' }),
-      proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'major' }),
-    }];
+    const votesWithProposals = [
+      {
+        vote: makeVote({ vote: 'Yes' }),
+        proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'major' }),
+      },
+    ];
     expect(calculateTreasuryConservativeScore(votesWithProposals)).toBe(10);
   });
 
   it('scores 50 for Abstain (neutral)', () => {
-    const votesWithProposals = [{
-      vote: makeVote({ vote: 'Abstain' }),
-      proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'routine' }),
-    }];
+    const votesWithProposals = [
+      {
+        vote: makeVote({ vote: 'Abstain' }),
+        proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'routine' }),
+      },
+    ];
     expect(calculateTreasuryConservativeScore(votesWithProposals)).toBe(50);
   });
 });
@@ -310,18 +316,22 @@ describe('calculateTreasuryGrowthScore', () => {
   });
 
   it('rewards Yes with rationale on major withdrawal', () => {
-    const votesWithProposals = [{
-      vote: makeVote({ vote: 'Yes', meta_url: 'https://rationale.com' }),
-      proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'major' }),
-    }];
+    const votesWithProposals = [
+      {
+        vote: makeVote({ vote: 'Yes', meta_url: 'https://rationale.com' }),
+        proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals', treasuryTier: 'major' }),
+      },
+    ];
     expect(calculateTreasuryGrowthScore(votesWithProposals)).toBe(90);
   });
 
   it('penalizes No without rationale', () => {
-    const votesWithProposals = [{
-      vote: makeVote({ vote: 'No' }),
-      proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals' }),
-    }];
+    const votesWithProposals = [
+      {
+        vote: makeVote({ vote: 'No' }),
+        proposal: makeClassifiedProposal({ type: 'TreasuryWithdrawals' }),
+      },
+    ];
     expect(calculateTreasuryGrowthScore(votesWithProposals)).toBe(20);
   });
 });
@@ -342,7 +352,9 @@ describe('calculateDecentralizationScore', () => {
   });
 
   it('defaults to 50 for unknown tier', () => {
-    expect(calculateDecentralizationScore(makeEnrichedDRep({ sizeTier: 'Unknown' as any }))).toBe(50);
+    expect(calculateDecentralizationScore(makeEnrichedDRep({ sizeTier: 'Unknown' as any }))).toBe(
+      50,
+    );
   });
 });
 
@@ -410,8 +422,10 @@ describe('calculateScorecard', () => {
   it('calculates overall as average of active category scores', () => {
     const drep = makeEnrichedDRep({ sizeTier: 'Small', rationaleRate: 80 });
     const scorecard = calculateScorecard(
-      drep, [], [],
-      ['strong-decentralization', 'responsible-governance']
+      drep,
+      [],
+      [],
+      ['strong-decentralization', 'responsible-governance'],
     );
     expect(scorecard.scores.decentralization).toBe(95);
     expect(scorecard.scores.transparency).toBe(80);
@@ -424,16 +438,34 @@ describe('calculateScorecard', () => {
 describe('detectAlignmentShifts', () => {
   it('returns null when no previous scorecard', () => {
     const current = {
-      drepId: 'drep1', scores: { treasury: 50, decentralization: 50, security: 50, innovation: 50, transparency: 50, overall: 50 },
-      votesAnalyzed: 10, calculatedAt: Date.now(),
+      drepId: 'drep1',
+      scores: {
+        treasury: 50,
+        decentralization: 50,
+        security: 50,
+        innovation: 50,
+        transparency: 50,
+        overall: 50,
+      },
+      votesAnalyzed: 10,
+      calculatedAt: Date.now(),
     };
     expect(detectAlignmentShifts(null, current, 'Test', [])).toBeNull();
   });
 
   it('returns null when delta is above threshold', () => {
     const prev = {
-      drepId: 'drep1', scores: { treasury: 50, decentralization: 50, security: 50, innovation: 50, transparency: 50, overall: 50 },
-      votesAnalyzed: 10, calculatedAt: Date.now(),
+      drepId: 'drep1',
+      scores: {
+        treasury: 50,
+        decentralization: 50,
+        security: 50,
+        innovation: 50,
+        transparency: 50,
+        overall: 50,
+      },
+      votesAnalyzed: 10,
+      calculatedAt: Date.now(),
     };
     const current = { ...prev, scores: { ...prev.scores, overall: 45 } };
     expect(detectAlignmentShifts(prev, current, 'Test', [])).toBeNull();
@@ -442,8 +474,16 @@ describe('detectAlignmentShifts', () => {
   it('detects significant shift (delta < -8)', () => {
     const prev = {
       drepId: 'drep1',
-      scores: { treasury: 80, decentralization: 70, security: 60, innovation: 50, transparency: 50, overall: 70 },
-      votesAnalyzed: 10, calculatedAt: Date.now(),
+      scores: {
+        treasury: 80,
+        decentralization: 70,
+        security: 60,
+        innovation: 50,
+        transparency: 50,
+        overall: 70,
+      },
+      votesAnalyzed: 10,
+      calculatedAt: Date.now(),
     };
     const current = {
       ...prev,
@@ -460,48 +500,111 @@ describe('detectAlignmentShifts', () => {
 
 describe('evaluateVoteAlignment', () => {
   it('returns neutral for empty user prefs', () => {
-    const result = evaluateVoteAlignment('Yes', true, 'TreasuryWithdrawals', null, ['treasury-conservative'], []);
+    const result = evaluateVoteAlignment(
+      'Yes',
+      true,
+      'TreasuryWithdrawals',
+      null,
+      ['treasury-conservative'],
+      [],
+    );
     expect(result.status).toBe('neutral');
   });
 
   it('returns neutral when no matching prefs', () => {
-    const result = evaluateVoteAlignment('Yes', true, 'TreasuryWithdrawals', null, ['treasury-conservative'], ['innovation-defi-growth']);
+    const result = evaluateVoteAlignment(
+      'Yes',
+      true,
+      'TreasuryWithdrawals',
+      null,
+      ['treasury-conservative'],
+      ['innovation-defi-growth'],
+    );
     expect(result.status).toBe('neutral');
   });
 
   it('evaluates treasury-conservative: No = aligned', () => {
-    const result = evaluateVoteAlignment('No', true, 'TreasuryWithdrawals', null, ['treasury-conservative'], ['treasury-conservative']);
+    const result = evaluateVoteAlignment(
+      'No',
+      true,
+      'TreasuryWithdrawals',
+      null,
+      ['treasury-conservative'],
+      ['treasury-conservative'],
+    );
     expect(result.status).toBe('aligned');
     expect(result.reasons).toContain('Voted No on treasury spend');
   });
 
   it('evaluates treasury-conservative: Yes = unaligned', () => {
-    const result = evaluateVoteAlignment('Yes', true, 'TreasuryWithdrawals', null, ['treasury-conservative'], ['treasury-conservative']);
+    const result = evaluateVoteAlignment(
+      'Yes',
+      true,
+      'TreasuryWithdrawals',
+      null,
+      ['treasury-conservative'],
+      ['treasury-conservative'],
+    );
     expect(result.status).toBe('unaligned');
   });
 
   it('evaluates smart-treasury-growth: Yes + rationale = aligned', () => {
-    const result = evaluateVoteAlignment('Yes', true, 'TreasuryWithdrawals', null, ['smart-treasury-growth'], ['smart-treasury-growth']);
+    const result = evaluateVoteAlignment(
+      'Yes',
+      true,
+      'TreasuryWithdrawals',
+      null,
+      ['smart-treasury-growth'],
+      ['smart-treasury-growth'],
+    );
     expect(result.status).toBe('aligned');
   });
 
   it('evaluates smart-treasury-growth: Yes without rationale = unaligned', () => {
-    const result = evaluateVoteAlignment('Yes', false, 'TreasuryWithdrawals', null, ['smart-treasury-growth'], ['smart-treasury-growth']);
+    const result = evaluateVoteAlignment(
+      'Yes',
+      false,
+      'TreasuryWithdrawals',
+      null,
+      ['smart-treasury-growth'],
+      ['smart-treasury-growth'],
+    );
     expect(result.status).toBe('unaligned');
   });
 
   it('evaluates protocol-security-first: No/Abstain = cautious = aligned', () => {
-    const result = evaluateVoteAlignment('No', false, 'ParameterChange', null, ['protocol-security-first'], ['protocol-security-first']);
+    const result = evaluateVoteAlignment(
+      'No',
+      false,
+      'ParameterChange',
+      null,
+      ['protocol-security-first'],
+      ['protocol-security-first'],
+    );
     expect(result.status).toBe('aligned');
   });
 
   it('evaluates innovation-defi-growth: Yes = aligned', () => {
-    const result = evaluateVoteAlignment('Yes', false, 'HardForkInitiation', null, ['innovation-defi-growth'], ['innovation-defi-growth']);
+    const result = evaluateVoteAlignment(
+      'Yes',
+      false,
+      'HardForkInitiation',
+      null,
+      ['innovation-defi-growth'],
+      ['innovation-defi-growth'],
+    );
     expect(result.status).toBe('aligned');
   });
 
   it('evaluates responsible-governance: has rationale = aligned', () => {
-    const result = evaluateVoteAlignment('Yes', true, null, null, ['responsible-governance'], ['responsible-governance']);
+    const result = evaluateVoteAlignment(
+      'Yes',
+      true,
+      null,
+      null,
+      ['responsible-governance'],
+      ['responsible-governance'],
+    );
     expect(result.status).toBe('aligned');
   });
 });
@@ -597,7 +700,10 @@ describe('computeOverallAlignment', () => {
       alignmentDecentralization: 90,
       alignmentTransparency: 70,
     });
-    const result = computeOverallAlignment(drep, ['strong-decentralization', 'responsible-governance']);
+    const result = computeOverallAlignment(drep, [
+      'strong-decentralization',
+      'responsible-governance',
+    ]);
     expect(result).toBe(80);
   });
 
@@ -606,7 +712,10 @@ describe('computeOverallAlignment', () => {
       alignmentDecentralization: 90,
       alignmentSecurity: null,
     });
-    const result = computeOverallAlignment(drep, ['strong-decentralization', 'protocol-security-first']);
+    const result = computeOverallAlignment(drep, [
+      'strong-decentralization',
+      'protocol-security-first',
+    ]);
     expect(result).toBe(90);
   });
 

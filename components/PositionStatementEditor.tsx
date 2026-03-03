@@ -23,7 +23,12 @@ interface PositionStatementEditorProps {
 }
 
 export function PositionStatementEditor({
-  drepId, proposalTxHash, proposalIndex, proposalTitle, existingStatement, onSaved,
+  drepId,
+  proposalTxHash,
+  proposalIndex,
+  proposalTitle,
+  existingStatement,
+  onSaved,
 }: PositionStatementEditorProps) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(existingStatement || '');
@@ -38,20 +43,35 @@ export function PositionStatementEditor({
       const res = await fetch(`/api/drep/${encodeURIComponent(drepId)}/positions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionToken: token, proposalTxHash, proposalIndex, statementText: text.trim() }),
+        body: JSON.stringify({
+          sessionToken: token,
+          proposalTxHash,
+          proposalIndex,
+          statementText: text.trim(),
+        }),
       });
       if (res.ok) {
-        posthog.capture('position_statement_saved', { drep_id: drepId, proposal_tx_hash: proposalTxHash });
+        posthog.capture('position_statement_saved', {
+          drep_id: drepId,
+          proposal_tx_hash: proposalTxHash,
+        });
         onSaved?.(text.trim());
         setOpen(false);
       }
-    } catch {}
-    finally { setSaving(false); }
+    } catch {
+    } finally {
+      setSaving(false);
+    }
   }, [text, drepId, proposalTxHash, proposalIndex, onSaved]);
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-2 text-[10px] gap-1"
+        onClick={() => setOpen(true)}
+      >
         <MessageSquare className="h-3 w-3" />
         Position
       </Button>
@@ -70,15 +90,29 @@ export function PositionStatementEditor({
               className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="Share your stance and reasoning on this proposal..."
               value={text}
-              onChange={e => setText(e.target.value)}
+              onChange={(e) => setText(e.target.value)}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={saving || !text.trim()}>
-                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Publish
+              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={handleSave}
+                disabled={saving || !text.trim()}
+              >
+                {saving ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}{' '}
+                Publish
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Visible to delegators on the proposal page.</p>
+            <p className="text-[10px] text-muted-foreground">
+              Visible to delegators on the proposal page.
+            </p>
           </div>
         </DialogContent>
       </Dialog>

@@ -7,7 +7,8 @@ import { getFeatureFlag } from '@/lib/featureFlags';
 
 export const metadata: Metadata = {
   title: 'My Governance — DRepScore',
-  description: 'Track your delegation health, representation score, and active governance proposals.',
+  description:
+    'Track your delegation health, representation score, and active governance proposals.',
 };
 
 export default async function GovernancePage() {

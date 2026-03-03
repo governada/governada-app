@@ -18,7 +18,9 @@ export default async function EmbedDRepPage({ params, searchParams }: Props) {
   const embedEnabled = await getFeatureFlag('embeddable_widgets', false);
   if (!embedEnabled) {
     return (
-      <div className={`flex items-center justify-center p-6 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+      <div
+        className={`flex items-center justify-center p-6 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}
+      >
         Widget unavailable
       </div>
     );
@@ -28,7 +30,9 @@ export default async function EmbedDRepPage({ params, searchParams }: Props) {
 
   if (!drep) {
     return (
-      <div className={`flex items-center justify-center p-6 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+      <div
+        className={`flex items-center justify-center p-6 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}
+      >
         DRep not found
       </div>
     );

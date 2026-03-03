@@ -12,10 +12,10 @@ interface ErrorBannerProps {
   onRetry?: () => void;
 }
 
-export function ErrorBanner({ 
+export function ErrorBanner({
   message = 'Unable to connect to Cardano network. Please try again later.',
   retryable = false,
-  onRetry 
+  onRetry,
 }: ErrorBannerProps) {
   return (
     <div className="w-full bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6">
@@ -25,12 +25,7 @@ export function ErrorBanner({
           <h3 className="text-sm font-medium text-destructive">Network Error</h3>
           <p className="text-sm text-destructive/90 mt-1">{message}</p>
           {retryable && onRetry && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRetry}
-              className="mt-3 gap-2"
-            >
+            <Button variant="outline" size="sm" onClick={onRetry} className="mt-3 gap-2">
               <RefreshCcw className="h-3 w-3" />
               Try Again
             </Button>

@@ -14,8 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const WalletConnectModal = dynamic(
-  () => import('@/components/WalletConnectModal').then(mod => mod.WalletConnectModal),
-  { ssr: false }
+  () => import('@/components/WalletConnectModal').then((mod) => mod.WalletConnectModal),
+  { ssr: false },
 );
 import { Input } from '@/components/ui/input';
 import {
@@ -112,8 +112,8 @@ export default function ProfilePage() {
   // Fetch DRep data for watchlist name lookup
   useEffect(() => {
     fetch('/api/dreps')
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data?.dreps) {
           const names: Record<string, string> = {};
           data.dreps.forEach((d: { drepId: string; name: string | null }) => {
@@ -146,8 +146,8 @@ export default function ProfilePage() {
     fetch('/api/user', {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         setUserData(data);
         setDisplayName(data?.display_name || '');
         // Prefer backend prefs, fallback to localStorage
@@ -187,7 +187,7 @@ export default function ProfilePage() {
   const removeFromWatchlist = async (drepId: string) => {
     if (!userData) return;
 
-    const newWatchlist = userData.watchlist.filter(id => id !== drepId);
+    const newWatchlist = userData.watchlist.filter((id) => id !== drepId);
     setUserData({ ...userData, watchlist: newWatchlist });
 
     const token = getStoredSession();
@@ -204,7 +204,7 @@ export default function ProfilePage() {
   };
 
   const removePref = (key: UserPrefKey) => {
-    const newList = userPrefs.filter(k => k !== key);
+    const newList = userPrefs.filter((k) => k !== key);
     setUserPrefs(newList);
     saveUserPrefs({ hasSeenOnboarding: true, userPrefs: newList });
 
@@ -281,11 +281,11 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2">
                 <Input
                   value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
+                  onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Enter your name"
                   className="h-9 w-48"
                   autoFocus
-                  onKeyDown={e => {
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') saveDisplayName();
                     if (e.key === 'Escape') {
                       setDisplayName(userData?.display_name || '');
@@ -309,9 +309,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <>
-                <h1 className="text-2xl font-bold">
-                  {displayName || 'Anonymous Guardian'}
-                </h1>
+                <h1 className="text-2xl font-bold">{displayName || 'Anonymous Guardian'}</h1>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -328,7 +326,11 @@ export default function ProfilePage() {
             </Badge>
           </div>
           {sessionAddress && (
-            <CopyableAddress address={sessionAddress} truncate className="text-sm text-muted-foreground" />
+            <CopyableAddress
+              address={sessionAddress}
+              truncate
+              className="text-sm text-muted-foreground"
+            />
           )}
         </div>
       </div>
@@ -345,10 +347,13 @@ export default function ProfilePage() {
           <CardContent>
             {userPrefs.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {userPrefs.map(pref => (
+                {userPrefs.map((pref) => (
                   <Badge key={pref} variant="secondary" className="gap-1 pr-1">
                     {PREF_LABELS[pref] || pref}
-                    <button onClick={() => removePref(pref)} className="hover:bg-muted rounded-full p-0.5">
+                    <button
+                      onClick={() => removePref(pref)}
+                      className="hover:bg-muted rounded-full p-0.5"
+                    >
                       <X className="w-3 h-3" />
                     </button>
                   </Badge>
@@ -374,7 +379,7 @@ export default function ProfilePage() {
           <CardContent>
             {userData?.watchlist && userData.watchlist.length > 0 ? (
               <div className="space-y-2">
-                {userData.watchlist.map(drepId => (
+                {userData.watchlist.map((drepId) => (
                   <div
                     key={drepId}
                     className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
@@ -424,18 +429,28 @@ export default function ProfilePage() {
             <div className="space-y-2">
               {sessionAddress && (
                 <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                  <CopyableAddress address={sessionAddress} truncate className="text-sm text-muted-foreground" />
-                  <Badge variant="outline" className="text-green-600 border-green-600">Primary</Badge>
+                  <CopyableAddress
+                    address={sessionAddress}
+                    truncate
+                    className="text-sm text-muted-foreground"
+                  />
+                  <Badge variant="outline" className="text-green-600 border-green-600">
+                    Primary
+                  </Badge>
                 </div>
               )}
               {userData?.connected_wallets
-                ?.filter(w => w !== sessionAddress)
-                .map(wallet => (
+                ?.filter((w) => w !== sessionAddress)
+                .map((wallet) => (
                   <div
                     key={wallet}
                     className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
                   >
-                    <CopyableAddress address={wallet} truncate className="text-sm text-muted-foreground" />
+                    <CopyableAddress
+                      address={wallet}
+                      truncate
+                      className="text-sm text-muted-foreground"
+                    />
                   </div>
                 ))}
             </div>
@@ -461,7 +476,11 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 {userData.delegation_history.map((record, i) => (
                   <div key={i} className="p-2 rounded-lg bg-muted/50 text-sm">
-                    <CopyableAddress address={record.drepId} truncate className="text-muted-foreground" />
+                    <CopyableAddress
+                      address={record.drepId}
+                      truncate
+                      className="text-muted-foreground"
+                    />
                     <p className="text-xs text-muted-foreground">
                       {new Date(record.timestamp).toLocaleDateString()}
                     </p>

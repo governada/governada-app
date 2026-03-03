@@ -84,9 +84,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const brokenLinks = linkChecks
-      .filter((c: any) => c.status === 'broken')
-      .map((c: any) => c.uri);
+    const brokenLinks = linkChecks.filter((c: any) => c.status === 'broken').map((c: any) => c.uri);
 
     return NextResponse.json({
       drep: {

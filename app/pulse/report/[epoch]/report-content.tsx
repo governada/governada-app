@@ -34,7 +34,13 @@ const OUTCOME_COLORS: Record<string, string> = {
   open: 'text-blue-500 bg-blue-500/10',
 };
 
-export function StateOfGovernanceContent({ data, narrative }: { data: ReportData; narrative: string | null }) {
+export function StateOfGovernanceContent({
+  data,
+  narrative,
+}: {
+  data: ReportData;
+  narrative: string | null;
+}) {
   const color = GHI_BAND_COLORS[data.ghi.band as GHIBand];
 
   return (
@@ -47,7 +53,7 @@ export function StateOfGovernanceContent({ data, narrative }: { data: ReportData
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.ghi.components.map(comp => (
+              {data.ghi.components.map((comp) => (
                 <div key={comp.name} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{comp.name}</span>
@@ -85,7 +91,7 @@ export function StateOfGovernanceContent({ data, narrative }: { data: ReportData
               viewport={{ once: true }}
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
             >
-              {data.insights.map(insight => {
+              {data.insights.map((insight) => {
                 const Icon = CATEGORY_ICONS[insight.category] || Lightbulb;
                 return (
                   <motion.div
@@ -101,7 +107,9 @@ export function StateOfGovernanceContent({ data, narrative }: { data: ReportData
                     </div>
                     <p className="text-2xl font-bold tabular-nums">{insight.stat}</p>
                     <p className="text-sm font-semibold">{insight.headline}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {insight.description}
+                    </p>
                   </motion.div>
                 );
               })}
@@ -119,11 +127,16 @@ export function StateOfGovernanceContent({ data, narrative }: { data: ReportData
               Proposal Outcomes
             </h2>
             <div className="space-y-2">
-              {data.proposals.map(p => (
-                <div key={`${p.txHash}-${p.index}`} className="flex items-center justify-between rounded-lg border p-3">
+              {data.proposals.map((p) => (
+                <div
+                  key={`${p.txHash}-${p.index}`}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{p.title || 'Untitled Proposal'}</p>
-                    <p className="text-xs text-muted-foreground">{p.type.replace(/([A-Z])/g, ' $1').trim()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {p.type.replace(/([A-Z])/g, ' $1').trim()}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 ml-3">
                     {p.withdrawalAda && (
@@ -159,10 +172,12 @@ export function StateOfGovernanceContent({ data, narrative }: { data: ReportData
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {data.movers.gainers.map(m => (
+                    {data.movers.gainers.map((m) => (
                       <div key={m.drepId} className="flex items-center justify-between text-sm">
                         <span className="truncate mr-2">{m.name}</span>
-                        <span className="text-green-500 font-medium tabular-nums">+{m.delta} → {m.score}</span>
+                        <span className="text-green-500 font-medium tabular-nums">
+                          +{m.delta} → {m.score}
+                        </span>
                       </div>
                     ))}
                   </CardContent>
@@ -176,10 +191,12 @@ export function StateOfGovernanceContent({ data, narrative }: { data: ReportData
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {data.movers.losers.map(m => (
+                    {data.movers.losers.map((m) => (
                       <div key={m.drepId} className="flex items-center justify-between text-sm">
                         <span className="truncate mr-2">{m.name}</span>
-                        <span className="text-red-500 font-medium tabular-nums">{m.delta} → {m.score}</span>
+                        <span className="text-red-500 font-medium tabular-nums">
+                          {m.delta} → {m.score}
+                        </span>
                       </div>
                     ))}
                   </CardContent>
@@ -215,11 +232,14 @@ export function StateOfGovernanceContent({ data, narrative }: { data: ReportData
             </h2>
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                {narrative.split('\n\n').filter(Boolean).map((paragraph, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-foreground/90">
-                    {paragraph}
-                  </p>
-                ))}
+                {narrative
+                  .split('\n\n')
+                  .filter(Boolean)
+                  .map((paragraph, i) => (
+                    <p key={i} className="text-sm leading-relaxed text-foreground/90">
+                      {paragraph}
+                    </p>
+                  ))}
               </div>
               <p className="text-[10px] text-muted-foreground mt-4">
                 AI-assisted editorial — all statistics are computed from on-chain data

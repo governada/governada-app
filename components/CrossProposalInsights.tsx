@@ -41,12 +41,15 @@ interface CrossProposalInsightsProps {
   showHighlight?: boolean;
 }
 
-export function CrossProposalInsights({ maxInsights, showHighlight = true }: CrossProposalInsightsProps) {
+export function CrossProposalInsights({
+  maxInsights,
+  showHighlight = true,
+}: CrossProposalInsightsProps) {
   const [insights, setInsights] = useState<GovernanceInsight[]>([]);
 
   useEffect(() => {
     fetch('/api/governance/insights')
-      .then(r => r.ok ? r.json() : [])
+      .then((r) => (r.ok ? r.json() : []))
       .then(setInsights)
       .catch(() => {});
   }, []);
@@ -77,7 +80,7 @@ export function CrossProposalInsights({ maxInsights, showHighlight = true }: Cro
           animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
-          {rest.map(insight => (
+          {rest.map((insight) => (
             <InsightCard key={insight.id} insight={insight} />
           ))}
         </motion.div>
@@ -110,7 +113,9 @@ function InsightHighlight({ insight }: { insight: GovernanceInsight }) {
 
       <div className="flex items-baseline gap-3">
         <span className="text-4xl font-bold tabular-nums">{insight.stat}</span>
-        {insight.trendDirection && <TrendIndicator direction={insight.trendDirection} trend={insight.trend} />}
+        {insight.trendDirection && (
+          <TrendIndicator direction={insight.trendDirection} trend={insight.trend} />
+        )}
       </div>
 
       <p className="text-base font-semibold">{insight.headline}</p>
@@ -125,10 +130,7 @@ function InsightCard({ insight }: { insight: GovernanceInsight }) {
   const Icon = CATEGORY_ICONS[insight.category] || Lightbulb;
 
   return (
-    <motion.div
-      variants={fadeInUp}
-      className="rounded-lg border bg-card/50 p-4 space-y-2 group"
-    >
+    <motion.div variants={fadeInUp} className="rounded-lg border bg-card/50 p-4 space-y-2 group">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 text-muted-foreground" />
@@ -143,7 +145,9 @@ function InsightCard({ insight }: { insight: GovernanceInsight }) {
 
       <div className="flex items-baseline gap-2">
         <p className="text-3xl font-bold tabular-nums">{insight.stat}</p>
-        {insight.trendDirection && <TrendIndicator direction={insight.trendDirection} trend={insight.trend} size="sm" />}
+        {insight.trendDirection && (
+          <TrendIndicator direction={insight.trendDirection} trend={insight.trend} size="sm" />
+        )}
       </div>
 
       <p className="text-sm font-semibold">{insight.headline}</p>
@@ -154,20 +158,43 @@ function InsightCard({ insight }: { insight: GovernanceInsight }) {
   );
 }
 
-function TrendIndicator({ direction, trend, size = 'default' }: { direction: string; trend?: string; size?: 'sm' | 'default' }) {
+function TrendIndicator({
+  direction,
+  trend,
+  size = 'default',
+}: {
+  direction: string;
+  trend?: string;
+  size?: 'sm' | 'default';
+}) {
   const TrendIcon = TREND_ICONS[direction as keyof typeof TREND_ICONS] || Minus;
-  const colorClass = direction === 'up' ? 'text-green-500' : direction === 'down' ? 'text-red-500' : 'text-muted-foreground';
+  const colorClass =
+    direction === 'up'
+      ? 'text-green-500'
+      : direction === 'down'
+        ? 'text-red-500'
+        : 'text-muted-foreground';
   const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5';
 
   return (
     <div className={`flex items-center gap-1 ${colorClass}`}>
       <TrendIcon className={iconSize} />
-      {trend && <span className={`${size === 'sm' ? 'text-[10px]' : 'text-xs'} font-medium tabular-nums`}>{trend}</span>}
+      {trend && (
+        <span className={`${size === 'sm' ? 'text-[10px]' : 'text-xs'} font-medium tabular-nums`}>
+          {trend}
+        </span>
+      )}
     </div>
   );
 }
 
-function InsightShareButton({ insight, size = 'default' }: { insight: GovernanceInsight; size?: 'sm' | 'default' }) {
+function InsightShareButton({
+  insight,
+  size = 'default',
+}: {
+  insight: GovernanceInsight;
+  size?: 'sm' | 'default';
+}) {
   const [copied, setCopied] = useState(false);
 
   const copyShareText = useCallback(() => {
@@ -205,9 +232,7 @@ function InsightMethodology({ text }: { text: string }) {
         Methodology
       </button>
       {open && (
-        <p className="text-[10px] text-muted-foreground mt-1 pl-4 border-l border-border">
-          {text}
-        </p>
+        <p className="text-[10px] text-muted-foreground mt-1 pl-4 border-l border-border">{text}</p>
       )}
     </div>
   );

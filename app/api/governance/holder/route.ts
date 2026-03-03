@@ -51,7 +51,9 @@ export async function GET(request: NextRequest) {
       delegatedDrepId ? getDRepById(delegatedDrepId) : Promise.resolve(null),
       supabase
         .from('proposals')
-        .select('tx_hash, proposal_index, title, proposal_type, withdrawal_amount, block_time, proposed_epoch, expiration_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch')
+        .select(
+          'tx_hash, proposal_index, title, proposal_type, withdrawal_amount, block_time, proposed_epoch, expiration_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+        )
         .order('block_time', { ascending: false }),
       delegatedDrepId
         ? supabase
@@ -87,7 +89,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build proposal lookup
-    const proposalMap = new Map<string, typeof allProposals[0]>();
+    const proposalMap = new Map<string, (typeof allProposals)[0]>();
     for (const p of allProposals) {
       proposalMap.set(`${p.tx_hash}-${p.proposal_index}`, p);
     }
@@ -106,13 +108,13 @@ export async function GET(request: NextRequest) {
     // --- Delegation Health ---
     let delegationHealth = null;
     if (delegatedDrepId && drepData) {
-      const votedOnOpen = drepVotes.filter(v => {
+      const votedOnOpen = drepVotes.filter((v) => {
         const p = proposalMap.get(`${v.proposal_tx_hash}-${v.proposal_index}`);
         return p && !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch;
       }).length;
 
       const openCount = allProposals.filter(
-        p => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch
+        (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
       ).length;
 
       delegationHealth = {
@@ -129,13 +131,15 @@ export async function GET(request: NextRequest) {
 
     // --- Active Proposals (open only, with user + DRep status) ---
     const activeProposals = allProposals
-      .filter(p => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch)
-      .map(p => {
+      .filter((p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch)
+      .map((p) => {
         const key = `${p.tx_hash}-${p.proposal_index}`;
         const pollEntry = pollVoteMap.get(key);
         const drepVote = drepVoteMap.get(key) || null;
-        const expirationEpoch = p.expiration_epoch ?? (p.proposed_epoch != null ? p.proposed_epoch + 6 : null);
-        const epochsRemaining = expirationEpoch != null ? Math.max(0, expirationEpoch - currentEpoch) : null;
+        const expirationEpoch =
+          p.expiration_epoch ?? (p.proposed_epoch != null ? p.proposed_epoch + 6 : null);
+        const epochsRemaining =
+          expirationEpoch != null ? Math.max(0, expirationEpoch - currentEpoch) : null;
 
         return {
           txHash: p.tx_hash,
@@ -161,8 +165,8 @@ export async function GET(request: NextRequest) {
 
     // --- Poll History (all user votes with context) ---
     // Get community consensus for each proposal the user voted on
-    const pollProposalKeys = pollVotes.map(pv => `${pv.proposal_tx_hash}-${pv.proposal_index}`);
-    const uniqueTxHashes = [...new Set(pollVotes.map(pv => pv.proposal_tx_hash))];
+    const pollProposalKeys = pollVotes.map((pv) => `${pv.proposal_tx_hash}-${pv.proposal_index}`);
+    const uniqueTxHashes = [...new Set(pollVotes.map((pv) => pv.proposal_tx_hash))];
 
     let communityVoteMap = new Map<string, { yes: number; no: number; abstain: number }>();
     if (uniqueTxHashes.length > 0) {
@@ -182,7 +186,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const pollHistory = pollVotes.map(pv => {
+    const pollHistory = pollVotes.map((pv) => {
       const key = `${pv.proposal_tx_hash}-${pv.proposal_index}`;
       const proposal = proposalMap.get(key);
       const drepVote = drepVoteMap.get(key) || null;
@@ -231,7 +235,7 @@ export async function GET(request: NextRequest) {
         limit: 5,
       });
 
-      redelegationSuggestions = matches.map(m => ({
+      redelegationSuggestions = matches.map((m) => ({
         drepId: m.drepId,
         drepName: m.drepName,
         drepScore: m.drepScore,

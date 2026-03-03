@@ -55,8 +55,10 @@ export function GovernanceCitizenSection() {
     };
 
     Promise.allSettled([
-      fetch(`/api/governance/holder?wallet=${address}`).then(r => r.ok ? r.json() : null),
-      fetch('/api/governance/timeline', { headers: { 'x-wallet-address': address } }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/governance/holder?wallet=${address}`).then((r) => (r.ok ? r.json() : null)),
+      fetch('/api/governance/timeline', { headers: { 'x-wallet-address': address } }).then((r) =>
+        r.ok ? r.json() : null,
+      ),
     ]).then(([holderResult, timelineResult]) => {
       const holder = holderResult.status === 'fulfilled' ? holderResult.value : null;
       const timeline = timelineResult.status === 'fulfilled' ? timelineResult.value : null;
@@ -78,7 +80,9 @@ export function GovernanceCitizenSection() {
       }
 
       if (timeline?.events?.length) {
-        const summaryEvent = timeline.events.find((e: { type: string }) => e.type === 'epoch_summary');
+        const summaryEvent = timeline.events.find(
+          (e: { type: string }) => e.type === 'epoch_summary',
+        );
         if (summaryEvent?.data) {
           init.epochSummary = {
             epoch: summaryEvent.epoch || 0,
@@ -125,10 +129,7 @@ export function GovernanceCitizenSection() {
 
       {state.epochSummary && (
         <FeatureGate flag="sharing_surfaces">
-          <EpochSummaryCard
-            epoch={state.epochSummary.epoch}
-            summary={state.epochSummary.summary}
-          />
+          <EpochSummaryCard epoch={state.epochSummary.epoch} summary={state.epochSummary.summary} />
         </FeatureGate>
       )}
 

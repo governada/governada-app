@@ -47,8 +47,8 @@ export function SimilarProposalsCard({ title, withdrawalAda, treasuryTier, exclu
     });
 
     fetch(`/api/treasury/similar?${params}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (data?.similar) {
           setSimilar(data.similar);
           posthog.capture('similar_proposals_viewed', {
@@ -64,8 +64,10 @@ export function SimilarProposalsCard({ title, withdrawalAda, treasuryTier, exclu
 
   if (loading || similar.length === 0) return null;
 
-  const enacted = similar.filter(s => s.outcome === 'enacted');
-  const delivered = enacted.filter(s => s.accountabilityRating === 'delivered' || s.accountabilityRating === 'partial');
+  const enacted = similar.filter((s) => s.outcome === 'enacted');
+  const delivered = enacted.filter(
+    (s) => s.accountabilityRating === 'delivered' || s.accountabilityRating === 'partial',
+  );
 
   return (
     <Card>
@@ -78,15 +80,21 @@ export function SimilarProposalsCard({ title, withdrawalAda, treasuryTier, exclu
       <CardContent className="space-y-3">
         {enacted.length > 0 && (
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{enacted.length}</span> similar proposals were approved in the past.
+            <span className="font-medium text-foreground">{enacted.length}</span> similar proposals
+            were approved in the past.
             {delivered.length > 0 && (
-              <> Community rated <span className="font-medium text-foreground">{delivered.length}</span> as delivering.</>
+              <>
+                {' '}
+                Community rated{' '}
+                <span className="font-medium text-foreground">{delivered.length}</span> as
+                delivering.
+              </>
             )}
           </p>
         )}
 
         <div className="space-y-2">
-          {similar.map(p => {
+          {similar.map((p) => {
             const config = outcomeConfig[p.outcome] || outcomeConfig.active;
             const Icon = config.icon;
             return (
@@ -100,7 +108,9 @@ export function SimilarProposalsCard({ title, withdrawalAda, treasuryTier, exclu
                   <div className="truncate">{p.title}</div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                     <span className="font-mono tabular-nums">{formatAda(p.withdrawalAda)} ADA</span>
-                    <Badge variant="secondary" className="text-[10px]">{p.matchStrength} match</Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {p.matchStrength} match
+                    </Badge>
                     <span className={config.color}>{config.label}</span>
                   </div>
                 </div>

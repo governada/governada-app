@@ -54,11 +54,13 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
       setCurrentIdx(0);
       setVotes([]);
       setPhase('quiz');
-      import('@/lib/posthog').then(({ posthog }) => {
-        posthog.capture('governance_dna_quiz_started', {
-          proposal_count: data.proposals.length,
-        });
-      }).catch(() => {});
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('governance_dna_quiz_started', {
+            proposal_count: data.proposals.length,
+          });
+        })
+        .catch(() => {});
     } catch {
       setPhase('cta');
     }
@@ -83,73 +85,82 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
     }).catch(console.error);
   }, []);
 
-  const handleVote = useCallback(async (vote: VoteChoice) => {
-    const proposal = proposals[currentIdx];
-    if (!proposal) return;
+  const handleVote = useCallback(
+    async (vote: VoteChoice) => {
+      const proposal = proposals[currentIdx];
+      if (!proposal) return;
 
-    const newVotes = [...votes, { txHash: proposal.txHash, index: proposal.index, vote }];
-    setVotes(newVotes);
+      const newVotes = [...votes, { txHash: proposal.txHash, index: proposal.index, vote }];
+      setVotes(newVotes);
 
-    submitVote(proposal, vote);
+      submitVote(proposal, vote);
 
-    import('@/lib/posthog').then(({ posthog }) => {
-      posthog.capture('governance_dna_quiz_vote', {
-        vote,
-        proposal_type: proposal.proposalType,
-        question_number: newVotes.length,
-      });
-    }).catch(() => {});
-
-    if (currentIdx + 1 < proposals.length && newVotes.length < 7) {
-      setCurrentIdx(currentIdx + 1);
-    } else {
-      setPhase('submitting');
-      try {
-        const token = getStoredSession();
-        if (token) {
-          const res = await fetch('/api/governance/matches', {
-            headers: { Authorization: `Bearer ${token}` },
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('governance_dna_quiz_vote', {
+            vote,
+            proposal_type: proposal.proposalType,
+            question_number: newVotes.length,
           });
-          if (res.ok) {
-            const data = await res.json();
-            const matchMap: Record<string, number> = {};
-            for (const m of data.matches || []) {
-              matchMap[m.drepId] = m.matchScore;
-            }
-            setResult({
-              votesCount: newVotes.length,
-              topMatches: (data.matches || []).slice(0, 3).map((m: any) => ({
-                drepId: m.drepId,
-                name: m.drepName || m.drepId.slice(0, 12) + '...',
-                matchScore: m.matchScore,
-                agreed: m.agreed,
-                total: m.overlapping,
-              })),
-              currentDRepMatch: data.currentDRepMatch ?? null,
+        })
+        .catch(() => {});
+
+      if (currentIdx + 1 < proposals.length && newVotes.length < 7) {
+        setCurrentIdx(currentIdx + 1);
+      } else {
+        setPhase('submitting');
+        try {
+          const token = getStoredSession();
+          if (token) {
+            const res = await fetch('/api/governance/matches', {
+              headers: { Authorization: `Bearer ${token}` },
             });
-            onQuizComplete?.(matchMap);
-            import('@/lib/posthog').then(({ posthog }) => {
-              posthog.capture('governance_dna_quiz_completed', {
-                votes_count: newVotes.length,
-                top_match_score: data.matches?.[0]?.matchScore ?? null,
-                matches_found: data.matches?.length ?? 0,
+            if (res.ok) {
+              const data = await res.json();
+              const matchMap: Record<string, number> = {};
+              for (const m of data.matches || []) {
+                matchMap[m.drepId] = m.matchScore;
+              }
+              setResult({
+                votesCount: newVotes.length,
+                topMatches: (data.matches || []).slice(0, 3).map((m: any) => ({
+                  drepId: m.drepId,
+                  name: m.drepName || m.drepId.slice(0, 12) + '...',
+                  matchScore: m.matchScore,
+                  agreed: m.agreed,
+                  total: m.overlapping,
+                })),
+                currentDRepMatch: data.currentDRepMatch ?? null,
               });
-            }).catch(() => {});
+              onQuizComplete?.(matchMap);
+              import('@/lib/posthog')
+                .then(({ posthog }) => {
+                  posthog.capture('governance_dna_quiz_completed', {
+                    votes_count: newVotes.length,
+                    top_match_score: data.matches?.[0]?.matchScore ?? null,
+                    matches_found: data.matches?.length ?? 0,
+                  });
+                })
+                .catch(() => {});
+            }
           }
+        } catch (err) {
+          console.error('Failed to fetch matches after quiz:', err);
         }
-      } catch (err) {
-        console.error('Failed to fetch matches after quiz:', err);
+        setPhase('results');
       }
-      setPhase('results');
-    }
-  }, [proposals, currentIdx, votes, submitVote, onQuizComplete]);
+    },
+    [proposals, currentIdx, votes, submitVote, onQuizComplete],
+  );
 
   const handleRetake = () => {
-    import('@/lib/posthog').then(({ posthog }) => {
-      posthog.capture('governance_dna_quiz_retake', {
-        previous_votes_count: votes.length,
-      });
-    }).catch(() => {});
+    import('@/lib/posthog')
+      .then(({ posthog }) => {
+        posthog.capture('governance_dna_quiz_retake', {
+          previous_votes_count: votes.length,
+        });
+      })
+      .catch(() => {});
     setVotes([]);
     setCurrentIdx(0);
     setPhase('cta');
@@ -167,7 +178,8 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-lg font-semibold">Find Your Ideal DRep in 60 Seconds</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Vote on 5 real governance decisions. We&apos;ll match you with DReps who think like you.
+              Vote on 5 real governance decisions. We&apos;ll match you with DReps who think like
+              you.
             </p>
           </div>
           <Button onClick={fetchProposals} className="gap-2 shrink-0">
@@ -185,7 +197,9 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
         <CardContent className="flex items-center justify-center gap-3 p-8">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <span className="text-sm text-muted-foreground">
-            {phase === 'loading' ? 'Loading governance proposals...' : 'Calculating your matches...'}
+            {phase === 'loading'
+              ? 'Loading governance proposals...'
+              : 'Calculating your matches...'}
           </span>
         </CardContent>
       </Card>
@@ -200,7 +214,7 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
   // Quiz in progress
   const proposal = proposals[currentIdx];
   if (!proposal) return null;
-  const progress = ((votes.length) / Math.min(proposals.length, 7)) * 100;
+  const progress = (votes.length / Math.min(proposals.length, 7)) * 100;
 
   return (
     <Card className="border-primary/20 overflow-hidden">
@@ -225,7 +239,9 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
 
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">{proposal.proposalType.replace(/([A-Z])/g, ' $1').trim()}</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {proposal.proposalType.replace(/([A-Z])/g, ' $1').trim()}
+            </Badge>
             {proposal.withdrawalAmount && (
               <Badge variant="secondary" className="text-[10px]">
                 {proposal.withdrawalAmount >= 1_000_000
@@ -248,9 +264,11 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
               onClick={() => handleVote(choice)}
               className={cn(
                 'flex-1 capitalize',
-                choice === 'yes' && 'hover:bg-green-500/10 hover:text-green-600 hover:border-green-500/30',
+                choice === 'yes' &&
+                  'hover:bg-green-500/10 hover:text-green-600 hover:border-green-500/30',
                 choice === 'no' && 'hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30',
-                choice === 'abstain' && 'hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30'
+                choice === 'abstain' &&
+                  'hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30',
               )}
             >
               {choice}

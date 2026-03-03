@@ -40,7 +40,9 @@ export async function executeVotesSync(): Promise<Record<string, unknown>> {
   try {
     const bulkVotesMap: Record<string, DRepVote[]> = await fetchAllVotesBulk();
     const totalVotes = Object.values(bulkVotesMap).reduce((sum, v) => sum + v.length, 0);
-    console.log(`[VoteSync] Bulk votes fetched: ${totalVotes} votes across ${Object.keys(bulkVotesMap).length} DReps`);
+    console.log(
+      `[VoteSync] Bulk votes fetched: ${totalVotes} votes across ${Object.keys(bulkVotesMap).length} DReps`,
+    );
 
     const voteRows: SupabaseVoteRow[] = [];
     for (const [drepId, votes] of Object.entries(bulkVotesMap)) {
@@ -59,14 +61,25 @@ export async function executeVotesSync(): Promise<Record<string, unknown>> {
       }
     }
 
-    const dedupedVoteRows = [...new Map(voteRows.map(r => [r.vote_tx_hash, r])).values()];
+    const dedupedVoteRows = [...new Map(voteRows.map((r) => [r.vote_tx_hash, r])).values()];
     let validationErrors = 0;
 
-    const { valid: validatedVotes, invalidCount } = validateArray(dedupedVoteRows, KoiosVoteListSchema, 'votes');
+    const { valid: validatedVotes, invalidCount } = validateArray(
+      dedupedVoteRows,
+      KoiosVoteListSchema,
+      'votes',
+    );
     validationErrors = invalidCount;
     if (invalidCount > 0) {
-      emitPostHog(true, 'votes', 0, { event_override: 'sync_validation_error', record_type: 'vote', invalid_count: invalidCount });
-      alertDiscord('Validation Errors: votes', `${invalidCount} vote records failed Zod validation`);
+      emitPostHog(true, 'votes', 0, {
+        event_override: 'sync_validation_error',
+        record_type: 'vote',
+        invalid_count: invalidCount,
+      });
+      alertDiscord(
+        'Validation Errors: votes',
+        `${invalidCount} vote records failed Zod validation`,
+      );
     }
 
     if (validatedVotes.length > 0) {
@@ -84,7 +97,10 @@ export async function executeVotesSync(): Promise<Record<string, unknown>> {
     // Vote count reconciliation
     const drepIds = Object.keys(bulkVotesMap);
 
-    const computedCounts = new Map<string, { yes: number; no: number; abstain: number; total: number }>();
+    const computedCounts = new Map<
+      string,
+      { yes: number; no: number; abstain: number; total: number }
+    >();
     for (const drepId of drepIds) {
       const votes = bulkVotesMap[drepId];
       const latestByProposal = new Map<string, { vote: string; block_time: number }>();
@@ -97,9 +113,9 @@ export async function executeVotesSync(): Promise<Record<string, unknown>> {
       }
       const deduped = [...latestByProposal.values()];
       computedCounts.set(drepId, {
-        yes: deduped.filter(v => v.vote === 'Yes').length,
-        no: deduped.filter(v => v.vote === 'No').length,
-        abstain: deduped.filter(v => v.vote === 'Abstain').length,
+        yes: deduped.filter((v) => v.vote === 'Yes').length,
+        no: deduped.filter((v) => v.vote === 'No').length,
+        abstain: deduped.filter((v) => v.vote === 'Abstain').length,
         total: deduped.length,
       });
     }
@@ -123,17 +139,21 @@ export async function executeVotesSync(): Promise<Record<string, unknown>> {
         info.yesVotes === counts.yes &&
         info.noVotes === counts.no &&
         info.abstainVotes === counts.abstain
-      ) continue;
+      )
+        continue;
 
-      await supabase.from('dreps').update({
-        info: {
-          ...info,
-          totalVotes: counts.total,
-          yesVotes: counts.yes,
-          noVotes: counts.no,
-          abstainVotes: counts.abstain,
-        },
-      }).eq('id', drepId);
+      await supabase
+        .from('dreps')
+        .update({
+          info: {
+            ...info,
+            totalVotes: counts.total,
+            yesVotes: counts.yes,
+            noVotes: counts.no,
+            abstainVotes: counts.abstain,
+          },
+        })
+        .eq('id', drepId);
       reconciled++;
     }
 
@@ -141,7 +161,12 @@ export async function executeVotesSync(): Promise<Record<string, unknown>> {
       console.log(`[VoteSync] Vote count reconciliation: ${reconciled} DReps updated`);
     }
 
-    const metrics = { votes_synced: votesSynced, reconciled, validation_errors: validationErrors, ...getKoiosMetrics() };
+    const metrics = {
+      votes_synced: votesSynced,
+      reconciled,
+      validation_errors: validationErrors,
+      ...getKoiosMetrics(),
+    };
     await logger.finalize(true, null, metrics);
     await emitPostHog(true, 'votes', logger.elapsed, metrics);
     triggerAnalyticsDeploy('votes');

@@ -9,7 +9,7 @@ export const alertApiHealth = inngest.createFunction(
   { cron: '*/15 * * * *' },
   async ({ step }) => {
     return step.run('execute-api-health-alert', () =>
-      callSyncRoute('/api/admin/api-health/alert', 15_000)
+      callSyncRoute('/api/admin/api-health/alert', 15_000),
     );
   },
 );

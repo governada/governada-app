@@ -86,7 +86,15 @@ function computePairwiseOverlap(
   idB: string,
   votesA: DRepVoteRow[],
   votesB: DRepVoteRow[],
-): Omit<PairwiseOverlap, 'disagreements'> & { disagreementKeys: { txHash: string; proposalIndex: number; blockTime: number; voteA: string; voteB: string }[] } {
+): Omit<PairwiseOverlap, 'disagreements'> & {
+  disagreementKeys: {
+    txHash: string;
+    proposalIndex: number;
+    blockTime: number;
+    voteA: string;
+    voteB: string;
+  }[];
+} {
   const mapA = new Map<string, DRepVoteRow>();
   for (const v of votesA) mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
 
@@ -95,7 +103,13 @@ function computePairwiseOverlap(
 
   let agreed = 0;
   let shared = 0;
-  const disagreementKeys: { txHash: string; proposalIndex: number; blockTime: number; voteA: string; voteB: string }[] = [];
+  const disagreementKeys: {
+    txHash: string;
+    proposalIndex: number;
+    blockTime: number;
+    voteA: string;
+    voteB: string;
+  }[] = [];
   const abstentionGapsA: string[] = [];
   const abstentionGapsB: string[] = [];
 
@@ -147,27 +161,35 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing dreps parameter' }, { status: 400 });
   }
 
-  const drepIds = drepsParam.split(',').map(s => s.trim()).filter(Boolean);
+  const drepIds = drepsParam
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (drepIds.length < 2 || drepIds.length > 3) {
     return NextResponse.json({ error: 'Provide 2-3 DRep IDs' }, { status: 400 });
   }
 
   try {
-    const dreps = await Promise.all(drepIds.map(id => getDRepById(id)));
+    const dreps = await Promise.all(drepIds.map((id) => getDRepById(id)));
     const missing = drepIds.filter((_, i) => !dreps[i]);
     if (missing.length > 0) {
-      return NextResponse.json({ error: `DRep(s) not found: ${missing.join(', ')}` }, { status: 404 });
+      return NextResponse.json(
+        { error: `DRep(s) not found: ${missing.join(', ')}` },
+        { status: 404 },
+      );
     }
     const validDreps = dreps as EnrichedDRep[];
 
     const [allVotes, allHistory] = await Promise.all([
-      Promise.all(drepIds.map(id => getVotesByDRepId(id))),
-      Promise.all(drepIds.map(id => getScoreHistory(id))),
+      Promise.all(drepIds.map((id) => getVotesByDRepId(id))),
+      Promise.all(drepIds.map((id) => getScoreHistory(id))),
     ]);
 
     const profiles = validDreps.map(buildProfile);
     const scoreHistory: Record<string, ScoreSnapshot[]> = {};
-    drepIds.forEach((id, i) => { scoreHistory[id] = allHistory[i]; });
+    drepIds.forEach((id, i) => {
+      scoreHistory[id] = allHistory[i];
+    });
 
     // Pairwise vote overlap
     const pairs: [number, number][] = [];
@@ -178,24 +200,26 @@ export async function GET(request: NextRequest) {
     }
 
     const rawOverlaps = pairs.map(([i, j]) =>
-      computePairwiseOverlap(drepIds[i], drepIds[j], allVotes[i], allVotes[j])
+      computePairwiseOverlap(drepIds[i], drepIds[j], allVotes[i], allVotes[j]),
     );
 
     // Enrich disagreements with proposal titles and rationale snippets
-    const allDisagreementProposalIds = rawOverlaps.flatMap(o =>
-      o.disagreementKeys.map(d => ({ txHash: d.txHash, index: d.proposalIndex }))
+    const allDisagreementProposalIds = rawOverlaps.flatMap((o) =>
+      o.disagreementKeys.map((d) => ({ txHash: d.txHash, index: d.proposalIndex })),
     );
-    const uniqueProposalIds = [...new Map(
-      allDisagreementProposalIds.map(p => [`${p.txHash}-${p.index}`, p])
-    ).values()];
+    const uniqueProposalIds = [
+      ...new Map(allDisagreementProposalIds.map((p) => [`${p.txHash}-${p.index}`, p])).values(),
+    ];
 
     const allDisagreementVoteTxHashes = new Set<string>();
     for (const overlap of rawOverlaps) {
       const [idA, idB] = overlap.pair;
       const mapA = new Map<string, DRepVoteRow>();
       const mapB = new Map<string, DRepVoteRow>();
-      for (const v of allVotes[drepIds.indexOf(idA)]) mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
-      for (const v of allVotes[drepIds.indexOf(idB)]) mapB.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
+      for (const v of allVotes[drepIds.indexOf(idA)])
+        mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
+      for (const v of allVotes[drepIds.indexOf(idB)])
+        mapB.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
       for (const d of overlap.disagreementKeys) {
         const key = `${d.txHash}-${d.proposalIndex}`;
         const a = mapA.get(key);
@@ -207,10 +231,12 @@ export async function GET(request: NextRequest) {
 
     const [proposalMap, rationaleMap] = await Promise.all([
       uniqueProposalIds.length > 0 ? getProposalsByIds(uniqueProposalIds) : new Map(),
-      allDisagreementVoteTxHashes.size > 0 ? getRationalesByVoteTxHashes([...allDisagreementVoteTxHashes]) : new Map(),
+      allDisagreementVoteTxHashes.size > 0
+        ? getRationalesByVoteTxHashes([...allDisagreementVoteTxHashes])
+        : new Map(),
     ]);
 
-    const voteOverlap: PairwiseOverlap[] = rawOverlaps.map(raw => {
+    const voteOverlap: PairwiseOverlap[] = rawOverlaps.map((raw) => {
       const [idA, idB] = raw.pair;
       const votesForA = allVotes[drepIds.indexOf(idA)];
       const votesForB = allVotes[drepIds.indexOf(idB)];
@@ -219,7 +245,7 @@ export async function GET(request: NextRequest) {
       for (const v of votesForA) mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
       for (const v of votesForB) mapB.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
 
-      const disagreements: DisagreementDetail[] = raw.disagreementKeys.map(d => {
+      const disagreements: DisagreementDetail[] = raw.disagreementKeys.map((d) => {
         const key = `${d.txHash}-${d.proposalIndex}`;
         const proposal = proposalMap.get(key);
         const a = mapA.get(key);
@@ -233,7 +259,10 @@ export async function GET(request: NextRequest) {
           title: proposal?.title || null,
           proposalType: proposal?.proposalType || null,
           blockTime: d.blockTime,
-          votes: { [idA]: d.voteA as 'Yes' | 'No' | 'Abstain', [idB]: d.voteB as 'Yes' | 'No' | 'Abstain' },
+          votes: {
+            [idA]: d.voteA as 'Yes' | 'No' | 'Abstain',
+            [idB]: d.voteB as 'Yes' | 'No' | 'Abstain',
+          },
           rationales: {
             [idA]: ratA?.rationaleAiSummary || ratA?.rationaleText?.slice(0, 200) || null,
             [idB]: ratB?.rationaleAiSummary || ratB?.rationaleText?.slice(0, 200) || null,
@@ -254,7 +283,10 @@ export async function GET(request: NextRequest) {
     // Alignment (only if prefs provided)
     let alignment: Record<string, AlignmentResult> | null = null;
     if (prefsParam) {
-      const prefs = prefsParam.split(',').map(s => s.trim()).filter(Boolean) as UserPrefKey[];
+      const prefs = prefsParam
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean) as UserPrefKey[];
       if (prefs.length > 0) {
         const categoryLabels: Record<string, string> = {
           treasury: 'Treasury',

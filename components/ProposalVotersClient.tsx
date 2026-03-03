@@ -8,13 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/EmptyState';
-import { ChevronDown, ChevronUp, ChevronRight, Search, Heart, UserCheck, ShieldCheck, ShieldAlert } from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Search,
+  Heart,
+  UserCheck,
+  ShieldCheck,
+  ShieldAlert,
+} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CopyableAddress } from '@/components/CopyableAddress';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 
@@ -38,25 +42,24 @@ export function ProposalVotersClient({
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
 
   const filtered = useMemo(() => {
-    let result = filter === 'all' ? votes : votes.filter(v => v.vote === filter);
+    let result = filter === 'all' ? votes : votes.filter((v) => v.vote === filter);
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(v =>
-        (v.drepName || '').toLowerCase().includes(q) ||
-        v.drepId.toLowerCase().includes(q)
+      result = result.filter(
+        (v) => (v.drepName || '').toLowerCase().includes(q) || v.drepId.toLowerCase().includes(q),
       );
     }
 
     if (showWatchlistOnly && watchlist.length > 0) {
       const wSet = new Set(watchlist);
-      result = result.filter(v => wSet.has(v.drepId));
+      result = result.filter((v) => wSet.has(v.drepId));
     }
 
     // Pin delegated DRep to the top
     if (delegatedDrepId) {
-      const pinned = result.filter(v => v.drepId === delegatedDrepId);
-      const rest = result.filter(v => v.drepId !== delegatedDrepId);
+      const pinned = result.filter((v) => v.drepId === delegatedDrepId);
+      const rest = result.filter((v) => v.drepId !== delegatedDrepId);
       result = [...pinned, ...rest];
     }
 
@@ -65,9 +68,9 @@ export function ProposalVotersClient({
 
   const visible = showAll ? filtered : filtered.slice(0, 20);
 
-  const yesCt = votes.filter(v => v.vote === 'Yes').length;
-  const noCt = votes.filter(v => v.vote === 'No').length;
-  const abCt = votes.filter(v => v.vote === 'Abstain').length;
+  const yesCt = votes.filter((v) => v.vote === 'Yes').length;
+  const noCt = votes.filter((v) => v.vote === 'No').length;
+  const abCt = votes.filter((v) => v.vote === 'Abstain').length;
 
   return (
     <Card>
@@ -75,12 +78,14 @@ export function ProposalVotersClient({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle>DRep Votes ({votes.length})</CardTitle>
           <div className="flex gap-1.5">
-            {([
-              { key: 'all', label: `All (${votes.length})` },
-              { key: 'Yes', label: `Yes (${yesCt})` },
-              { key: 'No', label: `No (${noCt})` },
-              { key: 'Abstain', label: `Abstain (${abCt})` },
-            ] as const).map(({ key, label }) => (
+            {(
+              [
+                { key: 'all', label: `All (${votes.length})` },
+                { key: 'Yes', label: `Yes (${yesCt})` },
+                { key: 'No', label: `No (${noCt})` },
+                { key: 'Abstain', label: `Abstain (${abCt})` },
+              ] as const
+            ).map(({ key, label }) => (
               <Button
                 key={key}
                 variant={filter === key ? 'default' : 'outline'}
@@ -106,7 +111,7 @@ export function ProposalVotersClient({
             />
           </div>
 
-          {delegatedDrepId && votes.some(v => v.drepId === delegatedDrepId) && (
+          {delegatedDrepId && votes.some((v) => v.drepId === delegatedDrepId) && (
             <Badge variant="secondary" className="gap-1 text-xs">
               <UserCheck className="h-3 w-3" />
               Your DRep voted
@@ -137,7 +142,9 @@ export function ProposalVotersClient({
                 role="button"
                 tabIndex={0}
                 onClick={() => router.push(`/drep/${encodeURIComponent(v.drepId)}`)}
-                onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/drep/${encodeURIComponent(v.drepId)}`); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') router.push(`/drep/${encodeURIComponent(v.drepId)}`);
+                }}
                 className={`border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer group ${isMyDrep ? 'ring-1 ring-primary/40 bg-primary/5' : ''}`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -157,7 +164,13 @@ export function ProposalVotersClient({
                         />
                       )}
                       <Badge
-                        variant={v.vote === 'Yes' ? 'default' : v.vote === 'No' ? 'destructive' : 'secondary'}
+                        variant={
+                          v.vote === 'Yes'
+                            ? 'default'
+                            : v.vote === 'No'
+                              ? 'destructive'
+                              : 'secondary'
+                        }
                         className="shrink-0"
                       >
                         {v.vote}
@@ -167,10 +180,17 @@ export function ProposalVotersClient({
                           {v.drepName}
                         </span>
                       ) : (
-                        <CopyableAddress address={v.drepId} truncate className="text-sm font-medium text-muted-foreground" />
+                        <CopyableAddress
+                          address={v.drepId}
+                          truncate
+                          className="text-sm font-medium text-muted-foreground"
+                        />
                       )}
                       {isMyDrep && (
-                        <Badge variant="outline" className="text-xs gap-1 bg-primary/10 border-primary/30">
+                        <Badge
+                          variant="outline"
+                          className="text-xs gap-1 bg-primary/10 border-primary/30"
+                        >
                           <UserCheck className="h-2.5 w-2.5" />
                           Your DRep
                         </Badge>
@@ -179,7 +199,9 @@ export function ProposalVotersClient({
 
                     <p className="text-xs text-muted-foreground">
                       {new Date(v.blockTime * 1000).toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'short', day: 'numeric',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
                       })}
                     </p>
 
@@ -210,7 +232,9 @@ export function ProposalVotersClient({
                                   <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p className="text-xs">Content doesn&apos;t match on-chain hash commitment</p>
+                                  <p className="text-xs">
+                                    Content doesn&apos;t match on-chain hash commitment
+                                  </p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -235,15 +259,15 @@ export function ProposalVotersClient({
 
         {filtered.length > 20 && (
           <div className="mt-4 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => setShowAll(!showAll)}
-              className="w-full"
-            >
+            <Button variant="outline" onClick={() => setShowAll(!showAll)} className="w-full">
               {showAll ? (
-                <>Show less <ChevronUp className="h-4 w-4 ml-2" /></>
+                <>
+                  Show less <ChevronUp className="h-4 w-4 ml-2" />
+                </>
               ) : (
-                <>Show all {filtered.length} voters <ChevronDown className="h-4 w-4 ml-2" /></>
+                <>
+                  Show all {filtered.length} voters <ChevronDown className="h-4 w-4 ml-2" />
+                </>
               )}
             </Button>
           </div>
@@ -254,7 +278,11 @@ export function ProposalVotersClient({
             icon="search"
             title="No votes here yet"
             message="No votes match the current filter. Try selecting a different vote type to see how DReps weighed in."
-            action={filter !== 'all' ? { label: 'Show All Votes', onClick: () => setFilter('all') } : undefined}
+            action={
+              filter !== 'all'
+                ? { label: 'Show All Votes', onClick: () => setFilter('all') }
+                : undefined
+            }
             compact
             component="ProposalVotersClient"
           />

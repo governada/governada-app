@@ -28,32 +28,32 @@ export function CardanoGovernanceExplainer({
         viewport={{ once: true, margin: '-50px' }}
         className="relative px-6 py-10 md:px-12 md:py-14 max-w-4xl mx-auto"
       >
-        <motion.h2
-          variants={fadeInUp}
-          className="text-2xl md:text-3xl font-bold text-white mb-4"
-        >
+        <motion.h2 variants={fadeInUp} className="text-2xl md:text-3xl font-bold text-white mb-4">
           What is Cardano Governance?
         </motion.h2>
 
-        <motion.p variants={fadeInUp} className="text-base text-white/70 leading-relaxed mb-6 max-w-2xl">
+        <motion.p
+          variants={fadeInUp}
+          className="text-base text-white/70 leading-relaxed mb-6 max-w-2xl"
+        >
           Cardano is the only major blockchain where every token holder has a direct voice in
           treasury decisions worth billions. Through CIP-1694, ADA holders delegate their voting
           power to <strong className="text-white/90">DReps</strong> (Delegated Representatives) — a
           liquid democracy model where you can change your representative at any time.
         </motion.p>
 
-        <motion.p variants={fadeInUp} className="text-sm text-white/50 leading-relaxed mb-8 max-w-2xl">
+        <motion.p
+          variants={fadeInUp}
+          className="text-sm text-white/50 leading-relaxed mb-8 max-w-2xl"
+        >
           Unlike Ethereum&apos;s multisig-heavy governance or Polkadot&apos;s council system,
-          Cardano&apos;s model is fully on-chain, permissionless, and transparent. Every vote,
-          every rationale, every delegation is recorded on the blockchain.
+          Cardano&apos;s model is fully on-chain, permissionless, and transparent. Every vote, every
+          rationale, every delegation is recorded on the blockchain.
         </motion.p>
 
         {/* Live stats */}
         {(activeDReps || activeProposals || totalAdaGoverned) && (
-          <motion.div
-            variants={fadeInUp}
-            className="grid grid-cols-3 gap-4 mb-8 max-w-lg"
-          >
+          <motion.div variants={fadeInUp} className="grid grid-cols-3 gap-4 mb-8 max-w-lg">
             {totalAdaGoverned && (
               <div className="text-center">
                 <Landmark className="h-5 w-5 text-emerald-400 mx-auto mb-1" />
@@ -85,7 +85,11 @@ export function CardanoGovernanceExplainer({
             </Button>
           </Link>
           <Link href="/proposals">
-            <Button variant="outline" size="lg" className="gap-2 border-white/10 text-white hover:bg-white/5">
+            <Button
+              variant="outline"
+              size="lg"
+              className="gap-2 border-white/10 text-white hover:bg-white/5"
+            >
               See Live Proposals
             </Button>
           </Link>

@@ -61,7 +61,11 @@ export function checkLevel(
 
   for (const level of GOVERNANCE_LEVELS) {
     const { minPollVotes, minEpochsActive, requiresDelegation } = level.requirements;
-    if (pollCount >= minPollVotes && epochsActive >= minEpochsActive && (!requiresDelegation || isDelegated)) {
+    if (
+      pollCount >= minPollVotes &&
+      epochsActive >= minEpochsActive &&
+      (!requiresDelegation || isDelegated)
+    ) {
       highest = level.key;
     }
   }
@@ -76,7 +80,7 @@ export function getNextLevel(currentLevel: GovernanceLevel): LevelDefinition | n
 }
 
 export function getLevelDefinition(level: GovernanceLevel): LevelDefinition {
-  return GOVERNANCE_LEVELS.find(l => l.key === level) || GOVERNANCE_LEVELS[0];
+  return GOVERNANCE_LEVELS.find((l) => l.key === level) || GOVERNANCE_LEVELS[0];
 }
 
 export function getLevelProgress(
@@ -90,7 +94,8 @@ export function getLevelProgress(
 
   const reqs = next.requirements;
   const pollProgress = reqs.minPollVotes > 0 ? Math.min(pollCount / reqs.minPollVotes, 1) : 1;
-  const epochProgress = reqs.minEpochsActive > 0 ? Math.min(epochsActive / reqs.minEpochsActive, 1) : 1;
+  const epochProgress =
+    reqs.minEpochsActive > 0 ? Math.min(epochsActive / reqs.minEpochsActive, 1) : 1;
   const delegationProgress = reqs.requiresDelegation ? (isDelegated ? 1 : 0) : 1;
 
   const factors = [pollProgress, epochProgress, delegationProgress];

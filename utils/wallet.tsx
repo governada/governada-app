@@ -1,8 +1,22 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
 import { BrowserWallet, resolveRewardAddress } from '@meshsdk/core';
-import { getStoredSession, saveSession, clearSession, clearSessionCookie, parseSessionToken, isSessionExpired } from '@/lib/supabaseAuth';
+import {
+  getStoredSession,
+  saveSession,
+  clearSession,
+  clearSessionCookie,
+  parseSessionToken,
+  isSessionExpired,
+} from '@/lib/supabaseAuth';
 import { deriveDRepIdFromStakeAddress, checkDRepExists } from '@/utils/drepId';
 
 interface CIP30Api {
@@ -11,7 +25,12 @@ interface CIP30Api {
   signData(addr: string, payload: string): Promise<{ signature: string; key: string }>;
 }
 
-export type WalletErrorType = 'no_addresses' | 'extension_error' | 'user_rejected' | 'network' | 'unknown';
+export type WalletErrorType =
+  | 'no_addresses'
+  | 'extension_error'
+  | 'user_rejected'
+  | 'network'
+  | 'unknown';
 
 export interface WalletError {
   type: WalletErrorType;
@@ -46,11 +65,17 @@ function categorizeError(err: unknown, walletName?: string): WalletError {
 
   // Check for user rejection/cancellation patterns
   if (
-    lowerMessage.includes('user') && (lowerMessage.includes('reject') || lowerMessage.includes('cancel') || lowerMessage.includes('declined')) ||
+    (lowerMessage.includes('user') &&
+      (lowerMessage.includes('reject') ||
+        lowerMessage.includes('cancel') ||
+        lowerMessage.includes('declined'))) ||
     lowerMessage.includes('cancelled') ||
     lowerMessage.includes('user declined') ||
     lowerMessage.includes('refused') ||
-    (typeof err === 'object' && err !== null && 'code' in err && (err as Record<string, unknown>).code === 2) // CIP-30 user declined code
+    (typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as Record<string, unknown>).code === 2) // CIP-30 user declined code
   ) {
     return {
       type: 'user_rejected',
@@ -84,7 +109,11 @@ function categorizeError(err: unknown, walletName?: string): WalletError {
   }
 
   // Check for network errors
-  if (lowerMessage.includes('network') || lowerMessage.includes('fetch') || lowerMessage.includes('timeout')) {
+  if (
+    lowerMessage.includes('network') ||
+    lowerMessage.includes('fetch') ||
+    lowerMessage.includes('timeout')
+  ) {
     return {
       type: 'network',
       message: 'Network error',
@@ -151,7 +180,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkWallets = () => {
       const wallets = BrowserWallet.getInstalledWallets();
-      setAvailableWallets(wallets.map(w => w.name));
+      setAvailableWallets(wallets.map((w) => w.name));
     };
 
     checkWallets();
@@ -219,18 +248,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ stakeAddress: stakeAddr }),
               })
-                .then(r => r.json())
-                .then(({ drepId }) => { if (!cancelled && drepId) setDelegatedDrepId(drepId); })
+                .then((r) => r.json())
+                .then(({ drepId }) => {
+                  if (!cancelled && drepId) setDelegatedDrepId(drepId);
+                })
                 .catch(() => {});
 
               const derivedDRepId = deriveDRepIdFromStakeAddress(stakeAddr);
               if (derivedDRepId) {
-                checkDRepExists(derivedDRepId).then(exists => {
+                checkDRepExists(derivedDRepId).then((exists) => {
                   if (!cancelled && exists) setOwnDRepId(derivedDRepId);
                 });
               }
             }
-          } catch { /* ignore stake resolution failures */ }
+          } catch {
+            /* ignore stake resolution failures */
+          }
         }
       } catch {
         // Wallet extension unavailable — clear stored name but preserve session
@@ -240,8 +273,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
     })();
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const connect = async (name: string) => {
@@ -252,7 +287,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const browserWallet = await BrowserWallet.enable(name);
       setWallet(browserWallet);
       setWalletName(name);
-      
+
       // Try used addresses first, then fall back to unused addresses
       let addresses = await browserWallet.getUsedAddresses();
       if (!addresses || addresses.length === 0) {
@@ -279,7 +314,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           const { posthog } = await import('@/lib/posthog');
           posthog.capture('wallet_connected', { wallet_type: name });
           posthog.identify(addresses[0], { segment: 'holder', wallet_type: name });
-        } catch { /* posthog optional */ }
+        } catch {
+          /* posthog optional */
+        }
 
         // Non-blocking: resolve stake address, derive DRep ID, and look up delegation
         try {
@@ -291,14 +328,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ stakeAddress: stakeAddr }),
             })
-              .then(r => r.json())
-              .then(({ drepId }) => { if (drepId) setDelegatedDrepId(drepId); })
+              .then((r) => r.json())
+              .then(({ drepId }) => {
+                if (drepId) setDelegatedDrepId(drepId);
+              })
               .catch(() => {});
 
             // Derive DRep ID and verify it exists in our database
             const derivedDRepId = deriveDRepIdFromStakeAddress(stakeAddr);
             if (derivedDRepId) {
-              checkDRepExists(derivedDRepId).then(exists => {
+              checkDRepExists(derivedDRepId).then((exists) => {
                 if (exists) setOwnDRepId(derivedDRepId);
               });
             }
@@ -329,33 +368,44 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(WALLET_NAME_KEY);
   };
 
-  const signMessage = useCallback(async (message: string): Promise<{ signature: string; key: string } | null> => {
-    if (!walletName || !hexAddress) {
-      setError({ type: 'unknown', message: 'Wallet not connected', hint: 'Please connect your wallet first.' });
-      return null;
-    }
+  const signMessage = useCallback(
+    async (message: string): Promise<{ signature: string; key: string } | null> => {
+      if (!walletName || !hexAddress) {
+        setError({
+          type: 'unknown',
+          message: 'Wallet not connected',
+          hint: 'Please connect your wallet first.',
+        });
+        return null;
+      }
 
-    try {
-      // Bypass MeshJS wrapper — it incorrectly bech32-decodes the payload.
-      // CIP-30 signData expects hex address + hex-encoded payload.
-      const rawApi = await getCardanoApi(walletName)?.enable();
-      if (!rawApi) throw new Error('Could not access wallet API');
+      try {
+        // Bypass MeshJS wrapper — it incorrectly bech32-decodes the payload.
+        // CIP-30 signData expects hex address + hex-encoded payload.
+        const rawApi = await getCardanoApi(walletName)?.enable();
+        if (!rawApi) throw new Error('Could not access wallet API');
 
-      const hexPayload = Array.from(new TextEncoder().encode(message))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      const result = await rawApi.signData(hexAddress, hexPayload);
-      return { signature: result.signature, key: result.key };
-    } catch (err) {
-      setError(categorizeError(err, walletName));
-      console.error('Sign message error:', err);
-      return null;
-    }
-  }, [walletName, hexAddress]);
+        const hexPayload = Array.from(new TextEncoder().encode(message))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+        const result = await rawApi.signData(hexAddress, hexPayload);
+        return { signature: result.signature, key: result.key };
+      } catch (err) {
+        setError(categorizeError(err, walletName));
+        console.error('Sign message error:', err);
+        return null;
+      }
+    },
+    [walletName, hexAddress],
+  );
 
   const authenticate = useCallback(async (): Promise<boolean> => {
     if (!walletName || !address || !hexAddress) {
-      setError({ type: 'unknown', message: 'Connect wallet first', hint: 'Please connect your wallet before signing in.' });
+      setError({
+        type: 'unknown',
+        message: 'Connect wallet first',
+        hint: 'Please connect your wallet before signing in.',
+      });
       return false;
     }
 
@@ -412,11 +462,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ stakeAddress: stakeAddr }),
         })
-          .then(r => r.json())
-          .then(({ drepId }) => { setDelegatedDrepId(drepId || null); })
+          .then((r) => r.json())
+          .then(({ drepId }) => {
+            setDelegatedDrepId(drepId || null);
+          })
           .catch(() => {});
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [address]);
 
   return (

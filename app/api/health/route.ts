@@ -25,7 +25,7 @@ export async function GET() {
     const now = Date.now();
     let worstLevel: 'healthy' | 'degraded' | 'critical' = 'healthy';
 
-    const syncs = rows.map(row => {
+    const syncs = rows.map((row) => {
       const staleMins = row.last_run
         ? Math.round((now - new Date(row.last_run).getTime()) / 60000)
         : Infinity;

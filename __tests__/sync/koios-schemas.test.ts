@@ -11,21 +11,32 @@ describe('Koios Schema Validation', () => {
   describe('KoiosDRepListItemSchema', () => {
     it('accepts valid DRep list item', () => {
       const result = KoiosDRepListItemSchema.safeParse({
-        drep_id: 'drep1abc', drep_hash: 'abc123', hex: 'abc', has_script: false, registered: true,
+        drep_id: 'drep1abc',
+        drep_hash: 'abc123',
+        hex: 'abc',
+        has_script: false,
+        registered: true,
       });
       expect(result.success).toBe(true);
     });
 
     it('rejects item missing drep_id', () => {
       const result = KoiosDRepListItemSchema.safeParse({
-        drep_hash: 'abc123', hex: 'abc', has_script: false, registered: true,
+        drep_hash: 'abc123',
+        hex: 'abc',
+        has_script: false,
+        registered: true,
       });
       expect(result.success).toBe(false);
     });
 
     it('allows extra fields via passthrough', () => {
       const result = KoiosDRepListItemSchema.safeParse({
-        drep_id: 'drep1abc', drep_hash: 'abc123', hex: 'abc', has_script: false, registered: true,
+        drep_id: 'drep1abc',
+        drep_hash: 'abc123',
+        hex: 'abc',
+        has_script: false,
+        registered: true,
         extra_field: 'allowed',
       });
       expect(result.success).toBe(true);
@@ -35,10 +46,18 @@ describe('Koios Schema Validation', () => {
 
   describe('KoiosProposalSchema', () => {
     const validProposal = {
-      proposal_tx_hash: 'tx123', proposal_index: 0, proposal_id: 'gov_action1abc',
-      proposal_type: 'InfoAction', deposit: '100000', return_address: 'addr1',
-      proposed_epoch: 100, ratified_epoch: null, enacted_epoch: null,
-      dropped_epoch: null, expired_epoch: null, block_time: 1700000000,
+      proposal_tx_hash: 'tx123',
+      proposal_index: 0,
+      proposal_id: 'gov_action1abc',
+      proposal_type: 'InfoAction',
+      deposit: '100000',
+      return_address: 'addr1',
+      proposed_epoch: 100,
+      ratified_epoch: null,
+      enacted_epoch: null,
+      dropped_epoch: null,
+      expired_epoch: null,
+      block_time: 1700000000,
     };
 
     it('accepts valid proposal', () => {
@@ -51,15 +70,23 @@ describe('Koios Schema Validation', () => {
     });
 
     it('rejects proposal with wrong type for block_time', () => {
-      expect(KoiosProposalSchema.safeParse({ ...validProposal, block_time: 'not-a-number' }).success).toBe(false);
+      expect(
+        KoiosProposalSchema.safeParse({ ...validProposal, block_time: 'not-a-number' }).success,
+      ).toBe(false);
     });
   });
 
   describe('KoiosVoteListSchema', () => {
     const validVote = {
-      vote_tx_hash: 'vtx1', voter_id: 'drep1', proposal_tx_hash: 'tx1',
-      proposal_index: 0, epoch_no: 100, block_time: 1700000000,
-      vote: 'Yes', meta_url: null, meta_hash: null,
+      vote_tx_hash: 'vtx1',
+      voter_id: 'drep1',
+      proposal_tx_hash: 'tx1',
+      proposal_index: 0,
+      epoch_no: 100,
+      block_time: 1700000000,
+      vote: 'Yes',
+      meta_url: null,
+      meta_hash: null,
     };
 
     it('accepts valid vote', () => {
@@ -74,8 +101,12 @@ describe('Koios Schema Validation', () => {
   describe('KoiosTreasurySchema', () => {
     it('accepts valid treasury data', () => {
       const result = KoiosTreasurySchema.safeParse({
-        epoch_no: 100, treasury: '12345', reserves: '67890',
-        supply: '99999', reward: '111', circulation: '88888',
+        epoch_no: 100,
+        treasury: '12345',
+        reserves: '67890',
+        supply: '99999',
+        reward: '111',
+        circulation: '88888',
       });
       expect(result.success).toBe(true);
     });

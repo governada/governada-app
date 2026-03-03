@@ -18,10 +18,14 @@ export function NarrativeSummary({ text, accentColor, className = '' }: Narrativ
       animate={{ opacity: 1, y: 0 }}
       transition={spring.smooth}
       className={`text-sm text-muted-foreground leading-relaxed ${className}`}
-      style={accentColor ? {
-        borderLeft: `2px solid ${accentColor}`,
-        paddingLeft: '0.75rem',
-      } : undefined}
+      style={
+        accentColor
+          ? {
+              borderLeft: `2px solid ${accentColor}`,
+              paddingLeft: '0.75rem',
+            }
+          : undefined
+      }
     >
       {text}
     </motion.p>

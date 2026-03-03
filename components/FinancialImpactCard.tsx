@@ -29,7 +29,9 @@ export function FinancialImpactCard({
       posthog.capture('financial_impact_card_viewed', {
         withdrawal_ada: withdrawalAda,
         treasury_tier: treasuryTier,
-        pct_of_treasury: treasuryBalanceAda ? ((withdrawalAda / treasuryBalanceAda) * 100).toFixed(2) : null,
+        pct_of_treasury: treasuryBalanceAda
+          ? ((withdrawalAda / treasuryBalanceAda) * 100).toFixed(2)
+          : null,
       });
     }
   }, [withdrawalAda, treasuryTier, treasuryBalanceAda, compact]);
@@ -50,9 +52,7 @@ export function FinancialImpactCard({
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Landmark className="h-3.5 w-3.5" />
         <span>{formatAda(withdrawalAda)} ADA</span>
-        {pctOfTreasury && (
-          <span className="text-xs">({pctOfTreasury}% of treasury)</span>
-        )}
+        {pctOfTreasury && <span className="text-xs">({pctOfTreasury}% of treasury)</span>}
       </div>
     );
   }

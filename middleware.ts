@@ -11,7 +11,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
-  'Access-Control-Expose-Headers': 'X-Request-Id, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After',
+  'Access-Control-Expose-Headers':
+    'X-Request-Id, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -21,7 +22,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Auth gate: redirect to home if no session cookie
-  if (AUTH_REQUIRED_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+  if (AUTH_REQUIRED_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     const session = request.cookies.get('drepscore_session');
     if (!session?.value) {
       return NextResponse.redirect(new URL('/', request.url));

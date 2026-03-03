@@ -14,7 +14,6 @@ import {
   ProposalVotingSummaryData,
 } from '@/types/koios';
 
-
 const KOIOS_BASE_URL = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
 const KOIOS_API_KEY = process.env.KOIOS_API_KEY;
 
@@ -25,7 +24,11 @@ let _koiosCallCount = 0;
 let _koiosTotalMs = 0;
 let _koiosSlowestMs = 0;
 
-export function resetKoiosMetrics() { _koiosCallCount = 0; _koiosTotalMs = 0; _koiosSlowestMs = 0; }
+export function resetKoiosMetrics() {
+  _koiosCallCount = 0;
+  _koiosTotalMs = 0;
+  _koiosSlowestMs = 0;
+}
 export function getKoiosMetrics() {
   return {
     koios_calls: _koiosCallCount,
@@ -56,21 +59,27 @@ function retryDelay(attempt: number, status?: number): number {
 async function koiosFetch<T>(
   endpoint: string,
   options: RequestInit = {},
-  retryCount = 0
+  retryCount = 0,
 ): Promise<T> {
   const url = `${KOIOS_BASE_URL}${endpoint}`;
   const isDev = process.env.NODE_ENV === 'development';
 
   // Circuit breaker: if Koios returned 503 recently, wait before hammering it
-  if (_lastKoios503 && Date.now() - _lastKoios503 < CIRCUIT_BREAKER_COOLDOWN_MS && retryCount === 0) {
+  if (
+    _lastKoios503 &&
+    Date.now() - _lastKoios503 < CIRCUIT_BREAKER_COOLDOWN_MS &&
+    retryCount === 0
+  ) {
     const waitMs = CIRCUIT_BREAKER_COOLDOWN_MS - (Date.now() - _lastKoios503);
-    console.warn(`[Koios] Circuit breaker active, waiting ${Math.round(waitMs / 1000)}s before ${endpoint}`);
-    await new Promise(r => setTimeout(r, waitMs));
+    console.warn(
+      `[Koios] Circuit breaker active, waiting ${Math.round(waitMs / 1000)}s before ${endpoint}`,
+    );
+    await new Promise((r) => setTimeout(r, waitMs));
   }
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(KOIOS_API_KEY && { 'Authorization': `Bearer ${KOIOS_API_KEY}` }),
+    ...(KOIOS_API_KEY && { Authorization: `Bearer ${KOIOS_API_KEY}` }),
     ...options.headers,
   };
 
@@ -104,8 +113,10 @@ async function koiosFetch<T>(
 
       if ((response.status === 429 || response.status === 503) && retryCount < MAX_RETRIES) {
         const waitTime = retryDelay(retryCount, response.status);
-        console.warn(`[Koios] ${response.status} on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        console.warn(
+          `[Koios] ${response.status} on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
         return koiosFetch<T>(endpoint, options, retryCount + 1);
       }
 
@@ -122,15 +133,19 @@ async function koiosFetch<T>(
 
     if (error instanceof Error && error.name === 'AbortError' && retryCount < MAX_RETRIES) {
       const waitTime = retryDelay(retryCount);
-      console.warn(`[Koios] Timeout on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`);
-      await new Promise(r => setTimeout(r, waitTime));
+      console.warn(
+        `[Koios] Timeout on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`,
+      );
+      await new Promise((r) => setTimeout(r, waitTime));
       return koiosFetch<T>(endpoint, options, retryCount + 1);
     }
 
     const isTimeout = error instanceof Error && error.name === 'AbortError';
     const errorMessage = isTimeout
       ? `Request timeout after ${KOIOS_REQUEST_TIMEOUT_MS}ms: ${endpoint}`
-      : (error instanceof Error ? error.message : String(error));
+      : error instanceof Error
+        ? error.message
+        : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
 
     const msg = errorMessage || 'Unknown error fetching from Koios';
@@ -166,7 +181,9 @@ async function fetchAllDRepList(): Promise<DRepListResponse> {
     page++;
 
     if (isDev) {
-      console.log(`[Koios] drep_list page ${page}: ${pageData.length} DReps (total: ${all.length})`);
+      console.log(
+        `[Koios] drep_list page ${page}: ${pageData.length} DReps (total: ${all.length})`,
+      );
     }
 
     if (pageData.length < DREP_LIST_PAGE_SIZE) {
@@ -214,7 +231,9 @@ export async function fetchDRepMetadata(drepIds: string[]): Promise<DRepMetadata
   const isDev = process.env.NODE_ENV === 'development';
 
   if (isDev) {
-    console.log(`[Koios] Fetching metadata for ${drepIds.length} DReps (includes name, ticker, description)`);
+    console.log(
+      `[Koios] Fetching metadata for ${drepIds.length} DReps (includes name, ticker, description)`,
+    );
   }
 
   const data = await koiosFetch<DRepMetadataResponse>('/drep_metadata', {
@@ -223,17 +242,19 @@ export async function fetchDRepMetadata(drepIds: string[]): Promise<DRepMetadata
   });
 
   if (isDev && data) {
-    const withCIP119Names = data.filter(m => m.meta_json?.body?.givenName).length;
-    const withLegacyNames = data.filter(m => m.meta_json?.name).length;
-    const withTickers = data.filter(m => m.meta_json?.ticker).length;
-    const withCIP119Objectives = data.filter(m => m.meta_json?.body?.objectives).length;
-    const withLegacyDescriptions = data.filter(m => m.meta_json?.description).length;
-    const withAnchorUrl = data.filter(m => m.meta_url !== null).length;
+    const withCIP119Names = data.filter((m) => m.meta_json?.body?.givenName).length;
+    const withLegacyNames = data.filter((m) => m.meta_json?.name).length;
+    const withTickers = data.filter((m) => m.meta_json?.ticker).length;
+    const withCIP119Objectives = data.filter((m) => m.meta_json?.body?.objectives).length;
+    const withLegacyDescriptions = data.filter((m) => m.meta_json?.description).length;
+    const withAnchorUrl = data.filter((m) => m.meta_url !== null).length;
 
     const totalNames = withCIP119Names + withLegacyNames;
     const totalDescriptions = withCIP119Objectives + withLegacyDescriptions;
 
-    console.log(`[Koios] Metadata: ${totalNames} with names (${withCIP119Names} CIP-119, ${withLegacyNames} legacy), ${withTickers} with tickers, ${totalDescriptions} with descriptions (${withCIP119Objectives} CIP-119, ${withLegacyDescriptions} legacy), ${withAnchorUrl} with anchor URLs`);
+    console.log(
+      `[Koios] Metadata: ${totalNames} with names (${withCIP119Names} CIP-119, ${withLegacyNames} legacy), ${withTickers} with tickers, ${totalDescriptions} with descriptions (${withCIP119Objectives} CIP-119, ${withLegacyDescriptions} legacy), ${withAnchorUrl} with anchor URLs`,
+    );
   }
 
   return data || [];
@@ -277,41 +298,41 @@ export function parseMetadataFields(metadata: DRepMetadata | null | undefined): 
   }
 
   const json = metadata.meta_json;
-  
+
   // NAME EXTRACTION (priority order)
   // 1. Try direct fields first (custom/legacy format)
   let name = extractJsonLdValue(json.name);
-  
+
   // 2. Try CIP-119 standard: body.givenName (primary governance metadata field)
   if (!name && json.body) {
     name = extractJsonLdValue((json.body as any).givenName);
   }
-  
+
   // 3. Try nested body.name (legacy nested format)
   if (!name && json.body) {
     name = extractJsonLdValue((json.body as any).name);
   }
-  
+
   // 4. Try givenName at root (alternative location)
   if (!name) {
     name = extractJsonLdValue((json as any).givenName);
   }
-  
+
   // TICKER EXTRACTION (not part of CIP-119, but check legacy formats)
   let ticker = extractJsonLdValue(json.ticker);
   if (!ticker && json.body) {
     ticker = extractJsonLdValue((json.body as any).ticker);
   }
-  
+
   // DESCRIPTION EXTRACTION (priority order)
   // 1. Try direct description field (custom/legacy)
   let description = extractJsonLdValue(json.description);
-  
+
   // 2. Try CIP-119 standard: body.objectives (primary description field)
   if (!description && json.body) {
     const objectives = extractJsonLdValue((json.body as any).objectives);
     const motivations = extractJsonLdValue((json.body as any).motivations);
-    
+
     // Combine objectives and motivations if both exist
     if (objectives && motivations) {
       description = `${objectives}\n\n${motivations}`;
@@ -319,12 +340,12 @@ export function parseMetadataFields(metadata: DRepMetadata | null | undefined): 
       description = objectives || motivations || null;
     }
   }
-  
+
   // 3. Try nested body.description (legacy nested format)
   if (!description && json.body) {
     description = extractJsonLdValue((json.body as any).description);
   }
-  
+
   return { name, ticker, description };
 }
 
@@ -389,7 +410,9 @@ export async function fetchProposals(): Promise<ProposalListResponse> {
     page++;
 
     if (isDev) {
-      console.log(`[Koios] proposal_list page ${page}: ${pageData.length} proposals (total: ${all.length})`);
+      console.log(
+        `[Koios] proposal_list page ${page}: ${pageData.length} proposals (total: ${all.length})`,
+      );
     }
 
     if (pageData.length < PROPOSAL_LIST_PAGE_SIZE) {
@@ -412,19 +435,14 @@ export async function fetchDRepsWithDetails(drepIds: string[]) {
   try {
     const batchSize = 50; // Koios API batch limit
     const batches = [];
-    
+
     for (let i = 0; i < drepIds.length; i += batchSize) {
       const batch = drepIds.slice(i, i + batchSize);
-      batches.push(
-        Promise.all([
-          fetchDRepInfo(batch),
-          fetchDRepMetadata(batch),
-        ])
-      );
+      batches.push(Promise.all([fetchDRepInfo(batch), fetchDRepMetadata(batch)]));
     }
 
     const results = await Promise.all(batches);
-    
+
     // Combine results from all batches
     const allInfo = results.flatMap(([info]) => info);
     const allMetadata = results.flatMap(([, metadata]) => metadata);
@@ -447,17 +465,19 @@ export async function fetchDRepsWithDetails(drepIds: string[]) {
  * Batch fetch votes for multiple DReps
  * Note: This can be slow for many DReps, use sparingly
  */
-export async function fetchDRepsVotes(drepIds: string[]): Promise<Record<string, DRepVotesResponse>> {
+export async function fetchDRepsVotes(
+  drepIds: string[],
+): Promise<Record<string, DRepVotesResponse>> {
   const isDev = process.env.NODE_ENV === 'development';
-  
+
   try {
     if (isDev) {
       console.log(`[Koios] Fetching votes for ${drepIds.length} DReps...`);
     }
-    
+
     // Fetch votes sequentially to avoid overwhelming the API
     const votesMap: Record<string, DRepVotesResponse> = {};
-    
+
     for (const drepId of drepIds) {
       try {
         const votes = await fetchDRepVotes(drepId);
@@ -468,7 +488,7 @@ export async function fetchDRepsVotes(drepIds: string[]): Promise<Record<string,
         votesMap[drepId] = [];
       }
     }
-    
+
     return votesMap;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -500,7 +520,7 @@ export async function fetchDelegatedDRep(stakeAddress: string): Promise<string |
     const url = `${KOIOS_BASE_URL}/account_info`;
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      ...(KOIOS_API_KEY && { 'Authorization': `Bearer ${KOIOS_API_KEY}` }),
+      ...(KOIOS_API_KEY && { Authorization: `Bearer ${KOIOS_API_KEY}` }),
     };
 
     const response = await fetch(url, {
@@ -535,8 +555,8 @@ export async function fetchDRepDelegatorCount(drepId: string): Promise<number> {
   try {
     const response = await fetch(url, {
       headers: {
-        'Prefer': 'count=exact',
-        ...(KOIOS_API_KEY && { 'Authorization': `Bearer ${KOIOS_API_KEY}` }),
+        Prefer: 'count=exact',
+        ...(KOIOS_API_KEY && { Authorization: `Bearer ${KOIOS_API_KEY}` }),
       },
       cache: 'no-store',
       signal: controller.signal,
@@ -568,10 +588,10 @@ export async function fetchDRepDelegatorCount(drepId: string): Promise<number> {
  * Used for backfilling historical power snapshots.
  */
 export async function fetchDRepVotingPowerHistory(
-  drepId: string
+  drepId: string,
 ): Promise<{ epoch_no: number; amount: string }[]> {
   const data = await koiosFetch<{ drep_id: string; epoch_no: number; amount: string }[]>(
-    `/drep_voting_power_history?_drep_id=${encodeURIComponent(drepId)}`
+    `/drep_voting_power_history?_drep_id=${encodeURIComponent(drepId)}`,
   );
   return (data || []).map(({ epoch_no, amount }) => ({ epoch_no, amount }));
 }
@@ -596,7 +616,7 @@ interface GovernanceThresholdParams {
 export async function fetchGovernanceThresholds(): Promise<Record<string, number> | null> {
   try {
     const data = await koiosFetch<GovernanceThresholdParams[]>(
-      '/epoch_params?limit=1&select=dvt_motion_no_confidence,dvt_committee_normal,dvt_committee_no_confidence,dvt_update_to_constitution,dvt_hard_fork_initiation,dvt_p_p_network_group,dvt_p_p_economic_group,dvt_p_p_technical_group,dvt_p_p_gov_group,dvt_treasury_withdrawal'
+      '/epoch_params?limit=1&select=dvt_motion_no_confidence,dvt_committee_normal,dvt_committee_no_confidence,dvt_update_to_constitution,dvt_hard_fork_initiation,dvt_p_p_network_group,dvt_p_p_economic_group,dvt_p_p_technical_group,dvt_p_p_gov_group,dvt_treasury_withdrawal',
     );
     if (!data || data.length === 0) return null;
     return data[0] as Record<string, number>;
@@ -619,19 +639,21 @@ export async function fetchAllVotesBulk(): Promise<Record<string, DRepVote[]>> {
 
   while (true) {
     const url = `/vote_list?voter_role=eq.DRep&limit=${VOTE_LIST_PAGE_SIZE}&offset=${offset}`;
-    const data = await koiosFetch<Array<{
-      vote_tx_hash: string;
-      voter_id: string;
-      proposal_tx_hash: string;
-      proposal_index: number;
-      proposal_type: string;
-      epoch_no: number;
-      block_time: number;
-      vote: 'Yes' | 'No' | 'Abstain';
-      meta_url: string | null;
-      meta_hash: string | null;
-      meta_json: DRepVote['meta_json'];
-    }>>(url, { cache: 'no-store' });
+    const data = await koiosFetch<
+      Array<{
+        vote_tx_hash: string;
+        voter_id: string;
+        proposal_tx_hash: string;
+        proposal_index: number;
+        proposal_type: string;
+        epoch_no: number;
+        block_time: number;
+        vote: 'Yes' | 'No' | 'Abstain';
+        meta_url: string | null;
+        meta_hash: string | null;
+        meta_json: DRepVote['meta_json'];
+      }>
+    >(url, { cache: 'no-store' });
 
     const pageData = data || [];
     page++;
@@ -652,7 +674,9 @@ export async function fetchAllVotesBulk(): Promise<Record<string, DRepVote[]>> {
       });
     }
 
-    console.log(`[Koios] vote_list page ${page}: ${pageData.length} votes (total DReps so far: ${Object.keys(allVotes).length})`);
+    console.log(
+      `[Koios] vote_list page ${page}: ${pageData.length} votes (total DReps so far: ${Object.keys(allVotes).length})`,
+    );
 
     if (pageData.length < VOTE_LIST_PAGE_SIZE) break;
     offset += VOTE_LIST_PAGE_SIZE;
@@ -667,7 +691,7 @@ export async function fetchAllVotesBulk(): Promise<Record<string, DRepVote[]>> {
  * Running proposals in parallel cuts fast sync vote fetch from O(n*serial) to O(n/5*serial).
  */
 export async function fetchVotesForProposals(
-  proposals: { txHash: string; index: number }[]
+  proposals: { txHash: string; index: number }[],
 ): Promise<Record<string, DRepVote[]>> {
   const allVotes: Record<string, DRepVote[]> = {};
   const VOTE_FETCH_CONCURRENCY = 5;
@@ -676,18 +700,20 @@ export async function fetchVotesForProposals(
     let offset = 0;
     while (true) {
       const url = `/vote_list?voter_role=eq.DRep&proposal_tx_hash=eq.${encodeURIComponent(txHash)}&proposal_index=eq.${index}&limit=${VOTE_LIST_PAGE_SIZE}&offset=${offset}`;
-      const data = await koiosFetch<Array<{
-        vote_tx_hash: string;
-        voter_id: string;
-        proposal_tx_hash: string;
-        proposal_index: number;
-        epoch_no: number;
-        block_time: number;
-        vote: 'Yes' | 'No' | 'Abstain';
-        meta_url: string | null;
-        meta_hash: string | null;
-        meta_json: DRepVote['meta_json'];
-      }>>(url);
+      const data = await koiosFetch<
+        Array<{
+          vote_tx_hash: string;
+          voter_id: string;
+          proposal_tx_hash: string;
+          proposal_index: number;
+          epoch_no: number;
+          block_time: number;
+          vote: 'Yes' | 'No' | 'Abstain';
+          meta_url: string | null;
+          meta_hash: string | null;
+          meta_json: DRepVote['meta_json'];
+        }>
+      >(url);
 
       const pageData = data || [];
       for (const row of pageData) {
@@ -726,10 +752,10 @@ export async function fetchVotesForProposals(
  * Throws on API/network errors — callers must handle.
  */
 export async function fetchProposalVotingSummary(
-  proposalId: string
+  proposalId: string,
 ): Promise<ProposalVotingSummaryData | null> {
   const data = await koiosFetch<ProposalVotingSummaryData[]>(
-    `/proposal_voting_summary?_proposal_id=${encodeURIComponent(proposalId)}`
+    `/proposal_voting_summary?_proposal_id=${encodeURIComponent(proposalId)}`,
   );
   return data?.[0] || null;
 }
@@ -766,10 +792,12 @@ interface KoiosTotalsRow {
 /**
  * Fetch treasury balance for the current epoch (latest row from /totals).
  */
-export async function fetchTreasuryBalance(): Promise<{ epoch: number; balance: bigint; reserves: bigint }> {
-  const data = await koiosFetch<KoiosTotalsRow[]>(
-    '/totals?limit=1&order=epoch_no.desc'
-  );
+export async function fetchTreasuryBalance(): Promise<{
+  epoch: number;
+  balance: bigint;
+  reserves: bigint;
+}> {
+  const data = await koiosFetch<KoiosTotalsRow[]>('/totals?limit=1&order=epoch_no.desc');
   if (!data || data.length === 0) {
     throw new Error('No treasury data returned from Koios /totals');
   }
@@ -786,14 +814,16 @@ export async function fetchTreasuryBalance(): Promise<{ epoch: number; balance: 
  * Returns rows ordered by epoch ascending.
  */
 export async function fetchTreasuryHistory(
-  epochCount = 100
-): Promise<Array<{ epoch: number; balance: bigint; reserves: bigint; supply: bigint; fees: bigint }>> {
+  epochCount = 100,
+): Promise<
+  Array<{ epoch: number; balance: bigint; reserves: bigint; supply: bigint; fees: bigint }>
+> {
   const data = await koiosFetch<KoiosTotalsRow[]>(
-    `/totals?limit=${epochCount}&order=epoch_no.desc`
+    `/totals?limit=${epochCount}&order=epoch_no.desc`,
   );
   if (!data) return [];
   return data
-    .map(row => ({
+    .map((row) => ({
       epoch: row.epoch_no,
       balance: BigInt(row.treasury),
       reserves: BigInt(row.reserves),
@@ -840,7 +870,7 @@ interface AccountAssetRow {
  * Returns a Map of drepId → "$handleName".
  */
 export async function resolveADAHandles(
-  dreps: Array<{ drepId: string; drepHash: string }>
+  dreps: Array<{ drepId: string; drepHash: string }>,
 ): Promise<Map<string, string>> {
   const handleMap = new Map<string, string>();
   const stakeTodrep = new Map<string, string>();
@@ -860,7 +890,7 @@ export async function resolveADAHandles(
         {
           method: 'POST',
           body: JSON.stringify({ _stake_addresses: batch }),
-        }
+        },
       );
 
       for (const row of data || []) {
@@ -873,10 +903,15 @@ export async function resolveADAHandles(
           if (name && !name.startsWith('\x00')) {
             handleMap.set(drepId, `$${name}`);
           }
-        } catch { /* skip malformed asset names */ }
+        } catch {
+          /* skip malformed asset names */
+        }
       }
     } catch (err) {
-      console.warn(`[Koios] ADA Handle batch ${Math.floor(i / HANDLE_BATCH_SIZE) + 1} failed:`, err);
+      console.warn(
+        `[Koios] ADA Handle batch ${Math.floor(i / HANDLE_BATCH_SIZE) + 1} failed:`,
+        err,
+      );
     }
   }
 

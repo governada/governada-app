@@ -7,8 +7,7 @@
 
 import { MeshTxBuilder, KoiosProvider, BrowserWallet } from '@meshsdk/core';
 
-const KOIOS_BASE =
-  process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
+const KOIOS_BASE = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
 
 export type DelegationErrorCode =
   | 'no_wallet'
@@ -37,17 +36,36 @@ function classifyError(err: unknown): DelegationError {
   const msg = err instanceof Error ? err.message : String(err);
   const lower = msg.toLowerCase();
 
-  if (lower.includes('user') && (lower.includes('reject') || lower.includes('cancel') || lower.includes('declined'))) {
+  if (
+    lower.includes('user') &&
+    (lower.includes('reject') || lower.includes('cancel') || lower.includes('declined'))
+  ) {
     return new DelegationError('user_rejected', msg, 'No worries -- you can delegate anytime.');
   }
   if (lower.includes('insufficient') || lower.includes('not enough') || lower.includes('utxo')) {
-    return new DelegationError('insufficient_funds', msg, 'You need at least 2 ADA to cover the transaction fee and deposit.');
+    return new DelegationError(
+      'insufficient_funds',
+      msg,
+      'You need at least 2 ADA to cover the transaction fee and deposit.',
+    );
   }
   if (lower.includes('already registered')) {
-    return new DelegationError('tx_build_failed', msg, 'Stake key registration conflict. Please try again.');
+    return new DelegationError(
+      'tx_build_failed',
+      msg,
+      'Stake key registration conflict. Please try again.',
+    );
   }
-  if (lower.includes('not supported') || lower.includes('not implemented') || lower.includes('api.get')) {
-    return new DelegationError('wallet_unsupported', msg, 'Your wallet may not support governance transactions. Try Eternl or Lace.');
+  if (
+    lower.includes('not supported') ||
+    lower.includes('not implemented') ||
+    lower.includes('api.get')
+  ) {
+    return new DelegationError(
+      'wallet_unsupported',
+      msg,
+      'Your wallet may not support governance transactions. Try Eternl or Lace.',
+    );
   }
   return new DelegationError('unknown', msg, 'Something went wrong. Please try again.');
 }
@@ -94,9 +112,7 @@ export function checkGovernanceSupport(walletName: string): GovernanceCheck {
 
   const extensions = cardanoApi.supportedExtensions;
   if (Array.isArray(extensions)) {
-    const hasCip95 = extensions.some(
-      (ext: { cip: number }) => ext.cip === 95,
-    );
+    const hasCip95 = extensions.some((ext: { cip: number }) => ext.cip === 95);
     if (hasCip95) return { supported: true };
   }
 
@@ -146,9 +162,7 @@ function validateMainnet(rewardAddress: string): void {
  * Run preflight checks: resolve reward address, validate network, check
  * stake registration. Returns info needed for the confirmation step UI.
  */
-export async function preflightDelegation(
-  wallet: BrowserWallet,
-): Promise<DelegationPreflight> {
+export async function preflightDelegation(wallet: BrowserWallet): Promise<DelegationPreflight> {
   const rewardAddresses = await wallet.getRewardAddresses();
   const rewardAddress = rewardAddresses?.[0];
 
@@ -188,7 +202,7 @@ export async function waitForTxConfirmation(
   const intervalMs = opts?.intervalMs ?? 10_000;
 
   for (let i = 0; i < maxAttempts; i++) {
-    await new Promise(r => setTimeout(r, intervalMs));
+    await new Promise((r) => setTimeout(r, intervalMs));
     try {
       const res = await fetch(`${KOIOS_BASE}/tx_status`, {
         method: 'POST',

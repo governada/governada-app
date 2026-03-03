@@ -22,10 +22,20 @@ export const checkNotifications = inngest.createFunction(
   },
   { cron: '15 */6 * * *' },
   async ({ step }) => {
-    const notificationsEnabled = await step.run('check-flag', async () => getFeatureFlag('notifications'));
+    const notificationsEnabled = await step.run('check-flag', async () =>
+      getFeatureFlag('notifications'),
+    );
     if (!notificationsEnabled) return { skipped: true, reason: 'notifications flag disabled' };
 
-    const stats = { scoreChange: 0, delegation: 0, pending: 0, urgent: 0, milestone: 0, rank: 0, opportunity: 0 };
+    const stats = {
+      scoreChange: 0,
+      delegation: 0,
+      pending: 0,
+      urgent: 0,
+      milestone: 0,
+      rank: 0,
+      opportunity: 0,
+    };
 
     // Step 1: Gather claimed DReps and their data
     const context = await step.run('gather-claimed-dreps', async () => {
@@ -36,13 +46,30 @@ export const checkNotifications = inngest.createFunction(
         .select('wallet_address, claimed_drep_id')
         .not('claimed_drep_id', 'is', null);
 
-      if (!users || users.length === 0) return { users: [] as any[], dreps: [] as any[], proposals: [] as any[], allDreps: [] as any[] };
+      if (!users || users.length === 0)
+        return {
+          users: [] as any[],
+          dreps: [] as any[],
+          proposals: [] as any[],
+          allDreps: [] as any[],
+        };
 
-      const drepIds = users.map(u => u.claimed_drep_id).filter(Boolean);
+      const drepIds = users.map((u) => u.claimed_drep_id).filter(Boolean);
 
       const [drepsResult, proposalsResult] = await Promise.all([
-        supabase.from('dreps').select('id, score, info, effective_participation, rationale_rate, reliability_score, profile_completeness').in('id', drepIds),
-        supabase.from('proposals').select('tx_hash, proposal_index, proposal_type, title, expiration_epoch').is('ratified_epoch', null).is('enacted_epoch', null).is('dropped_epoch', null).is('expired_epoch', null),
+        supabase
+          .from('dreps')
+          .select(
+            'id, score, info, effective_participation, rationale_rate, reliability_score, profile_completeness',
+          )
+          .in('id', drepIds),
+        supabase
+          .from('proposals')
+          .select('tx_hash, proposal_index, proposal_type, title, expiration_epoch')
+          .is('ratified_epoch', null)
+          .is('enacted_epoch', null)
+          .is('dropped_epoch', null)
+          .is('expired_epoch', null),
       ]);
 
       // Get all dreps for ranking
@@ -99,7 +126,12 @@ export const checkNotifications = inngest.createFunction(
           .order('epoch_no', { ascending: false })
           .limit(2);
 
-        if (snapshots && snapshots.length >= 2 && snapshots[0].delegator_count != null && snapshots[1].delegator_count != null) {
+        if (
+          snapshots &&
+          snapshots.length >= 2 &&
+          snapshots[0].delegator_count != null &&
+          snapshots[1].delegator_count != null
+        ) {
           const delegatorDelta = snapshots[0].delegator_count - snapshots[1].delegator_count;
           if (delegatorDelta !== 0) {
             await notifyUser(user.wallet_address, {
@@ -202,7 +234,7 @@ export const checkNotifications = inngest.createFunction(
           const newMilestones = await checkAndAwardMilestones(drep.id);
 
           for (const key of newMilestones) {
-            const def = MILESTONES.find(m => m.key === key);
+            const def = MILESTONES.find((m) => m.key === key);
             if (def) {
               await notifyUser(user.wallet_address, {
                 eventType: 'near-milestone',
@@ -279,5 +311,5 @@ export const checkNotifications = inngest.createFunction(
     });
 
     return { stats };
-  }
+  },
 );

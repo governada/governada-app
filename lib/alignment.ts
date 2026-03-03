@@ -10,7 +10,7 @@ import { EnrichedDRep } from '@/lib/koios';
 const TREASURY_KEYWORDS = ['treasury', 'withdrawal', 'budget', 'fund', 'spend', 'grant', 'funding'];
 
 // Treasury amount tiers (in ADA)
-const TREASURY_TIER_ROUTINE = 1_000_000;      // < 1M ADA
+const TREASURY_TIER_ROUTINE = 1_000_000; // < 1M ADA
 const TREASURY_TIER_SIGNIFICANT = 20_000_000; // 1M - 20M ADA
 // > 20M ADA = Major
 
@@ -26,15 +26,15 @@ export function classifyProposal(proposal: ProposalInfo): ClassifiedProposal {
   switch (proposal.proposal_type) {
     case 'TreasuryWithdrawals':
       relevantPrefs.push('treasury-conservative', 'smart-treasury-growth');
-      
+
       // Calculate total withdrawal amount
       if (proposal.withdrawal && proposal.withdrawal.length > 0) {
         const totalLovelace = proposal.withdrawal.reduce(
           (sum, w) => sum + BigInt(w.amount || '0'),
-          BigInt(0)
+          BigInt(0),
         );
         withdrawalAmountAda = Number(totalLovelace / BigInt(1_000_000));
-        
+
         // Determine tier
         if (withdrawalAmountAda < TREASURY_TIER_ROUTINE) {
           treasuryTier = 'routine';
@@ -73,22 +73,42 @@ export function classifyProposal(proposal: ProposalInfo): ClassifiedProposal {
         .join(' ')
         .toLowerCase();
 
-      if (searchText.includes('defi') || searchText.includes('innovation') || searchText.includes('growth')) {
+      if (
+        searchText.includes('defi') ||
+        searchText.includes('innovation') ||
+        searchText.includes('growth')
+      ) {
         relevantPrefs.push('innovation-defi-growth');
       }
-      if (searchText.includes('security') || searchText.includes('stability') || searchText.includes('parameter')) {
+      if (
+        searchText.includes('security') ||
+        searchText.includes('stability') ||
+        searchText.includes('parameter')
+      ) {
         relevantPrefs.push('protocol-security-first');
       }
-      if (searchText.includes('treasury') || searchText.includes('fund') || searchText.includes('budget')) {
+      if (
+        searchText.includes('treasury') ||
+        searchText.includes('fund') ||
+        searchText.includes('budget')
+      ) {
         relevantPrefs.push('treasury-conservative', 'smart-treasury-growth');
       }
-      if (searchText.includes('decentralization') || searchText.includes('governance') || searchText.includes('community')) {
+      if (
+        searchText.includes('decentralization') ||
+        searchText.includes('governance') ||
+        searchText.includes('community')
+      ) {
         relevantPrefs.push('strong-decentralization');
       }
-      if (searchText.includes('transparent') || searchText.includes('accountability') || searchText.includes('reporting')) {
+      if (
+        searchText.includes('transparent') ||
+        searchText.includes('accountability') ||
+        searchText.includes('reporting')
+      ) {
         relevantPrefs.push('responsible-governance');
       }
-      
+
       // Default if no keywords matched
       if (relevantPrefs.length === 0) {
         relevantPrefs.push('responsible-governance');
@@ -101,8 +121,16 @@ export function classifyProposal(proposal: ProposalInfo): ClassifiedProposal {
     index: proposal.proposal_index,
     proposalId: proposal.proposal_id || '',
     type: proposal.proposal_type,
-    title: proposal.meta_json?.body?.title || proposal.meta_json?.title || `Proposal ${proposal.proposal_tx_hash.slice(0, 8)}...`,
-    abstract: proposal.meta_json?.body?.abstract || proposal.meta_json?.abstract || proposal.proposal_description || proposal.meta_json?.body?.motivation || null,
+    title:
+      proposal.meta_json?.body?.title ||
+      proposal.meta_json?.title ||
+      `Proposal ${proposal.proposal_tx_hash.slice(0, 8)}...`,
+    abstract:
+      proposal.meta_json?.body?.abstract ||
+      proposal.meta_json?.abstract ||
+      proposal.proposal_description ||
+      proposal.meta_json?.body?.motivation ||
+      null,
     withdrawalAmountAda,
     treasuryTier,
     paramChanges: proposal.param_proposal,
@@ -129,9 +157,9 @@ export function classifyProposals(proposals: ProposalInfo[]): ClassifiedProposal
  */
 export function getProposalsForPref(
   classifiedProposals: ClassifiedProposal[],
-  pref: UserPrefKey
+  pref: UserPrefKey,
 ): ClassifiedProposal[] {
-  return classifiedProposals.filter(p => p.relevantPrefs.includes(pref));
+  return classifiedProposals.filter((p) => p.relevantPrefs.includes(pref));
 }
 
 // ============================================================================
@@ -182,14 +210,14 @@ export interface VoteWithProposal {
  */
 export function matchVotesToProposals(
   votes: DRepVote[],
-  proposals: ClassifiedProposal[]
+  proposals: ClassifiedProposal[],
 ): VoteWithProposal[] {
   const proposalMap = new Map<string, ClassifiedProposal>();
   for (const p of proposals) {
     proposalMap.set(`${p.txHash}-${p.index}`, p);
   }
 
-  return votes.map(vote => ({
+  return votes.map((vote) => ({
     vote,
     proposal: proposalMap.get(`${vote.proposal_tx_hash}-${vote.proposal_index}`) || null,
   }));
@@ -201,7 +229,7 @@ export function matchVotesToProposals(
  */
 export function calculateTreasuryConservativeScore(votesWithProposals: VoteWithProposal[]): number {
   const treasuryVotes = votesWithProposals.filter(
-    v => v.proposal?.type === 'TreasuryWithdrawals'
+    (v) => v.proposal?.type === 'TreasuryWithdrawals',
   );
 
   if (treasuryVotes.length === 0) return 50;
@@ -232,7 +260,7 @@ export function calculateTreasuryConservativeScore(votesWithProposals: VoteWithP
  */
 export function calculateTreasuryGrowthScore(votesWithProposals: VoteWithProposal[]): number {
   const treasuryVotes = votesWithProposals.filter(
-    v => v.proposal?.type === 'TreasuryWithdrawals'
+    (v) => v.proposal?.type === 'TreasuryWithdrawals',
   );
 
   if (treasuryVotes.length === 0) return 50;
@@ -284,18 +312,22 @@ export function calculateDecentralizationScore(drep: EnrichedDRep): number {
  */
 export function calculateSecurityScore(
   drep: EnrichedDRep,
-  votesWithProposals: VoteWithProposal[]
+  votesWithProposals: VoteWithProposal[],
 ): number {
-  const securityVotes = votesWithProposals.filter(v =>
-    v.proposal?.relevantPrefs.includes('protocol-security-first')
+  const securityVotes = votesWithProposals.filter((v) =>
+    v.proposal?.relevantPrefs.includes('protocol-security-first'),
   );
 
   if (securityVotes.length === 0) {
     return Math.round(drep.participationRate * 0.6 + drep.rationaleRate * 0.4);
   }
 
-  const cautionVotes = securityVotes.filter(v => v.vote.vote === 'No' || v.vote.vote === 'Abstain').length;
-  const rationalVotes = securityVotes.filter(v => v.vote.meta_url || v.vote.meta_json?.rationale).length;
+  const cautionVotes = securityVotes.filter(
+    (v) => v.vote.vote === 'No' || v.vote.vote === 'Abstain',
+  ).length;
+  const rationalVotes = securityVotes.filter(
+    (v) => v.vote.meta_url || v.vote.meta_json?.rationale,
+  ).length;
 
   const cautionRate = (cautionVotes / securityVotes.length) * 100;
   const rationalRate = (rationalVotes / securityVotes.length) * 100;
@@ -309,18 +341,19 @@ export function calculateSecurityScore(
  */
 export function calculateInnovationScore(
   drep: EnrichedDRep,
-  votesWithProposals: VoteWithProposal[]
+  votesWithProposals: VoteWithProposal[],
 ): number {
-  const innovationVotes = votesWithProposals.filter(v =>
-    v.proposal?.relevantPrefs.includes('innovation-defi-growth') ||
-    v.proposal?.type === 'InfoAction'
+  const innovationVotes = votesWithProposals.filter(
+    (v) =>
+      v.proposal?.relevantPrefs.includes('innovation-defi-growth') ||
+      v.proposal?.type === 'InfoAction',
   );
 
   if (innovationVotes.length === 0) {
     return Math.round(drep.participationRate * 0.5 + 25);
   }
 
-  const yesVotes = innovationVotes.filter(v => v.vote.vote === 'Yes').length;
+  const yesVotes = innovationVotes.filter((v) => v.vote.vote === 'Yes').length;
   const yesRate = (yesVotes / innovationVotes.length) * 100;
 
   return Math.round(yesRate * 0.5 + drep.participationRate * 0.5);
@@ -341,7 +374,7 @@ export function calculateScorecard(
   drep: EnrichedDRep,
   votes: DRepVote[],
   proposals: ClassifiedProposal[],
-  prefs: UserPrefKey[]
+  prefs: UserPrefKey[],
 ): AlignmentScorecard {
   const votesWithProposals = matchVotesToProposals(votes, proposals);
 
@@ -395,9 +428,10 @@ export function calculateScorecard(
     activeScores.push(scores.transparency);
   }
 
-  scores.overall = activeScores.length > 0
-    ? Math.round(activeScores.reduce((a, b) => a + b, 0) / activeScores.length)
-    : 50;
+  scores.overall =
+    activeScores.length > 0
+      ? Math.round(activeScores.reduce((a, b) => a + b, 0) / activeScores.length)
+      : 50;
 
   return {
     drepId: drep.drepId,
@@ -420,7 +454,7 @@ export function detectAlignmentShifts(
   previous: AlignmentScorecard | null,
   current: AlignmentScorecard,
   drepName: string,
-  prefs: UserPrefKey[]
+  prefs: UserPrefKey[],
 ): AlignmentShift | null {
   if (!previous) return null;
 
@@ -430,10 +464,7 @@ export function detectAlignmentShifts(
 
   const categoryShifts: AlignmentShift['categoryShifts'] = [];
 
-  const checkCategory = (
-    pref: UserPrefKey,
-    scoreKey: keyof AlignmentBreakdown
-  ) => {
+  const checkCategory = (pref: UserPrefKey, scoreKey: keyof AlignmentBreakdown) => {
     if (!prefs.includes(pref)) return;
     const prevScore = previous.scores[scoreKey];
     const currScore = current.scores[scoreKey];
@@ -483,11 +514,11 @@ export function evaluateVoteAlignment(
   proposalType: string | null,
   treasuryTier: string | null,
   relevantPrefs: string[],
-  userPrefs: UserPrefKey[]
+  userPrefs: UserPrefKey[],
 ): VoteAlignmentResult {
   if (userPrefs.length === 0) return { status: 'neutral', reasons: [] };
 
-  const matchingPrefs = userPrefs.filter(p => relevantPrefs.includes(p));
+  const matchingPrefs = userPrefs.filter((p) => relevantPrefs.includes(p));
   if (matchingPrefs.length === 0) return { status: 'neutral', reasons: [] };
 
   const reasons: string[] = [];
@@ -594,7 +625,7 @@ export function isTreasuryVote(vote: DRepVote): boolean {
 export function calculateAlignmentBreakdown(
   drep: EnrichedDRep,
   votes: DRepVote[],
-  prefs: UserPrefKey[]
+  prefs: UserPrefKey[],
 ): AlignmentBreakdown {
   return calculateScorecard(drep, votes, [], prefs).scores;
 }
@@ -605,7 +636,7 @@ export function calculateAlignmentBreakdown(
 export function calculateAlignment(
   drep: EnrichedDRep,
   votes: DRepVote[],
-  prefs: UserPrefKey[]
+  prefs: UserPrefKey[],
 ): number {
   if (prefs.length === 0) return 50;
   return calculateAlignmentBreakdown(drep, votes, prefs).overall;
@@ -630,8 +661,10 @@ export function getPrefLabel(pref: UserPrefKey): string {
  * Get alignment badge color based on percentage
  */
 export function getAlignmentColor(alignment: number): string {
-  if (alignment >= 70) return 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30';
-  if (alignment >= 50) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30';
+  if (alignment >= 70)
+    return 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30';
+  if (alignment >= 50)
+    return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30';
   return 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30';
 }
 
@@ -640,21 +673,72 @@ export function getAlignmentColor(alignment: number): string {
 // ============================================================================
 
 interface TraitRule {
-  field: keyof Pick<EnrichedDRep, 'alignmentTreasuryConservative' | 'alignmentTreasuryGrowth' | 'alignmentDecentralization' | 'alignmentSecurity' | 'alignmentInnovation' | 'alignmentTransparency'>;
+  field: keyof Pick<
+    EnrichedDRep,
+    | 'alignmentTreasuryConservative'
+    | 'alignmentTreasuryGrowth'
+    | 'alignmentDecentralization'
+    | 'alignmentSecurity'
+    | 'alignmentInnovation'
+    | 'alignmentTransparency'
+  >;
   threshold: number;
   direction: 'gte' | 'lte';
   label: string;
 }
 
+// Thresholds tuned for percentile-normalized distribution (uniform 0-100)
 const TRAIT_RULES: TraitRule[] = [
-  { field: 'alignmentTreasuryConservative', threshold: 75, direction: 'gte', label: 'Cautious on treasury spending' },
-  { field: 'alignmentTreasuryGrowth', threshold: 75, direction: 'gte', label: 'Supports strategic treasury use' },
-  { field: 'alignmentDecentralization', threshold: 75, direction: 'gte', label: 'Decentralization advocate' },
-  { field: 'alignmentSecurity', threshold: 75, direction: 'gte', label: 'Security-first voter' },
-  { field: 'alignmentInnovation', threshold: 75, direction: 'gte', label: 'Supports innovation & growth' },
-  { field: 'alignmentTransparency', threshold: 75, direction: 'gte', label: 'Detailed rationale provider' },
-  { field: 'alignmentTreasuryConservative', threshold: 30, direction: 'lte', label: 'Open to treasury spending' },
+  {
+    field: 'alignmentTreasuryConservative',
+    threshold: 70,
+    direction: 'gte',
+    label: 'Cautious on treasury spending',
+  },
+  {
+    field: 'alignmentTreasuryGrowth',
+    threshold: 70,
+    direction: 'gte',
+    label: 'Supports strategic treasury use',
+  },
+  {
+    field: 'alignmentDecentralization',
+    threshold: 70,
+    direction: 'gte',
+    label: 'Decentralization advocate',
+  },
+  { field: 'alignmentSecurity', threshold: 70, direction: 'gte', label: 'Security-first voter' },
+  {
+    field: 'alignmentInnovation',
+    threshold: 70,
+    direction: 'gte',
+    label: 'Supports innovation & growth',
+  },
+  {
+    field: 'alignmentTransparency',
+    threshold: 70,
+    direction: 'gte',
+    label: 'Detailed rationale provider',
+  },
+  {
+    field: 'alignmentTreasuryConservative',
+    threshold: 30,
+    direction: 'lte',
+    label: 'Open to treasury spending',
+  },
   { field: 'alignmentSecurity', threshold: 30, direction: 'lte', label: 'Favors protocol changes' },
+  {
+    field: 'alignmentInnovation',
+    threshold: 30,
+    direction: 'lte',
+    label: 'Conservative on changes',
+  },
+  {
+    field: 'alignmentTransparency',
+    threshold: 30,
+    direction: 'lte',
+    label: 'Minimal rationale provider',
+  },
 ];
 
 const MAX_TAGS = 3;
@@ -710,13 +794,11 @@ export interface AllCategoryScores {
 export function computeAllCategoryScores(
   drep: EnrichedDRep,
   votes: DRepVote[],
-  classifiedProposals: ClassifiedProposal[]
+  classifiedProposals: ClassifiedProposal[],
 ): AllCategoryScores {
   const votesWithProposals = matchVotesToProposals(votes, classifiedProposals);
 
-  const lastVoteTime = votes.length > 0
-    ? Math.max(...votes.map(v => v.block_time))
-    : null;
+  const lastVoteTime = votes.length > 0 ? Math.max(...votes.map((v) => v.block_time)) : null;
 
   return {
     alignmentTreasuryConservative: calculateTreasuryConservativeScore(votesWithProposals),
@@ -733,10 +815,7 @@ export function computeAllCategoryScores(
  * Compute overall alignment from pre-computed per-category scores on an EnrichedDRep.
  * Client-side utility: picks relevant categories based on user prefs and averages them.
  */
-export function computeOverallAlignment(
-  drep: EnrichedDRep,
-  prefs: UserPrefKey[]
-): number {
+export function computeOverallAlignment(drep: EnrichedDRep, prefs: UserPrefKey[]): number {
   if (prefs.length === 0) return 50;
 
   const activeScores: number[] = [];
@@ -771,7 +850,10 @@ export function computeOverallAlignment(
 /**
  * Build an AlignmentBreakdown from pre-computed scores on an EnrichedDRep.
  */
-export function getPrecomputedBreakdown(drep: EnrichedDRep, prefs: UserPrefKey[]): AlignmentBreakdown {
+export function getPrecomputedBreakdown(
+  drep: EnrichedDRep,
+  prefs: UserPrefKey[],
+): AlignmentBreakdown {
   return {
     treasury: prefs.includes('treasury-conservative')
       ? (drep.alignmentTreasuryConservative ?? 50)

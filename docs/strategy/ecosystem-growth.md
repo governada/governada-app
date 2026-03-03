@@ -16,12 +16,15 @@ Long-term vision for expanding beyond DRepScore into a broader Cardano ecosystem
 - [ ] SDK vs API vs white-label — what do projects actually want?
 
 ## Concept: Governance-as-a-Service SDK
+
 Plug-and-play governance modules for Cardano-based DAOs and projects.
 
 ## Concept: Cardano Citizen Hub
+
 Unified dashboard for all Cardano ecosystem participation — governance, staking, Catalyst, community.
 
 ## Concept: Cardano Governance Newsletter
+
 Weekly data-driven governance report leveraging DRepScore data. Sponsor-supported.
 
 ## Next Actions

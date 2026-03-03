@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type ActivityLevel = 'quiet' | 'active' | 'busy';
 
@@ -58,9 +53,13 @@ export function GovernanceHeartbeat() {
             className="relative flex items-center justify-center w-5 h-5"
             aria-label={labels[level]}
           >
-            <span className={`absolute inline-flex h-2.5 w-2.5 rounded-full ${colors[level]} ${animationClass}`} />
+            <span
+              className={`absolute inline-flex h-2.5 w-2.5 rounded-full ${colors[level]} ${animationClass}`}
+            />
             {level !== 'quiet' && (
-              <span className={`absolute inline-flex h-2.5 w-2.5 rounded-full ${colors[level]} opacity-30 animate-ping`} />
+              <span
+                className={`absolute inline-flex h-2.5 w-2.5 rounded-full ${colors[level]} opacity-30 animate-ping`}
+              />
             )}
           </Link>
         </TooltipTrigger>

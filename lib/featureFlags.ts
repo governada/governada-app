@@ -38,9 +38,7 @@ async function loadFlags(): Promise<Map<string, boolean>> {
 
   try {
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from('feature_flags')
-      .select('key, enabled');
+    const { data, error } = await supabase.from('feature_flags').select('key, enabled');
 
     if (error || !data) {
       console.warn('[featureFlags] Failed to load flags, using cache/defaults:', error?.message);
@@ -85,7 +83,7 @@ export async function getAllFlags(): Promise<FeatureFlag[]> {
 
     if (error || !data) return [];
 
-    return data.map(row => ({
+    return data.map((row) => ({
       key: row.key,
       enabled: row.enabled,
       description: row.description,

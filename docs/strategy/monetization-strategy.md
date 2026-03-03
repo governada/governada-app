@@ -6,13 +6,13 @@
 
 ## 1. Your Biggest Moat (Defend These Relentlessly)
 
-**Historical Data Monopoly** — Every day DRepScore runs, you accumulate governance data no competitor can replicate. Score snapshots, alignment shifts, voting pattern evolution. This compounds daily and becomes exponentially harder to catch up to. *Action: Never stop collecting, even before monetizing.*
+**Historical Data Monopoly** — Every day DRepScore runs, you accumulate governance data no competitor can replicate. Score snapshots, alignment shifts, voting pattern evolution. This compounds daily and becomes exponentially harder to catch up to. _Action: Never stop collecting, even before monetizing._
 
-**DRep Reputation Lock-in** — Once a DRep builds a score history on your platform, their "governance credit score" lives here. Switching costs are enormous. Think credit bureaus — nobody competes with Equifax by starting fresh. *Action: Make score history a central feature DReps reference publicly.*
+**DRep Reputation Lock-in** — Once a DRep builds a score history on your platform, their "governance credit score" lives here. Switching costs are enormous. Think credit bureaus — nobody competes with Equifax by starting fresh. _Action: Make score history a central feature DReps reference publicly._
 
-**Integration Network Effects** — Every wallet, exchange, or Cardano tool that integrates your scoring API makes you harder to displace. If Lace shows "DRepScore: 82" in their delegation UI, you've won. *Action: Prioritize API/embed strategy.*
+**Integration Network Effects** — Every wallet, exchange, or Cardano tool that integrates your scoring API makes you harder to displace. If Lace shows "DRepScore: 82" in their delegation UI, you've won. _Action: Prioritize API/embed strategy._
 
-**Mission Alignment as Brand Moat** — You deliberately excluded voting power from scoring because it conflicted with decentralization values. That kind of principled design builds trust that mercenary competitors can't replicate. *Action: Be vocal about methodology choices and why.*
+**Mission Alignment as Brand Moat** — You deliberately excluded voting power from scoring because it conflicted with decentralization values. That kind of principled design builds trust that mercenary competitors can't replicate. _Action: Be vocal about methodology choices and why._
 
 ---
 
@@ -20,18 +20,18 @@
 
 ### DRep Side (Supply) — Where the Money Is
 
-| | Free | Pro ($15-25/mo in ADA) | Enterprise |
-| --- | --- | --- | --- |
-| Basic profile + score | Yes | Yes | Yes |
-| Voting record display | Yes | Yes | Yes |
-| Governance inbox | Basic | Smart prioritization + AI | Multi-seat |
-| Analytics (who's viewing, delegation trends) | No | Yes | Custom reporting |
-| "Verified DRep" badge | No | Yes | Yes |
-| Position statements / campaign page | No | Yes | Branded |
-| AI rationale drafting assistant | No | Yes | Yes |
-| Delegator engagement tools (polls, updates) | No | Yes | Yes |
-| Custom alerts | No | Yes | Yes |
-| API access | No | No | Yes |
+|                                              | Free  | Pro ($15-25/mo in ADA)    | Enterprise       |
+| -------------------------------------------- | ----- | ------------------------- | ---------------- |
+| Basic profile + score                        | Yes   | Yes                       | Yes              |
+| Voting record display                        | Yes   | Yes                       | Yes              |
+| Governance inbox                             | Basic | Smart prioritization + AI | Multi-seat       |
+| Analytics (who's viewing, delegation trends) | No    | Yes                       | Custom reporting |
+| "Verified DRep" badge                        | No    | Yes                       | Yes              |
+| Position statements / campaign page          | No    | Yes                       | Branded          |
+| AI rationale drafting assistant              | No    | Yes                       | Yes              |
+| Delegator engagement tools (polls, updates)  | No    | Yes                       | Yes              |
+| Custom alerts                                | No    | Yes                       | Yes              |
+| API access                                   | No    | No                        | Yes              |
 
 **Why DReps will pay:** Governance IS their job. A DRep managing millions in delegated ADA has direct financial incentive to maintain and communicate their score. Pro tools help them do that. Think LinkedIn Premium for politicians.
 
@@ -88,7 +88,7 @@ Expand beyond DRep scoring to become THE governance data layer for Cardano:
 - Proposal outcome prediction (ML on historical data)
 - Governance health index (ecosystem-level metrics)
 - Research tools for academics and analysts studying blockchain governance
-- *Revenue: Enterprise subscriptions, research partnerships*
+- _Revenue: Enterprise subscriptions, research partnerships_
 
 ### Play 2: Catalyst Score (Tangential Project)
 
@@ -98,7 +98,7 @@ Apply the same accountability framework to Project Catalyst — this is a MASSIV
 - Funded project completion tracking (did they deliver?)
 - Fund allocation analytics and ROI tracking
 - Catalyst distributes **tens of millions in ADA per fund** — the need for accountability tooling is enormous
-- *Revenue: Same Pro/API model, plus Catalyst funding itself*
+- _Revenue: Same Pro/API model, plus Catalyst funding itself_
 
 ### Play 3: Midnight Privacy Tools
 
@@ -108,7 +108,7 @@ When Midnight launches, you're positioned to build groundbreaking tools:
 - **Anonymous governance reputation** — Prove you're an active governance participant without revealing your identity (using Midnight's ZK capabilities)
 - **Confidential delegation analytics** — Institutional delegators who want governance data without exposing their positions
 - **Cross-chain governance bridge** — Cardano governance participation verified on Midnight
-- *Revenue: This is genuinely novel. Premium pricing for privacy features, plus potential Midnight ecosystem funding*
+- _Revenue: This is genuinely novel. Premium pricing for privacy features, plus potential Midnight ecosystem funding_
 
 ### Play 4: Governance-as-a-Service SDK
 
@@ -118,7 +118,7 @@ Let any Cardano-based DAO or project embed governance tools:
 - Customizable scoring methodologies per community
 - White-label governance dashboards
 - Think "Stripe for blockchain governance"
-- *Revenue: SaaS pricing per project ($100-1000/mo depending on scale)*
+- _Revenue: SaaS pricing per project ($100-1000/mo depending on scale)_
 
 ### Play 5: Cardano Citizen Hub
 
@@ -129,7 +129,7 @@ Broader ecosystem engagement platform tying together:
 - Staking behavior and stake pool analytics
 - "Cardano Citizen Score" — gamified ecosystem participation metric
 - Onboarding flows for new ADA holders
-- *Revenue: Aggregator play — become the dashboard every Cardano user opens daily*
+- _Revenue: Aggregator play — become the dashboard every Cardano user opens daily_
 
 ---
 

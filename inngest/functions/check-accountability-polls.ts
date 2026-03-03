@@ -23,7 +23,9 @@ export const checkAccountabilityPolls = inngest.createFunction(
   },
   { cron: '0 23 * * *' },
   async ({ step }) => {
-    const treasuryEnabled = await step.run('check-flag', async () => getFeatureFlag('treasury_intelligence'));
+    const treasuryEnabled = await step.run('check-flag', async () =>
+      getFeatureFlag('treasury_intelligence'),
+    );
     if (!treasuryEnabled) return { skipped: true, reason: 'treasury_intelligence flag disabled' };
 
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
@@ -183,5 +185,5 @@ export const checkAccountabilityPolls = inngest.createFunction(
     }
 
     return { currentEpoch, newPolls, closed, scheduled };
-  }
+  },
 );

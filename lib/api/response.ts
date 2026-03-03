@@ -73,7 +73,8 @@ export function apiSuccess(data: unknown, options: SuccessOptions): NextResponse
   };
 
   if (options.cacheSeconds) {
-    responseHeaders['Cache-Control'] = `public, s-maxage=${options.cacheSeconds}, stale-while-revalidate=${options.cacheSeconds * 2}`;
+    responseHeaders['Cache-Control'] =
+      `public, s-maxage=${options.cacheSeconds}, stale-while-revalidate=${options.cacheSeconds * 2}`;
   }
 
   return new NextResponse(JSON.stringify(body), {
@@ -90,7 +91,7 @@ interface ErrorOptions {
 export function apiError(
   code: string,
   params: ErrorParams = {},
-  options: ErrorOptions
+  options: ErrorOptions,
 ): NextResponse {
   const err = getApiError(code, { ...params, request_id: options.requestId });
 
@@ -103,7 +104,9 @@ export function apiError(
   if (err.status === 429 && options.rateLimitHeaders) {
     const retryAfter = options.rateLimitHeaders['X-RateLimit-Reset'];
     if (retryAfter) {
-      headers['Retry-After'] = String(Math.max(0, parseInt(retryAfter) - Math.floor(Date.now() / 1000)));
+      headers['Retry-After'] = String(
+        Math.max(0, parseInt(retryAfter) - Math.floor(Date.now() / 1000)),
+      );
     }
   }
 

@@ -30,9 +30,9 @@ describe('calculateDRepScore', () => {
   });
 
   it('applies correct default weights (30/35/20/15)', () => {
-    expect(DEFAULT_WEIGHTS.effectiveParticipation).toBe(0.30);
+    expect(DEFAULT_WEIGHTS.effectiveParticipation).toBe(0.3);
     expect(DEFAULT_WEIGHTS.rationale).toBe(0.35);
-    expect(DEFAULT_WEIGHTS.reliability).toBe(0.20);
+    expect(DEFAULT_WEIGHTS.reliability).toBe(0.2);
     expect(DEFAULT_WEIGHTS.profileCompleteness).toBe(0.15);
 
     const sum = Object.values(DEFAULT_WEIGHTS).reduce((a, b) => a + b, 0);

@@ -33,14 +33,24 @@ interface ScoreCardProps {
 }
 
 function getCardGradient(score: number): string {
-  if (score >= 80) return 'bg-gradient-to-br from-green-50/50 to-transparent dark:from-green-950/20 dark:to-transparent';
-  if (score >= 60) return 'bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20 dark:to-transparent';
+  if (score >= 80)
+    return 'bg-gradient-to-br from-green-50/50 to-transparent dark:from-green-950/20 dark:to-transparent';
+  if (score >= 60)
+    return 'bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20 dark:to-transparent';
   return 'bg-gradient-to-br from-red-50/30 to-transparent dark:from-red-950/15 dark:to-transparent';
 }
 
 export function ScoreCard({
-  drep, adjustedRationale, pillars, pillarStatuses, quickWin,
-  percentile, participationHint, rationaleHint, reliabilityHint, profileHint,
+  drep,
+  adjustedRationale,
+  pillars,
+  pillarStatuses,
+  quickWin,
+  percentile,
+  participationHint,
+  rationaleHint,
+  reliabilityHint,
+  profileHint,
 }: ScoreCardProps) {
   const { isAuthenticated, ownDRepId } = useWallet();
 
@@ -60,12 +70,19 @@ export function ScoreCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <CardTitle>DRep Score</CardTitle>
-            <div className="flex items-center gap-1" title={`${pillarStatuses.filter(s => s === 'strong').length} of 4 pillars at Strong`}>
+            <div
+              className="flex items-center gap-1"
+              title={`${pillarStatuses.filter((s) => s === 'strong').length} of 4 pillars at Strong`}
+            >
               {pillarStatuses.map((s, i) => (
                 <span
                   key={i}
                   className={`h-2.5 w-2.5 rounded-full ${
-                    s === 'strong' ? 'bg-green-500' : s === 'needs-work' ? 'bg-amber-500' : 'bg-red-500'
+                    s === 'strong'
+                      ? 'bg-green-500'
+                      : s === 'needs-work'
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
                   }`}
                 />
               ))}

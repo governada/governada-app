@@ -2,12 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { EnrichedDRep } from '@/lib/koios';
 import { getDRepDisplayName } from '@/utils/display';
 import { formatAda, getDRepScoreBadgeClass, getSizeBadgeClass } from '@/utils/scoring';
@@ -69,12 +64,21 @@ export function DRepQuickView({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side={isMobile ? 'bottom' : 'right'} className={cn('overflow-y-auto', isMobile ? 'max-h-[85vh] rounded-t-2xl' : 'w-full sm:max-w-md')}>
+      <SheetContent
+        side={isMobile ? 'bottom' : 'right'}
+        className={cn(
+          'overflow-y-auto',
+          isMobile ? 'max-h-[85vh] rounded-t-2xl' : 'w-full sm:max-w-md',
+        )}
+      >
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2 text-left">
             <span className="truncate">{displayName}</span>
             {isDelegated && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary shrink-0">
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 py-0 border-primary/40 text-primary shrink-0"
+              >
                 Your DRep
               </Badge>
             )}
@@ -103,7 +107,9 @@ export function DRepQuickView({
               {pillars.map((p) => (
                 <div key={p.label} className="space-y-0.5">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{p.label} ({p.weight})</span>
+                    <span>
+                      {p.label} ({p.weight})
+                    </span>
                     <span className="tabular-nums">{Math.round(p.value)}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -119,7 +125,10 @@ export function DRepQuickView({
 
           {/* Size + Power */}
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className={cn('text-xs font-medium', getSizeBadgeClass(drep.sizeTier))}>
+            <Badge
+              variant="outline"
+              className={cn('text-xs font-medium', getSizeBadgeClass(drep.sizeTier))}
+            >
               {drep.sizeTier}
             </Badge>
             <span className="text-sm text-muted-foreground tabular-nums">
@@ -143,7 +152,7 @@ export function DRepQuickView({
                       ? 'text-green-600 dark:text-green-400 border-green-500/30'
                       : matchDetail.matchScore >= 50
                         ? 'text-amber-600 dark:text-amber-400 border-amber-500/30'
-                        : 'text-muted-foreground'
+                        : 'text-muted-foreground',
                   )}
                 >
                   {matchDetail.matchScore}%
@@ -155,7 +164,8 @@ export function DRepQuickView({
 
               {matchDetail.currentDRepScore != null && (
                 <p className="text-xs text-muted-foreground">
-                  vs your current DRep: <span className="font-medium">{matchDetail.currentDRepScore}%</span>
+                  vs your current DRep:{' '}
+                  <span className="font-medium">{matchDetail.currentDRepScore}%</span>
                 </p>
               )}
 
@@ -166,7 +176,7 @@ export function DRepQuickView({
                       key={i}
                       className={cn(
                         'flex items-start gap-2 text-xs p-1.5 rounded',
-                        c.agreed ? 'bg-green-500/5' : 'bg-red-500/5'
+                        c.agreed ? 'bg-green-500/5' : 'bg-red-500/5',
                       )}
                     >
                       {c.agreed ? (
@@ -213,15 +223,11 @@ export function DRepQuickView({
               </Button>
             </Link>
             {onWatchlistToggle && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => onWatchlistToggle(drep.drepId)}
-              >
+              <Button variant="outline" size="icon" onClick={() => onWatchlistToggle(drep.drepId)}>
                 <Heart
                   className={cn(
                     'h-4 w-4',
-                    isWatchlisted ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
+                    isWatchlisted ? 'fill-red-500 text-red-500' : 'text-muted-foreground',
                   )}
                 />
               </Button>

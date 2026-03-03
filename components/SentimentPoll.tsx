@@ -6,12 +6,7 @@ import { getStoredSession } from '@/lib/supabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   BarChart3,
   CheckCircle2,
@@ -92,7 +87,9 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
       if (address) {
         try {
           stakeAddress = resolveRewardAddress(address);
-        } catch { /* script addresses won't resolve */ }
+        } catch {
+          /* script addresses won't resolve */
+        }
       }
 
       const res = await fetch('/api/polls/vote', {
@@ -125,13 +122,15 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
       setChangingVote(false);
       setFeedbackVote(vote);
 
-      import('@/lib/posthog').then(({ posthog }) => {
-        posthog.capture('sentiment_voted', {
-          proposal_tx_hash: txHash,
-          proposal_index: proposalIndex,
-          vote_direction: vote,
-        });
-      }).catch(() => {});
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('sentiment_voted', {
+            proposal_tx_hash: txHash,
+            proposal_index: proposalIndex,
+            vote_direction: vote,
+          });
+        })
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Vote failed');
     } finally {
@@ -175,8 +174,8 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
               </TooltipTrigger>
               <TooltipContent side="left" className="max-w-[260px]">
                 <p className="text-xs">
-                  This is a non-binding poll for ADA holders. Your DRep votes
-                  on-chain on your behalf — this shows how the community feels.
+                  This is a non-binding poll for ADA holders. Your DRep votes on-chain on your
+                  behalf — this shows how the community feels.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -187,7 +186,8 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
       <CardContent className="space-y-4">
         {community.total > 0 && (
           <p className="text-sm font-semibold text-foreground">
-            {community.total} {community.total === 1 ? 'person has' : 'people have'} shared their opinion
+            {community.total} {community.total === 1 ? 'person has' : 'people have'} shared their
+            opinion
           </p>
         )}
         {revealed && hasVoted ? (
@@ -230,7 +230,10 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
                 Connect Wallet to Vote
               </Button>
               {community.total > 0 && (
-                <p className="text-[10px] text-muted-foreground">{community.total} holder{community.total !== 1 ? 's have' : ' has'} voted — add your voice</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {community.total} holder{community.total !== 1 ? 's have' : ' has'} voted — add
+                  your voice
+                </p>
               )}
             </div>
           </div>
@@ -266,7 +269,13 @@ function VoteButtons({
   voting: boolean;
   currentVote: VoteChoice | null;
 }) {
-  const buttons: { vote: VoteChoice; label: string; icon: typeof ThumbsUp; activeClass: string; hoverClass: string }[] = [
+  const buttons: {
+    vote: VoteChoice;
+    label: string;
+    icon: typeof ThumbsUp;
+    activeClass: string;
+    hoverClass: string;
+  }[] = [
     {
       vote: 'yes',
       label: 'Yes',
@@ -302,11 +311,7 @@ function VoteButtons({
           disabled={voting}
           onClick={() => onVote(vote)}
         >
-          {voting ? (
-            <RefreshCw className="h-4 w-4 animate-spin" />
-          ) : (
-            <Icon className="h-4 w-4" />
-          )}
+          {voting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
           {label}
         </Button>
       ))}
@@ -330,13 +335,9 @@ function ResultsView({
   const np = total > 0 ? Math.round((community.no / total) * 100) : 0;
   const ap = total > 0 ? Math.round((community.abstain / total) * 100) : 0;
 
-  const userVoteLabel = userVote
-    ? { yes: 'Yes', no: 'No', abstain: 'Abstain' }[userVote]
-    : null;
+  const userVoteLabel = userVote ? { yes: 'Yes', no: 'No', abstain: 'Abstain' }[userVote] : null;
 
-  const userPercent = userVote
-    ? { yes: yp, no: np, abstain: ap }[userVote]
-    : null;
+  const userPercent = userVote ? { yes: yp, no: np, abstain: ap }[userVote] : null;
 
   return (
     <div className="space-y-3">

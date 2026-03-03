@@ -8,8 +8,6 @@ export const alertInbox = inngest.createFunction(
   },
   { cron: '0 3,9,15,21 * * *' },
   async ({ step }) => {
-    return step.run('execute-inbox-alert', () =>
-      callSyncRoute('/api/admin/inbox-alert', 15_000)
-    );
+    return step.run('execute-inbox-alert', () => callSyncRoute('/api/admin/inbox-alert', 15_000));
   },
 );

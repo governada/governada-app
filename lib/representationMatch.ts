@@ -1,9 +1,10 @@
 /**
  * Shared representation matching engine.
- * Compares a user's poll votes against DRep on-chain votes on overlapping proposals.
+ * Dual-path: vote-overlap matching (legacy) + PCA cosine similarity (new).
  */
 
 import { createClient } from '@/lib/supabase';
+import { loadActivePCA } from '@/lib/alignment/pca';
 
 function normalizeVote(vote: string): string {
   return vote.charAt(0).toUpperCase() + vote.slice(1).toLowerCase();
@@ -32,7 +33,7 @@ export interface RepresentationMatchResult {
 export function calculateRepresentationMatch(
   pollVotes: { proposal_tx_hash: string; proposal_index: number; vote: string }[],
   drepVotes: { proposal_tx_hash: string; proposal_index: number; vote: string }[],
-  proposalTitleMap?: Map<string, string | null>
+  proposalTitleMap?: Map<string, string | null>,
 ): RepresentationMatchResult {
   const drepVoteMap = new Map<string, string>();
   for (const v of drepVotes) {
@@ -56,7 +57,7 @@ export function calculateRepresentationMatch(
     });
   }
 
-  const aligned = comparisons.filter(c => c.agreed).length;
+  const aligned = comparisons.filter((c) => c.agreed).length;
   return {
     score: comparisons.length > 0 ? Math.round((aligned / comparisons.length) * 100) : null,
     aligned,
@@ -86,7 +87,7 @@ export async function findBestMatchDReps(
     minOverlap?: number;
     minMatchRate?: number;
     limit?: number;
-  }
+  },
 ): Promise<{
   matches: DRepMatchSummary[];
   currentDRepMatch: RepresentationMatchResult | null;
@@ -106,7 +107,7 @@ export async function findBestMatchDReps(
     return { matches: [], currentDRepMatch: null };
   }
 
-  const userVoteKeys = [...new Set(pollVotes.map(pv => pv.proposal_tx_hash))];
+  const userVoteKeys = [...new Set(pollVotes.map((pv) => pv.proposal_tx_hash))];
   const pollVoteMap = new Map<string, string>();
   for (const pv of pollVotes) {
     pollVoteMap.set(`${pv.proposal_tx_hash}-${pv.proposal_index}`, pv.vote);
@@ -158,7 +159,7 @@ export async function findBestMatchDReps(
       const rate = m.matched / m.total;
       return rate >= minMatchRate;
     })
-    .sort((a, b) => (b[1].matched / b[1].total) - (a[1].matched / a[1].total))
+    .sort((a, b) => b[1].matched / b[1].total - a[1].matched / a[1].total)
     .slice(0, limit);
 
   if (candidates.length === 0) {
@@ -176,7 +177,7 @@ export async function findBestMatchDReps(
   if (drepRows) {
     for (const d of drepRows) {
       drepInfoMap.set(d.id, {
-        name: (d.info as Record<string, unknown>)?.name as string || null,
+        name: ((d.info as Record<string, unknown>)?.name as string) || null,
         score: Number(d.score) || 0,
       });
     }
@@ -195,4 +196,144 @@ export async function findBestMatchDReps(
   });
 
   return { matches, currentDRepMatch };
+}
+
+// ============================================================================
+// PCA-BASED MATCHING (cosine similarity in PCA space)
+// ============================================================================
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0,
+    magA = 0,
+    magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(magA) * Math.sqrt(magB);
+  return denom === 0 ? 0 : dot / denom;
+}
+
+/**
+ * Project a user's partial vote vector into PCA space using active loadings.
+ * userVotes: map of proposalId ("txHash-index") → vote value (+1, -1, 0)
+ */
+function projectUserVector(
+  userVotes: Map<string, number>,
+  loadings: number[][],
+  proposalIds: string[],
+): number[] | null {
+  if (userVotes.size === 0) return null;
+
+  const k = loadings.length;
+  const coords = new Array<number>(k).fill(0);
+  let voteCount = 0;
+
+  for (const [proposalId, voteValue] of userVotes) {
+    const idx = proposalIds.indexOf(proposalId);
+    if (idx === -1) continue;
+
+    for (let c = 0; c < k; c++) {
+      coords[c] += voteValue * loadings[c][idx];
+    }
+    voteCount++;
+  }
+
+  return voteCount > 0 ? coords : null;
+}
+
+export interface PCAMatchResult {
+  drepId: string;
+  similarity: number;
+  drepName: string | null;
+  drepScore: number;
+}
+
+/**
+ * Find best-matching DReps using PCA cosine similarity.
+ * Used by Quick Match and DNA Quiz.
+ */
+export async function findPCAMatches(
+  userVotes: Map<string, number>,
+  opts?: { limit?: number },
+): Promise<PCAMatchResult[]> {
+  const limit = opts?.limit ?? 20;
+
+  const pca = await loadActivePCA();
+  if (!pca) return [];
+
+  const userCoords = projectUserVector(userVotes, pca.loadings, pca.proposalIds);
+  if (!userCoords) return [];
+
+  const supabase = createClient();
+
+  const { data: coordRows } = await supabase
+    .from('drep_pca_coordinates')
+    .select('drep_id, coordinates')
+    .eq('run_id', pca.runId);
+
+  if (!coordRows?.length) return [];
+
+  const similarities = coordRows.map((row: any) => ({
+    drepId: row.drep_id,
+    similarity: cosineSimilarity(userCoords, row.coordinates as number[]),
+  }));
+
+  similarities.sort((a, b) => b.similarity - a.similarity);
+  const topN = similarities.slice(0, limit);
+
+  // Fetch DRep metadata
+  const { data: drepRows } = await supabase
+    .from('dreps')
+    .select('id, info, score')
+    .in(
+      'id',
+      topN.map((s) => s.drepId),
+    );
+
+  const infoMap = new Map<string, { name: string | null; score: number }>();
+  if (drepRows) {
+    for (const d of drepRows as any[]) {
+      infoMap.set(d.id, {
+        name: ((d.info as Record<string, unknown>)?.name as string) || null,
+        score: Number(d.score) || 0,
+      });
+    }
+  }
+
+  return topN.map((s) => {
+    const info = infoMap.get(s.drepId);
+    return {
+      drepId: s.drepId,
+      similarity: Math.round(s.similarity * 100),
+      drepName: info?.name || null,
+      drepScore: info?.score || 0,
+    };
+  });
+}
+
+/**
+ * Compute DRep-to-DRep similarity in PCA space.
+ */
+export async function drepSimilarity(drepIdA: string, drepIdB: string): Promise<number | null> {
+  const supabase = createClient();
+
+  const pca = await loadActivePCA();
+  if (!pca) return null;
+
+  const { data } = await supabase
+    .from('drep_pca_coordinates')
+    .select('drep_id, coordinates')
+    .eq('run_id', pca.runId)
+    .in('drep_id', [drepIdA, drepIdB]);
+
+  if (!data || data.length < 2) return null;
+
+  const coordA = (data as any[]).find((d) => d.drep_id === drepIdA)?.coordinates as number[];
+  const coordB = (data as any[]).find((d) => d.drep_id === drepIdB)?.coordinates as number[];
+
+  if (!coordA || !coordB) return null;
+
+  return Math.round(cosineSimilarity(coordA, coordB) * 100);
 }

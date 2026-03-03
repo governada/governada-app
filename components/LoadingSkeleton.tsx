@@ -63,16 +63,16 @@ export function DetailPageSkeleton() {
         <Skeleton className="h-8 w-2/3" />
         <Skeleton className="h-5 w-1/3" />
       </div>
-      
+
       {/* Metrics */}
       <MetricCardsSkeleton />
-      
+
       {/* Content sections */}
       <div className="space-y-4">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-32 w-full" />
       </div>
-      
+
       <div className="space-y-4">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-64 w-full" />

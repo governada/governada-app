@@ -38,8 +38,12 @@ export function generateRecommendations(drep: DRepData): Recommendation[] {
     const missing = getMissingProfileFields(drep.metadata, brokenUris);
     if (missing.length > 0) {
       const pointsPerField: Record<string, number> = {
-        name: 15, objectives: 20, motivations: 15,
-        qualifications: 10, bio: 10, 'social links': 25,
+        name: 15,
+        objectives: 20,
+        motivations: 15,
+        qualifications: 10,
+        bio: 10,
+        'social links': 25,
         'a second social link (2+ recommended)': 5,
       };
       const gain = missing.reduce((sum, f) => sum + (pointsPerField[f] || 5), 0);
@@ -70,11 +74,16 @@ export function generateRecommendations(drep: DRepData): Recommendation[] {
   const adjustedRationale = applyRationaleCurve(drep.rationaleRate);
   if (adjustedRationale < 60) {
     const bindingVotes = drep.votes.filter(
-      v => !RATIONALE_EXEMPT_TYPES.includes(v.proposalType || '')
+      (v) => !RATIONALE_EXEMPT_TYPES.includes(v.proposalType || ''),
     );
-    const withoutRationale = bindingVotes.filter(v => !v.hasRationale);
-    const criticalMissing = withoutRationale.filter(
-      v => ['HardForkInitiation', 'NoConfidence', 'NewConstitutionalCommittee', 'UpdateConstitution'].includes(v.proposalType || '')
+    const withoutRationale = bindingVotes.filter((v) => !v.hasRationale);
+    const criticalMissing = withoutRationale.filter((v) =>
+      [
+        'HardForkInitiation',
+        'NoConfidence',
+        'NewConstitutionalCommittee',
+        'UpdateConstitution',
+      ].includes(v.proposalType || ''),
     );
 
     if (criticalMissing.length > 0) {
@@ -89,7 +98,7 @@ export function generateRecommendations(drep: DRepData): Recommendation[] {
 
     if (withoutRationale.length > 0) {
       const recentMissing = withoutRationale.slice(0, 5);
-      const titles = recentMissing.map(v => v.title || 'Unknown').join(', ');
+      const titles = recentMissing.map((v) => v.title || 'Unknown').join(', ');
       recs.push({
         pillar: 'rationale',
         priority: adjustedRationale < 30 ? 'high' : 'medium',
@@ -117,7 +126,9 @@ export function generateRecommendations(drep: DRepData): Recommendation[] {
         priority: 'low',
         title: 'Diversify your voting pattern',
         description: `Your participation is discounted ${discount}% because your votes appear uniform. Voting differently on proposals you genuinely disagree with will remove this penalty.`,
-        potentialGain: Math.round(drep.effectiveParticipation * (1 - drep.deliberationModifier) * 0.3),
+        potentialGain: Math.round(
+          drep.effectiveParticipation * (1 - drep.deliberationModifier) * 0.3,
+        ),
       });
     }
   }
@@ -147,11 +158,16 @@ export function generateRecommendations(drep: DRepData): Recommendation[] {
  * Excludes exempt types like InfoAction.
  */
 export function getMissingRationaleVotes(votes: VoteRecord[]): VoteRecord[] {
-  const criticalTypes = ['HardForkInitiation', 'NoConfidence', 'NewConstitutionalCommittee', 'UpdateConstitution'];
+  const criticalTypes = [
+    'HardForkInitiation',
+    'NoConfidence',
+    'NewConstitutionalCommittee',
+    'UpdateConstitution',
+  ];
   const importantTypes = ['ParameterChange'];
 
   return votes
-    .filter(v => !v.hasRationale && !RATIONALE_EXEMPT_TYPES.includes(v.proposalType || ''))
+    .filter((v) => !v.hasRationale && !RATIONALE_EXEMPT_TYPES.includes(v.proposalType || ''))
     .sort((a, b) => {
       const getWeight = (v: VoteRecord) => {
         if (criticalTypes.includes(v.proposalType || '')) return 3;

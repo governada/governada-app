@@ -53,7 +53,11 @@ export async function sendEmail(
 
     if (error) {
       console.error('[Email] Send error:', error);
-      captureServerEvent('email_delivered', { template: subject, success: false, error: error.message });
+      captureServerEvent('email_delivered', {
+        template: subject,
+        success: false,
+        error: error.message,
+      });
       return false;
     }
 
@@ -68,10 +72,12 @@ export async function sendEmail(
 // ── Unsubscribe Token ─────────────────────────────────────────────────────────
 
 export function generateUnsubscribeUrl(walletAddress: string): string {
-  const token = Buffer.from(JSON.stringify({
-    w: walletAddress,
-    t: Date.now(),
-  })).toString('base64url');
+  const token = Buffer.from(
+    JSON.stringify({
+      w: walletAddress,
+      t: Date.now(),
+    }),
+  ).toString('base64url');
   return `${BASE_URL}/api/user/unsubscribe?token=${token}`;
 }
 
@@ -88,16 +94,20 @@ export function parseUnsubscribeToken(token: string): { walletAddress: string } 
 // ── Email Verification Token ────────────────────────────────────────────────
 
 export function generateVerificationUrl(walletAddress: string, email: string): string {
-  const token = Buffer.from(JSON.stringify({
-    w: walletAddress,
-    e: email,
-    t: Date.now(),
-    exp: Date.now() + 24 * 60 * 60 * 1000,
-  })).toString('base64url');
+  const token = Buffer.from(
+    JSON.stringify({
+      w: walletAddress,
+      e: email,
+      t: Date.now(),
+      exp: Date.now() + 24 * 60 * 60 * 1000,
+    }),
+  ).toString('base64url');
   return `${BASE_URL}/api/user/email/verify?token=${token}`;
 }
 
-export function parseVerificationToken(token: string): { walletAddress: string; email: string } | null {
+export function parseVerificationToken(
+  token: string,
+): { walletAddress: string; email: string } | null {
   try {
     const decoded = JSON.parse(Buffer.from(token, 'base64url').toString());
     if (!decoded.w || !decoded.e) return null;
@@ -110,7 +120,10 @@ export function parseVerificationToken(token: string): { walletAddress: string; 
 
 // ── Wire into Notification Engine ───────────────────────────────────────────
 
-async function emailChannelSender(target: ChannelTarget, payload: NotificationPayload): Promise<boolean> {
+async function emailChannelSender(
+  target: ChannelTarget,
+  payload: NotificationPayload,
+): Promise<boolean> {
   const supabase = getSupabaseAdmin();
 
   const { data: user } = await supabase

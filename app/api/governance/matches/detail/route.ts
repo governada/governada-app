@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ comparisons: [], agreed: 0, total: 0, matchScore: 0 });
   }
 
-  const txHashes = [...new Set(pollVotes.map(pv => pv.proposal_tx_hash))];
+  const txHashes = [...new Set(pollVotes.map((pv) => pv.proposal_tx_hash))];
 
   const [{ data: drepVotes }, { data: proposals }] = await Promise.all([
     supabase
@@ -42,10 +42,7 @@ export async function GET(request: NextRequest) {
       .select('proposal_tx_hash, proposal_index, vote')
       .eq('drep_id', drepId)
       .in('proposal_tx_hash', txHashes),
-    supabase
-      .from('proposals')
-      .select('tx_hash, proposal_index, title')
-      .in('tx_hash', txHashes),
+    supabase.from('proposals').select('tx_hash, proposal_index, title').in('tx_hash', txHashes),
   ]);
 
   const titleMap = new Map<string, string | null>();
@@ -55,17 +52,21 @@ export async function GET(request: NextRequest) {
 
   const result = calculateRepresentationMatch(pollVotes, drepVotes ?? [], titleMap);
 
-  captureServerEvent('matches_detail_api_served', {
-    drep_id: drepId,
-    comparisons_count: result.comparisons.length,
-    match_score: result.score,
-  }, session.walletAddress);
+  captureServerEvent(
+    'matches_detail_api_served',
+    {
+      drep_id: drepId,
+      comparisons_count: result.comparisons.length,
+      match_score: result.score,
+    },
+    session.walletAddress,
+  );
 
   return NextResponse.json({
     matchScore: result.score ?? 0,
     agreed: result.aligned,
     total: result.total,
-    comparisons: result.comparisons.map(c => ({
+    comparisons: result.comparisons.map((c) => ({
       proposalTitle: c.proposalTitle || `Proposal ${c.proposalTxHash.slice(0, 8)}...`,
       userVote: c.userVote,
       drepVote: c.drepVote,

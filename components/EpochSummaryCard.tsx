@@ -1,9 +1,24 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardAction, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardAction,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { ShareActions } from '@/components/ShareActions';
-import { TrendingUp, TrendingDown, Minus, FileText, Vote, ScrollText, Sparkles } from 'lucide-react';
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  FileText,
+  Vote,
+  ScrollText,
+  Sparkles,
+} from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 
 interface EpochSummary {
@@ -22,16 +37,19 @@ interface EpochSummaryCardProps {
 }
 
 function TrendBadge({ delta }: { delta: number }) {
-  if (delta > 0) return (
-    <span className="inline-flex items-center gap-0.5 text-green-600 dark:text-green-400 text-xs font-medium">
-      <TrendingUp className="h-3.5 w-3.5" />+{delta}
-    </span>
-  );
-  if (delta < 0) return (
-    <span className="inline-flex items-center gap-0.5 text-red-500 text-xs font-medium">
-      <TrendingDown className="h-3.5 w-3.5" />{delta}
-    </span>
-  );
+  if (delta > 0)
+    return (
+      <span className="inline-flex items-center gap-0.5 text-green-600 dark:text-green-400 text-xs font-medium">
+        <TrendingUp className="h-3.5 w-3.5" />+{delta}
+      </span>
+    );
+  if (delta < 0)
+    return (
+      <span className="inline-flex items-center gap-0.5 text-red-500 text-xs font-medium">
+        <TrendingDown className="h-3.5 w-3.5" />
+        {delta}
+      </span>
+    );
   return (
     <span className="inline-flex items-center gap-0.5 text-muted-foreground text-xs font-medium">
       <Minus className="h-3.5 w-3.5" />0
@@ -98,7 +116,9 @@ export function EpochSummaryCard({ epoch, summary }: EpochSummaryCardProps) {
           <div className="mt-4 flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
             <span className="text-sm text-muted-foreground">Rep Score</span>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold tabular-nums">{summary.representationScore}</span>
+              <span className="text-lg font-semibold tabular-nums">
+                {summary.representationScore}
+              </span>
               {summary.repScoreDelta !== null && <TrendBadge delta={summary.repScoreDelta} />}
             </div>
           </div>
@@ -109,7 +129,9 @@ export function EpochSummaryCard({ epoch, summary }: EpochSummaryCardProps) {
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500" />
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{summary.highlightProposal.title}</p>
-              <p className={`text-xs font-medium capitalize ${OUTCOME_COLORS[summary.highlightProposal.outcome] ?? 'text-muted-foreground'}`}>
+              <p
+                className={`text-xs font-medium capitalize ${OUTCOME_COLORS[summary.highlightProposal.outcome] ?? 'text-muted-foreground'}`}
+              >
                 {summary.highlightProposal.outcome}
               </p>
             </div>

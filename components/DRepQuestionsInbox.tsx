@@ -33,7 +33,7 @@ export function DRepQuestionsInbox({ drepId }: DRepQuestionsInboxProps) {
 
   const fetchQuestions = useCallback(() => {
     fetch(`/api/governance/questions?drepId=${encodeURIComponent(drepId)}`)
-      .then(r => r.ok ? r.json() : [])
+      .then((r) => (r.ok ? r.json() : []))
       .then(setQuestions)
       .catch(() => setQuestions([]))
       .finally(() => setLoading(false));
@@ -87,7 +87,7 @@ export function DRepQuestionsInbox({ drepId }: DRepQuestionsInboxProps) {
     );
   }
 
-  const openQuestions = questions.filter(q => q.status === 'open');
+  const openQuestions = questions.filter((q) => q.status === 'open');
 
   if (openQuestions.length === 0 && questions.length === 0) return null;
 
@@ -106,11 +106,15 @@ export function DRepQuestionsInbox({ drepId }: DRepQuestionsInboxProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         {openQuestions.length > 0 ? (
-          openQuestions.slice(0, 5).map(q => (
+          openQuestions.slice(0, 5).map((q) => (
             <div key={q.id} className="rounded-lg border p-3 space-y-2">
               <p className="text-sm">{q.questionText}</p>
               <p className="text-[10px] text-muted-foreground">
-                From {q.askerWallet.slice(0, 12)}... · {new Date(q.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                From {q.askerWallet.slice(0, 12)}... ·{' '}
+                {new Date(q.createdAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}
               </p>
 
               {responding === q.id ? (
@@ -118,16 +122,25 @@ export function DRepQuestionsInbox({ drepId }: DRepQuestionsInboxProps) {
                   <Textarea
                     placeholder="Write your response..."
                     value={responseText}
-                    onChange={e => setResponseText(e.target.value)}
+                    onChange={(e) => setResponseText(e.target.value)}
                     maxLength={2000}
                     rows={3}
                     className="resize-none text-sm"
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground tabular-nums">{responseText.length}/2000</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {responseText.length}/2000
+                    </span>
                     <div className="flex gap-2">
                       {error && <span className="text-xs text-destructive">{error}</span>}
-                      <Button variant="ghost" size="sm" onClick={() => { setResponding(null); setResponseText(''); }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setResponding(null);
+                          setResponseText('');
+                        }}
+                      >
                         Cancel
                       </Button>
                       <Button
@@ -136,7 +149,11 @@ export function DRepQuestionsInbox({ drepId }: DRepQuestionsInboxProps) {
                         onClick={() => handleRespond(q.id)}
                         disabled={submitting || !responseText.trim()}
                       >
-                        {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        {submitting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Send className="h-3.5 w-3.5" />
+                        )}
                         Respond
                       </Button>
                     </div>
@@ -147,7 +164,11 @@ export function DRepQuestionsInbox({ drepId }: DRepQuestionsInboxProps) {
                   variant="outline"
                   size="sm"
                   className="gap-1.5"
-                  onClick={() => { setResponding(q.id); setResponseText(''); setError(null); }}
+                  onClick={() => {
+                    setResponding(q.id);
+                    setResponseText('');
+                    setError(null);
+                  }}
                 >
                   <MessageSquare className="h-3.5 w-3.5" />
                   Reply

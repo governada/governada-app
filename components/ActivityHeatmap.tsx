@@ -3,12 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { posthog } from '@/lib/posthog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Activity } from 'lucide-react';
 
 interface EpochActivity {
@@ -30,10 +25,13 @@ export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
     if (!drepId) return;
     // Fetch vote data and build epoch activity from it
     fetch(`/api/drep/${encodeURIComponent(drepId)}/votes`)
-      .then(r => r.json())
-      .then(votes => {
-        if (!Array.isArray(votes)) { setLoading(false); return; }
-        
+      .then((r) => r.json())
+      .then((votes) => {
+        if (!Array.isArray(votes)) {
+          setLoading(false);
+          return;
+        }
+
         // Group votes by epoch
         const epochMap = new Map<number, { votes: number; withRationale: number }>();
         for (const v of votes) {
@@ -66,8 +64,8 @@ export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
     if (data.length === 0) return { minEpoch: 0, maxEpoch: 0, grid: [] };
     const min = data[0].epoch;
     const max = data[data.length - 1].epoch;
-    const activityMap = new Map(data.map(d => [d.epoch, d]));
-    
+    const activityMap = new Map(data.map((d) => [d.epoch, d]));
+
     const cells: (EpochActivity | null)[] = [];
     for (let e = min; e <= max; e++) {
       cells.push(activityMap.get(e) || null);
@@ -135,15 +133,16 @@ export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
               return (
                 <Tooltip key={epoch}>
                   <TooltipTrigger asChild>
-                    <div
-                      className={`w-3 h-3 rounded-sm ${getColor(entry)} transition-colors`}
-                    />
+                    <div className={`w-3 h-3 rounded-sm ${getColor(entry)} transition-colors`} />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="text-xs">
                       <span className="font-medium">Epoch {epoch}</span>
                       {entry ? (
-                        <>: {entry.votes} vote{entry.votes !== 1 ? 's' : ''}, {entry.withRationale} with rationale</>
+                        <>
+                          : {entry.votes} vote{entry.votes !== 1 ? 's' : ''}, {entry.withRationale}{' '}
+                          with rationale
+                        </>
                       ) : (
                         <>: No votes</>
                       )}

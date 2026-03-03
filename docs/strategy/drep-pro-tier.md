@@ -18,24 +18,27 @@ Premium tier for DReps who want analytics, engagement tools, and verified status
 
 ## Feature Candidates
 
-*To be prioritized through DRep interviews and usage data.*
+_To be prioritized through DRep interviews and usage data._
 
 ### Must-Have (Launch)
+
 - TBD
 
 ### Should-Have (V2)
+
 - TBD
 
 ### Nice-to-Have (Future)
+
 - TBD
 
 ## Pricing Model
 
-*To be validated.*
+_To be validated._
 
 ## Rollout Plan
 
-*To be defined after feature validation.*
+_To be defined after feature validation._
 
 ## Next Actions
 

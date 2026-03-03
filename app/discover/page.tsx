@@ -5,7 +5,8 @@ import { PageViewTracker } from '@/components/PageViewTracker';
 
 export const metadata: Metadata = {
   title: 'Discover DReps — DRepScore',
-  description: 'Find and compare Cardano DReps by score, participation, rationale quality, and alignment with your governance values.',
+  description:
+    'Find and compare Cardano DReps by score, participation, rationale quality, and alignment with your governance values.',
 };
 
 export const dynamic = 'force-dynamic';

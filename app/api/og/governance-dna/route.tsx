@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
       { name: match1Name, score: parseInt(match1Score) },
       { name: match2Name, score: parseInt(match2Score) },
       { name: match3Name, score: parseInt(match3Score) },
-    ].filter(m => m.name && m.score > 0);
+    ].filter((m) => m.name && m.score > 0);
 
     return new ImageResponse(
-      (
-        <OGBackground glow={OG.indigo}>
-          <div style={{
+      <OGBackground glow={OG.indigo}>
+        <div
+          style={{
             display: 'flex',
             flexDirection: 'column',
             width: '100%',
@@ -31,33 +31,64 @@ export async function GET(request: NextRequest) {
             padding: '80px',
             alignItems: 'center',
             justifyContent: 'center',
-          }}>
-            {/* DNA icon representation */}
-            <div style={{
+          }}
+        >
+          {/* DNA icon representation */}
+          <div
+            style={{
               display: 'flex',
               fontSize: '64px',
               marginBottom: '16px',
-            }}>
-              🧬
-            </div>
+            }}
+          >
+            🧬
+          </div>
 
-            <div style={{ display: 'flex', fontSize: '40px', fontWeight: 700, color: OG.text, marginBottom: '8px' }}>
-              My Governance DNA
-            </div>
+          <div
+            style={{
+              display: 'flex',
+              fontSize: '40px',
+              fontWeight: 700,
+              color: OG.text,
+              marginBottom: '8px',
+            }}
+          >
+            My Governance DNA
+          </div>
 
-            <div style={{ display: 'flex', fontSize: '20px', color: OG.textMuted, marginBottom: '48px' }}>
-              Based on {votesCount} governance decisions
-            </div>
+          <div
+            style={{ display: 'flex', fontSize: '20px', color: OG.textMuted, marginBottom: '48px' }}
+          >
+            Based on {votesCount} governance decisions
+          </div>
 
-            {matches.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: '700px' }}>
-                <div style={{ display: 'flex', fontSize: '18px', color: OG.textMuted, marginBottom: '4px' }}>
-                  My top DRep matches:
-                </div>
-                {matches.map((m, i) => {
-                  const matchColor = m.score >= 70 ? OG.green : m.score >= 50 ? OG.amber : OG.textMuted;
-                  return (
-                    <div key={i} style={{
+          {matches.length > 0 ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                width: '100%',
+                maxWidth: '700px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  fontSize: '18px',
+                  color: OG.textMuted,
+                  marginBottom: '4px',
+                }}
+              >
+                My top DRep matches:
+              </div>
+              {matches.map((m, i) => {
+                const matchColor =
+                  m.score >= 70 ? OG.green : m.score >= 50 ? OG.amber : OG.textMuted;
+                return (
+                  <div
+                    key={i}
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
                       padding: '20px 24px',
@@ -65,20 +96,32 @@ export async function GET(request: NextRequest) {
                       backgroundColor: OG.bgCard,
                       border: `1px solid ${matchColor}30`,
                       gap: '16px',
-                    }}>
-                      <div style={{
+                    }}
+                  >
+                    <div
+                      style={{
                         display: 'flex',
                         fontSize: '24px',
                         fontWeight: 700,
                         color: i === 0 ? OG.amber : OG.textMuted,
                         width: '32px',
-                      }}>
-                        #{i + 1}
-                      </div>
-                      <div style={{ display: 'flex', flex: 1, fontSize: '24px', fontWeight: 600, color: OG.text }}>
-                        {m.name.length > 20 ? m.name.slice(0, 18) + '…' : m.name}
-                      </div>
-                      <div style={{
+                      }}
+                    >
+                      #{i + 1}
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flex: 1,
+                        fontSize: '24px',
+                        fontWeight: 600,
+                        color: OG.text,
+                      }}
+                    >
+                      {m.name.length > 20 ? m.name.slice(0, 18) + '…' : m.name}
+                    </div>
+                    <div
+                      style={{
                         display: 'flex',
                         padding: '4px 16px',
                         borderRadius: '16px',
@@ -86,41 +129,46 @@ export async function GET(request: NextRequest) {
                         fontSize: '20px',
                         fontWeight: 700,
                         color: matchColor,
-                      }}>
-                        {m.score}% match
-                      </div>
+                      }}
+                    >
+                      {m.score}% match
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', fontSize: '22px', color: OG.textMuted }}>
-                Take the quiz at drepscore.io to find your matches
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', fontSize: '22px', color: OG.textMuted }}>
+              Take the quiz at drepscore.io to find your matches
+            </div>
+          )}
 
-            <div style={{
+          <div
+            style={{
               display: 'flex',
               fontSize: '22px',
               fontWeight: 600,
               color: OG.brand,
               marginTop: '40px',
-            }}>
-              Find your Governance DNA at drepscore.io
-            </div>
-
-            <OGFooter left="$drepscore" right="drepscore.io/discover" />
+            }}
+          >
+            Find your Governance DNA at drepscore.io
           </div>
-        </OGBackground>
-      ),
+
+          <OGFooter left="$drepscore" right="drepscore.io/discover" />
+        </div>
+      </OGBackground>,
       {
         width: 1080,
         height: 1080,
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300' },
-      }
+      },
     );
   } catch (error) {
     console.error('[OG Governance DNA] Error:', error);
-    return new ImageResponse(<OGFallback message="Find your Governance DNA" />, { width: 1080, height: 1080 });
+    return new ImageResponse(<OGFallback message="Find your Governance DNA" />, {
+      width: 1080,
+      height: 1080,
+    });
   }
 }

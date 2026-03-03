@@ -14,11 +14,7 @@
  */
 import { captureServerEvent } from '@/lib/posthog-server';
 
-import {
-  type NotificationPayload,
-  renderDiscord,
-  renderTelegram,
-} from './channelRenderers';
+import { type NotificationPayload, renderDiscord, renderTelegram } from './channelRenderers';
 import { type Channel } from './notificationRegistry';
 import { sendPushToUser } from './push';
 import { getSupabaseAdmin } from './supabase';
@@ -98,7 +94,7 @@ function toPayload(event: NotificationEvent | NotificationPayload): Notification
 
 async function sendDiscordWebhook(
   webhookUrl: string,
-  payload: NotificationPayload
+  payload: NotificationPayload,
 ): Promise<boolean> {
   try {
     const content = renderDiscord(payload);
@@ -115,10 +111,7 @@ async function sendDiscordWebhook(
   }
 }
 
-async function sendTelegramMessage(
-  chatId: string,
-  payload: NotificationPayload
-): Promise<boolean> {
+async function sendTelegramMessage(chatId: string, payload: NotificationPayload): Promise<boolean> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) return false;
 
@@ -167,7 +160,7 @@ export function registerChannelSender(channel: Channel, sender: ChannelSender): 
  */
 export async function notifyUser(
   userWallet: string,
-  event: NotificationEvent | NotificationPayload
+  event: NotificationEvent | NotificationPayload,
 ): Promise<void> {
   const payload = toPayload(event);
   const supabase = getSupabaseAdmin();
@@ -181,7 +174,7 @@ export async function notifyUser(
 
   if (!prefs || prefs.length === 0) return;
 
-  const enabledChannels = new Set(prefs.map(p => p.channel as Channel));
+  const enabledChannels = new Set(prefs.map((p) => p.channel as Channel));
 
   // For push and email, we don't require a user_channels entry —
   // push reads users.push_subscriptions, email reads users.email
@@ -243,7 +236,9 @@ export async function notifyUser(
 /**
  * Broadcast an event to a Discord webhook (server-wide, not per-user).
  */
-export async function broadcastDiscord(event: NotificationEvent | NotificationPayload): Promise<boolean> {
+export async function broadcastDiscord(
+  event: NotificationEvent | NotificationPayload,
+): Promise<boolean> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return false;
   return sendDiscordWebhook(webhookUrl, toPayload(event));
@@ -252,7 +247,9 @@ export async function broadcastDiscord(event: NotificationEvent | NotificationPa
 /**
  * Send notifications to all users who have a specific event type enabled on any channel.
  */
-export async function broadcastEvent(event: NotificationEvent | NotificationPayload): Promise<number> {
+export async function broadcastEvent(
+  event: NotificationEvent | NotificationPayload,
+): Promise<number> {
   const payload = toPayload(event);
   const supabase = getSupabaseAdmin();
 
@@ -264,7 +261,7 @@ export async function broadcastEvent(event: NotificationEvent | NotificationPayl
 
   if (!prefs || prefs.length === 0) return 0;
 
-  const wallets = new Set(prefs.map(p => p.user_wallet));
+  const wallets = new Set(prefs.map((p) => p.user_wallet));
   let sent = 0;
   for (const wallet of wallets) {
     await notifyUser(wallet, payload);
@@ -296,7 +293,7 @@ async function resolveSegment(segment: SegmentQuery): Promise<string[]> {
         .from('users')
         .select('wallet_address')
         .not('claimed_drep_id', 'is', null);
-      return (data || []).map(u => u.wallet_address);
+      return (data || []).map((u) => u.wallet_address);
     }
 
     case 'active-holders': {
@@ -306,7 +303,7 @@ async function resolveSegment(segment: SegmentQuery): Promise<string[]> {
         .from('users')
         .select('wallet_address')
         .gte('last_active', since);
-      return (data || []).map(u => u.wallet_address);
+      return (data || []).map((u) => u.wallet_address);
     }
 
     case 'watching': {
@@ -315,8 +312,8 @@ async function resolveSegment(segment: SegmentQuery): Promise<string[]> {
         .select('wallet_address, watchlist')
         .not('watchlist', 'is', null);
       return (data || [])
-        .filter(u => Array.isArray(u.watchlist) && u.watchlist.includes(segment.drepId))
-        .map(u => u.wallet_address);
+        .filter((u) => Array.isArray(u.watchlist) && u.watchlist.includes(segment.drepId))
+        .map((u) => u.wallet_address);
     }
 
     case 'delegated-to': {
@@ -326,11 +323,15 @@ async function resolveSegment(segment: SegmentQuery): Promise<string[]> {
         .select('wallet_address, delegation_history')
         .not('delegation_history', 'is', null);
       return (data || [])
-        .filter(u => {
+        .filter((u) => {
           const history = u.delegation_history as Array<{ drepId: string }>;
-          return Array.isArray(history) && history.length > 0 && history[history.length - 1].drepId === segment.drepId;
+          return (
+            Array.isArray(history) &&
+            history.length > 0 &&
+            history[history.length - 1].drepId === segment.drepId
+          );
         })
-        .map(u => u.wallet_address);
+        .map((u) => u.wallet_address);
     }
 
     case 'citizen-level-min':
@@ -344,7 +345,7 @@ async function resolveSegment(segment: SegmentQuery): Promise<string[]> {
  */
 export async function notifySegment(
   segment: SegmentQuery,
-  event: NotificationEvent | NotificationPayload
+  event: NotificationEvent | NotificationPayload,
 ): Promise<number> {
   const wallets = await resolveSegment(segment);
   let sent = 0;
@@ -358,12 +359,22 @@ export async function notifySegment(
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function logAndTrack(supabase: any, wallet: string, payload: NotificationPayload, channel: string, sent: boolean) {
-  captureServerEvent('notification_sent', {
-    channel,
-    event_type: payload.eventType,
-    delivered: sent,
-  }, wallet);
+async function logAndTrack(
+  supabase: any,
+  wallet: string,
+  payload: NotificationPayload,
+  channel: string,
+  sent: boolean,
+) {
+  captureServerEvent(
+    'notification_sent',
+    {
+      channel,
+      event_type: payload.eventType,
+      delivered: sent,
+    },
+    wallet,
+  );
 
   await supabase.from('notification_log').insert({
     user_wallet: wallet,

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   try {
     const { drepId } = await params;

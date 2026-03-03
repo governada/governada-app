@@ -45,7 +45,13 @@ interface Result {
 }
 
 async function checkRoute(route: SyncRoute): Promise<Result> {
-  const result: Result = { name: route.name, routeOk: false, status: null, healthOk: false, staleMins: null };
+  const result: Result = {
+    name: route.name,
+    routeOk: false,
+    status: null,
+    healthOk: false,
+    staleMins: null,
+  };
 
   try {
     const res = await fetch(`${BASE_URL}${route.path}`, {
@@ -65,7 +71,9 @@ async function checkRoute(route: SyncRoute): Promise<Result> {
 async function checkHealth(): Promise<Record<string, { staleMins: number; success: boolean }>> {
   try {
     const res = await fetch(`${BASE_URL}/api/health`, { signal: AbortSignal.timeout(10_000) });
-    const body = await res.json() as { syncs?: Array<{ type: string; stale_mins: number | null; last_success: boolean }> };
+    const body = (await res.json()) as {
+      syncs?: Array<{ type: string; stale_mins: number | null; last_success: boolean }>;
+    };
 
     const map: Record<string, { staleMins: number; success: boolean }> = {};
     for (const s of body.syncs || []) {

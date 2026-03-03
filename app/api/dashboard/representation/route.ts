@@ -17,7 +17,11 @@ export async function GET(request: NextRequest) {
       .eq('delegated_drep_id', drepId);
 
     if (!pollResponses || pollResponses.length === 0) {
-      return NextResponse.json({ alignment: null, proposals: [], message: 'No delegator poll data' });
+      return NextResponse.json({
+        alignment: null,
+        proposals: [],
+        message: 'No delegator poll data',
+      });
     }
 
     // Get DRep's votes
@@ -49,21 +53,24 @@ export async function GET(request: NextRequest) {
 
     // Get proposal titles
     const proposalKeys = [...proposalPolls.keys()];
-    const proposalIds = proposalKeys.map(k => {
+    const proposalIds = proposalKeys.map((k) => {
       const [txHash, index] = k.split('-');
       return { tx_hash: txHash, proposal_index: parseInt(index) };
     });
 
     const titles = new Map<string, string>();
     if (proposalIds.length > 0) {
-      const txHashes = [...new Set(proposalIds.map(p => p.tx_hash))];
+      const txHashes = [...new Set(proposalIds.map((p) => p.tx_hash))];
       const { data: proposals } = await supabase
         .from('proposals')
         .select('tx_hash, proposal_index, title')
         .in('tx_hash', txHashes);
       if (proposals) {
         for (const p of proposals) {
-          titles.set(`${p.tx_hash}-${p.proposal_index}`, p.title || `Proposal ${p.tx_hash.slice(0, 8)}...`);
+          titles.set(
+            `${p.tx_hash}-${p.proposal_index}`,
+            p.title || `Proposal ${p.tx_hash.slice(0, 8)}...`,
+          );
         }
       }
     }
@@ -81,11 +88,16 @@ export async function GET(request: NextRequest) {
       const drepVote = drepVoteMap.get(key);
       if (!drepVote) continue;
 
-      const majority = counts.yes >= counts.no && counts.yes >= counts.abstain ? 'Yes'
-        : counts.no >= counts.yes && counts.no >= counts.abstain ? 'No'
-        : 'Abstain';
+      const majority =
+        counts.yes >= counts.no && counts.yes >= counts.abstain
+          ? 'Yes'
+          : counts.no >= counts.yes && counts.no >= counts.abstain
+            ? 'No'
+            : 'Abstain';
 
-      const majorityPct = Math.round((Math.max(counts.yes, counts.no, counts.abstain) / total) * 100);
+      const majorityPct = Math.round(
+        (Math.max(counts.yes, counts.no, counts.abstain) / total) * 100,
+      );
       const aligned = drepVote === majority;
 
       if (aligned) alignedCount++;
@@ -102,7 +114,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const alignmentPct = totalCompared > 0 ? Math.round((alignedCount / totalCompared) * 100) : null;
+    const alignmentPct =
+      totalCompared > 0 ? Math.round((alignedCount / totalCompared) * 100) : null;
 
     return NextResponse.json({
       alignment: alignmentPct,

@@ -67,7 +67,12 @@ export function logApiRequest(entry: ApiLogEntry): void {
 /**
  * Track when a new API key makes its first request.
  */
-export function trackFirstRequest(keyId: string, keyPrefix: string, tier: string, endpoint: string): void {
+export function trackFirstRequest(
+  keyId: string,
+  keyPrefix: string,
+  tier: string,
+  endpoint: string,
+): void {
   const supabase = getSupabaseAdmin();
 
   void supabase

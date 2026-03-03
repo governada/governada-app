@@ -20,7 +20,7 @@ export function DRepTreasuryStance({ drepId, compact = false }: Props) {
   useEffect(() => {
     import('@/lib/treasury').then(({ getDRepTreasuryTrackRecord }) => {
       getDRepTreasuryTrackRecord(drepId)
-        .then(r => {
+        .then((r) => {
           setRecord(r);
           setLoading(false);
           if (r && r.totalProposals > 0) {
@@ -38,20 +38,28 @@ export function DRepTreasuryStance({ drepId, compact = false }: Props) {
   if (loading) return compact ? null : <StanceSkeleton />;
   if (!record || record.totalProposals === 0) return null;
 
-  const stance = record.approvedAda > record.opposedAda * 2 ? 'Growth'
-    : record.opposedAda > record.approvedAda * 2 ? 'Conservative'
-    : 'Balanced';
+  const stance =
+    record.approvedAda > record.opposedAda * 2
+      ? 'Growth'
+      : record.opposedAda > record.approvedAda * 2
+        ? 'Conservative'
+        : 'Balanced';
 
-  const stanceColor = stance === 'Growth' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-    : stance === 'Conservative' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+  const stanceColor =
+    stance === 'Growth'
+      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      : stance === 'Conservative'
+        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+        : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
 
   if (compact) {
     return (
       <div className="flex items-center gap-2 text-xs">
         <Landmark className="h-3 w-3 text-muted-foreground" />
         <span>Treasury: {record.totalProposals} votes</span>
-        <Badge variant="secondary" className={`text-[10px] ${stanceColor}`}>{stance}</Badge>
+        <Badge variant="secondary" className={`text-[10px] ${stanceColor}`}>
+          {stance}
+        </Badge>
         {record.judgmentScore !== null && (
           <span className="text-muted-foreground">{record.judgmentScore}% accuracy</span>
         )}
@@ -65,7 +73,9 @@ export function DRepTreasuryStance({ drepId, compact = false }: Props) {
         <CardTitle className="text-sm flex items-center gap-2">
           <Landmark className="h-4 w-4 text-primary" />
           Treasury Track Record
-          <Badge variant="secondary" className={`text-xs ${stanceColor}`}>{stance}</Badge>
+          <Badge variant="secondary" className={`text-xs ${stanceColor}`}>
+            {stance}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -75,14 +85,18 @@ export function DRepTreasuryStance({ drepId, compact = false }: Props) {
               <ThumbsUp className="h-3.5 w-3.5" />
               <span className="text-lg font-bold">{record.approvedCount}</span>
             </div>
-            <div className="text-xs text-muted-foreground">Approved ({formatAda(record.approvedAda)})</div>
+            <div className="text-xs text-muted-foreground">
+              Approved ({formatAda(record.approvedAda)})
+            </div>
           </div>
           <div>
             <div className="flex items-center justify-center gap-1 text-red-500">
               <ThumbsDown className="h-3.5 w-3.5" />
               <span className="text-lg font-bold">{record.opposedCount}</span>
             </div>
-            <div className="text-xs text-muted-foreground">Opposed ({formatAda(record.opposedAda)})</div>
+            <div className="text-xs text-muted-foreground">
+              Opposed ({formatAda(record.opposedAda)})
+            </div>
           </div>
           <div>
             <div className="flex items-center justify-center gap-1 text-muted-foreground">
@@ -98,13 +112,16 @@ export function DRepTreasuryStance({ drepId, compact = false }: Props) {
             <Award className="h-4 w-4 text-primary" />
             <div className="flex-1">
               <div className="text-xs text-muted-foreground">Treasury Judgment Score</div>
-              <div className="text-sm font-semibold">{record.judgmentScore}% of approved spending delivered</div>
+              <div className="text-sm font-semibold">
+                {record.judgmentScore}% of approved spending delivered
+              </div>
             </div>
           </div>
         )}
 
         <div className="text-xs text-muted-foreground">
-          Voted on {record.totalProposals} treasury proposals totaling {formatAda(record.totalAdaVotedOn)} ADA
+          Voted on {record.totalProposals} treasury proposals totaling{' '}
+          {formatAda(record.totalAdaVotedOn)} ADA
         </div>
       </CardContent>
     </Card>

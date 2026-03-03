@@ -25,7 +25,7 @@ export function MilestoneCelebration({
 }: MilestoneCelebrationProps) {
   const firedRef = useRef(false);
   const [visible, setVisible] = useState(true);
-  const milestone = MILESTONES.find(m => m.key === milestoneKey);
+  const milestone = MILESTONES.find((m) => m.key === milestoneKey);
 
   useEffect(() => {
     posthog.capture('milestone_celebration_viewed', {
@@ -125,7 +125,7 @@ export function MilestoneCelebrationManager({
     if (!lastVisit || achievedMilestones.length === 0) return;
     const lastVisitTime = new Date(lastVisit).getTime();
     const newMilestones = achievedMilestones.filter(
-      m => new Date(m.achievedAt).getTime() > lastVisitTime
+      (m) => new Date(m.achievedAt).getTime() > lastVisitTime,
     );
     if (newMilestones.length > 0) {
       setCelebrating(newMilestones[0].milestoneKey);

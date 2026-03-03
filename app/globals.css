@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -58,13 +58,13 @@
 
   /* Light mode — functional, clean */
   --background: oklch(0.98 0.005 260);
-  --foreground: oklch(0.10 0.02 260);
+  --foreground: oklch(0.1 0.02 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.10 0.02 260);
+  --card-foreground: oklch(0.1 0.02 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.10 0.02 260);
+  --popover-foreground: oklch(0.1 0.02 260);
 
-  --primary: oklch(0.50 0.18 200);
+  --primary: oklch(0.5 0.18 200);
   --primary-foreground: oklch(0.98 0 0);
 
   --secondary: oklch(0.55 0.15 290);
@@ -74,12 +74,12 @@
   --muted-foreground: oklch(0.45 0.02 260);
 
   --accent: oklch(0.95 0.01 260);
-  --accent-foreground: oklch(0.10 0.02 260);
+  --accent-foreground: oklch(0.1 0.02 260);
 
   --destructive: oklch(0.55 0.22 25);
   --border: oklch(0.88 0.005 260);
   --input: oklch(0.88 0.005 260);
-  --ring: oklch(0.50 0.18 200);
+  --ring: oklch(0.5 0.18 200);
 
   /* Identity accent system — overridden by AccentProvider per page/section */
   --identity: oklch(0.72 0.14 200);
@@ -89,20 +89,20 @@
   --primary-rgb: 6 182 212;
 
   /* Chart palette */
-  --chart-1: oklch(0.50 0.18 200);
-  --chart-2: oklch(0.50 0.16 160);
-  --chart-3: oklch(0.50 0.15 290);
+  --chart-1: oklch(0.5 0.18 200);
+  --chart-2: oklch(0.5 0.16 160);
+  --chart-3: oklch(0.5 0.15 290);
   --chart-4: oklch(0.55 0.16 80);
-  --chart-5: oklch(0.50 0.20 25);
+  --chart-5: oklch(0.5 0.2 25);
 
   --sidebar: oklch(0.97 0.005 260);
-  --sidebar-foreground: oklch(0.10 0.02 260);
-  --sidebar-primary: oklch(0.50 0.18 200);
+  --sidebar-foreground: oklch(0.1 0.02 260);
+  --sidebar-primary: oklch(0.5 0.18 200);
   --sidebar-primary-foreground: oklch(0.98 0 0);
   --sidebar-accent: oklch(0.94 0.005 260);
-  --sidebar-accent-foreground: oklch(0.10 0.02 260);
+  --sidebar-accent-foreground: oklch(0.1 0.02 260);
   --sidebar-border: oklch(0.88 0.005 260);
-  --sidebar-ring: oklch(0.50 0.18 200);
+  --sidebar-ring: oklch(0.5 0.18 200);
 }
 
 .dark {
@@ -114,7 +114,7 @@
   --background: oklch(0.07 0.015 260);
   --foreground: oklch(0.96 0.005 260);
 
-  --card: oklch(0.10 0.015 260);
+  --card: oklch(0.1 0.015 260);
   --card-foreground: oklch(0.96 0.005 260);
 
   --popover: oklch(0.11 0.015 260);
@@ -134,7 +134,7 @@
   --accent: oklch(0.13 0.02 260);
   --accent-foreground: oklch(0.96 0.005 260);
 
-  --destructive: oklch(0.55 0.20 25);
+  --destructive: oklch(0.55 0.2 25);
 
   --border: oklch(0.17 0.015 260);
   --input: oklch(0.13 0.015 260);
@@ -148,9 +148,9 @@
   /* Chart palette — vivid against deep dark */
   --chart-1: oklch(0.72 0.14 200);
   --chart-2: oklch(0.68 0.16 160);
-  --chart-3: oklch(0.60 0.18 290);
+  --chart-3: oklch(0.6 0.18 290);
   --chart-4: oklch(0.75 0.14 80);
-  --chart-5: oklch(0.60 0.20 25);
+  --chart-5: oklch(0.6 0.2 25);
 
   --sidebar: oklch(0.08 0.015 260);
   --sidebar-foreground: oklch(0.96 0.005 260);
@@ -203,12 +203,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.30 0.02 260);
+  background: oklch(0.3 0.02 260);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.40 0.03 260);
+  background: oklch(0.4 0.03 260);
 }
 
 .dark ::-webkit-scrollbar-thumb {
@@ -216,13 +216,13 @@
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.30 0.02 260);
+  background: oklch(0.3 0.02 260);
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: oklch(0.30 0.02 260) transparent;
+  scrollbar-color: oklch(0.3 0.02 260) transparent;
 }
 
 .dark * {
@@ -233,23 +233,24 @@
    Card system — glow borders, identity-tinted hover
    ============================================================ */
 
-[data-slot="card"] {
-  transition: box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-              border-color 0.25s ease;
+[data-slot='card'] {
+  transition:
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease;
 }
 
-[data-slot="card"]:hover {
+[data-slot='card']:hover {
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   transform: translateY(-1px) scale(1.003);
 }
 
-.dark [data-slot="card"] {
+.dark [data-slot='card'] {
   border-color: oklch(0.17 0.015 260);
   box-shadow: 0 0 0 0 transparent;
 }
 
-.dark [data-slot="card"]:hover {
+.dark [data-slot='card']:hover {
   border-color: rgb(var(--identity-rgb) / 0.15);
   box-shadow:
     0 0 0 1px rgb(var(--identity-rgb) / 0.08),
@@ -262,13 +263,13 @@
    ============================================================ */
 
 button:not(:disabled):active,
-[role="button"]:not(:disabled):active {
+[role='button']:not(:disabled):active {
   transform: scale(0.97);
   transition: transform 0.1s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Default button glow on hover in dark mode */
-.dark [data-slot="button"][data-variant="default"]:hover {
+.dark [data-slot='button'][data-variant='default']:hover {
   box-shadow: 0 0 20px rgb(var(--primary-rgb) / 0.2);
 }
 
@@ -277,11 +278,15 @@ button:not(:disabled):active,
    ============================================================ */
 
 @keyframes skeleton-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
-.dark [data-slot="skeleton"] {
+.dark [data-slot='skeleton'] {
   animation: skeleton-shimmer 2s ease-in-out infinite;
   background: linear-gradient(
     90deg,
@@ -297,8 +302,13 @@ button:not(:disabled):active,
    ============================================================ */
 
 @keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes fade-in-up {
@@ -321,24 +331,42 @@ button:not(:disabled):active,
   animation: fade-in-up 0.6s ease-out both;
 }
 
-.animation-delay-100 { animation-delay: 0.1s; }
-.animation-delay-200 { animation-delay: 0.2s; }
-.animation-delay-300 { animation-delay: 0.3s; }
-.animation-delay-400 { animation-delay: 0.4s; }
-.animation-delay-500 { animation-delay: 0.5s; }
+.animation-delay-100 {
+  animation-delay: 0.1s;
+}
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+.animation-delay-300 {
+  animation-delay: 0.3s;
+}
+.animation-delay-400 {
+  animation-delay: 0.4s;
+}
+.animation-delay-500 {
+  animation-delay: 0.5s;
+}
 
 .hero-text-shadow {
-  text-shadow: 0 0 20px rgba(10, 11, 20, 0.8), 0 2px 8px rgba(10, 11, 20, 0.6);
+  text-shadow:
+    0 0 20px rgba(10, 11, 20, 0.8),
+    0 2px 8px rgba(10, 11, 20, 0.6);
 }
 
 .nav-text-shadow {
-  text-shadow: 0 0 12px rgba(10, 11, 20, 0.9), 0 1px 4px rgba(10, 11, 20, 0.7);
+  text-shadow:
+    0 0 12px rgba(10, 11, 20, 0.9),
+    0 1px 4px rgba(10, 11, 20, 0.7);
 }
 
 /* Pillar bar stagger animation */
 @keyframes grow {
-  from { transform: scaleY(0); }
-  to { transform: scaleY(1); }
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 .animate-grow {
   animation: grow 0.5s ease-out both;
@@ -347,9 +375,17 @@ button:not(:disabled):active,
 
 /* Copy button morph */
 @keyframes check-pop {
-  0% { transform: scale(0.8); opacity: 0; }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 .animate-check-pop {
   animation: check-pop 0.3s ease-out;
@@ -357,8 +393,12 @@ button:not(:disabled):active,
 
 /* Activity ticker scroll */
 @keyframes ticker-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 .animate-ticker {
   animation: ticker-scroll 60s linear infinite;
@@ -381,8 +421,13 @@ button:not(:disabled):active,
 
 /* CTA pulse — uses identity accent for contextual glow */
 @keyframes cta-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--identity-rgb) / 0.3); }
-  50% { box-shadow: 0 0 0 8px rgb(var(--identity-rgb) / 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(var(--identity-rgb) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgb(var(--identity-rgb) / 0);
+  }
 }
 .animate-cta-pulse {
   animation: cta-pulse 2.5s ease-in-out infinite;
@@ -393,13 +438,22 @@ button:not(:disabled):active,
    ============================================================ */
 
 @keyframes breathing-glow {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes hex-shimmer {
-  0% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: -1000; }
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1000;
+  }
 }
 
 .animate-breathing-glow {
@@ -426,22 +480,26 @@ button:not(:disabled):active,
    Button ripple — identity-tinted, CSS-only
    ============================================================ */
 
-[data-slot="button"][data-variant="default"] {
+[data-slot='button'][data-variant='default'] {
   position: relative;
   overflow: hidden;
 }
 
-[data-slot="button"][data-variant="default"]::after {
+[data-slot='button'][data-variant='default']::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgb(255 255 255 / 0.2) 0%, transparent 60%);
+  background: radial-gradient(
+    circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
+    rgb(255 255 255 / 0.2) 0%,
+    transparent 60%
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
-[data-slot="button"][data-variant="default"]:active::after {
+[data-slot='button'][data-variant='default']:active::after {
   opacity: 1;
 }
 
@@ -468,8 +526,12 @@ button:not(:disabled):active,
 }
 
 @keyframes skeleton-crossfade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ============================================================
@@ -486,11 +548,11 @@ button:not(:disabled):active,
     animation: none !important;
   }
 
-  .dark [data-slot="skeleton"] {
+  .dark [data-slot='skeleton'] {
     animation: none !important;
   }
 
-  [data-slot="card"] {
+  [data-slot='card'] {
     transition: none !important;
   }
 }

@@ -9,13 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Share2, Copy, Check, Download, Image as ImageIcon, ChevronDown } from 'lucide-react';
-import {
-  shareToX,
-  copyToClipboard,
-  copyImage,
-  downloadImage,
-  trackShare,
-} from '@/lib/share';
+import { shareToX, copyToClipboard, copyImage, downloadImage, trackShare } from '@/lib/share';
 
 function XIcon({ className }: { className?: string }) {
   return (
@@ -87,7 +81,9 @@ export function ShareActions({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className={`flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-md border border-transparent hover:border-border ${className || ''}`}>
+          <button
+            className={`flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-md border border-transparent hover:border-border ${className || ''}`}
+          >
             Share
             <ChevronDown className="h-3 w-3" />
           </button>
@@ -98,13 +94,21 @@ export function ShareActions({
             Share on X
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleCopyLink} className="gap-2 cursor-pointer">
-            {copiedLink ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedLink ? (
+              <Check className="h-3.5 w-3.5 text-green-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
             {copiedLink ? 'Copied!' : 'Copy link'}
           </DropdownMenuItem>
           {imageUrl && (
             <>
               <DropdownMenuItem onClick={handleCopyImage} className="gap-2 cursor-pointer">
-                {copiedImage ? <Check className="h-3.5 w-3.5 text-green-500" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                {copiedImage ? (
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <ImageIcon className="h-3.5 w-3.5" />
+                )}
                 {copiedImage ? 'Copied!' : 'Copy image'}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleDownload} className="gap-2 cursor-pointer">
@@ -121,14 +125,36 @@ export function ShareActions({
   if (variant === 'compact') {
     return (
       <div className={`flex items-center gap-1.5 ${className || ''}`}>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleShareX} title="Share on X">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleShareX}
+          title="Share on X"
+        >
           <XIcon className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyLink} title="Copy link">
-          {copiedLink ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleCopyLink}
+          title="Copy link"
+        >
+          {copiedLink ? (
+            <Check className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
         </Button>
         {imageUrl && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title="Download image">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleDownload}
+            title="Download image"
+          >
             <Download className="h-3.5 w-3.5" />
           </Button>
         )}

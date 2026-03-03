@@ -44,7 +44,8 @@ export function PollFeedback({
   };
   const userCount = communityVotes[userVote] ?? 0;
   const userPercent = communityTotal > 0 ? Math.round((userCount / communityTotal) * 100) : 0;
-  const isMajority = userCount >= Math.max(communityVotes.yes, communityVotes.no, communityVotes.abstain);
+  const isMajority =
+    userCount >= Math.max(communityVotes.yes, communityVotes.no, communityVotes.abstain);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,7 +107,9 @@ export function PollFeedback({
     }
 
     fetchDRepVote();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [delegatedDrepId, txHash, proposalIndex, userVote]);
 
   useEffect(() => {
@@ -121,15 +124,17 @@ export function PollFeedback({
     const alignedWithCommunity = isMajority;
     const alignedWithDrep = drepData?.alignment === 'same';
 
-    import('@/lib/posthog').then(({ posthog }) => {
-      posthog.capture('poll_feedback_viewed', {
-        proposal_tx_hash: txHash,
-        proposal_index: proposalIndex,
-        aligned_with_drep: alignedWithDrep,
-        aligned_with_community: alignedWithCommunity,
-        drep_status: drepData?.alignment ?? 'unknown',
-      });
-    }).catch(() => {});
+    import('@/lib/posthog')
+      .then(({ posthog }) => {
+        posthog.capture('poll_feedback_viewed', {
+          proposal_tx_hash: txHash,
+          proposal_index: proposalIndex,
+          aligned_with_drep: alignedWithDrep,
+          aligned_with_community: alignedWithCommunity,
+          drep_status: drepData?.alignment ?? 'unknown',
+        });
+      })
+      .catch(() => {});
   }, [loading, drepData, isMajority, txHash, proposalIndex]);
 
   const accentClass =
@@ -173,9 +178,11 @@ export function PollFeedback({
             {drepData.explanation && delegatedDrepId && (
               <div className="pl-6 space-y-1">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  &ldquo;{drepData.explanation.length > 150
+                  &ldquo;
+                  {drepData.explanation.length > 150
                     ? drepData.explanation.slice(0, 150) + '…'
-                    : drepData.explanation}&rdquo;
+                    : drepData.explanation}
+                  &rdquo;
                 </p>
                 <Link
                   href={`/drep/${delegatedDrepId}`}

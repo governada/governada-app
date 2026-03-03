@@ -53,10 +53,13 @@ cp .env.example .env.local
 Edit `.env.local` and optionally add your Koios API key:
 
 \`\`\`env
+
 # Optional - for higher rate limits
+
 KOIOS_API_KEY=your_api_key_here
 
 # Default Koios mainnet URL (no need to change)
+
 NEXT_PUBLIC_KOIOS_BASE_URL=https://api.koios.rest/api/v1
 \`\`\`
 
@@ -72,27 +75,27 @@ npm run dev
 
 \`\`\`
 drepscore-app/
-├── app/                      # Next.js App Router pages
-│   ├── drep/[drepId]/       # DRep detail page
-│   ├── layout.tsx           # Root layout with header
-│   ├── page.tsx             # Homepage
-│   └── globals.css          # Global styles + Tailwind
-├── components/              # React components
-│   ├── ui/                  # shadcn/ui components
-│   ├── DRepTable.tsx        # Main DRep table
-│   ├── Header.tsx           # Global header with branding
-│   ├── WalletConnect.tsx    # Wallet integration
-│   ├── VotingHistoryChart.tsx # Recharts visualizations
-│   └── ...                  # Other components
-├── utils/                   # Utility functions
-│   ├── koios.ts            # Koios API helpers
-│   ├── scoring.ts          # Metrics calculations
-│   └── wallet.tsx          # Wallet context
-├── types/                   # TypeScript types
-│   ├── drep.ts             # DRep types
-│   └── koios.ts            # Koios API types
+├── app/ # Next.js App Router pages
+│ ├── drep/[drepId]/ # DRep detail page
+│ ├── layout.tsx # Root layout with header
+│ ├── page.tsx # Homepage
+│ └── globals.css # Global styles + Tailwind
+├── components/ # React components
+│ ├── ui/ # shadcn/ui components
+│ ├── DRepTable.tsx # Main DRep table
+│ ├── Header.tsx # Global header with branding
+│ ├── WalletConnect.tsx # Wallet integration
+│ ├── VotingHistoryChart.tsx # Recharts visualizations
+│ └── ... # Other components
+├── utils/ # Utility functions
+│ ├── koios.ts # Koios API helpers
+│ ├── scoring.ts # Metrics calculations
+│ └── wallet.tsx # Wallet context
+├── types/ # TypeScript types
+│ ├── drep.ts # DRep types
+│ └── koios.ts # Koios API types
 └── lib/
-    └── utils.ts            # shadcn utilities
+└── utils.ts # shadcn utilities
 \`\`\`
 
 ## Key Features Explained
@@ -100,6 +103,7 @@ drepscore-app/
 ### Value Selector
 
 Choose from preset value tags to find DReps aligned with your preferences:
+
 - **Treasury Conservative**: Prefers fiscal responsibility
 - **Pro-DeFi**: Supports DeFi ecosystem growth
 - **High Participation**: Actively votes on most proposals
@@ -145,6 +149,7 @@ DNS/CDN is managed via Cloudflare. Background jobs run on Inngest Cloud.
 ## Koios API
 
 This project uses the [Koios API](https://koios.rest/) to fetch Cardano governance data:
+
 - DRep list and details
 - Voting history
 - Metadata and rationale

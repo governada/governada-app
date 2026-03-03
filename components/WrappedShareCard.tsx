@@ -37,15 +37,22 @@ export function WrappedShareCard({
   const profileUrl = buildDRepUrl(drepId);
   const encodedId = encodeURIComponent(drepId);
 
-  const imageUrl = variant === 'drep'
-    ? `/api/og/wrapped/drep/${encodedId}`
-    : `/api/og/wrapped/delegator?drepId=${encodedId}`;
+  const imageUrl =
+    variant === 'drep'
+      ? `/api/og/wrapped/drep/${encodedId}`
+      : `/api/og/wrapped/delegator?drepId=${encodedId}`;
 
-  const shareText = variant === 'drep'
-    ? `My DRepScore: ${score}/100! ${rank ? `Ranked #${rank}. ` : ''}${delegators ? `${delegators} delegators trust my governance. ` : ''}Check your DRep's score on @drepscore:`
-    : `I'm delegated to ${drepName} on @drepscore — they scored ${score}/100 with ${participation || 0}% participation. Who's your DRep?`;
+  const shareText =
+    variant === 'drep'
+      ? `My DRepScore: ${score}/100! ${rank ? `Ranked #${rank}. ` : ''}${delegators ? `${delegators} delegators trust my governance. ` : ''}Check your DRep's score on @drepscore:`
+      : `I'm delegated to ${drepName} on @drepscore — they scored ${score}/100 with ${participation || 0}% participation. Who's your DRep?`;
 
-  const tierColor = score >= 80 ? 'text-green-600 dark:text-green-400' : score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+  const tierColor =
+    score >= 80
+      ? 'text-green-600 dark:text-green-400'
+      : score >= 60
+        ? 'text-amber-600 dark:text-amber-400'
+        : 'text-red-600 dark:text-red-400';
 
   return (
     <Card>
@@ -62,11 +69,10 @@ export function WrappedShareCard({
             <p className="text-xs text-muted-foreground">
               {variant === 'drep' ? 'My DRepScore' : `I'm delegated to`}
             </p>
-            {variant === 'delegator' && (
-              <p className="text-sm font-semibold">{drepName}</p>
-            )}
+            {variant === 'delegator' && <p className="text-sm font-semibold">{drepName}</p>}
             <p className={`text-3xl font-bold tabular-nums ${tierColor}`}>
-              {score}<span className="text-lg text-muted-foreground">/100</span>
+              {score}
+              <span className="text-lg text-muted-foreground">/100</span>
             </p>
             {variant === 'drep' && (
               <div className="flex justify-center gap-4 text-[10px] text-muted-foreground">

@@ -64,7 +64,7 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
 
   useEffect(() => {
     fetch(`/api/governance/drep-feed?drepId=${encodeURIComponent(drepId)}`)
-      .then(res => (res.ok ? res.json() : null))
+      .then((res) => (res.ok ? res.json() : null))
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
@@ -73,7 +73,7 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
   const fetchQuestions = useCallback(() => {
     setQaLoading(true);
     fetch(`/api/governance/questions?drepId=${encodeURIComponent(drepId)}`)
-      .then(res => (res.ok ? res.json() : []))
+      .then((res) => (res.ok ? res.json() : []))
       .then(setQuestions)
       .catch(() => setQuestions([]))
       .finally(() => setQaLoading(false));
@@ -85,7 +85,10 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
 
   useEffect(() => {
     if (!tracked.current && !loading) {
-      const hasContent = !!(data && (data.explanations.length > 0 || data.positions.length > 0 || data.philosophy));
+      const hasContent = !!(
+        data &&
+        (data.explanations.length > 0 || data.positions.length > 0 || data.philosophy)
+      );
       posthog.capture('drep_communication_feed_viewed', { drepId, hasContent });
       tracked.current = true;
     }
@@ -101,7 +104,7 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-full" />
@@ -150,7 +153,10 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
           </button>
           {drepQaEnabled && (
             <button
-              onClick={() => { setActiveTab('qa'); posthog.capture('drep_qa_tab_clicked', { drepId }); }}
+              onClick={() => {
+                setActiveTab('qa');
+                posthog.capture('drep_qa_tab_clicked', { drepId });
+              }}
               className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
                 activeTab === 'qa'
                   ? 'border-primary text-foreground'
@@ -174,7 +180,8 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
           <>
             {!hasContent && (
               <p className="text-sm text-muted-foreground">
-                Your DRep hasn&apos;t shared any explanations or positions yet. DReps who explain their votes score higher.
+                Your DRep hasn&apos;t shared any explanations or positions yet. DReps who explain
+                their votes score higher.
               </p>
             )}
 
@@ -189,7 +196,10 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
                         <p className="text-sm">
                           <span className="font-medium">{drepName}</span>
                           {e.vote ? (
-                            <> voted <span className="font-medium">{e.vote}</span> on </>
+                            <>
+                              {' '}
+                              voted <span className="font-medium">{e.vote}</span> on{' '}
+                            </>
                           ) : (
                             <> explained their vote on </>
                           )}
@@ -204,7 +214,11 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
                           &ldquo;{e.explanationText}&rdquo;
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          {new Date(e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(e.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
                         </p>
                       </div>
                     );
@@ -227,7 +241,11 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
                         &ldquo;{p.statementText}&rdquo;
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-1">
-                        {new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(p.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
                       </p>
                     </div>
                   );
@@ -241,7 +259,11 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
                   onClick={() => setPhilosophyOpen(!philosophyOpen)}
                   className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
                 >
-                  {philosophyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {philosophyOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                   Governance Philosophy
                 </button>
                 {philosophyOpen && (
@@ -260,7 +282,7 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
 
             {qaLoading ? (
               <div className="space-y-3">
-                {[1, 2].map(i => (
+                {[1, 2].map((i) => (
                   <div key={i} className="space-y-2">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-3 w-full" />
@@ -273,26 +295,36 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
               </p>
             ) : (
               <div className="space-y-3">
-                {questions.map(q => (
+                {questions.map((q) => (
                   <div key={q.id} className="rounded-lg border bg-muted/20 p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium">{q.questionText}</p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                        q.status === 'answered'
-                          ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                          q.status === 'answered'
+                            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
                         {q.status === 'answered' ? 'Answered' : 'Open'}
                       </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      {q.askerWallet.slice(0, 12)}... · {new Date(q.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {q.askerWallet.slice(0, 12)}... ·{' '}
+                      {new Date(q.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </p>
                     {q.response && (
                       <div className="border-l-2 border-primary/30 pl-3 mt-2">
                         <p className="text-sm text-muted-foreground">{q.response.response_text}</p>
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          {drepName} · {new Date(q.response.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {drepName} ·{' '}
+                          {new Date(q.response.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
                         </p>
                       </div>
                     )}

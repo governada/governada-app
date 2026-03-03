@@ -21,13 +21,15 @@ async function main() {
   console.log(`Proposal: ${txHash.slice(0, 20)}... (ParameterChange, ratified epoch 613)\n`);
 
   // Our data: sum voting_power_lovelace by vote type
-  const { data: ourVotes } = await sb.from('drep_votes')
+  const { data: ourVotes } = await sb
+    .from('drep_votes')
     .select('vote, voting_power_lovelace')
     .eq('proposal_tx_hash', txHash)
     .eq('proposal_index', proposalIndex);
 
   const ourTotals = { Yes: 0n, No: 0n, Abstain: 0n, count: { Yes: 0, No: 0, Abstain: 0 } };
-  let withPower = 0, withoutPower = 0;
+  let withPower = 0,
+    withoutPower = 0;
 
   for (const v of ourVotes || []) {
     const voteType = v.vote as 'Yes' | 'No' | 'Abstain';
@@ -40,7 +42,9 @@ async function main() {
     }
   }
 
-  console.log(`Our data: ${ourVotes?.length} total votes (${withPower} with power, ${withoutPower} without)\n`);
+  console.log(
+    `Our data: ${ourVotes?.length} total votes (${withPower} with power, ${withoutPower} without)\n`,
+  );
   console.log('             Our Sum (lovelace)          Koios Canonical              Delta');
   console.log('─'.repeat(90));
 
@@ -60,11 +64,22 @@ async function main() {
     return ((Number(ours - theirs) / Number(theirs)) * 100).toFixed(2) + '%';
   };
 
-  console.log(`Yes:    ${formatADA(ourTotals.Yes).padEnd(30)} ${formatADA(koios.drep_active_yes_vote_power).padEnd(30)} ${pctDiff(ourTotals.Yes, koios.drep_active_yes_vote_power)}`);
-  console.log(`No:     ${formatADA(ourTotals.No).padEnd(30)} ${formatADA(koios.drep_active_no_vote_power).padEnd(30)} ${pctDiff(ourTotals.No, koios.drep_active_no_vote_power)}`);
-  console.log(`Abstain:${formatADA(ourTotals.Abstain).padEnd(30)} ${formatADA(koios.drep_active_abstain_vote_power).padEnd(30)} ${pctDiff(ourTotals.Abstain, koios.drep_active_abstain_vote_power)}`);
+  console.log(
+    `Yes:    ${formatADA(ourTotals.Yes).padEnd(30)} ${formatADA(koios.drep_active_yes_vote_power).padEnd(30)} ${pctDiff(ourTotals.Yes, koios.drep_active_yes_vote_power)}`,
+  );
+  console.log(
+    `No:     ${formatADA(ourTotals.No).padEnd(30)} ${formatADA(koios.drep_active_no_vote_power).padEnd(30)} ${pctDiff(ourTotals.No, koios.drep_active_no_vote_power)}`,
+  );
+  console.log(
+    `Abstain:${formatADA(ourTotals.Abstain).padEnd(30)} ${formatADA(koios.drep_active_abstain_vote_power).padEnd(30)} ${pctDiff(ourTotals.Abstain, koios.drep_active_abstain_vote_power)}`,
+  );
 
-  console.log(`\nVote counts: Yes ${ourTotals.count.Yes} (Koios: ${koios.drep_yes_votes_cast}), No ${ourTotals.count.No} (Koios: ${koios.drep_no_votes_cast}), Abstain ${ourTotals.count.Abstain} (Koios: ${koios.drep_abstain_votes_cast})`);
+  console.log(
+    `\nVote counts: Yes ${ourTotals.count.Yes} (Koios: ${koios.drep_yes_votes_cast}), No ${ourTotals.count.No} (Koios: ${koios.drep_no_votes_cast}), Abstain ${ourTotals.count.Abstain} (Koios: ${koios.drep_abstain_votes_cast})`,
+  );
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

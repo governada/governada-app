@@ -21,10 +21,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'AI features not configured' },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: 'AI features not configured' }, { status: 503 });
     }
 
     const drep = await getDRepById(drepId);
@@ -41,14 +38,18 @@ export async function POST(request: NextRequest) {
       objectives && `Objectives: ${objectives}`,
       motivations && `Motivations: ${motivations}`,
       qualifications && `Qualifications: ${qualifications}`,
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     const proposalContext = [
       `Title: ${proposalTitle}`,
       proposalType && `Type: ${proposalType}`,
       proposalAbstract && `Abstract: ${proposalAbstract}`,
       aiSummary && `Summary: ${aiSummary}`,
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
@@ -56,9 +57,10 @@ export async function POST(request: NextRequest) {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: `You are helping a Cardano DRep (Delegated Representative) write a CIP-100 compatible voting rationale for a governance proposal.
+      messages: [
+        {
+          role: 'user',
+          content: `You are helping a Cardano DRep (Delegated Representative) write a CIP-100 compatible voting rationale for a governance proposal.
 
 PROPOSAL:
 ${proposalContext}
@@ -73,12 +75,11 @@ Write a professional, structured voting rationale draft. The DRep will review an
 Keep it concise (under 300 words), factual, and neutral in tone. Do not make assumptions about the DRep's vote choice. Reference the DRep's stated objectives where relevant to help them frame their position.
 
 Output only the rationale text, no preamble.`,
-      }],
+        },
+      ],
     });
 
-    const draft = message.content[0].type === 'text'
-      ? message.content[0].text
-      : '';
+    const draft = message.content[0].type === 'text' ? message.content[0].text : '';
 
     return NextResponse.json({ draft });
   } catch (error) {

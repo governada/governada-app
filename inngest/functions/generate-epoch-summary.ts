@@ -17,7 +17,6 @@ export const generateEpochSummary = inngest.createFunction(
   },
   { cron: '0 22 * * *' },
   async ({ step }) => {
-
     const epochInfo = await step.run('detect-epoch-transition', async () => {
       const supabase = getSupabaseAdmin();
       const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
@@ -34,7 +33,11 @@ export const generateEpochSummary = inngest.createFunction(
       if (isNewEpoch) {
         await supabase
           .from('governance_stats')
-          .update({ current_epoch: currentEpoch, epoch_end_time: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .update({
+            current_epoch: currentEpoch,
+            epoch_end_time: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', stats?.current_epoch ? 1 : 1);
       }
 
@@ -51,25 +54,36 @@ export const generateEpochSummary = inngest.createFunction(
       const supabase = getSupabaseAdmin();
 
       const [closedResult, openedResult, highlightResult] = await Promise.all([
-        supabase.from('proposals')
+        supabase
+          .from('proposals')
           .select('tx_hash', { count: 'exact', head: true })
-          .or(`ratified_epoch.eq.${epoch},enacted_epoch.eq.${epoch},expired_epoch.eq.${epoch},dropped_epoch.eq.${epoch}`),
-        supabase.from('proposals')
+          .or(
+            `ratified_epoch.eq.${epoch},enacted_epoch.eq.${epoch},expired_epoch.eq.${epoch},dropped_epoch.eq.${epoch}`,
+          ),
+        supabase
+          .from('proposals')
           .select('tx_hash', { count: 'exact', head: true })
           .eq('proposed_epoch', epoch),
-        supabase.from('proposals')
+        supabase
+          .from('proposals')
           .select('title, ratified_epoch, enacted_epoch, expired_epoch, dropped_epoch')
-          .or(`ratified_epoch.eq.${epoch},enacted_epoch.eq.${epoch},expired_epoch.eq.${epoch},dropped_epoch.eq.${epoch}`)
+          .or(
+            `ratified_epoch.eq.${epoch},enacted_epoch.eq.${epoch},expired_epoch.eq.${epoch},dropped_epoch.eq.${epoch}`,
+          )
           .limit(1),
       ]);
 
       const highlight = highlightResult.data?.[0] ?? null;
       let highlightProposal: { title: string; outcome: string } | null = null;
       if (highlight) {
-        const outcome = highlight.enacted_epoch === epoch ? 'enacted'
-          : highlight.ratified_epoch === epoch ? 'ratified'
-          : highlight.expired_epoch === epoch ? 'expired'
-          : 'dropped';
+        const outcome =
+          highlight.enacted_epoch === epoch
+            ? 'enacted'
+            : highlight.ratified_epoch === epoch
+              ? 'ratified'
+              : highlight.expired_epoch === epoch
+                ? 'expired'
+                : 'dropped';
         highlightProposal = { title: highlight.title || 'Untitled', outcome };
       }
 
@@ -107,21 +121,25 @@ export const generateEpochSummary = inngest.createFunction(
 
             if (drepId) {
               const [votes, rationales, currentScore, prevScore] = await Promise.all([
-                supabase.from('drep_votes')
+                supabase
+                  .from('drep_votes')
                   .select('vote_tx_hash', { count: 'exact', head: true })
                   .eq('drep_id', drepId)
                   .eq('epoch_no', epoch),
-                supabase.from('drep_votes')
+                supabase
+                  .from('drep_votes')
                   .select('vote_tx_hash', { count: 'exact', head: true })
                   .eq('drep_id', drepId)
                   .eq('epoch_no', epoch)
                   .not('meta_url', 'is', null),
-                supabase.from('drep_score_history')
+                supabase
+                  .from('drep_score_history')
                   .select('score')
                   .eq('drep_id', drepId)
                   .order('created_at', { ascending: false })
                   .limit(1),
-                supabase.from('drep_score_history')
+                supabase
+                  .from('drep_score_history')
                   .select('score')
                   .eq('drep_id', drepId)
                   .order('created_at', { ascending: false })
@@ -151,12 +169,10 @@ export const generateEpochSummary = inngest.createFunction(
               epoch,
               created_at: new Date().toISOString(),
             };
-          })
+          }),
         );
 
-        const { error: insertErr } = await supabase
-          .from('governance_events')
-          .insert(events);
+        const { error: insertErr } = await supabase.from('governance_events').insert(events);
 
         if (insertErr) {
           console.error('[epoch-summary] Insert error:', insertErr.message);
@@ -170,7 +186,7 @@ export const generateEpochSummary = inngest.createFunction(
 
     console.log(`[epoch-summary] Epoch ${epoch} summary generated for ${usersProcessed} users`);
     return { epoch, usersProcessed, ...proposalStats };
-  }
+  },
 );
 
 function extractDrepId(history: unknown): string | null {

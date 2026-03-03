@@ -10,7 +10,13 @@ vi.mock('@/lib/data', () => ({
 }));
 
 vi.mock('@/lib/api/rateLimit', () => ({
-  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, limit: 100, remaining: 99, window: 60, reset: Date.now() + 60000 }),
+  checkRateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    limit: 100,
+    remaining: 99,
+    window: 60,
+    reset: Date.now() + 60000,
+  }),
   rateLimitHeaders: vi.fn().mockReturnValue({}),
 }));
 
@@ -50,7 +56,11 @@ describe('GET /api/v1/governance/health', () => {
       makeDrep({ drepId: 'drep3', drepScore: 40, isActive: false }),
     ];
 
-    mockGetAllDReps.mockResolvedValue({ dreps: dreps.filter(d => d.isActive), allDReps: dreps, error: null });
+    mockGetAllDReps.mockResolvedValue({
+      dreps: dreps.filter((d) => d.isActive),
+      allDReps: dreps,
+      error: null,
+    });
     mockGetActualProposalCount.mockResolvedValue(150);
 
     const req = createRequest('/api/v1/governance/health');

@@ -40,7 +40,7 @@ a{color:#6366f1;text-decoration:none}</style></head>
 <p>You won't receive any more email digests from DRepScore.</p>
 <p>Changed your mind? <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://drepscore.io'}/profile">Update your preferences</a></p>
 </div></body></html>`,
-    { status: 200, headers: { 'Content-Type': 'text/html' } }
+    { status: 200, headers: { 'Content-Type': 'text/html' } },
   );
 }
 

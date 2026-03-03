@@ -39,12 +39,7 @@ export function BrandedLoader() {
       aria-hidden
     >
       {/* Constellation-inspired SVG animation */}
-      <svg
-        viewBox="0 0 200 200"
-        width={160}
-        height={160}
-        className="mb-6"
-      >
+      <svg viewBox="0 0 200 200" width={160} height={160} className="mb-6">
         <defs>
           <filter id="loader-glow">
             <feGaussianBlur stdDeviation="3" />
@@ -87,20 +82,8 @@ export function BrandedLoader() {
               />
             </line>
             {/* Node */}
-            <circle
-              cx={cx}
-              cy={cy}
-              r="0"
-              fill={color}
-              filter="url(#loader-glow)"
-            >
-              <animate
-                attributeName="r"
-                values="0;3;2.5"
-                dur="0.8s"
-                begin={delay}
-                fill="freeze"
-              />
+            <circle cx={cx} cy={cy} r="0" fill={color} filter="url(#loader-glow)">
+              <animate attributeName="r" values="0;3;2.5" dur="0.8s" begin={delay} fill="freeze" />
               <animate
                 attributeName="opacity"
                 values="0;1;0.8"
@@ -143,9 +126,7 @@ export function BrandedLoader() {
 
       {/* Brand text */}
       <div className="text-center animate-fade-in-up">
-        <p className="text-2xl font-bold text-primary tracking-tight font-sans">
-          $drepscore
-        </p>
+        <p className="text-2xl font-bold text-primary tracking-tight font-sans">$drepscore</p>
         <p className="text-sm text-muted-foreground mt-1 tracking-wide">
           Observing Cardano Governance
         </p>

@@ -43,18 +43,21 @@ export const CTA_LABELS = {
 export const PAGE_DESCRIPTIONS = {
   discover: 'Find the representative that matches your governance values.',
   proposals: 'Track Cardano governance proposals, DRep votes, and treasury decisions in real time.',
-  pulse: 'Real-time health of Cardano\'s on-chain governance.',
-  treasury: 'How Cardano\'s treasury is being spent — and whether it should be.',
+  pulse: "Real-time health of Cardano's on-chain governance.",
+  treasury: "How Cardano's treasury is being spent — and whether it should be.",
   governance: 'Your personal governance hub. Track your delegation and participation.',
   dashboard: 'Your command center for governance.',
   compare: 'See how DReps stack up against each other.',
 } as const;
 
 export const EMPTY_STATE_MESSAGES = {
-  noProposals: 'The governance pipeline has quiet moments — check back soon or broaden your search.',
-  noDreps: 'No DReps match. Try adjusting your filters — there are hundreds of active representatives to explore.',
+  noProposals:
+    'The governance pipeline has quiet moments — check back soon or broaden your search.',
+  noDreps:
+    'No DReps match. Try adjusting your filters — there are hundreds of active representatives to explore.',
   noVotes: 'This DRep may be new or taking a break from governance.',
-  noWatchlist: 'Your watchlist is empty. Star DReps you want to track — you\'ll see their activity here.',
+  noWatchlist:
+    "Your watchlist is empty. Star DReps you want to track — you'll see their activity here.",
   noInbox: 'All caught up! No pending actions right now.',
 } as const;
 

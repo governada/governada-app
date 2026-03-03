@@ -103,21 +103,21 @@ Close every gap from Sessions 1-7 and achieve complete analytics coverage across
 
 **1. Homepage completeness**
 
-*Unauth — Governance Pulse spotlight enrichment:*
+_Unauth — Governance Pulse spotlight enrichment:_
 
 - Add DRep vote coverage % to spotlight proposal: "X% of DReps have voted"
 - Add community poll sentiment to spotlight: "Community sentiment: Y% in favor"
 - Enrich `getGovernancePulse()` API to include vote coverage and poll aggregation for the spotlight proposal
 - Files: `lib/data.ts` or `app/api/governance/pulse/route.ts`, `components/GovernancePulseHero.tsx`
 
-*Auth — SinceLastVisit completeness:*
+_Auth — SinceLastVisit completeness:_
 
 - Render `proposalsClosed` (API returns it, UI drops it)
 - Add delegator activity: "Your DRep gained/lost N delegators" from `drep_power_snapshots` delta
 - Enrich `/api/governance/since-visit` with delegator change data
 - Files: `components/SinceLastVisit.tsx`, `app/api/governance/since-visit/route.ts`
 
-*Auth — Representation score trend:*
+_Auth — Representation score trend:_
 
 - Add up/down arrow with delta vs last epoch to `RepresentationScoreCard`
 - Files: `components/governance-cards.tsx`
@@ -160,8 +160,8 @@ Close every gap from Sessions 1-7 and achieve complete analytics coverage across
 
 **6. Session 4 partial builds**
 
-- *Score change push notifications:* Verify `score-change` notification type fires correctly in Inngest `check-notifications`. Wire so significant delta triggers push.
-- *DRepQuickView mobile bottom sheet:* Change `side="right"` to responsive — bottom sheet on mobile, side sheet on desktop. shadcn Sheet `side` prop set conditionally.
+- _Score change push notifications:_ Verify `score-change` notification type fires correctly in Inngest `check-notifications`. Wire so significant delta triggers push.
+- _DRepQuickView mobile bottom sheet:_ Change `side="right"` to responsive — bottom sheet on mobile, side sheet on desktop. shadcn Sheet `side` prop set conditionally.
 - Files: `components/DRepQuickView.tsx`, Inngest notification function
 
 **7. Accessibility baseline**
@@ -175,8 +175,7 @@ Close every gap from Sessions 1-7 and achieve complete analytics coverage across
 
 **8. Full analytics backfill**
 
-*Page view events (client) — add `posthog.capture` on mount:*
-
+_Page view events (client) — add `posthog.capture` on mount:_
 
 | Event                    | Location                                     | Properties                            |
 | ------------------------ | -------------------------------------------- | ------------------------------------- |
@@ -189,9 +188,7 @@ Close every gap from Sessions 1-7 and achieve complete analytics coverage across
 | `compare_page_viewed`    | `CompareView`                                | `drep_count`                          |
 | `drep_profile_viewed`    | DRep profile page (client wrapper)           | `drep_id`, `score`, `is_claimed`      |
 
-
-*Missing interaction events (client):*
-
+_Missing interaction events (client):_
 
 | Event                             | Location                       | Properties                         |
 | --------------------------------- | ------------------------------ | ---------------------------------- |
@@ -206,18 +203,14 @@ Close every gap from Sessions 1-7 and achieve complete analytics coverage across
 | `notification_pref_changed`       | `NotificationPreferences.tsx`  | `channel`, `event_type`, `enabled` |
 | `governance_calendar_viewed`      | `GovernanceCalendar.tsx` (new) | `upcoming_count`                   |
 
-
-*Missing server events:*
-
+_Missing server events:_
 
 | Event                     | Location                          | Properties                 |
 | ------------------------- | --------------------------------- | -------------------------- |
 | `rationale_draft_served`  | `/api/rationale/draft/route.ts`   | `drep_id`, `proposal_hash` |
 | `epoch_summary_generated` | `generateEpochSummary` Inngest fn | `epoch`, `events_count`    |
 
-
-*New Observable data loaders:*
-
+_New Observable data loaders:_
 
 | Loader                          | Source Table(s)         | Dashboard Page      |
 | ------------------------------- | ----------------------- | ------------------- |
@@ -226,7 +219,6 @@ Close every gap from Sessions 1-7 and achieve complete analytics coverage across
 | `milestones.json.ts`            | `drep_milestones`       | DRep Engagement     |
 | `notification-delivery.json.ts` | `notification_log`      | System Status       |
 | `claim-funnel.json.ts`          | `users` (claimed DReps) | Executive Overview  |
-
 
 ### Files Affected
 
@@ -373,13 +365,11 @@ Make DRepScore feel like a native app on mobile and establish the platform infra
 
 ### Analytics for This Session
 
-
 | Event                     | Type   | Properties                |
 | ------------------------- | ------ | ------------------------- |
 | `mobile_nav_opened`       | Client | `page`                    |
 | `pwa_installed`           | Client | -                         |
 | `empty_state_cta_clicked` | Client | `component`, `cta_action` |
-
 
 ### Success Criteria
 
@@ -450,17 +440,17 @@ Build the infrastructure and features that turn DRepScore from a tool users visi
 
 The flagship retention feature. A weekly, AI-personalized governance summary delivered via email (primary), push, and Telegram (summary).
 
-*For DReps:*
+_For DReps:_
 
 - "This week: 3 new proposals opened. Your score changed by +2 (rationale rate improved). You're ranked #14, up 2 spots. DRep X below you closed the gap by 1 point. Your delegator alignment is 78% — 2 proposals diverged from delegator sentiment. You gained 3 delegators (+45K ADA)."
 - Actionable: "2 proposals need your vote before epoch end. Here's what your delegators think."
 
-*For ADA Holders:*
+_For ADA Holders:_
 
 - "This week: Your DRep voted on 2 of 3 proposals. They agreed with you on Proposal X but diverged on Proposal Y. Your representation score is 72% (stable). 1 proposal is closing soon — poll now to make your voice heard. Treasury health: 75/100 (steady)."
 - Actionable: "3 DReps match your governance DNA better — explore them."
 
-*Implementation:*
+_Implementation:_
 
 - New Inngest function `generate-governance-brief`: runs weekly, assembles per-user context from existing data sources (votes, polls, scores, power snapshots, treasury, proposals)
 - AI layer: start with template-based generation with AI polish (cheaper, more reliable). Structured data assembled into prompt, AI generates natural-language narrative. Progressively add full personalization.
@@ -472,7 +462,6 @@ The flagship retention feature. A weekly, AI-personalized governance summary del
 
 ### Data Model Changes
 
-
 | Change                                                      | Purpose                                    |
 | ----------------------------------------------------------- | ------------------------------------------ |
 | `users.email`                                               | Optional email address for digest delivery |
@@ -480,23 +469,18 @@ The flagship retention feature. A weekly, AI-personalized governance summary del
 | `notification_preferences` enhancement                      | Per-event-type channel matrix              |
 | `governance_briefs` table (or JSONB in `governance_events`) | Store generated briefs for in-app viewing  |
 
-
 ### New API Routes
-
 
 | Route                  | Method | Purpose                                 |
 | ---------------------- | ------ | --------------------------------------- |
 | `/api/briefs/generate` | POST   | Admin/cron trigger for brief generation |
 | `/api/briefs/latest`   | GET    | Fetch user's most recent brief          |
 
-
 ### New Components
-
 
 | Component             | Purpose                                   |
 | --------------------- | ----------------------------------------- |
 | `GovernanceBriefCard` | "Your Weekly Brief" card on auth homepage |
-
 
 ### Files Affected
 
@@ -514,7 +498,6 @@ The flagship retention feature. A weekly, AI-personalized governance summary del
 
 ### Analytics for This Session
 
-
 | Event                           | Type   | Properties                                      |
 | ------------------------------- | ------ | ----------------------------------------------- |
 | `governance_brief_generated`    | Server | `user_type`, `drep_id`, `brief_type`, `channel` |
@@ -523,7 +506,6 @@ The flagship retention feature. A weekly, AI-personalized governance summary del
 | `email_subscribed`              | Server | `user_address`, `digest_frequency`              |
 | `email_delivered`               | Server | `template`, `success`                           |
 | `notification_channel_migrated` | Server | `from` (legacy), `to` (new engine)              |
-
 
 New Observable data loaders: `governance-briefs.json.ts`, `notification-delivery.json.ts` (if not added in Session 8)
 
@@ -556,7 +538,7 @@ New Observable data loaders: `governance-briefs.json.ts`, `notification-delivery
 
 ### Goal
 
-Complete both sides of the governance marketplace. Add the Governance Identity Radar that makes every DRep visually distinctive. Build the delegator progression system that makes ADA holders feel invested. Ship cross-proposal intelligence that creates unique, shareable content. When Session 11 is done, DRepScore is the first governance *relationship* platform in crypto — both sides engaged, both sides progressing, both sides sharing.
+Complete both sides of the governance marketplace. Add the Governance Identity Radar that makes every DRep visually distinctive. Build the delegator progression system that makes ADA holders feel invested. Ship cross-proposal intelligence that creates unique, shareable content. When Session 11 is done, DRepScore is the first governance _relationship_ platform in crypto — both sides engaged, both sides progressing, both sides sharing.
 
 ### Problems This Solves
 
@@ -573,7 +555,7 @@ Complete both sides of the governance marketplace. Add the Governance Identity R
 
 Already recommended as "Build now" in the original Session 8 — lowest complexity, highest visual impact.
 
-- Radar/spider chart using the 6 `alignment_`* scores already stored on `dreps` table (treasury, decentralization, security, innovation, community, sustainability)
+- Radar/spider chart using the 6 `alignment_`\* scores already stored on `dreps` table (treasury, decentralization, security, innovation, community, sustainability)
 - Appears on: DRep profile page, DRep quick view, compare page, shareable report cards
 - Uses Recharts RadarChart with custom DRepScore styling (consistent with existing chart aesthetic)
 - Generates a "governance identity" narrative: "This DRep prioritizes fiscal conservatism and protocol stability" based on highest alignment dimensions
@@ -635,23 +617,18 @@ Surface macro governance patterns no one else tracks:
 
 ### Data Model Changes
 
-
 | Change                 | Purpose                                                               |
 | ---------------------- | --------------------------------------------------------------------- |
 | `users.citizen_level`  | Cached level for quick display (or compute on fly from existing data) |
 | No new tables required | All data sources already exist                                        |
 
-
 ### New API Routes
-
 
 | Route                                  | Method | Purpose                            |
 | -------------------------------------- | ------ | ---------------------------------- |
 | `/api/og/governance-identity/[drepId]` | GET    | Governance identity radar OG image |
 
-
 ### New Components
-
 
 | Component                 | Purpose                                 |
 | ------------------------- | --------------------------------------- |
@@ -659,7 +636,6 @@ Surface macro governance patterns no one else tracks:
 | `CitizenProgressBar`      | Level progression with actions needed   |
 | `DelegationChangeCard`    | Epoch-level delegator gain/loss display |
 | `CrossProposalInsights`   | Macro governance pattern cards          |
-
 
 ### Files Affected
 
@@ -685,7 +661,6 @@ Surface macro governance patterns no one else tracks:
 
 ### Analytics for This Session
 
-
 | Event                           | Type   | Properties                                         |
 | ------------------------------- | ------ | -------------------------------------------------- |
 | `governance_identity_viewed`    | Client | `drep_id`, `viewer_type` (self/other)              |
@@ -696,7 +671,6 @@ Surface macro governance patterns no one else tracks:
 | `delegation_milestone_shared`   | Client | `milestone`, `platform`                            |
 | `delegation_change_detected`    | Server | `drep_id`, `delta_count`, `delta_ada`              |
 | `cross_proposal_insight_viewed` | Client | `insight_type`                                     |
-
 
 New Observable data loaders: `citizen-levels.json.ts`
 
@@ -724,7 +698,6 @@ New Observable data loaders: `citizen-levels.json.ts`
 
 These items from the original Session 8 ideas and Session 6 are deferred with rationale:
 
-
 | Item                                    | Original Recommendation | Status       | Rationale                                                                                                       |
 | --------------------------------------- | ----------------------- | ------------ | --------------------------------------------------------------------------------------------------------------- |
 | On-chain rationale submission           | Revisit after data      | **Deferred** | Monitor GovTool usage. If DReps consistently draft in DRepScore then switch to GovTool, demand signal is clear. |
@@ -734,7 +707,6 @@ These items from the original Session 8 ideas and Session 6 are deferred with ra
 | Signature governance constellation      | Session 6               | **Deferred** | Design-heavy, requires visual design iteration. Governance Identity Radar partially fills this role.            |
 | Page transitions (View Transitions API) | Session 6               | **Deferred** | Next.js 16 support still experimental. Browser compatibility risk. Defer until API stabilizes.                  |
 | Custom iconography                      | Session 6               | **Deferred** | Lucide is high quality and consistent. Custom icons require a designer.                                         |
-
 
 ---
 
@@ -754,4 +726,3 @@ In addition to the anti-patterns from v1.0:
 2. **Don't let push/email become noisy.** The engagement engine (Session 10) is powerful. Respect user attention. Default to minimal notifications, let users opt in to more. One great weekly brief > five mediocre daily pings.
 3. **Don't confuse progression with coercion.** Citizen levels should feel rewarding, not mandatory. Never gate features behind levels. Levels are recognition, not access control.
 4. **Don't ship without mobile testing.** After Session 9, every feature must be tested on a phone-sized viewport before merging. The "mobile is primary" principle is meaningless if we only test on desktop.
-

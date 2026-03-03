@@ -13,7 +13,16 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, Shield, Bell, Check, Loader2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import {
+  Wallet,
+  Shield,
+  Bell,
+  Check,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  ArrowLeft,
+} from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 
 interface WalletConnectModalProps {
@@ -38,7 +47,12 @@ function sortWallets(wallets: string[]): string[] {
   });
 }
 
-export function WalletConnectModal({ open, onOpenChange, onSuccess, skipPushPrompt }: WalletConnectModalProps) {
+export function WalletConnectModal({
+  open,
+  onOpenChange,
+  onSuccess,
+  skipPushPrompt,
+}: WalletConnectModalProps) {
   const {
     connected,
     connecting,
@@ -97,7 +111,7 @@ export function WalletConnectModal({ open, onOpenChange, onSuccess, skipPushProm
     setAuthenticating(true);
     const success = await authenticate();
     setAuthenticating(false);
-    
+
     if (success) {
       posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
       setStep(skipPushPrompt ? 'success' : 'push');
@@ -145,7 +159,10 @@ export function WalletConnectModal({ open, onOpenChange, onSuccess, skipPushProm
 
             <div className="p-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
               <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>Read-only signature verification. We never request transactions or access to your funds.</span>
+              <span>
+                Read-only signature verification. We never request transactions or access to your
+                funds.
+              </span>
             </div>
 
             <div className="space-y-2 py-2">
@@ -220,9 +237,7 @@ export function WalletConnectModal({ open, onOpenChange, onSuccess, skipPushProm
                 <Shield className="h-5 w-5" />
                 Verify Ownership
               </DialogTitle>
-              <DialogDescription>
-                Sign a message to prove you own this wallet.
-              </DialogDescription>
+              <DialogDescription>Sign a message to prove you own this wallet.</DialogDescription>
             </DialogHeader>
 
             <div className="py-4 space-y-4">
@@ -240,11 +255,7 @@ export function WalletConnectModal({ open, onOpenChange, onSuccess, skipPushProm
                 </ul>
               </div>
 
-              <Button
-                className="w-full"
-                onClick={handleSign}
-                disabled={authenticating}
-              >
+              <Button className="w-full" onClick={handleSign} disabled={authenticating}>
                 {authenticating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -313,7 +324,8 @@ export function WalletConnectModal({ open, onOpenChange, onSuccess, skipPushProm
               <div className="p-4 bg-muted/50 rounded-lg border text-sm">
                 <p className="font-medium mb-1">Mock Alert Preview:</p>
                 <p className="text-muted-foreground">
-                  "Your DRep voted against Treasury Conservative — see how this affects your alignment"
+                  "Your DRep voted against Treasury Conservative — see how this affects your
+                  alignment"
                 </p>
               </div>
 
@@ -325,10 +337,7 @@ export function WalletConnectModal({ open, onOpenChange, onSuccess, skipPushProm
                 >
                   Maybe Later
                 </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => handlePushPrompt(true)}
-                >
+                <Button className="flex-1" onClick={() => handlePushPrompt(true)}>
                   <Bell className="h-4 w-4 mr-2" />
                   Enable Alerts
                 </Button>

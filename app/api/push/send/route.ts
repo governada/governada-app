@@ -29,11 +29,11 @@ export async function POST(request: NextRequest) {
 
     const subscribedUsers = users.filter(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (u: any) => u.push_subscriptions?.endpoint && u.push_subscriptions?.keys
+      (u: any) => u.push_subscriptions?.endpoint && u.push_subscriptions?.keys,
     );
 
     let payload: NotificationPayload;
-    let targetAddresses = subscribedUsers.map(u => u.wallet_address);
+    let targetAddresses = subscribedUsers.map((u) => u.wallet_address);
 
     switch (type) {
       case 'critical-proposal-open': {
@@ -54,13 +54,16 @@ export async function POST(request: NextRequest) {
       case 'drep-pending-proposals': {
         const { pendingCount, criticalCount } = body;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetAddresses = subscribedUsers.filter((u: any) => u.claimed_drep_id).map(u => u.wallet_address);
+        targetAddresses = subscribedUsers
+          .filter((u: any) => u.claimed_drep_id)
+          .map((u) => u.wallet_address);
         payload = {
           eventType: 'pending-proposals',
           fallback: {
-            title: criticalCount > 0
-              ? `${criticalCount} critical proposal${criticalCount !== 1 ? 's' : ''} need your vote`
-              : `${pendingCount} proposal${pendingCount !== 1 ? 's' : ''} awaiting your vote`,
+            title:
+              criticalCount > 0
+                ? `${criticalCount} critical proposal${criticalCount !== 1 ? 's' : ''} need your vote`
+                : `${pendingCount} proposal${pendingCount !== 1 ? 's' : ''} awaiting your vote`,
             body: 'Open your DRep dashboard to review and vote.',
             url: '/dashboard/inbox',
           },

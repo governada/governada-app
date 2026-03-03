@@ -4,9 +4,16 @@ import { useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 
 const KONAMI = [
-  'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
-  'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
-  'b', 'a',
+  'ArrowUp',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowLeft',
+  'ArrowRight',
+  'b',
+  'a',
 ];
 
 function fireConstellationBurst() {
@@ -42,8 +49,10 @@ export function EasterEggs() {
       if (bufferRef.current.length > KONAMI.length) {
         bufferRef.current = bufferRef.current.slice(-KONAMI.length);
       }
-      if (bufferRef.current.length === KONAMI.length &&
-          bufferRef.current.every((k, i) => k === KONAMI[i])) {
+      if (
+        bufferRef.current.length === KONAMI.length &&
+        bufferRef.current.every((k, i) => k === KONAMI[i])
+      ) {
         fireConstellationBurst();
         bufferRef.current = [];
       }

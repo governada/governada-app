@@ -19,7 +19,8 @@ export async function GET() {
   return NextResponse.json(
     {
       error: 'Gone',
-      message: 'This monolithic sync route has been retired. Use the focused sync routes: /api/sync/dreps, /api/sync/votes, /api/sync/proposals, /api/sync/secondary, /api/sync/slow',
+      message:
+        'This monolithic sync route has been retired. Use the focused sync routes: /api/sync/dreps, /api/sync/votes, /api/sync/proposals, /api/sync/secondary, /api/sync/slow',
     },
     { status: 410 },
   );

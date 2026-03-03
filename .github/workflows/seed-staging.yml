@@ -2,8 +2,8 @@ name: Seed Staging
 
 on:
   schedule:
-    - cron: '0 3 * * 0'  # Sunday 3 AM UTC
-  workflow_dispatch:       # Manual trigger
+    - cron: '0 3 * * 0' # Sunday 3 AM UTC
+  workflow_dispatch: # Manual trigger
 
 concurrency:
   group: seed-staging

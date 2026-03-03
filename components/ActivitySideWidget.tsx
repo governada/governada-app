@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Vote, FileText, Users, ScrollText, TrendingUp, CheckCircle2, Activity } from 'lucide-react';
+import {
+  Vote,
+  FileText,
+  Users,
+  ScrollText,
+  TrendingUp,
+  CheckCircle2,
+  Activity,
+} from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 
 interface ActivityEvent {
@@ -83,7 +91,9 @@ export function ActivitySideWidget({ drepId, limit = 5, className = '' }: Activi
   if (events.length === 0) return null;
 
   return (
-    <div className={`rounded-lg border border-border/50 bg-card/50 backdrop-blur-sm p-4 ${className}`}>
+    <div
+      className={`rounded-lg border border-border/50 bg-card/50 backdrop-blur-sm p-4 ${className}`}
+    >
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -99,12 +109,16 @@ export function ActivitySideWidget({ drepId, limit = 5, className = '' }: Activi
           const Icon = config.icon;
           return (
             <li key={`${event.timestamp}-${i}`} className="flex items-start gap-2.5">
-              <div className={`flex items-center justify-center w-6 h-6 rounded-full ${config.bg} shrink-0 mt-0.5`}>
+              <div
+                className={`flex items-center justify-center w-6 h-6 rounded-full ${config.bg} shrink-0 mt-0.5`}
+              >
                 <Icon className={`h-3 w-3 ${config.color}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs leading-snug line-clamp-2">{formatEventText(event)}</p>
-                <span className="text-[10px] text-muted-foreground">{formatRelativeTime(event.timestamp)}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {formatRelativeTime(event.timestamp)}
+                </span>
               </div>
             </li>
           );

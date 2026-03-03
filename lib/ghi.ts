@@ -67,11 +67,19 @@ export async function computeGHI(): Promise<GHIResult> {
   const supabase = createClient();
 
   const [drepsRes, proposalsRes, votesRes] = await Promise.all([
-    supabase.from('dreps').select(
-      'id, effective_participation, rationale_rate, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency'
-    ),
-    supabase.from('proposals').select('tx_hash, proposal_index, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch'),
-    supabase.from('drep_votes').select('proposal_tx_hash, proposal_index', { count: 'exact', head: false }),
+    supabase
+      .from('dreps')
+      .select(
+        'id, effective_participation, rationale_rate, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+      ),
+    supabase
+      .from('proposals')
+      .select(
+        'tx_hash, proposal_index, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+      ),
+    supabase
+      .from('drep_votes')
+      .select('proposal_tx_hash, proposal_index', { count: 'exact', head: false }),
   ]);
 
   const allDreps = drepsRes.data || [];
@@ -81,15 +89,17 @@ export async function computeGHI(): Promise<GHIResult> {
 
   // 1. Participation Rate (25%)
   const participationRates = activeDreps.map((d: any) => d.effective_participation || 0);
-  const avgParticipation = participationRates.length > 0
-    ? participationRates.reduce((a: number, b: number) => a + b, 0) / participationRates.length
-    : 0;
+  const avgParticipation =
+    participationRates.length > 0
+      ? participationRates.reduce((a: number, b: number) => a + b, 0) / participationRates.length
+      : 0;
 
   // 2. Rationale Rate (20%)
   const rationaleRates = activeDreps.map((d: any) => d.rationale_rate || 0);
-  const avgRationale = rationaleRates.length > 0
-    ? rationaleRates.reduce((a: number, b: number) => a + b, 0) / rationaleRates.length
-    : 0;
+  const avgRationale =
+    rationaleRates.length > 0
+      ? rationaleRates.reduce((a: number, b: number) => a + b, 0) / rationaleRates.length
+      : 0;
 
   // 3. Delegation Spread (15%) — inverse Gini
   const votingPowers = activeDreps
@@ -99,11 +109,14 @@ export async function computeGHI(): Promise<GHIResult> {
   const delegationSpread = Math.round((1 - gini) * 100);
 
   // 4. Proposal Throughput (15%) — proposals that received at least one vote
-  const votedProposalKeys = new Set(votes.map((v: any) => `${v.proposal_tx_hash}-${v.proposal_index}`));
+  const votedProposalKeys = new Set(
+    votes.map((v: any) => `${v.proposal_tx_hash}-${v.proposal_index}`),
+  );
   const totalProposals = proposals.length;
-  const proposalThroughput = totalProposals > 0
-    ? Math.min(100, Math.round((votedProposalKeys.size / totalProposals) * 100))
-    : 0;
+  const proposalThroughput =
+    totalProposals > 0
+      ? Math.min(100, Math.round((votedProposalKeys.size / totalProposals) * 100))
+      : 0;
 
   // 5. DRep Diversity (10%) — unique alignment profiles
   const profiles = activeDreps.map((d: any) => {
@@ -115,38 +128,48 @@ export async function computeGHI(): Promise<GHIResult> {
       d.alignment_innovation,
       d.alignment_transparency,
     ];
-    return dims.map(v => {
-      if (v == null) return 'M';
-      if (v >= 70) return 'H';
-      if (v <= 30) return 'L';
-      return 'M';
-    }).join('');
+    return dims
+      .map((v) => {
+        if (v == null) return 'M';
+        if (v >= 70) return 'H';
+        if (v <= 30) return 'L';
+        return 'M';
+      })
+      .join('');
   });
   const uniqueProfiles = new Set(profiles).size;
   const maxPossible = Math.min(activeDreps.length, 729); // 3^6
-  const diversityScore = maxPossible > 0
-    ? Math.min(100, Math.round((uniqueProfiles / Math.min(maxPossible, 50)) * 100))
-    : 0;
+  const diversityScore =
+    maxPossible > 0
+      ? Math.min(100, Math.round((uniqueProfiles / Math.min(maxPossible, 50)) * 100))
+      : 0;
 
   // 6. DRep Activity (15%) — active / total
-  const activityRatio = allDreps.length > 0
-    ? Math.min(100, Math.round((activeDreps.length / allDreps.length) * 100))
-    : 0;
+  const activityRatio =
+    allDreps.length > 0
+      ? Math.min(100, Math.round((activeDreps.length / allDreps.length) * 100))
+      : 0;
 
   const components: GHIComponent[] = [
     { name: 'Participation', value: Math.round(avgParticipation), weight: 0.25, contribution: 0 },
-    { name: 'Rationale', value: Math.round(avgRationale), weight: 0.20, contribution: 0 },
+    { name: 'Rationale', value: Math.round(avgRationale), weight: 0.2, contribution: 0 },
     { name: 'Delegation Spread', value: delegationSpread, weight: 0.15, contribution: 0 },
     { name: 'Proposal Throughput', value: proposalThroughput, weight: 0.15, contribution: 0 },
-    { name: 'DRep Diversity', value: diversityScore, weight: 0.10, contribution: 0 },
+    { name: 'DRep Diversity', value: diversityScore, weight: 0.1, contribution: 0 },
     { name: 'DRep Activity', value: activityRatio, weight: 0.15, contribution: 0 },
   ];
 
-  components.forEach(c => {
+  components.forEach((c) => {
     c.contribution = Math.round(c.value * c.weight);
   });
 
-  const score = Math.min(100, Math.max(0, components.reduce((s, c) => s + c.contribution, 0)));
+  const score = Math.min(
+    100,
+    Math.max(
+      0,
+      components.reduce((s, c) => s + c.contribution, 0),
+    ),
+  );
 
   return {
     score,

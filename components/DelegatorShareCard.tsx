@@ -27,22 +27,36 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const color = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444';
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
       <svg width={size} height={size} className="absolute -rotate-90">
         <circle
-          cx={size / 2} cy={size / 2} r={radius}
-          fill="none" stroke="currentColor" className="text-muted/20"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          className="text-muted/20"
           strokeWidth={strokeWidth}
         />
         <circle
-          cx={size / 2} cy={size / 2} r={radius}
-          fill="none" stroke={color}
-          strokeWidth={strokeWidth} strokeLinecap="round"
-          strokeDasharray={circumference} strokeDashoffset={dashOffset}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
           className="transition-all duration-700"
         />
       </svg>
-      <span className="text-xl font-bold tabular-nums" style={{ color }}>{score}</span>
+      <span className="text-xl font-bold tabular-nums" style={{ color }}>
+        {score}
+      </span>
     </div>
   );
 }
@@ -60,17 +74,20 @@ export function DelegatorShareCard() {
     }
 
     const token = getStoredSession();
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     const params = new URLSearchParams({ drepId: delegatedDrepId });
     fetch(`/api/governance/holder?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to load');
         return res.json();
       })
-      .then(json => {
+      .then((json) => {
         setData({
           drepName: json.delegationHealth?.drepName ?? delegatedDrepId.slice(0, 16) + '…',
           drepScore: json.delegationHealth?.drepScore ?? 0,
@@ -90,14 +107,18 @@ export function DelegatorShareCard() {
       const token = getStoredSession();
       if (token) {
         fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
-          .then(r => r.ok ? r.json() : null)
-          .then(user => {
+          .then((r) => (r.ok ? r.json() : null))
+          .then((user) => {
             if (user) {
-              setData(prev => prev ? {
-                ...prev,
-                governanceLevel: user.governance_level ?? null,
-                pollCount: user.poll_count ?? prev.pollCount,
-              } : prev);
+              setData((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      governanceLevel: user.governance_level ?? null,
+                      pollCount: user.poll_count ?? prev.pollCount,
+                    }
+                  : prev,
+              );
             }
           })
           .catch(() => {});
@@ -170,9 +191,7 @@ export function DelegatorShareCard() {
         </div>
 
         {/* CTA */}
-        <p className="text-base font-semibold text-primary">
-          Who&apos;s your DRep?
-        </p>
+        <p className="text-base font-semibold text-primary">Who&apos;s your DRep?</p>
 
         {/* Share */}
         <ShareActions

@@ -45,9 +45,9 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
                 .eq('id', drep.id);
               if (error) throw new Error(error.message);
               return true;
-            })
+            }),
           );
-          updated += settled.filter(r => r.status === 'fulfilled' && r.value).length;
+          updated += settled.filter((r) => r.status === 'fulfilled' && r.value).length;
         }
         return updated;
       })(),
@@ -77,7 +77,8 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
           const { error: batchErr } = await supabase
             .from('drep_power_snapshots')
             .upsert(batch, { onConflict: 'drep_id,epoch_no', ignoreDuplicates: true });
-          if (batchErr) console.error('[Secondary] power_snapshots batch upsert error:', batchErr.message);
+          if (batchErr)
+            console.error('[Secondary] power_snapshots batch upsert error:', batchErr.message);
         }
         return rows.length;
       })(),
@@ -136,7 +137,11 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
   }
 
   const success = errors.length === 0;
-  const metrics = { delegators_updated: delegatorsUpdated, power_snapshots: powerSnapshots, integrity_saved: integritySaved };
+  const metrics = {
+    delegators_updated: delegatorsUpdated,
+    power_snapshots: powerSnapshots,
+    integrity_saved: integritySaved,
+  };
 
   await logger.finalize(success, errors.length > 0 ? errors.join('; ') : null, metrics);
   await emitPostHog(success, 'secondary', logger.elapsed, metrics);
@@ -152,4 +157,3 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
     timestamp: new Date().toISOString(),
   };
 }
-

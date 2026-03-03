@@ -96,10 +96,7 @@ export function CommandPalette() {
       shouldFilter={false}
     >
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={() => setOpen(false)}
-      />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
       {/* Dialog */}
       <div className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-xl px-4">
@@ -235,8 +232,7 @@ export function CommandPalette() {
           {/* Footer */}
           <div className="flex items-center justify-between border-t border-border/50 px-4 py-2 text-[10px] text-muted-foreground">
             <span>
-              <kbd className="font-mono">↑↓</kbd> navigate{' '}
-              <kbd className="font-mono">↵</kbd> select{' '}
+              <kbd className="font-mono">↑↓</kbd> navigate <kbd className="font-mono">↵</kbd> select{' '}
               <kbd className="font-mono">esc</kbd> close
             </span>
             <span className="font-mono text-primary/60">$drepscore</span>

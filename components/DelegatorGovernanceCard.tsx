@@ -33,7 +33,10 @@ export function DelegatorGovernanceCard() {
     }
 
     const token = getStoredSession();
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     const params = new URLSearchParams();
     if (delegatedDrepId) params.set('drepId', delegatedDrepId);
@@ -41,8 +44,8 @@ export function DelegatorGovernanceCard() {
     fetch(`/api/governance/holder?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (!data) return;
         setIdentity({
           drepName: data.delegation?.drepName ?? null,
@@ -60,9 +63,10 @@ export function DelegatorGovernanceCard() {
 
   if (!isAuthenticated || loading || !identity) return null;
 
-  const epochsActive = identity.currentEpoch && identity.delegatedSinceEpoch
-    ? identity.currentEpoch - identity.delegatedSinceEpoch
-    : null;
+  const epochsActive =
+    identity.currentEpoch && identity.delegatedSinceEpoch
+      ? identity.currentEpoch - identity.delegatedSinceEpoch
+      : null;
 
   const shareUrl = `${BASE_URL}/governance`;
   const shareText = identity.drepName
@@ -70,11 +74,7 @@ export function DelegatorGovernanceCard() {
     : `I'm participating in Cardano governance on @drepscore.`;
 
   return (
-    <motion.div
-      variants={fadeInUp}
-      initial="hidden"
-      animate="visible"
-    >
+    <motion.div variants={fadeInUp} initial="hidden" animate="visible">
       <Card className="relative overflow-hidden border-primary/20">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         <CardContent className="p-5">
@@ -85,7 +85,9 @@ export function DelegatorGovernanceCard() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold">Your Governance Identity</h3>
-                <p className="text-[11px] text-muted-foreground">Share your governance participation</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Share your governance participation
+                </p>
               </div>
             </div>
             <ShareActions
@@ -110,7 +112,11 @@ export function DelegatorGovernanceCard() {
               <StatBadge
                 icon={<Shield className="h-3.5 w-3.5" />}
                 label="Delegated To"
-                value={identity.drepName.length > 14 ? `${identity.drepName.slice(0, 14)}...` : identity.drepName}
+                value={
+                  identity.drepName.length > 14
+                    ? `${identity.drepName.slice(0, 14)}...`
+                    : identity.drepName
+                }
               />
             )}
             {identity.drepScore != null && (
@@ -142,7 +148,15 @@ export function DelegatorGovernanceCard() {
   );
 }
 
-function StatBadge({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function StatBadge({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-lg border bg-card/50 px-3 py-2 text-center">
       <div className="mb-1 flex justify-center text-muted-foreground">{icon}</div>

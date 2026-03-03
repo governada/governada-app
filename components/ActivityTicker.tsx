@@ -113,14 +113,13 @@ export function ActivityTicker({ initialEvents, onEventVisible }: ActivityTicker
           const config = EVENT_ICONS[event.type] || EVENT_ICONS.vote;
           const Icon = config.icon;
           return (
-            <li key={`${event.timestamp}-${i}`} className="flex items-center gap-2 text-sm shrink-0">
+            <li
+              key={`${event.timestamp}-${i}`}
+              className="flex items-center gap-2 text-sm shrink-0"
+            >
               <Icon className={`h-3.5 w-3.5 ${config.color} shrink-0`} />
-              <span className="text-white/70">
-                {formatEventText(event)}
-              </span>
-              <span className="text-white/30 text-xs">
-                {formatRelativeTime(event.timestamp)}
-              </span>
+              <span className="text-white/70">{formatEventText(event)}</span>
+              <span className="text-white/30 text-xs">{formatRelativeTime(event.timestamp)}</span>
             </li>
           );
         })}

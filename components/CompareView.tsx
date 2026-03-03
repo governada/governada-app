@@ -9,12 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { HexScore } from '@/components/HexScore';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 import { ShareActions } from '@/components/ShareActions';
@@ -33,11 +28,7 @@ import {
 } from 'lucide-react';
 
 const DREP_COLORS = ['#6366f1', '#f59e0b', '#10b981'];
-const DREP_COLOR_CLASSES = [
-  'text-indigo-500',
-  'text-amber-500',
-  'text-emerald-500',
-];
+const DREP_COLOR_CLASSES = ['text-indigo-500', 'text-amber-500', 'text-emerald-500'];
 
 interface CompareProfile {
   drepId: string;
@@ -140,17 +131,23 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
   useEffect(() => {
     if (initialDrepIds.length < 2) return;
     try {
-      const saved: string[][] = JSON.parse(localStorage.getItem('drepscore_saved_comparisons') || '[]');
+      const saved: string[][] = JSON.parse(
+        localStorage.getItem('drepscore_saved_comparisons') || '[]',
+      );
       const key = [...initialDrepIds].sort().join(',');
-      setIsSaved(saved.some(s => [...s].sort().join(',') === key));
-    } catch { /* ignore */ }
+      setIsSaved(saved.some((s) => [...s].sort().join(',') === key));
+    } catch {
+      /* ignore */
+    }
   }, [initialDrepIds]);
 
   const handleSaveComparison = useCallback(() => {
     try {
-      const saved: string[][] = JSON.parse(localStorage.getItem('drepscore_saved_comparisons') || '[]');
+      const saved: string[][] = JSON.parse(
+        localStorage.getItem('drepscore_saved_comparisons') || '[]',
+      );
       const key = [...initialDrepIds].sort().join(',');
-      const existing = saved.findIndex(s => [...s].sort().join(',') === key);
+      const existing = saved.findIndex((s) => [...s].sort().join(',') === key);
       if (existing >= 0) {
         saved.splice(existing, 1);
         setIsSaved(false);
@@ -160,7 +157,9 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
         setIsSaved(true);
       }
       localStorage.setItem('drepscore_saved_comparisons', JSON.stringify(saved));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [initialDrepIds]);
 
   const userPrefs = useMemo(() => {
@@ -171,34 +170,39 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
         const parsed = JSON.parse(stored);
         return parsed.userPrefs || [];
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return [];
   }, []);
 
-  const fetchData = useCallback(async (ids: string[]) => {
-    if (ids.length < 2) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ dreps: ids.join(',') });
-      if (userPrefs.length > 0) {
-        params.set('prefs', userPrefs.join(','));
+  const fetchData = useCallback(
+    async (ids: string[]) => {
+      if (ids.length < 2) {
+        setLoading(false);
+        return;
       }
-      const res = await fetch(`/api/compare?${params}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Failed to load comparison');
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({ dreps: ids.join(',') });
+        if (userPrefs.length > 0) {
+          params.set('prefs', userPrefs.join(','));
+        }
+        const res = await fetch(`/api/compare?${params}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || 'Failed to load comparison');
+        }
+        setData(await res.json());
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Unknown error');
+      } finally {
+        setLoading(false);
       }
-      setData(await res.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  }, [userPrefs]);
+    },
+    [userPrefs],
+  );
 
   useEffect(() => {
     if (initialDrepIds.length >= 2) {
@@ -210,17 +214,19 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
 
   const handleCompareWithYourDrep = useCallback(() => {
     if (!delegatedDrepId || !data?.dreps[0]) return;
-    const currentIds = data.dreps.map(d => d.drepId);
+    const currentIds = data.dreps.map((d) => d.drepId);
     if (currentIds.includes(delegatedDrepId)) return;
     const newIds = [delegatedDrepId, ...currentIds.slice(0, 2)];
     router.push(`/compare?dreps=${newIds.join(',')}`);
   }, [delegatedDrepId, data, router]);
 
   const compareShareText = data
-    ? `Comparing ${data.dreps.map(d => d.name || d.drepId.slice(0, 12)).join(' vs ')}: ${data.dreps.map(d => d.drepScore).join(' vs ')} on DRepScore. Who would you delegate to?`
+    ? `Comparing ${data.dreps.map((d) => d.name || d.drepId.slice(0, 12)).join(' vs ')}: ${data.dreps.map((d) => d.drepScore).join(' vs ')} on DRepScore. Who would you delegate to?`
     : '';
   const compareShareUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const compareOgUrl = data ? `/api/og/compare?dreps=${data.dreps.map(d => d.drepId).join(',')}` : '';
+  const compareOgUrl = data
+    ? `/api/og/compare?dreps=${data.dreps.map((d) => d.drepId).join(',')}`
+    : '';
 
   const drepAlignments = useMemo(() => {
     if (!data) return new Map<string, AlignmentScores>();
@@ -243,9 +249,7 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
         dateMap.set(s.date, entry);
       }
     }
-    return [...dateMap.values()].sort((a, b) =>
-      (a.date as string).localeCompare(b.date as string)
-    );
+    return [...dateMap.values()].sort((a, b) => (a.date as string).localeCompare(b.date as string));
   }, [data]);
 
   if (loading) return <CompareSkeleton />;
@@ -256,7 +260,9 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
         <h2 className="text-lg font-bold mb-1">Comparison Failed</h2>
         <p className="text-sm text-muted-foreground mb-4">{error}</p>
         <Link href="/">
-          <Button variant="outline"><ArrowLeft className="h-4 w-4 mr-2" /> Back to DReps</Button>
+          <Button variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to DReps
+          </Button>
         </Link>
       </div>
     );
@@ -270,13 +276,16 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
           Choose 2-3 DReps from the main table to compare them side by side.
         </p>
         <Link href="/">
-          <Button variant="outline"><ArrowLeft className="h-4 w-4 mr-2" /> Browse DReps</Button>
+          <Button variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" /> Browse DReps
+          </Button>
         </Link>
       </div>
     );
   }
 
-  const showCompareWithYours = connected && delegatedDrepId && !data.dreps.some(d => d.drepId === delegatedDrepId);
+  const showCompareWithYours =
+    connected && delegatedDrepId && !data.dreps.some((d) => d.drepId === delegatedDrepId);
 
   return (
     <TooltipProvider>
@@ -296,13 +305,22 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
           </div>
           <div className="flex items-center gap-2">
             {showCompareWithYours && (
-              <Button variant="outline" size="sm" onClick={handleCompareWithYourDrep} className="text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCompareWithYourDrep}
+                className="text-xs"
+              >
                 <GitCompareArrows className="h-3.5 w-3.5 mr-1.5" />
                 Compare with Your DRep
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={handleSaveComparison} className="text-xs">
-              {isSaved ? <BookmarkCheck className="h-3.5 w-3.5 mr-1.5" /> : <Bookmark className="h-3.5 w-3.5 mr-1.5" />}
+              {isSaved ? (
+                <BookmarkCheck className="h-3.5 w-3.5 mr-1.5" />
+              ) : (
+                <Bookmark className="h-3.5 w-3.5 mr-1.5" />
+              )}
               {isSaved ? 'Saved' : 'Save'}
             </Button>
             <ShareActions
@@ -316,13 +334,31 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
         </div>
 
         {/* DRep Header Cards */}
-        <div className={`grid gap-4 ${data.dreps.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+        <div
+          className={`grid gap-4 ${data.dreps.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}
+        >
           {data.dreps.map((drep, i) => (
             <Card key={drep.drepId} className="relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: DREP_COLORS[i] }} />
+              <div
+                className="absolute top-0 left-0 right-0 h-1"
+                style={{ backgroundColor: DREP_COLORS[i] }}
+              />
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-start gap-3">
-                  <HexScore score={drep.drepScore} alignments={drepAlignments.get(drep.drepId) ?? { treasuryConservative: null, treasuryGrowth: null, decentralization: null, security: null, innovation: null, transparency: null }} size="card" />
+                  <HexScore
+                    score={drep.drepScore}
+                    alignments={
+                      drepAlignments.get(drep.drepId) ?? {
+                        treasuryConservative: null,
+                        treasuryGrowth: null,
+                        decentralization: null,
+                        security: null,
+                        innovation: null,
+                        transparency: null,
+                      }
+                    }
+                    size="card"
+                  />
                   <div className="min-w-0 flex-1">
                     <Link href={`/drep/${drep.drepId}`} className="hover:underline">
                       <h3 className="font-bold text-sm truncate">
@@ -335,16 +371,25 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                       </span>
                     )}
                     <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <Badge variant={drep.isActive ? 'default' : 'secondary'} className="text-[10px]">
+                      <Badge
+                        variant={drep.isActive ? 'default' : 'secondary'}
+                        className="text-[10px]"
+                      >
                         {drep.isActive ? 'Active' : 'Inactive'}
                       </Badge>
-                      <Badge variant="outline" className={`text-[10px] ${SIZE_TIER_COLORS[drep.sizeTier] || ''}`}>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${SIZE_TIER_COLORS[drep.sizeTier] || ''}`}
+                      >
                         {drep.sizeTier}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
                       <span>{formatAda(drep.votingPower)} ADA</span>
-                      <span>{drep.delegatorCount.toLocaleString()} delegator{drep.delegatorCount !== 1 ? 's' : ''}</span>
+                      <span>
+                        {drep.delegatorCount.toLocaleString()} delegator
+                        {drep.delegatorCount !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -372,7 +417,16 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                     {data.dreps.map((d) => (
                       <GovernanceRadar
                         key={d.drepId}
-                        alignments={drepAlignments.get(d.drepId) ?? { treasuryConservative: null, treasuryGrowth: null, decentralization: null, security: null, innovation: null, transparency: null }}
+                        alignments={
+                          drepAlignments.get(d.drepId) ?? {
+                            treasuryConservative: null,
+                            treasuryGrowth: null,
+                            decentralization: null,
+                            security: null,
+                            innovation: null,
+                            transparency: null,
+                          }
+                        }
                         size="medium"
                       />
                     ))}
@@ -380,7 +434,12 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                 )}
               </div>
               <div className="w-full md:w-1/2 space-y-3">
-                {['effectiveParticipation', 'rationaleRate', 'reliabilityScore', 'profileCompleteness'].map((pillarKey, pi) => {
+                {[
+                  'effectiveParticipation',
+                  'rationaleRate',
+                  'reliabilityScore',
+                  'profileCompleteness',
+                ].map((pillarKey, pi) => {
                   const labels = ['Participation', 'Rationale', 'Reliability', 'Profile'];
                   return (
                     <div key={pillarKey}>
@@ -390,7 +449,9 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                           const val = d.pillars[pillarKey as keyof CompareProfile['pillars']];
                           return (
                             <div key={d.drepId} className="flex items-center gap-2">
-                              <span className={`text-[10px] w-20 truncate ${DREP_COLOR_CLASSES[i]}`}>
+                              <span
+                                className={`text-[10px] w-20 truncate ${DREP_COLOR_CLASSES[i]}`}
+                              >
                                 {d.name || d.drepId.slice(0, 10)}
                               </span>
                               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
@@ -399,7 +460,9 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                                   style={{ width: `${val}%`, backgroundColor: DREP_COLORS[i] }}
                                 />
                               </div>
-                              <span className="text-[10px] tabular-nums w-8 text-right font-medium">{val}</span>
+                              <span className="text-[10px] tabular-nums w-8 text-right font-medium">
+                                {val}
+                              </span>
                             </div>
                           );
                         })}
@@ -413,17 +476,17 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
         </Card>
 
         {/* Score Trend */}
-        {trendData.length > 1 && (
-          <CompareScoreTrend trendData={trendData} dreps={data.dreps} />
-        )}
+        {trendData.length > 1 && <CompareScoreTrend trendData={trendData} dreps={data.dreps} />}
 
         {/* Voting Overlap */}
-        {data.voteOverlap.map(overlap => {
+        {data.voteOverlap.map((overlap) => {
           const [idA, idB] = overlap.pair;
-          const nameA = data.dreps.find(d => d.drepId === idA)?.name || idA.slice(0, 12);
-          const nameB = data.dreps.find(d => d.drepId === idB)?.name || idB.slice(0, 12);
-          const colorA = DREP_COLORS[data.dreps.findIndex(d => d.drepId === idA)] || DREP_COLORS[0];
-          const colorB = DREP_COLORS[data.dreps.findIndex(d => d.drepId === idB)] || DREP_COLORS[1];
+          const nameA = data.dreps.find((d) => d.drepId === idA)?.name || idA.slice(0, 12);
+          const nameB = data.dreps.find((d) => d.drepId === idB)?.name || idB.slice(0, 12);
+          const colorA =
+            DREP_COLORS[data.dreps.findIndex((d) => d.drepId === idA)] || DREP_COLORS[0];
+          const colorB =
+            DREP_COLORS[data.dreps.findIndex((d) => d.drepId === idB)] || DREP_COLORS[1];
           const disagreementsToShow = showAllDisagreements
             ? overlap.disagreements
             : overlap.disagreements.slice(0, 5);
@@ -440,21 +503,34 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
               <CardContent className="space-y-4">
                 {/* Agreement Hero Stat */}
                 <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                  <div className="text-3xl font-bold tabular-nums" style={{
-                    color: overlap.agreedPct >= 80 ? '#22c55e' : overlap.agreedPct >= 50 ? '#f59e0b' : '#ef4444'
-                  }}>
+                  <div
+                    className="text-3xl font-bold tabular-nums"
+                    style={{
+                      color:
+                        overlap.agreedPct >= 80
+                          ? '#22c55e'
+                          : overlap.agreedPct >= 50
+                            ? '#f59e0b'
+                            : '#ef4444',
+                    }}
+                  >
                     {overlap.agreedPct}%
                   </div>
                   <div>
                     <p className="text-sm font-medium">
                       Agreed on {overlap.agreedCount} of {overlap.sharedVotes} shared votes
                     </p>
-                    {overlap.abstentionGaps.some(g => g.count > 0) && (
+                    {overlap.abstentionGaps.some((g) => g.count > 0) && (
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {overlap.abstentionGaps.filter(g => g.count > 0).map(g => {
-                          const name = data.dreps.find(d => d.drepId === g.drepId)?.name || g.drepId.slice(0, 12);
-                          return `${name} voted on ${g.count} proposals the other didn't`;
-                        }).join(' · ')}
+                        {overlap.abstentionGaps
+                          .filter((g) => g.count > 0)
+                          .map((g) => {
+                            const name =
+                              data.dreps.find((d) => d.drepId === g.drepId)?.name ||
+                              g.drepId.slice(0, 12);
+                            return `${name} voted on ${g.count} proposals the other didn't`;
+                          })
+                          .join(' · ')}
                       </p>
                     )}
                   </div>
@@ -467,7 +543,7 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                       Where They Disagree ({overlap.disagreements.length})
                     </h4>
                     <div className="space-y-2">
-                      {disagreementsToShow.map(d => (
+                      {disagreementsToShow.map((d) => (
                         <div
                           key={`${d.txHash}-${d.proposalIndex}`}
                           className="border rounded-lg p-3 hover:bg-muted/30 transition-colors"
@@ -482,9 +558,13 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                               </Link>
                               <div className="flex items-center gap-2 mt-0.5">
                                 {d.proposalType && (
-                                  <span className="text-[10px] text-muted-foreground">{d.proposalType}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {d.proposalType}
+                                  </span>
                                 )}
-                                <span className="text-[10px] text-muted-foreground">{formatDate(d.blockTime)}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {formatDate(d.blockTime)}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -497,11 +577,20 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                               return (
                                 <div key={drepId} className="text-xs space-y-0.5">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="font-medium truncate" style={{ color }}>{name}</span>
-                                    <Badge variant="outline" className={`text-[10px] ${VOTE_COLORS[vote]}`}>{vote}</Badge>
+                                    <span className="font-medium truncate" style={{ color }}>
+                                      {name}
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] ${VOTE_COLORS[vote]}`}
+                                    >
+                                      {vote}
+                                    </Badge>
                                   </div>
                                   {rationale && (
-                                    <p className="text-muted-foreground text-[10px] line-clamp-2">{rationale}</p>
+                                    <p className="text-muted-foreground text-[10px] line-clamp-2">
+                                      {rationale}
+                                    </p>
                                   )}
                                 </div>
                               );
@@ -558,12 +647,14 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                   })}
                 </div>
                 {/* Per-category breakdown */}
-                {data.alignment[data.dreps[0].drepId]?.breakdown.map(cat => (
+                {data.alignment[data.dreps[0].drepId]?.breakdown.map((cat) => (
                   <div key={cat.key}>
                     <div className="text-xs font-medium mb-1">{cat.label}</div>
                     <div className="space-y-1">
                       {data.dreps.map((d, i) => {
-                        const score = data.alignment![d.drepId]?.breakdown.find(b => b.key === cat.key)?.score ?? 0;
+                        const score =
+                          data.alignment![d.drepId]?.breakdown.find((b) => b.key === cat.key)
+                            ?.score ?? 0;
                         return (
                           <div key={d.drepId} className="flex items-center gap-2">
                             <span className={`text-[10px] w-20 truncate ${DREP_COLOR_CLASSES[i]}`}>
@@ -575,7 +666,9 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
                                 style={{ width: `${score}%`, backgroundColor: DREP_COLORS[i] }}
                               />
                             </div>
-                            <span className="text-[10px] tabular-nums w-8 text-right font-medium">{score}</span>
+                            <span className="text-[10px] tabular-nums w-8 text-right font-medium">
+                              {score}
+                            </span>
                           </div>
                         );
                       })}
@@ -589,7 +682,7 @@ export function CompareView({ initialDrepIds }: CompareViewProps) {
 
         {/* CTA Footer */}
         <div className="flex items-center justify-center gap-3 py-4">
-          {data.dreps.map(d => (
+          {data.dreps.map((d) => (
             <Tooltip key={d.drepId}>
               <TooltipTrigger asChild>
                 <Link href={`/drep/${d.drepId}`}>
@@ -638,13 +731,19 @@ function CompareScoreTrend({
           .x((row) => xScale(row.date as string) ?? 0)
           .y((row) => yScale(row[d.drepId] as number))
           .curve(curveMonotoneX);
-        return { drepId: d.drepId, name: d.name || d.drepId.slice(0, 12), d: gen(trendData) ?? '', color: DREP_COLORS[i] };
+        return {
+          drepId: d.drepId,
+          name: d.name || d.drepId.slice(0, 12),
+          d: gen(trendData) ?? '',
+          color: DREP_COLORS[i],
+        };
       }),
     [dreps, trendData, xScale, yScale],
   );
 
   const ticks = yScale.ticks(4);
-  const xTicks = dates.length <= 8 ? dates : dates.filter((_, i) => i % Math.ceil(dates.length / 6) === 0);
+  const xTicks =
+    dates.length <= 8 ? dates : dates.filter((_, i) => i % Math.ceil(dates.length / 6) === 0);
 
   return (
     <Card>
@@ -663,22 +762,60 @@ function CompareScoreTrend({
               <g transform={`translate(${margin.left},${margin.top})`}>
                 {ticks.map((t) => (
                   <g key={t}>
-                    <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
-                    <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={10} className="fill-muted-foreground">{t}</text>
+                    <line
+                      x1={0}
+                      x2={innerWidth}
+                      y1={yScale(t)}
+                      y2={yScale(t)}
+                      stroke="currentColor"
+                      strokeWidth={0.5}
+                      strokeDasharray="4 4"
+                      className="text-border"
+                    />
+                    <text
+                      x={-8}
+                      y={yScale(t)}
+                      textAnchor="end"
+                      dominantBaseline="central"
+                      fontSize={10}
+                      className="fill-muted-foreground"
+                    >
+                      {t}
+                    </text>
                   </g>
                 ))}
                 {xTicks.map((date) => {
                   const d = new Date(date);
                   return (
-                    <text key={date} x={xScale(date) ?? 0} y={innerHeight + 16} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
+                    <text
+                      key={date}
+                      x={xScale(date) ?? 0}
+                      y={innerHeight + 16}
+                      textAnchor="middle"
+                      fontSize={10}
+                      className="fill-muted-foreground"
+                    >
                       {d.getMonth() + 1}/{d.getDate()}
                     </text>
                   );
                 })}
                 {paths.map((p, i) => (
                   <g key={p.drepId}>
-                    <path d={p.d} fill="none" stroke={p.color} strokeWidth={2} filter={`url(#compare-glow-${i})`} opacity={0.3} />
-                    <path d={p.d} fill="none" stroke={p.color} strokeWidth={2} strokeLinecap="round" />
+                    <path
+                      d={p.d}
+                      fill="none"
+                      stroke={p.color}
+                      strokeWidth={2}
+                      filter={`url(#compare-glow-${i})`}
+                      opacity={0.3}
+                    />
+                    <path
+                      d={p.d}
+                      fill="none"
+                      stroke={p.color}
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                    />
                   </g>
                 ))}
               </g>

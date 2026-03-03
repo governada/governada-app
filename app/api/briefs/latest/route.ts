@@ -26,10 +26,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ brief: null, message: 'No briefs yet' });
   }
 
-  captureServerEvent('governance_brief_opened', {
-    brief_id: brief.id,
-    source: 'api',
-  }, session.walletAddress);
+  captureServerEvent(
+    'governance_brief_opened',
+    {
+      brief_id: brief.id,
+      source: 'api',
+    },
+    session.walletAddress,
+  );
 
   return NextResponse.json({ brief });
 }

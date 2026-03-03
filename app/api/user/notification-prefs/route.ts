@@ -34,19 +34,24 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = getSupabaseAdmin();
-  const { error } = await supabase
-    .from('notification_preferences')
-    .upsert({
+  const { error } = await supabase.from('notification_preferences').upsert(
+    {
       user_wallet: wallet,
       channel,
       event_type: eventType,
       enabled,
-    }, { onConflict: 'user_wallet,channel,event_type' });
+    },
+    { onConflict: 'user_wallet,channel,event_type' },
+  );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  captureServerEvent('notification_pref_toggled', { channel, event_type: eventType, enabled }, wallet);
+  captureServerEvent(
+    'notification_pref_toggled',
+    { channel, event_type: eventType, enabled },
+    wallet,
+  );
   return NextResponse.json({ ok: true });
 }

@@ -45,10 +45,15 @@ export function DRepCard({
       aria-label={`${displayName}, score ${score}`}
       className={cn(
         'group relative flex flex-col gap-3 p-4 rounded-xl border bg-card hover:shadow-md transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        isDelegated && 'ring-2 ring-primary/30'
+        isDelegated && 'ring-2 ring-primary/30',
       )}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
     >
       {/* Top row: score + name + size */}
       <div className="flex items-start gap-3">
@@ -69,7 +74,10 @@ export function DRepCard({
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm truncate">{displayName}</span>
             {isDelegated && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary shrink-0">
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary shrink-0"
+              >
                 Your DRep
               </Badge>
             )}
@@ -81,7 +89,10 @@ export function DRepCard({
 
         {/* Size + power */}
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <Badge variant="outline" className={cn('text-[10px] font-medium', getSizeBadgeClass(drep.sizeTier))}>
+          <Badge
+            variant="outline"
+            className={cn('text-[10px] font-medium', getSizeBadgeClass(drep.sizeTier))}
+          >
             {drep.sizeTier}
           </Badge>
           <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -101,11 +112,7 @@ export function DRepCard({
       {matchScore == null && traitTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {traitTags.map((tag) => (
-            <Badge
-              key={tag}
-              variant="secondary"
-              className="text-[10px] font-normal px-2 py-0.5"
-            >
+            <Badge key={tag} variant="secondary" className="text-[10px] font-normal px-2 py-0.5">
               {tag}
             </Badge>
           ))}
@@ -146,7 +153,7 @@ export function DRepCard({
                 'h-3.5 w-3.5 transition-colors',
                 isWatchlisted
                   ? 'fill-red-500 text-red-500'
-                  : 'text-muted-foreground hover:text-red-400'
+                  : 'text-muted-foreground hover:text-red-400',
               )}
             />
           </button>
@@ -162,7 +169,9 @@ export function DRepCard({
           <Vote
             className={cn(
               'h-3.5 w-3.5 transition-colors',
-              isDelegated ? 'fill-primary text-primary' : 'text-muted-foreground hover:text-primary'
+              isDelegated
+                ? 'fill-primary text-primary'
+                : 'text-muted-foreground hover:text-primary',
             )}
           />
         </button>

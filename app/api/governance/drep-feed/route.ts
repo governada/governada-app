@@ -33,11 +33,7 @@ export async function GET(request: NextRequest) {
         .eq('drep_id', drepId)
         .maybeSingle(),
 
-      supabase
-        .from('dreps')
-        .select('info')
-        .eq('id', drepId)
-        .single(),
+      supabase.from('dreps').select('info').eq('id', drepId).single(),
     ]);
 
     const explanations = explanationsRes.data || [];
@@ -45,8 +41,8 @@ export async function GET(request: NextRequest) {
 
     const txHashes = [
       ...new Set([
-        ...explanations.map(e => e.proposal_tx_hash),
-        ...positions.map(p => p.proposal_tx_hash),
+        ...explanations.map((e) => e.proposal_tx_hash),
+        ...positions.map((p) => p.proposal_tx_hash),
       ]),
     ];
 
@@ -55,10 +51,7 @@ export async function GET(request: NextRequest) {
 
     if (txHashes.length > 0) {
       const [proposalsRes, votesRes] = await Promise.all([
-        supabase
-          .from('proposals')
-          .select('tx_hash, proposal_index, title')
-          .in('tx_hash', txHashes),
+        supabase.from('proposals').select('tx_hash, proposal_index, title').in('tx_hash', txHashes),
 
         supabase
           .from('drep_votes')
@@ -82,10 +75,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const drepName = (drepRes.data?.info as Record<string, unknown>)?.name as string | null ?? null;
+    const drepName =
+      ((drepRes.data?.info as Record<string, unknown>)?.name as string | null) ?? null;
 
     return NextResponse.json({
-      explanations: explanations.map(e => {
+      explanations: explanations.map((e) => {
         const key = `${e.proposal_tx_hash}:${e.proposal_index}`;
         return {
           proposalTxHash: e.proposal_tx_hash,
@@ -96,7 +90,7 @@ export async function GET(request: NextRequest) {
           createdAt: e.created_at,
         };
       }),
-      positions: positions.map(p => {
+      positions: positions.map((p) => {
         const key = `${p.proposal_tx_hash}:${p.proposal_index}`;
         return {
           proposalTxHash: p.proposal_tx_hash,

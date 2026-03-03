@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   const { drepId } = await params;
   const supabase = getSupabaseAdmin();
@@ -27,7 +27,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   const { drepId } = await params;
 
@@ -66,7 +66,7 @@ export async function POST(
           explanation_text: explanationText,
           ai_assisted: aiAssisted || false,
         },
-        { onConflict: 'drep_id,proposal_tx_hash,proposal_index' }
+        { onConflict: 'drep_id,proposal_tx_hash,proposal_index' },
       )
       .select()
       .single();

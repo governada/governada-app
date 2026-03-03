@@ -15,9 +15,12 @@ let clientCachePromise: Promise<Record<string, boolean>> | null = null;
 function getClientFlags(): Promise<Record<string, boolean>> {
   if (clientFlagCache) return Promise.resolve(clientFlagCache);
   if (!clientCachePromise) {
-    clientCachePromise = fetchClientFlags().then(flags => {
+    clientCachePromise = fetchClientFlags().then((flags) => {
       clientFlagCache = flags;
-      setTimeout(() => { clientFlagCache = null; clientCachePromise = null; }, 60_000);
+      setTimeout(() => {
+        clientFlagCache = null;
+        clientCachePromise = null;
+      }, 60_000);
       return flags;
     });
   }
@@ -32,7 +35,7 @@ export function FeatureGate({ flag, children, fallback = null }: FeatureGateProp
   const [enabled, setEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
-    getClientFlags().then(flags => {
+    getClientFlags().then((flags) => {
       setEnabled(flags[flag] ?? true);
     });
   }, [flag]);
@@ -50,7 +53,7 @@ export function useFeatureFlag(flag: string): boolean | null {
   const [enabled, setEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
-    getClientFlags().then(flags => {
+    getClientFlags().then((flags) => {
       setEnabled(flags[flag] ?? true);
     });
   }, [flag]);

@@ -53,28 +53,30 @@ export async function GET(request: NextRequest) {
           .eq('drep_id', drepId);
 
         const explainedSet = new Set(
-          (explanations ?? []).map(e => `${e.proposal_tx_hash}-${e.proposal_index}`),
+          (explanations ?? []).map((e) => `${e.proposal_tx_hash}-${e.proposal_index}`),
         );
 
         const unexplained = recentVotes.filter(
-          v => !explainedSet.has(`${v.proposal_tx_hash}-${v.proposal_index}`),
+          (v) => !explainedSet.has(`${v.proposal_tx_hash}-${v.proposal_index}`),
         );
 
         if (unexplained.length > 0) {
-          const proposalKeys = unexplained.map(v => v.proposal_tx_hash);
+          const proposalKeys = unexplained.map((v) => v.proposal_tx_hash);
           const { data: proposals } = await supabase
             .from('proposals')
             .select('tx_hash, proposal_index, title')
             .in('tx_hash', proposalKeys);
 
           const proposalTitleMap = new Map(
-            (proposals ?? []).map(p => [`${p.tx_hash}-${p.proposal_index}`, p.title]),
+            (proposals ?? []).map((p) => [`${p.tx_hash}-${p.proposal_index}`, p.title]),
           );
 
-          unexplainedVotes = unexplained.map(v => ({
+          unexplainedVotes = unexplained.map((v) => ({
             txHash: v.proposal_tx_hash,
             index: v.proposal_index,
-            title: proposalTitleMap.get(`${v.proposal_tx_hash}-${v.proposal_index}`) || 'Untitled Proposal',
+            title:
+              proposalTitleMap.get(`${v.proposal_tx_hash}-${v.proposal_index}`) ||
+              'Untitled Proposal',
           }));
         }
       }

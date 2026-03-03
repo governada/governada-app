@@ -23,9 +23,13 @@ interface LogEntry {
 
 function StatusBadge({ ok, label }: { ok: boolean | null; label: string }) {
   if (ok === null) return <Badge variant="secondary">{label}: pending</Badge>;
-  return ok
-    ? <Badge variant="default" className="bg-green-600">{label}: OK</Badge>
-    : <Badge variant="destructive">{label}: FAIL</Badge>;
+  return ok ? (
+    <Badge variant="default" className="bg-green-600">
+      {label}: OK
+    </Badge>
+  ) : (
+    <Badge variant="destructive">{label}: FAIL</Badge>
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,13 +52,7 @@ export default function DelegationTestPage() {
     disconnect,
   } = useWallet();
 
-  const {
-    phase,
-    startDelegation,
-    confirmDelegation,
-    reset,
-    isProcessing,
-  } = useDelegation();
+  const { phase, startDelegation, confirmDelegation, reset, isProcessing } = useDelegation();
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [drepIdInput, setDrepIdInput] = useState('');
@@ -64,12 +62,15 @@ export default function DelegationTestPage() {
   const [rewardAddress, setRewardAddress] = useState<string | null>(null);
 
   const log = (level: LogEntry['level'], message: string, data?: unknown) => {
-    setLogs(prev => [{
-      time: new Date().toISOString().slice(11, 23),
-      level,
-      message,
-      data,
-    }, ...prev]);
+    setLogs((prev) => [
+      {
+        time: new Date().toISOString().slice(11, 23),
+        level,
+        message,
+        data,
+      },
+      ...prev,
+    ]);
   };
 
   // Detect installed wallets
@@ -81,10 +82,14 @@ export default function DelegationTestPage() {
     }
 
     const installed = BrowserWallet.getInstalledWallets();
-    log('info', `Detected ${installed.length} wallets`, installed.map(w => ({
-      name: w.name,
-      icon: w.icon ? 'present' : 'missing',
-    })));
+    log(
+      'info',
+      `Detected ${installed.length} wallets`,
+      installed.map((w) => ({
+        name: w.name,
+        icon: w.icon ? 'present' : 'missing',
+      })),
+    );
 
     const details: Record<string, unknown> = {};
     for (const w of installed) {
@@ -123,7 +128,11 @@ export default function DelegationTestPage() {
     if (!walletName) return;
     const result = checkGovernanceSupport(walletName);
     setGovCheck(result);
-    log(result.supported ? 'success' : 'warn', `Governance check: ${result.supported ? 'supported' : 'unsupported'}`, result);
+    log(
+      result.supported ? 'success' : 'warn',
+      `Governance check: ${result.supported ? 'supported' : 'unsupported'}`,
+      result,
+    );
   };
 
   const handlePreflight = async () => {
@@ -134,7 +143,13 @@ export default function DelegationTestPage() {
       setPreflight(result);
       log('success', 'Preflight passed', result);
     } catch (err) {
-      log('error', 'Preflight failed', err instanceof Error ? { code: (err as any).code, message: err.message, hint: (err as any).hint } : err);
+      log(
+        'error',
+        'Preflight failed',
+        err instanceof Error
+          ? { code: (err as any).code, message: err.message, hint: (err as any).hint }
+          : err,
+      );
     }
   };
 
@@ -193,7 +208,9 @@ export default function DelegationTestPage() {
         <StatusBadge ok={rewardAddress?.startsWith('stake1') ?? null} label="Mainnet" />
         <StatusBadge ok={preflight?.stakeRegistered ?? null} label="Stake Reg" />
         {walletName && <Badge variant="outline">{walletName}</Badge>}
-        {delegatedDrepId && <Badge variant="outline">Delegated: {delegatedDrepId.slice(0, 16)}...</Badge>}
+        {delegatedDrepId && (
+          <Badge variant="outline">Delegated: {delegatedDrepId.slice(0, 16)}...</Badge>
+        )}
       </div>
 
       {/* Step 1: Connect */}
@@ -204,8 +221,14 @@ export default function DelegationTestPage() {
         <CardContent className="space-y-3">
           {!connected ? (
             <div className="flex flex-wrap gap-2">
-              {availableWallets.map(name => (
-                <Button key={name} variant="outline" size="sm" onClick={() => handleConnect(name)} disabled={connecting}>
+              {availableWallets.map((name) => (
+                <Button
+                  key={name}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleConnect(name)}
+                  disabled={connecting}
+                >
                   {name}
                 </Button>
               ))}
@@ -216,8 +239,12 @@ export default function DelegationTestPage() {
           ) : (
             <div className="space-y-2">
               <p className="text-sm font-mono">{address}</p>
-              {rewardAddress && <p className="text-xs font-mono text-muted-foreground">Stake: {rewardAddress}</p>}
-              <Button variant="outline" size="sm" onClick={handleDisconnect}>Disconnect</Button>
+              {rewardAddress && (
+                <p className="text-xs font-mono text-muted-foreground">Stake: {rewardAddress}</p>
+              )}
+              <Button variant="outline" size="sm" onClick={handleDisconnect}>
+                Disconnect
+              </Button>
             </div>
           )}
 
@@ -242,7 +269,9 @@ export default function DelegationTestPage() {
             Check CIP-95 Support
           </Button>
           {govCheck && (
-            <div className={`text-sm p-2 rounded ${govCheck.supported ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+            <div
+              className={`text-sm p-2 rounded ${govCheck.supported ? 'bg-green-500/10' : 'bg-amber-500/10'}`}
+            >
               {govCheck.supported ? 'Governance supported' : govCheck.hint}
             </div>
           )}
@@ -260,10 +289,19 @@ export default function DelegationTestPage() {
           </Button>
           {preflight && (
             <div className="text-sm p-2 bg-muted rounded space-y-1">
-              <p>Reward Address: <span className="font-mono text-xs">{preflight.rewardAddress}</span></p>
-              <p>Stake Registered: <span className="font-medium">{String(preflight.stakeRegistered)}</span></p>
-              <p>Estimated Fee: <span className="font-medium">{preflight.estimatedFee}</span></p>
-              <p>Needs Deposit: <span className="font-medium">{String(preflight.needsDeposit)}</span></p>
+              <p>
+                Reward Address: <span className="font-mono text-xs">{preflight.rewardAddress}</span>
+              </p>
+              <p>
+                Stake Registered:{' '}
+                <span className="font-medium">{String(preflight.stakeRegistered)}</span>
+              </p>
+              <p>
+                Estimated Fee: <span className="font-medium">{preflight.estimatedFee}</span>
+              </p>
+              <p>
+                Needs Deposit: <span className="font-medium">{String(preflight.needsDeposit)}</span>
+              </p>
             </div>
           )}
         </CardContent>
@@ -278,7 +316,7 @@ export default function DelegationTestPage() {
           <input
             type="text"
             value={drepIdInput}
-            onChange={e => setDrepIdInput(e.target.value)}
+            onChange={(e) => setDrepIdInput(e.target.value)}
             placeholder="drep1... or DRep hash"
             className="w-full p-2 text-sm border rounded bg-background font-mono"
           />
@@ -304,7 +342,9 @@ export default function DelegationTestPage() {
               <span className="ml-2 text-destructive text-xs">{phase.hint}</span>
             )}
             {phase.status === 'confirming' && (
-              <span className="ml-2 text-xs">Fee: {phase.preflight.estimatedFee}, Deposit: {String(phase.preflight.needsDeposit)}</span>
+              <span className="ml-2 text-xs">
+                Fee: {phase.preflight.estimatedFee}, Deposit: {String(phase.preflight.needsDeposit)}
+              </span>
             )}
           </div>
         </CardContent>
@@ -315,18 +355,26 @@ export default function DelegationTestPage() {
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             Log
-            <Button variant="ghost" size="sm" onClick={() => setLogs([])}>Clear</Button>
+            <Button variant="ghost" size="sm" onClick={() => setLogs([])}>
+              Clear
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="max-h-64 overflow-auto space-y-1 text-xs font-mono">
             {logs.map((entry, i) => (
-              <div key={i} className={`flex gap-2 ${
-                entry.level === 'error' ? 'text-red-500' :
-                entry.level === 'warn' ? 'text-amber-500' :
-                entry.level === 'success' ? 'text-green-500' :
-                'text-muted-foreground'
-              }`}>
+              <div
+                key={i}
+                className={`flex gap-2 ${
+                  entry.level === 'error'
+                    ? 'text-red-500'
+                    : entry.level === 'warn'
+                      ? 'text-amber-500'
+                      : entry.level === 'success'
+                        ? 'text-green-500'
+                        : 'text-muted-foreground'
+                }`}
+              >
                 <span className="flex-shrink-0 opacity-60">{entry.time}</span>
                 <span>{entry.message}</span>
                 {entry.data !== undefined && (

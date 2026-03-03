@@ -1,6 +1,7 @@
-import type { NextConfig } from "next";
-import path from "path";
-import { withSentryConfig } from "@sentry/nextjs";
+import type { NextConfig } from 'next';
+import path from 'path';
+import { withSentryConfig } from '@sentry/nextjs';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -9,9 +10,9 @@ const nextConfig: NextConfig = {
   compress: true,
   turbopack: {
     resolveAlias: {
-      'libsodium-wrappers-sumo': path.resolve(
-        './node_modules/libsodium-wrappers-sumo/dist/modules-sumo/libsodium-wrappers.js'
-      ).replace(/\\/g, '/'),
+      'libsodium-wrappers-sumo': path
+        .resolve('./node_modules/libsodium-wrappers-sumo/dist/modules-sumo/libsodium-wrappers.js')
+        .replace(/\\/g, '/'),
     },
   },
   async headers() {
@@ -37,8 +38,10 @@ const nextConfig: NextConfig = {
       config.externals = config.externals || [];
       config.externals.push({
         'libsodium-wrappers-sumo': 'commonjs libsodium-wrappers-sumo',
-        '@emurgo/cardano-serialization-lib-browser': 'commonjs @emurgo/cardano-serialization-lib-browser',
-        '@emurgo/cardano-serialization-lib-nodejs': 'commonjs @emurgo/cardano-serialization-lib-nodejs',
+        '@emurgo/cardano-serialization-lib-browser':
+          'commonjs @emurgo/cardano-serialization-lib-browser',
+        '@emurgo/cardano-serialization-lib-nodejs':
+          'commonjs @emurgo/cardano-serialization-lib-nodejs',
       });
     } else {
       // Client: alias ESM libsodium (which tries to import a missing .mjs) to the CJS
@@ -47,7 +50,7 @@ const nextConfig: NextConfig = {
       config.resolve.alias = {
         ...config.resolve.alias,
         'libsodium-wrappers-sumo': path.resolve(
-          './node_modules/libsodium-wrappers-sumo/dist/modules-sumo/libsodium-wrappers.js'
+          './node_modules/libsodium-wrappers-sumo/dist/modules-sumo/libsodium-wrappers.js',
         ),
       };
     }
@@ -63,7 +66,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+const analyzed = withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })(nextConfig);
+
+export default withSentryConfig(analyzed, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,

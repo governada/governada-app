@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     const adminWallets = (process.env.ADMIN_WALLETS || '')
       .split(',')
-      .map(s => s.trim().toLowerCase())
+      .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
 
     const lower = address.toLowerCase();

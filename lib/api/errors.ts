@@ -39,7 +39,8 @@ const ERROR_REGISTRY: Record<string, Omit<ApiErrorDef, 'code'>> = {
   // Rate limiting (429)
   rate_limit_exceeded: {
     status: 429,
-    message: 'Rate limit exceeded. {used} requests used of {limit} per {window}. Resets at {reset_time}.',
+    message:
+      'Rate limit exceeded. {used} requests used of {limit} per {window}. Resets at {reset_time}.',
     hint: 'Upgrade your API tier for higher limits, or add caching on your side.',
   },
 
@@ -80,7 +81,8 @@ const ERROR_REGISTRY: Record<string, Omit<ApiErrorDef, 'code'>> = {
   // Access (403)
   tier_insufficient: {
     status: 403,
-    message: "This endpoint requires '{required_tier}' tier or above. Your key is '{current_tier}'.",
+    message:
+      "This endpoint requires '{required_tier}' tier or above. Your key is '{current_tier}'.",
     hint: 'Upgrade at drepscore.io/developers/upgrade.',
   },
 
@@ -102,7 +104,10 @@ const ERROR_REGISTRY: Record<string, Omit<ApiErrorDef, 'code'>> = {
   },
 };
 
-export function getApiError(code: string, params: ErrorParams = {}): ApiErrorDef & { docs: string } {
+export function getApiError(
+  code: string,
+  params: ErrorParams = {},
+): ApiErrorDef & { docs: string } {
   const template = ERROR_REGISTRY[code];
   if (!template) {
     return {

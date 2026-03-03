@@ -29,12 +29,12 @@ export async function POST(request: NextRequest) {
     }
 
     const dataSignature: DataSignature = { signature, key };
-    
+
     // Must verify against hex-encoded nonce (same format that was signed on client)
     const hexPayload = Array.from(new TextEncoder().encode(nonce))
-      .map(b => b.toString(16).padStart(2, '0'))
+      .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
-    
+
     let isValid = false;
     try {
       isValid = await checkSignature(hexPayload, dataSignature, address);
@@ -42,21 +42,19 @@ export async function POST(request: NextRequest) {
       console.error('Signature verification error:', sigError);
       return NextResponse.json({ error: 'Signature verification failed' }, { status: 401 });
     }
-    
+
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     const supabase = getSupabaseAdmin();
-    const { error: upsertError } = await supabase
-      .from('users')
-      .upsert(
-        {
-          wallet_address: address,
-          last_active: new Date().toISOString(),
-        },
-        { onConflict: 'wallet_address' }
-      );
+    const { error: upsertError } = await supabase.from('users').upsert(
+      {
+        wallet_address: address,
+        last_active: new Date().toISOString(),
+      },
+      { onConflict: 'wallet_address' },
+    );
 
     if (upsertError) {
       console.error('User upsert error:', upsertError);

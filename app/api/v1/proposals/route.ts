@@ -24,31 +24,39 @@ async function handler(request: NextRequest, ctx: ApiContext) {
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0);
 
   if (!VALID_STATUSES.includes(status as any)) {
-    return apiError('invalid_parameter', {
-      param: 'status',
-      value: status,
-      context: `Valid values: ${VALID_STATUSES.join(', ')}`,
-    }, { requestId: ctx.requestId });
+    return apiError(
+      'invalid_parameter',
+      {
+        param: 'status',
+        value: status,
+        context: `Valid values: ${VALID_STATUSES.join(', ')}`,
+      },
+      { requestId: ctx.requestId },
+    );
   }
 
   if (!VALID_SORTS.includes(sort as any)) {
-    return apiError('invalid_parameter', {
-      param: 'sort',
-      value: sort,
-      context: `Valid values: ${VALID_SORTS.join(', ')}`,
-    }, { requestId: ctx.requestId });
+    return apiError(
+      'invalid_parameter',
+      {
+        param: 'sort',
+        value: sort,
+        context: `Valid values: ${VALID_SORTS.join(', ')}`,
+      },
+      { requestId: ctx.requestId },
+    );
   }
 
   const proposals = await getAllProposalsWithVoteSummary();
 
-  let filtered = proposals.map(p => ({ ...p, status: getProposalStatus(p) }));
+  let filtered = proposals.map((p) => ({ ...p, status: getProposalStatus(p) }));
 
   if (status !== 'all') {
-    filtered = filtered.filter(p => p.status === status);
+    filtered = filtered.filter((p) => p.status === status);
   }
 
   if (type) {
-    filtered = filtered.filter(p => p.proposalType === type);
+    filtered = filtered.filter((p) => p.proposalType === type);
   }
 
   if (sort === 'most_votes') {
@@ -65,7 +73,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
   const total = filtered.length;
   const page = filtered.slice(offset, offset + limit);
 
-  const data = page.map(p => ({
+  const data = page.map((p) => ({
     tx_hash: p.txHash,
     proposal_index: p.proposalIndex,
     title: p.title,

@@ -3,7 +3,12 @@ import { validateSessionToken } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import type { PollResultsResponse } from '@/types/supabase';
 
-function aggregateCounts(rows: { vote: string }[]): { yes: number; no: number; abstain: number; total: number } {
+function aggregateCounts(rows: { vote: string }[]): {
+  yes: number;
+  no: number;
+  abstain: number;
+  total: number;
+} {
   const counts = { yes: 0, no: 0, abstain: 0, total: rows.length };
   for (const row of rows) {
     if (row.vote === 'yes') counts.yes++;
@@ -22,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (!proposalTxHash || !proposalIndexStr) {
     return NextResponse.json(
       { error: 'proposalTxHash and proposalIndex required' },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

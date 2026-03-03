@@ -20,29 +20,27 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
   try {
     // Insight 1: Rationale correlates with dissent
     const [votesWithRat, votesWithoutRat] = await Promise.all([
-      supabase.rpc('count_votes_with_rationale_by_vote', undefined as any).then(r => r.data),
-      supabase.from('drep_votes')
+      supabase.rpc('count_votes_with_rationale_by_vote', undefined as any).then((r) => r.data),
+      supabase
+        .from('drep_votes')
         .select('vote', { count: 'exact', head: false })
-        .then(r => r.data),
+        .then((r) => r.data),
     ]);
 
     // Fallback: compute from raw data
-    const { data: allVotes } = await supabase
-      .from('drep_votes')
-      .select('vote_tx_hash, vote');
-    const { data: allRationales } = await supabase
-      .from('vote_rationales')
-      .select('vote_tx_hash');
+    const { data: allVotes } = await supabase.from('drep_votes').select('vote_tx_hash, vote');
+    const { data: allRationales } = await supabase.from('vote_rationales').select('vote_tx_hash');
 
     if (allVotes && allRationales) {
-      const rationaleSet = new Set(allRationales.map(r => r.vote_tx_hash));
-      const withRationale = allVotes.filter(v => rationaleSet.has(v.vote_tx_hash));
-      const withoutRationale = allVotes.filter(v => !rationaleSet.has(v.vote_tx_hash));
+      const rationaleSet = new Set(allRationales.map((r) => r.vote_tx_hash));
+      const withRationale = allVotes.filter((v) => rationaleSet.has(v.vote_tx_hash));
+      const withoutRationale = allVotes.filter((v) => !rationaleSet.has(v.vote_tx_hash));
 
-      const noWithRat = withRationale.filter(v => v.vote === 'No').length;
-      const noWithoutRat = withoutRationale.filter(v => v.vote === 'No').length;
+      const noWithRat = withRationale.filter((v) => v.vote === 'No').length;
+      const noWithoutRat = withoutRationale.filter((v) => v.vote === 'No').length;
       const noRateWith = withRationale.length > 0 ? noWithRat / withRationale.length : 0;
-      const noRateWithout = withoutRationale.length > 0 ? noWithoutRat / withoutRationale.length : 0;
+      const noRateWithout =
+        withoutRationale.length > 0 ? noWithoutRat / withoutRationale.length : 0;
 
       if (noRateWithout > 0) {
         const ratio = noRateWith / noRateWithout;
@@ -64,23 +62,29 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
       .select('proposal_type, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch');
 
     if (proposals && proposals.length > 0) {
-      const treasury = proposals.filter(p => p.proposal_type === 'TreasuryWithdrawals');
-      const resolved = (ps: typeof proposals) => ps.filter(
-        p => p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch
-      );
-      const passed = (ps: typeof proposals) => ps.filter(
-        p => p.ratified_epoch || p.enacted_epoch
-      );
+      const treasury = proposals.filter((p) => p.proposal_type === 'TreasuryWithdrawals');
+      const resolved = (ps: typeof proposals) =>
+        ps.filter((p) => p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch);
+      const passed = (ps: typeof proposals) =>
+        ps.filter((p) => p.ratified_epoch || p.enacted_epoch);
 
       const treasuryResolved = resolved(treasury);
-      const otherResolved = resolved(proposals.filter(p => p.proposal_type !== 'TreasuryWithdrawals'));
+      const otherResolved = resolved(
+        proposals.filter((p) => p.proposal_type !== 'TreasuryWithdrawals'),
+      );
 
-      const treasuryPassRate = treasuryResolved.length > 0
-        ? Math.round((passed(treasury).length / treasuryResolved.length) * 100)
-        : null;
-      const otherPassRate = otherResolved.length > 0
-        ? Math.round((passed(proposals.filter(p => p.proposal_type !== 'TreasuryWithdrawals')).length / otherResolved.length) * 100)
-        : null;
+      const treasuryPassRate =
+        treasuryResolved.length > 0
+          ? Math.round((passed(treasury).length / treasuryResolved.length) * 100)
+          : null;
+      const otherPassRate =
+        otherResolved.length > 0
+          ? Math.round(
+              (passed(proposals.filter((p) => p.proposal_type !== 'TreasuryWithdrawals')).length /
+                otherResolved.length) *
+                100,
+            )
+          : null;
 
       if (treasuryPassRate !== null && otherPassRate !== null && treasuryResolved.length >= 3) {
         insights.push({
@@ -102,7 +106,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
       .limit(10);
 
     if (topDreps && topDreps.length >= 5) {
-      const topIds = topDreps.map(d => d.id);
+      const topIds = topDreps.map((d) => d.id);
       const { data: topVotes } = await supabase
         .from('drep_votes')
         .select('drep_id, proposal_tx_hash, proposal_index, vote')
@@ -132,9 +136,12 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
         const agreementRate = comparisons > 0 ? Math.round((agreements / comparisons) * 100) : 0;
 
         if (comparisons > 10) {
-          const descriptor = agreementRate > 80 ? 'form a strong consensus'
-            : agreementRate > 60 ? 'mostly agree'
-            : 'show real ideological diversity';
+          const descriptor =
+            agreementRate > 80
+              ? 'form a strong consensus'
+              : agreementRate > 60
+                ? 'mostly agree'
+                : 'show real ideological diversity';
 
           insights.push({
             id: 'top-agreement',

@@ -23,19 +23,27 @@ async function handler(request: NextRequest, ctx: ApiContext) {
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0);
 
   if (!VALID_SORT_FIELDS.includes(sortField as any)) {
-    return apiError('invalid_parameter', {
-      param: 'sort',
-      value: sortField,
-      context: `Valid values: ${VALID_SORT_FIELDS.join(', ')}`,
-    }, { requestId: ctx.requestId });
+    return apiError(
+      'invalid_parameter',
+      {
+        param: 'sort',
+        value: sortField,
+        context: `Valid values: ${VALID_SORT_FIELDS.join(', ')}`,
+      },
+      { requestId: ctx.requestId },
+    );
   }
 
   if (!VALID_ORDERS.includes(order as any)) {
-    return apiError('invalid_parameter', {
-      param: 'order',
-      value: order,
-      context: "Valid values: 'asc', 'desc'",
-    }, { requestId: ctx.requestId });
+    return apiError(
+      'invalid_parameter',
+      {
+        param: 'order',
+        value: order,
+        context: "Valid values: 'asc', 'desc'",
+      },
+      { requestId: ctx.requestId },
+    );
   }
 
   const { dreps, allDReps } = await getAllDReps();
@@ -43,20 +51,21 @@ async function handler(request: NextRequest, ctx: ApiContext) {
 
   let filtered = pool;
   if (search) {
-    filtered = filtered.filter(d =>
-      (d.name?.toLowerCase().includes(search)) ||
-      (d.ticker?.toLowerCase().includes(search)) ||
-      (d.handle?.toLowerCase().includes(search)) ||
-      d.drepId.toLowerCase().includes(search)
+    filtered = filtered.filter(
+      (d) =>
+        d.name?.toLowerCase().includes(search) ||
+        d.ticker?.toLowerCase().includes(search) ||
+        d.handle?.toLowerCase().includes(search) ||
+        d.drepId.toLowerCase().includes(search),
     );
   }
 
   const sortKeyMap: Record<string, (d: any) => number | string> = {
-    score: d => d.drepScore,
-    name: d => (d.name || d.ticker || d.drepId).toLowerCase(),
-    participation: d => d.effectiveParticipation,
-    rationale: d => d.rationaleRate,
-    reliability: d => d.reliabilityScore,
+    score: (d) => d.drepScore,
+    name: (d) => (d.name || d.ticker || d.drepId).toLowerCase(),
+    participation: (d) => d.effectiveParticipation,
+    rationale: (d) => d.rationaleRate,
+    reliability: (d) => d.reliabilityScore,
   };
   const sortFn = sortKeyMap[sortField];
   filtered.sort((a, b) => {
@@ -65,13 +74,15 @@ async function handler(request: NextRequest, ctx: ApiContext) {
     if (typeof aVal === 'string' && typeof bVal === 'string') {
       return order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     }
-    return order === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+    return order === 'asc'
+      ? (aVal as number) - (bVal as number)
+      : (bVal as number) - (aVal as number);
   });
 
   const total = filtered.length;
   const page = filtered.slice(offset, offset + limit);
 
-  const data = page.map(d => ({
+  const data = page.map((d) => ({
     drep_id: d.drepId,
     name: d.name,
     ticker: d.ticker,

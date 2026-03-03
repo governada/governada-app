@@ -19,12 +19,15 @@ Leverage Midnight's zero-knowledge proof capabilities to build privacy-preservin
 ## Concept Ideas
 
 ### Privacy-Preserving Governance Reputation
+
 Prove you're an active, high-scoring governance participant without revealing your identity.
 
 ### Confidential Delegation Analytics
+
 Institutional delegators who want governance intelligence without exposing their positions.
 
 ### Cross-Chain Governance Bridge
+
 Cardano governance participation verified on Midnight.
 
 ## Next Actions

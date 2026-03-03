@@ -8,7 +8,7 @@ export function ProfileViewStats({ drepId }: { drepId: string }) {
 
   useEffect(() => {
     fetch(`/api/views?drepId=${encodeURIComponent(drepId)}`)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then(setStats)
       .catch(() => {});
   }, [drepId]);

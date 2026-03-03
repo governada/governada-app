@@ -90,7 +90,15 @@ function EmailLayout({
       <Preview>{preview}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Text style={{ fontSize: '14px', fontWeight: '600', color: '#6366f1', letterSpacing: '0.5px', margin: '0 0 24px' }}>
+          <Text
+            style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#6366f1',
+              letterSpacing: '0.5px',
+              margin: '0 0 24px',
+            }}
+          >
             DREPSCORE
           </Text>
           {children}
@@ -98,11 +106,15 @@ function EmailLayout({
           <Text style={footer}>
             DRepScore — Cardano Governance Intelligence
             <br />
-            <Link href={BASE_URL} style={{ color: '#6366f1' }}>drepscore.io</Link>
+            <Link href={BASE_URL} style={{ color: '#6366f1' }}>
+              drepscore.io
+            </Link>
             {unsubscribeUrl && (
               <>
                 {' · '}
-                <Link href={unsubscribeUrl} style={{ color: '#9ca3af' }}>Unsubscribe</Link>
+                <Link href={unsubscribeUrl} style={{ color: '#9ca3af' }}>
+                  Unsubscribe
+                </Link>
               </>
             )}
           </Text>
@@ -142,17 +154,13 @@ export function GenericNotificationEmail({
 
 // ── Email Verification ──────────────────────────────────────────────────────
 
-export function EmailVerificationEmail({
-  verifyUrl,
-}: {
-  verifyUrl: string;
-}) {
+export function EmailVerificationEmail({ verifyUrl }: { verifyUrl: string }) {
   return (
     <EmailLayout preview="Verify your email address for DRepScore governance notifications">
       <Heading style={heading}>Verify Your Email</Heading>
       <Text style={paragraph}>
-        Click the button below to verify your email address and start receiving
-        governance notifications from DRepScore.
+        Click the button below to verify your email address and start receiving governance
+        notifications from DRepScore.
       </Text>
       <Section style={{ textAlign: 'center', margin: '24px 0' }}>
         <Button style={button} href={verifyUrl}>
@@ -160,7 +168,8 @@ export function EmailVerificationEmail({
         </Button>
       </Section>
       <Text style={{ ...paragraph, fontSize: '14px', color: '#6b7280' }}>
-        This link expires in 24 hours. If you didn&apos;t request this, you can safely ignore this email.
+        This link expires in 24 hours. If you didn&apos;t request this, you can safely ignore this
+        email.
       </Text>
     </EmailLayout>
   );
@@ -187,13 +196,19 @@ export function ScoreChangeEmail({
   const color = delta > 0 ? '#22c55e' : '#ef4444';
 
   return (
-    <EmailLayout preview={`Your DRepScore ${direction} by ${Math.abs(delta)} points`} unsubscribeUrl={unsubscribeUrl}>
+    <EmailLayout
+      preview={`Your DRepScore ${direction} by ${Math.abs(delta)} points`}
+      unsubscribeUrl={unsubscribeUrl}
+    >
       <Heading style={heading}>Score {direction === 'increased' ? 'Up' : 'Down'}</Heading>
       <Text style={paragraph}>
-        {drepName}&apos;s DRepScore {direction} from{' '}
-        <strong>{oldScore}</strong> to{' '}
-        <strong style={{ color }}>{newScore}</strong>{' '}
-        (<span style={{ color }}>{delta > 0 ? '+' : ''}{delta}</span> points).
+        {drepName}&apos;s DRepScore {direction} from <strong>{oldScore}</strong> to{' '}
+        <strong style={{ color }}>{newScore}</strong> (
+        <span style={{ color }}>
+          {delta > 0 ? '+' : ''}
+          {delta}
+        </span>{' '}
+        points).
       </Text>
       <Section style={{ textAlign: 'center', margin: '24px 0' }}>
         <Button style={button} href={url.startsWith('http') ? url : `${BASE_URL}${url}`}>
@@ -222,11 +237,14 @@ export function DelegationChangeEmail({
   const direction = delta > 0 ? 'gained' : 'lost';
 
   return (
-    <EmailLayout preview={`${drepName} ${direction} ${Math.abs(delta)} delegator${Math.abs(delta) !== 1 ? 's' : ''}`} unsubscribeUrl={unsubscribeUrl}>
+    <EmailLayout
+      preview={`${drepName} ${direction} ${Math.abs(delta)} delegator${Math.abs(delta) !== 1 ? 's' : ''}`}
+      unsubscribeUrl={unsubscribeUrl}
+    >
       <Heading style={heading}>Delegation {delta > 0 ? 'Growth' : 'Change'}</Heading>
       <Text style={paragraph}>
-        {drepName} {direction} <strong>{Math.abs(delta)}</strong> delegator{Math.abs(delta) !== 1 ? 's' : ''}.
-        Total delegators: <strong>{totalDelegators}</strong>.
+        {drepName} {direction} <strong>{Math.abs(delta)}</strong> delegator
+        {Math.abs(delta) !== 1 ? 's' : ''}. Total delegators: <strong>{totalDelegators}</strong>.
       </Text>
       <Section style={{ textAlign: 'center', margin: '24px 0' }}>
         <Button style={button} href={url.startsWith('http') ? url : `${BASE_URL}${url}`}>
@@ -251,16 +269,28 @@ export function ProposalDeadlineEmail({
   unsubscribeUrl?: string;
 }) {
   return (
-    <EmailLayout preview={`${proposalCount} proposal${proposalCount !== 1 ? 's' : ''} expiring soon`} unsubscribeUrl={unsubscribeUrl}>
+    <EmailLayout
+      preview={`${proposalCount} proposal${proposalCount !== 1 ? 's' : ''} expiring soon`}
+      unsubscribeUrl={unsubscribeUrl}
+    >
       <Heading style={heading}>Proposals Expiring Soon</Heading>
       <Text style={paragraph}>
-        {proposalCount} governance proposal{proposalCount !== 1 ? 's' : ''} will expire within 2 epochs.
-        Vote now to maintain your participation rate.
+        {proposalCount} governance proposal{proposalCount !== 1 ? 's' : ''} will expire within 2
+        epochs. Vote now to maintain your participation rate.
       </Text>
       {urgentTitles.length > 0 && (
-        <Section style={{ margin: '16px 0', padding: '16px', backgroundColor: '#fef3c7', borderRadius: '6px' }}>
+        <Section
+          style={{
+            margin: '16px 0',
+            padding: '16px',
+            backgroundColor: '#fef3c7',
+            borderRadius: '6px',
+          }}
+        >
           {urgentTitles.map((title, i) => (
-            <Text key={i} style={{ ...paragraph, fontSize: '14px', margin: '4px 0' }}>• {title}</Text>
+            <Text key={i} style={{ ...paragraph, fontSize: '14px', margin: '4px 0' }}>
+              • {title}
+            </Text>
           ))}
         </Section>
       )}
@@ -294,13 +324,26 @@ export function GovernanceDigestEmail({
   unsubscribeUrl?: string;
 }) {
   return (
-    <EmailLayout preview="Your weekly governance brief from DRepScore" unsubscribeUrl={unsubscribeUrl}>
+    <EmailLayout
+      preview="Your weekly governance brief from DRepScore"
+      unsubscribeUrl={unsubscribeUrl}
+    >
       <Heading style={heading}>Weekly Governance Brief</Heading>
       <Text style={paragraph}>{greeting}</Text>
 
       {sections.map((section, i) => (
         <React.Fragment key={i}>
-          <Text style={{ ...paragraph, fontWeight: '600', fontSize: '14px', color: '#6366f1', margin: '20px 0 4px', textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>
+          <Text
+            style={{
+              ...paragraph,
+              fontWeight: '600',
+              fontSize: '14px',
+              color: '#6366f1',
+              margin: '20px 0 4px',
+              textTransform: 'uppercase' as const,
+              letterSpacing: '0.5px',
+            }}
+          >
             {section.heading}
           </Text>
           <Text style={paragraph}>{section.content}</Text>

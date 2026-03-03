@@ -72,12 +72,17 @@ export default async function StateOfGovernancePage({ params }: Props) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
         <GovernanceSubNav />
-        <Link href="/pulse" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <Link
+          href="/pulse"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
           <ArrowLeft className="h-4 w-4" /> Back to Pulse
         </Link>
         <div className="rounded-lg border bg-card p-8 text-center">
           <h2 className="text-xl font-semibold mb-2">Coming soon</h2>
-          <p className="text-muted-foreground text-sm">State of Governance reports are under development.</p>
+          <p className="text-muted-foreground text-sm">
+            State of Governance reports are under development.
+          </p>
         </div>
       </div>
     );
@@ -96,13 +101,17 @@ export default async function StateOfGovernancePage({ params }: Props) {
   const narrative = report.narrative_html;
   const color = GHI_BAND_COLORS[data.ghi.band as GHIBand];
   const bandLabel = GHI_BAND_LABELS[data.ghi.band as GHIBand];
-  const ghiDelta = data.ghiPrevScore != null ? Math.round((data.ghi.score - data.ghiPrevScore) * 10) / 10 : null;
+  const ghiDelta =
+    data.ghiPrevScore != null ? Math.round((data.ghi.score - data.ghiPrevScore) * 10) / 10 : null;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
       <GovernanceSubNav />
 
-      <Link href="/pulse" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <Link
+        href="/pulse"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
         <ArrowLeft className="h-4 w-4" /> Back to Pulse
       </Link>
 
@@ -110,12 +119,12 @@ export default async function StateOfGovernancePage({ params }: Props) {
       <header className="text-center space-y-4 py-8">
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />
-          <span>Epoch {data.epoch} &middot; {data.dateRange.start} — {data.dateRange.end}</span>
+          <span>
+            Epoch {data.epoch} &middot; {data.dateRange.start} — {data.dateRange.end}
+          </span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
-          State of Governance
-        </h1>
+        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">State of Governance</h1>
 
         <div className="flex items-center justify-center gap-4 mt-6">
           <div className="text-center">
@@ -128,10 +137,19 @@ export default async function StateOfGovernancePage({ params }: Props) {
           </div>
 
           {ghiDelta != null && ghiDelta !== 0 && (
-            <div className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium"
-              style={{ backgroundColor: `${color}15`, color }}>
-              {ghiDelta > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              <span className="tabular-nums">{ghiDelta > 0 ? '+' : ''}{ghiDelta}</span>
+            <div
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium"
+              style={{ backgroundColor: `${color}15`, color }}
+            >
+              {ghiDelta > 0 ? (
+                <TrendingUp className="h-4 w-4" />
+              ) : (
+                <TrendingDown className="h-4 w-4" />
+              )}
+              <span className="tabular-nums">
+                {ghiDelta > 0 ? '+' : ''}
+                {ghiDelta}
+              </span>
             </div>
           )}
         </div>

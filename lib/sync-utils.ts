@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
-export type SyncType = 'dreps' | 'votes' | 'proposals' | 'secondary' | 'slow' | 'full' | 'treasury' | 'integrity_check' | 'api_health_check';
+export type SyncType =
+  | 'dreps'
+  | 'votes'
+  | 'proposals'
+  | 'secondary'
+  | 'slow'
+  | 'full'
+  | 'treasury'
+  | 'integrity_check'
+  | 'api_health_check';
 
 const BATCH_SIZE = 100;
 const UPSERT_RETRY_DELAY_MS = 2_000;
@@ -13,7 +22,11 @@ export function errMsg(e: unknown): string {
     const obj = e as Record<string, unknown>;
     if (typeof obj.message === 'string') return obj.message;
     if (typeof obj.error === 'string') return obj.error;
-    try { return JSON.stringify(e); } catch { /* circular ref fallback below */ }
+    try {
+      return JSON.stringify(e);
+    } catch {
+      /* circular ref fallback below */
+    }
   }
   return `[${typeof e}] ${String(e)}`;
 }
@@ -23,8 +36,17 @@ export function capMsg(msg: string, max = 2000): string {
 }
 
 function isTransientError(message: string): boolean {
-  const transient = ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'socket hang up', '503', '500', 'fetch failed', 'network'];
-  return transient.some(t => message.toLowerCase().includes(t.toLowerCase()));
+  const transient = [
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'ECONNREFUSED',
+    'socket hang up',
+    '503',
+    '500',
+    'fetch failed',
+    'network',
+  ];
+  return transient.some((t) => message.toLowerCase().includes(t.toLowerCase()));
 }
 
 export async function batchUpsert<T extends Record<string, unknown>>(
@@ -32,9 +54,10 @@ export async function batchUpsert<T extends Record<string, unknown>>(
   table: string,
   rows: T[],
   onConflict: string,
-  label: string
+  label: string,
 ): Promise<{ success: number; errors: number }> {
-  let success = 0, errors = 0;
+  let success = 0,
+    errors = 0;
   const total = Math.ceil(rows.length / BATCH_SIZE);
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
@@ -51,8 +74,11 @@ export async function batchUpsert<T extends Record<string, unknown>>(
       }
       lastError = error.message;
       if (attempt === 0 && isTransientError(error.message)) {
-        console.warn(`[Sync] ${label} batch transient error, retrying in ${UPSERT_RETRY_DELAY_MS}ms:`, error.message);
-        await new Promise(r => setTimeout(r, UPSERT_RETRY_DELAY_MS));
+        console.warn(
+          `[Sync] ${label} batch transient error, retrying in ${UPSERT_RETRY_DELAY_MS}ms:`,
+          error.message,
+        );
+        await new Promise((r) => setTimeout(r, UPSERT_RETRY_DELAY_MS));
       } else {
         break;
       }
@@ -79,12 +105,19 @@ export function authorizeCron(request: NextRequest): NextResponse | null {
   return null;
 }
 
-export function initSupabase(): { supabase: ReturnType<typeof getSupabaseAdmin> } | { error: NextResponse } {
+export function initSupabase():
+  | { supabase: ReturnType<typeof getSupabaseAdmin> }
+  | { error: NextResponse } {
   try {
     return { supabase: getSupabaseAdmin() };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown';
-    return { error: NextResponse.json({ success: false, error: `Supabase init failed: ${msg}` }, { status: 500 }) };
+    return {
+      error: NextResponse.json(
+        { success: false, error: `Supabase init failed: ${msg}` },
+        { status: 500 },
+      ),
+    };
   }
 }
 
@@ -104,25 +137,34 @@ export class SyncLogger {
 
   async start() {
     try {
-      const { data: logRow } = await this.supabase.from('sync_log')
+      const { data: logRow } = await this.supabase
+        .from('sync_log')
         .insert({ sync_type: this.syncType, started_at: new Date().toISOString(), success: false })
-        .select('id').single();
+        .select('id')
+        .single();
       this.id = logRow?.id ?? null;
-    } catch (_e) { console.warn(`[${this.syncType}] sync_log insert failed:`, errMsg(_e)); }
+    } catch (_e) {
+      console.warn(`[${this.syncType}] sync_log insert failed:`, errMsg(_e));
+    }
   }
 
   async finalize(success: boolean, errorMessage: string | null, metrics: Record<string, unknown>) {
     if (!this.id) return;
     const durationMs = Date.now() - this.startTime;
     try {
-      await this.supabase.from('sync_log').update({
-        finished_at: new Date().toISOString(),
-        duration_ms: durationMs,
-        success,
-        error_message: errorMessage ? capMsg(errorMessage) : null,
-        metrics,
-      }).eq('id', this.id);
-    } catch (_e) { console.warn(`[${this.syncType}] sync_log finalize failed:`, errMsg(_e)); }
+      await this.supabase
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          duration_ms: durationMs,
+          success,
+          error_message: errorMessage ? capMsg(errorMessage) : null,
+          metrics,
+        })
+        .eq('id', this.id);
+    } catch (_e) {
+      console.warn(`[${this.syncType}] sync_log finalize failed:`, errMsg(_e));
+    }
 
     if (success) {
       await this.checkRecordCountAnomaly(metrics);
@@ -131,11 +173,16 @@ export class SyncLogger {
   }
 
   private async checkRecordCountAnomaly(metrics: Record<string, unknown>) {
-    const currentCount = typeof metrics.records === 'number' ? metrics.records
-      : typeof metrics.proposals_synced === 'number' ? metrics.proposals_synced
-      : typeof metrics.votes_synced === 'number' ? metrics.votes_synced
-      : typeof metrics.dreps_enriched === 'number' ? metrics.dreps_enriched
-      : null;
+    const currentCount =
+      typeof metrics.records === 'number'
+        ? metrics.records
+        : typeof metrics.proposals_synced === 'number'
+          ? metrics.proposals_synced
+          : typeof metrics.votes_synced === 'number'
+            ? metrics.votes_synced
+            : typeof metrics.dreps_enriched === 'number'
+              ? metrics.dreps_enriched
+              : null;
 
     if (currentCount === null) return;
 
@@ -152,17 +199,24 @@ export class SyncLogger {
 
       if (!prev?.metrics) return;
       const m = prev.metrics as Record<string, unknown>;
-      const prevCount = typeof m.records === 'number' ? m.records
-        : typeof m.proposals_synced === 'number' ? m.proposals_synced
-        : typeof m.votes_synced === 'number' ? m.votes_synced
-        : typeof m.dreps_enriched === 'number' ? m.dreps_enriched
-        : null;
+      const prevCount =
+        typeof m.records === 'number'
+          ? m.records
+          : typeof m.proposals_synced === 'number'
+            ? m.proposals_synced
+            : typeof m.votes_synced === 'number'
+              ? m.votes_synced
+              : typeof m.dreps_enriched === 'number'
+                ? m.dreps_enriched
+                : null;
 
       if (prevCount === null || prevCount < ANOMALY_MIN_RECORDS) return;
 
       const ratio = currentCount / prevCount;
       if (ratio < ANOMALY_THRESHOLD) {
-        console.warn(`[${this.syncType}] Record count anomaly: ${currentCount} vs previous ${prevCount} (ratio: ${ratio.toFixed(2)})`);
+        console.warn(
+          `[${this.syncType}] Record count anomaly: ${currentCount} vs previous ${prevCount} (ratio: ${ratio.toFixed(2)})`,
+        );
         await alertDiscord(
           `Record Count Anomaly — ${this.syncType}`,
           `Current: ${currentCount}, Previous: ${prevCount} (${Math.round(ratio * 100)}% of expected). Possible truncated API response.`,
@@ -174,30 +228,46 @@ export class SyncLogger {
           ratio,
         });
       }
-    } catch { /* anomaly check is best-effort */ }
+    } catch {
+      /* anomaly check is best-effort */
+    }
   }
 
   private async checkDurationAnomaly(durationMs: number) {
     if (durationMs > 600_000) {
-      console.warn(`[${this.syncType}] Sync duration exceeded 10 min: ${Math.round(durationMs / 1000)}s`);
+      console.warn(
+        `[${this.syncType}] Sync duration exceeded 10 min: ${Math.round(durationMs / 1000)}s`,
+      );
       await emitPostHog(true, this.syncType, durationMs, {
         event_override: 'sync_duration_warning',
       });
     }
   }
 
-  get elapsed() { return Date.now() - this.startTime; }
+  get elapsed() {
+    return Date.now() - this.startTime;
+  }
 }
 
-export async function emitPostHog(success: boolean, syncType: SyncType, durationMs: number, metrics: Record<string, unknown>) {
+export async function emitPostHog(
+  success: boolean,
+  syncType: SyncType,
+  durationMs: number,
+  metrics: Record<string, unknown>,
+) {
   try {
     const { captureServerEvent } = await import('@/lib/posthog-server');
-    const eventName = (metrics.event_override as string) || (success ? 'sync_completed' : 'sync_failed');
+    const eventName =
+      (metrics.event_override as string) || (success ? 'sync_completed' : 'sync_failed');
     const { event_override: _, ...rest } = metrics;
     captureServerEvent(eventName, {
-      sync_type: syncType, duration_ms: durationMs, ...rest,
+      sync_type: syncType,
+      duration_ms: durationMs,
+      ...rest,
     });
-  } catch (_e) { /* posthog optional */ }
+  } catch (_e) {
+    /* posthog optional */
+  }
 }
 
 /**
@@ -212,13 +282,15 @@ export async function alertDiscord(title: string, details: string): Promise<void
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        embeds: [{
-          title: `⚠️ ${title}`,
-          description: details,
-          color: 0xf59e0b,
-          footer: { text: 'DRepScore Sync Monitor' },
-          timestamp: new Date().toISOString(),
-        }],
+        embeds: [
+          {
+            title: `⚠️ ${title}`,
+            description: details,
+            color: 0xf59e0b,
+            footer: { text: 'DRepScore Sync Monitor' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
       }),
       signal: AbortSignal.timeout(5_000),
     });
@@ -250,7 +322,7 @@ export async function triggerAnalyticsDeploy(syncType: SyncType): Promise<void> 
   const hook = process.env.ANALYTICS_DEPLOY_HOOK;
   if (!hook) return;
   try {
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, 5000));
     const res = await fetch(hook, { method: 'POST', signal: AbortSignal.timeout(10_000) });
     if (res.ok) {
       console.log(`[${syncType}] Analytics deploy hook triggered (${res.status})`);

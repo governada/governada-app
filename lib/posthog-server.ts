@@ -17,7 +17,7 @@ export function getPostHogServer(): PostHog | null {
 export function captureServerEvent(
   event: string,
   properties: Record<string, unknown> = {},
-  distinctId = 'server'
+  distinctId = 'server',
 ) {
   const ph = getPostHogServer();
   if (!ph) return;

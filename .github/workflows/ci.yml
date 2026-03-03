@@ -51,6 +51,7 @@ jobs:
         with:
           path: node_modules
           key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run format:check
       - run: npm run lint
 
   test:
@@ -107,6 +108,9 @@ jobs:
           path: node_modules
           key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm run build
+      - name: Report bundle size
+        if: github.event_name == 'pull_request'
+        run: npx tsx scripts/report-bundle-size.ts
 
   sentry-release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'

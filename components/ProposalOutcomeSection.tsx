@@ -22,18 +22,10 @@ export function ProposalOutcomeSection({ proposal, votes, majorityVote }: Props)
   const { delegatedDrepId } = useWallet();
 
   const drepVote = delegatedDrepId
-    ? votes.find(v => v.drepId === delegatedDrepId)?.vote ?? null
+    ? (votes.find((v) => v.drepId === delegatedDrepId)?.vote ?? null)
     : null;
 
-  const isWinner = drepVote && majorityVote
-    ? drepVote === majorityVote
-    : undefined;
+  const isWinner = drepVote && majorityVote ? drepVote === majorityVote : undefined;
 
-  return (
-    <ProposalOutcomeCard
-      proposal={proposal}
-      drepVote={drepVote}
-      isWinner={isWinner}
-    />
-  );
+  return <ProposalOutcomeCard proposal={proposal} drepVote={drepVote} isWinner={isWinner} />;
 }

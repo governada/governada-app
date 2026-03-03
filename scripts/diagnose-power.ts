@@ -7,7 +7,8 @@ async function main() {
   const sb = getSupabaseAdmin();
 
   // Epoch distribution of NULL-power votes (sampled)
-  const { data: sample } = await sb.from('drep_votes')
+  const { data: sample } = await sb
+    .from('drep_votes')
     .select('epoch_no')
     .is('voting_power_lovelace', null)
     .not('epoch_no', 'is', null)
@@ -21,10 +22,11 @@ async function main() {
   }
 
   // Power snapshot epochs
-  const { data: snaps } = await sb.from('drep_power_snapshots')
-    .select('epoch_no')
-    .limit(1000);
-  const snapEpochs = [...new Set((snaps || []).map(r => r.epoch_no))].sort((a, b) => a - b);
+  const { data: snaps } = await sb.from('drep_power_snapshots').select('epoch_no').limit(1000);
+  const snapEpochs = [...new Set((snaps || []).map((r) => r.epoch_no))].sort((a, b) => a - b);
   console.log('\nPower snapshot epochs available:', snapEpochs.join(', ') || 'NONE');
 }
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

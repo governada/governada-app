@@ -73,13 +73,15 @@ export function QuestionForm({ drepId, onSubmitted }: QuestionFormProps) {
       <Textarea
         placeholder="Ask this DRep a question about their governance stance..."
         value={text}
-        onChange={e => setText(e.target.value)}
+        onChange={(e) => setText(e.target.value)}
         maxLength={500}
         rows={3}
         className="resize-none text-sm"
       />
       <div className="flex items-center justify-between">
-        <span className={`text-xs tabular-nums ${charCount > 450 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+        <span
+          className={`text-xs tabular-nums ${charCount > 450 ? 'text-amber-500' : 'text-muted-foreground'}`}
+        >
           {charCount}/500
         </span>
         <div className="flex items-center gap-2">

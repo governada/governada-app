@@ -52,7 +52,9 @@ export function RationaleAssistant({
       const data = await res.json();
       setDraft(data.draft || '');
       setGenerated(true);
-      try { posthog?.capture('rationale_draft_generated', { drepId, proposalType }); } catch {}
+      try {
+        posthog?.capture('rationale_draft_generated', { drepId, proposalType });
+      } catch {}
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -65,8 +67,12 @@ export function RationaleAssistant({
       await navigator.clipboard.writeText(draft);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      try { posthog?.capture('rationale_draft_copied', { drepId, proposalType }); } catch {}
-    } catch { /* ignore */ }
+      try {
+        posthog?.capture('rationale_draft_copied', { drepId, proposalType });
+      } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [draft, drepId, proposalType]);
 
   if (!generated) {
@@ -75,12 +81,19 @@ export function RationaleAssistant({
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Rationale Assistant</span>
-          <Badge variant="outline" className="text-[10px]">AI</Badge>
-          <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">Pro</Badge>
+          <Badge variant="outline" className="text-[10px]">
+            AI
+          </Badge>
+          <Badge
+            variant="outline"
+            className="text-[10px] bg-primary/10 text-primary border-primary/30"
+          >
+            Pro
+          </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          Generate a structured rationale draft based on this proposal and your DRep profile.
-          Edit it before copying to GovTool.
+          Generate a structured rationale draft based on this proposal and your DRep profile. Edit
+          it before copying to GovTool.
         </p>
         <Button
           onClick={generateDraft}
@@ -90,14 +103,16 @@ export function RationaleAssistant({
           className="gap-2"
         >
           {loading ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating...</>
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating...
+            </>
           ) : (
-            <><Sparkles className="h-3.5 w-3.5" /> Generate Draft</>
+            <>
+              <Sparkles className="h-3.5 w-3.5" /> Generate Draft
+            </>
           )}
         </Button>
-        {error && (
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        )}
+        {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       </div>
     );
   }
@@ -108,8 +123,15 @@ export function RationaleAssistant({
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Rationale Draft</span>
-          <Badge variant="outline" className="text-[10px]">AI</Badge>
-          <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">Pro</Badge>
+          <Badge variant="outline" className="text-[10px]">
+            AI
+          </Badge>
+          <Badge
+            variant="outline"
+            className="text-[10px] bg-primary/10 text-primary border-primary/30"
+          >
+            Pro
+          </Badge>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -119,7 +141,11 @@ export function RationaleAssistant({
             variant="ghost"
             className="h-7 gap-1 text-xs"
           >
-            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+            {loading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RotateCcw className="h-3 w-3" />
+            )}
             Regenerate
           </Button>
           <Button
@@ -140,8 +166,8 @@ export function RationaleAssistant({
         placeholder="Your rationale draft will appear here..."
       />
       <p className="text-[10px] text-muted-foreground">
-        Edit the draft above, then copy and paste into GovTool when casting your vote.
-        This is AI-generated — always review before submitting.
+        Edit the draft above, then copy and paste into GovTool when casting your vote. This is
+        AI-generated — always review before submitting.
       </p>
     </div>
   );

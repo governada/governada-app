@@ -9,15 +9,69 @@ export interface MilestoneDefinition {
 }
 
 export const MILESTONES: MilestoneDefinition[] = [
-  { key: 'claimed-profile', label: 'Profile Claimed', description: 'Claimed your DRepScore profile', icon: 'Shield', category: 'profile' },
-  { key: 'first-10-delegators', label: 'First 10 Delegators', description: 'Reached 10 delegators', icon: 'Users', category: 'delegators' },
-  { key: 'first-100-delegators', label: 'First 100 Delegators', description: 'Reached 100 delegators', icon: 'Users', category: 'delegators' },
-  { key: 'first-1000-delegators', label: 'First 1000 Delegators', description: 'Reached 1,000 delegators', icon: 'Users', category: 'delegators' },
-  { key: 'score-above-80-30d', label: 'Consistent Excellence', description: 'Score above 80 for 30+ days', icon: 'Star', category: 'score' },
-  { key: 'all-pillars-strong', label: 'Well-Rounded', description: 'All pillars above 70', icon: 'Target', category: 'score' },
-  { key: 'rationale-streak-5', label: 'Rationale Streak 5', description: '5 consecutive votes with rationale', icon: 'FileText', category: 'rationale' },
-  { key: 'rationale-streak-10', label: 'Rationale Streak 10', description: '10 consecutive votes with rationale', icon: 'FileText', category: 'rationale' },
-  { key: 'perfect-participation-epoch', label: 'Perfect Epoch', description: 'Voted on all proposals in an epoch', icon: 'CheckCircle2', category: 'participation' },
+  {
+    key: 'claimed-profile',
+    label: 'Profile Claimed',
+    description: 'Claimed your DRepScore profile',
+    icon: 'Shield',
+    category: 'profile',
+  },
+  {
+    key: 'first-10-delegators',
+    label: 'First 10 Delegators',
+    description: 'Reached 10 delegators',
+    icon: 'Users',
+    category: 'delegators',
+  },
+  {
+    key: 'first-100-delegators',
+    label: 'First 100 Delegators',
+    description: 'Reached 100 delegators',
+    icon: 'Users',
+    category: 'delegators',
+  },
+  {
+    key: 'first-1000-delegators',
+    label: 'First 1000 Delegators',
+    description: 'Reached 1,000 delegators',
+    icon: 'Users',
+    category: 'delegators',
+  },
+  {
+    key: 'score-above-80-30d',
+    label: 'Consistent Excellence',
+    description: 'Score above 80 for 30+ days',
+    icon: 'Star',
+    category: 'score',
+  },
+  {
+    key: 'all-pillars-strong',
+    label: 'Well-Rounded',
+    description: 'All pillars above 70',
+    icon: 'Target',
+    category: 'score',
+  },
+  {
+    key: 'rationale-streak-5',
+    label: 'Rationale Streak 5',
+    description: '5 consecutive votes with rationale',
+    icon: 'FileText',
+    category: 'rationale',
+  },
+  {
+    key: 'rationale-streak-10',
+    label: 'Rationale Streak 10',
+    description: '10 consecutive votes with rationale',
+    icon: 'FileText',
+    category: 'rationale',
+  },
+  {
+    key: 'perfect-participation-epoch',
+    label: 'Perfect Epoch',
+    description: 'Voted on all proposals in an epoch',
+    icon: 'CheckCircle2',
+    category: 'participation',
+  },
 ];
 
 export interface AchievedMilestone {
@@ -31,7 +85,10 @@ export async function getAchievedMilestones(drepId: string): Promise<AchievedMil
     .from('drep_milestones')
     .select('milestone_key, achieved_at')
     .eq('drep_id', drepId);
-  return (data || []).map((d: { milestone_key: string; achieved_at: string }) => ({ milestoneKey: d.milestone_key, achievedAt: d.achieved_at }));
+  return (data || []).map((d: { milestone_key: string; achieved_at: string }) => ({
+    milestoneKey: d.milestone_key,
+    achievedAt: d.achieved_at,
+  }));
 }
 
 export async function checkAndAwardMilestones(drepId: string): Promise<string[]> {
@@ -39,9 +96,24 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
 
   const [achieved, drepResult, votesResult, scoreHistoryResult] = await Promise.all([
     getAchievedMilestones(drepId),
-    supabase.from('dreps').select('score, info, effective_participation, rationale_rate, reliability_score, profile_completeness').eq('id', drepId).single(),
-    supabase.from('drep_votes').select('epoch_no, meta_url').eq('drep_id', drepId).order('block_time', { ascending: false }),
-    supabase.from('drep_score_history').select('score, snapshot_date').eq('drep_id', drepId).order('snapshot_date', { ascending: false }).limit(60),
+    supabase
+      .from('dreps')
+      .select(
+        'score, info, effective_participation, rationale_rate, reliability_score, profile_completeness',
+      )
+      .eq('id', drepId)
+      .single(),
+    supabase
+      .from('drep_votes')
+      .select('epoch_no, meta_url')
+      .eq('drep_id', drepId)
+      .order('block_time', { ascending: false }),
+    supabase
+      .from('drep_score_history')
+      .select('score, snapshot_date')
+      .eq('drep_id', drepId)
+      .order('snapshot_date', { ascending: false })
+      .limit(60),
   ]);
 
   const drep = drepResult.data;
@@ -49,7 +121,7 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
   const scoreHistory = scoreHistoryResult.data || [];
   if (!drep) return [];
 
-  const existing = new Set(achieved.map(a => a.milestoneKey));
+  const existing = new Set(achieved.map((a) => a.milestoneKey));
   const newMilestones: string[] = [];
 
   function award(key: string) {
@@ -72,7 +144,12 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
   if (delegators >= 1000) award('first-1000-delegators');
 
   // Score milestones
-  if (drep.effective_participation >= 70 && drep.rationale_rate >= 70 && drep.reliability_score >= 70 && drep.profile_completeness >= 70) {
+  if (
+    drep.effective_participation >= 70 &&
+    drep.rationale_rate >= 70 &&
+    drep.reliability_score >= 70 &&
+    drep.profile_completeness >= 70
+  ) {
     award('all-pillars-strong');
   }
 
@@ -86,8 +163,10 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
   let streak = 0;
   let maxStreak = 0;
   for (const v of votes) {
-    if (v.meta_url) { streak++; maxStreak = Math.max(maxStreak, streak); }
-    else streak = 0;
+    if (v.meta_url) {
+      streak++;
+      maxStreak = Math.max(maxStreak, streak);
+    } else streak = 0;
   }
   if (maxStreak >= 5) award('rationale-streak-5');
   if (maxStreak >= 10) award('rationale-streak-10');
@@ -105,7 +184,7 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
     .select('proposed_epoch')
     .not('proposed_epoch', 'is', null);
   const proposalsPerEpoch = new Map<number, number>();
-  for (const p of (proposals || [])) {
+  for (const p of proposals || []) {
     if (!(p as { proposed_epoch?: number }).proposed_epoch) continue;
     const epoch = (p as { proposed_epoch: number }).proposed_epoch;
     proposalsPerEpoch.set(epoch, (proposalsPerEpoch.get(epoch) || 0) + 1);
@@ -121,8 +200,8 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
   // Persist new milestones
   if (newMilestones.length > 0) {
     await supabase.from('drep_milestones').upsert(
-      newMilestones.map(key => ({ drep_id: drepId, milestone_key: key })),
-      { onConflict: 'drep_id,milestone_key' }
+      newMilestones.map((key) => ({ drep_id: drepId, milestone_key: key })),
+      { onConflict: 'drep_id,milestone_key' },
     );
   }
 

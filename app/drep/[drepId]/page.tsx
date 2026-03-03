@@ -9,7 +9,15 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getProposalDisplayTitle } from '@/utils/display';
 import { getDRepPrimaryName } from '@/utils/display';
-import { formatAda, getSizeBadgeClass, applyRationaleCurve, getPillarStatus, getMissingProfileFields, getEasiestWin, getReliabilityHintFromStored } from '@/utils/scoring';
+import {
+  formatAda,
+  getSizeBadgeClass,
+  applyRationaleCurve,
+  getPillarStatus,
+  getMissingProfileFields,
+  getEasiestWin,
+  getReliabilityHintFromStored,
+} from '@/utils/scoring';
 import { VoteRecord } from '@/types/drep';
 import { VotingHistoryWithPrefs } from '@/components/VotingHistoryWithPrefs';
 import { InlineDelegationCTA } from '@/components/InlineDelegationCTA';
@@ -19,12 +27,7 @@ import { DRepProfileTabs } from '@/components/DRepProfileTabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ShieldCheck, ShieldAlert } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DetailPageSkeleton } from '@/components/LoadingSkeleton';
 import { DRepDashboardWrapper } from '@/components/DRepDashboardWrapper';
 import { CopyableAddress } from '@/components/CopyableAddress';
@@ -67,18 +70,18 @@ export async function generateMetadata({ params }: DRepDetailPageProps): Promise
   const { drepId } = await params;
   const decodedId = decodeURIComponent(drepId);
   const drep = await getDRepById(decodedId);
-  
+
   if (!drep) {
     return {
       title: 'DRep Not Found — DRepScore',
     };
   }
-  
+
   const name = getDRepPrimaryName(drep);
   const title = `${name} — DRepScore ${drep.drepScore}/100`;
   const description = `Participation: ${drep.effectiveParticipation}% · Rationale: ${drep.rationaleRate}% · Reliability: ${drep.reliabilityScore}% · Profile: ${drep.profileCompleteness}%`;
   const ogImageUrl = `${BASE_URL}/api/og/drep/${encodeURIComponent(drepId)}`;
-  
+
   return {
     title,
     description,
@@ -127,15 +130,13 @@ async function getDRepData(drepId: string) {
     // Enrich votes with proposal metadata and rationale text from Supabase
     const [cachedProposals, cachedRationales] = await Promise.all([
       getProposalsByIds(
-        votes.map(v => ({ txHash: v.proposal_tx_hash, index: v.proposal_index }))
+        votes.map((v) => ({ txHash: v.proposal_tx_hash, index: v.proposal_index })),
       ),
-      getRationalesByVoteTxHashes(votes.map(v => v.vote_tx_hash)),
+      getRationalesByVoteTxHashes(votes.map((v) => v.vote_tx_hash)),
     ]);
 
     const voteRecords: VoteRecord[] = votes.map((vote, index) => {
-      const cachedProposal = cachedProposals.get(
-        `${vote.proposal_tx_hash}-${vote.proposal_index}`
-      );
+      const cachedProposal = cachedProposals.get(`${vote.proposal_tx_hash}-${vote.proposal_index}`);
       const title = cachedProposal?.title || null;
       const abstract = cachedProposal?.abstract || null;
       const aiSummary = cachedProposal?.aiSummary ?? null;
@@ -223,9 +224,18 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   const matchScore = match ? parseInt(match, 10) : null;
 
   const [
-    scoreHistory, percentile, linkChecks, isClaimed,
-    showSocialProof, showActivityFeeds, showScoreHistory, showHeatmap,
-    showFinancialImpact, showAuthoring, showComparePage, showNarratives,
+    scoreHistory,
+    percentile,
+    linkChecks,
+    isClaimed,
+    showSocialProof,
+    showActivityFeeds,
+    showScoreHistory,
+    showHeatmap,
+    showFinancialImpact,
+    showAuthoring,
+    showComparePage,
+    showNarratives,
   ] = await Promise.all([
     getScoreHistory(drep.drepId),
     getDRepPercentile(drep.drepScore),
@@ -241,37 +251,49 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     getFeatureFlag('narrative_summaries'),
   ]);
 
-  const brokenLinks = new Set(
-    linkChecks.filter(c => c.status === 'broken').map(c => c.uri)
-  );
+  const brokenLinks = new Set(linkChecks.filter((c) => c.status === 'broken').map((c) => c.uri));
 
   const adjustedRationale = applyRationaleCurve(drep.rationaleRate);
   const pillars = [
-    { value: drep.effectiveParticipation, label: 'Effective Participation', weight: '30%', maxPoints: 30 },
+    {
+      value: drep.effectiveParticipation,
+      label: 'Effective Participation',
+      weight: '30%',
+      maxPoints: 30,
+    },
     { value: adjustedRationale, label: 'Rationale Rate', weight: '35%', maxPoints: 35 },
     { value: drep.reliabilityScore, label: 'Reliability', weight: '20%', maxPoints: 20 },
-    { value: drep.profileCompleteness, label: 'Profile Completeness', weight: '15%', maxPoints: 15 },
+    {
+      value: drep.profileCompleteness,
+      label: 'Profile Completeness',
+      weight: '15%',
+      maxPoints: 15,
+    },
   ];
-  const pillarStatuses = pillars.map(p => getPillarStatus(p.value));
+  const pillarStatuses = pillars.map((p) => getPillarStatus(p.value));
   const quickWin = getEasiestWin(pillars);
 
   const missingFields = getMissingProfileFields(drep.metadata);
-  const participationHint = drep.deliberationModifier < 1.0
-    ? `Discounted ${Math.round((1 - drep.deliberationModifier) * 100)}% for uniform voting pattern`
-    : `Voted on ${drep.votes.length} proposals`;
+  const participationHint =
+    drep.deliberationModifier < 1.0
+      ? `Discounted ${Math.round((1 - drep.deliberationModifier) * 100)}% for uniform voting pattern`
+      : `Voted on ${drep.votes.length} proposals`;
 
-  const bindingVotes = drep.votes.filter(v => v.proposalType !== 'InfoAction');
-  const rationaleCount = bindingVotes.filter(v => v.hasRationale).length;
+  const bindingVotes = drep.votes.filter((v) => v.proposalType !== 'InfoAction');
+  const rationaleCount = bindingVotes.filter((v) => v.hasRationale).length;
   const rationaleHint = `Provided reasoning on ${rationaleCount} of ${bindingVotes.length} binding votes`;
 
-  const reliabilityHint = getReliabilityHintFromStored(drep.reliabilityStreak, drep.reliabilityRecency);
+  const reliabilityHint = getReliabilityHintFromStored(
+    drep.reliabilityStreak,
+    drep.reliabilityRecency,
+  );
   const brokenLinkCount = brokenLinks.size;
   const profileHintParts: string[] = [];
   if (missingFields.length > 0) profileHintParts.push(`Missing: ${missingFields.join(', ')}`);
-  if (brokenLinkCount > 0) profileHintParts.push(`${brokenLinkCount} broken link${brokenLinkCount > 1 ? 's' : ''}`);
-  const profileHint = profileHintParts.length > 0
-    ? profileHintParts.join('. ')
-    : 'All profile fields completed';
+  if (brokenLinkCount > 0)
+    profileHintParts.push(`${brokenLinkCount} broken link${brokenLinkCount > 1 ? 's' : ''}`);
+  const profileHint =
+    profileHintParts.length > 0 ? profileHintParts.join('. ') : 'All profile fields completed';
 
   const alignments = extractAlignments(drep);
   const drepName = getDRepPrimaryName(drep);
@@ -301,7 +323,9 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         matchScore={matchScore}
       >
         <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
-        {showComparePage && <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />}
+        {showComparePage && (
+          <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
+        )}
       </DRepProfileHero>
 
       {/* Narrative summary */}
@@ -337,7 +361,10 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Badge variant="secondary" className="text-sm px-2 py-0.5 font-mono hover:bg-primary/10 transition-colors">
+            <Badge
+              variant="secondary"
+              className="text-sm px-2 py-0.5 font-mono hover:bg-primary/10 transition-colors"
+            >
               {drep.handle}
             </Badge>
           </a>
@@ -421,7 +448,9 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
               description={drep.description}
               bio={drep.metadata?.bio}
               email={drep.metadata?.email}
-              references={drep.metadata?.references as Array<{ uri: string; label?: string }> | undefined}
+              references={
+                drep.metadata?.references as Array<{ uri: string; label?: string }> | undefined
+              }
             />
             <Suspense fallback={null}>
               <DRepDashboardWrapper

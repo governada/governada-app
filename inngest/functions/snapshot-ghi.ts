@@ -38,17 +38,20 @@ export const snapshotGhi = inngest.createFunction(
 
     await step.run('store-snapshot', async () => {
       const supabase = getSupabaseAdmin();
-      await supabase
-        .from('ghi_snapshots')
-        .upsert({
+      await supabase.from('ghi_snapshots').upsert(
+        {
           epoch_no: epoch,
           score: result.score,
           band: result.band,
           components: result.components,
-        }, { onConflict: 'epoch_no' });
+        },
+        { onConflict: 'epoch_no' },
+      );
     });
 
-    console.log(`[snapshot-ghi] Stored GHI snapshot for epoch ${epoch}: ${result.score} (${result.band})`);
+    console.log(
+      `[snapshot-ghi] Stored GHI snapshot for epoch ${epoch}: ${result.score} (${result.band})`,
+    );
     return { epoch, score: result.score, band: result.band };
   },
 );

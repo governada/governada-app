@@ -41,12 +41,15 @@ export function TreasuryPendingProposals({ treasuryBalanceAda, runwayMonths }: P
 
   useEffect(() => {
     fetch('/api/treasury/pending')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
         setData(d);
         setLoading(false);
         if (d?.proposals?.length) {
-          posthog.capture('treasury_pending_viewed', { count: d.proposals.length, total_ada: d.totalAda });
+          posthog.capture('treasury_pending_viewed', {
+            count: d.proposals.length,
+            total_ada: d.totalAda,
+          });
         }
       })
       .catch(() => setLoading(false));
@@ -79,7 +82,7 @@ export function TreasuryPendingProposals({ treasuryBalanceAda, runwayMonths }: P
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {data.proposals.map(p => (
+        {data.proposals.map((p) => (
           <Link
             key={`${p.txHash}-${p.index}`}
             href={`/proposals/${p.txHash}/${p.index}`}
@@ -89,7 +92,10 @@ export function TreasuryPendingProposals({ treasuryBalanceAda, runwayMonths }: P
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium truncate">{p.title}</span>
                 {p.treasuryTier && (
-                  <Badge variant="secondary" className={`text-[10px] ${tierColors[p.treasuryTier] || ''}`}>
+                  <Badge
+                    variant="secondary"
+                    className={`text-[10px] ${tierColors[p.treasuryTier] || ''}`}
+                  >
                     {p.treasuryTier}
                   </Badge>
                 )}

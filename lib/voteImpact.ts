@@ -42,9 +42,8 @@ export function calculateVoteImpact(
   } else if (isCloseVote && normalizedVote !== winningVote) {
     narrative = `This was a close vote — your DRep's ${adaFormatted} ADA was on the losing side by a ${formatAda(margin)} ADA margin.`;
   } else {
-    const majorityPercent = totalVotePower > 0
-      ? ((Math.max(yesPower, noPower) / totalVotePower) * 100).toFixed(0)
-      : '0';
+    const majorityPercent =
+      totalVotePower > 0 ? ((Math.max(yesPower, noPower) / totalVotePower) * 100).toFixed(0) : '0';
     if (normalizedVote === winningVote) {
       narrative = `Your DRep's vote was part of the ${majorityPercent}% majority.`;
     } else {

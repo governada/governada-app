@@ -11,7 +11,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(_request: NextRequest) {
   return NextResponse.json(
-    { results: [], message: 'Rationale fetching has moved to the sync pipeline. Data is available from Supabase.' },
-    { status: 200 }
+    {
+      results: [],
+      message:
+        'Rationale fetching has moved to the sync pipeline. Data is available from Supabase.',
+    },
+    { status: 200 },
   );
 }

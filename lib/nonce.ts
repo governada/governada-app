@@ -8,7 +8,11 @@ function getSecretKey(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export async function createNonce(): Promise<{ nonce: string; signature: string; expiresAt: number }> {
+export async function createNonce(): Promise<{
+  nonce: string;
+  signature: string;
+  expiresAt: number;
+}> {
   const timestamp = Date.now();
   const sessionId = crypto.randomUUID().slice(0, 8);
   const timeStr = new Date(timestamp).toLocaleString('en-US', {

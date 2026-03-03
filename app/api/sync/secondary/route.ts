@@ -14,10 +14,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     const errorMsg = errMsg(err);
-    return NextResponse.json({
-      success: false,
-      error: errorMsg,
-      timestamp: new Date().toISOString(),
-    }, { status: 207 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: errorMsg,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 207 },
+    );
   }
 }

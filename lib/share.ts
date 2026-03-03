@@ -20,12 +20,8 @@ export async function copyImage(imageUrl: string): Promise<boolean> {
   try {
     const res = await fetch(imageUrl);
     const blob = await res.blob();
-    const pngBlob = blob.type === 'image/png'
-      ? blob
-      : await convertToPng(blob);
-    await navigator.clipboard.write([
-      new ClipboardItem({ 'image/png': pngBlob }),
-    ]);
+    const pngBlob = blob.type === 'image/png' ? blob : await convertToPng(blob);
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
     return true;
   } catch {
     return false;
@@ -49,7 +45,11 @@ export function canWebShare(): boolean {
   return typeof navigator !== 'undefined' && !!navigator.share;
 }
 
-export async function webShare(data: { title?: string; text?: string; url?: string }): Promise<boolean> {
+export async function webShare(data: {
+  title?: string;
+  text?: string;
+  url?: string;
+}): Promise<boolean> {
   if (!canWebShare()) return false;
   try {
     await navigator.share(data);
@@ -89,18 +89,21 @@ async function convertToPng(blob: Blob): Promise<Blob> {
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('Canvas not supported')); return; }
+      if (!ctx) {
+        reject(new Error('Canvas not supported'));
+        return;
+      }
       ctx.drawImage(img, 0, 0);
-      canvas.toBlob(
-        (pngBlob) => {
-          URL.revokeObjectURL(url);
-          if (pngBlob) resolve(pngBlob);
-          else reject(new Error('PNG conversion failed'));
-        },
-        'image/png'
-      );
+      canvas.toBlob((pngBlob) => {
+        URL.revokeObjectURL(url);
+        if (pngBlob) resolve(pngBlob);
+        else reject(new Error('PNG conversion failed'));
+      }, 'image/png');
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Image load failed'));
+    };
     img.src = url;
   });
 }

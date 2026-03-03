@@ -21,26 +21,36 @@ export function TreasuryHealthWidget() {
 
   useEffect(() => {
     fetch('/api/treasury/current')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
         setData(d);
-        if (d) posthog.capture('treasury_widget_viewed', { health_score: d.healthScore, balance: d.balance });
+        if (d)
+          posthog.capture('treasury_widget_viewed', {
+            health_score: d.healthScore,
+            balance: d.balance,
+          });
       })
       .catch(() => {});
   }, []);
 
   if (!data) return null;
 
-  const trendIcon = data.trend === 'growing'
-    ? <TrendingUp className="h-4 w-4 text-green-500" />
-    : data.trend === 'shrinking'
-    ? <TrendingDown className="h-4 w-4 text-red-500" />
-    : <Minus className="h-4 w-4 text-muted-foreground" />;
+  const trendIcon =
+    data.trend === 'growing' ? (
+      <TrendingUp className="h-4 w-4 text-green-500" />
+    ) : data.trend === 'shrinking' ? (
+      <TrendingDown className="h-4 w-4 text-red-500" />
+    ) : (
+      <Minus className="h-4 w-4 text-muted-foreground" />
+    );
 
-  const healthColor = !data.healthScore ? 'text-muted-foreground'
-    : data.healthScore >= 75 ? 'text-green-500'
-    : data.healthScore >= 50 ? 'text-amber-500'
-    : 'text-red-500';
+  const healthColor = !data.healthScore
+    ? 'text-muted-foreground'
+    : data.healthScore >= 75
+      ? 'text-green-500'
+      : data.healthScore >= 50
+        ? 'text-amber-500'
+        : 'text-red-500';
 
   return (
     <Card>
@@ -50,7 +60,10 @@ export function TreasuryHealthWidget() {
             <Landmark className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Treasury Health</span>
           </div>
-          <Link href="/treasury" className="flex items-center gap-1 text-xs text-primary hover:underline">
+          <Link
+            href="/treasury"
+            className="flex items-center gap-1 text-xs text-primary hover:underline"
+          >
             Full dashboard <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -72,7 +85,9 @@ export function TreasuryHealthWidget() {
           </div>
           <div>
             <div className="text-xs text-muted-foreground">Health</div>
-            <div className={`text-lg font-bold tabular-nums flex items-center gap-1 ${healthColor}`}>
+            <div
+              className={`text-lg font-bold tabular-nums flex items-center gap-1 ${healthColor}`}
+            >
               <Shield className="h-3.5 w-3.5" />
               {data.healthScore ?? '—'}/100
             </div>
@@ -80,7 +95,9 @@ export function TreasuryHealthWidget() {
           <div>
             <div className="text-xs text-muted-foreground">Pending</div>
             <div className="text-lg font-bold tabular-nums">
-              {data.pendingCount > 0 ? `${data.pendingCount} (${formatAda(data.pendingTotalAda)})` : '0'}
+              {data.pendingCount > 0
+                ? `${data.pendingCount} (${formatAda(data.pendingTotalAda)})`
+                : '0'}
             </div>
           </div>
         </div>

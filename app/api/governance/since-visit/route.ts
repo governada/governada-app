@@ -37,10 +37,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const [openedResult, closedResult] = await Promise.all([
-      supabase.from('proposals')
+      supabase
+        .from('proposals')
         .select('tx_hash', { count: 'exact', head: true })
         .gte('created_at', sinceDate.toISOString()),
-      supabase.from('proposals')
+      supabase
+        .from('proposals')
         .select('tx_hash', { count: 'exact', head: true })
         .gte('created_at', sinceDate.toISOString())
         .not('ratified_epoch', 'is', null),
@@ -51,21 +53,24 @@ export async function GET(request: NextRequest) {
 
     // Proposal outcomes: proposals that reached a terminal state since last visit
     const [ratifiedResult, expiredResult, droppedResult] = await Promise.all([
-      supabase.from('proposals')
+      supabase
+        .from('proposals')
         .select('tx_hash, title, ratified_epoch, enacted_epoch')
         .gte('ratified_epoch', sinceEpoch),
-      supabase.from('proposals')
+      supabase
+        .from('proposals')
         .select('tx_hash, title, expired_epoch')
         .gte('expired_epoch', sinceEpoch),
-      supabase.from('proposals')
+      supabase
+        .from('proposals')
         .select('tx_hash, title, dropped_epoch')
         .gte('dropped_epoch', sinceEpoch),
     ]);
 
     const proposalOutcomes = {
-      passed: (ratifiedResult.data || []).map(p => ({ title: p.title, txHash: p.tx_hash })),
-      expired: (expiredResult.data || []).map(p => ({ title: p.title, txHash: p.tx_hash })),
-      dropped: (droppedResult.data || []).map(p => ({ title: p.title, txHash: p.tx_hash })),
+      passed: (ratifiedResult.data || []).map((p) => ({ title: p.title, txHash: p.tx_hash })),
+      expired: (expiredResult.data || []).map((p) => ({ title: p.title, txHash: p.tx_hash })),
+      dropped: (droppedResult.data || []).map((p) => ({ title: p.title, txHash: p.tx_hash })),
     };
 
     let drepVotesCast = 0;
@@ -74,32 +79,34 @@ export async function GET(request: NextRequest) {
     let drepActivity: { votesCast: number; rationalesProvided: number } | null = null;
 
     if (drepId) {
-      const [votesResult, rationaleResult, latestScoreResult, oldScoreResult, currentDrepResult] = await Promise.all([
-        supabase.from('drep_votes')
-          .select('vote_tx_hash', { count: 'exact', head: true })
-          .eq('drep_id', drepId)
-          .gt('block_time', sinceBlockTime),
-        supabase.from('drep_votes')
-          .select('vote_tx_hash', { count: 'exact', head: true })
-          .eq('drep_id', drepId)
-          .gt('block_time', sinceBlockTime)
-          .not('meta_url', 'is', null),
-        supabase.from('drep_score_history')
-          .select('score, recorded_at')
-          .eq('drep_id', drepId)
-          .order('recorded_at', { ascending: false })
-          .limit(1),
-        supabase.from('drep_score_history')
-          .select('score, recorded_at')
-          .eq('drep_id', drepId)
-          .lte('recorded_at', sinceDate.toISOString())
-          .order('recorded_at', { ascending: false })
-          .limit(1),
-        supabase.from('dreps')
-          .select('info')
-          .eq('drep_id', drepId)
-          .single(),
-      ]);
+      const [votesResult, rationaleResult, latestScoreResult, oldScoreResult, currentDrepResult] =
+        await Promise.all([
+          supabase
+            .from('drep_votes')
+            .select('vote_tx_hash', { count: 'exact', head: true })
+            .eq('drep_id', drepId)
+            .gt('block_time', sinceBlockTime),
+          supabase
+            .from('drep_votes')
+            .select('vote_tx_hash', { count: 'exact', head: true })
+            .eq('drep_id', drepId)
+            .gt('block_time', sinceBlockTime)
+            .not('meta_url', 'is', null),
+          supabase
+            .from('drep_score_history')
+            .select('score, recorded_at')
+            .eq('drep_id', drepId)
+            .order('recorded_at', { ascending: false })
+            .limit(1),
+          supabase
+            .from('drep_score_history')
+            .select('score, recorded_at')
+            .eq('drep_id', drepId)
+            .lte('recorded_at', sinceDate.toISOString())
+            .order('recorded_at', { ascending: false })
+            .limit(1),
+          supabase.from('dreps').select('info').eq('drep_id', drepId).single(),
+        ]);
 
       drepVotesCast = votesResult.count || 0;
 

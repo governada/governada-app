@@ -123,7 +123,11 @@ a{color:inherit;text-decoration:none}
 async function handler(request: NextRequest, ctx: ApiContext, params?: Record<string, string>) {
   const drepId = decodeURIComponent(params?.drepId || '');
   if (!drepId) {
-    return apiError('missing_parameter', { param: 'drepId', context: 'DRep ID is required in the URL path.' }, { requestId: ctx.requestId });
+    return apiError(
+      'missing_parameter',
+      { param: 'drepId', context: 'DRep ID is required in the URL path.' },
+      { requestId: ctx.requestId },
+    );
   }
 
   const drep = await getDRepById(drepId);

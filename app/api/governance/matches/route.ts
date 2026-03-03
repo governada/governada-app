@@ -33,19 +33,25 @@ export async function GET(request: NextRequest) {
       limit: 200,
     });
 
-    captureServerEvent('governance_matches_calculated', {
-      matches_count: matches.length,
-      top_match_score: matches[0]?.matchScore ?? null,
-      has_current_drep_match: !!currentDRepMatch,
-    }, session.walletAddress);
+    captureServerEvent(
+      'governance_matches_calculated',
+      {
+        matches_count: matches.length,
+        top_match_score: matches[0]?.matchScore ?? null,
+        has_current_drep_match: !!currentDRepMatch,
+      },
+      session.walletAddress,
+    );
 
     return NextResponse.json({
       matches,
-      currentDRepMatch: currentDRepMatch ? {
-        matchScore: currentDRepMatch.score,
-        agreed: currentDRepMatch.aligned,
-        total: currentDRepMatch.total,
-      } : null,
+      currentDRepMatch: currentDRepMatch
+        ? {
+            matchScore: currentDRepMatch.score,
+            agreed: currentDRepMatch.aligned,
+            total: currentDRepMatch.total,
+          }
+        : null,
     });
   } catch (error) {
     console.error('[Governance Matches API] Error:', error);

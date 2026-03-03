@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 });
   }
 
-  const questionIds = (questions || []).map(q => q.id);
+  const questionIds = (questions || []).map((q) => q.id);
   let responses: any[] = [];
   if (questionIds.length > 0) {
     const { data } = await supabase
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     responseMap.set(r.question_id, r);
   }
 
-  const result = (questions || []).map(q => ({
+  const result = (questions || []).map((q) => ({
     ...q,
     askerWallet: q.asker_wallet,
     questionText: q.question_text,
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     if ((count ?? 0) >= 3) {
       return NextResponse.json(
         { error: 'Rate limit: max 3 questions per day per DRep' },
-        { status: 429 }
+        { status: 429 },
       );
     }
 

@@ -28,7 +28,9 @@ export async function GET() {
 
     const { data: latest, error: latestErr } = await supabase
       .from('governance_benchmarks')
-      .select('chain, period_label, participation_rate, delegate_count, proposal_count, proposal_throughput, avg_rationale_rate, governance_score, grade, fetched_at')
+      .select(
+        'chain, period_label, participation_rate, delegate_count, proposal_count, proposal_throughput, avg_rationale_rate, governance_score, grade, fetched_at',
+      )
       .order('fetched_at', { ascending: false })
       .limit(3);
 
@@ -40,7 +42,7 @@ export async function GET() {
     const chains = ['cardano', 'ethereum', 'polkadot'] as const;
     const latestByChain: Record<string, BenchmarkRow | null> = {};
     for (const chain of chains) {
-      latestByChain[chain] = (latest as BenchmarkRow[])?.find(r => r.chain === chain) ?? null;
+      latestByChain[chain] = (latest as BenchmarkRow[])?.find((r) => r.chain === chain) ?? null;
     }
 
     const { data: history, error: historyErr } = await supabase
@@ -53,14 +55,22 @@ export async function GET() {
       console.error('[benchmarks] History fetch error:', historyErr.message);
     }
 
-    const historyByChain: Record<string, { periodLabel: string; score: number | null; grade: string | null }[]> = {
+    const historyByChain: Record<
+      string,
+      { periodLabel: string; score: number | null; grade: string | null }[]
+    > = {
       cardano: [],
       ethereum: [],
       polkadot: [],
     };
 
     if (history) {
-      for (const row of history as { chain: string; period_label: string; governance_score: number | null; grade: string | null }[]) {
+      for (const row of history as {
+        chain: string;
+        period_label: string;
+        governance_score: number | null;
+        grade: string | null;
+      }[]) {
         if (historyByChain[row.chain]) {
           historyByChain[row.chain].push({
             periodLabel: row.period_label,
@@ -71,15 +81,18 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({
-      benchmarks: latestByChain,
-      history: historyByChain,
-      updatedAt: latest?.[0]?.fetched_at ?? null,
-    }, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+    return NextResponse.json(
+      {
+        benchmarks: latestByChain,
+        history: historyByChain,
+        updatedAt: latest?.[0]?.fetched_at ?? null,
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        },
+      },
+    );
   } catch (err) {
     console.error('[benchmarks] Unexpected error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

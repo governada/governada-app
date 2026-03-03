@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ questionId: string }> }
+  { params }: { params: Promise<{ questionId: string }> },
 ) {
   try {
     const { questionId } = await params;
@@ -75,10 +75,7 @@ export async function POST(
     }
 
     // Update question status
-    await supabase
-      .from('drep_questions')
-      .update({ status: 'answered' })
-      .eq('id', questionId);
+    await supabase.from('drep_questions').update({ status: 'answered' }).eq('id', questionId);
 
     captureServerEvent('question_responded', {
       drep_id: question.drep_id,

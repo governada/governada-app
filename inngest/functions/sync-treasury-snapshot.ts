@@ -62,21 +62,26 @@ export const syncTreasurySnapshot = inngest.createFunction(
       });
 
       const reservesIncome = prevSnapshot
-        ? (BigInt(snapshot.balanceLovelace) - BigInt(prevSnapshot.balance_lovelace) + BigInt(withdrawals)).toString()
+        ? (
+            BigInt(snapshot.balanceLovelace) -
+            BigInt(prevSnapshot.balance_lovelace) +
+            BigInt(withdrawals)
+          ).toString()
         : '0';
 
       await step.run('upsert-snapshot', async () => {
         const sb = getSupabaseAdmin();
-        const { error } = await sb
-          .from('treasury_snapshots')
-          .upsert({
+        const { error } = await sb.from('treasury_snapshots').upsert(
+          {
             epoch_no: snapshot.epoch,
             balance_lovelace: snapshot.balanceLovelace,
             reserves_lovelace: snapshot.reservesLovelace,
             withdrawals_lovelace: withdrawals,
             reserves_income_lovelace: reservesIncome,
             snapshot_at: new Date().toISOString(),
-          }, { onConflict: 'epoch_no' });
+          },
+          { onConflict: 'epoch_no' },
+        );
 
         if (error) throw new Error(`Treasury snapshot upsert failed: ${error.message}`);
       });
@@ -90,9 +95,7 @@ export const syncTreasurySnapshot = inngest.createFunction(
       await emitPostHog(true, 'treasury', logger.elapsed, { epoch: snapshot.epoch });
       await pingHeartbeat('HEARTBEAT_URL_DAILY');
 
-      await step.run('heartbeat-daily', () =>
-        pingHeartbeat('HEARTBEAT_URL_DAILY')
-      );
+      await step.run('heartbeat-daily', () => pingHeartbeat('HEARTBEAT_URL_DAILY'));
 
       return { epoch: snapshot.epoch, balance: snapshot.balanceLovelace };
     } catch (e) {

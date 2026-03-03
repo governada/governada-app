@@ -24,8 +24,8 @@ export function AdminSimulateToggle() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: sessionAddress }),
     })
-      .then(r => r.json())
-      .then(data => setIsAdmin(data.isAdmin === true))
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(data.isAdmin === true))
       .catch(() => setIsAdmin(false));
   }, [isAuthenticated, sessionAddress]);
 

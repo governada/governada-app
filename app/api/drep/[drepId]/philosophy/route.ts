@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   const { drepId } = await params;
   const supabase = getSupabaseAdmin();
@@ -21,15 +21,17 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   const { drepId } = await params;
   try {
     const { sessionToken, philosophyText } = await request.json();
-    if (!sessionToken || !philosophyText) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    if (!sessionToken || !philosophyText)
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
 
     const parsed = parseSessionToken(sessionToken);
-    if (!parsed || isSessionExpired(parsed)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!parsed || isSessionExpired(parsed))
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const supabase = getSupabaseAdmin();
     const { data: user } = await supabase
@@ -38,7 +40,8 @@ export async function POST(
       .eq('wallet_address', parsed.walletAddress)
       .single();
 
-    if (!user || user.claimed_drep_id !== drepId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    if (!user || user.claimed_drep_id !== drepId)
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
 
     const { data, error } = await supabase
       .from('governance_philosophy')

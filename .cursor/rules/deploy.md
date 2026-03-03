@@ -28,6 +28,7 @@ If lint/type-check errors are in YOUR changes, fix them. If they're pre-existing
 4. Only proceed after migration is confirmed
 
 ### Migration Naming Convention
+
 - Sequential 3-digit prefix: `001_`, `002_`, etc.
 - Descriptive snake_case suffix: `020_feature_name.sql`
 
@@ -36,12 +37,14 @@ If lint/type-check errors are in YOUR changes, fix them. If they're pre-existing
 Before committing, classify the change to determine the release path.
 
 **Direct to main (autonomous, no PR) — see also "Hotfix Protocol" in `workflow.md`:**
+
 - Single-commit bug fixes with all tests passing (user says "hotfix" → full autonomous deploy pipeline)
 - Cursor rule / documentation updates
 - Copy/content/config changes
 - Dependency patches
 
 **PR + Railway preview required (human reviews before merge):**
+
 - Database migrations (irreversible DDL)
 - Changes to public API contract (`/api/v1/*`)
 - Auth or security changes (RLS, session, crypto)
@@ -79,6 +82,7 @@ Before committing, classify the change to determine the release path.
 ### Build Environment Parity — ENFORCED CHECK
 
 Railway's Docker build separates build-time and runtime env vars. During `next build` inside Docker, **no runtime env vars are available** (no `NEXT_PUBLIC_SUPABASE_URL`, no `SUPABASE_SECRET_KEY`, etc.). This means:
+
 - Local `next build` (which has `.env.local`) is **NOT equivalent** to Railway's Docker build
 - CI builds may also pass if they have env vars configured as secrets
 - Always verify Railway deploy succeeds — don't assume local build = production build
@@ -96,25 +100,33 @@ If the `next build` output shows the route as `○ (Static)` and it queries Supa
 **This section is not optional.** Every deploy to production MUST complete all three checks below before reporting success to the user. A deploy without validation is an incomplete deploy.
 
 ### 1. Health Check
+
 ```
 Invoke-WebRequest -Uri "https://drepscore.io/api/health" -UseBasicParsing | Select-Object StatusCode
 ```
+
 Expect 200, status != "error".
 
 ### 2. Inngest Sync
+
 ```
 Invoke-WebRequest -Uri "https://drepscore.io/api/inngest" -Method PUT -UseBasicParsing
 ```
+
 Registers all Inngest functions with Inngest Cloud. Expect 200.
 
 ### 3. Smoke Tests
+
 ```
 npm run smoke-test
 ```
+
 Checks `/api/health`, `/api/dreps`, `/api/v1/dreps`, `/api/v1/governance/health`, `/api/auth/nonce`.
 
 ### 4. Feature-specific verification
+
 Verify at least one new endpoint or changed behavior is live. Examples:
+
 - New route: `Invoke-WebRequest -Uri "https://drepscore.io/<new-route>" -UseBasicParsing`
 - New header: check response headers
 - Changed behavior: confirm the change is observable
@@ -124,6 +136,7 @@ Verify at least one new endpoint or changed behavior is live. Examples:
 ## Report (MANDATORY — do NOT skip)
 
 After successful deploy, provide a concise summary:
+
 - What changed (1-2 sentences)
 - Deploy time
 - Validation results (health, Inngest sync, smoke tests, feature verification)
@@ -140,22 +153,29 @@ After successful deploy, provide a concise summary:
 - **Cron secret**: stored in `.env.local` as `CRON_SECRET`
 
 ### GitHub CLI
+
 Two accounts are configured. **Always switch to `drepscore` before any `gh` API calls** (PR creation, run monitoring, etc.):
+
 ```
 gh auth switch --user drepscore
 ```
+
 The `tim-dd` account does not have collaborator access to the repo.
 
 ### MCP Configuration — DO NOT MODIFY
+
 `.cursor/mcp.json` is gitignored and contains secrets. **NEVER overwrite, recreate, or edit this file.**
 
 ### Inngest
+
 - All 12 background jobs run via Inngest Cloud (see `architecture.md` for full list)
 - After every deploy: `PUT https://drepscore.io/api/inngest` to sync functions
 - `INNGEST_SERVE_HOST=https://drepscore.io` ensures SDK advertises production URL
 
 ### Environment Variables
+
 Key vars (managed in hosting dashboard):
+
 - `KOIOS_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`
 - `CRON_SECRET`, `SESSION_SECRET`, `ADMIN_WALLETS`
 - `ANTHROPIC_API_KEY`, `POSTHOG_PERSONAL_API_KEY`

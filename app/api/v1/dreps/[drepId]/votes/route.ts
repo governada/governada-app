@@ -1,13 +1,22 @@
 import { NextRequest } from 'next/server';
 import { withApiHandler } from '@/lib/api/handler';
 import { apiSuccess, apiError } from '@/lib/api/response';
-import { getDRepById, getVotesByDRepId, getProposalsByIds, getRationalesByVoteTxHashes } from '@/lib/data';
+import {
+  getDRepById,
+  getVotesByDRepId,
+  getProposalsByIds,
+  getRationalesByVoteTxHashes,
+} from '@/lib/data';
 import type { ApiContext } from '@/lib/api/handler';
 
 async function handler(request: NextRequest, ctx: ApiContext, params?: Record<string, string>) {
   const drepId = decodeURIComponent(params?.drepId || '');
   if (!drepId) {
-    return apiError('missing_parameter', { param: 'drepId', context: 'DRep ID is required in the URL path.' }, { requestId: ctx.requestId });
+    return apiError(
+      'missing_parameter',
+      { param: 'drepId', context: 'DRep ID is required in the URL path.' },
+      { requestId: ctx.requestId },
+    );
   }
 
   const drep = await getDRepById(drepId);
@@ -18,27 +27,29 @@ async function handler(request: NextRequest, ctx: ApiContext, params?: Record<st
   const url = request.nextUrl;
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50') || 50, 1), 100);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0);
-  const epochFilter = url.searchParams.get('epoch') ? parseInt(url.searchParams.get('epoch')!) : null;
+  const epochFilter = url.searchParams.get('epoch')
+    ? parseInt(url.searchParams.get('epoch')!)
+    : null;
 
   let votes = await getVotesByDRepId(drepId);
 
   if (epochFilter !== null && !isNaN(epochFilter)) {
-    votes = votes.filter(v => v.epoch_no === epochFilter);
+    votes = votes.filter((v) => v.epoch_no === epochFilter);
   }
 
   const total = votes.length;
   const page = votes.slice(offset, offset + limit);
 
   // Enrich with proposal metadata and rationale
-  const proposalIds = page.map(v => ({ txHash: v.proposal_tx_hash, index: v.proposal_index }));
-  const voteTxHashes = page.map(v => v.vote_tx_hash);
+  const proposalIds = page.map((v) => ({ txHash: v.proposal_tx_hash, index: v.proposal_index }));
+  const voteTxHashes = page.map((v) => v.vote_tx_hash);
 
   const [proposalMap, rationaleMap] = await Promise.all([
     getProposalsByIds(proposalIds),
     getRationalesByVoteTxHashes(voteTxHashes),
   ]);
 
-  const data = page.map(v => {
+  const data = page.map((v) => {
     const pKey = `${v.proposal_tx_hash}-${v.proposal_index}`;
     const proposal = proposalMap.get(pKey);
     const rationale = rationaleMap.get(v.vote_tx_hash);

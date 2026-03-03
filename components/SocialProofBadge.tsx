@@ -40,8 +40,8 @@ export function SocialProofBadge({
     if (proposalIndex !== undefined) params.set('proposalIndex', String(proposalIndex));
 
     fetch(`/api/social-proof?${params}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (!data) return;
         if (variant === 'views') setCount(data.weeklyViews ?? 0);
         else if (variant === 'poll') setCount(data.pollResponses ?? 0);

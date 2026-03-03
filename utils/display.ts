@@ -8,7 +8,9 @@ import { DRep } from '@/types/drep';
  * Get formatted display name for a DRep
  * Priority: Name (Ticker) > $Handle > Shortened DRep ID
  */
-export function getDRepDisplayName(drep: Pick<DRep, 'name' | 'ticker' | 'handle' | 'drepId'>): string {
+export function getDRepDisplayName(
+  drep: Pick<DRep, 'name' | 'ticker' | 'handle' | 'drepId'>,
+): string {
   // Priority 1: Name with optional ticker
   if (drep.name) {
     if (drep.ticker) {
@@ -34,7 +36,9 @@ export function getDRepDisplayName(drep: Pick<DRep, 'name' | 'ticker' | 'handle'
 /**
  * Get primary display name (without ticker in parentheses)
  */
-export function getDRepPrimaryName(drep: Pick<DRep, 'name' | 'ticker' | 'handle' | 'drepId'>): string {
+export function getDRepPrimaryName(
+  drep: Pick<DRep, 'name' | 'ticker' | 'handle' | 'drepId'>,
+): string {
   return drep.name || drep.ticker || drep.handle || shortenDRepId(drep.drepId);
 }
 
@@ -48,12 +52,14 @@ export function hasCustomMetadata(drep: Pick<DRep, 'name' | 'ticker' | 'descript
 /**
  * Get display name with "Unnamed DRep" fallback
  */
-export function getDRepDisplayNameOrUnnamed(drep: Pick<DRep, 'name' | 'ticker' | 'handle' | 'drepId'>): {
+export function getDRepDisplayNameOrUnnamed(
+  drep: Pick<DRep, 'name' | 'ticker' | 'handle' | 'drepId'>,
+): {
   name: string;
   isUnnamed: boolean;
 } {
   const hasName = !!(drep.name || drep.ticker || drep.handle);
-  
+
   if (hasName) {
     return {
       name: getDRepDisplayName(drep),
@@ -70,7 +76,11 @@ export function getDRepDisplayNameOrUnnamed(drep: Pick<DRep, 'name' | 'ticker' |
 /**
  * Shorten DRep ID for display
  */
-export function shortenDRepId(drepId: string, prefixLength: number = 10, suffixLength: number = 6): string {
+export function shortenDRepId(
+  drepId: string,
+  prefixLength: number = 10,
+  suffixLength: number = 6,
+): string {
   if (drepId.length <= prefixLength + suffixLength) return drepId;
   return `${drepId.slice(0, prefixLength)}...${drepId.slice(-suffixLength)}`;
 }
@@ -86,7 +96,10 @@ export function formatTicker(ticker: string | null): string | null {
 /**
  * Truncate description for preview
  */
-export function truncateDescription(description: string | null, maxLength: number = 150): string | null {
+export function truncateDescription(
+  description: string | null,
+  maxLength: number = 150,
+): string | null {
   if (!description) return null;
   if (description.length <= maxLength) return description;
   return `${description.slice(0, maxLength)}...`;
@@ -98,20 +111,35 @@ export function truncateDescription(description: string | null, maxLength: numbe
 export function getProposalDisplayTitle(
   title: string | null,
   proposalTxHash: string,
-  proposalIndex: number
+  proposalIndex: number,
 ): string {
   if (title) return title;
-  
+
   // Generate fallback title from transaction hash and index
   const shortHash = proposalTxHash.slice(0, 8);
   return `Governance Action #${proposalIndex} (${shortHash})`;
 }
 
 export const KNOWN_PLATFORM_NAMES = new Set([
-  'Twitter/X', 'LinkedIn', 'GitHub', 'GitLab', 'Facebook', 'Instagram',
-  'YouTube', 'Reddit', 'Medium', 'Discord', 'Telegram', 'Linktree',
-  'WhatsApp', 'Bluesky', 'Mastodon', 'Twitch', 'Cardano Foundation',
-  'IOHK', 'EMURGO',
+  'Twitter/X',
+  'LinkedIn',
+  'GitHub',
+  'GitLab',
+  'Facebook',
+  'Instagram',
+  'YouTube',
+  'Reddit',
+  'Medium',
+  'Discord',
+  'Telegram',
+  'Linktree',
+  'WhatsApp',
+  'Bluesky',
+  'Mastodon',
+  'Twitch',
+  'Cardano Foundation',
+  'IOHK',
+  'EMURGO',
 ]);
 
 const PLATFORM_URL_MAP: Record<string, string> = {
@@ -150,23 +178,23 @@ const PLATFORM_URL_MAP: Record<string, string> = {
  * Handles common user-supplied variants (e.g. "X", "Twitter", "Github").
  */
 const LABEL_ALIAS_MAP: Record<string, string> = {
-  'x': 'Twitter/X',
-  'twitter': 'Twitter/X',
-  'github': 'GitHub',
-  'gitlab': 'GitLab',
-  'linkedin': 'LinkedIn',
-  'facebook': 'Facebook',
-  'instagram': 'Instagram',
-  'youtube': 'YouTube',
-  'reddit': 'Reddit',
-  'medium': 'Medium',
-  'discord': 'Discord',
-  'telegram': 'Telegram',
-  'linktree': 'Linktree',
-  'whatsapp': 'WhatsApp',
-  'bluesky': 'Bluesky',
-  'mastodon': 'Mastodon',
-  'twitch': 'Twitch',
+  x: 'Twitter/X',
+  twitter: 'Twitter/X',
+  github: 'GitHub',
+  gitlab: 'GitLab',
+  linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+  reddit: 'Reddit',
+  medium: 'Medium',
+  discord: 'Discord',
+  telegram: 'Telegram',
+  linktree: 'Linktree',
+  whatsapp: 'WhatsApp',
+  bluesky: 'Bluesky',
+  mastodon: 'Mastodon',
+  twitch: 'Twitch',
 };
 
 /**

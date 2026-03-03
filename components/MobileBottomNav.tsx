@@ -56,16 +56,12 @@ export function MobileBottomNav() {
               href={href}
               className={cn(
                 'flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] px-2 transition-colors',
-                active
-                  ? 'text-primary'
-                  : 'text-muted-foreground active:text-foreground',
+                active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
               )}
               aria-current={active ? 'page' : undefined}
             >
               <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium leading-tight">
-                {label}
-              </span>
+              <span className="text-[10px] font-medium leading-tight">{label}</span>
               {active && (
                 <span className="absolute bottom-[calc(env(safe-area-inset-bottom)+2px)] h-0.5 w-6 rounded-full bg-primary" />
               )}

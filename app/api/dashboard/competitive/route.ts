@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
     // Get all active DReps sorted by score
     const { data: allDreps, error } = await supabase
       .from('dreps')
-      .select('id, score, info, participation_rate, rationale_rate, reliability_score, profile_completeness, effective_participation, metadata')
+      .select(
+        'id, score, info, participation_rate, rationale_rate, reliability_score, profile_completeness, effective_participation, metadata',
+      )
       .not('info->isActive', 'eq', false)
       .order('score', { ascending: false });
 
@@ -52,10 +54,18 @@ export async function GET(request: NextRequest) {
     // Top 10 average per pillar
     const top10 = allDreps.slice(0, Math.min(10, allDreps.length));
     const top10Avg = {
-      participation: Math.round(top10.reduce((s: number, d: any) => s + (d.effective_participation || 0), 0) / top10.length),
-      rationale: Math.round(top10.reduce((s: number, d: any) => s + (d.rationale_rate || 0), 0) / top10.length),
-      reliability: Math.round(top10.reduce((s: number, d: any) => s + (d.reliability_score || 0), 0) / top10.length),
-      profile: Math.round(top10.reduce((s: number, d: any) => s + (d.profile_completeness || 0), 0) / top10.length),
+      participation: Math.round(
+        top10.reduce((s: number, d: any) => s + (d.effective_participation || 0), 0) / top10.length,
+      ),
+      rationale: Math.round(
+        top10.reduce((s: number, d: any) => s + (d.rationale_rate || 0), 0) / top10.length,
+      ),
+      reliability: Math.round(
+        top10.reduce((s: number, d: any) => s + (d.reliability_score || 0), 0) / top10.length,
+      ),
+      profile: Math.round(
+        top10.reduce((s: number, d: any) => s + (d.profile_completeness || 0), 0) / top10.length,
+      ),
     };
 
     // Find weakest pillar relative to top 10
@@ -71,11 +81,12 @@ export async function GET(request: NextRequest) {
       { pillar: 'Rationale', gap: top10Avg.rationale - currentPillars.rationale },
       { pillar: 'Reliability', gap: top10Avg.reliability - currentPillars.reliability },
       { pillar: 'Profile', gap: top10Avg.profile - currentPillars.profile },
-    ].filter(g => g.gap > 0).sort((a, b) => b.gap - a.gap);
+    ]
+      .filter((g) => g.gap > 0)
+      .sort((a, b) => b.gap - a.gap);
 
-    const distanceToTop10 = rank > 10 && allDreps.length >= 10
-      ? allDreps[9].score - currentDrep.score
-      : 0;
+    const distanceToTop10 =
+      rank > 10 && allDreps.length >= 10 ? allDreps[9].score - currentDrep.score : 0;
 
     return NextResponse.json({
       rank,

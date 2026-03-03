@@ -46,7 +46,11 @@ describe('GET /api/user/notification-prefs', () => {
   });
 
   it('returns prefs for authenticated user', async () => {
-    vi.mocked(parseSessionToken).mockReturnValue({ walletAddress: 'addr1test', exp: Date.now() + 100000, iat: Date.now() } as any);
+    vi.mocked(parseSessionToken).mockReturnValue({
+      walletAddress: 'addr1test',
+      exp: Date.now() + 100000,
+      iat: Date.now(),
+    } as any);
     vi.mocked(isSessionExpired).mockReturnValue(false);
     mockSelect.mockResolvedValue({
       data: [{ channel: 'push', event_type: 'new_proposal', enabled: true }],
@@ -81,7 +85,11 @@ describe('POST /api/user/notification-prefs', () => {
   });
 
   it('returns 400 when fields are missing', async () => {
-    vi.mocked(parseSessionToken).mockReturnValue({ walletAddress: 'addr1test', exp: Date.now() + 100000, iat: Date.now() } as any);
+    vi.mocked(parseSessionToken).mockReturnValue({
+      walletAddress: 'addr1test',
+      exp: Date.now() + 100000,
+      iat: Date.now(),
+    } as any);
     vi.mocked(isSessionExpired).mockReturnValue(false);
 
     const req = createRequest('/api/user/notification-prefs', {
@@ -94,7 +102,11 @@ describe('POST /api/user/notification-prefs', () => {
   });
 
   it('upserts a notification preference', async () => {
-    vi.mocked(parseSessionToken).mockReturnValue({ walletAddress: 'addr1test', exp: Date.now() + 100000, iat: Date.now() } as any);
+    vi.mocked(parseSessionToken).mockReturnValue({
+      walletAddress: 'addr1test',
+      exp: Date.now() + 100000,
+      iat: Date.now(),
+    } as any);
     vi.mocked(isSessionExpired).mockReturnValue(false);
     mockUpsert.mockResolvedValue({ error: null });
 

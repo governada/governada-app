@@ -75,10 +75,7 @@ export function computeGovernanceScore(metrics: {
   const rationaleScore = metrics.rationaleRate ?? 0;
 
   const score =
-    participation * 0.35 +
-    throughput * 0.25 +
-    delegateScore * 0.20 +
-    rationaleScore * 0.20;
+    participation * 0.35 + throughput * 0.25 + delegateScore * 0.2 + rationaleScore * 0.2;
 
   return Math.min(100, Math.max(0, Math.round(score)));
 }
@@ -178,8 +175,13 @@ async function tallyFetch(query: string, variables?: Record<string, unknown>): P
   }
 }
 
-export async function fetchEthereumBenchmark(): Promise<Omit<ChainBenchmark, 'grade' | 'governanceScore'> | null> {
-  const orgsData = await tallyFetch(TALLY_ORGS_QUERY) as { organizations?: { nodes: TallyOrgNode[] } } | null;
+export async function fetchEthereumBenchmark(): Promise<Omit<
+  ChainBenchmark,
+  'grade' | 'governanceScore'
+> | null> {
+  const orgsData = (await tallyFetch(TALLY_ORGS_QUERY)) as {
+    organizations?: { nodes: TallyOrgNode[] };
+  } | null;
   if (!orgsData?.organizations?.nodes?.length) return null;
 
   const orgs = orgsData.organizations.nodes;
@@ -193,23 +195,23 @@ export async function fetchEthereumBenchmark(): Promise<Omit<ChainBenchmark, 'gr
   let proposalThroughput: number | null = null;
 
   if (topSlug) {
-    const proposalsData = await tallyFetch(TALLY_ORG_PROPOSALS_QUERY, { slug: topSlug }) as {
-      proposals?: { nodes: { status: string; voteStats: { votersCount: number }[] }[] }
+    const proposalsData = (await tallyFetch(TALLY_ORG_PROPOSALS_QUERY, { slug: topSlug })) as {
+      proposals?: { nodes: { status: string; voteStats: { votersCount: number }[] }[] };
     } | null;
 
     if (proposalsData?.proposals?.nodes?.length) {
       const props = proposalsData.proposals.nodes;
-      const withVotes = props.filter(p => p.voteStats?.some(v => v.votersCount > 0));
+      const withVotes = props.filter((p) => p.voteStats?.some((v) => v.votersCount > 0));
       proposalThroughput = Math.round((withVotes.length / props.length) * 100);
 
-      const avgVoters = withVotes.reduce((s, p) => {
-        const total = p.voteStats.reduce((vs, v) => vs + v.votersCount, 0);
-        return s + total;
-      }, 0) / Math.max(withVotes.length, 1);
+      const avgVoters =
+        withVotes.reduce((s, p) => {
+          const total = p.voteStats.reduce((vs, v) => vs + v.votersCount, 0);
+          return s + total;
+        }, 0) / Math.max(withVotes.length, 1);
 
-      participationRate = totalDelegates > 0
-        ? Math.min(100, Math.round((avgVoters / totalDelegates) * 100))
-        : null;
+      participationRate =
+        totalDelegates > 0 ? Math.min(100, Math.round((avgVoters / totalDelegates) * 100)) : null;
     }
   }
 
@@ -224,7 +226,15 @@ export async function fetchEthereumBenchmark(): Promise<Omit<ChainBenchmark, 'gr
     proposalCount: totalProposals,
     proposalThroughput,
     avgRationaleRate: null,
-    rawData: { orgs: orgs.map(o => ({ slug: o.slug, name: o.name, delegates: o.delegatesCount, proposals: o.proposalsCount })), totalTokenOwners },
+    rawData: {
+      orgs: orgs.map((o) => ({
+        slug: o.slug,
+        name: o.name,
+        delegates: o.delegatesCount,
+        proposals: o.proposalsCount,
+      })),
+      totalTokenOwners,
+    },
     fetchedAt: now.toISOString(),
   };
 }
@@ -241,7 +251,7 @@ async function subsquareFetch(path: string): Promise<unknown> {
 
   try {
     const res = await fetch(`${SUBSQUARE_BASE}${path}`, {
-      headers: { 'Accept': 'application/json' },
+      headers: { Accept: 'application/json' },
       signal: controller.signal,
       cache: 'no-store',
     });
@@ -260,7 +270,10 @@ async function subsquareFetch(path: string): Promise<unknown> {
   }
 }
 
-export async function fetchPolkadotBenchmark(): Promise<Omit<ChainBenchmark, 'grade' | 'governanceScore'> | null> {
+export async function fetchPolkadotBenchmark(): Promise<Omit<
+  ChainBenchmark,
+  'grade' | 'governanceScore'
+> | null> {
   const [summaryData, referendaData] = await Promise.all([
     subsquareFetch('/summary'),
     subsquareFetch('/gov2/referendums?page=1&page_size=20'),
@@ -285,14 +298,17 @@ export async function fetchPolkadotBenchmark(): Promise<Omit<ChainBenchmark, 'gr
   let participationRate: number | null = null;
 
   if (referenda?.items?.length) {
-    const withVotes = referenda.items.filter(r => {
+    const withVotes = referenda.items.filter((r) => {
       const ayes = parseInt(r.tally?.ayes || '0', 10);
       const nays = parseInt(r.tally?.nays || '0', 10);
-      return (ayes + nays) > 0;
+      return ayes + nays > 0;
     });
     proposalThroughput = Math.round((withVotes.length / referenda.items.length) * 100);
 
-    participationRate = activeReferenda > 0 ? Math.min(100, Math.round((activeReferenda / Math.max(totalReferenda, 1)) * 100 * 5)) : null;
+    participationRate =
+      activeReferenda > 0
+        ? Math.min(100, Math.round((activeReferenda / Math.max(totalReferenda, 1)) * 100 * 5))
+        : null;
   }
 
   const now = new Date();
@@ -315,7 +331,10 @@ export async function fetchPolkadotBenchmark(): Promise<Omit<ChainBenchmark, 'gr
 // Cardano adapter (reads from existing GHI)
 // ---------------------------------------------------------------------------
 
-export async function fetchCardanoBenchmark(): Promise<Omit<ChainBenchmark, 'grade' | 'governanceScore'> | null> {
+export async function fetchCardanoBenchmark(): Promise<Omit<
+  ChainBenchmark,
+  'grade' | 'governanceScore'
+> | null> {
   const { computeGHI } = await import('./ghi');
   const { createClient } = await import('./supabase');
 
@@ -333,12 +352,15 @@ export async function fetchCardanoBenchmark(): Promise<Omit<ChainBenchmark, 'gra
     const proposalCount = proposalsRes.count ?? 0;
     const epoch = epochRes.data?.current_epoch ?? 0;
 
-    const participationComp = ghi.components.find(c => c.name === 'Participation');
-    const rationaleComp = ghi.components.find(c => c.name === 'Rationale');
-    const throughputComp = ghi.components.find(c => c.name === 'Proposal Throughput');
+    const participationComp = ghi.components.find((c) => c.name === 'Participation');
+    const rationaleComp = ghi.components.find((c) => c.name === 'Rationale');
+    const throughputComp = ghi.components.find((c) => c.name === 'Proposal Throughput');
 
     const now = new Date();
-    const periodLabel = epoch > 0 ? `epoch-${epoch}` : `${now.getFullYear()}-W${String(getISOWeek(now)).padStart(2, '0')}`;
+    const periodLabel =
+      epoch > 0
+        ? `epoch-${epoch}`
+        : `${now.getFullYear()}-W${String(getISOWeek(now)).padStart(2, '0')}`;
 
     return {
       chain: 'cardano',

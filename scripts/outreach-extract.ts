@@ -40,7 +40,12 @@ function extractSocialFromMetadata(metadata: Record<string, any> | null): {
   website: string | null;
   email: string | null;
 } {
-  const result = { twitter: null as string | null, github: null as string | null, website: null as string | null, email: null as string | null };
+  const result = {
+    twitter: null as string | null,
+    github: null as string | null,
+    website: null as string | null,
+    email: null as string | null,
+  };
   if (!metadata) return result;
 
   const refs: Array<{ uri?: unknown; label?: unknown }> = metadata.references || [];
@@ -51,7 +56,10 @@ function extractSocialFromMetadata(metadata: Record<string, any> | null): {
       result.twitter = ref.uri as string;
     } else if (uri && uri.includes('github.com')) {
       result.github = ref.uri as string;
-    } else if (label && (label.includes('website') || label.includes('homepage') || label.includes('blog'))) {
+    } else if (
+      label &&
+      (label.includes('website') || label.includes('homepage') || label.includes('blog'))
+    ) {
       result.website = typeof ref.uri === 'string' ? ref.uri : null;
     }
   }
@@ -67,7 +75,12 @@ async function fetchAnchorSocials(anchorUrl: string): Promise<{
   website: string | null;
   email: string | null;
 }> {
-  const result = { twitter: null as string | null, github: null as string | null, website: null as string | null, email: null as string | null };
+  const result = {
+    twitter: null as string | null,
+    github: null as string | null,
+    website: null as string | null,
+    email: null as string | null,
+  };
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -77,14 +90,19 @@ async function fetchAnchorSocials(anchorUrl: string): Promise<{
 
     const text = await res.text();
     let json: any;
-    try { json = JSON.parse(text); } catch { return result; }
+    try {
+      json = JSON.parse(text);
+    } catch {
+      return result;
+    }
 
     const body = json.body || json;
     const refs: Array<{ uri?: unknown; label?: unknown }> = body?.references || [];
 
     for (const ref of refs) {
       const uri = typeof ref.uri === 'string' ? ref.uri.toLowerCase() : '';
-      if (uri && (uri.includes('twitter.com') || uri.includes('x.com'))) result.twitter = ref.uri as string;
+      if (uri && (uri.includes('twitter.com') || uri.includes('x.com')))
+        result.twitter = ref.uri as string;
       else if (uri && uri.includes('github.com')) result.github = ref.uri as string;
     }
 
@@ -116,7 +134,7 @@ async function main() {
     .select('claimed_drep_id')
     .not('claimed_drep_id', 'is', null);
 
-  const claimedSet = new Set((claimedUsers || []).map(u => u.claimed_drep_id));
+  const claimedSet = new Set((claimedUsers || []).map((u) => u.claimed_drep_id));
   console.log(`${claimedSet.size} DReps already claimed.`);
 
   const records: OutreachRecord[] = [];
@@ -127,8 +145,13 @@ async function main() {
     const claimed = claimedSet.has(d.id);
     const metaSocials = extractSocialFromMetadata(d.metadata);
 
-    let anchorSocials = { twitter: null as string | null, github: null as string | null, website: null as string | null, email: null as string | null };
-    if (!claimed && d.anchor_url && (!metaSocials.twitter && !metaSocials.github)) {
+    let anchorSocials = {
+      twitter: null as string | null,
+      github: null as string | null,
+      website: null as string | null,
+      email: null as string | null,
+    };
+    if (!claimed && d.anchor_url && !metaSocials.twitter && !metaSocials.github) {
       if (i < 100) {
         anchorSocials = await fetchAnchorSocials(d.anchor_url);
       }
@@ -152,8 +175,8 @@ async function main() {
     }
   }
 
-  const unclaimed = records.filter(r => !r.claimed);
-  const withContact = unclaimed.filter(r => r.twitter || r.github || r.email);
+  const unclaimed = records.filter((r) => !r.claimed);
+  const withContact = unclaimed.filter((r) => r.twitter || r.github || r.email);
 
   console.log(`\nResults:`);
   console.log(`  Total DReps: ${records.length}`);
@@ -167,8 +190,17 @@ async function main() {
 
   // Write CSV for unclaimed DReps with contact info
   const csvHeader = 'drepId,name,score,twitter,github,email,website,claimLink';
-  const csvRows = withContact.map(r =>
-    [r.drepId, `"${r.name.replace(/"/g, '""')}"`, r.score, r.twitter || '', r.github || '', r.email || '', r.website || '', r.claimLink].join(',')
+  const csvRows = withContact.map((r) =>
+    [
+      r.drepId,
+      `"${r.name.replace(/"/g, '""')}"`,
+      r.score,
+      r.twitter || '',
+      r.github || '',
+      r.email || '',
+      r.website || '',
+      r.claimLink,
+    ].join(','),
   );
   writeFileSync('outreach-contacts.csv', [csvHeader, ...csvRows].join('\n'));
   console.log(`Wrote outreach-contacts.csv (${withContact.length} rows)`);
@@ -176,7 +208,7 @@ async function main() {
   // Write simple claim links for batch DMs
   const claimLinks = unclaimed
     .slice(0, 100)
-    .map(r => `${r.name} (Score: ${r.score}) — ${r.claimLink}`)
+    .map((r) => `${r.name} (Score: ${r.score}) — ${r.claimLink}`)
     .join('\n');
   writeFileSync('outreach-claim-links.txt', claimLinks);
   console.log(`Wrote outreach-claim-links.txt (top 100 unclaimed)`);

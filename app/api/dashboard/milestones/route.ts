@@ -9,15 +9,19 @@ export async function GET(request: NextRequest) {
 
   try {
     const achieved = await getAchievedMilestones(drepId);
-    const achievedKeys = new Set(achieved.map(a => a.milestoneKey));
+    const achievedKeys = new Set(achieved.map((a) => a.milestoneKey));
 
-    const milestones = MILESTONES.map(m => ({
+    const milestones = MILESTONES.map((m) => ({
       ...m,
       achieved: achievedKeys.has(m.key),
-      achievedAt: achieved.find(a => a.milestoneKey === m.key)?.achievedAt || null,
+      achievedAt: achieved.find((a) => a.milestoneKey === m.key)?.achievedAt || null,
     }));
 
-    return NextResponse.json({ milestones, achievedCount: achieved.length, totalCount: MILESTONES.length });
+    return NextResponse.json({
+      milestones,
+      achievedCount: achieved.length,
+      totalCount: MILESTONES.length,
+    });
   } catch (err) {
     console.error('[Milestones API] Error:', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

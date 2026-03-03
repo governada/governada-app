@@ -68,14 +68,16 @@ export function renderPush(payload: NotificationPayload): PushContent {
 export function renderDiscord(payload: NotificationPayload): DiscordContent {
   const color = getEventColor(payload.eventType);
   return {
-    embeds: [{
-      title: payload.fallback.title,
-      description: payload.fallback.body,
-      color,
-      url: payload.fallback.url,
-      footer: { text: 'DRepScore' },
-      timestamp: new Date().toISOString(),
-    }],
+    embeds: [
+      {
+        title: payload.fallback.title,
+        description: payload.fallback.body,
+        color,
+        url: payload.fallback.url,
+        footer: { text: 'DRepScore' },
+        timestamp: new Date().toISOString(),
+      },
+    ],
   };
 }
 
@@ -85,7 +87,10 @@ export function renderTelegram(payload: NotificationPayload): TelegramContent {
   return { text, parseMode: 'MarkdownV2' };
 }
 
-export function renderEmail(payload: NotificationPayload): { subject: string; data: Record<string, unknown> } {
+export function renderEmail(payload: NotificationPayload): {
+  subject: string;
+  data: Record<string, unknown>;
+} {
   return {
     subject: payload.fallback.title,
     data: {

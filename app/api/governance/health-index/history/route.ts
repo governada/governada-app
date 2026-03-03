@@ -4,10 +4,7 @@ import { computeGHI, type GHIResult } from '@/lib/ghi';
 
 export async function GET(request: NextRequest) {
   try {
-    const epochs = Math.min(
-      parseInt(request.nextUrl.searchParams.get('epochs') ?? '20', 10),
-      50,
-    );
+    const epochs = Math.min(parseInt(request.nextUrl.searchParams.get('epochs') ?? '20', 10), 50);
 
     const supabase = createClient();
     const { data: snapshots } = await supabase
@@ -18,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const current = await computeGHI();
 
-    const history = (snapshots ?? []).map(s => ({
+    const history = (snapshots ?? []).map((s) => ({
       epoch: s.epoch_no,
       score: Number(s.score),
       band: s.band as string,

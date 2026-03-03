@@ -20,13 +20,14 @@ export default async function ProposalsPage() {
   }
 
   const openProposals = proposals.filter(
-    p => !p.ratifiedEpoch && !p.enactedEpoch && !p.droppedEpoch && !p.expiredEpoch
+    (p) => !p.ratifiedEpoch && !p.enactedEpoch && !p.droppedEpoch && !p.expiredEpoch,
   );
   const expiringProposals = openProposals.filter(
-    p => p.expirationEpoch != null && p.expirationEpoch <= currentEpoch + 2
+    (p) => p.expirationEpoch != null && p.expirationEpoch <= currentEpoch + 2,
   );
   const totalAdaAtStake = openProposals.reduce(
-    (sum, p) => sum + (p.withdrawalAmount ? p.withdrawalAmount / 1_000_000 : 0), 0
+    (sum, p) => sum + (p.withdrawalAmount ? p.withdrawalAmount / 1_000_000 : 0),
+    0,
   );
   const totalVotesCast = openProposals.reduce((sum, p) => sum + p.totalVotes, 0);
 

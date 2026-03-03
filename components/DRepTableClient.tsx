@@ -38,7 +38,9 @@ function getInitialViewMode(): ViewMode {
   try {
     const stored = localStorage.getItem(VIEW_MODE_KEY);
     if (stored === 'table' || stored === 'cards') return stored;
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
   return window.innerWidth >= 768 ? 'table' : 'cards';
 }
 
@@ -76,16 +78,15 @@ export function DRepTableClient({
       return;
     }
     let cancelled = false;
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('drepscore_session_token')
-      : null;
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('drepscore_session_token') : null;
     if (!token) return;
 
     fetch(`/api/governance/matches/detail?drepId=${encodeURIComponent(quickViewDrep.drepId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (!cancelled && data) {
           setQuickViewMatchDetail({
             matchScore: data.matchScore,
@@ -96,7 +97,9 @@ export function DRepTableClient({
         }
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [quickViewOpen, quickViewDrep, matchData]);
 
   const hasServerData = !!initialDReps;
@@ -112,18 +115,18 @@ export function DRepTableClient({
   useEffect(() => {
     if (hasServerData) return;
     fetch('/api/dreps')
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch DReps');
         return res.json();
       })
-      .then(data => {
+      .then((data) => {
         setWellDocDReps(data.dreps || []);
         setAllDReps(data.allDReps || []);
         setTotalAvailable(data.totalAvailable || 0);
         setLoading(false);
         if (data.error) setError('Data may be stale - try refreshing');
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Error fetching DReps:', err);
         setError('Failed to load DReps. Please try refreshing the page.');
         setLoading(false);
@@ -134,7 +137,9 @@ export function DRepTableClient({
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [filterWellDocumented, setFilterWellDocumented] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sizeFilters, setSizeFilters] = useState<Set<SizeTier>>(new Set(['Small', 'Medium', 'Large', 'Whale']));
+  const [sizeFilters, setSizeFilters] = useState<Set<SizeTier>>(
+    new Set(['Small', 'Medium', 'Large', 'Whale']),
+  );
   const [showMyDrepOnly, setShowMyDrepOnly] = useState(false);
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -168,7 +173,7 @@ export function DRepTableClient({
           setVisibleCardCount((prev) => prev + CARD_PAGE_SIZE);
         }
       },
-      { rootMargin: '200px' }
+      { rootMargin: '200px' },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -177,14 +182,20 @@ export function DRepTableClient({
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
     setCurrentPage(1);
-    try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch { /* noop */ }
-    import('@/lib/posthog').then(({ posthog }) => {
-      posthog.capture('drep_view_mode_changed', { mode });
-    }).catch(() => {});
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      /* noop */
+    }
+    import('@/lib/posthog')
+      .then(({ posthog }) => {
+        posthog.capture('drep_view_mode_changed', { mode });
+      })
+      .catch(() => {});
   };
 
   const handleCompareToggle = useCallback((drepId: string) => {
-    setCompareSelection(prev => {
+    setCompareSelection((prev) => {
       const next = new Set(prev);
       if (next.has(drepId)) {
         next.delete(drepId);
@@ -206,12 +217,12 @@ export function DRepTableClient({
     result = result.filter((drep) => sizeFilters.has(drep.sizeTier));
 
     if (showMyDrepOnly && delegatedDrepId) {
-      result = result.filter(d => d.drepId === delegatedDrepId);
+      result = result.filter((d) => d.drepId === delegatedDrepId);
     }
 
     if (showWatchlistOnly && watchlist.length > 0) {
       const wSet = new Set(watchlist);
-      result = result.filter(d => wSet.has(d.drepId));
+      result = result.filter((d) => wSet.has(d.drepId));
     }
 
     if (!searchQuery.trim()) return result;
@@ -223,14 +234,26 @@ export function DRepTableClient({
       const id = drep.drepId.toLowerCase();
       const handle = drep.handle?.toLowerCase() || '';
 
-      return name.includes(query) ||
-             ticker.includes(query) ||
-             id.includes(query) ||
-             handle.includes(query);
+      return (
+        name.includes(query) ||
+        ticker.includes(query) ||
+        id.includes(query) ||
+        handle.includes(query)
+      );
     });
-  }, [filterWellDocumented, sizeFilters, searchQuery, allDReps, wellDocDReps, showMyDrepOnly, showWatchlistOnly, delegatedDrepId, watchlist]);
+  }, [
+    filterWellDocumented,
+    sizeFilters,
+    searchQuery,
+    allDReps,
+    wellDocDReps,
+    showMyDrepOnly,
+    showWatchlistOnly,
+    delegatedDrepId,
+    watchlist,
+  ]);
 
-  const sizeTierOrder: Record<string, number> = { 'Small': 1, 'Medium': 2, 'Large': 3, 'Whale': 4 };
+  const sizeTierOrder: Record<string, number> = { Small: 1, Medium: 2, Large: 3, Whale: 4 };
 
   // Sorting Logic
   const sortedDReps = useMemo(() => {
@@ -270,8 +293,7 @@ export function DRepTableClient({
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => ({
       key,
-      direction:
-        current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
     }));
     setCurrentPage(1);
   };
@@ -281,9 +303,12 @@ export function DRepTableClient({
     setCurrentPage(1);
   }, []);
 
-  const handleSearchSelectDRep = useCallback((drepId: string) => {
-    router.push(`/drep/${encodeURIComponent(drepId)}`);
-  }, [router]);
+  const handleSearchSelectDRep = useCallback(
+    (drepId: string) => {
+      router.push(`/drep/${encodeURIComponent(drepId)}`);
+    },
+    [router],
+  );
 
   const handleReset = () => {
     setSearchQuery('');
@@ -298,7 +323,9 @@ export function DRepTableClient({
   const preserveScroll = useCallback((fn: () => void) => {
     const y = window.scrollY;
     fn();
-    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' })));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' })),
+    );
   }, []);
 
   const toggleSizeFilter = (size: SizeTier) => {
@@ -327,18 +354,18 @@ export function DRepTableClient({
           setError(null);
           setLoading(true);
           fetch('/api/dreps')
-            .then(res => {
+            .then((res) => {
               if (!res.ok) throw new Error('Failed to fetch DReps');
               return res.json();
             })
-            .then(data => {
+            .then((data) => {
               setWellDocDReps(data.dreps || []);
               setAllDReps(data.allDReps || []);
               setTotalAvailable(data.totalAvailable || 0);
               setLoading(false);
               if (data.error) setError('Data may be stale - try refreshing');
             })
-            .catch(err => {
+            .catch((err) => {
               console.error('Error fetching DReps:', err);
               setError('Failed to load DReps. Please try refreshing the page.');
               setLoading(false);
@@ -368,7 +395,9 @@ export function DRepTableClient({
                 onClick={() => handleViewModeChange('cards')}
                 className={cn(
                   'p-1.5 rounded-md transition-colors',
-                  viewMode === 'cards' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  viewMode === 'cards'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
                 aria-label="Card view"
               >
@@ -378,7 +407,9 @@ export function DRepTableClient({
                 onClick={() => handleViewModeChange('table')}
                 className={cn(
                   'p-1.5 rounded-md transition-colors',
-                  viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  viewMode === 'table'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
                 aria-label="Table view"
               >
@@ -389,14 +420,27 @@ export function DRepTableClient({
 
           <FilterPanel
             filterWellDocumented={filterWellDocumented}
-            onFilterWellDocumentedChange={(checked) => { setFilterWellDocumented(checked); setCurrentPage(1); }}
+            onFilterWellDocumentedChange={(checked) => {
+              setFilterWellDocumented(checked);
+              setCurrentPage(1);
+            }}
             sizeFilters={sizeFilters}
             onToggleSizeFilter={toggleSizeFilter}
             showMyDrepOnly={showMyDrepOnly}
-            onToggleMyDrep={() => preserveScroll(() => { setShowMyDrepOnly(!showMyDrepOnly); setCurrentPage(1); })}
+            onToggleMyDrep={() =>
+              preserveScroll(() => {
+                setShowMyDrepOnly(!showMyDrepOnly);
+                setCurrentPage(1);
+              })
+            }
             hasMyDrep={!!delegatedDrepId}
             showWatchlistOnly={showWatchlistOnly}
-            onToggleWatchlist={() => preserveScroll(() => { setShowWatchlistOnly(!showWatchlistOnly); setCurrentPage(1); })}
+            onToggleWatchlist={() =>
+              preserveScroll(() => {
+                setShowWatchlistOnly(!showWatchlistOnly);
+                setCurrentPage(1);
+              })
+            }
             watchlistCount={watchlist.length}
             onReset={handleReset}
             hasMatch={hasMatch}
@@ -419,7 +463,7 @@ export function DRepTableClient({
           message={
             searchQuery
               ? `No results matching "${searchQuery}"`
-              : "No DReps match. Try adjusting your filters — there are hundreds of active representatives to explore."
+              : 'No DReps match. Try adjusting your filters — there are hundreds of active representatives to explore.'
           }
           icon="search"
           action={
@@ -446,14 +490,16 @@ export function DRepTableClient({
               if (quickViewEnabled) {
                 setQuickViewDrep(drep);
                 setQuickViewOpen(true);
-                import('@/lib/posthog').then(({ posthog }) => {
-                  posthog.capture('drep_quick_view_opened', {
-                    drep_id: drep.drepId,
-                    drep_score: drep.drepScore,
-                    has_match: !!matchData[drep.drepId],
-                    view_mode: viewMode,
-                  });
-                }).catch(() => {});
+                import('@/lib/posthog')
+                  .then(({ posthog }) => {
+                    posthog.capture('drep_quick_view_opened', {
+                      drep_id: drep.drepId,
+                      drep_score: drep.drepScore,
+                      has_match: !!matchData[drep.drepId],
+                      view_mode: viewMode,
+                    });
+                  })
+                  .catch(() => {});
               } else {
                 router.push(`/drep/${encodeURIComponent(drep.drepId)}`);
               }
@@ -463,7 +509,7 @@ export function DRepTableClient({
             <div ref={loadMoreRef} className="flex justify-center py-6">
               <Button
                 variant="outline"
-                onClick={() => setVisibleCardCount(prev => prev + CARD_PAGE_SIZE)}
+                onClick={() => setVisibleCardCount((prev) => prev + CARD_PAGE_SIZE)}
               >
                 Load More ({sortedDReps.length - visibleCardCount} remaining)
               </Button>
@@ -491,7 +537,7 @@ export function DRepTableClient({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -502,7 +548,7 @@ export function DRepTableClient({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -515,19 +561,24 @@ export function DRepTableClient({
       {/* Quick View Sheet */}
       <FeatureGate flag="drep_quick_view">
         <DRepQuickView
-        drep={quickViewDrep}
-        open={quickViewOpen}
-        onOpenChange={setQuickViewOpen}
-        matchDetail={quickViewMatchDetail ?? (quickViewDrep && matchData[quickViewDrep.drepId] != null ? {
-          matchScore: matchData[quickViewDrep.drepId],
-          agreed: 0,
-          total: 0,
-          comparisons: [],
-        } : undefined)}
-        isWatchlisted={quickViewDrep ? watchlist.includes(quickViewDrep.drepId) : false}
-        onWatchlistToggle={onWatchlistToggle}
-        isDelegated={quickViewDrep?.drepId === delegatedDrepId}
-      />
+          drep={quickViewDrep}
+          open={quickViewOpen}
+          onOpenChange={setQuickViewOpen}
+          matchDetail={
+            quickViewMatchDetail ??
+            (quickViewDrep && matchData[quickViewDrep.drepId] != null
+              ? {
+                  matchScore: matchData[quickViewDrep.drepId],
+                  agreed: 0,
+                  total: 0,
+                  comparisons: [],
+                }
+              : undefined)
+          }
+          isWatchlisted={quickViewDrep ? watchlist.includes(quickViewDrep.drepId) : false}
+          onWatchlistToggle={onWatchlistToggle}
+          isDelegated={quickViewDrep?.drepId === delegatedDrepId}
+        />
       </FeatureGate>
 
       {/* Floating Compare Bar */}
@@ -535,9 +586,7 @@ export function DRepTableClient({
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200">
           <div className="flex items-center gap-3 bg-primary text-primary-foreground px-5 py-3 rounded-full shadow-lg">
             <GitCompareArrows className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              {compareSelection.size} DReps selected
-            </span>
+            <span className="text-sm font-medium">{compareSelection.size} DReps selected</span>
             <a href={`/compare?dreps=${[...compareSelection].join(',')}`}>
               <Button size="sm" variant="secondary" className="h-7 text-xs font-semibold">
                 Compare Now

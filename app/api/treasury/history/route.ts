@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const incomeVsOutflow = getIncomeVsOutflow(snapshots);
 
     return NextResponse.json({
-      snapshots: snapshots.map(s => ({
+      snapshots: snapshots.map((s) => ({
         epoch: s.epoch,
         balanceAda: s.balanceAda,
         withdrawalsAda: s.withdrawalsAda,

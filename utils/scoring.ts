@@ -58,10 +58,7 @@ export function getSizeBadgeClass(tier: SizeTier): string {
  * @param totalProposals Total number of proposals during active period
  * @returns Participation rate as percentage (0-100)
  */
-export function calculateParticipationRate(
-  votesCount: number,
-  totalProposals: number
-): number {
+export function calculateParticipationRate(votesCount: number, totalProposals: number): number {
   if (totalProposals === 0) return 0;
   return Math.min(100, Math.round((votesCount / totalProposals) * 100));
 }
@@ -73,24 +70,26 @@ export function calculateParticipationRate(
  */
 export function calculateRationaleRate(votes: DRepVote[] | VoteRecord[]): number {
   if (votes.length === 0) return 0;
-  
-  const votesWithRationale = votes.filter(vote => {
+
+  const votesWithRationale = votes.filter((vote) => {
     if ('meta_url' in vote) {
-      return vote.meta_url !== null
-        || vote.meta_json?.rationale != null
-        || vote.meta_json?.body?.comment != null
-        || vote.meta_json?.body?.rationale != null;
+      return (
+        vote.meta_url !== null ||
+        vote.meta_json?.rationale != null ||
+        vote.meta_json?.body?.comment != null ||
+        vote.meta_json?.body?.rationale != null
+      );
     }
     return vote.hasRationale;
   }).length;
-  
+
   return Math.round((votesWithRationale / votes.length) * 100);
 }
 
 /**
  * Calculate deliberation modifier based on vote uniformity
  * Penalizes rubber-stamping (voting the same way >85% of the time)
- * 
+ *
  * @param yesVotes Number of Yes votes
  * @param noVotes Number of No votes
  * @param abstainVotes Number of Abstain votes
@@ -99,17 +98,17 @@ export function calculateRationaleRate(votes: DRepVote[] | VoteRecord[]): number
 export function calculateDeliberationModifier(
   yesVotes: number,
   noVotes: number,
-  abstainVotes: number
+  abstainVotes: number,
 ): number {
   const totalVotes = yesVotes + noVotes + abstainVotes;
-  
+
   if (totalVotes <= 10) return 1.0;
-  
+
   const dominantCount = Math.max(yesVotes, noVotes, abstainVotes);
   const dominantRatio = dominantCount / totalVotes;
-  
-  if (dominantRatio > 0.95) return 0.70;
-  if (dominantRatio > 0.90) return 0.85;
+
+  if (dominantRatio > 0.95) return 0.7;
+  if (dominantRatio > 0.9) return 0.85;
   if (dominantRatio > 0.85) return 0.95;
   return 1.0;
 }
@@ -138,7 +137,7 @@ export function calculateReliability(
   epochVoteCounts: number[],
   firstEpoch: number | undefined,
   currentEpoch: number,
-  proposalEpochs?: Map<number, number>
+  proposalEpochs?: Map<number, number>,
 ): ReliabilityResult {
   const zero: ReliabilityResult = { score: 0, streak: 0, recency: 999, longestGap: 0, tenure: 0 };
   if (!epochVoteCounts || epochVoteCounts.length === 0 || firstEpoch === undefined) return zero;
@@ -158,7 +157,11 @@ export function calculateReliability(
   let streak = 0;
   for (let e = currentEpoch; e >= firstEpoch; e--) {
     if (!epochHadProposals(e)) continue;
-    if (votedEpochs.has(e)) { streak++; } else { break; }
+    if (votedEpochs.has(e)) {
+      streak++;
+    } else {
+      break;
+    }
   }
   const streakScore = Math.min(100, streak * 10);
 
@@ -186,10 +189,7 @@ export function calculateReliability(
   const tenureScore = Math.min(100, Math.round(20 + 80 * (1 - Math.exp(-tenure / 30))));
 
   const reliability = Math.round(
-    streakScore * 0.35 +
-    recencyScore * 0.30 +
-    gapScore * 0.20 +
-    tenureScore * 0.15
+    streakScore * 0.35 + recencyScore * 0.3 + gapScore * 0.2 + tenureScore * 0.15,
   );
 
   return {
@@ -203,14 +203,14 @@ export function calculateReliability(
 
 /**
  * Calculate effective participation (participation rate with deliberation modifier)
- * 
+ *
  * @param participationRate Raw participation rate (0-100)
  * @param deliberationModifier Modifier from calculateDeliberationModifier (0.70-1.0)
  * @returns Effective participation rate (0-100)
  */
 export function calculateEffectiveParticipation(
   participationRate: number,
-  deliberationModifier: number
+  deliberationModifier: number,
 ): number {
   return Math.round(participationRate * deliberationModifier);
 }
@@ -235,7 +235,7 @@ function extractStringValue(value: unknown): string | null {
  */
 export function calculateProfileCompleteness(
   metadata: Record<string, unknown> | null,
-  brokenUris?: Set<string>
+  brokenUris?: Set<string>,
 ): number {
   if (!metadata) return 0;
 
@@ -274,9 +274,12 @@ export function calculateProfileCompleteness(
 // ---------------------------------------------------------------------------
 
 const CRITICAL_PROPOSAL_TYPES = [
-  'HardForkInitiation', 'NoConfidence',
-  'NewCommittee', 'NewConstitutionalCommittee',
-  'NewConstitution', 'UpdateConstitution',
+  'HardForkInitiation',
+  'NoConfidence',
+  'NewCommittee',
+  'NewConstitutionalCommittee',
+  'NewConstitution',
+  'UpdateConstitution',
 ];
 
 const RATIONALE_EXEMPT_TYPES = ['InfoAction'];
@@ -287,7 +290,8 @@ function getProposalImportanceWeight(ctx: ProposalContext): number {
   if (
     ctx.proposalType === 'TreasuryWithdrawals' &&
     (ctx.treasuryTier === 'significant' || ctx.treasuryTier === 'major')
-  ) return 2;
+  )
+    return 2;
   return 1;
 }
 
@@ -301,9 +305,7 @@ export function hasQualityRationale(vote: DRepVote, resolvedText?: string): bool
   }
 
   const inline =
-    vote.meta_json?.body?.comment ||
-    vote.meta_json?.body?.rationale ||
-    vote.meta_json?.rationale;
+    vote.meta_json?.body?.comment || vote.meta_json?.body?.rationale || vote.meta_json?.rationale;
 
   if (typeof inline === 'string') {
     return inline.length >= MIN_RATIONALE_LENGTH;
@@ -322,7 +324,7 @@ export function hasQualityRationale(vote: DRepVote, resolvedText?: string): bool
 export function calculateWeightedRationaleRate(
   votes: DRepVote[],
   proposalMap: Map<string, ProposalContext>,
-  rationaleTexts?: Map<string, string>
+  rationaleTexts?: Map<string, string>,
 ): number {
   if (votes.length === 0) return 0;
 
@@ -382,16 +384,16 @@ export function applyRationaleCurve(rawRate: number): number {
 /**
  * Calculate abstention penalty
  * Excessive abstentions reduce overall effectiveness
- * 
+ *
  * @param votes Array of vote records
  * @returns Penalty percentage (0-100, higher = worse)
  */
 export function calculateAbstentionPenalty(votes: DRepVote[]): number {
   if (votes.length === 0) return 0;
-  
-  const abstentions = votes.filter(vote => vote.vote === 'Abstain').length;
+
+  const abstentions = votes.filter((vote) => vote.vote === 'Abstain').length;
   const abstentionRate = (abstentions / votes.length) * 100;
-  
+
   // Mild penalty for <25%, moderate for 25-50%, severe for >50%
   if (abstentionRate < 25) return Math.round(abstentionRate * 0.5);
   if (abstentionRate < 50) return Math.round(abstentionRate * 0.75);
@@ -401,72 +403,69 @@ export function calculateAbstentionPenalty(votes: DRepVote[]): number {
 /**
  * Calculate value alignment score
  * Matches DRep voting patterns with user's value preferences
- * 
+ *
  * @param votes Array of DRep votes
  * @param userValues Selected value preferences
  * @returns Alignment score (0-100)
  */
-export function calculateValueAlignment(
-  votes: DRepVote[],
-  userValues: ValuePreference[]
-): number {
+export function calculateValueAlignment(votes: DRepVote[], userValues: ValuePreference[]): number {
   if (userValues.length === 0 || votes.length === 0) return 0;
-  
+
   let totalScore = 0;
   let scoredValues = 0;
-  
+
   for (const value of userValues) {
     let valueScore = 0;
-    
+
     switch (value) {
       case 'High Participation': {
         // Reward high participation (non-abstain votes)
-        const participationRate = votes.filter(v => v.vote !== 'Abstain').length / votes.length;
+        const participationRate = votes.filter((v) => v.vote !== 'Abstain').length / votes.length;
         valueScore = participationRate * 100;
         break;
       }
-      
+
       case 'Active Rationale Provider': {
         // Reward providing rationale
         valueScore = calculateRationaleRate(votes);
         break;
       }
-      
+
       case 'Treasury Conservative': {
         // Reward 'No' votes on treasury spending proposals
         // This is a simplified heuristic - would need proposal type analysis
-        const noVoteRate = votes.filter(v => v.vote === 'No').length / votes.length;
+        const noVoteRate = votes.filter((v) => v.vote === 'No').length / votes.length;
         valueScore = noVoteRate * 100;
         break;
       }
-      
+
       case 'Pro-DeFi': {
         // Reward 'Yes' votes (simplified - would need proposal type analysis)
-        const yesVoteRate = votes.filter(v => v.vote === 'Yes').length / votes.length;
+        const yesVoteRate = votes.filter((v) => v.vote === 'Yes').length / votes.length;
         valueScore = yesVoteRate * 70; // Weight lower as this is a rough heuristic
         break;
       }
-      
+
       case 'Pro-Privacy': {
         // Placeholder - would need proposal content analysis
         // For now, give moderate score based on rationale provision
         valueScore = calculateRationaleRate(votes) * 0.5;
         break;
       }
-      
+
       case 'Pro-Decentralization': {
         // Placeholder - would need proposal content analysis
         // Give moderate score based on consistent voting (not just abstaining)
-        const activeVoteRate = votes.filter(v => v.vote !== 'Abstain').length / votes.length;
+        const activeVoteRate = votes.filter((v) => v.vote !== 'Abstain').length / votes.length;
         valueScore = activeVoteRate * 70;
         break;
       }
     }
-    
+
     totalScore += valueScore;
     scoredValues++;
   }
-  
+
   return scoredValues > 0 ? Math.round(totalScore / scoredValues) : 0;
 }
 
@@ -477,9 +476,9 @@ export function calculateValueAlignment(
  */
 export function getVoteDistribution(votes: DRepVote[]) {
   return {
-    yes: votes.filter(v => v.vote === 'Yes').length,
-    no: votes.filter(v => v.vote === 'No').length,
-    abstain: votes.filter(v => v.vote === 'Abstain').length,
+    yes: votes.filter((v) => v.vote === 'Yes').length,
+    no: votes.filter((v) => v.vote === 'No').length,
+    abstain: votes.filter((v) => v.vote === 'Abstain').length,
     total: votes.length,
   };
 }
@@ -556,7 +555,7 @@ export function getRationaleColor(rate: number): string {
 export function shortenDRepId(
   drepId: string,
   prefixLength: number = 8,
-  suffixLength: number = 6
+  suffixLength: number = 6,
 ): string {
   if (drepId.length <= prefixLength + suffixLength) return drepId;
   return `${drepId.slice(0, prefixLength)}...${drepId.slice(-suffixLength)}`;
@@ -566,10 +565,7 @@ export function shortenDRepId(
  * Compute human-readable reliability hint from stored component values.
  * Prefers stored values; falls back to recomputing from epoch data.
  */
-export function getReliabilityHintFromStored(
-  streak: number,
-  recency: number
-): string {
+export function getReliabilityHintFromStored(streak: number, recency: number): string {
   if (recency > 5) return `Last voted ${recency} epochs ago`;
   if (streak >= 3) return `${streak}-epoch active streak`;
   if (recency === 0) return 'Voted this epoch';
@@ -583,7 +579,7 @@ export function getReliabilityHintFromStored(
 export function getReliabilityHint(
   epochVoteCounts: number[],
   firstEpoch: number | undefined,
-  currentEpoch: number
+  currentEpoch: number,
 ): string {
   if (!epochVoteCounts || epochVoteCounts.length === 0 || firstEpoch === undefined) {
     return 'No voting history';
@@ -600,7 +596,11 @@ export function getReliabilityHint(
 
   let streak = 0;
   for (let e = currentEpoch; e >= firstEpoch; e--) {
-    if (votedEpochs.has(e)) { streak++; } else if (streak > 0) { break; }
+    if (votedEpochs.has(e)) {
+      streak++;
+    } else if (streak > 0) {
+      break;
+    }
   }
 
   return getReliabilityHintFromStored(streak, epochsSince);
@@ -626,12 +626,14 @@ export function getPillarStatus(value: number): PillarStatus {
  */
 export function getMissingProfileFields(
   metadata: Record<string, unknown> | null,
-  brokenUris?: Set<string>
+  brokenUris?: Set<string>,
 ): string[] {
   const missing: string[] = [];
-  if (!metadata) return ['name', 'objectives', 'motivations', 'qualifications', 'bio', 'social links'];
+  if (!metadata)
+    return ['name', 'objectives', 'motivations', 'qualifications', 'bio', 'social links'];
 
-  if (!extractStringValue(metadata.givenName) && !extractStringValue(metadata.name)) missing.push('name');
+  if (!extractStringValue(metadata.givenName) && !extractStringValue(metadata.name))
+    missing.push('name');
   if (!extractStringValue(metadata.objectives)) missing.push('objectives');
   if (!extractStringValue(metadata.motivations)) missing.push('motivations');
   if (!extractStringValue(metadata.qualifications)) missing.push('qualifications');
@@ -665,7 +667,9 @@ export function getMissingProfileFields(
  * Identify the single highest-impact quick win across all pillars.
  * Returns a label like "Complete your profile (+6 pts)" or null if all strong.
  */
-export function getEasiestWin(pillars: { label: string; value: number; maxPoints: number }[]): string | null {
+export function getEasiestWin(
+  pillars: { label: string; value: number; maxPoints: number }[],
+): string | null {
   let best: { label: string; gain: number } | null = null;
 
   for (const p of pillars) {
@@ -675,7 +679,7 @@ export function getEasiestWin(pillars: { label: string; value: number; maxPoints
     const targetValue = status === 'low' ? 50 : 80;
     const gap = targetValue - p.value;
     const targetLabel = status === 'low' ? 'Needs Work' : 'Strong';
-    const pointGain = Math.round(gap * p.maxPoints / 100);
+    const pointGain = Math.round((gap * p.maxPoints) / 100);
 
     if (!best || pointGain > best.gain) {
       best = { label: `Improve ${p.label} to ${targetLabel} (+${pointGain} pts)`, gain: pointGain };

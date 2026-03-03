@@ -24,12 +24,7 @@ interface AnimatedTabsProps {
 
 const SLIDE_DISTANCE = 60;
 
-export function AnimatedTabs({
-  tabs,
-  defaultTab,
-  stickyOffset,
-  className,
-}: AnimatedTabsProps) {
+export function AnimatedTabs({ tabs, defaultTab, stickyOffset, className }: AnimatedTabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || '');
   const prevIndexRef = useRef(tabs.findIndex((t) => t.id === activeTab));
   const [direction, setDirection] = useState(0);
@@ -56,24 +51,15 @@ export function AnimatedTabs({
   };
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={handleTabChange}
-      className={cn('w-full', className)}
-    >
+    <Tabs value={activeTab} onValueChange={handleTabChange} className={cn('w-full', className)}>
       <TabsList
         variant="line"
         className={cn(
           'w-full justify-start gap-0 overflow-x-auto scrollbar-hide bg-transparent border-b border-border px-0',
           'snap-x snap-mandatory scroll-smooth',
-          stickyOffset !== undefined &&
-            `sticky z-30 bg-background/95 backdrop-blur-sm`,
+          stickyOffset !== undefined && `sticky z-30 bg-background/95 backdrop-blur-sm`,
         )}
-        style={
-          stickyOffset !== undefined
-            ? { top: `${stickyOffset}px` }
-            : undefined
-        }
+        style={stickyOffset !== undefined ? { top: `${stickyOffset}px` } : undefined}
       >
         {tabs.map(({ id, label, icon: Icon }) => (
           <TabsTrigger

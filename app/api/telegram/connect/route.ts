@@ -46,23 +46,34 @@ export async function POST(request: NextRequest) {
     const wallet = parsed.walletAddress;
 
     // Create the actual connection
-    await supabase.from('user_channels').upsert({
-      user_wallet: wallet,
-      channel: 'telegram',
-      channel_identifier: chatId,
-      config: { chatId: config.chatId },
-      connected_at: new Date().toISOString(),
-    }, { onConflict: 'user_wallet,channel' });
-
-    // Enable default notification preferences
-    const defaultEvents = ['score-change', 'pending-proposals', 'urgent-deadline', 'critical-proposal-open'];
-    for (const eventType of defaultEvents) {
-      await supabase.from('notification_preferences').upsert({
+    await supabase.from('user_channels').upsert(
+      {
         user_wallet: wallet,
         channel: 'telegram',
-        event_type: eventType,
-        enabled: true,
-      }, { onConflict: 'user_wallet,channel,event_type' });
+        channel_identifier: chatId,
+        config: { chatId: config.chatId },
+        connected_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_wallet,channel' },
+    );
+
+    // Enable default notification preferences
+    const defaultEvents = [
+      'score-change',
+      'pending-proposals',
+      'urgent-deadline',
+      'critical-proposal-open',
+    ];
+    for (const eventType of defaultEvents) {
+      await supabase.from('notification_preferences').upsert(
+        {
+          user_wallet: wallet,
+          channel: 'telegram',
+          event_type: eventType,
+          enabled: true,
+        },
+        { onConflict: 'user_wallet,channel,event_type' },
+      );
     }
 
     captureServerEvent('telegram_connected', { chat_id: chatId }, wallet);
@@ -82,7 +93,7 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: config.chatId,
-          text: '✅ <b>Wallet Connected!</b>\n\nYour Telegram is now linked to your DRepScore account. You\'ll receive governance alerts here.',
+          text: "✅ <b>Wallet Connected!</b>\n\nYour Telegram is now linked to your DRepScore account. You'll receive governance alerts here.",
           parse_mode: 'HTML',
         }),
       }).catch(() => {});

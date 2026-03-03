@@ -2,13 +2,7 @@
 
 import { useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  ShieldCheck,
-  AlertTriangle,
-  AlertOctagon,
-  CheckCircle2,
-  Wallet,
-} from 'lucide-react';
+import { ShieldCheck, AlertTriangle, AlertOctagon, CheckCircle2, Wallet } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 
 interface HealthData {
@@ -49,15 +43,21 @@ function computeSignals(health: HealthData, proposals: ActiveProposal[]): Signal
 
   // RED signals
   if (drepScore != null && drepScore < 50) {
-    signals.push({ level: 'red', message: `DRep score is ${drepScore}/100 — below acceptable threshold` });
+    signals.push({
+      level: 'red',
+      message: `DRep score is ${drepScore}/100 — below acceptable threshold`,
+    });
   }
 
   if (openProposalCount != null && openProposalCount > 0 && (votedOnOpen ?? 0) === 0) {
-    signals.push({ level: 'red', message: `DRep has not voted on any of ${openProposalCount} open proposals` });
+    signals.push({
+      level: 'red',
+      message: `DRep has not voted on any of ${openProposalCount} open proposals`,
+    });
   }
 
   const criticalUnvoted = proposals.filter(
-    p => p.epochsRemaining != null && p.epochsRemaining <= 1 && !p.drepVote
+    (p) => p.epochsRemaining != null && p.epochsRemaining <= 1 && !p.drepVote,
   );
   for (const p of criticalUnvoted) {
     signals.push({
@@ -68,7 +68,10 @@ function computeSignals(health: HealthData, proposals: ActiveProposal[]): Signal
 
   // AMBER signals (only if not already covered by red)
   if (drepScore != null && drepScore >= 50 && drepScore < 65) {
-    signals.push({ level: 'amber', message: `DRep score is ${drepScore}/100 — below recommended level` });
+    signals.push({
+      level: 'amber',
+      message: `DRep score is ${drepScore}/100 — below recommended level`,
+    });
   }
 
   if (
@@ -85,15 +88,18 @@ function computeSignals(health: HealthData, proposals: ActiveProposal[]): Signal
   }
 
   if (representationScore != null && representationScore < 50) {
-    signals.push({ level: 'amber', message: `Representation score is ${representationScore}% — your DRep often votes differently from you` });
+    signals.push({
+      level: 'amber',
+      message: `Representation score is ${representationScore}% — your DRep often votes differently from you`,
+    });
   }
 
   return signals;
 }
 
 function overallLevel(signals: Signal[]): RiskLevel {
-  if (signals.some(s => s.level === 'red')) return 'red';
-  if (signals.some(s => s.level === 'amber')) return 'amber';
+  if (signals.some((s) => s.level === 'red')) return 'red';
+  if (signals.some((s) => s.level === 'amber')) return 'amber';
   return 'green';
 }
 
@@ -173,9 +179,10 @@ export function GovernanceRiskSignals({ health, activeProposals }: GovernanceRis
           <ul className="space-y-2">
             {signals.map((s, i) => {
               const BulletIcon = s.level === 'red' ? AlertOctagon : AlertTriangle;
-              const bulletColor = s.level === 'red'
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-amber-600 dark:text-amber-400';
+              const bulletColor =
+                s.level === 'red'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-amber-600 dark:text-amber-400';
               return (
                 <li key={i} className="flex items-start gap-2 text-sm">
                   <BulletIcon className={`h-4 w-4 shrink-0 mt-0.5 ${bulletColor}`} />

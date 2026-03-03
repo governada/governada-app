@@ -18,10 +18,7 @@ interface Dimensions {
   margin: ChartMargin;
 }
 
-export function useChartDimensions(
-  fixedHeight = 250,
-  customMargin?: Partial<ChartMargin>,
-) {
+export function useChartDimensions(fixedHeight = 250, customMargin?: Partial<ChartMargin>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState<Dimensions>({
     width: 0,

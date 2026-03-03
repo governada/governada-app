@@ -12,8 +12,11 @@ import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 
 const GovernanceConstellation = dynamic(
-  () => import('@/components/GovernanceConstellation').then(m => ({ default: m.GovernanceConstellation })),
-  { ssr: false }
+  () =>
+    import('@/components/GovernanceConstellation').then((m) => ({
+      default: m.GovernanceConstellation,
+    })),
+  { ssr: false },
 );
 
 interface PersonalCardData {
@@ -32,7 +35,12 @@ interface ConstellationHeroProps {
   onPersonalCard?: (data: PersonalCardData | null) => void;
 }
 
-export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPersonalCard }: ConstellationHeroProps) {
+export function ConstellationHero({
+  stats,
+  ssrHolderData,
+  ssrWalletAddress,
+  onPersonalCard,
+}: ConstellationHeroProps) {
   const constellationRef = useRef<ConstellationRef>(null);
   const { isAuthenticated, delegatedDrepId, ownDRepId } = useWallet();
   const [constellationReady, setConstellationReady] = useState(false);
@@ -85,8 +93,8 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
     fetch(`/api/governance/holder?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         if (data) setHolderData(data);
 
         // Trigger find-me animation
@@ -110,7 +118,14 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
         setContracted(true);
         setShowPersonalCard(true);
       });
-  }, [isAuthenticated, delegatedDrepId, ownDRepId, ssrHolderData, constellationReady, hasTriggeredFindMe]);
+  }, [
+    isAuthenticated,
+    delegatedDrepId,
+    ownDRepId,
+    ssrHolderData,
+    constellationReady,
+    hasTriggeredFindMe,
+  ]);
 
   const handleConstellationReady = useCallback(() => {
     setConstellationReady(true);
@@ -125,7 +140,9 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
   }, []);
 
   const handleConnectWallet = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('openWalletConnect', { detail: { skipPushPrompt: true } }));
+    window.dispatchEvent(
+      new CustomEvent('openWalletConnect', { detail: { skipPushPrompt: true } }),
+    );
   }, []);
 
   const handleConstellationHover = useCallback(() => {
@@ -199,7 +216,9 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
       <FeatureGate
         flag="constellation_3d"
         fallback={
-          <div className={`w-full bg-gradient-to-b from-[#0a0b14] via-[#0f1225] to-[#0a0b14] ${contracted ? 'h-[40vh]' : 'h-[85vh]'}`} />
+          <div
+            className={`w-full bg-gradient-to-b from-[#0a0b14] via-[#0f1225] to-[#0a0b14] ${contracted ? 'h-[40vh]' : 'h-[85vh]'}`}
+          />
         }
       >
         <GovernanceConstellation
@@ -224,17 +243,16 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
 
       {/* Text Overlay */}
       {!showPersonalCard && (
-        <div className={`absolute inset-0 flex flex-col items-center justify-start pt-[14vh] md:justify-center md:pt-0 z-10 pointer-events-none px-4 transition-opacity duration-700 ${constellationReady ? 'opacity-100' : 'opacity-0'}`}>
-          <h1
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-center max-w-4xl leading-tight animate-fade-in-up hero-text-shadow"
-          >
-            <span className="text-white">
-              This is what decentralized governance looks like.
-            </span>
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-start pt-[14vh] md:justify-center md:pt-0 z-10 pointer-events-none px-4 transition-opacity duration-700 ${constellationReady ? 'opacity-100' : 'opacity-0'}`}
+        >
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-center max-w-4xl leading-tight animate-fade-in-up hero-text-shadow">
+            <span className="text-white">This is what decentralized governance looks like.</span>
           </h1>
 
           <p className="mt-4 text-sm sm:text-base md:text-lg text-white/60 text-center max-w-2xl animate-fade-in-up animation-delay-200 hero-text-shadow">
-            {stats.activeDReps.toLocaleString()} representatives. {stats.totalAdaGoverned} ADA. Every vote shapes Cardano&apos;s future.
+            {stats.activeDReps.toLocaleString()} representatives. {stats.totalAdaGoverned} ADA.
+            Every vote shapes Cardano&apos;s future.
           </p>
 
           {/* Live stats strip */}
@@ -248,7 +266,10 @@ export function ConstellationHero({ stats, ssrHolderData, ssrWalletAddress, onPe
 
           {!isAuthenticated && !ssrWalletAddress && (
             <button
-              onClick={(e) => { e.stopPropagation(); handleConnectWallet(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleConnectWallet();
+              }}
               className="mt-8 px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-all pointer-events-auto animate-fade-in-up animation-delay-400 animate-cta-pulse"
             >
               Enter Governance

@@ -17,11 +17,7 @@ export async function GET(request: NextRequest) {
         .eq('drep_id', drepId)
         .order('epoch_no', { ascending: true })
         .limit(50),
-      supabase
-        .from('dreps')
-        .select('info')
-        .eq('id', drepId)
-        .single(),
+      supabase.from('dreps').select('info').eq('id', drepId).single(),
     ]);
 
     const snapshots = (snapshotsResult.data || []).map((s: any) => ({

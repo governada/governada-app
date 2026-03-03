@@ -1,7 +1,17 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Code2, Blocks, Zap, Key, ArrowRight, Globe, BarChart3, Users, ChevronRight } from 'lucide-react';
+import {
+  Code2,
+  Blocks,
+  Zap,
+  Key,
+  ArrowRight,
+  Globe,
+  BarChart3,
+  Users,
+  ChevronRight,
+} from 'lucide-react';
 import { fadeInUp, staggerContainer, spring } from '@/lib/animations';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -72,11 +82,15 @@ export function DeveloperPage() {
                 Developer Platform
               </span>
             </motion.div>
-            <motion.h1 variants={fadeInUp} className="text-4xl font-bold tracking-tight sm:text-5xl">
+            <motion.h1
+              variants={fadeInUp}
+              className="text-4xl font-bold tracking-tight sm:text-5xl"
+            >
               Build on Governance Intelligence
             </motion.h1>
             <motion.p variants={fadeInUp} className="text-lg text-muted-foreground">
-              Access scored DRep data, governance health metrics, and proposal intelligence via a simple REST API. Embed governance widgets on any site.
+              Access scored DRep data, governance health metrics, and proposal intelligence via a
+              simple REST API. Embed governance widgets on any site.
             </motion.p>
             <motion.div variants={fadeInUp} className="flex justify-center gap-3">
               <Button size="lg" asChild>
@@ -147,7 +161,8 @@ export function DeveloperPage() {
           >
             <h2 className="text-2xl font-bold">API Explorer</h2>
             <p className="text-muted-foreground">
-              Interactive documentation for all v1 endpoints. Click &quot;Try it&quot; to make a real request.
+              Interactive documentation for all v1 endpoints. Click &quot;Try it&quot; to make a
+              real request.
             </p>
           </motion.div>
 
@@ -181,7 +196,8 @@ export function DeveloperPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Embeddable DRep card with score, alignment radar, and identity color. Available in SVG, HTML, and JSON.
+                  Embeddable DRep card with score, alignment radar, and identity color. Available in
+                  SVG, HTML, and JSON.
                 </p>
                 <CodeExample code={EMBED_CODE} />
               </CardContent>
@@ -198,15 +214,17 @@ export function DeveloperPage() {
                 <p className="text-sm text-muted-foreground">
                   Live governance health gauge with trend sparkline. Updates automatically.
                 </p>
-                <CodeExample code={{
-                  html: `<iframe
+                <CodeExample
+                  code={{
+                    html: `<iframe
   src="https://drepscore.io/embed/ghi?theme=dark"
   width="280"
   height="160"
   frameBorder="0"
   style="border-radius: 12px;"
 ></iframe>`,
-                }} />
+                  }}
+                />
               </CardContent>
             </Card>
           </div>
@@ -249,7 +267,9 @@ export function DeveloperPage() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-lg">Pro</CardTitle>
-                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">Coming Soon</span>
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                    Coming Soon
+                  </span>
                 </div>
                 <p className="text-sm text-muted-foreground">API key authenticated</p>
               </CardHeader>
@@ -281,24 +301,30 @@ export function DeveloperPage() {
             </p>
           </motion.div>
 
-          <CodeExample code={{
-            curl: `curl "https://drepscore.io/api/v1/dreps?limit=5" \\
+          <CodeExample
+            code={{
+              curl: `curl "https://drepscore.io/api/v1/dreps?limit=5" \\
   -H "Authorization: Bearer ds_live_YOUR_API_KEY"`,
-            javascript: `const response = await fetch("https://drepscore.io/api/v1/dreps?limit=5", {
+              javascript: `const response = await fetch("https://drepscore.io/api/v1/dreps?limit=5", {
   headers: {
     "Authorization": "Bearer ds_live_YOUR_API_KEY"
   }
 });`,
-            python: `response = requests.get(
+              python: `response = requests.get(
     "https://drepscore.io/api/v1/dreps",
     headers={"Authorization": "Bearer ds_live_YOUR_API_KEY"},
     params={"limit": 5}
 )`,
-          }} />
+            }}
+          />
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Key className="h-4 w-4" />
-            <span>API keys start with <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">ds_live_</code>. Pro tier keys coming soon.</span>
+            <span>
+              API keys start with{' '}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">ds_live_</code>.
+              Pro tier keys coming soon.
+            </span>
           </div>
         </div>
       </section>
@@ -308,7 +334,8 @@ export function DeveloperPage() {
         <div className="container mx-auto max-w-6xl px-4 py-16 text-center space-y-4">
           <h2 className="text-2xl font-bold">Ready to build?</h2>
           <p className="text-muted-foreground">
-            Start with the API Explorer above, or check out the Pulse page to see governance intelligence in action.
+            Start with the API Explorer above, or check out the Pulse page to see governance
+            intelligence in action.
           </p>
           <div className="flex justify-center gap-3">
             <Button asChild>
@@ -324,7 +351,17 @@ export function DeveloperPage() {
   );
 }
 
-function StepCard({ step, icon, title, description }: { step: number; icon: React.ReactNode; title: string; description: string }) {
+function StepCard({
+  step,
+  icon,
+  title,
+  description,
+}: {
+  step: number;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
   return (
     <motion.div variants={fadeInUp}>
       <Card className="h-full">
@@ -346,8 +383,12 @@ function StepCard({ step, icon, title, description }: { step: number; icon: Reac
 function TierFeature({ text, highlight = false }: { text: string; highlight?: boolean }) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <ChevronRight className={`h-3.5 w-3.5 ${highlight ? 'text-primary' : 'text-muted-foreground'}`} />
-      <span className={highlight ? 'text-foreground font-medium' : 'text-muted-foreground'}>{text}</span>
+      <ChevronRight
+        className={`h-3.5 w-3.5 ${highlight ? 'text-primary' : 'text-muted-foreground'}`}
+      />
+      <span className={highlight ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+        {text}
+      </span>
     </div>
   );
 }

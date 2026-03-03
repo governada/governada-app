@@ -62,12 +62,12 @@ export async function GET(request: NextRequest) {
     const existingPollKeys = new Set(
       dbEvents
         .filter((e) => e.type === 'poll_vote' && e.proposalTxHash)
-        .map((e) => `${e.proposalTxHash}-${e.proposalIndex}`)
+        .map((e) => `${e.proposalTxHash}-${e.proposalIndex}`),
     );
 
     const pollVotes = pollResult.data || [];
     const missingPolls = pollVotes.filter(
-      (pv) => !existingPollKeys.has(`${pv.proposal_tx_hash}-${pv.proposal_index}`)
+      (pv) => !existingPollKeys.has(`${pv.proposal_tx_hash}-${pv.proposal_index}`),
     );
 
     // Fetch proposal titles for synthesized events
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     });
 
     const allEvents = [...dbEvents, ...synthesizedEvents].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     return NextResponse.json({ events: allEvents.slice(0, 50) });

@@ -3,16 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Heart, Copy, Check, ExternalLink } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const DREPSCORE_HANDLE = '$drepscore';
-const DREPSCORE_STAKE_ADDRESS =
-  'stake1u88sq2fanqmq0nuu7l4fjx353k99ngwmus67qr9g5jks2jgznfqnh';
+const DREPSCORE_STAKE_ADDRESS = 'stake1u88sq2fanqmq0nuu7l4fjx353k99ngwmus67qr9g5jks2jgznfqnh';
 const CARDANOSCAN_URL = `https://cardanoscan.io/stakekey/${DREPSCORE_STAKE_ADDRESS}`;
 
 export function Footer() {
@@ -22,22 +16,26 @@ export function Footer() {
     await navigator.clipboard.writeText(DREPSCORE_STAKE_ADDRESS);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    import('@/lib/posthog').then(({ posthog }) => {
-      posthog.capture('donation_address_copied', {
-        handle: DREPSCORE_HANDLE,
-        source: 'footer',
-      });
-    }).catch(() => {});
+    import('@/lib/posthog')
+      .then(({ posthog }) => {
+        posthog.capture('donation_address_copied', {
+          handle: DREPSCORE_HANDLE,
+          source: 'footer',
+        });
+      })
+      .catch(() => {});
   };
 
   const handleCardanoScanClick = () => {
-    import('@/lib/posthog').then(({ posthog }) => {
-      posthog.capture('footer_link_clicked', {
-        destination: 'cardanoscan',
-        url: CARDANOSCAN_URL,
-        label: DREPSCORE_HANDLE,
-      });
-    }).catch(() => {});
+    import('@/lib/posthog')
+      .then(({ posthog }) => {
+        posthog.capture('footer_link_clicked', {
+          destination: 'cardanoscan',
+          url: CARDANOSCAN_URL,
+          label: DREPSCORE_HANDLE,
+        });
+      })
+      .catch(() => {});
   };
 
   return (

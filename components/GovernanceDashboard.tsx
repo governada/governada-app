@@ -45,7 +45,10 @@ export function GovernanceDashboard() {
     }
 
     const token = getStoredSession();
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     const params = new URLSearchParams();
     if (delegatedDrepId) params.set('drepId', delegatedDrepId);
@@ -53,7 +56,7 @@ export function GovernanceDashboard() {
     fetch(`/api/governance/holder?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to load');
         return res.json();
       })
@@ -101,14 +104,16 @@ export function GovernanceDashboard() {
         <RepresentationScoreCard rep={data.representationScore} />
       </div>
 
-      {data.redelegationSuggestions.length > 0 && data.representationScore.score !== null && data.representationScore.score < 50 && (
-        <RedelegationNudge
-          repScore={data.representationScore.score}
-          misaligned={data.representationScore.misaligned}
-          total={data.representationScore.total}
-          suggestions={data.redelegationSuggestions}
-        />
-      )}
+      {data.redelegationSuggestions.length > 0 &&
+        data.representationScore.score !== null &&
+        data.representationScore.score < 50 && (
+          <RedelegationNudge
+            repScore={data.representationScore.score}
+            misaligned={data.representationScore.misaligned}
+            total={data.representationScore.total}
+            suggestions={data.redelegationSuggestions}
+          />
+        )}
 
       <ActiveProposalsSection proposals={data.activeProposals} />
 
@@ -136,11 +141,14 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
 
   const stats = useMemo(() => {
     if (history.length === 0) return null;
-    const withDrep = history.filter(h => h.alignedWithDrep !== null);
-    const alignedWithDrep = withDrep.filter(h => h.alignedWithDrep).length;
-    const withConsensus = history.filter(h => h.communityConsensus);
-    const matchedCommunity = withConsensus.filter(h => h.userVote === h.communityConsensus).length;
-    const alignmentPct = withDrep.length > 0 ? Math.round((alignedWithDrep / withDrep.length) * 100) : null;
+    const withDrep = history.filter((h) => h.alignedWithDrep !== null);
+    const alignedWithDrep = withDrep.filter((h) => h.alignedWithDrep).length;
+    const withConsensus = history.filter((h) => h.communityConsensus);
+    const matchedCommunity = withConsensus.filter(
+      (h) => h.userVote === h.communityConsensus,
+    ).length;
+    const alignmentPct =
+      withDrep.length > 0 ? Math.round((alignedWithDrep / withDrep.length) * 100) : null;
 
     return {
       total: history.length,
@@ -154,16 +162,16 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
 
   const trend = useMemo(() => {
     if (history.length < 5) return null;
-    const withDrep = history.filter(h => h.alignedWithDrep !== null);
+    const withDrep = history.filter((h) => h.alignedWithDrep !== null);
     if (withDrep.length < 5) return null;
 
     const recent = withDrep.slice(0, Math.ceil(withDrep.length / 2));
     const older = withDrep.slice(Math.ceil(withDrep.length / 2));
-    const recentRate = recent.filter(h => h.alignedWithDrep).length / recent.length;
-    const olderRate = older.filter(h => h.alignedWithDrep).length / older.length;
+    const recentRate = recent.filter((h) => h.alignedWithDrep).length / recent.length;
+    const olderRate = older.filter((h) => h.alignedWithDrep).length / older.length;
     const diff = recentRate - olderRate;
     if (Math.abs(diff) < 0.05) return 'stable' as const;
-    return diff > 0 ? 'improving' as const : 'declining' as const;
+    return diff > 0 ? ('improving' as const) : ('declining' as const);
   }, [history]);
 
   if (history.length === 0) {
@@ -177,10 +185,15 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            You haven&apos;t voted in any polls yet. Head to the proposals page to share your opinion.
+            You haven&apos;t voted in any polls yet. Head to the proposals page to share your
+            opinion.
           </p>
           <Link href="/proposals" className="mt-3 inline-block">
-            <Button variant="outline" size="sm" className="gap-2 hover:text-primary hover:bg-primary/10">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 hover:text-primary hover:bg-primary/10"
+            >
               <Vote className="h-3.5 w-3.5" />
               Browse Proposals
             </Button>
@@ -190,11 +203,14 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
     );
   }
 
-  const alignmentColor = stats?.alignmentPct != null
-    ? stats.alignmentPct >= 75 ? 'text-green-600 dark:text-green-400'
-      : stats.alignmentPct >= 50 ? 'text-amber-600 dark:text-amber-400'
-        : 'text-red-600 dark:text-red-400'
-    : '';
+  const alignmentColor =
+    stats?.alignmentPct != null
+      ? stats.alignmentPct >= 75
+        ? 'text-green-600 dark:text-green-400'
+        : stats.alignmentPct >= 50
+          ? 'text-amber-600 dark:text-amber-400'
+          : 'text-red-600 dark:text-red-400'
+      : '';
 
   return (
     <Card>
@@ -202,7 +218,9 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
         <CardTitle className="text-base flex items-center gap-2">
           <History className="h-4 w-4 text-primary" />
           DRep Accountability
-          <Badge variant="secondary" className="text-xs">{stats?.total} votes</Badge>
+          <Badge variant="secondary" className="text-xs">
+            {stats?.total} votes
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -213,27 +231,37 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
                 <span className={`text-2xl font-bold tabular-nums ${alignmentColor}`}>
                   {stats.alignmentPct}%
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  aligned with your DRep
-                </span>
+                <span className="text-xs text-muted-foreground">aligned with your DRep</span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {stats.alignedWithDrep}/{stats.drepComparisons} votes matched
                 {stats.communityComparisons > 0 && (
-                  <> · {stats.matchedCommunity}/{stats.communityComparisons} with community</>
+                  <>
+                    {' '}
+                    · {stats.matchedCommunity}/{stats.communityComparisons} with community
+                  </>
                 )}
               </p>
             </div>
             {trend && (
               <div className="flex items-center gap-1 text-xs">
                 {trend === 'improving' && (
-                  <><TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /><span className="text-green-600 dark:text-green-400">Improving</span></>
+                  <>
+                    <TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-600 dark:text-green-400">Improving</span>
+                  </>
                 )}
                 {trend === 'declining' && (
-                  <><TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" /><span className="text-red-600 dark:text-red-400">Declining</span></>
+                  <>
+                    <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                    <span className="text-red-600 dark:text-red-400">Declining</span>
+                  </>
                 )}
                 {trend === 'stable' && (
-                  <><Equal className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-muted-foreground">Stable</span></>
+                  <>
+                    <Equal className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Stable</span>
+                  </>
                 )}
               </div>
             )}
@@ -274,9 +302,7 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <VoteBadge vote={h.userVote} label="You" />
-                  {h.drepVote && (
-                    <VoteBadge vote={h.drepVote} label="DRep" />
-                  )}
+                  {h.drepVote && <VoteBadge vote={h.drepVote} label="DRep" />}
                   {h.alignedWithDrep !== null && (
                     <Badge
                       variant="outline"
@@ -287,9 +313,15 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
                       }`}
                     >
                       {h.alignedWithDrep ? (
-                        <><CheckCircle2 className="h-2 w-2 mr-0.5" />Aligned</>
+                        <>
+                          <CheckCircle2 className="h-2 w-2 mr-0.5" />
+                          Aligned
+                        </>
                       ) : (
-                        <><XCircle className="h-2 w-2 mr-0.5" />Misaligned</>
+                        <>
+                          <XCircle className="h-2 w-2 mr-0.5" />
+                          Misaligned
+                        </>
                       )}
                     </Badge>
                   )}
@@ -343,7 +375,9 @@ function DashboardSkeleton() {
       <Card>
         <CardContent className="p-6 space-y-3">
           <Skeleton className="h-5 w-36" />
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
         </CardContent>
       </Card>
     </div>

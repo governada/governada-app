@@ -14,21 +14,49 @@ interface OnboardingChecklistProps {
 }
 
 const ITEMS = [
-  { key: 'profile', label: 'Complete your profile', desc: 'Add objectives, motivations, and social links via GovTool', icon: Sparkles, href: 'https://gov.tools' },
-  { key: 'rationale', label: 'Write your first rationale', desc: 'Use the AI Rationale Assistant in your Governance Inbox', icon: FileText, href: null },
-  { key: 'vote', label: 'Vote on a pending proposal', desc: 'Head to GovTool to cast your vote', icon: ExternalLink, href: 'https://gov.tools' },
-  { key: 'share', label: 'Share your score', desc: 'Let delegators know you are active on DRepScore', icon: Share2, href: null },
+  {
+    key: 'profile',
+    label: 'Complete your profile',
+    desc: 'Add objectives, motivations, and social links via GovTool',
+    icon: Sparkles,
+    href: 'https://gov.tools',
+  },
+  {
+    key: 'rationale',
+    label: 'Write your first rationale',
+    desc: 'Use the AI Rationale Assistant in your Governance Inbox',
+    icon: FileText,
+    href: null,
+  },
+  {
+    key: 'vote',
+    label: 'Vote on a pending proposal',
+    desc: 'Head to GovTool to cast your vote',
+    icon: ExternalLink,
+    href: 'https://gov.tools',
+  },
+  {
+    key: 'share',
+    label: 'Share your score',
+    desc: 'Let delegators know you are active on DRepScore',
+    icon: Share2,
+    href: null,
+  },
 ];
 
-export function OnboardingChecklist({ drepId, walletAddress, profileCompleteness }: OnboardingChecklistProps) {
+export function OnboardingChecklist({
+  drepId,
+  walletAddress,
+  profileCompleteness,
+}: OnboardingChecklistProps) {
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/dashboard/onboarding?wallet=${encodeURIComponent(walletAddress)}`)
-      .then(r => r.json())
-      .then(d => {
+      .then((r) => r.json())
+      .then((d) => {
         const cl = d.checklist || {};
         if (cl._dismissed) setDismissed(true);
         if (profileCompleteness >= 80 && !cl.profile) cl.profile = true;
@@ -38,18 +66,25 @@ export function OnboardingChecklist({ drepId, walletAddress, profileCompleteness
       .finally(() => setLoading(false));
   }, [walletAddress, profileCompleteness]);
 
-  const toggleItem = useCallback(async (key: string) => {
-    const token = getStoredSession();
-    if (!token) return;
-    const newVal = !checklist[key];
-    setChecklist(prev => ({ ...prev, [key]: newVal }));
-    posthog.capture('onboarding_checklist_item_completed', { drep_id: drepId, item: key, completed: newVal });
-    await fetch('/api/dashboard/onboarding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionToken: token, item: key, completed: newVal }),
-    }).catch(() => {});
-  }, [checklist, drepId]);
+  const toggleItem = useCallback(
+    async (key: string) => {
+      const token = getStoredSession();
+      if (!token) return;
+      const newVal = !checklist[key];
+      setChecklist((prev) => ({ ...prev, [key]: newVal }));
+      posthog.capture('onboarding_checklist_item_completed', {
+        drep_id: drepId,
+        item: key,
+        completed: newVal,
+      });
+      await fetch('/api/dashboard/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionToken: token, item: key, completed: newVal }),
+      }).catch(() => {});
+    },
+    [checklist, drepId],
+  );
 
   const handleDismiss = useCallback(async () => {
     const token = getStoredSession();
@@ -65,7 +100,7 @@ export function OnboardingChecklist({ drepId, walletAddress, profileCompleteness
 
   if (loading || dismissed) return null;
 
-  const completedCount = ITEMS.filter(i => checklist[i.key]).length;
+  const completedCount = ITEMS.filter((i) => checklist[i.key]).length;
   const allDone = completedCount === ITEMS.length;
 
   return (
@@ -84,7 +119,7 @@ export function OnboardingChecklist({ drepId, walletAddress, profileCompleteness
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {ITEMS.map(item => {
+        {ITEMS.map((item) => {
           const done = !!checklist[item.key];
           return (
             <button

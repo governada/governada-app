@@ -10,11 +10,11 @@ import { alertDiscord, errMsg, emitPostHog, type SyncType } from '@/lib/sync-uti
 
 const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {
   proposals: { mins: 90, event: 'drepscore/sync.proposals' },
-  dreps:     { mins: 480, event: 'drepscore/sync.dreps' },
-  votes:     { mins: 480, event: 'drepscore/sync.votes' },
+  dreps: { mins: 480, event: 'drepscore/sync.dreps' },
+  votes: { mins: 480, event: 'drepscore/sync.votes' },
   secondary: { mins: 480, event: 'drepscore/sync.secondary' },
-  slow:      { mins: 1800, event: 'drepscore/sync.slow' },
-  treasury:  { mins: 1500, event: 'drepscore/sync.treasury' },
+  slow: { mins: 1800, event: 'drepscore/sync.slow' },
+  treasury: { mins: 1500, event: 'drepscore/sync.treasury' },
 };
 
 const RECENT_FAILURE_WINDOW_MS = 15 * 60 * 1000;
@@ -44,7 +44,8 @@ export const syncFreshnessGuard = inngest.createFunction(
       if (!ghosts || ghosts.length === 0) return 0;
 
       for (const ghost of ghosts) {
-        await supabase.from('sync_log')
+        await supabase
+          .from('sync_log')
           .update({
             error_message: 'Process terminated (likely deployment restart)',
             duration_ms: 0,
@@ -98,11 +99,15 @@ export const syncFreshnessGuard = inngest.createFunction(
           .single();
 
         if (recentFail) {
-          console.log(`[FreshnessGuard] Skipping ${syncType} — recent failure within 15m, letting Inngest retry handle it`);
+          console.log(
+            `[FreshnessGuard] Skipping ${syncType} — recent failure within 15m, letting Inngest retry handle it`,
+          );
           return null;
         }
 
-        console.log(`[FreshnessGuard] Retriggering ${syncType} (${staleMins}m stale) via Inngest event`);
+        console.log(
+          `[FreshnessGuard] Retriggering ${syncType} (${staleMins}m stale) via Inngest event`,
+        );
         await inngest.send({ name: event });
 
         emitPostHog(true, syncType as SyncType, 0, {

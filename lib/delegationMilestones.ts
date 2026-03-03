@@ -51,9 +51,7 @@ export function checkDelegationMilestones(
   );
   const achieved = new Set(achievedMilestones);
 
-  return DELEGATION_MILESTONES.filter(
-    (m) => daysDelegated >= m.days && !achieved.has(m.key),
-  );
+  return DELEGATION_MILESTONES.filter((m) => daysDelegated >= m.days && !achieved.has(m.key));
 }
 
 export function fillMilestoneDescription(
@@ -62,7 +60,9 @@ export function fillMilestoneDescription(
 ): string {
   let result = template;
   if (vars.drepName !== undefined) result = result.replace(/{drepName}/g, vars.drepName);
-  if (vars.proposalCount !== undefined) result = result.replace(/{proposalCount}/g, String(vars.proposalCount));
-  if (vars.adaAmount !== undefined) result = result.replace(/{adaAmount}/g, vars.adaAmount.toLocaleString());
+  if (vars.proposalCount !== undefined)
+    result = result.replace(/{proposalCount}/g, String(vars.proposalCount));
+  if (vars.adaAmount !== undefined)
+    result = result.replace(/{adaAmount}/g, vars.adaAmount.toLocaleString());
   return result;
 }

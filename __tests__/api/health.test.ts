@@ -31,8 +31,20 @@ describe('GET /api/health', () => {
     const now = new Date().toISOString();
     mockSelect.mockResolvedValue({
       data: [
-        { sync_type: 'proposals', last_run: now, last_success: true, success_count: 10, failure_count: 0 },
-        { sync_type: 'treasury', last_run: now, last_success: true, success_count: 5, failure_count: 0 },
+        {
+          sync_type: 'proposals',
+          last_run: now,
+          last_success: true,
+          success_count: 10,
+          failure_count: 0,
+        },
+        {
+          sync_type: 'treasury',
+          last_run: now,
+          last_success: true,
+          success_count: 5,
+          failure_count: 0,
+        },
       ],
       error: null,
     });
@@ -49,7 +61,13 @@ describe('GET /api/health', () => {
   it('returns "critical" when a sync has last_success false', async () => {
     mockSelect.mockResolvedValue({
       data: [
-        { sync_type: 'dreps', last_run: new Date().toISOString(), last_success: false, success_count: 0, failure_count: 3 },
+        {
+          sync_type: 'dreps',
+          last_run: new Date().toISOString(),
+          last_success: false,
+          success_count: 0,
+          failure_count: 3,
+        },
       ],
       error: null,
     });
@@ -65,7 +83,13 @@ describe('GET /api/health', () => {
     const staleTime = new Date(Date.now() - 800 * 60 * 1000).toISOString(); // 800 min ago (threshold for dreps is 720)
     mockSelect.mockResolvedValue({
       data: [
-        { sync_type: 'dreps', last_run: staleTime, last_success: true, success_count: 5, failure_count: 0 },
+        {
+          sync_type: 'dreps',
+          last_run: staleTime,
+          last_success: true,
+          success_count: 5,
+          failure_count: 0,
+        },
       ],
       error: null,
     });

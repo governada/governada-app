@@ -19,7 +19,9 @@ export async function GET() {
     const currentEpoch = blockTimeToEpoch(now);
     const epochEnd = epochStartTime(currentEpoch + 1);
     const secondsRemaining = Math.max(0, epochEnd - now);
-    const epochProgress = Math.round(((EPOCH_LENGTH_SECONDS - secondsRemaining) / EPOCH_LENGTH_SECONDS) * 100);
+    const epochProgress = Math.round(
+      ((EPOCH_LENGTH_SECONDS - secondsRemaining) / EPOCH_LENGTH_SECONDS) * 100,
+    );
 
     const supabase = createClient();
 
@@ -34,8 +36,9 @@ export async function GET() {
       .limit(10);
 
     const upcoming = (expiringProposals || [])
-      .map(p => {
-        const expEpoch = p.expiration_epoch ?? (p.proposed_epoch != null ? p.proposed_epoch + 6 : null);
+      .map((p) => {
+        const expEpoch =
+          p.expiration_epoch ?? (p.proposed_epoch != null ? p.proposed_epoch + 6 : null);
         const epochsLeft = expEpoch != null ? Math.max(0, expEpoch - currentEpoch) : null;
         return {
           txHash: p.tx_hash,
@@ -46,7 +49,7 @@ export async function GET() {
           daysLeft: epochsLeft != null ? epochsLeft * 5 : null,
         };
       })
-      .filter(p => p.epochsLeft !== null && p.epochsLeft <= 6)
+      .filter((p) => p.epochsLeft !== null && p.epochsLeft <= 6)
       .sort((a, b) => (a.epochsLeft ?? 99) - (b.epochsLeft ?? 99));
 
     captureServerEvent('governance_calendar_fetched', {
@@ -54,14 +57,17 @@ export async function GET() {
       expiring_proposals: upcoming.length,
     });
 
-    return NextResponse.json({
-      currentEpoch,
-      secondsRemaining,
-      epochProgress,
-      upcoming,
-    }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
-    });
+    return NextResponse.json(
+      {
+        currentEpoch,
+        secondsRemaining,
+        epochProgress,
+        upcoming,
+      },
+      {
+        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
+      },
+    );
   } catch (err) {
     console.error('[Governance Calendar API] Error:', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

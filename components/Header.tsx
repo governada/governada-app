@@ -9,8 +9,8 @@ import { useAlignmentAlerts, AlertType } from '@/hooks/useAlignmentAlerts';
 import { getStoredSession } from '@/lib/supabaseAuth';
 
 const WalletConnectModal = dynamic(
-  () => import('./WalletConnectModal').then(mod => mod.WalletConnectModal),
-  { ssr: false }
+  () => import('./WalletConnectModal').then((mod) => mod.WalletConnectModal),
+  { ssr: false },
 );
 import { ModeToggle } from './mode-toggle';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ import { FeatureGate } from '@/components/FeatureGate';
 
 const ALERT_ICONS: Record<AlertType, typeof TrendingDown> = {
   'representation-shift': TrendingDown,
-  'inactivity': AlertTriangle,
+  inactivity: AlertTriangle,
   'new-proposals': FileText,
   'vote-activity': Vote,
   'drep-score-change': Sparkles,
@@ -65,7 +65,7 @@ const ALERT_ICONS: Record<AlertType, typeof TrendingDown> = {
 
 const ALERT_COLORS: Record<AlertType, string> = {
   'representation-shift': 'text-amber-500',
-  'inactivity': 'text-amber-500',
+  inactivity: 'text-amber-500',
   'new-proposals': 'text-blue-500',
   'vote-activity': 'text-primary',
   'drep-score-change': 'text-green-500',
@@ -95,38 +95,53 @@ export function Header() {
     `hidden sm:flex items-center gap-1 text-sm transition-colors relative ${headerTransparent ? 'nav-text-shadow' : ''} ${
       isActive(href)
         ? 'font-medium text-primary after:absolute after:bottom-[-18px] after:left-0 after:right-0 after:h-[2px] after:bg-primary after:rounded-full dark:after:shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]'
-        : headerTransparent ? 'text-white/80 hover:text-white' : 'text-muted-foreground hover:text-foreground'
+        : headerTransparent
+          ? 'text-white/80 hover:text-white'
+          : 'text-muted-foreground hover:text-foreground'
     }`;
 
   useEffect(() => {
-    if (!isAuthenticated) { setDisplayName(null); return; }
+    if (!isAuthenticated) {
+      setDisplayName(null);
+      return;
+    }
     const token = getStoredSession();
     if (!token) return;
     fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.display_name) setDisplayName(data.display_name); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.display_name) setDisplayName(data.display_name);
+      })
       .catch(() => {});
   }, [isAuthenticated]);
 
   const adminCheckAddress = sessionAddress || address;
   useEffect(() => {
-    if (!adminCheckAddress) { setIsAdmin(false); return; }
+    if (!adminCheckAddress) {
+      setIsAdmin(false);
+      return;
+    }
     fetch('/api/admin/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: adminCheckAddress }),
     })
-      .then(r => r.json())
-      .then(d => setIsAdmin(d.isAdmin === true))
+      .then((r) => r.json())
+      .then((d) => setIsAdmin(d.isAdmin === true))
       .catch(() => setIsAdmin(false));
   }, [adminCheckAddress]);
 
   const [inboxCount, setInboxCount] = useState(0);
   useEffect(() => {
-    if (!ownDRepId) { setInboxCount(0); return; }
+    if (!ownDRepId) {
+      setInboxCount(0);
+      return;
+    }
     fetch(`/api/dashboard/inbox?drepId=${encodeURIComponent(ownDRepId)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.pendingCount) setInboxCount(data.pendingCount); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.pendingCount) setInboxCount(data.pendingCount);
+      })
       .catch(() => {});
   }, [ownDRepId]);
 
@@ -153,15 +168,19 @@ export function Header() {
   }, []);
 
   return (
-    <header className={`sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ${
-      headerTransparent
-        ? 'bg-transparent border-b border-transparent'
-        : 'bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 dark:border-b-0 dark:shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.06)] border-b'
-    }`}>
+    <header
+      className={`sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ${
+        headerTransparent
+          ? 'bg-transparent border-b border-transparent'
+          : 'bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 dark:border-b-0 dark:shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.06)] border-b'
+      }`}
+    >
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-primary dark:drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.3)]">$drepscore</span>
+            <span className="text-2xl font-bold text-primary dark:drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.3)]">
+              $drepscore
+            </span>
           </Link>
           <GovernanceHeartbeat />
         </div>
@@ -193,11 +212,15 @@ export function Header() {
               <span>Developers</span>
             </Link>
           </FeatureGate>
-          
+
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            onClick={() =>
+              document.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }),
+              )
+            }
             className="hidden sm:inline-flex items-center gap-2 text-muted-foreground hover:text-foreground h-8 px-2"
           >
             <Search className="h-3.5 w-3.5" />
@@ -211,7 +234,11 @@ export function Header() {
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative hover:text-primary hover:bg-primary/10">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative hover:text-primary hover:bg-primary/10"
+                  >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
                       <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-500" />
@@ -239,15 +266,16 @@ export function Header() {
                       const colorClass = ALERT_COLORS[alert.type] || 'text-muted-foreground';
 
                       return (
-                        <div
-                          key={alert.id}
-                          className="relative group"
-                        >
+                        <div key={alert.id} className="relative group">
                           <DropdownMenuItem
                             className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted pr-8"
-                            onSelect={() => { if (alert.link) router.push(alert.link); }}
+                            onSelect={() => {
+                              if (alert.link) router.push(alert.link);
+                            }}
                           >
-                            <IconComponent className={`h-4 w-4 mt-0.5 flex-shrink-0 ${colorClass}`} />
+                            <IconComponent
+                              className={`h-4 w-4 mt-0.5 flex-shrink-0 ${colorClass}`}
+                            />
                             <div className="space-y-1 flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{alert.title}</p>
                               <p className="text-xs text-muted-foreground line-clamp-2">
@@ -275,8 +303,15 @@ export function Header() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 hover:text-primary hover:bg-primary/10 hover:border-primary/40">
-                    <Badge variant="outline" className="gap-1 text-green-600 border-green-600 px-1.5 py-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 hover:text-primary hover:bg-primary/10 hover:border-primary/40"
+                  >
+                    <Badge
+                      variant="outline"
+                      className="gap-1 text-green-600 border-green-600 px-1.5 py-0"
+                    >
                       <Shield className="h-3 w-3" />
                     </Badge>
                     <span className={`hidden sm:inline text-xs ${displayName ? '' : 'font-mono'}`}>
@@ -297,35 +332,61 @@ export function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => router.push('/governance')} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onSelect={() => router.push('/governance')}
+                    className="cursor-pointer"
+                  >
                     <Vote className="h-4 w-4 mr-2" />
                     My Delegation
                   </DropdownMenuItem>
                   {(ownDRepId || isAdmin) && (
                     <>
-                      <DropdownMenuItem onSelect={() => router.push('/dashboard')} className="cursor-pointer">
+                      <DropdownMenuItem
+                        onSelect={() => router.push('/dashboard')}
+                        className="cursor-pointer"
+                      >
                         <Sparkles className="h-4 w-4 mr-2" />
                         DRep Dashboard
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => router.push(ownDRepId ? `/dashboard/inbox?drepId=${encodeURIComponent(ownDRepId)}` : '/dashboard/inbox')} className="cursor-pointer">
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          router.push(
+                            ownDRepId
+                              ? `/dashboard/inbox?drepId=${encodeURIComponent(ownDRepId)}`
+                              : '/dashboard/inbox',
+                          )
+                        }
+                        className="cursor-pointer"
+                      >
                         <Inbox className="h-4 w-4 mr-2" />
                         Governance Inbox
                       </DropdownMenuItem>
                     </>
                   )}
-                  <DropdownMenuItem onSelect={() => router.push('/profile')} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onSelect={() => router.push('/profile')}
+                    className="cursor-pointer"
+                  >
                     <User className="h-4 w-4 mr-2" />
                     Profile
                   </DropdownMenuItem>
                   {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuLabel className="text-xs text-muted-foreground">Admin</DropdownMenuLabel>
-                      <DropdownMenuItem onSelect={() => router.push('/admin/integrity')} className="cursor-pointer">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        Admin
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onSelect={() => router.push('/admin/integrity')}
+                        className="cursor-pointer"
+                      >
                         <Activity className="h-4 w-4 mr-2" />
                         Data Integrity
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => router.push('/admin/flags')} className="cursor-pointer">
+                      <DropdownMenuItem
+                        onSelect={() => router.push('/admin/flags')}
+                        className="cursor-pointer"
+                      >
                         <Shield className="h-4 w-4 mr-2" />
                         Feature Flags
                       </DropdownMenuItem>

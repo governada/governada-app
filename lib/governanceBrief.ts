@@ -60,13 +60,24 @@ export async function assembleDRepBriefContext(
   const supabase = getSupabaseAdmin();
 
   const [drepRes, proposalRes, scoreHistoryRes, allDrepsRes] = await Promise.all([
-    supabase.from('dreps').select('drep_id, display_name, score, rank, delegator_count').eq('drep_id', drepId).single(),
-    supabase.from('proposals')
+    supabase
+      .from('dreps')
+      .select('drep_id, display_name, score, rank, delegator_count')
+      .eq('drep_id', drepId)
+      .single(),
+    supabase
+      .from('proposals')
       .select('proposal_type')
-      .is('ratified_epoch', null).is('enacted_epoch', null)
-      .is('dropped_epoch', null).is('expired_epoch', null),
-    supabase.from('drep_score_history').select('score, created_at')
-      .eq('drep_id', drepId).order('created_at', { ascending: false }).limit(2),
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
+    supabase
+      .from('drep_score_history')
+      .select('score, created_at')
+      .eq('drep_id', drepId)
+      .order('created_at', { ascending: false })
+      .limit(2),
     supabase.from('dreps').select('drep_id', { count: 'exact', head: true }),
   ]);
 
@@ -79,7 +90,7 @@ export async function assembleDRepBriefContext(
 
   const proposals = proposalRes.data ?? [];
   const { getProposalPriority } = await import('@/utils/proposalPriority');
-  const critical = proposals.filter(p => getProposalPriority(p.proposal_type) === 'critical');
+  const critical = proposals.filter((p) => getProposalPriority(p.proposal_type) === 'critical');
 
   const { data: votes } = await supabase
     .from('drep_votes')
@@ -127,15 +138,18 @@ export async function assembleHolderBriefContext(
   const supabase = getSupabaseAdmin();
 
   const [proposalRes] = await Promise.all([
-    supabase.from('proposals')
+    supabase
+      .from('proposals')
       .select('proposal_type')
-      .is('ratified_epoch', null).is('enacted_epoch', null)
-      .is('dropped_epoch', null).is('expired_epoch', null),
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
   ]);
 
   const proposals = proposalRes.data ?? [];
   const { getProposalPriority } = await import('@/utils/proposalPriority');
-  const critical = proposals.filter(p => getProposalPriority(p.proposal_type) === 'critical');
+  const critical = proposals.filter((p) => getProposalPriority(p.proposal_type) === 'critical');
 
   let drepName: string | null = null;
   let drepScore: number | null = null;
@@ -177,7 +191,7 @@ export async function generateAIDRepBrief(ctx: DRepBriefContext): Promise<Genera
   const template = generateDRepBriefTemplate(ctx);
   try {
     const { generateText } = await import('./ai');
-    const contextSummary = template.sections.map(s => `${s.heading}: ${s.content}`).join('\n');
+    const contextSummary = template.sections.map((s) => `${s.heading}: ${s.content}`).join('\n');
     const prompt = `You are a governance analyst writing a personalized weekly brief for a Cardano DRep named ${ctx.drepName}. Rewrite the following data points into a warm, concise 150-word narrative. Tone: knowledgeable friend, not corporate. Keep all numbers accurate. Output only the narrative text, no headings.
 
 DATA:
@@ -211,7 +225,7 @@ export async function generateAIHolderBrief(ctx: HolderBriefContext): Promise<Ge
   const template = generateHolderBriefTemplate(ctx);
   try {
     const { generateText } = await import('./ai');
-    const contextSummary = template.sections.map(s => `${s.heading}: ${s.content}`).join('\n');
+    const contextSummary = template.sections.map((s) => `${s.heading}: ${s.content}`).join('\n');
     const prompt = `You are a governance analyst writing a weekly brief for a Cardano ADA holder. Rewrite these data points into a warm, concise 100-word narrative. Tone: knowledgeable friend encouraging governance participation. Keep all numbers accurate. Output only the narrative text, no headings.
 
 DATA:
@@ -240,9 +254,10 @@ export function generateDRepBrief(ctx: DRepBriefContext): GeneratedBrief {
 }
 
 function generateDRepBriefTemplate(ctx: DRepBriefContext): GeneratedBrief {
-  const scoreSentence = ctx.scoreChange !== 0
-    ? `Your score ${ctx.scoreChange > 0 ? 'improved' : 'dropped'} by ${Math.abs(ctx.scoreChange)} points to ${ctx.currentScore}.`
-    : `Your score holds steady at ${ctx.currentScore}.`;
+  const scoreSentence =
+    ctx.scoreChange !== 0
+      ? `Your score ${ctx.scoreChange > 0 ? 'improved' : 'dropped'} by ${Math.abs(ctx.scoreChange)} points to ${ctx.currentScore}.`
+      : `Your score holds steady at ${ctx.currentScore}.`;
 
   const sections: BriefSection[] = [
     {
@@ -289,7 +304,8 @@ function generateHolderBriefTemplate(ctx: HolderBriefContext): GeneratedBrief {
   } else {
     sections.push({
       heading: 'Delegation Status',
-      content: 'You haven\'t delegated to a DRep yet. Explore high-scoring DReps on the Discover page.',
+      content:
+        "You haven't delegated to a DRep yet. Explore high-scoring DReps on the Discover page.",
     });
   }
 
@@ -306,7 +322,7 @@ function generateHolderBriefTemplate(ctx: HolderBriefContext): GeneratedBrief {
   }
 
   return {
-    greeting: 'Here\'s your weekly governance roundup from DRepScore.',
+    greeting: "Here's your weekly governance roundup from DRepScore.",
     sections,
     ctaText: 'Explore DReps',
     ctaUrl: '/discover',

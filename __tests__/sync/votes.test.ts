@@ -62,9 +62,15 @@ describe('GET /api/sync/votes', () => {
     (fetchAllVotesBulk as ReturnType<typeof vi.fn>).mockResolvedValue({
       drep1: [
         {
-          proposal_tx_hash: 'tx1', proposal_index: 0, vote_tx_hash: 'vtx1',
-          block_time: 1700000000, vote: 'Yes', meta_url: null, meta_hash: null,
-          meta_json: null, epoch_no: 100,
+          proposal_tx_hash: 'tx1',
+          proposal_index: 0,
+          vote_tx_hash: 'vtx1',
+          block_time: 1700000000,
+          vote: 'Yes',
+          meta_url: null,
+          meta_hash: null,
+          meta_json: null,
+          epoch_no: 100,
         },
       ],
     });
@@ -82,7 +88,9 @@ describe('GET /api/sync/votes', () => {
 
   it('returns 502 when Koios is down', async () => {
     setupMockChain();
-    (fetchAllVotesBulk as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Koios API error: 500'));
+    (fetchAllVotesBulk as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('Koios API error: 500'),
+    );
 
     const req = createRequest('/api/sync/votes', {
       headers: { authorization: `Bearer ${CRON_SECRET}` },

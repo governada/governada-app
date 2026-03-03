@@ -77,7 +77,8 @@ export function TreasuryHistoryTimeline() {
             Treasury Withdrawal History
           </CardTitle>
           <span className="text-sm text-muted-foreground">
-            Total: <span className="font-semibold text-foreground">{formatAda(cumulativeTotal)} ADA</span>
+            Total:{' '}
+            <span className="font-semibold text-foreground">{formatAda(cumulativeTotal)} ADA</span>
           </span>
         </div>
       </CardHeader>
@@ -95,11 +96,13 @@ export function TreasuryHistoryTimeline() {
 
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-semibold">Epoch {epoch}</span>
-                    <span className="text-xs text-muted-foreground">{formatAda(epochTotal)} ADA</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatAda(epochTotal)} ADA
+                    </span>
                   </div>
 
                   <div className="space-y-1.5">
-                    {items.map(p => (
+                    {items.map((p) => (
                       <Link
                         key={`${p.tx_hash}-${p.proposal_index}`}
                         href={`/proposals/${p.tx_hash}/${p.proposal_index}`}
@@ -108,7 +111,10 @@ export function TreasuryHistoryTimeline() {
                         <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
                         <span className="truncate flex-1">{p.title || 'Untitled'}</span>
                         {p.treasury_tier && (
-                          <Badge variant="secondary" className={`text-[10px] ${tierColors[p.treasury_tier] || ''}`}>
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] ${tierColors[p.treasury_tier] || ''}`}
+                          >
                             {p.treasury_tier}
                           </Badge>
                         )}

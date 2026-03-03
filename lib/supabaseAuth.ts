@@ -24,28 +24,28 @@ export async function createSessionToken(walletAddress: string): Promise<string>
     walletAddress,
     expiresAt: Date.now() + SESSION_DURATION_MS,
   };
-  
+
   const jwt = await new jose.SignJWT(payload as unknown as jose.JWTPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(Math.floor(payload.expiresAt / 1000))
     .sign(getSecretKey());
-  
+
   return jwt;
 }
 
 export async function validateSessionToken(token: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jose.jwtVerify(token, getSecretKey());
-    
+
     const sessionPayload: SessionPayload = {
       walletAddress: payload.walletAddress as string,
       expiresAt: (payload.expiresAt as number) || (payload.exp as number) * 1000,
     };
-    
+
     if (!sessionPayload.walletAddress) return null;
     if (sessionPayload.expiresAt < Date.now()) return null;
-    
+
     return sessionPayload;
   } catch {
     return null;
@@ -77,7 +77,7 @@ export function parseSessionToken(token: string): SessionPayload | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    
+
     const payload = JSON.parse(atob(parts[1]));
     return {
       walletAddress: payload.walletAddress,

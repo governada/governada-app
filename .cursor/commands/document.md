@@ -3,14 +3,17 @@
 You are updating documentation after code changes.
 
 ## 1. Identify Changes
+
 - Check git diff or recent commits for modified files
 - Identify which features/modules were changed
 - Note any new files, deleted files, or renamed files
 
 ## 2. Verify Current Implementation
+
 **CRITICAL**: DO NOT trust existing documentation. Read the actual code.
 
 For each changed file:
+
 - Read the current implementation
 - Understand actual behavior (not documented behavior)
 - Note any discrepancies with existing docs

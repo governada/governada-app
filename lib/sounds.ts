@@ -29,9 +29,9 @@ export function playDelegationChime(): void {
   if (!isSoundEnabled()) return;
   const ctx = getCtx();
   if (!ctx) return;
-  
+
   const now = ctx.currentTime;
-  
+
   // C major chord arpeggio — C5 E5 G5
   [523.25, 659.25, 783.99].forEach((freq, i) => {
     const osc = ctx.createOscillator();
@@ -52,9 +52,9 @@ export function playMilestoneChime(): void {
   if (!isSoundEnabled()) return;
   const ctx = getCtx();
   if (!ctx) return;
-  
+
   const now = ctx.currentTime;
-  
+
   // Celebratory ascending: G5 → C6
   [783.99, 880, 987.77, 1046.5].forEach((freq, i) => {
     const osc = ctx.createOscillator();

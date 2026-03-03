@@ -6,7 +6,7 @@ import { SupabaseUser, SupabaseUserUpdate } from '@/types/supabase';
 async function authenticateRequest(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
-  
+
   const token = authHeader.slice(7);
   const session = await validateSessionToken(token);
   return session?.walletAddress ?? null;
@@ -49,7 +49,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const updates: SupabaseUserUpdate = await request.json();
-  
+
   const allowedFields: (keyof SupabaseUserUpdate)[] = [
     'prefs',
     'watchlist',
@@ -58,7 +58,7 @@ export async function PATCH(request: NextRequest) {
     'display_name',
     'digest_frequency',
   ];
-  
+
   const sanitizedUpdates: Record<string, unknown> = { last_active: new Date().toISOString() };
   for (const field of allowedFields) {
     if (updates[field] !== undefined) {

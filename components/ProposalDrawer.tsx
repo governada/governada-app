@@ -12,15 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import {
-  ExternalLink,
-  TrendingUp,
-  Clock,
-  FileText,
-  Users,
-  BarChart3,
-  Vote,
-} from 'lucide-react';
+import { ExternalLink, TrendingUp, Clock, FileText, Users, BarChart3, Vote } from 'lucide-react';
 import { RationaleAssistant } from '@/components/RationaleAssistant';
 import { DelegatorPulse } from '@/components/DelegatorPulse';
 
@@ -49,9 +41,18 @@ interface ProposalDrawerProps {
 }
 
 const PRIORITY_LABELS = {
-  critical: { label: 'Critical', class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  important: { label: 'Important', class: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  standard: { label: 'Standard', class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  critical: {
+    label: 'Critical',
+    class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  },
+  important: {
+    label: 'Important',
+    class: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  },
+  standard: {
+    label: 'Standard',
+    class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -85,7 +86,8 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
   const totalVotes = proposal.totalVotes;
   const yesPercent = totalVotes > 0 ? Math.round((proposal.yesCount / totalVotes) * 100) : 0;
   const noPercent = totalVotes > 0 ? Math.round((proposal.noCount / totalVotes) * 100) : 0;
-  const abstainPercent = totalVotes > 0 ? Math.round((proposal.abstainCount / totalVotes) * 100) : 0;
+  const abstainPercent =
+    totalVotes > 0 ? Math.round((proposal.abstainCount / totalVotes) * 100) : 0;
   const priorityConfig = PRIORITY_LABELS[proposal.priority];
 
   const govToolUrl = `https://gov.tools/governance_actions/${proposal.txHash}#${proposal.proposalIndex}`;
@@ -113,17 +115,14 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
                 <Clock className="h-2.5 w-2.5" />
                 {proposal.epochsRemaining <= 2
                   ? `Voting closes in ~${proposal.epochsRemaining * 5} days`
-                  : `${proposal.epochsRemaining} epoch${proposal.epochsRemaining !== 1 ? 's' : ''} left`
-                }
+                  : `${proposal.epochsRemaining} epoch${proposal.epochsRemaining !== 1 ? 's' : ''} left`}
               </Badge>
             )}
           </div>
           <SheetTitle className="text-base leading-tight">
             {proposal.title || `Proposal ${proposal.txHash.slice(0, 12)}...`}
           </SheetTitle>
-          <SheetDescription className="sr-only">
-            Proposal details and voting tools
-          </SheetDescription>
+          <SheetDescription className="sr-only">Proposal details and voting tools</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-6 px-4 pb-8">
@@ -132,7 +131,9 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
             <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 px-3 py-2.5 border border-green-200 dark:border-green-800">
               <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
               <p className="text-xs text-green-800 dark:text-green-300">
-                Voting with rationale: estimated <span className="font-semibold">+{proposal.perProposalScoreImpact} pts</span> to your score
+                Voting with rationale: estimated{' '}
+                <span className="font-semibold">+{proposal.perProposalScoreImpact} pts</span> to
+                your score
               </p>
             </div>
           )}
@@ -140,9 +141,7 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
           {/* AI Summary */}
           {proposal.aiSummary && (
             <Section icon={<FileText className="h-4 w-4" />} title="AI Summary" proBadge>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {proposal.aiSummary}
-              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{proposal.aiSummary}</p>
             </Section>
           )}
 
@@ -177,9 +176,24 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{totalVotes} DReps have voted</span>
                 </div>
-                <SentimentBar label="Yes" percent={yesPercent} count={proposal.yesCount} color="bg-green-500" />
-                <SentimentBar label="No" percent={noPercent} count={proposal.noCount} color="bg-red-500" />
-                <SentimentBar label="Abstain" percent={abstainPercent} count={proposal.abstainCount} color="bg-gray-400" />
+                <SentimentBar
+                  label="Yes"
+                  percent={yesPercent}
+                  count={proposal.yesCount}
+                  color="bg-green-500"
+                />
+                <SentimentBar
+                  label="No"
+                  percent={noPercent}
+                  count={proposal.noCount}
+                  color="bg-red-500"
+                />
+                <SentimentBar
+                  label="Abstain"
+                  percent={abstainPercent}
+                  count={proposal.abstainCount}
+                  color="bg-gray-400"
+                />
                 <p className="text-[10px] text-muted-foreground pt-1">
                   Individual vote breakdown is visible after you cast your vote.
                 </p>
@@ -241,14 +255,29 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
   );
 }
 
-function Section({ icon, title, children, proBadge }: { icon: React.ReactNode; title: string; children: React.ReactNode; proBadge?: boolean }) {
+function Section({
+  icon,
+  title,
+  children,
+  proBadge,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  proBadge?: boolean;
+}) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground">{icon}</span>
         <h3 className="text-sm font-medium">{title}</h3>
         {proBadge && (
-          <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">Pro</Badge>
+          <Badge
+            variant="outline"
+            className="text-[10px] bg-primary/10 text-primary border-primary/30"
+          >
+            Pro
+          </Badge>
         )}
       </div>
       {children}
@@ -256,12 +285,24 @@ function Section({ icon, title, children, proBadge }: { icon: React.ReactNode; t
   );
 }
 
-function SentimentBar({ label, percent, count, color }: { label: string; percent: number; count: number; color: string }) {
+function SentimentBar({
+  label,
+  percent,
+  count,
+  color,
+}: {
+  label: string;
+  percent: number;
+  count: number;
+  color: string;
+}) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
         <span>{label}</span>
-        <span className="tabular-nums text-muted-foreground">{count} ({percent}%)</span>
+        <span className="tabular-nums text-muted-foreground">
+          {count} ({percent}%)
+        </span>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${percent}%` }} />

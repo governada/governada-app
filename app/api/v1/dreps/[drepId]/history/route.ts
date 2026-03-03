@@ -7,7 +7,11 @@ import type { ApiContext } from '@/lib/api/handler';
 async function handler(request: NextRequest, ctx: ApiContext, params?: Record<string, string>) {
   const drepId = decodeURIComponent(params?.drepId || '');
   if (!drepId) {
-    return apiError('missing_parameter', { param: 'drepId', context: 'DRep ID is required in the URL path.' }, { requestId: ctx.requestId });
+    return apiError(
+      'missing_parameter',
+      { param: 'drepId', context: 'DRep ID is required in the URL path.' },
+      { requestId: ctx.requestId },
+    );
   }
 
   const drep = await getDRepById(drepId);
@@ -24,9 +28,9 @@ async function handler(request: NextRequest, ctx: ApiContext, params?: Record<st
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString().split('T')[0];
 
-  const filtered = history.filter(h => h.date >= cutoffStr);
+  const filtered = history.filter((h) => h.date >= cutoffStr);
 
-  const data = filtered.map(h => ({
+  const data = filtered.map((h) => ({
     date: h.date,
     score: h.score,
     effective_participation: h.effectiveParticipation,

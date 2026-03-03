@@ -59,7 +59,7 @@ async function fetchRationaleFromUrl(url: string): Promise<string | null> {
 
     const response = await fetch(fetchUrl, {
       signal: controller.signal,
-      headers: { 'Accept': 'application/json, text/plain, */*' },
+      headers: { Accept: 'application/json, text/plain, */*' },
     });
     clearTimeout(timeoutId);
 
@@ -94,12 +94,14 @@ async function batchUpsert(
   table: string,
   rows: Record<string, unknown>[],
   onConflict: string,
-  label: string
+  label: string,
 ): Promise<number> {
   let success = 0;
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    const { error } = await supabase.from(table).upsert(batch, { onConflict, ignoreDuplicates: false });
+    const { error } = await supabase
+      .from(table)
+      .upsert(batch, { onConflict, ignoreDuplicates: false });
     if (error) console.error(`  [${label}] batch error:`, error.message);
     else success += batch.length;
   }
@@ -124,21 +126,25 @@ async function main() {
   let bulkVotesMap: Record<string, DRepVote[]> = {};
 
   const [proposalsResult, votesResult] = await Promise.allSettled([
-    fetchProposals().then(raw => {
+    fetchProposals().then((raw) => {
       classifiedProposals = classifyProposals(raw);
       for (const p of classifiedProposals) {
-        proposalContextMap.set(`${p.txHash}-${p.index}`, { proposalType: p.type, treasuryTier: p.treasuryTier });
+        proposalContextMap.set(`${p.txHash}-${p.index}`, {
+          proposalType: p.type,
+          treasuryTier: p.treasuryTier,
+        });
       }
       console.log(`  Proposals: ${classifiedProposals.length}`);
     }),
-    fetchAllVotesBulk().then(votes => {
+    fetchAllVotesBulk().then((votes) => {
       bulkVotesMap = votes;
       const total = Object.values(votes).reduce((s, v) => s + v.length, 0);
       console.log(`  Votes: ${total} across ${Object.keys(votes).length} DReps`);
     }),
   ]);
 
-  if (proposalsResult.status === 'rejected') console.error('  Proposals FAILED:', proposalsResult.reason);
+  if (proposalsResult.status === 'rejected')
+    console.error('  Proposals FAILED:', proposalsResult.reason);
   if (votesResult.status === 'rejected') console.error('  Votes FAILED:', votesResult.reason);
 
   console.log(`  Step 1 done in ${((Date.now() - step1Start) / 1000).toFixed(1)}s\n`);
@@ -170,25 +176,39 @@ async function main() {
   console.log('Step 3: Upserting DReps, votes, proposals...');
   const step3Start = Date.now();
 
-  const drepRows = allDReps.map(drep => ({
+  const drepRows = allDReps.map((drep) => ({
     id: drep.drepId,
     metadata: drep.metadata || {},
     info: {
-      drepHash: drep.drepHash, handle: drep.handle, name: drep.name,
-      ticker: drep.ticker, description: drep.description,
-      votingPower: drep.votingPower, votingPowerLovelace: drep.votingPowerLovelace,
-      delegatorCount: drep.delegatorCount, totalVotes: drep.totalVotes,
-      yesVotes: drep.yesVotes, noVotes: drep.noVotes, abstainVotes: drep.abstainVotes,
-      isActive: drep.isActive, anchorUrl: drep.anchorUrl,
+      drepHash: drep.drepHash,
+      handle: drep.handle,
+      name: drep.name,
+      ticker: drep.ticker,
+      description: drep.description,
+      votingPower: drep.votingPower,
+      votingPowerLovelace: drep.votingPowerLovelace,
+      delegatorCount: drep.delegatorCount,
+      totalVotes: drep.totalVotes,
+      yesVotes: drep.yesVotes,
+      noVotes: drep.noVotes,
+      abstainVotes: drep.abstainVotes,
+      isActive: drep.isActive,
+      anchorUrl: drep.anchorUrl,
       epochVoteCounts: drep.epochVoteCounts,
     },
-    votes: [], score: drep.drepScore,
-    participation_rate: drep.participationRate, rationale_rate: drep.rationaleRate,
-    reliability_score: drep.reliabilityScore, reliability_streak: drep.reliabilityStreak,
-    reliability_recency: drep.reliabilityRecency, reliability_longest_gap: drep.reliabilityLongestGap,
-    reliability_tenure: drep.reliabilityTenure, deliberation_modifier: drep.deliberationModifier,
+    votes: [],
+    score: drep.drepScore,
+    participation_rate: drep.participationRate,
+    rationale_rate: drep.rationaleRate,
+    reliability_score: drep.reliabilityScore,
+    reliability_streak: drep.reliabilityStreak,
+    reliability_recency: drep.reliabilityRecency,
+    reliability_longest_gap: drep.reliabilityLongestGap,
+    reliability_tenure: drep.reliabilityTenure,
+    deliberation_modifier: drep.deliberationModifier,
     effective_participation: drep.effectiveParticipation,
-    size_tier: drep.sizeTier, profile_completeness: drep.profileCompleteness,
+    size_tier: drep.sizeTier,
+    profile_completeness: drep.profileCompleteness,
   }));
 
   // FIX: Upsert ALL votes from bulkVotesMap directly (includes deregistered DRep votes)
@@ -198,31 +218,51 @@ async function main() {
   for (const [drepId, votes] of Object.entries(bulkVotesMap)) {
     for (const vote of votes) {
       voteRows.push({
-        vote_tx_hash: vote.vote_tx_hash, drep_id: drepId,
-        proposal_tx_hash: vote.proposal_tx_hash, proposal_index: vote.proposal_index,
+        vote_tx_hash: vote.vote_tx_hash,
+        drep_id: drepId,
+        proposal_tx_hash: vote.proposal_tx_hash,
+        proposal_index: vote.proposal_index,
         vote: vote.vote,
         epoch_no: vote.epoch_no ?? (vote.block_time ? blockTimeToEpoch(vote.block_time) : null),
-        block_time: vote.block_time, meta_url: vote.meta_url, meta_hash: vote.meta_hash,
+        block_time: vote.block_time,
+        meta_url: vote.meta_url,
+        meta_hash: vote.meta_hash,
       });
       allVotesFlat.push({ drepId, vote });
     }
   }
 
-  const dedupedVotes = [...new Map(voteRows.map(r => [r.vote_tx_hash as string, r])).values()];
+  const dedupedVotes = [...new Map(voteRows.map((r) => [r.vote_tx_hash as string, r])).values()];
 
-  const proposalRows = classifiedProposals.length > 0
-    ? [...new Map(classifiedProposals.map(p => [`${p.txHash}-${p.index}`, {
-        tx_hash: p.txHash, proposal_index: p.index, proposal_id: p.proposalId,
-        proposal_type: p.type,
-        title: p.title, abstract: p.abstract,
-        withdrawal_amount: p.withdrawalAmountAda, treasury_tier: p.treasuryTier,
-        param_changes: p.paramChanges, relevant_prefs: p.relevantPrefs,
-        proposed_epoch: p.proposedEpoch, block_time: p.blockTime,
-        expired_epoch: p.expiredEpoch, ratified_epoch: p.ratifiedEpoch,
-        enacted_epoch: p.enactedEpoch, dropped_epoch: p.droppedEpoch,
-        expiration_epoch: p.expirationEpoch,
-      }])).values()]
-    : [];
+  const proposalRows =
+    classifiedProposals.length > 0
+      ? [
+          ...new Map(
+            classifiedProposals.map((p) => [
+              `${p.txHash}-${p.index}`,
+              {
+                tx_hash: p.txHash,
+                proposal_index: p.index,
+                proposal_id: p.proposalId,
+                proposal_type: p.type,
+                title: p.title,
+                abstract: p.abstract,
+                withdrawal_amount: p.withdrawalAmountAda,
+                treasury_tier: p.treasuryTier,
+                param_changes: p.paramChanges,
+                relevant_prefs: p.relevantPrefs,
+                proposed_epoch: p.proposedEpoch,
+                block_time: p.blockTime,
+                expired_epoch: p.expiredEpoch,
+                ratified_epoch: p.ratifiedEpoch,
+                enacted_epoch: p.enactedEpoch,
+                dropped_epoch: p.droppedEpoch,
+                expiration_epoch: p.expirationEpoch,
+              },
+            ]),
+          ).values(),
+        ]
+      : [];
 
   const [drepCount, voteCount, proposalCount] = await Promise.all([
     batchUpsert(supabase, 'dreps', drepRows, 'id', 'DReps'),
@@ -245,13 +285,23 @@ async function main() {
       let updated = 0;
       for (let i = 0; i < allDReps.length; i += DELEGATOR_CONCURRENCY) {
         const batch = allDReps.slice(i, i + DELEGATOR_CONCURRENCY);
-        const counts = await Promise.all(batch.map(d => fetchDRepDelegatorCount(d.drepId)));
+        const counts = await Promise.all(batch.map((d) => fetchDRepDelegatorCount(d.drepId)));
         for (let j = 0; j < batch.length; j++) {
           if (counts[j] > 0) {
-            const { data: existing } = await supabase.from('dreps').select('info').eq('id', batch[j].drepId).single();
+            const { data: existing } = await supabase
+              .from('dreps')
+              .select('info')
+              .eq('id', batch[j].drepId)
+              .single();
             if (existing?.info) {
-              await supabase.from('dreps')
-                .update({ info: { ...(existing.info as Record<string, unknown>), delegatorCount: counts[j] } })
+              await supabase
+                .from('dreps')
+                .update({
+                  info: {
+                    ...(existing.info as Record<string, unknown>),
+                    delegatorCount: counts[j],
+                  },
+                })
                 .eq('id', batch[j].drepId);
               updated++;
             }
@@ -267,19 +317,26 @@ async function main() {
     // Power snapshots
     (async () => {
       const rows = allDReps
-        .filter(d => d.votingPowerLovelace && d.votingPowerLovelace !== '0')
-        .map(d => ({
-          drep_id: d.drepId, epoch_no: currentEpoch,
+        .filter((d) => d.votingPowerLovelace && d.votingPowerLovelace !== '0')
+        .map((d) => ({
+          drep_id: d.drepId,
+          epoch_no: currentEpoch,
           amount_lovelace: parseInt(d.votingPowerLovelace, 10) || 0,
         }));
-      const count = await batchUpsert(supabase, 'drep_power_snapshots', rows, 'drep_id,epoch_no', 'Power snapshots');
+      const count = await batchUpsert(
+        supabase,
+        'drep_power_snapshots',
+        rows,
+        'drep_id,epoch_no',
+        'Power snapshots',
+      );
       console.log(`  Power snapshots: ${count} for epoch ${currentEpoch}`);
     })(),
 
     // Alignment scores
     (async () => {
       if (!rawVotesMap || classifiedProposals.length === 0) return;
-      const updates = allDReps.map(drep => {
+      const updates = allDReps.map((drep) => {
         const votes = rawVotesMap![drep.drepId] || [];
         const scores = computeAllCategoryScores(drep, votes, classifiedProposals);
         return {
@@ -300,13 +357,22 @@ async function main() {
     // Score history
     (async () => {
       const today = new Date().toISOString().split('T')[0];
-      const rows = allDReps.map(d => ({
-        drep_id: d.drepId, score: d.drepScore,
+      const rows = allDReps.map((d) => ({
+        drep_id: d.drepId,
+        score: d.drepScore,
         effective_participation: d.effectiveParticipation,
-        rationale_rate: d.rationaleRate, reliability_score: d.reliabilityScore,
-        profile_completeness: d.profileCompleteness, snapshot_date: today,
+        rationale_rate: d.rationaleRate,
+        reliability_score: d.reliabilityScore,
+        profile_completeness: d.profileCompleteness,
+        snapshot_date: today,
       }));
-      const count = await batchUpsert(supabase, 'drep_score_history', rows, 'drep_id,snapshot_date', 'Score history');
+      const count = await batchUpsert(
+        supabase,
+        'drep_score_history',
+        rows,
+        'drep_id,snapshot_date',
+        'Score history',
+      );
       console.log(`  Score history: ${count}`);
     })(),
   ]);
@@ -322,8 +388,10 @@ async function main() {
   const nullPowerDrepSet = new Set<string>();
   let bfOffset = 0;
   while (true) {
-    const { data } = await supabase.from('drep_votes')
-      .select('drep_id').is('voting_power_lovelace', null)
+    const { data } = await supabase
+      .from('drep_votes')
+      .select('drep_id')
+      .is('voting_power_lovelace', null)
       .range(bfOffset, bfOffset + 999);
     if (!data || data.length === 0) break;
     for (const r of data) nullPowerDrepSet.add(r.drep_id);
@@ -341,24 +409,36 @@ async function main() {
       const history = await fetchDRepVotingPowerHistory(drepId);
       if (history.length === 0) continue;
 
-      const snapRows = history.map(h => ({
-        drep_id: drepId, epoch_no: h.epoch_no, amount_lovelace: parseInt(h.amount, 10) || 0,
+      const snapRows = history.map((h) => ({
+        drep_id: drepId,
+        epoch_no: h.epoch_no,
+        amount_lovelace: parseInt(h.amount, 10) || 0,
       }));
-      await supabase.from('drep_power_snapshots')
+      await supabase
+        .from('drep_power_snapshots')
         .upsert(snapRows, { onConflict: 'drep_id,epoch_no', ignoreDuplicates: true });
 
       for (const snap of snapRows) {
-        const { count } = await supabase.from('drep_votes')
+        const { count } = await supabase
+          .from('drep_votes')
           .update({ voting_power_lovelace: snap.amount_lovelace }, { count: 'exact' })
-          .eq('drep_id', drepId).eq('epoch_no', snap.epoch_no)
+          .eq('drep_id', drepId)
+          .eq('epoch_no', snap.epoch_no)
           .is('voting_power_lovelace', null);
-        backfillTotal += (count || 0);
+        backfillTotal += count || 0;
       }
     } catch (err) {
-      if (i < 5) console.error(`  Power error for ${drepId.slice(0, 20)}:`, err instanceof Error ? err.message : err);
+      if (i < 5)
+        console.error(
+          `  Power error for ${drepId.slice(0, 20)}:`,
+          err instanceof Error ? err.message : err,
+        );
     }
 
-    if ((i + 1) % 20 === 0) console.log(`  Power backfill: ${i + 1}/${uniqueDrepIds.length} DReps (${backfillTotal} votes)...`);
+    if ((i + 1) % 20 === 0)
+      console.log(
+        `  Power backfill: ${i + 1}/${uniqueDrepIds.length} DReps (${backfillTotal} votes)...`,
+      );
   }
   console.log(`  Backfilled ${backfillTotal} vote rows`);
   console.log(`  Step 5 done in ${((Date.now() - step5Start) / 1000).toFixed(1)}s\n`);
@@ -369,53 +449,76 @@ async function main() {
   const step6Start = Date.now();
 
   const votesWithUrl = allVotesFlat.filter(
-    v => v.vote.meta_url
-      && !v.vote.meta_json?.rationale
-      && !v.vote.meta_json?.body?.comment
-      && !v.vote.meta_json?.body?.rationale
+    (v) =>
+      v.vote.meta_url &&
+      !v.vote.meta_json?.rationale &&
+      !v.vote.meta_json?.body?.comment &&
+      !v.vote.meta_json?.body?.rationale,
   );
 
   // Upsert inline rationales first
   const inlineRationales: Record<string, unknown>[] = [];
   for (const { drepId, vote } of allVotesFlat) {
-    const text = vote.meta_json?.body?.comment || vote.meta_json?.body?.rationale || vote.meta_json?.rationale;
+    const text =
+      vote.meta_json?.body?.comment || vote.meta_json?.body?.rationale || vote.meta_json?.rationale;
     if (text && typeof text === 'string') {
       inlineRationales.push({
-        vote_tx_hash: vote.vote_tx_hash, drep_id: drepId,
-        proposal_tx_hash: vote.proposal_tx_hash, proposal_index: vote.proposal_index,
-        meta_url: vote.meta_url, rationale_text: text,
+        vote_tx_hash: vote.vote_tx_hash,
+        drep_id: drepId,
+        proposal_tx_hash: vote.proposal_tx_hash,
+        proposal_index: vote.proposal_index,
+        meta_url: vote.meta_url,
+        rationale_text: text,
       });
     }
   }
   if (inlineRationales.length > 0) {
-    const count = await batchUpsert(supabase, 'vote_rationales', inlineRationales, 'vote_tx_hash', 'Inline rationales');
+    const count = await batchUpsert(
+      supabase,
+      'vote_rationales',
+      inlineRationales,
+      'vote_tx_hash',
+      'Inline rationales',
+    );
     console.log(`  Inline rationales: ${count}`);
   }
 
   // Fetch from URL for the rest
-  const txHashes = votesWithUrl.map(v => v.vote.vote_tx_hash);
+  const txHashes = votesWithUrl.map((v) => v.vote.vote_tx_hash);
   const batchedExisting: Set<string> = new Set();
   for (let i = 0; i < txHashes.length; i += 1000) {
-    const { data } = await supabase.from('vote_rationales')
-      .select('vote_tx_hash').in('vote_tx_hash', txHashes.slice(i, i + 1000))
+    const { data } = await supabase
+      .from('vote_rationales')
+      .select('vote_tx_hash')
+      .in('vote_tx_hash', txHashes.slice(i, i + 1000))
       .not('rationale_text', 'is', null);
     for (const r of data || []) batchedExisting.add(r.vote_tx_hash);
   }
 
-  const uncached = votesWithUrl.filter(v => !batchedExisting.has(v.vote.vote_tx_hash));
-  console.log(`  ${uncached.length} uncached rationale URLs to fetch (${batchedExisting.size} already cached)`);
+  const uncached = votesWithUrl.filter((v) => !batchedExisting.has(v.vote.vote_tx_hash));
+  console.log(
+    `  ${uncached.length} uncached rationale URLs to fetch (${batchedExisting.size} already cached)`,
+  );
 
-  let fetched = 0, failed = 0;
+  let fetched = 0,
+    failed = 0;
   for (let i = 0; i < uncached.length; i += RATIONALE_CONCURRENCY) {
     const chunk = uncached.slice(i, i + RATIONALE_CONCURRENCY);
-    const results = await Promise.all(chunk.map(async ({ drepId, vote }) => {
-      const text = await fetchRationaleFromUrl(vote.meta_url!);
-      return { vote_tx_hash: vote.vote_tx_hash, drep_id: drepId,
-        proposal_tx_hash: vote.proposal_tx_hash, proposal_index: vote.proposal_index,
-        meta_url: vote.meta_url, rationale_text: text };
-    }));
+    const results = await Promise.all(
+      chunk.map(async ({ drepId, vote }) => {
+        const text = await fetchRationaleFromUrl(vote.meta_url!);
+        return {
+          vote_tx_hash: vote.vote_tx_hash,
+          drep_id: drepId,
+          proposal_tx_hash: vote.proposal_tx_hash,
+          proposal_index: vote.proposal_index,
+          meta_url: vote.meta_url,
+          rationale_text: text,
+        };
+      }),
+    );
 
-    const successes = results.filter(r => r.rationale_text !== null);
+    const successes = results.filter((r) => r.rationale_text !== null);
     if (successes.length > 0) {
       await supabase.from('vote_rationales').upsert(successes, { onConflict: 'vote_tx_hash' });
     }
@@ -424,7 +527,9 @@ async function main() {
     failed += results.length - successes.length;
 
     if ((i / RATIONALE_CONCURRENCY) % 10 === 0 && i > 0) {
-      console.log(`  Rationale fetch: ${i + chunk.length}/${uncached.length} (${fetched} ok, ${failed} failed)`);
+      console.log(
+        `  Rationale fetch: ${i + chunk.length}/${uncached.length} (${fetched} ok, ${failed} failed)`,
+      );
     }
   }
   console.log(`  Rationale fetch complete: ${fetched} succeeded, ${failed} failed`);
@@ -442,53 +547,86 @@ async function main() {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     // Proposal summaries (all missing)
-    const { data: unsummarized } = await supabase.from('proposals')
+    const { data: unsummarized } = await supabase
+      .from('proposals')
       .select('tx_hash, proposal_index, title, abstract, proposal_type, withdrawal_amount')
-      .is('ai_summary', null).not('abstract', 'is', null).neq('abstract', '');
+      .is('ai_summary', null)
+      .not('abstract', 'is', null)
+      .neq('abstract', '');
 
     let proposalSummaries = 0;
     if (unsummarized?.length) {
       console.log(`  Generating summaries for ${unsummarized.length} proposals...`);
       for (const row of unsummarized) {
         try {
-          const amountCtx = row.withdrawal_amount ? `\nWithdrawal Amount: ${Number(row.withdrawal_amount).toLocaleString()} ADA` : '';
+          const amountCtx = row.withdrawal_amount
+            ? `\nWithdrawal Amount: ${Number(row.withdrawal_amount).toLocaleString()} ADA`
+            : '';
           const msg = await anthropic.messages.create({
-            model: 'claude-sonnet-4-5', max_tokens: 80,
-            messages: [{ role: 'user', content: `Summarize this Cardano governance proposal in 1-2 short sentences for a casual ADA holder. Plain language, no jargon. Neutral tone. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nTitle: ${row.title || 'Untitled'}\nType: ${row.proposal_type}${amountCtx}\nDescription: ${(row.abstract || '').slice(0, 2000)}` }],
+            model: 'claude-sonnet-4-5',
+            max_tokens: 80,
+            messages: [
+              {
+                role: 'user',
+                content: `Summarize this Cardano governance proposal in 1-2 short sentences for a casual ADA holder. Plain language, no jargon. Neutral tone. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nTitle: ${row.title || 'Untitled'}\nType: ${row.proposal_type}${amountCtx}\nDescription: ${(row.abstract || '').slice(0, 2000)}`,
+              },
+            ],
           });
           const raw = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
-          const summary = raw ? truncateToWordBoundary(raw.replace(/https?:\/\/\S+/g, '').replace(/ipfs:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim(), 160) : null;
+          const summary = raw
+            ? truncateToWordBoundary(
+                raw
+                  .replace(/https?:\/\/\S+/g, '')
+                  .replace(/ipfs:\/\/\S+/g, '')
+                  .replace(/\s{2,}/g, ' ')
+                  .trim(),
+                160,
+              )
+            : null;
           if (summary) {
-            await supabase.from('proposals').update({ ai_summary: summary })
-              .eq('tx_hash', row.tx_hash).eq('proposal_index', row.proposal_index);
+            await supabase
+              .from('proposals')
+              .update({ ai_summary: summary })
+              .eq('tx_hash', row.tx_hash)
+              .eq('proposal_index', row.proposal_index);
             proposalSummaries++;
           }
-        } catch (e) { console.error(`  Proposal AI error:`, e); }
+        } catch (e) {
+          console.error(`  Proposal AI error:`, e);
+        }
       }
     }
     console.log(`  Proposal AI summaries: ${proposalSummaries}`);
 
     // Rationale summaries (all missing)
-    const { data: unsumRationales } = await supabase.from('vote_rationales')
+    const { data: unsumRationales } = await supabase
+      .from('vote_rationales')
       .select('vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, rationale_text')
-      .is('ai_summary', null).not('rationale_text', 'is', null).neq('rationale_text', '');
+      .is('ai_summary', null)
+      .not('rationale_text', 'is', null)
+      .neq('rationale_text', '');
 
     let rationaleSummaries = 0;
     if (unsumRationales?.length) {
       console.log(`  Generating summaries for ${unsumRationales.length} rationales...`);
 
-      const txHashesForTitles = [...new Set(unsumRationales.map(r => r.proposal_tx_hash))];
+      const txHashesForTitles = [...new Set(unsumRationales.map((r) => r.proposal_tx_hash))];
       const titles = new Map<string, string>();
       for (let i = 0; i < txHashesForTitles.length; i += 100) {
-        const { data } = await supabase.from('proposals').select('tx_hash, proposal_index, title')
+        const { data } = await supabase
+          .from('proposals')
+          .select('tx_hash, proposal_index, title')
           .in('tx_hash', txHashesForTitles.slice(i, i + 100));
-        for (const p of data || []) titles.set(`${p.tx_hash}-${p.proposal_index}`, p.title || 'Untitled');
+        for (const p of data || [])
+          titles.set(`${p.tx_hash}-${p.proposal_index}`, p.title || 'Untitled');
       }
 
-      const voteTxs = unsumRationales.map(r => r.vote_tx_hash);
+      const voteTxs = unsumRationales.map((r) => r.vote_tx_hash);
       const dirs = new Map<string, string>();
       for (let i = 0; i < voteTxs.length; i += 1000) {
-        const { data } = await supabase.from('drep_votes').select('vote_tx_hash, vote')
+        const { data } = await supabase
+          .from('drep_votes')
+          .select('vote_tx_hash, vote')
           .in('vote_tx_hash', voteTxs.slice(i, i + 1000));
         for (const v of data || []) dirs.set(v.vote_tx_hash, v.vote);
       }
@@ -496,21 +634,43 @@ async function main() {
       for (let idx = 0; idx < unsumRationales.length; idx++) {
         const row = unsumRationales[idx];
         try {
-          const title = titles.get(`${row.proposal_tx_hash}-${row.proposal_index}`) || 'this proposal';
+          const title =
+            titles.get(`${row.proposal_tx_hash}-${row.proposal_index}`) || 'this proposal';
           const dir = dirs.get(row.vote_tx_hash) || 'voted';
           const msg = await anthropic.messages.create({
-            model: 'claude-sonnet-4-5', max_tokens: 80,
-            messages: [{ role: 'user', content: `Summarize this DRep's rationale for voting ${dir} on "${title}" in 1-2 neutral sentences. Plain language, no editorializing. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nRationale: ${(row.rationale_text || '').slice(0, 1500)}` }],
+            model: 'claude-sonnet-4-5',
+            max_tokens: 80,
+            messages: [
+              {
+                role: 'user',
+                content: `Summarize this DRep's rationale for voting ${dir} on "${title}" in 1-2 neutral sentences. Plain language, no editorializing. No URLs or hashes. Your entire response must be 160 characters or fewer.\n\nRationale: ${(row.rationale_text || '').slice(0, 1500)}`,
+              },
+            ],
           });
           const raw = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
-          const summary = raw ? truncateToWordBoundary(raw.replace(/https?:\/\/\S+/g, '').replace(/ipfs:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim(), 160) : null;
+          const summary = raw
+            ? truncateToWordBoundary(
+                raw
+                  .replace(/https?:\/\/\S+/g, '')
+                  .replace(/ipfs:\/\/\S+/g, '')
+                  .replace(/\s{2,}/g, ' ')
+                  .trim(),
+                160,
+              )
+            : null;
           if (summary) {
-            await supabase.from('vote_rationales').update({ ai_summary: summary }).eq('vote_tx_hash', row.vote_tx_hash);
+            await supabase
+              .from('vote_rationales')
+              .update({ ai_summary: summary })
+              .eq('vote_tx_hash', row.vote_tx_hash);
             rationaleSummaries++;
           }
-        } catch (e) { console.error(`  Rationale AI error:`, e); }
+        } catch (e) {
+          console.error(`  Rationale AI error:`, e);
+        }
 
-        if ((idx + 1) % 50 === 0) console.log(`  Rationale summaries: ${idx + 1}/${unsumRationales.length}...`);
+        if ((idx + 1) % 50 === 0)
+          console.log(`  Rationale summaries: ${idx + 1}/${unsumRationales.length}...`);
       }
     }
     console.log(`  Rationale AI summaries: ${rationaleSummaries}`);
@@ -526,7 +686,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('FATAL:', err);
   process.exit(1);
 });

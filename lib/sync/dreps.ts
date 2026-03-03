@@ -1,8 +1,20 @@
 import { getEnrichedDReps } from '@/lib/koios';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { fetchProposals, resolveADAHandles, resetKoiosMetrics, getKoiosMetrics } from '@/utils/koios';
+import {
+  fetchProposals,
+  resolveADAHandles,
+  resetKoiosMetrics,
+  getKoiosMetrics,
+} from '@/utils/koios';
 import { classifyProposals, computeAllCategoryScores } from '@/lib/alignment';
-import { SyncLogger, batchUpsert, errMsg, emitPostHog, triggerAnalyticsDeploy, alertDiscord } from '@/lib/sync-utils';
+import {
+  SyncLogger,
+  batchUpsert,
+  errMsg,
+  emitPostHog,
+  triggerAnalyticsDeploy,
+  alertDiscord,
+} from '@/lib/sync-utils';
 import { KoiosProposalSchema, validateArray } from '@/utils/koios-schemas';
 import type { ClassifiedProposal, ProposalListResponse, DRepVote } from '@/types/koios';
 import type { ProposalContext } from '@/utils/scoring';
@@ -51,10 +63,21 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
 
     try {
       const raw = await fetchProposals();
-      const { valid: validRaw, invalidCount } = validateArray(raw, KoiosProposalSchema, 'dreps-proposals');
+      const { valid: validRaw, invalidCount } = validateArray(
+        raw,
+        KoiosProposalSchema,
+        'dreps-proposals',
+      );
       if (invalidCount > 0) {
-        emitPostHog(true, 'dreps', 0, { event_override: 'sync_validation_error', record_type: 'proposal', invalid_count: invalidCount });
-        alertDiscord('Validation Errors: dreps', `${invalidCount} proposal records failed Zod validation during DReps sync`);
+        emitPostHog(true, 'dreps', 0, {
+          event_override: 'sync_validation_error',
+          record_type: 'proposal',
+          invalid_count: invalidCount,
+        });
+        alertDiscord(
+          'Validation Errors: dreps',
+          `${invalidCount} proposal records failed Zod validation during DReps sync`,
+        );
       }
       if (validRaw.length > 0) {
         classifiedProposalsList = classifyProposals(validRaw as unknown as ProposalListResponse);
@@ -65,7 +88,9 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
           });
         }
       }
-      console.log(`[dreps] Proposals: ${raw.length} fetched, ${classifiedProposalsList.length} classified`);
+      console.log(
+        `[dreps] Proposals: ${raw.length} fetched, ${classifiedProposalsList.length} classified`,
+      );
     } catch (err) {
       syncErrors.push(`Proposals: ${errMsg(err)}`);
       console.warn('[dreps] Proposal fetch failed (non-fatal):', errMsg(err));
@@ -95,7 +120,7 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
     const step3Start = Date.now();
     try {
       const handleMap = await resolveADAHandles(
-        allDReps.map(d => ({ drepId: d.drepId, drepHash: d.drepHash }))
+        allDReps.map((d) => ({ drepId: d.drepId, drepHash: d.drepHash })),
       );
       for (const drep of allDReps) {
         const handle = handleMap.get(drep.drepId);
@@ -113,9 +138,7 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
     const step3bStart = Date.now();
     const existingDelegatorCounts = new Map<string, number>();
     try {
-      const { data: existing } = await supabase
-        .from('dreps')
-        .select('id, info');
+      const { data: existing } = await supabase.from('dreps').select('id, info');
       for (const row of existing || []) {
         const info = row.info as Record<string, unknown> | null;
         const count = (info?.delegatorCount as number) || 0;
@@ -133,27 +156,46 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
       id: drep.drepId,
       metadata: (drep.metadata as Record<string, unknown>) || {},
       info: {
-        drepHash: drep.drepHash, handle: drep.handle, name: drep.name,
-        ticker: drep.ticker, description: drep.description,
-        votingPower: drep.votingPower, votingPowerLovelace: drep.votingPowerLovelace,
-        delegatorCount: existingDelegatorCounts.get(drep.drepId) ?? 0, totalVotes: drep.totalVotes,
-        yesVotes: drep.yesVotes, noVotes: drep.noVotes, abstainVotes: drep.abstainVotes,
-        isActive: drep.isActive, anchorUrl: drep.anchorUrl,
+        drepHash: drep.drepHash,
+        handle: drep.handle,
+        name: drep.name,
+        ticker: drep.ticker,
+        description: drep.description,
+        votingPower: drep.votingPower,
+        votingPowerLovelace: drep.votingPowerLovelace,
+        delegatorCount: existingDelegatorCounts.get(drep.drepId) ?? 0,
+        totalVotes: drep.totalVotes,
+        yesVotes: drep.yesVotes,
+        noVotes: drep.noVotes,
+        abstainVotes: drep.abstainVotes,
+        isActive: drep.isActive,
+        anchorUrl: drep.anchorUrl,
         epochVoteCounts: drep.epochVoteCounts,
       },
       votes: [],
-      score: drep.drepScore, participation_rate: drep.participationRate,
-      rationale_rate: drep.rationaleRate, reliability_score: drep.reliabilityScore,
-      reliability_streak: drep.reliabilityStreak, reliability_recency: drep.reliabilityRecency,
-      reliability_longest_gap: drep.reliabilityLongestGap, reliability_tenure: drep.reliabilityTenure,
+      score: drep.drepScore,
+      participation_rate: drep.participationRate,
+      rationale_rate: drep.rationaleRate,
+      reliability_score: drep.reliabilityScore,
+      reliability_streak: drep.reliabilityStreak,
+      reliability_recency: drep.reliabilityRecency,
+      reliability_longest_gap: drep.reliabilityLongestGap,
+      reliability_tenure: drep.reliabilityTenure,
       deliberation_modifier: drep.deliberationModifier,
       effective_participation: drep.effectiveParticipation,
-      size_tier: drep.sizeTier, profile_completeness: drep.profileCompleteness,
+      size_tier: drep.sizeTier,
+      profile_completeness: drep.profileCompleteness,
       anchor_url: drep.anchorUrl || null,
       anchor_hash: drep.anchorHash || null,
     }));
 
-    drepResult = await batchUpsert(supabase, 'dreps', drepRows as unknown as Record<string, unknown>[], 'id', 'DReps');
+    drepResult = await batchUpsert(
+      supabase,
+      'dreps',
+      drepRows as unknown as Record<string, unknown>[],
+      'id',
+      'DReps',
+    );
     console.log(`[dreps] Upserted ${drepResult.success} DReps (${drepResult.errors} errors)`);
     phaseTiming.step4_upsert_ms = Date.now() - step4Start;
 
@@ -163,7 +205,7 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
       // Step 5: Alignment scores
       (async () => {
         if (!rawVotesMap || classifiedProposalsList.length === 0) return;
-        const updates = allDReps.map(drep => {
+        const updates = allDReps.map((drep) => {
           const votes = rawVotesMap![drep.drepId] || [];
           const scores = computeAllCategoryScores(drep, votes, classifiedProposalsList);
           return {
@@ -177,23 +219,37 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
             last_vote_time: scores.lastVoteTime,
           };
         });
-        const r = await batchUpsert(supabase, 'dreps', updates as unknown as Record<string, unknown>[], 'id', 'Alignment');
+        const r = await batchUpsert(
+          supabase,
+          'dreps',
+          updates as unknown as Record<string, unknown>[],
+          'id',
+          'Alignment',
+        );
         console.log(`[dreps] Alignment scores: ${r.success} computed`);
       })(),
 
       // Step 6: Score history snapshot
       (async () => {
         const today = new Date().toISOString().split('T')[0];
-        const historyRows = allDReps.map(drep => ({
-          drep_id: drep.drepId, score: drep.drepScore,
+        const historyRows = allDReps.map((drep) => ({
+          drep_id: drep.drepId,
+          score: drep.drepScore,
           effective_participation: drep.effectiveParticipation,
           rationale_rate: drep.rationaleRate,
           reliability_score: drep.reliabilityScore,
           profile_completeness: drep.profileCompleteness,
           snapshot_date: today,
         }));
-        const r = await batchUpsert(supabase, 'drep_score_history', historyRows as unknown as Record<string, unknown>[], 'drep_id,snapshot_date', 'Score history');
-        if (r.success > 0) console.log(`[dreps] Score history: ${r.success} snapshots for ${today}`);
+        const r = await batchUpsert(
+          supabase,
+          'drep_score_history',
+          historyRows as unknown as Record<string, unknown>[],
+          'drep_id,snapshot_date',
+          'Score history',
+        );
+        if (r.success > 0)
+          console.log(`[dreps] Score history: ${r.success} snapshots for ${today}`);
       })(),
     ]);
 
@@ -213,11 +269,15 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
     const success = errorRate < 0.05 && syncErrors.length === 0;
 
     if (totalErrors > 0) {
-      syncErrors.push(`Upsert errors: ${totalErrors} dreps (${(errorRate * 100).toFixed(1)}% rate)`);
+      syncErrors.push(
+        `Upsert errors: ${totalErrors} dreps (${(errorRate * 100).toFixed(1)}% rate)`,
+      );
     }
 
-    const duration = ((logger.elapsed) / 1000).toFixed(1);
-    console.log(`[dreps] Complete in ${duration}s — ${drepResult.success} DReps synced${syncErrors.length > 0 ? ` (${syncErrors.length} issues)` : ''}`);
+    const duration = (logger.elapsed / 1000).toFixed(1);
+    console.log(
+      `[dreps] Complete in ${duration}s — ${drepResult.success} DReps synced${syncErrors.length > 0 ? ` (${syncErrors.length} issues)` : ''}`,
+    );
 
     const metrics = {
       dreps_synced: drepResult.success,
@@ -238,7 +298,6 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
       durationSeconds: duration,
       timestamp: new Date().toISOString(),
     };
-
   } catch (outerErr) {
     const msg = errMsg(outerErr);
     syncErrors.push(`Fatal: ${msg}`);

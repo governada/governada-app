@@ -4,12 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -114,7 +109,10 @@ export function FilterPanel({
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Filters
           {activeCount > 0 && (
-            <Badge variant="default" className="h-4 w-4 p-0 flex items-center justify-center text-[10px] rounded-full">
+            <Badge
+              variant="default"
+              className="h-4 w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
+            >
               {activeCount}
             </Badge>
           )}
@@ -133,7 +131,10 @@ export function FilterPanel({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <label htmlFor="filter-well-documented-panel" className="cursor-pointer text-sm font-medium flex items-center gap-1.5">
+                  <label
+                    htmlFor="filter-well-documented-panel"
+                    className="cursor-pointer text-sm font-medium flex items-center gap-1.5"
+                  >
                     Well-Documented
                     <Info className="h-3.5 w-3.5 text-muted-foreground" />
                   </label>
@@ -150,7 +151,10 @@ export function FilterPanel({
               <Button variant="outline" size="sm" className="gap-2">
                 Size
                 {sizeFilters.size < 4 && (
-                  <Badge variant="default" className="h-4 w-4 p-0 flex items-center justify-center text-[10px] rounded-full">
+                  <Badge
+                    variant="default"
+                    className="h-4 w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
+                  >
                     {sizeFilters.size}
                   </Badge>
                 )}

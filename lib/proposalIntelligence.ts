@@ -34,10 +34,22 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
   try {
     const [allVotesRes, allRationalesRes, proposalsRes, topDrepsRes, allDrepsRes] =
       await Promise.all([
-        supabase.from('drep_votes').select('vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, vote, epoch_no, block_time, voting_power_lovelace'),
+        supabase
+          .from('drep_votes')
+          .select(
+            'vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, vote, epoch_no, block_time, voting_power_lovelace',
+          ),
         supabase.from('vote_rationales').select('vote_tx_hash, rationale_text'),
-        supabase.from('proposals').select('tx_hash, proposal_index, proposal_type, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, expiration_epoch, block_time'),
-        supabase.from('dreps').select('id, score, info').order('score', { ascending: false }).limit(50),
+        supabase
+          .from('proposals')
+          .select(
+            'tx_hash, proposal_index, proposal_type, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, expiration_epoch, block_time',
+          ),
+        supabase
+          .from('dreps')
+          .select('id, score, info')
+          .order('score', { ascending: false })
+          .limit(50),
         supabase.from('dreps').select('id, score, effective_participation, rationale_rate, info'),
       ]);
 
@@ -49,18 +61,24 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
     if (allVotes.length === 0) return insights;
 
-    const rationaleSet = new Set(allRationales.map(r => r.vote_tx_hash));
-    const rationaleTextMap = new Map(allRationales.map(r => [r.vote_tx_hash, r.rationale_text ?? '']));
+    const rationaleSet = new Set(allRationales.map((r) => r.vote_tx_hash));
+    const rationaleTextMap = new Map(
+      allRationales.map((r) => [r.vote_tx_hash, r.rationale_text ?? '']),
+    );
 
     // --- Insight 1: Rationale correlates with dissent ---
     {
-      const withRationale = allVotes.filter(v => rationaleSet.has(v.vote_tx_hash));
-      const withoutRationale = allVotes.filter(v => !rationaleSet.has(v.vote_tx_hash));
+      const withRationale = allVotes.filter((v) => rationaleSet.has(v.vote_tx_hash));
+      const withoutRationale = allVotes.filter((v) => !rationaleSet.has(v.vote_tx_hash));
 
-      const noRateWith = withRationale.length > 0
-        ? withRationale.filter(v => v.vote === 'No').length / withRationale.length : 0;
-      const noRateWithout = withoutRationale.length > 0
-        ? withoutRationale.filter(v => v.vote === 'No').length / withoutRationale.length : 0;
+      const noRateWith =
+        withRationale.length > 0
+          ? withRationale.filter((v) => v.vote === 'No').length / withRationale.length
+          : 0;
+      const noRateWithout =
+        withoutRationale.length > 0
+          ? withoutRationale.filter((v) => v.vote === 'No').length / withoutRationale.length
+          : 0;
 
       if (noRateWithout > 0) {
         const ratio = noRateWith / noRateWithout;
@@ -71,7 +89,8 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
             description: `DReps who provide reasoning are ${ratio.toFixed(1)}x more likely to vote No. Explanation often accompanies opposition.`,
             stat: `${ratio.toFixed(1)}x`,
             category: 'behavior',
-            methodology: 'Compares the No-vote rate among votes with published rationale vs votes without.',
+            methodology:
+              'Compares the No-vote rate among votes with published rationale vs votes without.',
             shareText: `On @DRepScore: DReps who explain their votes are ${ratio.toFixed(1)}x more likely to vote No. Accountability breeds independence.`,
           });
         }
@@ -80,21 +99,27 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
     // --- Insight 2: Treasury proposals face more scrutiny ---
     {
-      const treasury = proposals.filter(p => p.proposal_type === 'TreasuryWithdrawals');
-      const resolved = (ps: typeof proposals) => ps.filter(
-        p => p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch
-      );
-      const passed = (ps: typeof proposals) => ps.filter(
-        p => p.ratified_epoch || p.enacted_epoch
-      );
+      const treasury = proposals.filter((p) => p.proposal_type === 'TreasuryWithdrawals');
+      const resolved = (ps: typeof proposals) =>
+        ps.filter((p) => p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch);
+      const passed = (ps: typeof proposals) =>
+        ps.filter((p) => p.ratified_epoch || p.enacted_epoch);
 
       const treasuryResolved = resolved(treasury);
-      const otherResolved = resolved(proposals.filter(p => p.proposal_type !== 'TreasuryWithdrawals'));
+      const otherResolved = resolved(
+        proposals.filter((p) => p.proposal_type !== 'TreasuryWithdrawals'),
+      );
 
-      const treasuryPassRate = treasuryResolved.length > 0
-        ? (passed(treasury).length / treasuryResolved.length) * 100 : null;
-      const otherPassRate = otherResolved.length > 0
-        ? (passed(proposals.filter(p => p.proposal_type !== 'TreasuryWithdrawals')).length / otherResolved.length) * 100 : null;
+      const treasuryPassRate =
+        treasuryResolved.length > 0
+          ? (passed(treasury).length / treasuryResolved.length) * 100
+          : null;
+      const otherPassRate =
+        otherResolved.length > 0
+          ? (passed(proposals.filter((p) => p.proposal_type !== 'TreasuryWithdrawals')).length /
+              otherResolved.length) *
+            100
+          : null;
 
       if (treasuryPassRate !== null && otherPassRate !== null && treasuryResolved.length >= 3) {
         insights.push({
@@ -103,7 +128,8 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
           description: `Treasury withdrawals pass at ${fmtPct(treasuryPassRate)} vs ${fmtPct(otherPassRate)} for other proposal types. Money decisions get the most debate.`,
           stat: fmtPct(treasuryPassRate),
           category: 'treasury',
-          methodology: 'Pass rate = (ratified + enacted) / (ratified + enacted + dropped + expired) for each proposal type.',
+          methodology:
+            'Pass rate = (ratified + enacted) / (ratified + enacted + dropped + expired) for each proposal type.',
           shareText: `Treasury proposals on Cardano pass at just ${fmtPct(treasuryPassRate)}. DReps take money decisions seriously. Via @DRepScore`,
         });
       }
@@ -113,8 +139,8 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
     {
       const top10 = topDreps.filter((d: any) => d.info?.isActive).slice(0, 10);
       if (top10.length >= 5) {
-        const topIds = new Set(top10.map(d => d.id));
-        const topVotes = allVotes.filter(v => topIds.has(v.drep_id));
+        const topIds = new Set(top10.map((d) => d.id));
+        const topVotes = allVotes.filter((v) => topIds.has(v.drep_id));
 
         const proposalVoteMap = new Map<string, Map<string, string>>();
         for (const v of topVotes) {
@@ -137,9 +163,12 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
         const agreementRate = comparisons > 0 ? (agreements / comparisons) * 100 : 0;
         if (comparisons > 10) {
-          const descriptor = agreementRate > 80 ? 'form a strong consensus'
-            : agreementRate > 60 ? 'mostly agree'
-            : 'show real ideological diversity';
+          const descriptor =
+            agreementRate > 80
+              ? 'form a strong consensus'
+              : agreementRate > 60
+                ? 'mostly agree'
+                : 'show real ideological diversity';
 
           insights.push({
             id: 'top-agreement',
@@ -151,7 +180,8 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
             }`,
             stat: fmtPct(agreementRate),
             category: 'voting',
-            methodology: 'Pairwise agreement rate across all proposals where at least 2 of the top 10 scored DReps voted.',
+            methodology:
+              'Pairwise agreement rate across all proposals where at least 2 of the top 10 scored DReps voted.',
             shareText: `Cardano's top 10 DReps agree on ${fmtPct(agreementRate)} of votes. Consensus or groupthink? Via @DRepScore`,
           });
         }
@@ -176,13 +206,16 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
             id: 'power-concentration',
             headline: 'Voting power is concentrated',
             description: `The top 10 DReps by delegation control ${fmtPct(concentration)} of all voting power. ${
-              concentration > 50 ? 'A highly concentrated landscape — delegation diversity matters.'
-              : concentration > 30 ? 'Moderate concentration — room for more distributed delegation.'
-              : 'Relatively distributed — a healthy sign for decentralized governance.'
+              concentration > 50
+                ? 'A highly concentrated landscape — delegation diversity matters.'
+                : concentration > 30
+                  ? 'Moderate concentration — room for more distributed delegation.'
+                  : 'Relatively distributed — a healthy sign for decentralized governance.'
             }`,
             stat: fmtPct(concentration),
             category: 'participation',
-            methodology: 'Sum of voting power (lovelace) held by the top 10 DReps divided by total active voting power.',
+            methodology:
+              'Sum of voting power (lovelace) held by the top 10 DReps divided by total active voting power.',
             shareText: `The top 10 Cardano DReps control ${fmtPct(concentration)} of voting power. How distributed is governance really? Via @DRepScore`,
           });
         }
@@ -193,7 +226,8 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
     {
       const typeGroups = new Map<string, { passed: number; total: number }>();
       for (const p of proposals) {
-        const isResolved = p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch;
+        const isResolved =
+          p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch;
         if (!isResolved) continue;
         const type = p.proposal_type || 'Unknown';
         if (!typeGroups.has(type)) typeGroups.set(type, { passed: 0, total: 0 });
@@ -204,7 +238,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
       const types = [...typeGroups.entries()]
         .filter(([, g]) => g.total >= 2)
-        .sort((a, b) => (a[1].passed / a[1].total) - (b[1].passed / b[1].total));
+        .sort((a, b) => a[1].passed / a[1].total - b[1].passed / b[1].total);
 
       if (types.length >= 2) {
         const lowest = types[0];
@@ -229,7 +263,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
     // --- Insight 6: Rationale length vs score ---
     {
-      const drepScoreMap = new Map(allDreps.map(d => [d.id, d.score ?? 0]));
+      const drepScoreMap = new Map(allDreps.map((d) => [d.id, d.score ?? 0]));
       const drepRationaleLengths = new Map<string, number[]>();
 
       for (const v of allVotes) {
@@ -263,7 +297,8 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
             description: `DReps who write longer rationales (300+ chars) score ${delta} points higher on average. Quality explanations signal quality governance.`,
             stat: `+${delta} pts`,
             category: 'behavior',
-            methodology: 'Average score of DReps whose rationales average 300+ characters vs those under 300.',
+            methodology:
+              'Average score of DReps whose rationales average 300+ characters vs those under 300.',
             shareText: `DReps who write detailed rationales score ${delta} points higher on @DRepScore. Words matter in governance.`,
           });
         }
@@ -286,10 +321,16 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
         const recent = epochs.slice(0, 3);
         const older = epochs.slice(3, 6);
 
-        const recentRate = recent.reduce((s, [, e]) => s + (e.total > 0 ? e.abstain / e.total : 0), 0) / recent.length * 100;
-        const olderRate = older.length > 0
-          ? older.reduce((s, [, e]) => s + (e.total > 0 ? e.abstain / e.total : 0), 0) / older.length * 100
-          : recentRate;
+        const recentRate =
+          (recent.reduce((s, [, e]) => s + (e.total > 0 ? e.abstain / e.total : 0), 0) /
+            recent.length) *
+          100;
+        const olderRate =
+          older.length > 0
+            ? (older.reduce((s, [, e]) => s + (e.total > 0 ? e.abstain / e.total : 0), 0) /
+                older.length) *
+              100
+            : recentRate;
 
         const delta = recentRate - olderRate;
         if (Math.abs(delta) > 1 || recentRate > 5) {
@@ -305,8 +346,12 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
             stat: fmtPct(recentRate),
             category: 'participation',
             trendDirection: delta > 1 ? 'up' : delta < -1 ? 'down' : 'flat',
-            trend: Math.abs(delta) > 1 ? `${delta > 0 ? '+' : ''}${fmtPct(delta)} vs prior epochs` : undefined,
-            methodology: 'Abstain votes as a percentage of total votes, compared across recent (last 3) vs earlier (prior 3) epochs.',
+            trend:
+              Math.abs(delta) > 1
+                ? `${delta > 0 ? '+' : ''}${fmtPct(delta)} vs prior epochs`
+                : undefined,
+            methodology:
+              'Abstain votes as a percentage of total votes, compared across recent (last 3) vs earlier (prior 3) epochs.',
             shareText: `Abstention rate in Cardano governance is ${direction} at ${fmtPct(recentRate)}. Via @DRepScore`,
           });
         }
@@ -316,11 +361,14 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
     // --- Insight 8: Score-vote correlation (high vs low scorers disagree) ---
     {
       const activeDreps = allDreps.filter((d: any) => d.info?.isActive && d.score != null);
-      const highScorers = new Set(activeDreps.filter(d => (d.score ?? 0) >= 70).map(d => d.id));
-      const lowScorers = new Set(activeDreps.filter(d => (d.score ?? 0) < 40).map(d => d.id));
+      const highScorers = new Set(activeDreps.filter((d) => (d.score ?? 0) >= 70).map((d) => d.id));
+      const lowScorers = new Set(activeDreps.filter((d) => (d.score ?? 0) < 40).map((d) => d.id));
 
       if (highScorers.size >= 5 && lowScorers.size >= 5) {
-        const proposalVotesByGroup = new Map<string, { highYes: number; highNo: number; lowYes: number; lowNo: number }>();
+        const proposalVotesByGroup = new Map<
+          string,
+          { highYes: number; highNo: number; lowYes: number; lowNo: number }
+        >();
 
         for (const v of allVotes) {
           if (v.vote === 'Abstain') continue;
@@ -354,7 +402,10 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
           const disagreementRate = (disagreements / totalComparisons) * 100;
           insights.push({
             id: 'score-vote-correlation',
-            headline: disagreementRate > 30 ? 'Score predicts voting stance' : 'Scores don\'t determine votes',
+            headline:
+              disagreementRate > 30
+                ? 'Score predicts voting stance'
+                : "Scores don't determine votes",
             description: `High-scoring DReps (70+) and low-scoring DReps (under 40) disagree on ${fmtPct(disagreementRate)} of proposals. ${
               disagreementRate > 30
                 ? 'Governance quality and voting patterns are correlated.'
@@ -362,7 +413,8 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
             }`,
             stat: fmtPct(disagreementRate),
             category: 'voting',
-            methodology: 'Compares the majority vote direction of DReps scoring 70+ vs under 40 on proposals where each group has 2+ voters.',
+            methodology:
+              'Compares the majority vote direction of DReps scoring 70+ vs under 40 on proposals where each group has 2+ voters.',
             shareText: `High-scoring vs low-scoring DReps disagree on ${fmtPct(disagreementRate)} of Cardano proposals. Score ≠ ideology. Via @DRepScore`,
           });
         }
@@ -405,12 +457,12 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
           }`,
           stat: fmtPct(lateRate),
           category: 'participation',
-          methodology: 'Votes cast within 1 epoch of proposal expiration vs earlier votes, for proposals with known expiration epochs.',
+          methodology:
+            'Votes cast within 1 epoch of proposal expiration vs earlier votes, for proposals with known expiration epochs.',
           shareText: `${fmtPct(lateRate)} of Cardano governance votes come in the final epoch. Deadline-driven or deliberate? Via @DRepScore`,
         });
       }
     }
-
   } catch (err) {
     console.error('[ProposalIntelligence] Computation error:', err);
   }

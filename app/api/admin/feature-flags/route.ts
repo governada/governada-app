@@ -10,9 +10,12 @@ export async function GET() {
     for (const f of allFlags) {
       flags[f.key] = f.enabled;
     }
-    return NextResponse.json({ flags, details: allFlags }, {
-      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
-    });
+    return NextResponse.json(
+      { flags, details: allFlags },
+      {
+        headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+      },
+    );
   } catch {
     return NextResponse.json({ error: 'Failed to load flags' }, { status: 500 });
   }
@@ -21,7 +24,7 @@ export async function GET() {
 function isAdminWallet(address: string): boolean {
   const adminWallets = (process.env.ADMIN_WALLETS || '')
     .split(',')
-    .map(s => s.trim().toLowerCase())
+    .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   return adminWallets.includes(address.toLowerCase());
 }
@@ -32,7 +35,10 @@ export async function PATCH(request: NextRequest) {
     const { key, enabled, address } = body;
 
     if (typeof key !== 'string' || typeof enabled !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid body: { key: string, enabled: boolean, address: string }' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid body: { key: string, enabled: boolean, address: string }' },
+        { status: 400 },
+      );
     }
 
     if (!address || typeof address !== 'string' || !isAdminWallet(address)) {

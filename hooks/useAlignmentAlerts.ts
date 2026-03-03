@@ -6,10 +6,18 @@ import { EnrichedDRep } from '@/lib/koios';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-export type AlertType = 'representation-shift' | 'inactivity' | 'new-proposals' | 'vote-activity'
-  | 'drep-score-change' | 'drep-profile-gap' | 'drep-missed-epoch'
-  | 'drep-pending-proposals' | 'drep-urgent-deadline'
-  | 'critical-proposal-open' | 'drep-missing-votes';
+export type AlertType =
+  | 'representation-shift'
+  | 'inactivity'
+  | 'new-proposals'
+  | 'vote-activity'
+  | 'drep-score-change'
+  | 'drep-profile-gap'
+  | 'drep-missed-epoch'
+  | 'drep-pending-proposals'
+  | 'drep-urgent-deadline'
+  | 'critical-proposal-open'
+  | 'drep-missing-votes';
 
 export interface Alert {
   id: string;
@@ -50,7 +58,9 @@ function getStoredMatchScores(): Record<string, { score: number; timestamp: numb
   if (typeof window === 'undefined') return {};
   try {
     return JSON.parse(localStorage.getItem(PREV_MATCH_SCORES_KEY) || '{}');
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 function storeMatchScores(data: Record<string, { score: number; timestamp: number }>) {
@@ -72,7 +82,9 @@ function getDismissedAlerts(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
     return new Set(JSON.parse(localStorage.getItem(DISMISSED_ALERTS_KEY) || '[]'));
-  } catch { return new Set(); }
+  } catch {
+    return new Set();
+  }
 }
 
 function persistDismissedAlerts(ids: Set<string>) {
@@ -84,7 +96,9 @@ function getWatchlist(): string[] {
   if (typeof window === 'undefined') return [];
   try {
     return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '[]');
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 // ── Hook ────────────────────────────────────────────────────────────────────
@@ -98,9 +112,23 @@ export function useAlignmentAlerts() {
   const [newProposalCount, setNewProposalCount] = useState(0);
   const [lastVisitTime, setLastVisitTime] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const [ownDRepScore, setOwnDRepScore] = useState<{ current: number; previous: number | null; profileCompleteness: number } | null>(null);
-  const [inboxData, setInboxData] = useState<{ pendingCount: number; criticalCount: number; urgentCount: number; potentialGain: number } | null>(null);
-  const [govSummary, setGovSummary] = useState<{ openCount: number; criticalOpenCount: number; drepVotedCount?: number; drepMissingCount?: number } | null>(null);
+  const [ownDRepScore, setOwnDRepScore] = useState<{
+    current: number;
+    previous: number | null;
+    profileCompleteness: number;
+  } | null>(null);
+  const [inboxData, setInboxData] = useState<{
+    pendingCount: number;
+    criticalCount: number;
+    urgentCount: number;
+    potentialGain: number;
+  } | null>(null);
+  const [govSummary, setGovSummary] = useState<{
+    openCount: number;
+    criticalOpenCount: number;
+    drepVotedCount?: number;
+    drepMissingCount?: number;
+  } | null>(null);
 
   useEffect(() => {
     setDismissedIds(getDismissedAlerts());
@@ -126,7 +154,9 @@ export function useAlignmentAlerts() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [connected]);
 
   // Fetch new proposals since last visit
@@ -140,10 +170,14 @@ export function useAlignmentAlerts() {
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) setNewProposalCount(data.count || 0);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [connected, lastVisitTime]);
 
   // Fetch recent vote activity for delegated DRep
@@ -154,15 +188,19 @@ export function useAlignmentAlerts() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/alignment/recent-votes?drepId=${encodeURIComponent(delegatedDrepId)}`
+          `/api/alignment/recent-votes?drepId=${encodeURIComponent(delegatedDrepId)}`,
         );
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) setVoteActivity(data.votes || []);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [delegatedDrepId]);
 
   // Fetch representation match data when authenticated
@@ -187,10 +225,14 @@ export function useAlignmentAlerts() {
           }
           setMatchData(map);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated]);
 
   // Fetch DRep-specific score data for DRep alerts
@@ -200,10 +242,12 @@ export function useAlignmentAlerts() {
 
     (async () => {
       try {
-        const myDrep = allDReps.find(d => d.drepId === ownDRepId);
+        const myDrep = allDReps.find((d) => d.drepId === ownDRepId);
         if (!myDrep) return;
 
-        const historyRes = await fetch(`/api/score-history?drepId=${encodeURIComponent(ownDRepId)}`);
+        const historyRes = await fetch(
+          `/api/score-history?drepId=${encodeURIComponent(ownDRepId)}`,
+        );
         let previousScore: number | null = null;
         if (historyRes.ok) {
           const history = await historyRes.json();
@@ -219,10 +263,14 @@ export function useAlignmentAlerts() {
             profileCompleteness: myDrep.profileCompleteness ?? 0,
           });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [ownDRepId, allDReps]);
 
   // Fetch inbox data for DRep-specific alerts
@@ -243,10 +291,14 @@ export function useAlignmentAlerts() {
             potentialGain: data.scoreImpact?.potentialGain || 0,
           });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [ownDRepId]);
 
   // Fetch governance summary for ADA holder alerts (delegators)
@@ -256,7 +308,9 @@ export function useAlignmentAlerts() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/governance/summary?drepId=${encodeURIComponent(delegatedDrepId)}`);
+        const res = await fetch(
+          `/api/governance/summary?drepId=${encodeURIComponent(delegatedDrepId)}`,
+        );
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) {
@@ -267,10 +321,14 @@ export function useAlignmentAlerts() {
             drepMissingCount: data.drepMissingCount,
           });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [connected, delegatedDrepId]);
 
   // Build all alerts
@@ -280,17 +338,14 @@ export function useAlignmentAlerts() {
     const result: Alert[] = [];
     const now = Math.floor(Date.now() / 1000);
     const watchlist = getWatchlist();
-    const drepMap = new Map(allDReps.map(d => [d.drepId, d]));
+    const drepMap = new Map(allDReps.map((d) => [d.drepId, d]));
     const hasMatchData = Object.keys(matchData).length > 0;
 
     // ── 1. Representation match shift alerts (delegated + watchlist) ─────
     if (hasMatchData) {
       const prevScores = getStoredMatchScores();
       const newScores: Record<string, { score: number; timestamp: number }> = {};
-      const drepIdsToCheck = [
-        ...(delegatedDrepId ? [delegatedDrepId] : []),
-        ...watchlist,
-      ];
+      const drepIdsToCheck = [...(delegatedDrepId ? [delegatedDrepId] : []), ...watchlist];
       const uniqueIds = [...new Set(drepIdsToCheck)];
 
       for (const id of uniqueIds) {
@@ -417,13 +472,17 @@ export function useAlignmentAlerts() {
           title: hasCritical
             ? `${inboxData.criticalCount} critical proposal${inboxData.criticalCount !== 1 ? 's' : ''} need your vote`
             : `${inboxData.pendingCount} proposal${inboxData.pendingCount !== 1 ? 's' : ''} need your vote`,
-          description: inboxData.potentialGain > 0
-            ? `Voting with rationale could boost your score by +${inboxData.potentialGain} pts.`
-            : `Open proposals are awaiting your vote.`,
+          description:
+            inboxData.potentialGain > 0
+              ? `Voting with rationale could boost your score by +${inboxData.potentialGain} pts.`
+              : `Open proposals are awaiting your vote.`,
           link: '/dashboard/inbox',
           timestamp: now,
           read: false,
-          metadata: { pendingCount: inboxData.pendingCount, criticalCount: inboxData.criticalCount },
+          metadata: {
+            pendingCount: inboxData.pendingCount,
+            criticalCount: inboxData.criticalCount,
+          },
         });
       }
 
@@ -448,7 +507,8 @@ export function useAlignmentAlerts() {
           id: `critical-open-${govSummary.criticalOpenCount}`,
           type: 'critical-proposal-open',
           title: `${govSummary.criticalOpenCount} critical proposal${govSummary.criticalOpenCount !== 1 ? 's' : ''} open`,
-          description: 'A high-impact governance proposal (Hard Fork, No Confidence, or Constitution change) is currently open for voting.',
+          description:
+            'A high-impact governance proposal (Hard Fork, No Confidence, or Constitution change) is currently open for voting.',
           link: '/proposals',
           timestamp: now,
           read: false,
@@ -474,16 +534,29 @@ export function useAlignmentAlerts() {
     setLastVisit(now);
 
     return result;
-  }, [loaded, connected, matchData, allDReps, delegatedDrepId, ownDRepId, ownDRepScore, voteActivity, lastVisitTime, newProposalCount, inboxData, govSummary]);
+  }, [
+    loaded,
+    connected,
+    matchData,
+    allDReps,
+    delegatedDrepId,
+    ownDRepId,
+    ownDRepScore,
+    voteActivity,
+    lastVisitTime,
+    newProposalCount,
+    inboxData,
+    govSummary,
+  ]);
 
   // Filter out dismissed alerts
   const activeAlerts = useMemo(
-    () => alerts.filter(a => !dismissedIds.has(a.id)),
+    () => alerts.filter((a) => !dismissedIds.has(a.id)),
     [alerts, dismissedIds],
   );
 
   const dismissAlert = useCallback((alertId: string) => {
-    setDismissedIds(prev => {
+    setDismissedIds((prev) => {
       const next = new Set(prev);
       next.add(alertId);
       persistDismissedAlerts(next);
@@ -491,7 +564,7 @@ export function useAlignmentAlerts() {
     });
   }, []);
 
-  const unreadCount = activeAlerts.filter(a => !a.read).length;
+  const unreadCount = activeAlerts.filter((a) => !a.read).length;
 
   return {
     alerts: activeAlerts,

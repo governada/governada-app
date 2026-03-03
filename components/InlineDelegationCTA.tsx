@@ -3,14 +3,7 @@
 import { useWallet } from '@/utils/wallet';
 import { useDelegation } from '@/hooks/useDelegation';
 import { Button } from '@/components/ui/button';
-import {
-  Vote,
-  Wallet,
-  CheckCircle,
-  Loader2,
-  ExternalLink,
-  AlertTriangle,
-} from 'lucide-react';
+import { Vote, Wallet, CheckCircle, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { DelegationRisksModal } from './InfoModal';
 import { useState } from 'react';
@@ -48,7 +41,9 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
   } = useDelegation();
   const [showCeremony, setShowCeremony] = useState(false);
   const [ceremonyScore, setCeremonyScore] = useState(0);
-  const [ceremonyAlignments, setCeremonyAlignments] = useState<AlignmentScores | undefined>(undefined);
+  const [ceremonyAlignments, setCeremonyAlignments] = useState<AlignmentScores | undefined>(
+    undefined,
+  );
 
   const isAlreadyDelegated = !!delegatedDrepId && delegatedDrepId === drepId;
 
@@ -65,8 +60,8 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
     if (result) {
       if (!delegationCeremonyEnabled) return;
       fetch(`/api/dreps/${encodeURIComponent(drepId)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
           if (data?.drepScore) setCeremonyScore(data.drepScore);
           if (data?.alignmentTreasuryConservative != null) {
             setCeremonyAlignments({
@@ -156,13 +151,12 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
     return (
       <div className="flex flex-col gap-3 p-4 border border-primary/20 rounded-lg bg-card">
         <div className="space-y-2">
-          <p className="text-sm font-medium">
-            Delegate to {drepName}
-          </p>
+          <p className="text-sm font-medium">Delegate to {drepName}</p>
           <div className="text-xs text-muted-foreground space-y-1">
             <p>Your voting power will be assigned to this DRep. You can change anytime.</p>
             <p>
-              Transaction fee: <span className="font-medium text-foreground">{preflight.estimatedFee}</span>
+              Transaction fee:{' '}
+              <span className="font-medium text-foreground">{preflight.estimatedFee}</span>
             </p>
             {preflight.needsDeposit && (
               <p className="flex items-start gap-1 text-amber-600 dark:text-amber-400">
@@ -189,12 +183,7 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
   // Default: delegate action button
   return (
     <div className="flex flex-col gap-2 p-4 border rounded-lg bg-card">
-      <Button
-        onClick={handleDelegate}
-        disabled={isProcessing}
-        className="gap-2 w-full"
-        size="lg"
-      >
+      <Button onClick={handleDelegate} disabled={isProcessing} className="gap-2 w-full" size="lg">
         {isProcessing ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />

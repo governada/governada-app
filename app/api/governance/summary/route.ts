@@ -20,22 +20,24 @@ export async function GET(request: NextRequest) {
 
     const { data: proposals, error } = await supabase
       .from('proposals')
-      .select('tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, expiration_epoch');
+      .select(
+        'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, expiration_epoch',
+      );
 
     if (error || !proposals) {
       return NextResponse.json({ error: 'Failed to fetch proposals' }, { status: 500 });
     }
 
     const openProposals = proposals.filter(
-      (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch
+      (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
     );
 
     const openCount = openProposals.length;
     const criticalOpenCount = openProposals.filter(
-      (p: any) => getProposalPriority(p.proposal_type) === 'critical'
+      (p: any) => getProposalPriority(p.proposal_type) === 'critical',
     ).length;
     const importantOpenCount = openProposals.filter(
-      (p: any) => getProposalPriority(p.proposal_type) === 'important'
+      (p: any) => getProposalPriority(p.proposal_type) === 'important',
     ).length;
 
     const result: Record<string, any> = {
@@ -46,9 +48,7 @@ export async function GET(request: NextRequest) {
     };
 
     if (drepId) {
-      const openKeys = new Set(
-        openProposals.map((p: any) => `${p.tx_hash}-${p.proposal_index}`)
-      );
+      const openKeys = new Set(openProposals.map((p: any) => `${p.tx_hash}-${p.proposal_index}`));
 
       const { data: drepVotes } = await supabase
         .from('drep_votes')
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
           seen.add(key);
 
           const prop = proposals.find(
-            (p: any) => p.tx_hash === v.proposal_tx_hash && p.proposal_index === v.proposal_index
+            (p: any) => p.tx_hash === v.proposal_tx_hash && p.proposal_index === v.proposal_index,
           );
           recentVotes.push({
             title: prop?.title || `Proposal ${v.proposal_tx_hash.slice(0, 8)}...`,

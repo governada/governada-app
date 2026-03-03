@@ -3,12 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ThresholdMeterProps {
   txHash: string;
@@ -43,21 +38,33 @@ function formatAdaCompact(lovelace: number): string {
 }
 
 export function ThresholdMeter({
-  txHash, proposalIndex, proposalType,
-  yesCount, noCount, abstainCount, totalVotes,
-  isOpen, variant = 'compact',
+  txHash,
+  proposalIndex,
+  proposalType,
+  yesCount,
+  noCount,
+  abstainCount,
+  totalVotes,
+  isOpen,
+  variant = 'compact',
 }: ThresholdMeterProps) {
   const [power, setPower] = useState<PowerData | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/proposals/power?txHash=${encodeURIComponent(txHash)}&index=${proposalIndex}&type=${encodeURIComponent(proposalType)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { setPower(d); setTimeout(() => setMounted(true), 50); })
+    fetch(
+      `/api/proposals/power?txHash=${encodeURIComponent(txHash)}&index=${proposalIndex}&type=${encodeURIComponent(proposalType)}`,
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        setPower(d);
+        setTimeout(() => setMounted(true), 50);
+      })
       .catch(() => {});
   }, [txHash, proposalIndex, proposalType]);
 
-  const hasPowerData = power && power.totalActivePower > 0 && power.yesPower + power.noPower + power.abstainPower > 0;
+  const hasPowerData =
+    power && power.totalActivePower > 0 && power.yesPower + power.noPower + power.abstainPower > 0;
   const isInfoAction = proposalType === 'InfoAction';
 
   if (!hasPowerData || isInfoAction) {
@@ -73,9 +80,8 @@ export function ThresholdMeter({
     );
   }
 
-  const yesPercent = power.totalActivePower > 0
-    ? (power.yesPower / power.totalActivePower) * 100
-    : 0;
+  const yesPercent =
+    power.totalActivePower > 0 ? (power.yesPower / power.totalActivePower) * 100 : 0;
   const threshold = power.threshold;
   const thresholdPct = threshold ? threshold * 100 : null;
   const isPassing = thresholdPct !== null && yesPercent >= thresholdPct;
@@ -107,8 +113,20 @@ export function ThresholdMeter({
   );
 }
 
-function CountBasedBar({ yesCount, noCount, abstainCount, totalVotes, isInfoAction, variant }: {
-  yesCount: number; noCount: number; abstainCount: number; totalVotes: number; isInfoAction: boolean; variant: 'compact' | 'full';
+function CountBasedBar({
+  yesCount,
+  noCount,
+  abstainCount,
+  totalVotes,
+  isInfoAction,
+  variant,
+}: {
+  yesCount: number;
+  noCount: number;
+  abstainCount: number;
+  totalVotes: number;
+  isInfoAction: boolean;
+  variant: 'compact' | 'full';
 }) {
   if (totalVotes === 0) return <span className="text-xs text-muted-foreground">No votes yet</span>;
 
@@ -129,26 +147,32 @@ function CountBasedBar({ yesCount, noCount, abstainCount, totalVotes, isInfoActi
       <div className="flex items-center gap-3 text-[10px] tabular-nums">
         <span className="text-green-600 dark:text-green-400 font-medium">{yesCount} Yes</span>
         <span className="text-red-600 dark:text-red-400 font-medium">{noCount} No</span>
-        <span className="text-amber-600 dark:text-amber-400 font-medium">{abstainCount} Abstain</span>
+        <span className="text-amber-600 dark:text-amber-400 font-medium">
+          {abstainCount} Abstain
+        </span>
         <span className="text-muted-foreground ml-auto">{totalVotes} DReps</span>
       </div>
 
-      {isInfoAction && (
-        <p className="text-[10px] text-muted-foreground">Advisory — no threshold</p>
-      )}
+      {isInfoAction && <p className="text-[10px] text-muted-foreground">Advisory — no threshold</p>}
 
       {variant === 'full' && !isInfoAction && (
         <div className="grid grid-cols-3 gap-4 text-center pt-2">
           <div>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">{yesCount}</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">
+              {yesCount}
+            </p>
             <p className="text-xs text-muted-foreground">Yes</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">{noCount}</p>
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">
+              {noCount}
+            </p>
             <p className="text-xs text-muted-foreground">No</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">{abstainCount}</p>
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+              {abstainCount}
+            </p>
             <p className="text-xs text-muted-foreground">Abstain</p>
           </div>
         </div>
@@ -166,9 +190,24 @@ function CountBasedBar({ yesCount, noCount, abstainCount, totalVotes, isInfoActi
   );
 }
 
-function CompactMeter({ yesPercent, thresholdPct, isPassing, isOpen, yesPower, totalActivePower, noCount, mounted }: {
-  yesPercent: number; thresholdPct: number | null; isPassing: boolean; isOpen: boolean;
-  yesPower: number; totalActivePower: number; noCount: number; mounted: boolean;
+function CompactMeter({
+  yesPercent,
+  thresholdPct,
+  isPassing,
+  isOpen,
+  yesPower,
+  totalActivePower,
+  noCount,
+  mounted,
+}: {
+  yesPercent: number;
+  thresholdPct: number | null;
+  isPassing: boolean;
+  isOpen: boolean;
+  yesPower: number;
+  totalActivePower: number;
+  noCount: number;
+  mounted: boolean;
 }) {
   return (
     <div className="space-y-1">
@@ -191,13 +230,22 @@ function CompactMeter({ yesPercent, thresholdPct, isPassing, isOpen, yesPower, t
         </span>
         <div className="flex items-center gap-1.5">
           {noCount > 0 && (
-            <span className="text-[10px] text-red-600 dark:text-red-400 tabular-nums">{noCount} No</span>
+            <span className="text-[10px] text-red-600 dark:text-red-400 tabular-nums">
+              {noCount} No
+            </span>
           )}
           {!isOpen && isPassing && (
-            <Badge variant="outline" className="text-[9px] px-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">Passed</Badge>
+            <Badge
+              variant="outline"
+              className="text-[9px] px-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30"
+            >
+              Passed
+            </Badge>
           )}
           {!isOpen && !isPassing && thresholdPct !== null && (
-            <Badge variant="outline" className="text-[9px] px-1 text-muted-foreground">Did not pass</Badge>
+            <Badge variant="outline" className="text-[9px] px-1 text-muted-foreground">
+              Did not pass
+            </Badge>
           )}
         </div>
       </div>
@@ -205,8 +253,20 @@ function CompactMeter({ yesPercent, thresholdPct, isPassing, isOpen, yesPower, t
   );
 }
 
-function FullMeter({ power, yesPercent, thresholdPct, isPassing, isOpen, mounted }: {
-  power: PowerData; yesPercent: number; thresholdPct: number | null; isPassing: boolean; isOpen: boolean; mounted: boolean;
+function FullMeter({
+  power,
+  yesPercent,
+  thresholdPct,
+  isPassing,
+  isOpen,
+  mounted,
+}: {
+  power: PowerData;
+  yesPercent: number;
+  thresholdPct: number | null;
+  isPassing: boolean;
+  isOpen: boolean;
+  mounted: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -240,19 +300,27 @@ function FullMeter({ power, yesPercent, thresholdPct, isPassing, isOpen, mounted
         <div className="flex items-center justify-between">
           {isOpen ? (
             isPassing ? (
-              <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30"
+              >
                 Currently passing
               </Badge>
             ) : thresholdPct !== null ? (
               <span className="text-[10px] text-muted-foreground">Needs more support to pass</span>
             ) : null
-          ) : (
-            isPassing ? (
-              <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">Passed</Badge>
-            ) : thresholdPct !== null ? (
-              <Badge variant="outline" className="text-[10px] text-muted-foreground">Did not pass</Badge>
-            ) : null
-          )}
+          ) : isPassing ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30"
+            >
+              Passed
+            </Badge>
+          ) : thresholdPct !== null ? (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              Did not pass
+            </Badge>
+          ) : null}
           <span className="text-[10px] text-muted-foreground tabular-nums">
             {yesPercent.toFixed(1)}% Yes
             {thresholdPct !== null && ` / ${Math.round(thresholdPct)}% needed`}
@@ -262,19 +330,31 @@ function FullMeter({ power, yesPercent, thresholdPct, isPassing, isOpen, mounted
 
       <div className="grid grid-cols-3 gap-4 text-center">
         <div>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">{power.yesCount}</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">
+            {power.yesCount}
+          </p>
           <p className="text-xs text-muted-foreground">Yes</p>
-          <p className="text-[10px] text-muted-foreground tabular-nums">{formatAdaCompact(power.yesPower)} ADA</p>
+          <p className="text-[10px] text-muted-foreground tabular-nums">
+            {formatAdaCompact(power.yesPower)} ADA
+          </p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">{power.noCount}</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">
+            {power.noCount}
+          </p>
           <p className="text-xs text-muted-foreground">No</p>
-          <p className="text-[10px] text-muted-foreground tabular-nums">{formatAdaCompact(power.noPower)} ADA</p>
+          <p className="text-[10px] text-muted-foreground tabular-nums">
+            {formatAdaCompact(power.noPower)} ADA
+          </p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">{power.abstainCount}</p>
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+            {power.abstainCount}
+          </p>
           <p className="text-xs text-muted-foreground">Abstain</p>
-          <p className="text-[10px] text-muted-foreground tabular-nums">{formatAdaCompact(power.abstainPower)} ADA</p>
+          <p className="text-[10px] text-muted-foreground tabular-nums">
+            {formatAdaCompact(power.abstainPower)} ADA
+          </p>
         </div>
       </div>
     </div>

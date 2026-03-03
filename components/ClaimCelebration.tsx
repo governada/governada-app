@@ -59,12 +59,23 @@ function AnimatedScore({ target }: { target: number }) {
     return () => cancelAnimationFrame(frame);
   }, [target]);
 
-  const color = current >= 80 ? 'text-green-500' : current >= 60 ? 'text-amber-500' : 'text-red-500';
+  const color =
+    current >= 80 ? 'text-green-500' : current >= 60 ? 'text-amber-500' : 'text-red-500';
 
   return <span className={`text-7xl font-bold tabular-nums ${color}`}>{current}</span>;
 }
 
-function PillarReveal({ label, value, max, delay }: { label: string; value: number; max: number; delay: number }) {
+function PillarReveal({
+  label,
+  value,
+  max,
+  delay,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  delay: number;
+}) {
   const [width, setWidth] = useState(0);
   const pct = Math.min(100, (value / 100) * 100);
   const color = pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500';
@@ -84,7 +95,9 @@ function PillarReveal({ label, value, max, delay }: { label: string; value: numb
           style={{ width: `${width}%` }}
         />
       </div>
-      <span className="text-xs font-semibold tabular-nums w-10 text-right">{points}/{max}</span>
+      <span className="text-xs font-semibold tabular-nums w-10 text-right">
+        {points}/{max}
+      </span>
     </div>
   );
 }
@@ -156,7 +169,10 @@ export function ClaimCelebration({
             Your first 3 actions
           </h3>
           {CHECKLIST_ITEMS.map((item) => (
-            <div key={item.key} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+            <div
+              key={item.key}
+              className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+            >
               <item.icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-medium">{item.label}</p>

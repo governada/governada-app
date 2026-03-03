@@ -43,10 +43,7 @@ export async function generateMetadata({ params }: ClaimPageProps): Promise<Meta
 export default async function ClaimPage({ params }: ClaimPageProps) {
   const { drepId } = await params;
   const decodedId = decodeURIComponent(drepId);
-  const [drep, claimed] = await Promise.all([
-    getDRepById(decodedId),
-    isDRepClaimed(decodedId),
-  ]);
+  const [drep, claimed] = await Promise.all([getDRepById(decodedId), isDRepClaimed(decodedId)]);
 
   if (!drep) {
     notFound();

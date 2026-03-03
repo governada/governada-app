@@ -29,15 +29,51 @@ interface ProposalDetailPageProps {
 }
 
 const TYPE_CONFIG: Record<string, { label: string; icon: typeof Landmark; color: string }> = {
-  TreasuryWithdrawals: { label: 'Treasury Withdrawal', icon: Landmark, color: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' },
-  ParameterChange: { label: 'Parameter Change', icon: Shield, color: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30' },
-  HardForkInitiation: { label: 'Hard Fork Initiation', icon: Zap, color: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30' },
-  InfoAction: { label: 'Info Action', icon: Eye, color: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30' },
-  NoConfidence: { label: 'No Confidence', icon: Scale, color: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30' },
-  NewCommittee: { label: 'Constitutional Committee', icon: Scale, color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30' },
-  NewConstitutionalCommittee: { label: 'Constitutional Committee', icon: Scale, color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30' },
-  NewConstitution: { label: 'Constitution', icon: Scale, color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30' },
-  UpdateConstitution: { label: 'Constitution', icon: Scale, color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30' },
+  TreasuryWithdrawals: {
+    label: 'Treasury Withdrawal',
+    icon: Landmark,
+    color: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+  },
+  ParameterChange: {
+    label: 'Parameter Change',
+    icon: Shield,
+    color: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30',
+  },
+  HardForkInitiation: {
+    label: 'Hard Fork Initiation',
+    icon: Zap,
+    color: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+  },
+  InfoAction: {
+    label: 'Info Action',
+    icon: Eye,
+    color: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30',
+  },
+  NoConfidence: {
+    label: 'No Confidence',
+    icon: Scale,
+    color: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+  },
+  NewCommittee: {
+    label: 'Constitutional Committee',
+    icon: Scale,
+    color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30',
+  },
+  NewConstitutionalCommittee: {
+    label: 'Constitutional Committee',
+    icon: Scale,
+    color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30',
+  },
+  NewConstitution: {
+    label: 'Constitution',
+    icon: Scale,
+    color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30',
+  },
+  UpdateConstitution: {
+    label: 'Constitution',
+    icon: Scale,
+    color: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30',
+  },
 };
 
 export default async function ProposalDetailPage({ params }: ProposalDetailPageProps) {
@@ -62,11 +98,13 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
 
   const date = proposal.blockTime
     ? new Date(proposal.blockTime * 1000).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'long', day: 'numeric',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       })
     : null;
 
-  const timelineVotes = votes.map(v => ({
+  const timelineVotes = votes.map((v) => ({
     drepName: v.drepName,
     drepId: v.drepId,
     vote: v.vote,
@@ -102,9 +140,7 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
             </Badge>
           )}
           <TypeExplainerTooltip proposalType={proposal.proposalType} />
-          {proposal.treasuryTier && (
-            <TreasuryTierBadge tier={proposal.treasuryTier} />
-          )}
+          {proposal.treasuryTier && <TreasuryTierBadge tier={proposal.treasuryTier} />}
           {proposal.proposedEpoch && (
             <Badge variant="secondary">Epoch {proposal.proposedEpoch}</Badge>
           )}
@@ -116,9 +152,7 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
         </h1>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {date && (
-            <p className="text-sm text-muted-foreground">Proposed {date}</p>
-          )}
+          {date && <p className="text-sm text-muted-foreground">Proposed {date}</p>}
           <a
             href={`https://gov.tools/governance_actions/${txHash}#${proposalIndex}`}
             target="_blank"
@@ -156,9 +190,9 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
             title: proposal.title || `Proposal ${txHash.slice(0, 12)}...`,
             proposalType: proposal.proposalType,
             withdrawalAmount: proposal.withdrawalAmount,
-            outcome: (status as 'ratified' | 'enacted' | 'dropped' | 'expired'),
+            outcome: status as 'ratified' | 'enacted' | 'dropped' | 'expired',
           }}
-          votes={votes.map(v => ({ drepId: v.drepId, vote: v.vote }))}
+          votes={votes.map((v) => ({ drepId: v.drepId, vote: v.vote }))}
           majorityVote={
             proposal.yesCount >= proposal.noCount && proposal.yesCount >= proposal.abstainCount
               ? 'Yes'
@@ -206,7 +240,6 @@ export default async function ProposalDetailPage({ params }: ProposalDetailPageP
 
       {/* DRep Voters */}
       <ProposalVotersWithContext votes={votes} />
-
     </div>
   );
 }

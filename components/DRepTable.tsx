@@ -14,14 +14,18 @@ import { Button } from '@/components/ui/button';
 import { getDRepDisplayName } from '@/utils/display';
 import { formatAda, getDRepScoreBadgeClass, getSizeBadgeClass } from '@/utils/scoring';
 import { EnrichedDRep } from '@/lib/koios';
-import { ArrowUpDown, ArrowUp, ArrowDown, Info, Heart, UserPlus, GitCompareArrows, Vote } from 'lucide-react';
-import { SortConfig, SortKey } from './DRepTableClient';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Info,
+  Heart,
+  UserPlus,
+  GitCompareArrows,
+  Vote,
+} from 'lucide-react';
+import { SortConfig, SortKey } from './DRepTableClient';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScoreBreakdownTooltip } from './ScoreBreakdown';
 import { SocialIcons } from './SocialIcons';
 import { useFeatureFlag } from '@/components/FeatureGate';
@@ -63,27 +67,29 @@ export function DRepTable({
 
   const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
     if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
-    return sortConfig.direction === 'asc'
-      ? <ArrowUp className="ml-2 h-4 w-4 text-primary" />
-      : <ArrowDown className="ml-2 h-4 w-4 text-primary" />;
+    return sortConfig.direction === 'asc' ? (
+      <ArrowUp className="ml-2 h-4 w-4 text-primary" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4 text-primary" />
+    );
   };
 
   const alignClasses: Record<string, { head: string; flex: string; ml: string }> = {
-    left:   { head: 'text-left',   flex: '',               ml: '-ml-4' },
-    center: { head: 'text-center', flex: 'justify-center', ml: ''      },
-    right:  { head: 'text-right',  flex: 'justify-end',    ml: ''      },
+    left: { head: 'text-left', flex: '', ml: '-ml-4' },
+    center: { head: 'text-center', flex: 'justify-center', ml: '' },
+    right: { head: 'text-right', flex: 'justify-end', ml: '' },
   };
 
   const SortableHeader = ({
     columnKey,
     label,
     tooltip,
-    align = 'left'
+    align = 'left',
   }: {
-    columnKey: SortKey,
-    label: string,
-    tooltip: string,
-    align?: 'left' | 'center' | 'right'
+    columnKey: SortKey;
+    label: string;
+    tooltip: string;
+    align?: 'left' | 'center' | 'right';
   }) => {
     const ac = alignClasses[align];
     return (
@@ -177,8 +183,8 @@ export function DRepTable({
               <TableRow
                 key={drep.drepId}
                 className={cn(
-                  "cursor-pointer hover:bg-muted/50 transition-colors",
-                  compareSelection.has(drep.drepId) && "bg-primary/5"
+                  'cursor-pointer hover:bg-muted/50 transition-colors',
+                  compareSelection.has(drep.drepId) && 'bg-primary/5',
                 )}
                 onClick={() => router.push(`/drep/${encodeURIComponent(drep.drepId)}`)}
               >
@@ -191,15 +197,25 @@ export function DRepTable({
                         onCompareToggle?.(drep.drepId);
                       }}
                       className={cn(
-                        "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                        'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                         compareSelection.has(drep.drepId)
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-muted-foreground/30 hover:border-primary/60"
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-muted-foreground/30 hover:border-primary/60',
                       )}
-                      aria-label={compareSelection.has(drep.drepId) ? 'Remove from comparison' : 'Add to comparison'}
+                      aria-label={
+                        compareSelection.has(drep.drepId)
+                          ? 'Remove from comparison'
+                          : 'Add to comparison'
+                      }
                     >
                       {compareSelection.has(drep.drepId) && (
-                        <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <svg
+                          viewBox="0 0 12 12"
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
                           <path d="M2 6l3 3 5-5" />
                         </svg>
                       )}
@@ -217,7 +233,11 @@ export function DRepTable({
                         variant="outline"
                         className={`text-[10px] px-1 py-0 h-4 font-medium mt-1 ${getDRepScoreBadgeClass(drep.drepScore ?? 0)}`}
                       >
-                        {(drep.drepScore ?? 0) >= 80 ? 'Strong' : (drep.drepScore ?? 0) >= 60 ? 'Good' : 'Low'}
+                        {(drep.drepScore ?? 0) >= 80
+                          ? 'Strong'
+                          : (drep.drepScore ?? 0) >= 60
+                            ? 'Good'
+                            : 'Low'}
                       </Badge>
                     </div>
                   </ScoreBreakdownTooltip>
@@ -230,12 +250,12 @@ export function DRepTable({
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-xs font-semibold tabular-nums",
+                          'text-xs font-semibold tabular-nums',
                           match >= 70
                             ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
                             : match >= 50
                               ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
-                              : 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30'
+                              : 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30',
                         )}
                       >
                         {match}%
@@ -254,7 +274,10 @@ export function DRepTable({
                         {getDRepDisplayName(drep)}
                       </span>
                       {drep.handle && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-mono text-muted-foreground">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 h-4 font-mono text-muted-foreground"
+                        >
                           {drep.handle}
                         </Badge>
                       )}
@@ -288,20 +311,28 @@ export function DRepTable({
                               onWatchlistToggle?.(drep.drepId);
                             }}
                             className="p-2 hover:bg-muted rounded-full transition-colors"
-                            aria-label={watchlist.includes(drep.drepId) ? 'Remove from watchlist' : 'Add to watchlist'}
+                            aria-label={
+                              watchlist.includes(drep.drepId)
+                                ? 'Remove from watchlist'
+                                : 'Add to watchlist'
+                            }
                           >
                             <Heart
                               className={cn(
-                                "h-4 w-4 transition-colors",
+                                'h-4 w-4 transition-colors',
                                 watchlist.includes(drep.drepId)
-                                  ? "fill-red-500 text-red-500"
-                                  : "text-muted-foreground hover:text-red-400"
+                                  ? 'fill-red-500 text-red-500'
+                                  : 'text-muted-foreground hover:text-red-400',
                               )}
                             />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{watchlist.includes(drep.drepId) ? 'Remove from watchlist' : 'Add to watchlist'}</p>
+                          <p>
+                            {watchlist.includes(drep.drepId)
+                              ? 'Remove from watchlist'
+                              : 'Add to watchlist'}
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -314,20 +345,28 @@ export function DRepTable({
                               router.push(`/drep/${encodeURIComponent(drep.drepId)}`);
                             }}
                             className="p-2 hover:bg-muted rounded-full transition-colors"
-                            aria-label={delegatedDrepId === drep.drepId ? 'Your current DRep' : 'Delegate to this DRep'}
+                            aria-label={
+                              delegatedDrepId === drep.drepId
+                                ? 'Your current DRep'
+                                : 'Delegate to this DRep'
+                            }
                           >
                             <Vote
                               className={cn(
-                                "h-4 w-4 transition-colors",
+                                'h-4 w-4 transition-colors',
                                 delegatedDrepId === drep.drepId
-                                  ? "fill-primary text-primary"
-                                  : "text-muted-foreground hover:text-primary"
+                                  ? 'fill-primary text-primary'
+                                  : 'text-muted-foreground hover:text-primary',
                               )}
                             />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{delegatedDrepId === drep.drepId ? 'Your current DRep' : 'Delegate to this DRep'}</p>
+                          <p>
+                            {delegatedDrepId === drep.drepId
+                              ? 'Your current DRep'
+                              : 'Delegate to this DRep'}
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

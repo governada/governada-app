@@ -77,7 +77,10 @@ export async function generateJSON<T = unknown>(
   if (!text) return null;
 
   try {
-    const cleaned = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    const cleaned = text
+      .replace(/^```json\s*/, '')
+      .replace(/\s*```$/, '')
+      .trim();
     return JSON.parse(cleaned) as T;
   } catch {
     console.error('[AI] Failed to parse JSON response');

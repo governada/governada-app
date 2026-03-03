@@ -50,7 +50,8 @@ const checks: Check[] = [
     path: '/api/v1/governance/health',
     expectedStatus: 200,
     validate: (b) => {
-      if (typeof b.data?.total_registered_dreps !== 'number') return 'Missing total_registered_dreps';
+      if (typeof b.data?.total_registered_dreps !== 'number')
+        return 'Missing total_registered_dreps';
       if (!b.data?.score_distribution) return 'Missing score_distribution';
       return null;
     },
@@ -76,7 +77,11 @@ async function runCheck(check: Check): Promise<{ pass: boolean; name: string; de
     });
 
     if (res.status !== check.expectedStatus) {
-      return { pass: false, name: check.name, detail: `Expected ${check.expectedStatus}, got ${res.status}` };
+      return {
+        pass: false,
+        name: check.name,
+        detail: `Expected ${check.expectedStatus}, got ${res.status}`,
+      };
     }
 
     if (check.validate) {
@@ -87,7 +92,11 @@ async function runCheck(check: Check): Promise<{ pass: boolean; name: string; de
 
     return { pass: true, name: check.name, detail: `${res.status} OK` };
   } catch (err) {
-    return { pass: false, name: check.name, detail: `Fetch failed: ${err instanceof Error ? err.message : String(err)}` };
+    return {
+      pass: false,
+      name: check.name,
+      detail: `Fetch failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
 }
 

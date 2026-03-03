@@ -15,9 +15,7 @@ export function ProposalDescription({ aiSummary, abstract }: ProposalDescription
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">
-          {aiSummary ? 'Description' : 'Description'}
-        </CardTitle>
+        <CardTitle className="text-base">{aiSummary ? 'Description' : 'Description'}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {aiSummary && (
@@ -39,7 +37,10 @@ export function ProposalDescription({ aiSummary, abstract }: ProposalDescription
                 Full Description
               </p>
             )}
-            <MarkdownContent content={abstract} className="text-sm text-foreground/85 leading-relaxed" />
+            <MarkdownContent
+              content={abstract}
+              className="text-sm text-foreground/85 leading-relaxed"
+            />
           </div>
         )}
       </CardContent>

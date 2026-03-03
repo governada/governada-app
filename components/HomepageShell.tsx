@@ -9,12 +9,12 @@ import { getStoredSession } from '@/lib/supabaseAuth';
 import { EnrichedDRep } from '@/lib/koios';
 
 const GovernanceWidget = dynamic(
-  () => import('@/components/GovernanceWidget').then(m => m.GovernanceWidget),
-  { ssr: false }
+  () => import('@/components/GovernanceWidget').then((m) => m.GovernanceWidget),
+  { ssr: false },
 );
 const GovernanceDNAQuiz = dynamic(
-  () => import('@/components/GovernanceDNAQuiz').then(m => m.GovernanceDNAQuiz),
-  { ssr: false }
+  () => import('@/components/GovernanceDNAQuiz').then((m) => m.GovernanceDNAQuiz),
+  { ssr: false },
 );
 
 const WATCHLIST_KEY = 'drepscore_watchlist';
@@ -62,8 +62,8 @@ export function HomepageShell({
     fetch('/api/user', {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         if (data?.watchlist?.length > 0) {
           setWatchlist(data.watchlist);
           saveLocalWatchlist(data.watchlist);
@@ -75,8 +75,8 @@ export function HomepageShell({
     fetch('/api/governance/matches', {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         if (data?.matches?.length > 0) {
           const map: Record<string, number> = {};
           for (const m of data.matches) {
@@ -88,28 +88,31 @@ export function HomepageShell({
       .catch(console.error);
   }, [isAuthenticated, sessionAddress]);
 
-  const handleWatchlistToggle = useCallback(async (drepId: string) => {
-    const newWatchlist = watchlist.includes(drepId)
-      ? watchlist.filter(id => id !== drepId)
-      : [...watchlist, drepId];
+  const handleWatchlistToggle = useCallback(
+    async (drepId: string) => {
+      const newWatchlist = watchlist.includes(drepId)
+        ? watchlist.filter((id) => id !== drepId)
+        : [...watchlist, drepId];
 
-    setWatchlist(newWatchlist);
-    saveLocalWatchlist(newWatchlist);
+      setWatchlist(newWatchlist);
+      saveLocalWatchlist(newWatchlist);
 
-    if (isAuthenticated) {
-      const token = getStoredSession();
-      if (token) {
-        fetch('/api/user', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ watchlist: newWatchlist }),
-        }).catch(console.error);
+      if (isAuthenticated) {
+        const token = getStoredSession();
+        if (token) {
+          fetch('/api/user', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ watchlist: newWatchlist }),
+          }).catch(console.error);
+        }
       }
-    }
-  }, [watchlist, isAuthenticated]);
+    },
+    [watchlist, isAuthenticated],
+  );
 
   return (
     <div className="space-y-6">

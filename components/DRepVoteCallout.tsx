@@ -19,11 +19,11 @@ export function DRepVoteCallout({ txHash, proposalIndex }: DRepVoteCalloutProps)
     if (!delegatedDrepId) return;
     setLoading(true);
     fetch(`/api/drep/${delegatedDrepId}/votes`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         if (data?.votes) {
           const match = data.votes.find(
-            (v: any) => v.proposalTxHash === txHash && v.proposalIndex === proposalIndex
+            (v: any) => v.proposalTxHash === txHash && v.proposalIndex === proposalIndex,
           );
           setVote(match?.vote || null);
         }
@@ -36,9 +36,21 @@ export function DRepVoteCallout({ txHash, proposalIndex }: DRepVoteCalloutProps)
 
   const config = vote
     ? {
-        Yes: { icon: CheckCircle2, text: 'Your DRep voted Yes', bg: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' },
-        No: { icon: XCircle, text: 'Your DRep voted No', bg: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' },
-        Abstain: { icon: MinusCircle, text: 'Your DRep abstained', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' },
+        Yes: {
+          icon: CheckCircle2,
+          text: 'Your DRep voted Yes',
+          bg: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800',
+        },
+        No: {
+          icon: XCircle,
+          text: 'Your DRep voted No',
+          bg: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
+        },
+        Abstain: {
+          icon: MinusCircle,
+          text: 'Your DRep abstained',
+          bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+        },
       }[vote] || null
     : null;
 
@@ -58,7 +70,9 @@ export function DRepVoteCallout({ txHash, proposalIndex }: DRepVoteCalloutProps)
     <Card className="bg-muted/50 border border-dashed">
       <CardContent className="p-3 flex items-center gap-2">
         <CircleDashed className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-sm text-muted-foreground">Your DRep has not voted on this proposal yet</span>
+        <span className="text-sm text-muted-foreground">
+          Your DRep has not voted on this proposal yet
+        </span>
       </CardContent>
     </Card>
   );

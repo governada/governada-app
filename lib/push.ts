@@ -135,13 +135,9 @@ export async function sendPushBroadcast(
 
   if (expiredAddresses.length > 0) {
     for (const addr of expiredAddresses) {
-      await supabase
-        .from('users')
-        .update({ push_subscriptions: {} })
-        .eq('wallet_address', addr);
+      await supabase.from('users').update({ push_subscriptions: {} }).eq('wallet_address', addr);
     }
   }
 
   return { sent, expired };
 }
-

@@ -153,20 +153,43 @@ function PillarRadarChart({ data }: { data: { pillar: string; value: number }[] 
 
 const SERIES_CONFIG = [
   { key: 'score' as const, label: 'Overall Score', color: CHART_PALETTE[0], width: 2.5, dash: '' },
-  { key: 'participation' as const, label: 'Participation', color: CHART_PALETTE[1], width: 1.5, dash: '4 4' },
-  { key: 'rationale' as const, label: 'Rationale', color: CHART_PALETTE[2], width: 1.5, dash: '4 4' },
+  {
+    key: 'participation' as const,
+    label: 'Participation',
+    color: CHART_PALETTE[1],
+    width: 1.5,
+    dash: '4 4',
+  },
+  {
+    key: 'rationale' as const,
+    label: 'Rationale',
+    color: CHART_PALETTE[2],
+    width: 1.5,
+    dash: '4 4',
+  },
 ];
 
-function ScoreHistoryLine({ data }: { data: { date: string; score: number; participation: number; rationale: number }[] }) {
+function ScoreHistoryLine({
+  data,
+}: {
+  data: { date: string; score: number; participation: number; rationale: number }[];
+}) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { containerRef, dimensions } = useChartDimensions(280);
   const { width, innerWidth, innerHeight, margin } = dimensions;
 
   const xScale = useMemo(
-    () => scalePoint<string>().domain(data.map((d) => d.date)).range([0, innerWidth]).padding(0.1),
+    () =>
+      scalePoint<string>()
+        .domain(data.map((d) => d.date))
+        .range([0, innerWidth])
+        .padding(0.1),
     [data, innerWidth],
   );
-  const yScale = useMemo(() => scaleLinear().domain([0, 100]).range([innerHeight, 0]), [innerHeight]);
+  const yScale = useMemo(
+    () => scaleLinear().domain([0, 100]).range([innerHeight, 0]),
+    [innerHeight],
+  );
 
   const paths = useMemo(
     () =>
@@ -194,7 +217,8 @@ function ScoreHistoryLine({ data }: { data: { date: string; score: number; parti
 
   const hovered = hoveredIndex !== null ? data[hoveredIndex] : null;
   const ticks = yScale.ticks(5);
-  const xTicks = data.length <= 8 ? data : data.filter((_, i) => i % Math.ceil(data.length / 8) === 0);
+  const xTicks =
+    data.length <= 8 ? data : data.filter((_, i) => i % Math.ceil(data.length / 8) === 0);
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ height: 280 }}>
@@ -207,28 +231,96 @@ function ScoreHistoryLine({ data }: { data: { date: string; score: number; parti
           <g transform={`translate(${margin.left},${margin.top})`}>
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
-                <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{t}</text>
+                <line
+                  x1={0}
+                  x2={innerWidth}
+                  y1={yScale(t)}
+                  y2={yScale(t)}
+                  stroke="currentColor"
+                  strokeWidth={0.5}
+                  strokeDasharray="4 4"
+                  className="text-border"
+                />
+                <text
+                  x={-8}
+                  y={yScale(t)}
+                  textAnchor="end"
+                  dominantBaseline="central"
+                  fontSize={chartTheme.font.size.tick}
+                  className="fill-muted-foreground"
+                >
+                  {t}
+                </text>
               </g>
             ))}
             {xTicks.map((d) => (
-              <text key={d.date} x={xScale(d.date) ?? 0} y={innerHeight + 18} textAnchor="middle" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{d.date}</text>
+              <text
+                key={d.date}
+                x={xScale(d.date) ?? 0}
+                y={innerHeight + 18}
+                textAnchor="middle"
+                fontSize={chartTheme.font.size.tick}
+                className="fill-muted-foreground"
+              >
+                {d.date}
+              </text>
             ))}
 
-            <path d={paths[0].d} fill="none" stroke={CHART_PALETTE[0]} strokeWidth={3} filter="url(#score-hist-glow)" opacity={0.4} />
+            <path
+              d={paths[0].d}
+              fill="none"
+              stroke={CHART_PALETTE[0]}
+              strokeWidth={3}
+              filter="url(#score-hist-glow)"
+              opacity={0.4}
+            />
             {paths.map((p) => (
-              <path key={p.key} d={p.d} fill="none" stroke={p.color} strokeWidth={p.width} strokeDasharray={p.dash} strokeLinejoin="round" strokeLinecap="round" />
+              <path
+                key={p.key}
+                d={p.d}
+                fill="none"
+                stroke={p.color}
+                strokeWidth={p.width}
+                strokeDasharray={p.dash}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
             ))}
 
             {data.map((d, i) => (
-              <circle key={i} cx={xScale(d.date) ?? 0} cy={yScale(d.score)} r={hoveredIndex === i ? 5 : 3} fill={CHART_PALETTE[0]} stroke="oklch(0.07 0.015 260)" strokeWidth={1.5} />
+              <circle
+                key={i}
+                cx={xScale(d.date) ?? 0}
+                cy={yScale(d.score)}
+                r={hoveredIndex === i ? 5 : 3}
+                fill={CHART_PALETTE[0]}
+                stroke="oklch(0.07 0.015 260)"
+                strokeWidth={1.5}
+              />
             ))}
 
             {hoveredIndex !== null && (
-              <line x1={xScale(data[hoveredIndex].date) ?? 0} x2={xScale(data[hoveredIndex].date) ?? 0} y1={0} y2={innerHeight} stroke="currentColor" strokeWidth={0.5} strokeDasharray="3 3" className="text-muted-foreground" />
+              <line
+                x1={xScale(data[hoveredIndex].date) ?? 0}
+                x2={xScale(data[hoveredIndex].date) ?? 0}
+                y1={0}
+                y2={innerHeight}
+                stroke="currentColor"
+                strokeWidth={0.5}
+                strokeDasharray="3 3"
+                className="text-muted-foreground"
+              />
             )}
 
-            <rect x={0} y={0} width={innerWidth} height={innerHeight} fill="transparent" onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)} />
+            <rect
+              x={0}
+              y={0}
+              width={innerWidth}
+              height={innerHeight}
+              fill="transparent"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
           </g>
         </svg>
       )}
@@ -258,7 +350,13 @@ function ScoreHistoryLine({ data }: { data: { date: string; score: number; parti
       <div className="flex gap-4 justify-center mt-1">
         {SERIES_CONFIG.map((s) => (
           <div key={s.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="w-3 h-0.5 rounded" style={{ backgroundColor: s.color, ...(s.dash ? { borderTop: `1.5px dashed ${s.color}`, background: 'none' } : {}) }} />
+            <span
+              className="w-3 h-0.5 rounded"
+              style={{
+                backgroundColor: s.color,
+                ...(s.dash ? { borderTop: `1.5px dashed ${s.color}`, background: 'none' } : {}),
+              }}
+            />
             {s.label}
           </div>
         ))}
@@ -271,9 +369,17 @@ function ScoreHistoryLine({ data }: { data: { date: string; score: number; parti
 
 const VOTE_KEYS: ('yes' | 'no' | 'abstain')[] = ['yes', 'no', 'abstain'];
 const VOTE_LABELS: Record<string, string> = { yes: 'Yes', no: 'No', abstain: 'Abstain' };
-const VOTE_COLORS: Record<string, string> = { yes: VOTE_CHART_COLORS.Yes, no: VOTE_CHART_COLORS.No, abstain: VOTE_CHART_COLORS.Abstain };
+const VOTE_COLORS: Record<string, string> = {
+  yes: VOTE_CHART_COLORS.Yes,
+  no: VOTE_CHART_COLORS.No,
+  abstain: VOTE_CHART_COLORS.Abstain,
+};
 
-function VoteActivityArea({ data }: { data: { month: string; yes: number; no: number; abstain: number }[] }) {
+function VoteActivityArea({
+  data,
+}: {
+  data: { month: string; yes: number; no: number; abstain: number }[];
+}) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { containerRef, dimensions } = useChartDimensions(280);
   const { width, innerWidth, innerHeight, margin } = dimensions;
@@ -285,10 +391,17 @@ function VoteActivityArea({ data }: { data: { month: string; yes: number; no: nu
   }, [data]);
 
   const xScale = useMemo(
-    () => scalePoint<string>().domain(data.map((d) => d.month)).range([0, innerWidth]).padding(0.1),
+    () =>
+      scalePoint<string>()
+        .domain(data.map((d) => d.month))
+        .range([0, innerWidth])
+        .padding(0.1),
     [data, innerWidth],
   );
-  const yScale = useMemo(() => scaleLinear().domain([0, yMax]).range([innerHeight, 0]), [yMax, innerHeight]);
+  const yScale = useMemo(
+    () => scaleLinear().domain([0, yMax]).range([innerHeight, 0]),
+    [yMax, innerHeight],
+  );
 
   const layers = useMemo(
     () =>
@@ -331,7 +444,8 @@ function VoteActivityArea({ data }: { data: { month: string; yes: number; no: nu
 
   const hovered = hoveredIndex !== null ? data[hoveredIndex] : null;
   const ticks = yScale.ticks(4);
-  const xTicks = data.length <= 6 ? data : data.filter((_, i) => i % Math.ceil(data.length / 6) === 0);
+  const xTicks =
+    data.length <= 6 ? data : data.filter((_, i) => i % Math.ceil(data.length / 6) === 0);
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ height: 280 }}>
@@ -345,23 +459,73 @@ function VoteActivityArea({ data }: { data: { month: string; yes: number; no: nu
           <g transform={`translate(${margin.left},${margin.top})`}>
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
-                <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{t}</text>
+                <line
+                  x1={0}
+                  x2={innerWidth}
+                  y1={yScale(t)}
+                  y2={yScale(t)}
+                  stroke="currentColor"
+                  strokeWidth={0.5}
+                  strokeDasharray="4 4"
+                  className="text-border"
+                />
+                <text
+                  x={-8}
+                  y={yScale(t)}
+                  textAnchor="end"
+                  dominantBaseline="central"
+                  fontSize={chartTheme.font.size.tick}
+                  className="fill-muted-foreground"
+                >
+                  {t}
+                </text>
               </g>
             ))}
             {xTicks.map((d) => (
-              <text key={d.month} x={xScale(d.month) ?? 0} y={innerHeight + 18} textAnchor="middle" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{d.month}</text>
+              <text
+                key={d.month}
+                x={xScale(d.month) ?? 0}
+                y={innerHeight + 18}
+                textAnchor="middle"
+                fontSize={chartTheme.font.size.tick}
+                className="fill-muted-foreground"
+              >
+                {d.month}
+              </text>
             ))}
 
             {layers.map(({ key, path, color }) => (
-              <path key={key} d={path} fill={`url(#ad-vote-${key})`} stroke={color} strokeWidth={1.5} />
+              <path
+                key={key}
+                d={path}
+                fill={`url(#ad-vote-${key})`}
+                stroke={color}
+                strokeWidth={1.5}
+              />
             ))}
 
             {hoveredIndex !== null && (
-              <line x1={xScale(data[hoveredIndex].month) ?? 0} x2={xScale(data[hoveredIndex].month) ?? 0} y1={0} y2={innerHeight} stroke="currentColor" strokeWidth={0.5} strokeDasharray="3 3" className="text-muted-foreground" />
+              <line
+                x1={xScale(data[hoveredIndex].month) ?? 0}
+                x2={xScale(data[hoveredIndex].month) ?? 0}
+                y1={0}
+                y2={innerHeight}
+                stroke="currentColor"
+                strokeWidth={0.5}
+                strokeDasharray="3 3"
+                className="text-muted-foreground"
+              />
             )}
 
-            <rect x={0} y={0} width={innerWidth} height={innerHeight} fill="transparent" onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredIndex(null)} />
+            <rect
+              x={0}
+              y={0}
+              width={innerWidth}
+              height={innerHeight}
+              fill="transparent"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
           </g>
         </svg>
       )}
@@ -379,7 +543,10 @@ function VoteActivityArea({ data }: { data: { month: string; yes: number; no: nu
             {VOTE_KEYS.map((k) => (
               <div key={k} className="flex items-center justify-between gap-4">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: VOTE_COLORS[k] }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: VOTE_COLORS[k] }}
+                  />
                   {VOTE_LABELS[k]}
                 </span>
                 <span className="font-mono tabular-nums">{hovered[k]}</span>
@@ -405,13 +572,24 @@ function VoteActivityArea({ data }: { data: { month: string; yes: number; no: nu
 function ProposalTypeBar({ data }: { data: { type: string; count: number }[] }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const chartHeight = Math.max(200, data.length * 36 + 40);
-  const { containerRef, dimensions } = useChartDimensions(chartHeight, { left: 90, top: 8, bottom: 12 });
+  const { containerRef, dimensions } = useChartDimensions(chartHeight, {
+    left: 90,
+    top: 8,
+    bottom: 12,
+  });
   const { width, innerWidth, innerHeight, margin } = dimensions;
 
   const xMax = useMemo(() => Math.max(...data.map((d) => d.count), 1), [data]);
-  const xScale = useMemo(() => scaleLinear().domain([0, xMax]).range([0, innerWidth]).nice(), [xMax, innerWidth]);
+  const xScale = useMemo(
+    () => scaleLinear().domain([0, xMax]).range([0, innerWidth]).nice(),
+    [xMax, innerWidth],
+  );
   const yScale = useMemo(
-    () => scaleBand<string>().domain(data.map((d) => d.type)).range([0, innerHeight]).padding(0.3),
+    () =>
+      scaleBand<string>()
+        .domain(data.map((d) => d.type))
+        .range([0, innerHeight])
+        .padding(0.3),
     [data, innerHeight],
   );
 
@@ -427,8 +605,25 @@ function ProposalTypeBar({ data }: { data: { type: string; count: number }[] }) 
           <g transform={`translate(${margin.left},${margin.top})`}>
             {xTicks.map((t) => (
               <g key={t}>
-                <line x1={xScale(t)} x2={xScale(t)} y1={0} y2={innerHeight} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
-                <text x={xScale(t)} y={innerHeight + 14} textAnchor="middle" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">{t}</text>
+                <line
+                  x1={xScale(t)}
+                  x2={xScale(t)}
+                  y1={0}
+                  y2={innerHeight}
+                  stroke="currentColor"
+                  strokeWidth={0.5}
+                  strokeDasharray="4 4"
+                  className="text-border"
+                />
+                <text
+                  x={xScale(t)}
+                  y={innerHeight + 14}
+                  textAnchor="middle"
+                  fontSize={chartTheme.font.size.tick}
+                  className="fill-muted-foreground"
+                >
+                  {t}
+                </text>
               </g>
             ))}
 
@@ -443,12 +638,36 @@ function ProposalTypeBar({ data }: { data: { type: string; count: number }[] }) 
                   onMouseLeave={() => setHoveredIndex(null)}
                   className="cursor-default"
                 >
-                  <text x={-6} y={y + barHeight / 2} textAnchor="end" dominantBaseline="central" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">
+                  <text
+                    x={-6}
+                    y={y + barHeight / 2}
+                    textAnchor="end"
+                    dominantBaseline="central"
+                    fontSize={chartTheme.font.size.tick}
+                    className="fill-muted-foreground"
+                  >
                     {d.type}
                   </text>
-                  <rect x={0} y={y} width={barWidth} height={barHeight} rx={3} fill={CHART_PALETTE[0]} opacity={hoveredIndex === i ? 1 : 0.8} filter={hoveredIndex === i ? 'url(#bar-glow)' : undefined} />
+                  <rect
+                    x={0}
+                    y={y}
+                    width={barWidth}
+                    height={barHeight}
+                    rx={3}
+                    fill={CHART_PALETTE[0]}
+                    opacity={hoveredIndex === i ? 1 : 0.8}
+                    filter={hoveredIndex === i ? 'url(#bar-glow)' : undefined}
+                  />
                   {barWidth > 30 && (
-                    <text x={barWidth - 6} y={y + barHeight / 2} textAnchor="end" dominantBaseline="central" fontSize={10} fill="white" fontWeight={600}>
+                    <text
+                      x={barWidth - 6}
+                      y={y + barHeight / 2}
+                      textAnchor="end"
+                      dominantBaseline="central"
+                      fontSize={10}
+                      fill="white"
+                      fontWeight={600}
+                    >
                       {d.count}
                     </text>
                   )}
@@ -498,15 +717,22 @@ function KpiCard({
           {value !== null && <span className="text-sm text-muted-foreground">{suffix}</span>}
         </div>
         {change != null && change !== 0 && !showTrend && (
-          <div className={`flex items-center gap-1 mt-1 text-xs ${isPositive ? 'text-primary' : 'text-destructive'}`}>
+          <div
+            className={`flex items-center gap-1 mt-1 text-xs ${isPositive ? 'text-primary' : 'text-destructive'}`}
+          >
             {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {change > 0 ? '+' : ''}{change} from last snapshot
+            {change > 0 ? '+' : ''}
+            {change} from last snapshot
           </div>
         )}
         {showTrend && value !== null && value !== 0 && (
-          <div className={`flex items-center gap-1 mt-1 text-xs ${isPositive ? 'text-primary' : isNegative ? 'text-destructive' : 'text-muted-foreground'}`}>
+          <div
+            className={`flex items-center gap-1 mt-1 text-xs ${isPositive ? 'text-primary' : isNegative ? 'text-destructive' : 'text-muted-foreground'}`}
+          >
             {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {value > 0 ? '+' : ''}{value}{suffix}
+            {value > 0 ? '+' : ''}
+            {value}
+            {suffix}
           </div>
         )}
         {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
@@ -554,7 +780,10 @@ export function AnalyticsDashboard({
   const historyData = useMemo(
     () =>
       scoreHistory.map((s) => ({
-        date: new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
         score: s.score,
         participation: s.effectiveParticipation,
         rationale: s.rationaleRate,
@@ -563,11 +792,20 @@ export function AnalyticsDashboard({
   );
 
   const monthlyVotes = useMemo(() => {
-    const grouped: Record<string, { month: string; dateObj: Date; yes: number; no: number; abstain: number }> = {};
+    const grouped: Record<
+      string,
+      { month: string; dateObj: Date; yes: number; no: number; abstain: number }
+    > = {};
     for (const v of votes) {
       const month = v.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
       if (!grouped[month]) {
-        grouped[month] = { month, dateObj: new Date(v.date.getFullYear(), v.date.getMonth(), 1), yes: 0, no: 0, abstain: 0 };
+        grouped[month] = {
+          month,
+          dateObj: new Date(v.date.getFullYear(), v.date.getMonth(), 1),
+          yes: 0,
+          no: 0,
+          abstain: 0,
+        };
       }
       const key = v.vote.toLowerCase() as 'yes' | 'no' | 'abstain';
       if (key in grouped[month]) grouped[month][key]++;
@@ -586,27 +824,48 @@ export function AnalyticsDashboard({
       .sort((a, b) => b.count - a.count);
   }, [votes]);
 
-  const scoreChange = scoreHistory.length >= 2
-    ? scoreHistory[scoreHistory.length - 1].score - scoreHistory[scoreHistory.length - 2].score
-    : null;
+  const scoreChange =
+    scoreHistory.length >= 2
+      ? scoreHistory[scoreHistory.length - 1].score - scoreHistory[scoreHistory.length - 2].score
+      : null;
 
-  const scoreTrend = scoreHistory.length >= 3
-    ? scoreHistory[scoreHistory.length - 1].score - scoreHistory[0].score
-    : null;
+  const scoreTrend =
+    scoreHistory.length >= 3
+      ? scoreHistory[scoreHistory.length - 1].score - scoreHistory[0].score
+      : null;
 
   return (
     <div className="space-y-6">
       {/* KPI Row */}
       <div className="grid gap-4 md:grid-cols-4">
-        <KpiCard title="DRep Score" value={drepScore} suffix="/100" change={scoreChange} icon={<Target className="h-4 w-4" />} />
-        <KpiCard title="Percentile" value={percentile ?? null} suffix="%" description="Among active DReps" icon={<Users className="h-4 w-4" />} />
+        <KpiCard
+          title="DRep Score"
+          value={drepScore}
+          suffix="/100"
+          change={scoreChange}
+          icon={<Target className="h-4 w-4" />}
+        />
+        <KpiCard
+          title="Percentile"
+          value={percentile ?? null}
+          suffix="%"
+          description="Among active DReps"
+          icon={<Users className="h-4 w-4" />}
+        />
         <KpiCard
           title="Total Votes"
           value={votes.length}
           description={`${votes.filter((v) => v.vote === 'Yes').length}Y / ${votes.filter((v) => v.vote === 'No').length}N / ${votes.filter((v) => v.vote === 'Abstain').length}A`}
           icon={<Activity className="h-4 w-4" />}
         />
-        <KpiCard title="Score Trend" value={scoreTrend} suffix=" pts" description="Since tracking started" icon={<BarChart3 className="h-4 w-4" />} showTrend />
+        <KpiCard
+          title="Score Trend"
+          value={scoreTrend}
+          suffix=" pts"
+          description="Since tracking started"
+          icon={<BarChart3 className="h-4 w-4" />}
+          showTrend
+        />
       </div>
 
       {/* Charts Row 1: Radar + Score History */}

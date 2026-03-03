@@ -10,7 +10,9 @@ function getLocalWatchlist(): string[] {
   if (typeof window === 'undefined') return [];
   try {
     return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '[]');
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 interface ProposalsPageClientProps {
@@ -25,5 +27,7 @@ export function ProposalsPageClient({ proposals, currentEpoch }: ProposalsPageCl
     setWatchlist(getLocalWatchlist());
   }, []);
 
-  return <ProposalsListClient proposals={proposals} watchlist={watchlist} currentEpoch={currentEpoch} />;
+  return (
+    <ProposalsListClient proposals={proposals} watchlist={watchlist} currentEpoch={currentEpoch} />
+  );
 }

@@ -19,7 +19,15 @@ interface DRepReportCardProps {
 }
 
 export function DRepReportCard({
-  drepId, name, score, rank, delegators, participation, rationale, reliability, profile,
+  drepId,
+  name,
+  score,
+  rank,
+  delegators,
+  participation,
+  rationale,
+  reliability,
+  profile,
 }: DRepReportCardProps) {
   const url = buildDRepUrl(drepId);
   const ogImageUrl = `/api/og/drep/${encodeURIComponent(drepId)}`;
@@ -42,7 +50,11 @@ export function DRepReportCard({
           loading="lazy"
         />
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          {rank && <Badge variant="secondary" className="text-[10px]">#{rank}</Badge>}
+          {rank && (
+            <Badge variant="secondary" className="text-[10px]">
+              #{rank}
+            </Badge>
+          )}
           <span>{delegators} delegators</span>
         </div>
 

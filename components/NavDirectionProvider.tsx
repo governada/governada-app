@@ -53,9 +53,5 @@ export function NavDirectionProvider({ children }: { children: React.ReactNode }
     }
   }, [pathname]);
 
-  return (
-    <NavDirectionContext.Provider value={direction}>
-      {children}
-    </NavDirectionContext.Provider>
-  );
+  return <NavDirectionContext.Provider value={direction}>{children}</NavDirectionContext.Provider>;
 }

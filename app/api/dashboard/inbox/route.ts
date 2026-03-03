@@ -11,10 +11,7 @@ import {
   getVotedThisEpoch,
 } from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
-import {
-  calculateParticipationRate,
-  applyRationaleCurve,
-} from '@/utils/scoring';
+import { calculateParticipationRate, applyRationaleCurve } from '@/utils/scoring';
 import { getProposalPriority } from '@/utils/proposalPriority';
 import { captureServerEvent } from '@/lib/posthog-server';
 
@@ -47,55 +44,55 @@ export async function GET(request: NextRequest) {
     // Simulate new participation rate
     const simParticipation = calculateParticipationRate(
       currentVotes + pendingCount,
-      totalProposalCount
+      totalProposalCount,
     );
     const simEffParticipation = Math.round(simParticipation * drep.deliberationModifier);
 
     // Simulate rationale rate (assume all new votes have rationale)
     const currentVotesWithRationale = Math.round((drep.rationaleRate / 100) * currentVotes);
-    const simRationaleRateRaw = currentVotes + pendingCount > 0
-      ? Math.round(((currentVotesWithRationale + pendingCount) / (currentVotes + pendingCount)) * 100)
-      : 0;
+    const simRationaleRateRaw =
+      currentVotes + pendingCount > 0
+        ? Math.round(
+            ((currentVotesWithRationale + pendingCount) / (currentVotes + pendingCount)) * 100,
+          )
+        : 0;
     const simRationaleCurved = applyRationaleCurve(simRationaleRateRaw);
 
     // Current score pillars (weighted)
     const currentCurvedRationale = applyRationaleCurve(drep.rationaleRate);
     const currentWeightedScore = Math.round(
-      drep.effectiveParticipation * 0.30 +
-      currentCurvedRationale * 0.35 +
-      drep.reliabilityScore * 0.20 +
-      drep.profileCompleteness * 0.15
+      drep.effectiveParticipation * 0.3 +
+        currentCurvedRationale * 0.35 +
+        drep.reliabilityScore * 0.2 +
+        drep.profileCompleteness * 0.15,
     );
 
     // Simulated score (reliability and profile stay the same)
     const simWeightedScore = Math.round(
-      simEffParticipation * 0.30 +
-      simRationaleCurved * 0.35 +
-      drep.reliabilityScore * 0.20 +
-      drep.profileCompleteness * 0.15
+      simEffParticipation * 0.3 +
+        simRationaleCurved * 0.35 +
+        drep.reliabilityScore * 0.2 +
+        drep.profileCompleteness * 0.15,
     );
 
     const scoreImpact = simWeightedScore - currentWeightedScore;
 
     // Per-proposal score impact (approximate: evenly distribute total gain)
-    const perProposalImpact = pendingCount > 0
-      ? Math.max(0, +(scoreImpact / pendingCount).toFixed(1))
-      : 0;
+    const perProposalImpact =
+      pendingCount > 0 ? Math.max(0, +(scoreImpact / pendingCount).toFixed(1)) : 0;
 
     // Enrich proposals with priority and deadline from Koios expiration_epoch.
     // Falls back to proposed_epoch + 6 (current govActionLifetime) only if
     // expiration_epoch is not yet populated (before next sync).
-    const enriched = pendingProposals.map(p => {
+    const enriched = pendingProposals.map((p) => {
       const expirationEpoch =
-        p.expirationEpoch ??
-        (p.proposedEpoch != null ? p.proposedEpoch + 6 : null);
+        p.expirationEpoch ?? (p.proposedEpoch != null ? p.proposedEpoch + 6 : null);
       return {
         ...p,
         priority: getProposalPriority(p.proposalType),
         expirationEpoch,
-        epochsRemaining: expirationEpoch != null
-          ? Math.max(0, expirationEpoch - currentEpoch)
-          : null,
+        epochsRemaining:
+          expirationEpoch != null ? Math.max(0, expirationEpoch - currentEpoch) : null,
         perProposalScoreImpact: perProposalImpact,
       };
     });
@@ -111,17 +108,21 @@ export async function GET(request: NextRequest) {
       return aRemaining - bRemaining;
     });
 
-    const criticalCount = enriched.filter(p => p.priority === 'critical').length;
-    const urgentCount = enriched.filter(p => (p.epochsRemaining ?? 999) <= 2).length;
+    const criticalCount = enriched.filter((p) => p.priority === 'critical').length;
+    const urgentCount = enriched.filter((p) => (p.epochsRemaining ?? 999) <= 2).length;
 
-    captureServerEvent('inbox_api_served', {
+    captureServerEvent(
+      'inbox_api_served',
+      {
+        drepId,
+        pendingCount: enriched.length,
+        criticalCount,
+        urgentCount,
+        potentialGain: Math.max(0, scoreImpact),
+        currentEpoch,
+      },
       drepId,
-      pendingCount: enriched.length,
-      criticalCount,
-      urgentCount,
-      potentialGain: Math.max(0, scoreImpact),
-      currentEpoch,
-    }, drepId);
+    );
 
     return NextResponse.json({
       pendingProposals: enriched,

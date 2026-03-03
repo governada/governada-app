@@ -13,10 +13,24 @@ async function getGovernancePulse() {
   const oneWeekAgoBlockTime = Math.floor(Date.now() / 1000) - 604800;
 
   const [drepsResult, proposalsResult, votesResult, claimedResult] = await Promise.all([
-    supabase.from('dreps').select('score, participation_rate, rationale_rate, effective_participation, info, size_tier'),
-    supabase.from('proposals').select('tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, created_at'),
-    supabase.from('drep_votes').select('id', { count: 'exact', head: true }).gt('block_time', oneWeekAgoBlockTime),
-    supabase.from('users').select('wallet_address', { count: 'exact', head: true }).not('claimed_drep_id', 'is', null),
+    supabase
+      .from('dreps')
+      .select(
+        'score, participation_rate, rationale_rate, effective_participation, info, size_tier',
+      ),
+    supabase
+      .from('proposals')
+      .select(
+        'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, created_at',
+      ),
+    supabase
+      .from('drep_votes')
+      .select('id', { count: 'exact', head: true })
+      .gt('block_time', oneWeekAgoBlockTime),
+    supabase
+      .from('users')
+      .select('wallet_address', { count: 'exact', head: true })
+      .not('claimed_drep_id', 'is', null),
   ]);
 
   const dreps = drepsResult.data || [];
@@ -28,17 +42,21 @@ async function getGovernancePulse() {
     return sum + (isNaN(lv) ? 0 : lv);
   }, 0);
   const totalAda = totalLovelace / 1_000_000;
-  const formattedAda = totalAda >= 1_000_000_000
-    ? `${(totalAda / 1_000_000_000).toFixed(1)}B`
-    : totalAda >= 1_000_000
-      ? `${(totalAda / 1_000_000).toFixed(1)}M`
-      : `${Math.round(totalAda).toLocaleString()}`;
+  const formattedAda =
+    totalAda >= 1_000_000_000
+      ? `${(totalAda / 1_000_000_000).toFixed(1)}B`
+      : totalAda >= 1_000_000
+        ? `${(totalAda / 1_000_000).toFixed(1)}M`
+        : `${Math.round(totalAda).toLocaleString()}`;
 
   const pRates = dreps.map((d: any) => d.effective_participation || 0).filter((r: number) => r > 0);
-  const avgP = pRates.length > 0 ? Math.round(pRates.reduce((a: number, b: number) => a + b, 0) / pRates.length) : 0;
+  const avgP =
+    pRates.length > 0
+      ? Math.round(pRates.reduce((a: number, b: number) => a + b, 0) / pRates.length)
+      : 0;
 
   const openProposals = proposals.filter(
-    (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch
+    (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
   );
 
   return {
@@ -55,7 +73,9 @@ async function getTopDReps() {
   const supabase = createClient();
   const { data } = await supabase
     .from('dreps')
-    .select('id, score, effective_participation, size_tier, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency')
+    .select(
+      'id, score, effective_participation, size_tier, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+    )
     .eq('info->>isActive', 'true')
     .order('score', { ascending: false })
     .limit(6);
@@ -126,7 +146,12 @@ async function getSSRHolderData(): Promise<{ data: any; walletAddress: string } 
     }
 
     return {
-      data: { delegationHealth, representationScore: { score: null }, activeProposals: [], repScoreDelta: null },
+      data: {
+        delegationHealth,
+        representationScore: { score: null },
+        activeProposals: [],
+        repScoreDelta: null,
+      },
       walletAddress: session.walletAddress,
     };
   } catch {

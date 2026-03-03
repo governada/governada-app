@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
   if (recentLogs && recentLogs.length > 0) {
     const total = recentLogs.length;
-    const errors5xx = recentLogs.filter(l => l.status_code >= 500).length;
+    const errors5xx = recentLogs.filter((l) => l.status_code >= 500).length;
     const errorRate = (errors5xx / total) * 100;
 
     checks.push({
@@ -166,9 +166,9 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Send Discord alerts for failures ---
-  const failures = checks.filter(c => !c.passed);
-  const criticalFailures = failures.filter(c => c.severity === 'critical');
-  const warnings = failures.filter(c => c.severity === 'warning');
+  const failures = checks.filter((c) => !c.passed);
+  const criticalFailures = failures.filter((c) => c.severity === 'critical');
+  const warnings = failures.filter((c) => c.severity === 'warning');
 
   if (criticalFailures.length > 0 || warnings.length > 0) {
     const lines: string[] = [];
@@ -187,14 +187,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const passedCount = checks.filter(c => c.passed).length;
+    const passedCount = checks.filter((c) => c.passed).length;
     lines.push('', `${passedCount}/${checks.length} checks passed`);
 
     await broadcastDiscord({
       eventType: 'api-health-alert',
-      title: criticalFailures.length > 0
-        ? `\u{1f6a8} API Alert: ${criticalFailures.length} critical issue${criticalFailures.length > 1 ? 's' : ''}`
-        : `\u26a0\ufe0f API Warning: ${warnings.length} issue${warnings.length > 1 ? 's' : ''}`,
+      title:
+        criticalFailures.length > 0
+          ? `\u{1f6a8} API Alert: ${criticalFailures.length} critical issue${criticalFailures.length > 1 ? 's' : ''}`
+          : `\u26a0\ufe0f API Warning: ${warnings.length} issue${warnings.length > 1 ? 's' : ''}`,
       body: lines.join('\n'),
       url: 'https://analytics.drepscore.io/api-analytics',
     });
@@ -206,10 +207,10 @@ export async function GET(request: NextRequest) {
     started_at: new Date().toISOString(),
     finished_at: new Date().toISOString(),
     duration_ms: 0,
-    success: failures.filter(c => c.severity === 'critical').length === 0,
+    success: failures.filter((c) => c.severity === 'critical').length === 0,
     metrics: {
       total_checks: checks.length,
-      passed: checks.filter(c => c.passed).length,
+      passed: checks.filter((c) => c.passed).length,
       critical_failures: criticalFailures.length,
       warnings: warnings.length,
     },
@@ -220,7 +221,7 @@ export async function GET(request: NextRequest) {
     checks,
     summary: {
       total: checks.length,
-      passed: checks.filter(c => c.passed).length,
+      passed: checks.filter((c) => c.passed).length,
       critical: criticalFailures.length,
       warnings: warnings.length,
     },

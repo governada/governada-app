@@ -67,14 +67,25 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
         if (!cancelled) {
           setData(json);
           if (json?.pendingCount > 0) {
-            try { posthog?.capture('inbox_widget_viewed', { drepId, pendingCount: json.pendingCount, criticalCount: json.criticalCount }); } catch {}
+            try {
+              posthog?.capture('inbox_widget_viewed', {
+                drepId,
+                pendingCount: json.pendingCount,
+                criticalCount: json.criticalCount,
+              });
+            } catch {}
           }
         }
-      } catch { /* ignore */ }
-      finally { if (!cancelled) setLoading(false); }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [drepId]);
 
   if (loading) {
@@ -94,7 +105,9 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
     return (
       <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
         <Vote className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-        <span className="text-xs font-medium text-green-700 dark:text-green-400">All caught up!</span>
+        <span className="text-xs font-medium text-green-700 dark:text-green-400">
+          All caught up!
+        </span>
       </div>
     );
   }
@@ -104,7 +117,9 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
   const hasUrgent = data.urgentCount > 0;
 
   return (
-    <Card className={`mb-6 border-2 ${hasCritical ? 'border-red-500/30 bg-gradient-to-br from-red-500/5 to-transparent' : 'border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent'}`}>
+    <Card
+      className={`mb-6 border-2 ${hasCritical ? 'border-red-500/30 bg-gradient-to-br from-red-500/5 to-transparent' : 'border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent'}`}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -122,8 +137,7 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
           <div className="flex items-center gap-2 text-xs">
             {data.scoreImpact.potentialGain > 0 && (
               <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
-                <TrendingUp className="h-3.5 w-3.5" />
-                +{data.scoreImpact.potentialGain} pts possible
+                <TrendingUp className="h-3.5 w-3.5" />+{data.scoreImpact.potentialGain} pts possible
               </span>
             )}
           </div>
@@ -134,7 +148,8 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
         <div className="flex items-center gap-2 text-xs bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
           <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="text-muted-foreground">
-            <span className="font-medium text-foreground">Draft rationale before voting</span> — proposals with rationale boost your score by up to 35%
+            <span className="font-medium text-foreground">Draft rationale before voting</span> —
+            proposals with rationale boost your score by up to 35%
           </span>
         </div>
 
@@ -148,11 +163,21 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
 
         {/* Top proposals */}
         <div className="space-y-2">
-          {topProposals.map(p => (
-            <div key={`${p.txHash}-${p.proposalIndex}`} className="flex items-center justify-between gap-3 text-sm">
+          {topProposals.map((p) => (
+            <div
+              key={`${p.txHash}-${p.proposalIndex}`}
+              className="flex items-center justify-between gap-3 text-sm"
+            >
               <div className="flex items-center gap-2 min-w-0">
-                <Badge variant="outline" className={`text-[10px] shrink-0 ${PRIORITY_STYLES[p.priority]}`}>
-                  {p.priority === 'critical' ? 'Critical' : p.priority === 'important' ? 'Important' : 'Standard'}
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] shrink-0 ${PRIORITY_STYLES[p.priority]}`}
+                >
+                  {p.priority === 'critical'
+                    ? 'Critical'
+                    : p.priority === 'important'
+                      ? 'Important'
+                      : 'Standard'}
                 </Badge>
                 <span className="truncate text-xs">
                   {p.title || `Proposal ${p.txHash.slice(0, 8)}...`}
@@ -173,7 +198,9 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
                     proposalTitle={p.title || `Proposal ${p.txHash.slice(0, 8)}...`}
                   />
                 </FeatureGate>
-                <Link href={`/dashboard/inbox?drepId=${encodeURIComponent(drepId)}&proposal=${p.txHash}`}>
+                <Link
+                  href={`/dashboard/inbox?drepId=${encodeURIComponent(drepId)}&proposal=${p.txHash}`}
+                >
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1">
                     <FileText className="h-3 w-3" />
                     Draft
@@ -193,7 +220,12 @@ export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
         <Link
           href={`/dashboard/inbox?drepId=${encodeURIComponent(drepId)}`}
           onClick={() => {
-            try { posthog?.capture('inbox_widget_cta_clicked', { drepId, pendingCount: data.pendingCount }); } catch {}
+            try {
+              posthog?.capture('inbox_widget_cta_clicked', {
+                drepId,
+                pendingCount: data.pendingCount,
+              });
+            } catch {}
           }}
         >
           <Button variant="outline" size="sm" className="w-full gap-2 mt-1">

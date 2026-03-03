@@ -36,8 +36,8 @@ export function GovernanceCalendar() {
 
   useEffect(() => {
     fetch('/api/governance/calendar')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
         if (d) {
           setData(d);
           setCountdown(d.secondsRemaining);
@@ -49,7 +49,7 @@ export function GovernanceCalendar() {
   useEffect(() => {
     if (countdown === null || countdown <= 0) return;
     const timer = setInterval(() => {
-      setCountdown(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+      setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
   }, [countdown]);
@@ -91,12 +91,14 @@ export function GovernanceCalendar() {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Expiring Soon
             </p>
-            {data.upcoming.slice(0, 5).map(p => (
+            {data.upcoming.slice(0, 5).map((p) => (
               <Link
                 key={`${p.txHash}-${p.index}`}
                 href={`/proposals/${p.txHash}/${p.index}`}
                 className="flex items-center gap-2 text-xs hover:bg-muted/50 rounded px-2 py-1.5 -mx-2 transition-colors"
-                onClick={() => posthog.capture('calendar_proposal_clicked', { epochs_left: p.epochsLeft })}
+                onClick={() =>
+                  posthog.capture('calendar_proposal_clicked', { epochs_left: p.epochsLeft })
+                }
               >
                 {p.epochsLeft !== null && p.epochsLeft <= 1 && (
                   <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
@@ -109,8 +111,8 @@ export function GovernanceCalendar() {
                       p.epochsLeft !== null && p.epochsLeft <= 1
                         ? 'text-red-600 dark:text-red-400 border-red-300 dark:border-red-800'
                         : p.epochsLeft !== null && p.epochsLeft <= 2
-                        ? 'text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-800'
-                        : 'text-muted-foreground border-border'
+                          ? 'text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-800'
+                          : 'text-muted-foreground border-border'
                     }`}
                   >
                     ~{p.daysLeft}d

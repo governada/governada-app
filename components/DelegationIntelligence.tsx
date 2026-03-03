@@ -93,10 +93,13 @@ export function DelegationIntelligence({
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Cast more poll votes to unlock delegation insights.
-            We need at least 3 votes to compare your views against DReps.
+            Cast more poll votes to unlock delegation insights. We need at least 3 votes to compare
+            your views against DReps.
           </p>
-          <Link href="/proposals" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+          <Link
+            href="/proposals"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
             <Vote className="h-3.5 w-3.5" />
             Vote on Proposals
             <ArrowRight className="h-3.5 w-3.5" />
@@ -117,11 +120,8 @@ export function DelegationIntelligence({
       <CardContent className="space-y-4">
         {currentMatchScore != null && (
           <p className={`text-sm ${style.muted}`}>
-            {style.label}{' '}
-            <span className="font-semibold">({currentMatchScore}% match)</span>
-            {currentDrepName && (
-              <span className="text-xs opacity-80"> with {currentDrepName}</span>
-            )}
+            {style.label} <span className="font-semibold">({currentMatchScore}% match)</span>
+            {currentDrepName && <span className="text-xs opacity-80"> with {currentDrepName}</span>}
           </p>
         )}
 
@@ -146,15 +146,29 @@ export function DelegationIntelligence({
                       Score {s.drepScore} &middot; {s.matchCount}/{s.totalComparisons} votes aligned
                     </span>
                   </div>
-                  <Badge variant="outline" className="text-[10px] shrink-0 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-800">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] shrink-0 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-800"
+                  >
                     {s.matchRate}% match
                   </Badge>
                   {delta != null && (
-                    <span className={`text-xs font-medium tabular-nums shrink-0 flex items-center gap-0.5 ${
-                      delta > 0 ? 'text-green-600 dark:text-green-400' : delta < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
-                    }`}>
-                      {delta > 0 ? <TrendingUp className="h-3 w-3" /> : delta < 0 ? <TrendingDown className="h-3 w-3" /> : null}
-                      {delta > 0 ? '+' : ''}{delta}%
+                    <span
+                      className={`text-xs font-medium tabular-nums shrink-0 flex items-center gap-0.5 ${
+                        delta > 0
+                          ? 'text-green-600 dark:text-green-400'
+                          : delta < 0
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-muted-foreground'
+                      }`}
+                    >
+                      {delta > 0 ? (
+                        <TrendingUp className="h-3 w-3" />
+                      ) : delta < 0 ? (
+                        <TrendingDown className="h-3 w-3" />
+                      ) : null}
+                      {delta > 0 ? '+' : ''}
+                      {delta}%
                     </span>
                   )}
                 </Link>

@@ -9,19 +9,21 @@ import { DRep } from '@/types/drep';
  * Calculate documentation quality score (0-100)
  * Higher score = better documented
  */
-export function calculateDocumentationScore(drep: Pick<DRep, 'name' | 'ticker' | 'description' | 'metadata'>): number {
+export function calculateDocumentationScore(
+  drep: Pick<DRep, 'name' | 'ticker' | 'description' | 'metadata'>,
+): number {
   let score = 0;
-  
+
   // Name: 30 points
   if (drep.name) {
     score += 30;
   }
-  
+
   // Ticker: 20 points
   if (drep.ticker) {
     score += 20;
   }
-  
+
   // Description: 30 points (scaled by length)
   if (drep.description) {
     const descLength = drep.description.length;
@@ -33,7 +35,7 @@ export function calculateDocumentationScore(drep: Pick<DRep, 'name' | 'ticker' |
       score += 10; // Minimal points for very short description
     }
   }
-  
+
   // Additional metadata: 20 points
   if (drep.metadata) {
     const meta = drep.metadata as Record<string, unknown>;
@@ -42,7 +44,7 @@ export function calculateDocumentationScore(drep: Pick<DRep, 'name' | 'ticker' |
     const refs = meta.references;
     if (Array.isArray(refs) && refs.length > 0) score += 10;
   }
-  
+
   return Math.min(100, score);
 }
 
@@ -97,12 +99,12 @@ export function sortByDocumentationQuality(dreps: DRep[]): DRep[] {
   return [...dreps].sort((a, b) => {
     const aDocScore = calculateDocumentationScore(a);
     const bDocScore = calculateDocumentationScore(b);
-    
+
     // Primary sort: Documentation score (higher first)
     if (aDocScore !== bDocScore) {
       return bDocScore - aDocScore;
     }
-    
+
     // Secondary sort: Voting power (higher first)
     return b.votingPower - a.votingPower;
   });
@@ -117,16 +119,16 @@ export function sortByQualityScore(dreps: DRep[]): DRep[] {
     // Calculate combined quality score
     const aDocScore = calculateDocumentationScore(a);
     const bDocScore = calculateDocumentationScore(b);
-    
+
     // Normalize voting power to 0-100 scale
-    const maxVotingPower = Math.max(...dreps.map(d => d.votingPower), 1);
+    const maxVotingPower = Math.max(...dreps.map((d) => d.votingPower), 1);
     const aVotingScore = (a.votingPower / maxVotingPower) * 100;
     const bVotingScore = (b.votingPower / maxVotingPower) * 100;
-    
+
     // Combined score: 60% documentation, 40% voting power
-    const aScore = (aDocScore * 0.6) + (aVotingScore * 0.4);
-    const bScore = (bDocScore * 0.6) + (bVotingScore * 0.4);
-    
+    const aScore = aDocScore * 0.6 + aVotingScore * 0.4;
+    const bScore = bDocScore * 0.6 + bVotingScore * 0.4;
+
     return bScore - aScore;
   });
 }
@@ -135,13 +137,15 @@ export function sortByQualityScore(dreps: DRep[]): DRep[] {
  * Filter to only well-documented DReps
  */
 export function filterWellDocumented(dreps: DRep[]): DRep[] {
-  return dreps.filter(drep => isWellDocumented(drep));
+  return dreps.filter((drep) => isWellDocumented(drep));
 }
 
 /**
  * Get documentation completeness percentage
  */
-export function getDocumentationCompleteness(drep: Pick<DRep, 'name' | 'ticker' | 'description' | 'metadata'>): string {
+export function getDocumentationCompleteness(
+  drep: Pick<DRep, 'name' | 'ticker' | 'description' | 'metadata'>,
+): string {
   const score = calculateDocumentationScore(drep);
   return `${score}%`;
 }

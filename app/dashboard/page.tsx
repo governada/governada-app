@@ -117,7 +117,15 @@ interface DRepListItem {
 }
 
 export default function MyDRepPage() {
-  const { connected, isAuthenticated, reconnecting, ownDRepId, sessionAddress, address, connecting } = useWallet();
+  const {
+    connected,
+    isAuthenticated,
+    reconnecting,
+    ownDRepId,
+    sessionAddress,
+    address,
+    connecting,
+  } = useWallet();
   const [state, setState] = useState<PageState>('loading');
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,19 +133,25 @@ export default function MyDRepPage() {
   const [selectedDRepId, setSelectedDRepId] = useState<string | null>(null);
   const [drepList, setDrepList] = useState<DRepListItem[]>([]);
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
-  const [milestoneData, setMilestoneData] = useState<{ milestones: { milestoneKey: string; achievedAt: string }[]; lastVisit: string | null } | null>(null);
+  const [milestoneData, setMilestoneData] = useState<{
+    milestones: { milestoneKey: string; achievedAt: string }[];
+    lastVisit: string | null;
+  } | null>(null);
 
   // Check admin status — use sessionAddress if authenticated, fall back to connected address
   const adminCheckAddress = sessionAddress || address;
   useEffect(() => {
-    if (!adminCheckAddress) { setIsAdmin(false); return; }
+    if (!adminCheckAddress) {
+      setIsAdmin(false);
+      return;
+    }
     fetch('/api/admin/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: adminCheckAddress }),
     })
-      .then(r => r.json())
-      .then(d => setIsAdmin(d.isAdmin === true))
+      .then((r) => r.json())
+      .then((d) => setIsAdmin(d.isAdmin === true))
       .catch(() => setIsAdmin(false));
   }, [adminCheckAddress]);
 
@@ -145,14 +159,16 @@ export default function MyDRepPage() {
   useEffect(() => {
     if (!isAdmin) return;
     fetch('/api/dreps')
-      .then(r => r.json())
-      .then(d => {
+      .then((r) => r.json())
+      .then((d) => {
         const all = (d.allDReps || d.dreps || []) as any[];
-        setDrepList(all.map((dr: any) => ({
-          drepId: dr.drepId,
-          name: dr.name,
-          drepScore: dr.drepScore ?? 0,
-        })));
+        setDrepList(
+          all.map((dr: any) => ({
+            drepId: dr.drepId,
+            name: dr.name,
+            drepScore: dr.drepScore ?? 0,
+          })),
+        );
       })
       .catch(() => {});
   }, [isAdmin]);
@@ -162,7 +178,10 @@ export default function MyDRepPage() {
     try {
       const res = await fetch(`/api/dashboard?drepId=${encodeURIComponent(drepId)}`);
       if (!res.ok) {
-        if (res.status === 404) { setState('not-drep'); return; }
+        if (res.status === 404) {
+          setState('not-drep');
+          return;
+        }
         throw new Error('Failed to load dashboard');
       }
       const json = await res.json();
@@ -206,22 +225,30 @@ export default function MyDRepPage() {
   useEffect(() => {
     if (!activeDRepId) return;
     fetch(`/api/dashboard/inbox?drepId=${encodeURIComponent(activeDRepId)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.pendingCount) setInboxPendingCount(d.pendingCount); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.pendingCount) setInboxPendingCount(d.pendingCount);
+      })
       .catch(() => {});
   }, [activeDRepId]);
 
   useEffect(() => {
     if (!activeDRepId || !sessionAddress) return;
     Promise.all([
-      fetch(`/api/dreps/${encodeURIComponent(activeDRepId)}/milestones`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/users/last-visit?wallet=${encodeURIComponent(sessionAddress)}`).then(r => r.ok ? r.json() : null),
-    ]).then(([ms, lv]) => {
-      setMilestoneData({
-        milestones: ms?.milestones || [],
-        lastVisit: lv?.lastVisit || null,
-      });
-    }).catch(() => {});
+      fetch(`/api/dreps/${encodeURIComponent(activeDRepId)}/milestones`).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+      fetch(`/api/users/last-visit?wallet=${encodeURIComponent(sessionAddress)}`).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+    ])
+      .then(([ms, lv]) => {
+        setMilestoneData({
+          milestones: ms?.milestones || [],
+          lastVisit: lv?.lastVisit || null,
+        });
+      })
+      .catch(() => {});
   }, [activeDRepId, sessionAddress]);
 
   const handleDRepSelect = (drepId: string) => {
@@ -289,7 +316,10 @@ export default function MyDRepPage() {
             {isViewingOther ? 'DRep Dashboard' : 'My Dashboard'}
           </h1>
           {isViewingOther && (
-            <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <Badge
+              variant="outline"
+              className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+            >
               Admin View
             </Badge>
           )}
@@ -311,31 +341,53 @@ export default function MyDRepPage() {
           <div className="flex items-center gap-2">
             <span className="text-3xl font-bold tabular-nums">{drep.drepScore}</span>
             {scoreChange !== null && (
-              <span className={`flex items-center gap-0.5 text-sm font-medium ${
-                scoreChange > 0 ? 'text-green-600 dark:text-green-400' :
-                scoreChange < 0 ? 'text-red-600 dark:text-red-400' :
-                'text-muted-foreground'
-              }`}>
-                {scoreChange > 0 ? <TrendingUp className="h-3.5 w-3.5" /> :
-                 scoreChange < 0 ? <TrendingDown className="h-3.5 w-3.5" /> :
-                 <Minus className="h-3.5 w-3.5" />}
-                {scoreChange > 0 ? '+' : ''}{scoreChange}
+              <span
+                className={`flex items-center gap-0.5 text-sm font-medium ${
+                  scoreChange > 0
+                    ? 'text-green-600 dark:text-green-400'
+                    : scoreChange < 0
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-muted-foreground'
+                }`}
+              >
+                {scoreChange > 0 ? (
+                  <TrendingUp className="h-3.5 w-3.5" />
+                ) : scoreChange < 0 ? (
+                  <TrendingDown className="h-3.5 w-3.5" />
+                ) : (
+                  <Minus className="h-3.5 w-3.5" />
+                )}
+                {scoreChange > 0 ? '+' : ''}
+                {scoreChange}
               </span>
             )}
           </div>
           <div className="text-sm text-muted-foreground">
-            Top <span className="font-semibold text-foreground">{Math.max(1, Math.round(100 - percentile))}%</span>
+            Top{' '}
+            <span className="font-semibold text-foreground">
+              {Math.max(1, Math.round(100 - percentile))}%
+            </span>
           </div>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Users className="h-3.5 w-3.5" />
-            <span className="font-medium text-foreground">{drep.delegatorCount.toLocaleString()}</span> delegators
+            <span className="font-medium text-foreground">
+              {drep.delegatorCount.toLocaleString()}
+            </span>{' '}
+            delegators
           </div>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <BarChart3 className="h-3.5 w-3.5" />
             <span className="font-medium text-foreground">{inboxPendingCount}</span> pending
           </div>
-          {drep.isActive && <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px]">Active</Badge>}
-          <Link href={`/drep/${encodeURIComponent(drep.drepId)}`} className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+          {drep.isActive && (
+            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px]">
+              Active
+            </Badge>
+          )}
+          <Link
+            href={`/drep/${encodeURIComponent(drep.drepId)}`}
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+          >
             Public Profile <ExternalLink className="h-3 w-3" />
           </Link>
         </div>
@@ -355,7 +407,11 @@ export default function MyDRepPage() {
       )}
 
       {/* Score Change Moment */}
-      <ScoreChangeMoment drepId={drep.drepId} drepName={drep.name || drep.drepId.slice(0, 20)} currentScore={drep.drepScore} />
+      <ScoreChangeMoment
+        drepId={drep.drepId}
+        drepName={drep.name || drep.drepId.slice(0, 20)}
+        currentScore={drep.drepScore}
+      />
 
       {/* Urgent Actions Bar */}
       <div className="mb-4">
@@ -486,9 +542,11 @@ function ProfileHealthCard({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
-          {profileHealthy
-            ? <CheckCircle2 className="h-4 w-4 text-green-600" />
-            : <AlertTriangle className="h-4 w-4 text-amber-500" />}
+          {profileHealthy ? (
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          ) : (
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          )}
           Profile Health
         </CardTitle>
       </CardHeader>
@@ -505,7 +563,7 @@ function ProfileHealthCard({
                   Missing fields ({missingFields.length})
                 </p>
                 <ul className="text-xs text-muted-foreground space-y-0.5">
-                  {missingFields.map(f => (
+                  {missingFields.map((f) => (
                     <li key={f} className="flex items-center gap-1.5">
                       <XCircle className="h-3 w-3 text-amber-500 shrink-0" />
                       <span className="capitalize">{f}</span>
@@ -520,7 +578,7 @@ function ProfileHealthCard({
                   Broken links ({brokenLinks.length})
                 </p>
                 <ul className="text-xs text-muted-foreground space-y-0.5">
-                  {brokenLinks.map(link => (
+                  {brokenLinks.map((link) => (
                     <li key={link} className="flex items-center gap-1.5 truncate">
                       <XCircle className="h-3 w-3 text-red-500 shrink-0" />
                       <span className="truncate">{link}</span>
@@ -531,8 +589,15 @@ function ProfileHealthCard({
             )}
             <p className="text-[10px] text-muted-foreground pt-1 border-t">
               Update your profile via{' '}
-              <a href="https://gov.tools" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">gov.tools</a>
-              {' '}or your wallet&apos;s governance section.
+              <a
+                href="https://gov.tools"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                gov.tools
+              </a>{' '}
+              or your wallet&apos;s governance section.
             </p>
           </>
         )}
@@ -540,7 +605,6 @@ function ProfileHealthCard({
     </Card>
   );
 }
-
 
 function DashboardSkeleton() {
   return (
@@ -589,7 +653,8 @@ function NotADRepCTA() {
           <Shield className="h-12 w-12 mx-auto text-muted-foreground" />
           <h2 className="text-xl font-bold">No DRep Profile Found</h2>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            No DRep profile linked to this wallet yet. If you&apos;ve recently registered, it may take up to 30 minutes to sync.
+            No DRep profile linked to this wallet yet. If you&apos;ve recently registered, it may
+            take up to 30 minutes to sync.
           </p>
           <Link href="/">
             <Button variant="outline" className="gap-2 mt-2">
@@ -637,11 +702,11 @@ function AdminDRepSwitcher({
     if (!query) return drepList.slice(0, 50);
     const q = query.toLowerCase();
     return drepList
-      .filter(d => (d.name?.toLowerCase().includes(q)) || d.drepId.toLowerCase().includes(q))
+      .filter((d) => d.name?.toLowerCase().includes(q) || d.drepId.toLowerCase().includes(q))
       .slice(0, 50);
   }, [drepList, query]);
 
-  const selectedName = drepList.find(d => d.drepId === selectedDRepId)?.name;
+  const selectedName = drepList.find((d) => d.drepId === selectedDRepId)?.name;
 
   useEffect(() => {
     if (!open) return;
@@ -657,7 +722,10 @@ function AdminDRepSwitcher({
   return (
     <div className="mb-6" ref={dropdownRef}>
       <div className="flex items-center gap-2 mb-2">
-        <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+        <Badge
+          variant="outline"
+          className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+        >
           Admin
         </Badge>
         <span className="text-xs text-muted-foreground">View any DRep&apos;s dashboard</span>
@@ -669,9 +737,7 @@ function AdminDRepSwitcher({
           onClick={() => setOpen(!open)}
         >
           <span className="truncate">
-            {selectedDRepId
-              ? (selectedName || selectedDRepId.slice(0, 20) + '…')
-              : 'Select a DRep…'}
+            {selectedDRepId ? selectedName || selectedDRepId.slice(0, 20) + '…' : 'Select a DRep…'}
           </span>
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -683,7 +749,7 @@ function AdminDRepSwitcher({
                 <Input
                   placeholder="Search by name or DRep ID…"
                   value={query}
-                  onChange={e => setQuery(e.target.value)}
+                  onChange={(e) => setQuery(e.target.value)}
                   className="pl-9 h-9 text-sm"
                   autoFocus
                 />
@@ -691,18 +757,26 @@ function AdminDRepSwitcher({
             </div>
             <div className="max-h-60 overflow-y-auto p-1">
               {filtered.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No DReps match your search. Try a different name or ID.</p>
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  No DReps match your search. Try a different name or ID.
+                </p>
               ) : (
-                filtered.map(d => (
+                filtered.map((d) => (
                   <button
                     key={d.drepId}
                     className={`w-full text-left px-3 py-2 text-sm rounded-sm hover:bg-accent transition-colors flex items-center justify-between gap-2 ${
                       d.drepId === selectedDRepId ? 'bg-accent' : ''
                     }`}
-                    onClick={() => { onSelect(d.drepId); setOpen(false); setQuery(''); }}
+                    onClick={() => {
+                      onSelect(d.drepId);
+                      setOpen(false);
+                      setQuery('');
+                    }}
                   >
                     <span className="truncate">{d.name || d.drepId.slice(0, 24) + '…'}</span>
-                    <span className="text-xs text-muted-foreground tabular-nums shrink-0">{d.drepScore}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                      {d.drepScore}
+                    </span>
                   </button>
                 ))
               )}

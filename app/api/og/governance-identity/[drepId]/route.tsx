@@ -31,7 +31,10 @@ function OGHexShape({
     const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
     const normalizedScore = score / 100;
     const radius = maxR * (minRadius + normalizedScore * (1 - minRadius));
-    return [center + radius * Math.cos(angle), center + radius * Math.sin(angle)] as [number, number];
+    return [center + radius * Math.cos(angle), center + radius * Math.sin(angle)] as [
+      number,
+      number,
+    ];
   });
 
   const points = vertices.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
@@ -98,16 +101,17 @@ function OGHexShape({
   );
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ drepId: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ drepId: string }> }) {
   try {
     const { drepId } = await params;
     const drep = await getDRepById(decodeURIComponent(drepId));
 
     if (!drep) {
-      return new ImageResponse(<OGFallback message="DRep not found" />, { width: 1200, height: 630, headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' } });
+      return new ImageResponse(<OGFallback message="DRep not found" />, {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' },
+      });
     }
 
     const name = getDRepPrimaryName(drep);
@@ -119,39 +123,45 @@ export async function GET(
     const dimensions = getDimensionOrder();
 
     return new ImageResponse(
-      (
-        <OGBackground glow={color.hex}>
-          <div style={{ display: 'flex', width: '100%', height: '100%', padding: '48px 64px' }}>
-            {/* Left: Hex shape */}
-            <div style={{
+      <OGBackground glow={color.hex}>
+        <div style={{ display: 'flex', width: '100%', height: '100%', padding: '48px 64px' }}>
+          {/* Left: Hex shape */}
+          <div
+            style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               width: '320px',
               marginRight: '48px',
-            }}>
-              <OGHexShape scores={scores} size={260} color={color} />
-              <div style={{
+            }}
+          >
+            <OGHexShape scores={scores} size={260} color={color} />
+            <div
+              style={{
                 display: 'flex',
                 fontSize: '56px',
                 fontWeight: 700,
                 color: color.hex,
                 marginTop: '-170px',
                 textShadow: `0 0 20px ${color.hex}`,
-              }}>
-                {drep.drepScore ?? 0}
-              </div>
+              }}
+            >
+              {drep.drepScore ?? 0}
             </div>
+          </div>
 
-            {/* Right: Identity info */}
-            <div style={{
+          {/* Right: Identity info */}
+          <div
+            style={{
               display: 'flex',
               flexDirection: 'column',
               flex: 1,
               justifyContent: 'center',
-            }}>
-              <div style={{
+            }}
+          >
+            <div
+              style={{
                 display: 'flex',
                 fontSize: '14px',
                 color: color.hex,
@@ -159,89 +169,108 @@ export async function GET(
                 letterSpacing: '2px',
                 textTransform: 'uppercase',
                 marginBottom: '8px',
-              }}>
-                GOVERNANCE IDENTITY
-              </div>
-              <div style={{
+              }}
+            >
+              GOVERNANCE IDENTITY
+            </div>
+            <div
+              style={{
                 display: 'flex',
                 fontSize: '36px',
                 fontWeight: 700,
                 color: '#ffffff',
                 lineHeight: 1.1,
-              }}>
-                {name}
-              </div>
-              <div style={{
+              }}
+            >
+              {name}
+            </div>
+            <div
+              style={{
                 display: 'flex',
                 fontSize: '22px',
                 color: '#94a3b8',
                 marginTop: '4px',
-              }}>
-                {personality}
-              </div>
+              }}
+            >
+              {personality}
+            </div>
 
-              {/* Alignment dimension bars */}
-              <div style={{
+            {/* Alignment dimension bars */}
+            <div
+              style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '10px',
                 marginTop: '28px',
-              }}>
-                {dimensions.map((dim, i) => {
-                  const dimColor = getIdentityColor(dim);
-                  const score = scores[i];
-                  return (
-                    <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{
+              }}
+            >
+              {dimensions.map((dim, i) => {
+                const dimColor = getIdentityColor(dim);
+                const score = scores[i];
+                return (
+                  <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
                         display: 'flex',
                         width: '130px',
                         fontSize: '14px',
                         color: '#94a3b8',
-                      }}>
-                        {getDimensionLabel(dim)}
-                      </div>
-                      <div style={{
+                      }}
+                    >
+                      {getDimensionLabel(dim)}
+                    </div>
+                    <div
+                      style={{
                         display: 'flex',
                         flex: 1,
                         height: '16px',
                         backgroundColor: '#1e293b',
                         borderRadius: '8px',
                         overflow: 'hidden',
-                      }}>
-                        <div style={{
+                      }}
+                    >
+                      <div
+                        style={{
                           display: 'flex',
                           width: `${score}%`,
                           height: '100%',
                           backgroundColor: dimColor.hex,
                           borderRadius: '8px',
                           opacity: 0.8,
-                        }} />
-                      </div>
-                      <div style={{
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
                         display: 'flex',
                         width: '40px',
                         fontSize: '14px',
                         fontWeight: 600,
                         color: dimColor.hex,
                         justifyContent: 'flex-end',
-                      }}>
-                        {score}
-                      </div>
+                      }}
+                    >
+                      {score}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <OGFooter
-            left="$drepscore"
-            right={shortenDRepId(drepId)}
-          />
-        </OGBackground>
-      ),
-      { width: 1200, height: 630, headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' } },
+        </div>
+        <OGFooter left="$drepscore" right={shortenDRepId(drepId)} />
+      </OGBackground>,
+      {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' },
+      },
     );
   } catch {
-    return new ImageResponse(<OGFallback message="Error generating image" />, { width: 1200, height: 630, headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' } });
+    return new ImageResponse(<OGFallback message="Error generating image" />, {
+      width: 1200,
+      height: 630,
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' },
+    });
   }
 }

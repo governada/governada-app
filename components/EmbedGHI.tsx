@@ -19,7 +19,7 @@ export function EmbedGHI({ theme }: EmbedGHIProps) {
 
   useEffect(() => {
     fetch('/api/governance/health-index/history?epochs=10')
-      .then(r => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then(setData)
       .catch(() => {});
   }, []);
@@ -30,7 +30,10 @@ export function EmbedGHI({ theme }: EmbedGHIProps) {
         className="flex items-center justify-center p-6"
         style={{ backgroundColor: isDark ? '#0a0b14' : '#fff', minHeight: 120 }}
       >
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: '#06b6d4', borderTopColor: 'transparent' }} />
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+          style={{ borderColor: '#06b6d4', borderTopColor: 'transparent' }}
+        />
       </div>
     );
   }
@@ -50,7 +53,10 @@ export function EmbedGHI({ theme }: EmbedGHIProps) {
         maxWidth: 280,
       }}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>
+      <div
+        className="text-[10px] font-semibold uppercase tracking-wider mb-2"
+        style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
+      >
         Governance Health Index
       </div>
 
@@ -72,7 +78,7 @@ export function EmbedGHI({ theme }: EmbedGHIProps) {
             </linearGradient>
           </defs>
           {(() => {
-            const pts = data.history.map(h => h.score);
+            const pts = data.history.map((h) => h.score);
             const max = Math.max(...pts, 100);
             const min = Math.min(...pts, 0);
             const range = max - min || 1;
@@ -85,7 +91,13 @@ export function EmbedGHI({ theme }: EmbedGHIProps) {
             return (
               <>
                 <path d={areaD} fill="url(#ghi-embed-grad)" />
-                <path d={lineD} fill="none" stroke={bandColor} strokeWidth={1.5} strokeLinecap="round" />
+                <path
+                  d={lineD}
+                  fill="none"
+                  stroke={bandColor}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
               </>
             );
           })()}

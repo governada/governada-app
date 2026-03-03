@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
 
   try {
     await inngest.send({ name: 'drepscore/sync.treasury' });
-    return NextResponse.json({ success: true, message: 'Treasury sync triggered via Inngest event' });
+    return NextResponse.json({
+      success: true,
+      message: 'Treasury sync triggered via Inngest event',
+    });
   } catch (err) {
     return NextResponse.json({ success: false, error: errMsg(err) }, { status: 500 });
   }

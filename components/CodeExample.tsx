@@ -30,7 +30,7 @@ export function CodeExample({ code, className = '' }: CodeExampleProps) {
     <div className={`overflow-hidden rounded-lg border border-border/60 bg-[#0d0e1a] ${className}`}>
       <div className="flex items-center justify-between border-b border-border/40 px-3 py-1.5">
         <div className="flex gap-1">
-          {languages.map(lang => (
+          {languages.map((lang) => (
             <button
               key={lang}
               onClick={() => setActiveLang(lang)}

@@ -46,7 +46,10 @@ export function ClaimProfileBanner({ drepId }: ClaimProfileBannerProps) {
   }
 
   return (
-    <Card id="claim" className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 scroll-mt-20">
+    <Card
+      id="claim"
+      className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 scroll-mt-20"
+    >
       <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6">
         <div className="flex items-center gap-4">
           <div className="p-3 rounded-full bg-primary/15">
@@ -61,7 +64,8 @@ export function ClaimProfileBanner({ drepId }: ClaimProfileBannerProps) {
               Connect your wallet to claim this profile and access your personalized DRep dashboard.
             </p>
             <p className="text-[10px] text-muted-foreground/60 mt-1">
-              Uses your wallet&apos;s stake key to verify DRep ownership. Script-based DReps may not be detected automatically.
+              Uses your wallet&apos;s stake key to verify DRep ownership. Script-based DReps may not
+              be detected automatically.
             </p>
           </div>
         </div>

@@ -1,7 +1,12 @@
 import type { ScoreSnapshot } from '@/lib/data';
 
-const PILLAR_KEYS = ['effectiveParticipation', 'rationaleRate', 'reliabilityScore', 'profileCompleteness'] as const;
-type PillarKey = typeof PILLAR_KEYS[number];
+const PILLAR_KEYS = [
+  'effectiveParticipation',
+  'rationaleRate',
+  'reliabilityScore',
+  'profileCompleteness',
+] as const;
+type PillarKey = (typeof PILLAR_KEYS)[number];
 
 const PILLAR_LABELS: Record<PillarKey, string> = {
   effectiveParticipation: 'Participation',
@@ -11,9 +16,9 @@ const PILLAR_LABELS: Record<PillarKey, string> = {
 };
 
 const PILLAR_WEIGHTS: Record<PillarKey, number> = {
-  effectiveParticipation: 0.30,
+  effectiveParticipation: 0.3,
   rationaleRate: 0.35,
-  reliabilityScore: 0.20,
+  reliabilityScore: 0.2,
   profileCompleteness: 0.15,
 };
 
@@ -49,7 +54,7 @@ export function getScoreAttribution(history: ScoreSnapshot[]): DayAttribution[] 
     const curr = history[i];
     const totalDelta = curr.score - prev.score;
 
-    const pillars: PillarDiff[] = PILLAR_KEYS.map(key => {
+    const pillars: PillarDiff[] = PILLAR_KEYS.map((key) => {
       const rawDelta = curr[key] - prev[key];
       return {
         key,
@@ -62,14 +67,15 @@ export function getScoreAttribution(history: ScoreSnapshot[]): DayAttribution[] 
     });
 
     const movers = pillars
-      .filter(p => Math.abs(p.weightedDelta) >= 0.5)
+      .filter((p) => Math.abs(p.weightedDelta) >= 0.5)
       .sort((a, b) => Math.abs(b.weightedDelta) - Math.abs(a.weightedDelta));
 
-    const summary = movers.length === 0
-      ? 'No significant change'
-      : movers
-          .map(p => `${p.label} ${p.weightedDelta > 0 ? '+' : ''}${p.weightedDelta.toFixed(1)}`)
-          .join(', ');
+    const summary =
+      movers.length === 0
+        ? 'No significant change'
+        : movers
+            .map((p) => `${p.label} ${p.weightedDelta > 0 ? '+' : ''}${p.weightedDelta.toFixed(1)}`)
+            .join(', ');
 
     attributions.push({
       date: curr.date,

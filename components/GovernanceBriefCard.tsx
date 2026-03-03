@@ -33,13 +33,16 @@ export function GovernanceBriefCard() {
   const token = getStoredSession();
 
   useEffect(() => {
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     fetch('/api/briefs/latest', {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
-      .then(data => {
+      .then((r) => r.json())
+      .then((data) => {
         if (data.brief) setBrief(data.brief);
       })
       .catch(() => {})
@@ -52,7 +55,9 @@ export function GovernanceBriefCard() {
         <Card className="border-dashed">
           <CardContent className="py-4 text-center">
             <Sparkles className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Your first weekly governance brief arrives Monday</p>
+            <p className="text-sm text-muted-foreground">
+              Your first weekly governance brief arrives Monday
+            </p>
           </CardContent>
         </Card>
       );
@@ -94,14 +99,15 @@ export function GovernanceBriefCard() {
               <p className="text-sm">{content.sections[0].content}</p>
             </div>
 
-            {expanded && content.sections.slice(1).map((section, i) => (
-              <div key={i} className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">
-                  {section.heading}
-                </p>
-                <p className="text-sm">{section.content}</p>
-              </div>
-            ))}
+            {expanded &&
+              content.sections.slice(1).map((section, i) => (
+                <div key={i} className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">
+                    {section.heading}
+                  </p>
+                  <p className="text-sm">{section.content}</p>
+                </div>
+              ))}
           </div>
         )}
 

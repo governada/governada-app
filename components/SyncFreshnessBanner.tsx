@@ -21,12 +21,17 @@ export function SyncFreshnessBanner() {
         if (mounted && (data.status === 'degraded' || data.status === 'critical')) {
           setStatus(data.status);
         }
-      } catch { /* best-effort */ }
+      } catch {
+        /* best-effort */
+      }
     }
 
     check();
     const interval = setInterval(check, 5 * 60 * 1000);
-    return () => { mounted = false; clearInterval(interval); };
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   if (!status) return null;

@@ -46,9 +46,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { txHash, index, cycleNumber, userAddress, deliveredRating, wouldApproveAgain, evidenceText } = body;
+    const {
+      txHash,
+      index,
+      cycleNumber,
+      userAddress,
+      deliveredRating,
+      wouldApproveAgain,
+      evidenceText,
+    } = body;
 
-    if (!txHash || index === undefined || !cycleNumber || !userAddress || !deliveredRating || !wouldApproveAgain) {
+    if (
+      !txHash ||
+      index === undefined ||
+      !cycleNumber ||
+      !userAddress ||
+      !deliveredRating ||
+      !wouldApproveAgain
+    ) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -73,9 +88,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Poll is not currently open' }, { status: 400 });
     }
 
-    const { error } = await supabase
-      .from('treasury_accountability_responses')
-      .upsert({
+    const { error } = await supabase.from('treasury_accountability_responses').upsert(
+      {
         proposal_tx_hash: txHash,
         proposal_index: index,
         cycle_number: cycleNumber,
@@ -84,19 +98,25 @@ export async function POST(request: NextRequest) {
         would_approve_again: wouldApproveAgain,
         evidence_text: evidenceText?.slice(0, 500) || null,
         created_at: new Date().toISOString(),
-      }, { onConflict: 'proposal_tx_hash,proposal_index,cycle_number,user_address' });
+      },
+      { onConflict: 'proposal_tx_hash,proposal_index,cycle_number,user_address' },
+    );
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    captureServerEvent('treasury_accountability_vote_submitted', {
-      proposal_tx_hash: txHash,
-      proposal_index: index,
-      cycle_number: cycleNumber,
-      delivered_rating: deliveredRating,
-      would_approve_again: wouldApproveAgain,
-    }, userAddress);
+    captureServerEvent(
+      'treasury_accountability_vote_submitted',
+      {
+        proposal_tx_hash: txHash,
+        proposal_index: index,
+        cycle_number: cycleNumber,
+        delivered_rating: deliveredRating,
+        would_approve_again: wouldApproveAgain,
+      },
+      userAddress,
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, TrendingUp, TrendingDown, Minus, Clock, Users as UsersIcon } from 'lucide-react';
+import {
+  ArrowRight,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Clock,
+  Users as UsersIcon,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { getIdentityColor, type AlignmentDimension } from '@/lib/drepIdentity';
 
@@ -42,14 +49,16 @@ interface PersonalGovernanceCardProps {
 
 function TrendArrow({ value }: { value: number | null }) {
   if (value == null || value === 0) return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
-  if (value > 0) return (
-    <span className="flex items-center gap-0.5 text-green-500 text-sm font-medium">
-      <TrendingUp className="h-3.5 w-3.5" />+{value}
-    </span>
-  );
+  if (value > 0)
+    return (
+      <span className="flex items-center gap-0.5 text-green-500 text-sm font-medium">
+        <TrendingUp className="h-3.5 w-3.5" />+{value}
+      </span>
+    );
   return (
     <span className="flex items-center gap-0.5 text-red-500 text-sm font-medium">
-      <TrendingDown className="h-3.5 w-3.5" />{value}
+      <TrendingDown className="h-3.5 w-3.5" />
+      {value}
     </span>
   );
 }
@@ -59,7 +68,10 @@ function DelegatedCard({ data }: { data: DelegatedData }) {
 
   return (
     <Card className="animate-slide-up overflow-hidden">
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg" style={{ backgroundColor: color.hex }} />
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
+        style={{ backgroundColor: color.hex }}
+      />
       <CardContent className="p-5 pl-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -70,7 +82,10 @@ function DelegatedCard({ data }: { data: DelegatedData }) {
               {data.drepScore}
             </div>
             <div>
-              <Link href={`/drep/${data.drepId}`} className="font-semibold hover:text-primary transition-colors">
+              <Link
+                href={`/drep/${data.drepId}`}
+                className="font-semibold hover:text-primary transition-colors"
+              >
                 {data.drepName}
               </Link>
               <p className="text-xs text-muted-foreground">Your representative</p>
@@ -149,7 +164,10 @@ function DRepCard({ data }: { data: DRepData }) {
 
   return (
     <Card className="animate-slide-up overflow-hidden">
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg" style={{ backgroundColor: color.hex }} />
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
+        style={{ backgroundColor: color.hex }}
+      />
       <CardContent className="p-5 pl-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -165,7 +183,10 @@ function DRepCard({ data }: { data: DRepData }) {
           <div>
             <p className="text-xs text-muted-foreground">Rank</p>
             <p className="text-lg font-semibold tabular-nums">
-              #{data.rank} <span className="text-xs text-muted-foreground font-normal">of {data.totalRanked}</span>
+              #{data.rank}{' '}
+              <span className="text-xs text-muted-foreground font-normal">
+                of {data.totalRanked}
+              </span>
             </p>
           </div>
           <div>
@@ -206,7 +227,12 @@ function DRepCard({ data }: { data: DRepData }) {
   );
 }
 
-export function PersonalGovernanceCard({ segment, delegated, drep, undelegated }: PersonalGovernanceCardProps) {
+export function PersonalGovernanceCard({
+  segment,
+  delegated,
+  drep,
+  undelegated,
+}: PersonalGovernanceCardProps) {
   if (segment === 'delegated' && delegated) {
     return <DelegatedCard data={delegated} />;
   }

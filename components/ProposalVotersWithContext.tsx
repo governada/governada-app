@@ -11,7 +11,9 @@ function getLocalWatchlist(): string[] {
   if (typeof window === 'undefined') return [];
   try {
     return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '[]');
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 interface Props {
@@ -27,10 +29,6 @@ export function ProposalVotersWithContext({ votes }: Props) {
   }, []);
 
   return (
-    <ProposalVotersClient
-      votes={votes}
-      watchlist={watchlist}
-      delegatedDrepId={delegatedDrepId}
-    />
+    <ProposalVotersClient votes={votes} watchlist={watchlist} delegatedDrepId={delegatedDrepId} />
   );
 }

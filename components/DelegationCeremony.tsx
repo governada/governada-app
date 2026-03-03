@@ -109,9 +109,7 @@ export function DelegationCeremony({
           <p className="text-sm text-muted-foreground">
             You&apos;ve delegated to{' '}
             <span className="font-semibold text-foreground">{drepName}</span>
-            {personality && (
-              <span className="text-muted-foreground"> — a {personality}</span>
-            )}
+            {personality && <span className="text-muted-foreground"> — a {personality}</span>}
           </p>
         </motion.div>
 
@@ -129,7 +127,9 @@ export function DelegationCeremony({
             </>
           ) : (
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Their DRepScore</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                Their DRepScore
+              </p>
               <span className="text-7xl font-bold tabular-nums text-foreground">{score}</span>
               <p className="text-sm text-muted-foreground">/100</p>
             </div>

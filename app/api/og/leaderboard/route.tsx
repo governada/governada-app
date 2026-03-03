@@ -21,23 +21,34 @@ export async function GET() {
     }));
 
     return new ImageResponse(
-      (
-        <OGBackground glow={OG.green}>
-          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', padding: '64px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '40px' }}>
-              <div style={{ display: 'flex', fontSize: '44px', fontWeight: 700, color: OG.text }}>
-                DRep Leaderboard
-              </div>
-              <div style={{ display: 'flex', fontSize: '22px', color: OG.textMuted, marginTop: '8px' }}>
-                Top scoring Cardano DReps
-              </div>
+      <OGBackground glow={OG.green}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            height: '100%',
+            padding: '64px',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '40px' }}>
+            <div style={{ display: 'flex', fontSize: '44px', fontWeight: 700, color: OG.text }}>
+              DRep Leaderboard
             </div>
+            <div
+              style={{ display: 'flex', fontSize: '22px', color: OG.textMuted, marginTop: '8px' }}
+            >
+              Top scoring Cardano DReps
+            </div>
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-              {dreps.map(d => {
-                const color = tierColor(d.score);
-                return (
-                  <div key={d.rank} style={{
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+            {dreps.map((d) => {
+              const color = tierColor(d.score);
+              return (
+                <div
+                  key={d.rank}
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
                     padding: '16px 24px',
@@ -45,53 +56,74 @@ export async function GET() {
                     backgroundColor: OG.bgCard,
                     border: `1px solid ${OG.border}`,
                     gap: '20px',
-                  }}>
-                    <div style={{
+                  }}
+                >
+                  <div
+                    style={{
                       display: 'flex',
                       fontSize: '28px',
                       fontWeight: 700,
                       color: d.rank <= 3 ? OG.amber : OG.textMuted,
                       width: '40px',
-                    }}>
-                      #{d.rank}
-                    </div>
-                    <div style={{ display: 'flex', flex: 1, fontSize: '24px', fontWeight: 600, color: OG.text }}>
-                      {d.name.length > 24 ? d.name.slice(0, 22) + '…' : d.name}
-                    </div>
-                    <div style={{
+                    }}
+                  >
+                    #{d.rank}
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flex: 1,
+                      fontSize: '24px',
+                      fontWeight: 600,
+                      color: OG.text,
+                    }}
+                  >
+                    {d.name.length > 24 ? d.name.slice(0, 22) + '…' : d.name}
+                  </div>
+                  <div
+                    style={{
                       display: 'flex',
                       fontSize: '28px',
                       fontWeight: 700,
                       color,
-                    }}>
-                      {d.score}
-                    </div>
+                    }}
+                  >
+                    {d.score}
                   </div>
-                );
-              })}
-            </div>
-
-            <OGFooter left="$drepscore" right="drepscore.io/pulse#leaderboard" />
+                </div>
+              );
+            })}
           </div>
-        </OGBackground>
-      ),
+
+          <OGFooter left="$drepscore" right="drepscore.io/pulse#leaderboard" />
+        </div>
+      </OGBackground>,
       {
         width: 1200,
         height: 630,
         headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=3600' },
-      }
+      },
     );
   } catch (error) {
     console.error('[OG Leaderboard] Error:', error);
     return new ImageResponse(
-      (
-        <OGBackground>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-            <div style={{ display: 'flex', fontSize: '48px', fontWeight: 700, color: OG.brand }}>DRep Leaderboard</div>
+      <OGBackground>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          <div style={{ display: 'flex', fontSize: '48px', fontWeight: 700, color: OG.brand }}>
+            DRep Leaderboard
           </div>
-        </OGBackground>
-      ),
-      { width: 1200, height: 630 }
+        </div>
+      </OGBackground>,
+      { width: 1200, height: 630 },
     );
   }
 }

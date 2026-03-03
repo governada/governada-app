@@ -11,10 +11,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Sparkles, AlertCircle, ArrowUpRight, ArrowDownRight, Minus, FileText, CheckCircle2, ExternalLink, PenLine } from 'lucide-react';
+import {
+  Sparkles,
+  AlertCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  FileText,
+  CheckCircle2,
+  ExternalLink,
+  PenLine,
+} from 'lucide-react';
 import { VoteRecord } from '@/types/drep';
 import { type ScoreSnapshot } from '@/lib/data';
-import { type Recommendation, generateRecommendations, getMissingRationaleVotes } from '@/utils/recommendations';
+import {
+  type Recommendation,
+  generateRecommendations,
+  getMissingRationaleVotes,
+} from '@/utils/recommendations';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { VoteExplanationEditor } from '@/components/VoteExplanationEditor';
 import { FeatureGate } from '@/components/FeatureGate';
@@ -38,7 +52,10 @@ interface DRepDashboardProps {
 
 const PRIORITY_CONFIG = {
   high: { class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', label: 'High' },
-  medium: { class: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', label: 'Medium' },
+  medium: {
+    class: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    label: 'Medium',
+  },
   low: { class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', label: 'Low' },
 };
 
@@ -75,14 +92,16 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionToken: session, drepId: drep.drepId }),
     })
-      .then(r => r.json())
-      .then(data => {
+      .then((r) => r.json())
+      .then((data) => {
         if (data.claimed) {
           setClaimed(true);
-          import('@/lib/posthog').then(({ posthog }) => {
-            posthog.capture('drep_profile_claimed', { drep_id: drep.drepId });
-            posthog.identify(drep.drepId, { segment: 'drep', is_drep: true });
-          }).catch(() => {});
+          import('@/lib/posthog')
+            .then(({ posthog }) => {
+              posthog.capture('drep_profile_claimed', { drep_id: drep.drepId });
+              posthog.identify(drep.drepId, { segment: 'drep', is_drep: true });
+            })
+            .catch(() => {});
         }
       })
       .catch(() => {});
@@ -105,17 +124,29 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
             <Sparkles className="h-5 w-5 text-primary" />
             <CardTitle className="text-lg">Your DRep Dashboard</CardTitle>
             {isSimulated && (
-              <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+              >
                 Simulated
               </Badge>
             )}
           </div>
           {scoreChange !== null && scoreChange !== 0 && (
-            <div className={`flex items-center gap-1 text-sm font-medium ${
-              scoreChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-            }`}>
-              {scoreChange > 0 ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-              {scoreChange > 0 ? '+' : ''}{scoreChange} pts since last snapshot
+            <div
+              className={`flex items-center gap-1 text-sm font-medium ${
+                scoreChange > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}
+            >
+              {scoreChange > 0 ? (
+                <ArrowUpRight className="h-4 w-4" />
+              ) : (
+                <ArrowDownRight className="h-4 w-4" />
+              )}
+              {scoreChange > 0 ? '+' : ''}
+              {scoreChange} pts since last snapshot
             </div>
           )}
           {scoreChange === 0 && (
@@ -125,9 +156,7 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
             </div>
           )}
         </div>
-        <CardDescription>
-          Personalized insights to help you improve your DRep Score
-        </CardDescription>
+        <CardDescription>Personalized insights to help you improve your DRep Score</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Recommendations */}
@@ -154,14 +183,22 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
         )}
 
         {/* Metadata guidance */}
-        {recommendations.some(r => r.pillar === 'profile') && (
+        {recommendations.some((r) => r.pillar === 'profile') && (
           <div className="bg-muted/40 rounded-lg p-3 flex items-start gap-2">
             <ExternalLink className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
             <p className="text-xs text-muted-foreground">
-              To update your DRep profile metadata (name, objectives, social links), use a wallet that supports CIP-119 metadata editing such as{' '}
-              <a href="https://gov.tools" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">gov.tools</a>
-              {' '}or your wallet&apos;s governance section.{' '}
-              Scoring methodology is explained on each DRep&apos;s profile page.
+              To update your DRep profile metadata (name, objectives, social links), use a wallet
+              that supports CIP-119 metadata editing such as{' '}
+              <a
+                href="https://gov.tools"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                gov.tools
+              </a>{' '}
+              or your wallet&apos;s governance section. Scoring methodology is explained on each
+              DRep&apos;s profile page.
             </p>
           </div>
         )}
@@ -179,7 +216,8 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              These votes lack on-chain rationale. Add a DRepScore explanation so delegators understand your reasoning.
+              These votes lack on-chain rationale. Add a DRepScore explanation so delegators
+              understand your reasoning.
             </p>
             <div className="border rounded-lg overflow-hidden">
               <Table>
@@ -202,17 +240,32 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
                           {v.title || 'Unknown Proposal'}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`text-[10px] ${IMPORTANCE_BADGE[v.proposalType || ''] || ''}`}>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] ${IMPORTANCE_BADGE[v.proposalType || ''] || ''}`}
+                          >
                             {v.proposalType || 'Standard'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={v.vote === 'Yes' ? 'default' : v.vote === 'No' ? 'destructive' : 'secondary'} className="text-[10px]">
+                          <Badge
+                            variant={
+                              v.vote === 'Yes'
+                                ? 'default'
+                                : v.vote === 'No'
+                                  ? 'destructive'
+                                  : 'secondary'
+                            }
+                            className="text-[10px]"
+                          >
                             {v.vote}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {new Date(v.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {new Date(v.date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
                         </TableCell>
                         <TableCell className="text-right">
                           {hasExplanation ? (
@@ -228,7 +281,9 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
                                 proposalIndex={v.proposalIndex}
                                 proposalTitle={v.title || 'Unknown Proposal'}
                                 vote={v.vote}
-                                onSaved={(text) => setExplanations(prev => ({ ...prev, [key]: text }))}
+                                onSaved={(text) =>
+                                  setExplanations((prev) => ({ ...prev, [key]: text }))
+                                }
                               />
                             </FeatureGate>
                           )}

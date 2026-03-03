@@ -20,16 +20,26 @@ interface VoteTimelineProps {
 }
 
 const VOTE_COLORS: Record<string, { dot: string; border: string; text: string }> = {
-  Yes:     { dot: 'bg-green-500', border: 'border-l-green-500', text: 'text-green-600 dark:text-green-400' },
-  No:      { dot: 'bg-red-500',   border: 'border-l-red-500',   text: 'text-red-600 dark:text-red-400' },
-  Abstain: { dot: 'bg-amber-500', border: 'border-l-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  Yes: {
+    dot: 'bg-green-500',
+    border: 'border-l-green-500',
+    text: 'text-green-600 dark:text-green-400',
+  },
+  No: { dot: 'bg-red-500', border: 'border-l-red-500', text: 'text-red-600 dark:text-red-400' },
+  Abstain: {
+    dot: 'bg-amber-500',
+    border: 'border-l-amber-500',
+    text: 'text-amber-600 dark:text-amber-400',
+  },
 };
 
 const VISIBLE_DEFAULT = 15;
 
 function formatDateGroup(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 }
 
@@ -44,12 +54,12 @@ export function VoteTimeline({ votes }: VoteTimelineProps) {
   if (votes.length < 3) return null;
 
   const sorted = [...votes].sort((a, b) => b.blockTime - a.blockTime);
-  const yesCount = votes.filter(v => v.vote === 'Yes').length;
-  const noCount = votes.filter(v => v.vote === 'No').length;
-  const abstainCount = votes.filter(v => v.vote === 'Abstain').length;
+  const yesCount = votes.filter((v) => v.vote === 'Yes').length;
+  const noCount = votes.filter((v) => v.vote === 'No').length;
+  const abstainCount = votes.filter((v) => v.vote === 'Abstain').length;
 
-  const earliest = Math.min(...votes.map(v => v.blockTime));
-  const latest = Math.max(...votes.map(v => v.blockTime));
+  const earliest = Math.min(...votes.map((v) => v.blockTime));
+  const latest = Math.max(...votes.map((v) => v.blockTime));
   const spanDays = daysBetween(earliest, latest);
 
   const grouped: { date: string; items: VotePoint[] }[] = [];
@@ -85,7 +95,8 @@ export function VoteTimeline({ votes }: VoteTimelineProps) {
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           Vote Activity
           <span className="text-xs font-normal text-muted-foreground">
-            {votes.length} DReps over {spanDays === 0 ? '1' : spanDays} day{spanDays !== 1 ? 's' : ''}
+            {votes.length} DReps over {spanDays === 0 ? '1' : spanDays} day
+            {spanDays !== 1 ? 's' : ''}
           </span>
         </CardTitle>
       </CardHeader>
@@ -93,24 +104,35 @@ export function VoteTimeline({ votes }: VoteTimelineProps) {
       {expanded && (
         <CardContent className="px-4 pb-4 space-y-3">
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30 text-[10px] gap-1">
+            <Badge
+              variant="outline"
+              className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30 text-[10px] gap-1"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
               {yesCount} Yes
             </Badge>
-            <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30 text-[10px] gap-1">
+            <Badge
+              variant="outline"
+              className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30 text-[10px] gap-1"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
               {noCount} No
             </Badge>
-            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] gap-1">
+            <Badge
+              variant="outline"
+              className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] gap-1"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
               {abstainCount} Abstain
             </Badge>
           </div>
 
           <div className="space-y-3">
-            {visibleGrouped.map(group => (
+            {visibleGrouped.map((group) => (
               <div key={group.date}>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{group.date}</p>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                  {group.date}
+                </p>
                 <div className="space-y-0">
                   {group.items.map((v, i) => {
                     const colors = VOTE_COLORS[v.vote] || VOTE_COLORS.Abstain;
@@ -136,7 +158,10 @@ export function VoteTimeline({ votes }: VoteTimelineProps) {
 
           {votes.length > VISIBLE_DEFAULT && (
             <button
-              onClick={(e) => { e.stopPropagation(); setShowAll(!showAll); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAll(!showAll);
+              }}
               className="text-xs text-primary hover:underline w-full text-center pt-1"
             >
               {showAll ? 'Show less' : `Show all ${votes.length} votes`}

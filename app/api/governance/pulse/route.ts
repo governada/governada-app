@@ -11,19 +11,31 @@ export async function GET() {
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
     const oneWeekAgoBlockTime = Math.floor(Date.now() / 1000) - 604800;
 
-    const [
-      drepsResult,
-      proposalsResult,
-      votesThisWeekResult,
-      claimedResult,
-      pollsResult,
-    ] = await Promise.all([
-      supabase.from('dreps').select('score, participation_rate, rationale_rate, effective_participation, info, size_tier'),
-      supabase.from('proposals').select('tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, created_at'),
-      supabase.from('drep_votes').select('id', { count: 'exact', head: true }).gt('block_time', oneWeekAgoBlockTime),
-      supabase.from('users').select('wallet_address', { count: 'exact', head: true }).not('claimed_drep_id', 'is', null),
-      supabase.from('poll_responses').select('proposal_tx_hash, proposal_index, vote').limit(5000),
-    ]);
+    const [drepsResult, proposalsResult, votesThisWeekResult, claimedResult, pollsResult] =
+      await Promise.all([
+        supabase
+          .from('dreps')
+          .select(
+            'score, participation_rate, rationale_rate, effective_participation, info, size_tier',
+          ),
+        supabase
+          .from('proposals')
+          .select(
+            'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, created_at',
+          ),
+        supabase
+          .from('drep_votes')
+          .select('id', { count: 'exact', head: true })
+          .gt('block_time', oneWeekAgoBlockTime),
+        supabase
+          .from('users')
+          .select('wallet_address', { count: 'exact', head: true })
+          .not('claimed_drep_id', 'is', null),
+        supabase
+          .from('poll_responses')
+          .select('proposal_tx_hash, proposal_index, vote')
+          .limit(5000),
+      ]);
 
     const dreps = drepsResult.data || [];
     const proposals = proposalsResult.data || [];
@@ -44,29 +56,41 @@ export async function GET() {
       formattedAda = `${Math.round(totalAdaGoverned).toLocaleString()}`;
     }
 
-    const participationRates = dreps.map((d: any) => d.effective_participation || 0).filter((r: number) => r > 0);
-    const rationaleRates = dreps.map((d: any) => d.rationale_rate || 0).filter((r: number) => r > 0);
-    const avgParticipation = participationRates.length > 0
-      ? Math.round(participationRates.reduce((a: number, b: number) => a + b, 0) / participationRates.length)
-      : 0;
-    const avgRationale = rationaleRates.length > 0
-      ? Math.round(rationaleRates.reduce((a: number, b: number) => a + b, 0) / rationaleRates.length)
-      : 0;
+    const participationRates = dreps
+      .map((d: any) => d.effective_participation || 0)
+      .filter((r: number) => r > 0);
+    const rationaleRates = dreps
+      .map((d: any) => d.rationale_rate || 0)
+      .filter((r: number) => r > 0);
+    const avgParticipation =
+      participationRates.length > 0
+        ? Math.round(
+            participationRates.reduce((a: number, b: number) => a + b, 0) /
+              participationRates.length,
+          )
+        : 0;
+    const avgRationale =
+      rationaleRates.length > 0
+        ? Math.round(
+            rationaleRates.reduce((a: number, b: number) => a + b, 0) / rationaleRates.length,
+          )
+        : 0;
 
     const openProposals = proposals.filter(
-      (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch
+      (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
     );
     const criticalCount = openProposals.filter(
-      (p: any) => getProposalPriority(p.proposal_type) === 'critical'
+      (p: any) => getProposalPriority(p.proposal_type) === 'critical',
     ).length;
 
-    const spotlight = openProposals
-      .filter((p: any) => p.title)
-      .sort((a: any, b: any) => {
-        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return bTime - aTime;
-      })[0] || null;
+    const spotlight =
+      openProposals
+        .filter((p: any) => p.title)
+        .sort((a: any, b: any) => {
+          const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bTime - aTime;
+        })[0] || null;
 
     let spotlightVoteCoverage: number | null = null;
     if (spotlight && activeDReps.length > 0) {
@@ -75,9 +99,7 @@ export async function GET() {
         .select('drep_id', { count: 'exact', head: true })
         .eq('proposal_tx_hash', spotlight.tx_hash)
         .eq('proposal_index', spotlight.proposal_index);
-      spotlightVoteCoverage = count
-        ? Math.round((count / activeDReps.length) * 100)
-        : 0;
+      spotlightVoteCoverage = count ? Math.round((count / activeDReps.length) * 100) : 0;
     }
 
     // Community vs DRep gap: aggregate poll votes per open proposal
@@ -108,47 +130,55 @@ export async function GET() {
       }
     }
 
-    const communityGap = topOpenForGap.map((p: any) => {
-      const key = `${p.tx_hash}:${p.proposal_index}`;
-      const agg = pollAgg.get(key);
-      const drepVoteCount = drepVoteCounts.get(key) || 0;
-      const drepVotePct = activeDReps.length > 0 ? Math.round((drepVoteCount / activeDReps.length) * 100) : 0;
-      return {
-        txHash: p.tx_hash,
-        index: p.proposal_index,
-        title: p.title || 'Untitled',
-        pollYes: agg?.yes || 0,
-        pollNo: agg?.no || 0,
-        pollAbstain: agg?.abstain || 0,
-        pollTotal: (agg?.yes || 0) + (agg?.no || 0) + (agg?.abstain || 0),
-        drepVotePct,
-      };
-    }).filter(g => g.pollTotal > 0);
+    const communityGap = topOpenForGap
+      .map((p: any) => {
+        const key = `${p.tx_hash}:${p.proposal_index}`;
+        const agg = pollAgg.get(key);
+        const drepVoteCount = drepVoteCounts.get(key) || 0;
+        const drepVotePct =
+          activeDReps.length > 0 ? Math.round((drepVoteCount / activeDReps.length) * 100) : 0;
+        return {
+          txHash: p.tx_hash,
+          index: p.proposal_index,
+          title: p.title || 'Untitled',
+          pollYes: agg?.yes || 0,
+          pollNo: agg?.no || 0,
+          pollAbstain: agg?.abstain || 0,
+          pollTotal: (agg?.yes || 0) + (agg?.no || 0) + (agg?.abstain || 0),
+          drepVotePct,
+        };
+      })
+      .filter((g) => g.pollTotal > 0);
 
-    return NextResponse.json({
-      totalAdaGoverned: formattedAda,
-      totalAdaGovernedRaw: totalAdaGovernedLovelace,
-      activeProposals: openProposals.length,
-      criticalProposals: criticalCount,
-      avgParticipationRate: avgParticipation,
-      avgRationaleRate: avgRationale,
-      totalDReps: dreps.length,
-      activeDReps: activeDReps.length,
-      votesThisWeek: votesThisWeekResult.count || 0,
-      claimedDReps: claimedResult.count || 0,
-      spotlightProposal: spotlight ? {
-        txHash: spotlight.tx_hash,
-        index: spotlight.proposal_index,
-        title: spotlight.title,
-        proposalType: spotlight.proposal_type,
-        priority: getProposalPriority(spotlight.proposal_type),
-        voteCoverage: spotlightVoteCoverage,
-      } : null,
-      currentEpoch,
-      communityGap,
-    }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
-    });
+    return NextResponse.json(
+      {
+        totalAdaGoverned: formattedAda,
+        totalAdaGovernedRaw: totalAdaGovernedLovelace,
+        activeProposals: openProposals.length,
+        criticalProposals: criticalCount,
+        avgParticipationRate: avgParticipation,
+        avgRationaleRate: avgRationale,
+        totalDReps: dreps.length,
+        activeDReps: activeDReps.length,
+        votesThisWeek: votesThisWeekResult.count || 0,
+        claimedDReps: claimedResult.count || 0,
+        spotlightProposal: spotlight
+          ? {
+              txHash: spotlight.tx_hash,
+              index: spotlight.proposal_index,
+              title: spotlight.title,
+              proposalType: spotlight.proposal_type,
+              priority: getProposalPriority(spotlight.proposal_type),
+              voteCoverage: spotlightVoteCoverage,
+            }
+          : null,
+        currentEpoch,
+        communityGap,
+      },
+      {
+        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
+      },
+    );
   } catch (err) {
     console.error('[Governance Pulse API] Error:', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

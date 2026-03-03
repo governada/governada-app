@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'drepId is required' }, { status: 400 });
   }
 
-  const prefs = (prefsParam?.split(',').filter(p => VALID_PREFS.includes(p as UserPrefKey)) || []) as UserPrefKey[];
+  const prefs = (prefsParam?.split(',').filter((p) => VALID_PREFS.includes(p as UserPrefKey)) ||
+    []) as UserPrefKey[];
 
   if (prefs.length === 0) {
     return NextResponse.json({ votes: [] });
@@ -43,14 +44,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ votes: [] });
   }
 
-  const proposalIds = recentVotes.map(v => ({
+  const proposalIds = recentVotes.map((v) => ({
     txHash: v.proposal_tx_hash,
     index: v.proposal_index,
   }));
 
   const proposalsMap = await getProposalsByIds(proposalIds);
 
-  const results = recentVotes.map(vote => {
+  const results = recentVotes.map((vote) => {
     const key = `${vote.proposal_tx_hash}-${vote.proposal_index}`;
     const proposal = proposalsMap.get(key);
 

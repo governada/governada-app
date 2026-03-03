@@ -35,10 +35,16 @@ export function GovernanceImpactHero() {
 
   useEffect(() => {
     if (reconnecting) return;
-    if (!isAuthenticated) { setLoading(false); return; }
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
 
     const token = getStoredSession();
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     const params = new URLSearchParams();
     if (delegatedDrepId) params.set('drepId', delegatedDrepId);
@@ -46,8 +52,8 @@ export function GovernanceImpactHero() {
     fetch(`/api/governance/holder?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(json => {
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((json) => {
         const drepVoteCount = json.delegationHealth
           ? (json.pollHistory?.length ?? 0) + (json.representationScore?.total ?? 0)
           : 0;
@@ -137,7 +143,10 @@ function StatBlock({
 }) {
   return (
     <div className={`space-y-1 ${className}`}>
-      <div className="flex items-center gap-1.5 text-muted-foreground">{icon}<span className="text-xs">{label}</span></div>
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        {icon}
+        <span className="text-xs">{label}</span>
+      </div>
       <p className="text-2xl font-bold tabular-nums tracking-tight">{value}</p>
       <p className="text-[10px] text-muted-foreground">{sub}</p>
     </div>
@@ -156,7 +165,7 @@ function HeroSkeleton() {
           <Skeleton className="h-6 w-20 rounded-full" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="space-y-2">
               <Skeleton className="h-3 w-24" />
               <Skeleton className="h-8 w-16" />

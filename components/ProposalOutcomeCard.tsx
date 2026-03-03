@@ -59,7 +59,10 @@ export function ProposalOutcomeCard({ proposal, drepVote, isWinner }: ProposalOu
       <CardContent className="p-6 space-y-4">
         {/* Outcome badge */}
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className={`text-lg px-4 py-1.5 font-bold tracking-wide ${config.className}`}>
+          <Badge
+            variant="outline"
+            className={`text-lg px-4 py-1.5 font-bold tracking-wide ${config.className}`}
+          >
             {config.label}
           </Badge>
         </div>
@@ -83,10 +86,10 @@ export function ProposalOutcomeCard({ proposal, drepVote, isWinner }: ProposalOu
               Your DRep voted <span className="font-semibold text-foreground">{drepVote}</span>
             </p>
             {isWinner != null && (
-              <p className={`text-sm font-medium ${isWinner ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {isWinner
-                  ? 'You were part of the winning majority'
-                  : 'You were in the minority'}
+              <p
+                className={`text-sm font-medium ${isWinner ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+              >
+                {isWinner ? 'You were part of the winning majority' : 'You were in the minority'}
               </p>
             )}
           </div>

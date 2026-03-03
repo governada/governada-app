@@ -21,10 +21,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { sessionToken, item, completed } = await request.json();
-    if (!sessionToken || !item) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    if (!sessionToken || !item)
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
 
     const parsed = parseSessionToken(sessionToken);
-    if (!parsed || isSessionExpired(parsed)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!parsed || isSessionExpired(parsed))
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const supabase = getSupabaseAdmin();
     const { data: user } = await supabase

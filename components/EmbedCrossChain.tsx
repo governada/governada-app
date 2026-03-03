@@ -20,8 +20,8 @@ export function EmbedCrossChain({ theme }: EmbedCrossChainProps) {
 
   useEffect(() => {
     fetch('/api/governance/benchmarks')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (data?.benchmarks) setBenchmarks(data.benchmarks);
       })
       .catch(() => {})
@@ -36,7 +36,10 @@ export function EmbedCrossChain({ theme }: EmbedCrossChainProps) {
         className="flex items-center justify-center p-6"
         style={{ backgroundColor: isDark ? '#0a0b14' : '#fff', minHeight: 120 }}
       >
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: '#06b6d4', borderTopColor: 'transparent' }} />
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+          style={{ borderColor: '#06b6d4', borderTopColor: 'transparent' }}
+        />
       </div>
     );
   }
@@ -52,12 +55,15 @@ export function EmbedCrossChain({ theme }: EmbedCrossChainProps) {
         maxWidth: 360,
       }}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>
+      <div
+        className="text-[10px] font-semibold uppercase tracking-wider mb-3"
+        style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
+      >
         Governance Across Chains
       </div>
 
       <div className="space-y-2">
-        {chains.map(chain => {
+        {chains.map((chain) => {
           const b = benchmarks[chain];
           const identity = CHAIN_IDENTITIES[chain];
           const grade = b?.grade ?? '—';
@@ -76,13 +82,13 @@ export function EmbedCrossChain({ theme }: EmbedCrossChainProps) {
                 {identity.name[0]}
               </div>
               <span className="flex-1 text-sm font-medium">{identity.name}</span>
-              <span
-                className="text-xl font-black"
-                style={{ color: gradeColor }}
-              >
+              <span className="text-xl font-black" style={{ color: gradeColor }}>
                 {grade}
               </span>
-              <span className="text-xs tabular-nums" style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>
+              <span
+                className="text-xs tabular-nums"
+                style={{ color: isDark ? '#6b7280' : '#9ca3af' }}
+              >
                 {b?.governance_score ?? '—'}/100
               </span>
             </div>

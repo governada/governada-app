@@ -1,4 +1,4 @@
-type LogLevel = "info" | "warn" | "error" | "debug";
+type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 interface LogEntry {
   timestamp: string;
@@ -20,13 +20,13 @@ function emit(level: LogLevel, message: string, meta?: Record<string, unknown>) 
   const line = JSON.stringify(entry);
 
   switch (level) {
-    case "error":
+    case 'error':
       console.error(line);
       break;
-    case "warn":
+    case 'warn':
       console.warn(line);
       break;
-    case "debug":
+    case 'debug':
       console.debug(line);
       break;
     default:
@@ -35,21 +35,21 @@ function emit(level: LogLevel, message: string, meta?: Record<string, unknown>) 
 }
 
 export const logger = {
-  info: (message: string, meta?: Record<string, unknown>) => emit("info", message, meta),
-  warn: (message: string, meta?: Record<string, unknown>) => emit("warn", message, meta),
-  error: (message: string, meta?: Record<string, unknown>) => emit("error", message, meta),
-  debug: (message: string, meta?: Record<string, unknown>) => emit("debug", message, meta),
+  info: (message: string, meta?: Record<string, unknown>) => emit('info', message, meta),
+  warn: (message: string, meta?: Record<string, unknown>) => emit('warn', message, meta),
+  error: (message: string, meta?: Record<string, unknown>) => emit('error', message, meta),
+  debug: (message: string, meta?: Record<string, unknown>) => emit('debug', message, meta),
 
   withContext(context: string) {
     return {
       info: (message: string, meta?: Record<string, unknown>) =>
-        emit("info", message, { context, ...meta }),
+        emit('info', message, { context, ...meta }),
       warn: (message: string, meta?: Record<string, unknown>) =>
-        emit("warn", message, { context, ...meta }),
+        emit('warn', message, { context, ...meta }),
       error: (message: string, meta?: Record<string, unknown>) =>
-        emit("error", message, { context, ...meta }),
+        emit('error', message, { context, ...meta }),
       debug: (message: string, meta?: Record<string, unknown>) =>
-        emit("debug", message, { context, ...meta }),
+        emit('debug', message, { context, ...meta }),
     };
   },
 };

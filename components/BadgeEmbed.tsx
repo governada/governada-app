@@ -10,7 +10,10 @@ import { posthog } from '@/lib/posthog';
 
 type BadgeFormat = 'shield' | 'card' | 'full';
 
-const FORMAT_META: Record<BadgeFormat, { label: string; description: string; width: number; height: number }> = {
+const FORMAT_META: Record<
+  BadgeFormat,
+  { label: string; description: string; width: number; height: number }
+> = {
   shield: { label: 'Shield', description: 'GitHub-style badge', width: 180, height: 28 },
   card: { label: 'Card', description: 'Mini score card', width: 300, height: 100 },
   full: { label: 'Full', description: 'Rich score card', width: 480, height: 200 },
@@ -38,14 +41,17 @@ export function BadgeEmbed({ drepId, drepName }: BadgeEmbedProps) {
     bbcode: `[url=${profileUrl}][img]${badgeUrl}[/img][/url]`,
   };
 
-  const handleCopy = useCallback(async (type: string, snippet: string) => {
-    const ok = await copyToClipboard(snippet);
-    if (ok) {
-      setCopiedFormat(type);
-      setTimeout(() => setCopiedFormat(null), 2000);
-    }
-    trackShare('badge_embed', `copy_${type}`, { drep_id: drepId, format });
-  }, [drepId, format]);
+  const handleCopy = useCallback(
+    async (type: string, snippet: string) => {
+      const ok = await copyToClipboard(snippet);
+      if (ok) {
+        setCopiedFormat(type);
+        setTimeout(() => setCopiedFormat(null), 2000);
+      }
+      trackShare('badge_embed', `copy_${type}`, { drep_id: drepId, format });
+    },
+    [drepId, format],
+  );
 
   return (
     <Card>
@@ -61,10 +67,13 @@ export function BadgeEmbed({ drepId, drepName }: BadgeEmbedProps) {
       <CardContent className="space-y-4">
         {/* Format selector */}
         <div className="flex gap-2">
-          {(Object.keys(FORMAT_META) as BadgeFormat[]).map(f => (
+          {(Object.keys(FORMAT_META) as BadgeFormat[]).map((f) => (
             <button
               key={f}
-              onClick={() => { setFormat(f); posthog.capture('badge_format_changed', { drep_id: drepId, format: f }); }}
+              onClick={() => {
+                setFormat(f);
+                posthog.capture('badge_format_changed', { drep_id: drepId, format: f });
+              }}
               className={`flex-1 rounded-lg border p-2 text-center transition-colors ${
                 format === f
                   ? 'border-primary bg-primary/5'

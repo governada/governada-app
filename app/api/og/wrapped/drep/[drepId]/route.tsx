@@ -1,20 +1,28 @@
 import { ImageResponse } from 'next/og';
 import { getDRepById } from '@/lib/data';
 import { getDRepPrimaryName } from '@/utils/display';
-import { OGBackground, OGScoreRing, OGFooter, OGFallback, OG, tierColor, tierLabel } from '@/lib/og-utils';
+import {
+  OGBackground,
+  OGScoreRing,
+  OGFooter,
+  OGFallback,
+  OG,
+  tierColor,
+  tierLabel,
+} from '@/lib/og-utils';
 import { createClient } from '@/lib/supabase';
 
 export const runtime = 'edge';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ drepId: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ drepId: string }> }) {
   try {
     const { drepId } = await params;
     const drep = await getDRepById(decodeURIComponent(drepId));
     if (!drep) {
-      return new ImageResponse(<OGFallback message="DRep not found" />, { width: 1080, height: 1080 });
+      return new ImageResponse(<OGFallback message="DRep not found" />, {
+        width: 1080,
+        height: 1080,
+      });
     }
 
     const name = getDRepPrimaryName(drep);
@@ -42,9 +50,9 @@ export async function GET(
     ];
 
     return new ImageResponse(
-      (
-        <OGBackground glow={color}>
-          <div style={{
+      <OGBackground glow={color}>
+        <div
+          style={{
             display: 'flex',
             flexDirection: 'column',
             width: '100%',
@@ -52,14 +60,24 @@ export async function GET(
             padding: '80px',
             alignItems: 'center',
             justifyContent: 'center',
-          }}>
-            <div style={{ display: 'flex', fontSize: '28px', color: OG.textMuted, fontWeight: 500, marginBottom: '16px' }}>
-              My DRepScore
-            </div>
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              fontSize: '28px',
+              color: OG.textMuted,
+              fontWeight: 500,
+              marginBottom: '16px',
+            }}
+          >
+            My DRepScore
+          </div>
 
-            <OGScoreRing score={drep.drepScore} size={280} />
+          <OGScoreRing score={drep.drepScore} size={280} />
 
-            <div style={{
+          <div
+            style={{
               display: 'flex',
               marginTop: '20px',
               padding: '8px 28px',
@@ -69,27 +87,34 @@ export async function GET(
               fontSize: '22px',
               fontWeight: 600,
               color,
-            }}>
-              {tier} — Top {percentile}%
-            </div>
+            }}
+          >
+            {tier} — Top {percentile}%
+          </div>
 
-            <div style={{
+          <div
+            style={{
               display: 'flex',
               fontSize: '36px',
               fontWeight: 700,
               marginTop: '32px',
               color: OG.text,
-            }}>
-              {name.length > 20 ? name.slice(0, 18) + '…' : name}
-            </div>
+            }}
+          >
+            {name.length > 20 ? name.slice(0, 18) + '…' : name}
+          </div>
 
-            <div style={{
+          <div
+            style={{
               display: 'flex',
               gap: '24px',
               marginTop: '40px',
-            }}>
-              {stats.map(s => (
-                <div key={s.label} style={{
+            }}
+          >
+            {stats.map((s) => (
+              <div
+                key={s.label}
+                style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -98,22 +123,33 @@ export async function GET(
                   backgroundColor: OG.bgCard,
                   border: `1px solid ${OG.border}`,
                   minWidth: '140px',
-                }}>
-                  <div style={{ display: 'flex', fontSize: '28px', fontWeight: 700, color: OG.text }}>{s.value}</div>
-                  <div style={{ display: 'flex', fontSize: '14px', color: OG.textMuted, marginTop: '4px' }}>{s.label}</div>
+                }}
+              >
+                <div style={{ display: 'flex', fontSize: '28px', fontWeight: 700, color: OG.text }}>
+                  {s.value}
                 </div>
-              ))}
-            </div>
-
-            <OGFooter left="$drepscore" right="drepscore.io" />
+                <div
+                  style={{
+                    display: 'flex',
+                    fontSize: '14px',
+                    color: OG.textMuted,
+                    marginTop: '4px',
+                  }}
+                >
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
-        </OGBackground>
-      ),
+
+          <OGFooter left="$drepscore" right="drepscore.io" />
+        </div>
+      </OGBackground>,
       {
         width: 1080,
         height: 1080,
         headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' },
-      }
+      },
     );
   } catch (error) {
     console.error('[OG Wrapped DRep] Error:', error);

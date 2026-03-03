@@ -31,7 +31,8 @@ export function HomepageUnauth({ pulseData, topDReps }: HomepageUnauthProps) {
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-4">
           <Users className="h-4 w-4" />
           <span>
-            <strong className="text-foreground">{pulseData.claimedDReps}</strong> DReps have claimed their profile on DRepScore
+            <strong className="text-foreground">{pulseData.claimedDReps}</strong> DReps have claimed
+            their profile on DRepScore
           </span>
         </div>
       )}

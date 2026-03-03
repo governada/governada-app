@@ -44,18 +44,22 @@ export function DelegatorTrendChart({ drepId }: DelegatorTrendChartProps) {
     [snapshots],
   );
 
-  const yMax = useMemo(
-    () => Math.max(...chartData.map((d) => d.value), 1),
-    [chartData],
-  );
+  const yMax = useMemo(() => Math.max(...chartData.map((d) => d.value), 1), [chartData]);
 
   const xScale = useMemo(
-    () => scalePoint<string>().domain(chartData.map((d) => d.label)).range([0, innerWidth]).padding(0.1),
+    () =>
+      scalePoint<string>()
+        .domain(chartData.map((d) => d.label))
+        .range([0, innerWidth])
+        .padding(0.1),
     [chartData, innerWidth],
   );
 
   const yScale = useMemo(
-    () => scaleLinear().domain([0, yMax * 1.1]).range([innerHeight, 0]),
+    () =>
+      scaleLinear()
+        .domain([0, yMax * 1.1])
+        .range([innerHeight, 0]),
     [yMax, innerHeight],
   );
 
@@ -90,15 +94,23 @@ export function DelegatorTrendChart({ drepId }: DelegatorTrendChartProps) {
   );
 
   const formatAdaValue = (v: number) =>
-    v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K` : v.toLocaleString();
+    v >= 1_000_000
+      ? `${(v / 1_000_000).toFixed(1)}M`
+      : v >= 1_000
+        ? `${(v / 1_000).toFixed(0)}K`
+        : v.toLocaleString();
 
   if (loading) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4" /> Delegator Analytics</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4" /> Delegator Analytics
+          </CardTitle>
         </CardHeader>
-        <CardContent><div className="h-[180px] animate-pulse bg-muted rounded" /></CardContent>
+        <CardContent>
+          <div className="h-[180px] animate-pulse bg-muted rounded" />
+        </CardContent>
       </Card>
     );
   }
@@ -107,10 +119,14 @@ export function DelegatorTrendChart({ drepId }: DelegatorTrendChartProps) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4" /> Delegator Analytics</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4" /> Delegator Analytics
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Power tracking data will appear here as snapshots are collected.</p>
+          <p className="text-sm text-muted-foreground">
+            Power tracking data will appear here as snapshots are collected.
+          </p>
           {currentDelegators !== null && (
             <div className="mt-3 flex items-center gap-2">
               <span className="text-2xl font-bold tabular-nums">{currentDelegators}</span>
@@ -128,23 +144,38 @@ export function DelegatorTrendChart({ drepId }: DelegatorTrendChartProps) {
   const powerChangeFormatted = formatAdaValue(Math.abs(powerChange));
   const hovered = hoveredIndex !== null ? chartData[hoveredIndex] : null;
   const ticks = yScale.ticks(4);
-  const xTicks = chartData.length <= 8 ? chartData : chartData.filter((_, i) => i % Math.ceil(chartData.length / 6) === 0);
+  const xTicks =
+    chartData.length <= 8
+      ? chartData
+      : chartData.filter((_, i) => i % Math.ceil(chartData.length / 6) === 0);
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4" /> Delegator Analytics</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4" /> Delegator Analytics
+          </CardTitle>
           <div className="flex items-center gap-3">
             {currentDelegators !== null && (
               <span className="text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground tabular-nums">{currentDelegators}</span> delegators
+                <span className="font-semibold text-foreground tabular-nums">
+                  {currentDelegators}
+                </span>{' '}
+                delegators
               </span>
             )}
             {snapshots.length > 1 && (
-              <span className={`text-xs font-medium flex items-center gap-1 ${powerChange > 0 ? 'text-green-600 dark:text-green-400' : powerChange < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
-                {powerChange > 0 ? <TrendingUp className="h-3 w-3" /> : powerChange < 0 ? <TrendingDown className="h-3 w-3" /> : null}
-                {powerChange > 0 ? '+' : powerChange < 0 ? '-' : ''}{powerChangeFormatted} ADA
+              <span
+                className={`text-xs font-medium flex items-center gap-1 ${powerChange > 0 ? 'text-green-600 dark:text-green-400' : powerChange < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}
+              >
+                {powerChange > 0 ? (
+                  <TrendingUp className="h-3 w-3" />
+                ) : powerChange < 0 ? (
+                  <TrendingDown className="h-3 w-3" />
+                ) : null}
+                {powerChange > 0 ? '+' : powerChange < 0 ? '-' : ''}
+                {powerChangeFormatted} ADA
               </span>
             )}
           </div>
@@ -161,22 +192,59 @@ export function DelegatorTrendChart({ drepId }: DelegatorTrendChartProps) {
               <g transform={`translate(${margin.left},${margin.top})`}>
                 {ticks.map((t) => (
                   <g key={t}>
-                    <line x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="4 4" className="text-border" />
-                    <text x={-8} y={yScale(t)} textAnchor="end" dominantBaseline="central" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">
+                    <line
+                      x1={0}
+                      x2={innerWidth}
+                      y1={yScale(t)}
+                      y2={yScale(t)}
+                      stroke="currentColor"
+                      strokeWidth={0.5}
+                      strokeDasharray="4 4"
+                      className="text-border"
+                    />
+                    <text
+                      x={-8}
+                      y={yScale(t)}
+                      textAnchor="end"
+                      dominantBaseline="central"
+                      fontSize={chartTheme.font.size.tick}
+                      className="fill-muted-foreground"
+                    >
                       {formatAdaValue(t)}
                     </text>
                   </g>
                 ))}
 
                 {xTicks.map((d) => (
-                  <text key={d.label} x={xScale(d.label) ?? 0} y={innerHeight + 18} textAnchor="middle" fontSize={chartTheme.font.size.tick} className="fill-muted-foreground">
+                  <text
+                    key={d.label}
+                    x={xScale(d.label) ?? 0}
+                    y={innerHeight + 18}
+                    textAnchor="middle"
+                    fontSize={chartTheme.font.size.tick}
+                    className="fill-muted-foreground"
+                  >
                     {d.label}
                   </text>
                 ))}
 
                 <path d={areaPath} fill="url(#delegator-fill)" />
-                <path d={linePath} fill="none" stroke="oklch(0.68 0.16 160)" strokeWidth={2.5} filter="url(#delegator-glow)" opacity={0.5} />
-                <path d={linePath} fill="none" stroke="oklch(0.68 0.16 160)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke="oklch(0.68 0.16 160)"
+                  strokeWidth={2.5}
+                  filter="url(#delegator-glow)"
+                  opacity={0.5}
+                />
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke="oklch(0.68 0.16 160)"
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
 
                 {chartData.map((d, i) => (
                   <circle
@@ -194,12 +262,21 @@ export function DelegatorTrendChart({ drepId }: DelegatorTrendChartProps) {
                   <line
                     x1={xScale(chartData[hoveredIndex].label) ?? 0}
                     x2={xScale(chartData[hoveredIndex].label) ?? 0}
-                    y1={0} y2={innerHeight}
-                    stroke="currentColor" strokeWidth={0.5} strokeDasharray="3 3" className="text-muted-foreground"
+                    y1={0}
+                    y2={innerHeight}
+                    stroke="currentColor"
+                    strokeWidth={0.5}
+                    strokeDasharray="3 3"
+                    className="text-muted-foreground"
                   />
                 )}
 
-                <rect x={0} y={0} width={innerWidth} height={innerHeight} fill="transparent"
+                <rect
+                  x={0}
+                  y={0}
+                  width={innerWidth}
+                  height={innerHeight}
+                  fill="transparent"
                   onMouseMove={handleMouseMove}
                   onMouseLeave={() => setHoveredIndex(null)}
                 />

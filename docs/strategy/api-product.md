@@ -25,7 +25,8 @@ Public API packaging DRepScore's governance data (scores, voting history, alignm
 
 ## API Surface
 
-*To be designed — initial endpoint candidates:*
+_To be designed — initial endpoint candidates:_
+
 - `/dreps` — list with scores, filtering, sorting
 - `/dreps/:id` — full profile with score breakdown
 - `/dreps/:id/votes` — voting history
@@ -34,7 +35,7 @@ Public API packaging DRepScore's governance data (scores, voting history, alignm
 
 ## Pricing Tiers
 
-*To be validated.*
+_To be validated._
 
 ## Next Actions
 

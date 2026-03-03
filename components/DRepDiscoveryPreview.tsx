@@ -24,14 +24,33 @@ function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
-  const color = score >= 80 ? 'text-green-500' : score >= 60 ? 'text-blue-500' : score >= 40 ? 'text-amber-500' : 'text-red-500';
+  const color =
+    score >= 80
+      ? 'text-green-500'
+      : score >= 60
+        ? 'text-blue-500'
+        : score >= 40
+          ? 'text-amber-500'
+          : 'text-red-500';
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg viewBox="0 0 36 36" className={`w-full h-full -rotate-90`}>
-        <circle cx="18" cy="18" r={radius} fill="none" stroke="currentColor" className="text-muted/20" strokeWidth="3" />
         <circle
-          cx="18" cy="18" r={radius} fill="none" stroke="currentColor"
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          className="text-muted/20"
+          strokeWidth="3"
+        />
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
           className={color}
           strokeWidth="3"
           strokeDasharray={circumference}
@@ -39,7 +58,9 @@ function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
           strokeLinecap="round"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{score}</span>
+      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
+        {score}
+      </span>
     </div>
   );
 }
@@ -69,9 +90,14 @@ function DRepCard({ drep }: { drep: PreviewDRep }) {
       />
       <ScoreRing score={drep.drepScore} />
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{displayName}</p>
+        <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+          {displayName}
+        </p>
         <div className="flex items-center gap-2 mt-1">
-          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${tierColors[drep.sizeTier] || ''}`}>
+          <Badge
+            variant="outline"
+            className={`text-[10px] px-1.5 py-0 ${tierColors[drep.sizeTier] || ''}`}
+          >
             {drep.sizeTier}
           </Badge>
           <span className="text-[10px] text-muted-foreground">
@@ -89,7 +115,9 @@ export function DRepDiscoveryPreview({ dreps }: { dreps: PreviewDRep[] }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">Top DReps</h2>
-          <p className="text-sm text-muted-foreground">Highest-scoring governance representatives</p>
+          <p className="text-sm text-muted-foreground">
+            Highest-scoring governance representatives
+          </p>
         </div>
         <Link
           href="/discover"

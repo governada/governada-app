@@ -19,12 +19,7 @@ import {
   SiTwitch,
 } from '@icons-pack/react-simple-icons';
 import { Linkedin, Globe, Link as LinkIcon, AlertTriangle } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SocialIconsLargeProps {
   metadata?: Record<string, unknown> | null;
@@ -34,20 +29,20 @@ interface SocialIconsLargeProps {
 
 const BRAND_ICONS: Record<string, React.FC<{ className?: string; size?: number }>> = {
   'Twitter/X': SiX,
-  'GitHub': SiGithub,
-  'Facebook': SiFacebook,
-  'Instagram': SiInstagram,
-  'YouTube': SiYoutube,
-  'Discord': SiDiscord,
-  'Telegram': SiTelegram,
-  'Reddit': SiReddit,
-  'Medium': SiMedium,
-  'GitLab': SiGitlab,
-  'Linktree': SiLinktree,
-  'WhatsApp': SiWhatsapp,
-  'Bluesky': SiBluesky,
-  'Mastodon': SiMastodon,
-  'Twitch': SiTwitch,
+  GitHub: SiGithub,
+  Facebook: SiFacebook,
+  Instagram: SiInstagram,
+  YouTube: SiYoutube,
+  Discord: SiDiscord,
+  Telegram: SiTelegram,
+  Reddit: SiReddit,
+  Medium: SiMedium,
+  GitLab: SiGitlab,
+  Linktree: SiLinktree,
+  WhatsApp: SiWhatsapp,
+  Bluesky: SiBluesky,
+  Mastodon: SiMastodon,
+  Twitch: SiTwitch,
 };
 
 const ECOSYSTEM_PLATFORMS = new Set(['Cardano Foundation', 'IOHK', 'EMURGO']);
@@ -64,7 +59,13 @@ function isValidUrl(url: string) {
   try {
     if (!url || url.length < 5) return false;
     const lower = url.toLowerCase();
-    if (lower.includes('example.com') || lower === 'http://' || lower === 'https://' || lower === 'na' || lower === 'none') {
+    if (
+      lower.includes('example.com') ||
+      lower === 'http://' ||
+      lower === 'https://' ||
+      lower === 'na' ||
+      lower === 'none'
+    ) {
       return false;
     }
     new URL(url);
@@ -74,13 +75,20 @@ function isValidUrl(url: string) {
   }
 }
 
-export function SocialIconsLarge({ metadata, references: propReferences, brokenLinks }: SocialIconsLargeProps) {
-  const references = propReferences || (metadata?.references as Array<{ label: string; uri: string }> | undefined) || [];
-  
+export function SocialIconsLarge({
+  metadata,
+  references: propReferences,
+  brokenLinks,
+}: SocialIconsLargeProps) {
+  const references =
+    propReferences ||
+    (metadata?.references as Array<{ label: string; uri: string }> | undefined) ||
+    [];
+
   if (references.length === 0) return null;
 
   const seenUris = new Set<string>();
-  const validRefs = references.filter(ref => {
+  const validRefs = references.filter((ref) => {
     if (!isValidUrl(ref.uri) || seenUris.has(ref.uri)) return false;
     seenUris.add(ref.uri);
     return true;

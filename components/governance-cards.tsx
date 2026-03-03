@@ -7,12 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HexScore } from '@/components/HexScore';
 import { extractAlignments } from '@/lib/drepIdentity';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TYPE_EXPLAINERS } from '@/utils/proposalPriority';
 import {
   Shield,
@@ -100,15 +95,28 @@ export interface DashboardData {
 }
 
 const VOTE_CONFIG: Record<string, { icon: typeof CheckCircle2; color: string; bg: string }> = {
-  Yes: { icon: CheckCircle2, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
-  No: { icon: XCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' },
-  Abstain: { icon: MinusCircle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  Yes: {
+    icon: CheckCircle2,
+    color: 'text-green-600 dark:text-green-400',
+    bg: 'bg-green-100 dark:bg-green-900/30',
+  },
+  No: {
+    icon: XCircle,
+    color: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-100 dark:bg-red-900/30',
+  },
+  Abstain: {
+    icon: MinusCircle,
+    color: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-100 dark:bg-amber-900/30',
+  },
 };
 
 const PRIORITY_STYLES: Record<string, { className: string; tooltip: string }> = {
   critical: {
     className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    tooltip: 'Critical: Fundamentally changes the network or governance structure. Requires careful attention.',
+    tooltip:
+      'Critical: Fundamentally changes the network or governance structure. Requires careful attention.',
   },
   important: {
     className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
@@ -134,7 +142,9 @@ export function VoteBadge({ vote, label }: { vote: string; label?: string }) {
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded shrink-0 ${config.bg} ${config.color}`}>
+    <span
+      className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded shrink-0 ${config.bg} ${config.color}`}
+    >
       <Icon className="h-2.5 w-2.5" />
       {label ? `${label}: ${vote}` : vote}
     </span>
@@ -149,7 +159,8 @@ function DeadlineBadge({ epochsRemaining }: { epochsRemaining: number | null }) 
   let label: string;
 
   if (epochsRemaining <= 0) {
-    style = 'text-red-600 dark:text-red-400 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20';
+    style =
+      'text-red-600 dark:text-red-400 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20';
     label = 'Expiring';
   } else if (epochsRemaining <= 2) {
     style = 'text-red-600 dark:text-red-400 border-red-300 dark:border-red-800';
@@ -181,7 +192,13 @@ function DeadlineBadge({ epochsRemaining }: { epochsRemaining: number | null }) 
   );
 }
 
-export function DelegationHealthCard({ health, scoreDelta }: { health: DelegationHealth | null; scoreDelta?: number | null }) {
+export function DelegationHealthCard({
+  health,
+  scoreDelta,
+}: {
+  health: DelegationHealth | null;
+  scoreDelta?: number | null;
+}) {
   if (!health) {
     return (
       <Card>
@@ -193,7 +210,8 @@ export function DelegationHealthCard({ health, scoreDelta }: { health: Delegatio
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            You haven&apos;t delegated to a DRep yet. Find one aligned with your values to participate in governance.
+            You haven&apos;t delegated to a DRep yet. Find one aligned with your values to
+            participate in governance.
           </p>
           <Link href="/discover">
             <Button size="sm" className="gap-2">
@@ -206,9 +224,10 @@ export function DelegationHealthCard({ health, scoreDelta }: { health: Delegatio
     );
   }
 
-  const votePct = health.openProposalCount > 0
-    ? Math.round((health.votedOnOpen / health.openProposalCount) * 100)
-    : 0;
+  const votePct =
+    health.openProposalCount > 0
+      ? Math.round((health.votedOnOpen / health.openProposalCount) * 100)
+      : 0;
 
   return (
     <Card>
@@ -230,15 +249,26 @@ export function DelegationHealthCard({ health, scoreDelta }: { health: Delegatio
             <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
               Score: {health.drepScore}/100
               {scoreDelta != null && scoreDelta !== 0 && (
-                <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${scoreDelta > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {scoreDelta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {scoreDelta > 0 ? '+' : ''}{scoreDelta}
+                <span
+                  className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${scoreDelta > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                >
+                  {scoreDelta > 0 ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3" />
+                  )}
+                  {scoreDelta > 0 ? '+' : ''}
+                  {scoreDelta}
                 </span>
               )}
             </p>
           </div>
           <Link href={`/drep/${encodeURIComponent(health.drepId)}`}>
-            <Button variant="outline" size="sm" className="gap-1 text-xs hover:text-primary hover:bg-primary/10">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 text-xs hover:text-primary hover:bg-primary/10"
+            >
               Profile <ExternalLink className="h-3 w-3" />
             </Button>
           </Link>
@@ -247,7 +277,9 @@ export function DelegationHealthCard({ health, scoreDelta }: { health: Delegatio
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Voted on open proposals</span>
-            <span className="font-medium tabular-nums">{health.votedOnOpen}/{health.openProposalCount}</span>
+            <span className="font-medium tabular-nums">
+              {health.votedOnOpen}/{health.openProposalCount}
+            </span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div
@@ -291,11 +323,15 @@ export function RepresentationScoreCard({ rep }: { rep: RepresentationData }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Vote on proposals to see how well your DRep represents your views.
-            Each poll vote you cast builds this score.
+            Vote on proposals to see how well your DRep represents your views. Each poll vote you
+            cast builds this score.
           </p>
           <Link href="/proposals">
-            <Button variant="outline" size="sm" className="gap-2 hover:text-primary hover:bg-primary/10">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 hover:text-primary hover:bg-primary/10"
+            >
               <Vote className="h-3.5 w-3.5" />
               Vote on Proposals
             </Button>
@@ -315,10 +351,22 @@ export function RepresentationScoreCard({ rep }: { rep: RepresentationData }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-6">
-          <HexScore score={rep.score} alignments={{ treasuryConservative: null, treasuryGrowth: null, decentralization: null, security: null, innovation: null, transparency: null }} size="card" />
+          <HexScore
+            score={rep.score}
+            alignments={{
+              treasuryConservative: null,
+              treasuryGrowth: null,
+              decentralization: null,
+              security: null,
+              innovation: null,
+              transparency: null,
+            }}
+            size="card"
+          />
           <div className="space-y-1">
             <p className="text-sm">
-              Your DRep voted with you <strong>{rep.aligned}</strong> of <strong>{rep.total}</strong> times.
+              Your DRep voted with you <strong>{rep.aligned}</strong> of{' '}
+              <strong>{rep.total}</strong> times.
             </p>
             <p className="text-xs text-muted-foreground">
               Based on proposals where you both weighed in.
@@ -365,10 +413,7 @@ export function RepresentationScoreCard({ rep }: { rep: RepresentationData }) {
 }
 
 export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposal[] }) {
-  const needsVoteCount = useMemo(
-    () => proposals.filter(p => !p.userVote).length,
-    [proposals]
-  );
+  const needsVoteCount = useMemo(() => proposals.filter((p) => !p.userVote).length, [proposals]);
 
   if (proposals.length === 0) {
     return (
@@ -402,7 +447,10 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
             Active Proposals
           </CardTitle>
           {needsVoteCount > 0 && (
-            <Badge variant="outline" className="text-xs gap-1 bg-primary/10 text-primary border-primary/30">
+            <Badge
+              variant="outline"
+              className="text-xs gap-1 bg-primary/10 text-primary border-primary/30"
+            >
               {needsVoteCount} need your vote
             </Badge>
           )}
@@ -434,7 +482,10 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Badge variant="outline" className="text-[10px] shrink-0 cursor-help bg-muted/50 text-muted-foreground border-border">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] shrink-0 cursor-help bg-muted/50 text-muted-foreground border-border"
+                      >
                         {typeLabel}
                       </Badge>
                     </TooltipTrigger>
@@ -446,7 +497,10 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
                   {priority && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge variant="outline" className={`text-[10px] shrink-0 cursor-help ${priority.className}`}>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] shrink-0 cursor-help ${priority.className}`}
+                        >
                           {p.priority === 'critical' ? 'Critical' : 'Important'}
                         </Badge>
                       </TooltipTrigger>
@@ -461,7 +515,9 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
                   {p.userVote && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="cursor-help"><VoteBadge vote={p.userVote} label="You" /></span>
+                        <span className="cursor-help">
+                          <VoteBadge vote={p.userVote} label="You" />
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p className="text-xs">Your poll vote on this proposal</p>
@@ -471,7 +527,9 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
                   {p.drepVote && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="cursor-help"><VoteBadge vote={p.drepVote} label="DRep" /></span>
+                        <span className="cursor-help">
+                          <VoteBadge vote={p.drepVote} label="DRep" />
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p className="text-xs">Your DRep&apos;s on-chain governance vote</p>
@@ -488,7 +546,11 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
 
         <div className="mt-3 pt-3 border-t">
           <Link href="/proposals">
-            <Button variant="outline" size="sm" className="w-full gap-1 hover:text-primary hover:bg-primary/10">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1 hover:text-primary hover:bg-primary/10"
+            >
               View All Proposals
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
@@ -521,8 +583,8 @@ export function RedelegationNudge({
       <CardContent className="space-y-4">
         <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
           Your DRep voted differently from you on <strong>{misaligned}</strong> of{' '}
-          <strong>{total}</strong> recent proposals ({repScore}% alignment).
-          Consider exploring DReps who vote more like you.
+          <strong>{total}</strong> recent proposals ({repScore}% alignment). Consider exploring
+          DReps who vote more like you.
         </p>
 
         {suggestions.length > 0 && (
@@ -540,8 +602,13 @@ export function RedelegationNudge({
                 <span className="truncate flex-1 font-medium">
                   {s.drepName || `${s.drepId.slice(0, 16)}...`}
                 </span>
-                <span className="text-xs text-muted-foreground tabular-nums">Score: {s.drepScore}</span>
-                <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-800">
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Score: {s.drepScore}
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-800"
+                >
                   {s.matchRate}% match
                 </Badge>
               </Link>

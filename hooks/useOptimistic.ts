@@ -13,9 +13,7 @@ interface UseOptimisticReturn<T> {
   reset: () => void;
 }
 
-export function useOptimistic<T = void>(
-  options: UseOptimisticOptions<T>,
-): UseOptimisticReturn<T> {
+export function useOptimistic<T = void>(options: UseOptimisticOptions<T>): UseOptimisticReturn<T> {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const optionsRef = useRef(options);

@@ -83,7 +83,8 @@ export function GovernanceDNAReveal({ result, onRetake }: GovernanceDNARevealPro
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Not enough overlapping votes to calculate matches yet. Vote on more proposals to improve accuracy.
+            Not enough overlapping votes to calculate matches yet. Vote on more proposals to improve
+            accuracy.
           </p>
         )}
 
@@ -91,7 +92,9 @@ export function GovernanceDNAReveal({ result, onRetake }: GovernanceDNARevealPro
           <div className="p-3 rounded-lg bg-muted/50 border">
             <p className="text-sm">
               <span className="text-muted-foreground">vs your current DRep: </span>
-              <span className={`font-semibold ${getMatchColor(result.currentDRepMatch.matchScore)}`}>
+              <span
+                className={`font-semibold ${getMatchColor(result.currentDRepMatch.matchScore)}`}
+              >
                 {result.currentDRepMatch.matchScore}% match
               </span>
               <span className="text-xs text-muted-foreground ml-1">
@@ -113,13 +116,20 @@ export function GovernanceDNAReveal({ result, onRetake }: GovernanceDNARevealPro
               <p className="text-sm font-medium">Share your Governance DNA</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Show the Cardano community your governance personality.
-              Your top match: <span className="font-semibold text-foreground">{result.topMatches[0].name}</span> ({result.topMatches[0].matchScore}%)
+              Show the Cardano community your governance personality. Your top match:{' '}
+              <span className="font-semibold text-foreground">{result.topMatches[0].name}</span> (
+              {result.topMatches[0].matchScore}%)
             </p>
             <ShareActions
               url="https://drepscore.io/discover"
               text={`I took the Governance DNA Quiz on @drepscore! My top match: ${result.topMatches[0].name} (${result.topMatches[0].matchScore}%). Find your ideal DRep:`}
-              imageUrl={`/api/og/governance-dna?votes=${result.votesCount}${result.topMatches.slice(0, 3).map((m, i) => `&m${i + 1}name=${encodeURIComponent(m.name)}&m${i + 1}score=${m.matchScore}`).join('')}`}
+              imageUrl={`/api/og/governance-dna?votes=${result.votesCount}${result.topMatches
+                .slice(0, 3)
+                .map(
+                  (m, i) =>
+                    `&m${i + 1}name=${encodeURIComponent(m.name)}&m${i + 1}score=${m.matchScore}`,
+                )
+                .join('')}`}
               imageFilename="my-governance-dna.png"
               surface="governance_dna"
               metadata={{ votes_count: result.votesCount, top_match: result.topMatches[0]?.drepId }}

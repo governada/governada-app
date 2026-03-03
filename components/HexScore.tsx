@@ -108,10 +108,16 @@ export function HexScore({
           {showGlow && (
             <>
               <filter id={`${uid}-bloom`} x="-60%" y="-60%" width="220%" height="220%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation={size === 'hero-lg' ? 14 : size === 'hero' ? 10 : 3} />
+                <feGaussianBlur
+                  in="SourceGraphic"
+                  stdDeviation={size === 'hero-lg' ? 14 : size === 'hero' ? 10 : 3}
+                />
               </filter>
               <filter id={`${uid}-glow`} x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation={size === 'hero-lg' ? 5 : size === 'hero' ? 4 : 2} />
+                <feGaussianBlur
+                  in="SourceGraphic"
+                  stdDeviation={size === 'hero-lg' ? 5 : size === 'hero' ? 4 : 2}
+                />
               </filter>
             </>
           )}
@@ -147,7 +153,9 @@ export function HexScore({
         {/* Layer 3: Crisp shape */}
         <polygon
           points={polygonPoints}
-          fill={size === 'badge' ? `rgba(${identityColor.rgb.join(',')}, 0.3)` : `url(#${uid}-fill)`}
+          fill={
+            size === 'badge' ? `rgba(${identityColor.rgb.join(',')}, 0.3)` : `url(#${uid}-fill)`
+          }
           stroke={identityColor.hex}
           strokeWidth={size === 'hero-lg' || size === 'hero' ? 1.5 : size === 'card' ? 1 : 0.5}
           strokeLinejoin="round"

@@ -55,7 +55,9 @@ function MockScoreRing() {
               strokeDasharray="72, 100"
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-lg font-bold">72%</span>
+          <span className="absolute inset-0 flex items-center justify-center text-lg font-bold">
+            72%
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -69,15 +71,20 @@ function MockProposals() {
         <CardTitle className="text-sm">Active Proposals</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {['Budget Allocation Q2', 'Protocol Parameter Update', 'Treasury Withdrawal'].map((name, i) => (
-          <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-border/50 last:border-0">
-            <div className="flex items-center gap-2">
-              <Vote className="h-3 w-3 text-muted-foreground" />
-              <span>{name}</span>
+        {['Budget Allocation Q2', 'Protocol Parameter Update', 'Treasury Withdrawal'].map(
+          (name, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between text-xs py-1.5 border-b border-border/50 last:border-0"
+            >
+              <div className="flex items-center gap-2">
+                <Vote className="h-3 w-3 text-muted-foreground" />
+                <span>{name}</span>
+              </div>
+              <span className="text-muted-foreground">Pending</span>
             </div>
-            <span className="text-muted-foreground">Pending</span>
-          </div>
-        ))}
+          ),
+        )}
       </CardContent>
     </Card>
   );
@@ -90,7 +97,10 @@ export function DashboardPreview() {
 
   return (
     <section className="relative">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 blur-[2px] select-none pointer-events-none" aria-hidden="true">
+      <div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4 blur-[2px] select-none pointer-events-none"
+        aria-hidden="true"
+      >
         <MockDelegationCard />
         <MockScoreRing />
         <MockProposals />
@@ -103,7 +113,8 @@ export function DashboardPreview() {
             <h3 className="text-lg font-semibold">Your Governance Dashboard</h3>
           </div>
           <p className="text-sm text-muted-foreground max-w-sm">
-            Connect your wallet to see your delegation health, representation score, and active proposals.
+            Connect your wallet to see your delegation health, representation score, and active
+            proposals.
           </p>
           <button
             onClick={openWalletConnect}

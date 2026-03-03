@@ -19,11 +19,11 @@ export interface IdentityColor {
 
 const IDENTITY_COLORS: Record<AlignmentDimension, IdentityColor> = {
   treasuryConservative: { hex: '#dc2626', rgb: [220, 38, 38], label: 'Deep Red' },
-  treasuryGrowth:       { hex: '#10b981', rgb: [16, 185, 129], label: 'Emerald' },
-  decentralization:     { hex: '#a855f7', rgb: [168, 85, 247], label: 'Purple' },
-  security:             { hex: '#f59e0b', rgb: [245, 158, 11], label: 'Amber' },
-  innovation:           { hex: '#06b6d4', rgb: [6, 182, 212], label: 'Cyan' },
-  transparency:         { hex: '#3b82f6', rgb: [59, 130, 246], label: 'Blue' },
+  treasuryGrowth: { hex: '#10b981', rgb: [16, 185, 129], label: 'Emerald' },
+  decentralization: { hex: '#a855f7', rgb: [168, 85, 247], label: 'Purple' },
+  security: { hex: '#f59e0b', rgb: [245, 158, 11], label: 'Amber' },
+  innovation: { hex: '#06b6d4', rgb: [6, 182, 212], label: 'Cyan' },
+  transparency: { hex: '#3b82f6', rgb: [59, 130, 246], label: 'Blue' },
 };
 
 const DIMENSION_LABELS: Record<AlignmentDimension, string> = {
@@ -71,7 +71,8 @@ export function extractAlignments(row: {
   alignmentTransparency?: number | null;
 }): AlignmentScores {
   return {
-    treasuryConservative: row.alignment_treasury_conservative ?? row.alignmentTreasuryConservative ?? null,
+    treasuryConservative:
+      row.alignment_treasury_conservative ?? row.alignmentTreasuryConservative ?? null,
     treasuryGrowth: row.alignment_treasury_growth ?? row.alignmentTreasuryGrowth ?? null,
     decentralization: row.alignment_decentralization ?? row.alignmentDecentralization ?? null,
     security: row.alignment_security ?? row.alignmentSecurity ?? null,
@@ -85,7 +86,7 @@ export function extractAlignments(row: {
  * Null scores default to 50.
  */
 export function alignmentsToArray(scores: AlignmentScores): number[] {
-  return DIMENSION_ORDER.map(dim => scores[dim] ?? 50);
+  return DIMENSION_ORDER.map((dim) => scores[dim] ?? 50);
 }
 
 /**
@@ -175,10 +176,7 @@ export function getHexVertices(
     const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
     const normalizedScore = score / 100;
     const radius = maxRadius * (minRadius + normalizedScore * (1 - minRadius));
-    return [
-      center + radius * Math.cos(angle),
-      center + radius * Math.sin(angle),
-    ];
+    return [center + radius * Math.cos(angle), center + radius * Math.sin(angle)];
   });
 }
 
@@ -205,40 +203,34 @@ export function getRadarPoints(
   return scores.map((score, i) => {
     const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
     const radius = maxRadius * (score / 100);
-    return [
-      center + radius * Math.cos(angle),
-      center + radius * Math.sin(angle),
-    ];
+    return [center + radius * Math.cos(angle), center + radius * Math.sin(angle)];
   });
 }
 
 /**
  * Get the axis endpoint positions for the radar grid (at 100%).
  */
-export function getRadarAxisEndpoints(
-  size: number,
-  padding = 24,
-): [number, number][] {
+export function getRadarAxisEndpoints(size: number, padding = 24): [number, number][] {
   const center = size / 2;
   const radius = (size - padding * 2) / 2;
 
   return Array.from({ length: 6 }, (_, i) => {
     const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
-    return [
-      center + radius * Math.cos(angle),
-      center + radius * Math.sin(angle),
-    ] as [number, number];
+    return [center + radius * Math.cos(angle), center + radius * Math.sin(angle)] as [
+      number,
+      number,
+    ];
   });
 }
 
 /** Short, evocative archetypes derived from alignment scores. */
 const PERSONALITY_ARCHETYPES: Record<AlignmentDimension, string[]> = {
   treasuryConservative: ['The Guardian', 'The Fiscal Hawk', 'The Prudent Steward'],
-  treasuryGrowth:       ['The Builder', 'The Growth Champion', 'The Catalyst'],
-  decentralization:     ['The Federalist', 'The Power Distributor', 'The Decentralizer'],
-  security:             ['The Sentinel', 'The Cautious Architect', 'The Shield'],
-  innovation:           ['The Pioneer', 'The Changemaker', 'The Innovator'],
-  transparency:         ['The Beacon', 'The Transparent Champion', 'The Open Book'],
+  treasuryGrowth: ['The Builder', 'The Growth Champion', 'The Catalyst'],
+  decentralization: ['The Federalist', 'The Power Distributor', 'The Decentralizer'],
+  security: ['The Sentinel', 'The Cautious Architect', 'The Shield'],
+  innovation: ['The Pioneer', 'The Changemaker', 'The Innovator'],
+  transparency: ['The Beacon', 'The Transparent Champion', 'The Open Book'],
 };
 
 /**

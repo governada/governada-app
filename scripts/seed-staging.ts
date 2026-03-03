@@ -54,11 +54,9 @@ function getEnvOrFail(name: string): string {
 async function verifyTableExists(
   client: ReturnType<typeof createClient>,
   table: string,
-  label: string
+  label: string,
 ): Promise<boolean> {
-  const { count, error } = await client
-    .from(table)
-    .select('*', { count: 'exact', head: true });
+  const { count, error } = await client.from(table).select('*', { count: 'exact', head: true });
   if (error) {
     console.error(`  [${label}] Table "${table}" not accessible: ${error.message}`);
     return false;
@@ -69,7 +67,7 @@ async function verifyTableExists(
 
 async function getStagingColumns(
   staging: ReturnType<typeof createClient>,
-  table: string
+  table: string,
 ): Promise<string[] | null> {
   const { data, error } = await staging.from(table).select('*').limit(0);
   if (error) return null;
@@ -82,9 +80,12 @@ async function getStagingColumns(
   return null;
 }
 
-function filterColumns(rows: Record<string, unknown>[], columns: string[]): Record<string, unknown>[] {
+function filterColumns(
+  rows: Record<string, unknown>[],
+  columns: string[],
+): Record<string, unknown>[] {
   const colSet = new Set(columns);
-  return rows.map(row => {
+  return rows.map((row) => {
     const filtered: Record<string, unknown> = {};
     for (const key of Object.keys(row)) {
       if (colSet.has(key)) filtered[key] = row[key];
@@ -95,7 +96,7 @@ function filterColumns(rows: Record<string, unknown>[], columns: string[]): Reco
 
 async function clearTable(
   staging: ReturnType<typeof createClient>,
-  table: string
+  table: string,
 ): Promise<boolean> {
   // Try different "match-all" conditions depending on table schema
   const attempts = [
@@ -117,7 +118,7 @@ async function clearTable(
 async function copyTable(
   prod: ReturnType<typeof createClient>,
   staging: ReturnType<typeof createClient>,
-  table: string
+  table: string,
 ): Promise<number> {
   console.log(`\n── Copying ${table} ──`);
 
@@ -178,7 +179,7 @@ async function copyTableWithFiltering(
   prod: ReturnType<typeof createClient>,
   staging: ReturnType<typeof createClient>,
   table: string,
-  stagingCols: string[]
+  stagingCols: string[],
 ): Promise<number> {
   let totalCopied = 0;
   let offset = 0;
@@ -194,7 +195,10 @@ async function copyTableWithFiltering(
       console.error(`  Read error at offset ${offset}: ${error.message}`);
       break;
     }
-    if (!data || data.length === 0) { hasMore = false; break; }
+    if (!data || data.length === 0) {
+      hasMore = false;
+      break;
+    }
 
     const rows = filterColumns(data, stagingCols);
     const { error: writeErr } = await staging.from(table).insert(rows);
@@ -215,7 +219,7 @@ async function copyTableWithFiltering(
 
 async function getMetricValue(
   client: ReturnType<typeof createClient>,
-  metric: (typeof HEALTH_METRICS)[number]
+  metric: (typeof HEALTH_METRICS)[number],
 ): Promise<number> {
   if (metric.type === 'count') {
     const { count, error } = await client
@@ -226,9 +230,7 @@ async function getMetricValue(
   }
 
   if (metric.type === 'avg' && 'column' in metric) {
-    const { data, error } = await client
-      .from(metric.table)
-      .select(metric.column);
+    const { data, error } = await client.from(metric.table).select(metric.column);
     if (error || !data || data.length === 0) return -1;
     const values = data
       .map((r: Record<string, unknown>) => Number(r[metric.column]))
@@ -242,7 +244,7 @@ async function getMetricValue(
 
 async function runHealthCheck(
   prod: ReturnType<typeof createClient>,
-  staging: ReturnType<typeof createClient>
+  staging: ReturnType<typeof createClient>,
 ): Promise<boolean> {
   console.log('\n══ Post-Seed Health Check ══\n');
 
@@ -274,14 +276,14 @@ async function runHealthCheck(
     });
   }
 
-  const labelW = Math.max(...results.map(r => r.label.length), 5);
+  const labelW = Math.max(...results.map((r) => r.label.length), 5);
   console.log(
-    `${'Metric'.padEnd(labelW)}  ${'Prod'.padStart(10)}  ${'Staging'.padStart(10)}  Status`
+    `${'Metric'.padEnd(labelW)}  ${'Prod'.padStart(10)}  ${'Staging'.padStart(10)}  Status`,
   );
   console.log('─'.repeat(labelW + 36));
   for (const r of results) {
     console.log(
-      `${r.label.padEnd(labelW)}  ${String(r.prod).padStart(10)}  ${String(r.staging).padStart(10)}  ${r.status}`
+      `${r.label.padEnd(labelW)}  ${String(r.prod).padStart(10)}  ${String(r.staging).padStart(10)}  ${r.status}`,
     );
   }
 

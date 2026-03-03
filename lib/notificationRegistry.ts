@@ -103,7 +103,7 @@ export const EVENT_REGISTRY: EventDefinition[] = [
     audience: 'drep',
     urgency: 'batched',
     label: 'Score Opportunities',
-    description: 'When you\'re close to the top 10',
+    description: "When you're close to the top 10",
     defaultChannels: ['push', 'email'],
     channels: ['push', 'email', 'discord', 'telegram'],
   },
@@ -123,7 +123,7 @@ export const EVENT_REGISTRY: EventDefinition[] = [
     audience: 'drep',
     urgency: 'batched',
     label: 'Rationale Reminders',
-    description: 'When you voted but haven\'t provided rationale yet',
+    description: "When you voted but haven't provided rationale yet",
     defaultChannels: ['push', 'email'],
     channels: ['push', 'email', 'discord', 'telegram'],
   },
@@ -163,7 +163,7 @@ export const EVENT_REGISTRY: EventDefinition[] = [
     audience: 'drep',
     urgency: 'batched',
     label: 'Profile View Spikes',
-    description: 'When there\'s unusual traffic to your profile',
+    description: "When there's unusual traffic to your profile",
     defaultChannels: ['push'],
     channels: ['push', 'email'],
   },
@@ -185,7 +185,7 @@ export const EVENT_REGISTRY: EventDefinition[] = [
     audience: 'holder',
     urgency: 'batched',
     label: 'DRep Score Change',
-    description: 'When your DRep\'s score changes significantly',
+    description: "When your DRep's score changes significantly",
     defaultChannels: ['email'],
     channels: ['push', 'email', 'discord', 'telegram'],
   },
@@ -255,7 +255,7 @@ export const EVENT_REGISTRY: EventDefinition[] = [
     audience: 'holder',
     urgency: 'realtime',
     label: 'Poll Deadlines',
-    description: 'Proposals expiring that you haven\'t polled on',
+    description: "Proposals expiring that you haven't polled on",
     defaultChannels: ['push', 'email'],
     channels: ['push', 'email', 'discord', 'telegram'],
   },
@@ -370,20 +370,20 @@ export const EVENT_REGISTRY: EventDefinition[] = [
 // ── Registry Lookup Helpers ───────────────────────────────────────────────────
 
 export function getEventDefinition(key: string): EventDefinition | undefined {
-  return EVENT_REGISTRY.find(e => e.key === key);
+  return EVENT_REGISTRY.find((e) => e.key === key);
 }
 
 export function getEventsForAudience(audience: Audience): EventDefinition[] {
-  return EVENT_REGISTRY.filter(e => e.audience === audience || e.audience === 'all');
+  return EVENT_REGISTRY.filter((e) => e.audience === audience || e.audience === 'all');
 }
 
 export function getEventsByCategory(category: EventCategory): EventDefinition[] {
-  return EVENT_REGISTRY.filter(e => e.category === category);
+  return EVENT_REGISTRY.filter((e) => e.category === category);
 }
 
 /** Events suitable for user-facing preferences UI (excludes system-only events) */
 export function getUserFacingEvents(isDRep: boolean): EventDefinition[] {
-  return EVENT_REGISTRY.filter(e => {
+  return EVENT_REGISTRY.filter((e) => {
     if (e.key === 'profile-view' || e.key === 'api-health-alert') return false;
     if (e.audience === 'drep' && !isDRep) return false;
     return true;
@@ -391,15 +391,18 @@ export function getUserFacingEvents(isDRep: boolean): EventDefinition[] {
 }
 
 /** All valid event keys for type checking */
-export type EventKey = typeof EVENT_REGISTRY[number]['key'];
+export type EventKey = (typeof EVENT_REGISTRY)[number]['key'];
 
 /** Get the urgency color class for Discord embeds */
 export function getEventColor(key: string): number {
   const def = getEventDefinition(key);
   if (!def) return 0x3b82f6;
   switch (def.urgency) {
-    case 'realtime': return 0xff4444;
-    case 'batched': return 0x22c55e;
-    case 'scheduled': return 0x3b82f6;
+    case 'realtime':
+      return 0xff4444;
+    case 'batched':
+      return 0x22c55e;
+    case 'scheduled':
+      return 0x3b82f6;
   }
 }

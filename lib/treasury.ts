@@ -16,12 +16,12 @@ const TIER_ROUTINE_MAX = 1_000_000;
 const TIER_SIGNIFICANT_MAX = 20_000_000;
 
 // Accountability poll gating (epochs after enacted_epoch)
-const ACCOUNTABILITY_DELAY_ROUTINE = 18;    // ~3 months
+const ACCOUNTABILITY_DELAY_ROUTINE = 18; // ~3 months
 const ACCOUNTABILITY_DELAY_SIGNIFICANT = 36; // ~6 months
-const ACCOUNTABILITY_DELAY_MAJOR = 73;       // ~12 months
-const ACCOUNTABILITY_CYCLE_INTERVAL = 36;    // ~6 months between re-evaluations
-const ACCOUNTABILITY_POLL_DURATION = 6;      // ~30 days open per cycle
-const ROUTINE_MAX_CYCLES = 2;               // routine: initial + 1 re-eval
+const ACCOUNTABILITY_DELAY_MAJOR = 73; // ~12 months
+const ACCOUNTABILITY_CYCLE_INTERVAL = 36; // ~6 months between re-evaluations
+const ACCOUNTABILITY_POLL_DURATION = 6; // ~30 days open per cycle
+const ROUTINE_MAX_CYCLES = 2; // routine: initial + 1 re-eval
 
 export function lovelaceToAda(lovelace: bigint | number | string): number {
   return Number(BigInt(lovelace)) / LOVELACE_PER_ADA;
@@ -67,18 +67,18 @@ export async function getTreasuryBalance(): Promise<{
   };
 }
 
-export async function getTreasuryTrend(
-  epochs = 30
-): Promise<TreasurySnapshot[]> {
+export async function getTreasuryTrend(epochs = 30): Promise<TreasurySnapshot[]> {
   const supabase = createClient();
   const { data } = await supabase
     .from('treasury_snapshots')
-    .select('epoch_no, balance_lovelace, withdrawals_lovelace, reserves_income_lovelace, snapshot_at')
+    .select(
+      'epoch_no, balance_lovelace, withdrawals_lovelace, reserves_income_lovelace, snapshot_at',
+    )
     .order('epoch_no', { ascending: false })
     .limit(epochs);
 
   if (!data) return [];
-  return data.reverse().map(row => ({
+  return data.reverse().map((row) => ({
     epoch: row.epoch_no,
     balanceAda: lovelaceToAda(row.balance_lovelace),
     withdrawalsAda: lovelaceToAda(row.withdrawals_lovelace || 0),
@@ -108,7 +108,7 @@ export interface IncomeVsOutflow {
 }
 
 export function getIncomeVsOutflow(snapshots: TreasurySnapshot[]): IncomeVsOutflow[] {
-  return snapshots.map(s => ({
+  return snapshots.map((s) => ({
     epoch: s.epoch,
     incomeAda: s.reservesIncomeAda,
     outflowAda: s.withdrawalsAda,
@@ -163,7 +163,7 @@ export async function calculateTreasuryHealthScore(): Promise<TreasuryHealthScor
 
   // 3. Income stability (0-100): consistent reserve income?
   const incomeStability = (() => {
-    const incomes = snapshots.map(s => s.reservesIncomeAda).filter(i => i > 0);
+    const incomes = snapshots.map((s) => s.reservesIncomeAda).filter((i) => i > 0);
     if (incomes.length < 2) return 50;
     const mean = incomes.reduce((a, b) => a + b, 0) / incomes.length;
     const variance = incomes.reduce((s, v) => s + (v - mean) ** 2, 0) / incomes.length;
@@ -196,11 +196,11 @@ export async function calculateTreasuryHealthScore(): Promise<TreasuryHealthScor
   })();
 
   const score = Math.round(
-    (balanceTrend * 0.2 +
+    balanceTrend * 0.2 +
       withdrawalVelocity * 0.2 +
       incomeStability * 0.15 +
       pendingLoad * 0.2 +
-      runwayAdequacy * 0.25)
+      runwayAdequacy * 0.25,
   );
 
   return {
@@ -232,7 +232,7 @@ export interface PendingProposal {
 }
 
 export async function getPendingTreasuryProposals(
-  currentBalanceAda: number
+  currentBalanceAda: number,
 ): Promise<PendingProposal[]> {
   const supabase = createClient();
   const { data } = await supabase
@@ -246,12 +246,13 @@ export async function getPendingTreasuryProposals(
     .order('withdrawal_amount', { ascending: false });
 
   if (!data) return [];
-  return data.map(p => ({
+  return data.map((p) => ({
     txHash: p.tx_hash,
     index: p.proposal_index,
     title: p.title || 'Untitled Treasury Proposal',
     withdrawalAda: p.withdrawal_amount || 0,
-    pctOfBalance: currentBalanceAda > 0 ? ((p.withdrawal_amount || 0) / currentBalanceAda) * 100 : 0,
+    pctOfBalance:
+      currentBalanceAda > 0 ? ((p.withdrawal_amount || 0) / currentBalanceAda) * 100 : 0,
     treasuryTier: p.treasury_tier,
     proposedEpoch: p.proposed_epoch,
   }));
@@ -275,7 +276,7 @@ export function projectRunway(
   incomePerEpoch: number,
   currentEpoch: number,
   pendingTotalAda: number,
-  projectionEpochs = 365
+  projectionEpochs = 365,
 ): RunwayScenario[] {
   const scenarios: RunwayScenario[] = [];
 
@@ -297,7 +298,13 @@ export function projectRunway(
       ? (depletionEpoch - currentEpoch) * MONTHS_PER_EPOCH
       : projectionEpochs * MONTHS_PER_EPOCH;
 
-    scenarios.push({ name, key, projectedMonths: Math.round(projectedMonths), depletionEpoch, balanceCurve: curve });
+    scenarios.push({
+      name,
+      key,
+      projectedMonths: Math.round(projectedMonths),
+      depletionEpoch,
+      balanceCurve: curve,
+    });
   };
 
   simulate('Current Trajectory', 'conservative', burnRatePerEpoch, 0);
@@ -321,7 +328,7 @@ export interface CounterfactualResult {
 
 export async function getCounterfactualAnalysis(
   currentBalanceAda: number,
-  burnRatePerEpoch: number
+  burnRatePerEpoch: number,
 ): Promise<CounterfactualResult> {
   const supabase = createClient();
   const { data } = await supabase
@@ -332,7 +339,7 @@ export async function getCounterfactualAnalysis(
     .order('withdrawal_amount', { ascending: false })
     .limit(10);
 
-  const withdrawals = (data || []).map(p => ({
+  const withdrawals = (data || []).map((p) => ({
     title: p.title || 'Untitled',
     amountAda: p.withdrawal_amount || 0,
     epoch: p.enacted_epoch,
@@ -349,7 +356,7 @@ export async function getCounterfactualAnalysis(
     hypotheticalBalanceAda: hypotheticalBalance,
     additionalRunwayMonths: Math.round(
       (hypotheticalRunway === Infinity ? 999 : hypotheticalRunway) -
-      (currentRunway === Infinity ? 999 : currentRunway)
+        (currentRunway === Infinity ? 999 : currentRunway),
     ),
   };
 }
@@ -373,12 +380,14 @@ export async function findSimilarProposals(
   proposalTitle: string,
   withdrawalAda: number,
   treasuryTier: string | null,
-  excludeTxHash?: string
+  excludeTxHash?: string,
 ): Promise<SimilarProposal[]> {
   const supabase = createClient();
   const { data: proposals } = await supabase
     .from('proposals')
-    .select('tx_hash, proposal_index, title, withdrawal_amount, treasury_tier, enacted_epoch, ratified_epoch, expired_epoch, dropped_epoch')
+    .select(
+      'tx_hash, proposal_index, title, withdrawal_amount, treasury_tier, enacted_epoch, ratified_epoch, expired_epoch, dropped_epoch',
+    )
     .eq('proposal_type', 'TreasuryWithdrawals')
     .order('proposed_epoch', { ascending: false })
     .limit(100);
@@ -386,19 +395,24 @@ export async function findSimilarProposals(
   if (!proposals) return [];
 
   const titleWords = new Set(
-    proposalTitle.toLowerCase().split(/\W+/).filter(w => w.length > 3)
+    proposalTitle
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 3),
   );
 
   return proposals
-    .filter(p => p.tx_hash !== excludeTxHash)
-    .map(p => {
+    .filter((p) => p.tx_hash !== excludeTxHash)
+    .map((p) => {
       const pTitle = (p.title || '').toLowerCase();
       const pWords = new Set(pTitle.split(/\W+/).filter((w: string) => w.length > 3));
-      const wordOverlap = [...titleWords].filter(w => pWords.has(w)).length;
+      const wordOverlap = [...titleWords].filter((w) => pWords.has(w)).length;
       const tierMatch = p.treasury_tier === treasuryTier;
-      const amountRatio = withdrawalAda > 0 && p.withdrawal_amount > 0
-        ? Math.min(withdrawalAda, p.withdrawal_amount) / Math.max(withdrawalAda, p.withdrawal_amount)
-        : 0;
+      const amountRatio =
+        withdrawalAda > 0 && p.withdrawal_amount > 0
+          ? Math.min(withdrawalAda, p.withdrawal_amount) /
+            Math.max(withdrawalAda, p.withdrawal_amount)
+          : 0;
 
       let score = 0;
       if (tierMatch) score += 3;
@@ -409,11 +423,15 @@ export async function findSimilarProposals(
       const matchStrength: 'strong' | 'moderate' | 'weak' =
         score >= 5 ? 'strong' : score >= 3 ? 'moderate' : 'weak';
 
-      const outcome: SimilarProposal['outcome'] = p.enacted_epoch ? 'enacted'
-        : p.ratified_epoch ? 'ratified'
-        : p.expired_epoch ? 'expired'
-        : p.dropped_epoch ? 'dropped'
-        : 'active';
+      const outcome: SimilarProposal['outcome'] = p.enacted_epoch
+        ? 'enacted'
+        : p.ratified_epoch
+          ? 'ratified'
+          : p.expired_epoch
+            ? 'expired'
+            : p.dropped_epoch
+              ? 'dropped'
+              : 'active';
 
       return {
         txHash: p.tx_hash,
@@ -427,7 +445,7 @@ export async function findSimilarProposals(
         _score: score,
       };
     })
-    .filter(p => p._score >= 2)
+    .filter((p) => p._score >= 2)
     .sort((a, b) => b._score - a._score)
     .slice(0, 5)
     .map(({ _score, ...rest }) => rest);
@@ -468,12 +486,26 @@ export async function getDRepTreasuryTrackRecord(drepId: string): Promise<DRepTr
     .eq('proposal_type', 'TreasuryWithdrawals');
 
   if (!votes || !proposals) {
-    return { totalProposals: 0, totalAdaVotedOn: 0, approvedCount: 0, approvedAda: 0, opposedCount: 0, opposedAda: 0, abstainedCount: 0, accountabilityStats: { delivered: 0, partial: 0, notDelivered: 0, pending: 0 }, judgmentScore: null };
+    return {
+      totalProposals: 0,
+      totalAdaVotedOn: 0,
+      approvedCount: 0,
+      approvedAda: 0,
+      opposedCount: 0,
+      opposedAda: 0,
+      abstainedCount: 0,
+      accountabilityStats: { delivered: 0, partial: 0, notDelivered: 0, pending: 0 },
+      judgmentScore: null,
+    };
   }
 
-  const proposalMap = new Map(proposals.map(p => [`${p.tx_hash}-${p.proposal_index}`, p]));
-  let approvedCount = 0, opposedCount = 0, abstainedCount = 0;
-  let approvedAda = 0, opposedAda = 0, totalAdaVotedOn = 0;
+  const proposalMap = new Map(proposals.map((p) => [`${p.tx_hash}-${p.proposal_index}`, p]));
+  let approvedCount = 0,
+    opposedCount = 0,
+    abstainedCount = 0;
+  let approvedAda = 0,
+    opposedAda = 0,
+    totalAdaVotedOn = 0;
   const approvedEnacted: string[] = [];
 
   for (const v of votes) {
@@ -506,7 +538,9 @@ export async function getDRepTreasuryTrackRecord(drepId: string): Promise<DRepTr
 
     for (const key of approvedEnacted) {
       const [txHash, idx] = key.split('-');
-      const poll = (polls || []).find(p => p.proposal_tx_hash === txHash && p.proposal_index === parseInt(idx));
+      const poll = (polls || []).find(
+        (p) => p.proposal_tx_hash === txHash && p.proposal_index === parseInt(idx),
+      );
       if (!poll || !poll.results_summary) {
         accountabilityStats.pending++;
         continue;
@@ -520,10 +554,14 @@ export async function getDRepTreasuryTrackRecord(drepId: string): Promise<DRepTr
     }
   }
 
-  const rated = accountabilityStats.delivered + accountabilityStats.partial + accountabilityStats.notDelivered;
-  const judgmentScore = rated > 0
-    ? Math.round(((accountabilityStats.delivered + accountabilityStats.partial * 0.5) / rated) * 100)
-    : null;
+  const rated =
+    accountabilityStats.delivered + accountabilityStats.partial + accountabilityStats.notDelivered;
+  const judgmentScore =
+    rated > 0
+      ? Math.round(
+          ((accountabilityStats.delivered + accountabilityStats.partial * 0.5) / rated) * 100,
+        )
+      : null;
 
   return {
     totalProposals: approvedCount + opposedCount + abstainedCount,
@@ -545,7 +583,13 @@ export async function getDRepTreasuryTrackRecord(drepId: string): Promise<DRepTr
 export interface SpendingEffectiveness {
   totalSpentAda: number;
   totalEnacted: number;
-  ratingBreakdown: { delivered: number; partial: number; notDelivered: number; tooEarly: number; pendingReview: number };
+  ratingBreakdown: {
+    delivered: number;
+    partial: number;
+    notDelivered: number;
+    tooEarly: number;
+    pendingReview: number;
+  };
   effectivenessRate: number | null;
   topRated: Array<{ title: string; amountAda: number; rating: string }>;
   bottomRated: Array<{ title: string; amountAda: number; rating: string }>;
@@ -567,7 +611,7 @@ export async function getSpendingEffectiveness(): Promise<SpendingEffectiveness>
     .eq('status', 'closed');
 
   const pollMap = new Map(
-    (polls || []).map(p => [`${p.proposal_tx_hash}-${p.proposal_index}`, p])
+    (polls || []).map((p) => [`${p.proposal_tx_hash}-${p.proposal_index}`, p]),
   );
 
   const breakdown = { delivered: 0, partial: 0, notDelivered: 0, tooEarly: 0, pendingReview: 0 };
@@ -582,7 +626,8 @@ export async function getSpendingEffectiveness(): Promise<SpendingEffectiveness>
       continue;
     }
     const summary = poll.results_summary as Record<string, number>;
-    const topRating = Object.entries(summary).sort((a, b) => b[1] - a[1])[0]?.[0] || 'pendingReview';
+    const topRating =
+      Object.entries(summary).sort((a, b) => b[1] - a[1])[0]?.[0] || 'pendingReview';
 
     if (topRating === 'delivered') breakdown.delivered++;
     else if (topRating === 'partial') breakdown.partial++;
@@ -590,21 +635,26 @@ export async function getSpendingEffectiveness(): Promise<SpendingEffectiveness>
     else if (topRating === 'too_early') breakdown.tooEarly++;
     else breakdown.pendingReview++;
 
-    rated.push({ title: p.title || 'Untitled', amountAda: p.withdrawal_amount || 0, rating: topRating });
+    rated.push({
+      title: p.title || 'Untitled',
+      amountAda: p.withdrawal_amount || 0,
+      rating: topRating,
+    });
   }
 
   const assessedCount = breakdown.delivered + breakdown.partial + breakdown.notDelivered;
-  const effectivenessRate = assessedCount > 0
-    ? Math.round(((breakdown.delivered + breakdown.partial * 0.5) / assessedCount) * 100)
-    : null;
+  const effectivenessRate =
+    assessedCount > 0
+      ? Math.round(((breakdown.delivered + breakdown.partial * 0.5) / assessedCount) * 100)
+      : null;
 
   return {
     totalSpentAda: totalSpent,
     totalEnacted: (enacted || []).length,
     ratingBreakdown: breakdown,
     effectivenessRate,
-    topRated: rated.filter(r => r.rating === 'delivered').slice(0, 3),
-    bottomRated: rated.filter(r => r.rating === 'not_delivered').slice(0, 3),
+    topRated: rated.filter((r) => r.rating === 'delivered').slice(0, 3),
+    bottomRated: rated.filter((r) => r.rating === 'not_delivered').slice(0, 3),
   };
 }
 
@@ -614,10 +664,14 @@ export async function getSpendingEffectiveness(): Promise<SpendingEffectiveness>
 
 export function getAccountabilityDelay(treasuryTier: string | null): number {
   switch (treasuryTier) {
-    case 'routine': return ACCOUNTABILITY_DELAY_ROUTINE;
-    case 'significant': return ACCOUNTABILITY_DELAY_SIGNIFICANT;
-    case 'major': return ACCOUNTABILITY_DELAY_MAJOR;
-    default: return ACCOUNTABILITY_DELAY_SIGNIFICANT;
+    case 'routine':
+      return ACCOUNTABILITY_DELAY_ROUTINE;
+    case 'significant':
+      return ACCOUNTABILITY_DELAY_SIGNIFICANT;
+    case 'major':
+      return ACCOUNTABILITY_DELAY_MAJOR;
+    default:
+      return ACCOUNTABILITY_DELAY_SIGNIFICANT;
   }
 }
 
@@ -628,7 +682,7 @@ export function getMaxCycles(treasuryTier: string | null): number | null {
 export function getNextCycleEpoch(
   currentClosesEpoch: number,
   cycleNumber: number,
-  treasuryTier: string | null
+  treasuryTier: string | null,
 ): number | null {
   const maxCycles = getMaxCycles(treasuryTier);
   if (maxCycles && cycleNumber >= maxCycles) return null;

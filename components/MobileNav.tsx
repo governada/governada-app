@@ -3,12 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import {
   Menu,
@@ -39,9 +34,7 @@ const SECONDARY_NAV_ITEMS = [
   { href: '/treasury', label: 'Treasury', icon: Landmark },
 ];
 
-const DREP_NAV_ITEMS = [
-  { href: '/dashboard/inbox', label: 'Governance Inbox', icon: Inbox },
-];
+const DREP_NAV_ITEMS = [{ href: '/dashboard/inbox', label: 'Governance Inbox', icon: Inbox }];
 
 export function MobileNav({
   isAuthenticated,
@@ -84,7 +77,10 @@ export function MobileNav({
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-72 overflow-y-auto !bg-[#0a0b14]/85 backdrop-blur-xl border-l-white/5">
+        <SheetContent
+          side="right"
+          className="w-72 overflow-y-auto !bg-[#0a0b14]/85 backdrop-blur-xl border-l-white/5"
+        >
           <SheetHeader className="pb-2">
             <SheetTitle className="text-left text-lg font-bold text-primary">$drepscore</SheetTitle>
           </SheetHeader>
@@ -101,7 +97,7 @@ export function MobileNav({
                   'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   isActive(href)
                     ? 'bg-primary/10 font-medium text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -120,7 +116,7 @@ export function MobileNav({
                       'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                       isActive(href)
                         ? 'bg-primary/10 font-medium text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -143,7 +139,7 @@ export function MobileNav({
                   'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   isActive('/admin/integrity')
                     ? 'bg-primary/10 font-medium text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 <Activity className="h-4 w-4" />
@@ -155,7 +151,7 @@ export function MobileNav({
                   'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   isActive('/admin/flags')
                     ? 'bg-primary/10 font-medium text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 <ToggleLeft className="h-4 w-4" />
@@ -169,9 +165,7 @@ export function MobileNav({
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 px-3 py-2 text-sm">
                   <Shield className="h-4 w-4 text-green-600" />
-                  <span className="truncate">
-                    {displayName || shortenAddress(sessionAddress)}
-                  </span>
+                  <span className="truncate">{displayName || shortenAddress(sessionAddress)}</span>
                 </div>
                 <Link
                   href="/profile"
@@ -181,7 +175,10 @@ export function MobileNav({
                   Profile
                 </Link>
                 <button
-                  onClick={() => { onLogout(); setOpen(false); }}
+                  onClick={() => {
+                    onLogout();
+                    setOpen(false);
+                  }}
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full text-left"
                 >
                   <LogOut className="h-4 w-4" />
@@ -192,7 +189,10 @@ export function MobileNav({
               <Button
                 variant="default"
                 className="w-full gap-2"
-                onClick={() => { onConnectWallet(); setOpen(false); }}
+                onClick={() => {
+                  onConnectWallet();
+                  setOpen(false);
+                }}
               >
                 <Wallet className="h-4 w-4" />
                 Connect Wallet

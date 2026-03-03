@@ -15,7 +15,7 @@ interface ProposalsHeroProps {
 
 function AnimatedCounter({ value, className }: { value: number; className?: string }) {
   const springVal = useSpring(0, { stiffness: 100, damping: 20 });
-  const display = useTransform(springVal, v => Math.round(v));
+  const display = useTransform(springVal, (v) => Math.round(v));
 
   useEffect(() => {
     springVal.set(value);
@@ -24,13 +24,19 @@ function AnimatedCounter({ value, className }: { value: number; className?: stri
   return <motion.span className={className}>{display}</motion.span>;
 }
 
-export function ProposalsHero({ openCount, expiringCount, totalAdaAtStake, narrativeText }: ProposalsHeroProps) {
+export function ProposalsHero({
+  openCount,
+  expiringCount,
+  totalAdaAtStake,
+  narrativeText,
+}: ProposalsHeroProps) {
   const hasUrgent = expiringCount > 0;
-  const adaFormatted = totalAdaAtStake >= 1_000_000
-    ? `${(totalAdaAtStake / 1_000_000).toFixed(1)}M`
-    : totalAdaAtStake >= 1_000
-      ? `${(totalAdaAtStake / 1_000).toFixed(0)}K`
-      : totalAdaAtStake.toLocaleString();
+  const adaFormatted =
+    totalAdaAtStake >= 1_000_000
+      ? `${(totalAdaAtStake / 1_000_000).toFixed(1)}M`
+      : totalAdaAtStake >= 1_000
+        ? `${(totalAdaAtStake / 1_000).toFixed(0)}K`
+        : totalAdaAtStake.toLocaleString();
 
   return (
     <motion.div
@@ -55,10 +61,14 @@ export function ProposalsHero({ openCount, expiringCount, totalAdaAtStake, narra
         </div>
 
         <div className="flex items-center gap-2">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-            hasUrgent ? 'bg-amber-500/10' : 'bg-muted/50'
-          }`}>
-            <Clock className={`h-4 w-4 ${hasUrgent ? 'text-amber-500' : 'text-muted-foreground'}`} />
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              hasUrgent ? 'bg-amber-500/10' : 'bg-muted/50'
+            }`}
+          >
+            <Clock
+              className={`h-4 w-4 ${hasUrgent ? 'text-amber-500' : 'text-muted-foreground'}`}
+            />
           </div>
           <div>
             <AnimatedCounter

@@ -27,16 +27,25 @@ interface CrossChainReportCardProps {
   className?: string;
 }
 
-export function CrossChainReportCard({ data, history = [], className = '' }: CrossChainReportCardProps) {
+export function CrossChainReportCard({
+  data,
+  history = [],
+  className = '',
+}: CrossChainReportCardProps) {
   const identity = CHAIN_IDENTITIES[data.chain];
   const grade = data.grade ?? '—';
   const gradeColor = data.grade ? getGradeColor(data.grade) : '#6b7280';
   const score = data.governanceScore ?? 0;
 
   const prevScore = history.length >= 2 ? history[history.length - 2]?.score : null;
-  const trend = prevScore != null && data.governanceScore != null
-    ? data.governanceScore > prevScore ? 'up' : data.governanceScore < prevScore ? 'down' : 'flat'
-    : null;
+  const trend =
+    prevScore != null && data.governanceScore != null
+      ? data.governanceScore > prevScore
+        ? 'up'
+        : data.governanceScore < prevScore
+          ? 'down'
+          : 'flat'
+      : null;
 
   return (
     <motion.div
@@ -53,7 +62,9 @@ export function CrossChainReportCard({ data, history = [], className = '' }: Cro
       {/* Top glow line */}
       <div
         className="absolute inset-x-0 top-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${identity.color}40, transparent)` }}
+        style={{
+          background: `linear-gradient(90deg, transparent, ${identity.color}40, transparent)`,
+        }}
       />
 
       {/* Header */}
@@ -83,12 +94,26 @@ export function CrossChainReportCard({ data, history = [], className = '' }: Cro
           {grade}
         </motion.span>
         <div className="mb-1 flex flex-col gap-1">
-          <span className="text-lg font-semibold tabular-nums text-muted-foreground">{score}/100</span>
+          <span className="text-lg font-semibold tabular-nums text-muted-foreground">
+            {score}/100
+          </span>
           {trend && (
-            <span className={`flex items-center gap-0.5 text-xs font-medium ${
-              trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground'
-            }`}>
-              {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : trend === 'down' ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+            <span
+              className={`flex items-center gap-0.5 text-xs font-medium ${
+                trend === 'up'
+                  ? 'text-green-500'
+                  : trend === 'down'
+                    ? 'text-red-500'
+                    : 'text-muted-foreground'
+              }`}
+            >
+              {trend === 'up' ? (
+                <TrendingUp className="h-3 w-3" />
+              ) : trend === 'down' ? (
+                <TrendingDown className="h-3 w-3" />
+              ) : (
+                <Minus className="h-3 w-3" />
+              )}
               {trend === 'up' ? 'Improving' : trend === 'down' ? 'Declining' : 'Stable'}
             </span>
           )}
@@ -99,7 +124,7 @@ export function CrossChainReportCard({ data, history = [], className = '' }: Cro
       {history.length > 1 && (
         <div className="mb-4">
           <MiniSparkline
-            data={history.map(h => h.score ?? 0)}
+            data={history.map((h) => h.score ?? 0)}
             color={identity.color}
             height={28}
           />
@@ -108,9 +133,18 @@ export function CrossChainReportCard({ data, history = [], className = '' }: Cro
 
       {/* Metrics */}
       <div className="grid grid-cols-3 gap-2 text-center">
-        <MetricCell label="Participation" value={data.participationRate != null ? `${data.participationRate}%` : '—'} />
-        <MetricCell label="Delegates" value={data.delegateCount != null ? formatNumber(data.delegateCount) : '—'} />
-        <MetricCell label="Proposals" value={data.proposalCount != null ? formatNumber(data.proposalCount) : '—'} />
+        <MetricCell
+          label="Participation"
+          value={data.participationRate != null ? `${data.participationRate}%` : '—'}
+        />
+        <MetricCell
+          label="Delegates"
+          value={data.delegateCount != null ? formatNumber(data.delegateCount) : '—'}
+        />
+        <MetricCell
+          label="Proposals"
+          value={data.proposalCount != null ? formatNumber(data.proposalCount) : '—'}
+        />
       </div>
 
       {data.chain !== 'cardano' && (
@@ -134,7 +168,15 @@ function MetricCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniSparkline({ data, color, height = 28 }: { data: number[]; color: string; height?: number }) {
+function MiniSparkline({
+  data,
+  color,
+  height = 28,
+}: {
+  data: number[];
+  color: string;
+  height?: number;
+}) {
   if (data.length < 2) return null;
 
   const width = 140;
@@ -152,7 +194,13 @@ function MiniSparkline({ data, color, height = 28 }: { data: number[]; color: st
   const areaD = `${pathD} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
 
   return (
-    <svg width={width} height={height} className="w-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+    <svg
+      width={width}
+      height={height}
+      className="w-full"
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+    >
       <defs>
         <linearGradient id={`spark-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.2} />
@@ -160,7 +208,14 @@ function MiniSparkline({ data, color, height = 28 }: { data: number[]; color: st
         </linearGradient>
       </defs>
       <path d={areaD} fill={`url(#spark-${color.replace('#', '')})`} />
-      <path d={pathD} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d={pathD}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

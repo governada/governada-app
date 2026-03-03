@@ -31,7 +31,10 @@ interface GovernanceObservatoryProps {
   className?: string;
 }
 
-export function GovernanceObservatory({ variant = 'full', className = '' }: GovernanceObservatoryProps) {
+export function GovernanceObservatory({
+  variant = 'full',
+  className = '',
+}: GovernanceObservatoryProps) {
   const [benchmarks, setBenchmarks] = useState<Record<string, BenchmarkData | null>>({});
   const [history, setHistory] = useState<Record<string, HistoryPoint[]>>({});
   const [loading, setLoading] = useState(true);
@@ -54,7 +57,7 @@ export function GovernanceObservatory({ variant = 'full', className = '' }: Gove
   }, []);
 
   const chains: Chain[] = ['cardano', 'ethereum', 'polkadot'];
-  const hasData = chains.some(c => benchmarks[c] != null);
+  const hasData = chains.some((c) => benchmarks[c] != null);
 
   if (loading) {
     return (
@@ -67,7 +70,7 @@ export function GovernanceObservatory({ variant = 'full', className = '' }: Gove
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="h-48 animate-pulse rounded-xl bg-muted/20" />
             ))}
           </div>
@@ -91,7 +94,7 @@ export function GovernanceObservatory({ variant = 'full', className = '' }: Gove
           <Globe className="h-3.5 w-3.5" />
           Governance across 3 chains:
         </span>
-        {chains.map(chain => {
+        {chains.map((chain) => {
           const b = benchmarks[chain];
           if (!b) return null;
           return (
@@ -142,7 +145,7 @@ export function GovernanceObservatory({ variant = 'full', className = '' }: Gove
           viewport={{ once: true }}
           className="grid grid-cols-1 gap-4 sm:grid-cols-3"
         >
-          {chains.map(chain => {
+          {chains.map((chain) => {
             const b = benchmarks[chain];
             if (!b) return null;
             return (

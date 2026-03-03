@@ -80,11 +80,12 @@ export function EmptyState({
     >
       <div
         className="rounded-full p-6 mb-4"
-        style={accentColor
-          ? { background: `${accentColor}10` }
-          : undefined}
+        style={accentColor ? { background: `${accentColor}10` } : undefined}
       >
-        <Icon className="h-12 w-12 text-muted-foreground" style={accentColor ? { color: `${accentColor}80` } : undefined} />
+        <Icon
+          className="h-12 w-12 text-muted-foreground"
+          style={accentColor ? { color: `${accentColor}80` } : undefined}
+        />
       </div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-muted-foreground max-w-md mb-6">{message}</p>

@@ -21,15 +21,22 @@ export function ScoreSimulator({ drepId, pendingCount }: { drepId: string; pendi
   const maxVotes = Math.max(pendingCount, 10);
 
   const simulate = useCallback(async () => {
-    if (votes === 0) { setResult(null); return; }
+    if (votes === 0) {
+      setResult(null);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch(`/api/dashboard/simulate?drepId=${encodeURIComponent(drepId)}&votes=${votes}&rationales=${rationales}`);
+      const res = await fetch(
+        `/api/dashboard/simulate?drepId=${encodeURIComponent(drepId)}&votes=${votes}&rationales=${rationales}`,
+      );
       const data = await res.json();
       if (data.current) setResult(data);
       posthog.capture('score_simulator_adjusted', { drepId, votes, rationales });
-    } catch {}
-    finally { setLoading(false); }
+    } catch {
+    } finally {
+      setLoading(false);
+    }
   }, [drepId, votes, rationales]);
 
   useEffect(() => {
@@ -59,13 +66,16 @@ export function ScoreSimulator({ drepId, pendingCount }: { drepId: string; pendi
         {/* Presets */}
         {pendingCount > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {presets.map(p => (
+            {presets.map((p) => (
               <Button
                 key={p.label}
                 variant={votes === p.v && rationales === p.r ? 'default' : 'outline'}
                 size="sm"
                 className="h-6 text-[10px] px-2"
-                onClick={() => { setVotes(p.v); setRationales(p.r); }}
+                onClick={() => {
+                  setVotes(p.v);
+                  setRationales(p.r);
+                }}
               >
                 {p.label}
               </Button>
@@ -85,7 +95,7 @@ export function ScoreSimulator({ drepId, pendingCount }: { drepId: string; pendi
               min={0}
               max={maxVotes}
               value={votes}
-              onChange={e => {
+              onChange={(e) => {
                 const v = parseInt(e.target.value);
                 setVotes(v);
                 if (rationales > v) setRationales(v);
@@ -103,7 +113,7 @@ export function ScoreSimulator({ drepId, pendingCount }: { drepId: string; pendi
               min={0}
               max={votes}
               value={rationales}
-              onChange={e => setRationales(parseInt(e.target.value))}
+              onChange={(e) => setRationales(parseInt(e.target.value))}
               className="w-full accent-primary h-1.5"
             />
           </div>
@@ -119,33 +129,40 @@ export function ScoreSimulator({ drepId, pendingCount }: { drepId: string; pendi
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
               <div className="text-center">
-                <span className={`text-xl font-bold tabular-nums ${result.simulated.score > result.current.score ? 'text-green-600 dark:text-green-400' : ''}`}>
+                <span
+                  className={`text-xl font-bold tabular-nums ${result.simulated.score > result.current.score ? 'text-green-600 dark:text-green-400' : ''}`}
+                >
                   {result.simulated.score}
                 </span>
                 <p className="text-[10px] text-muted-foreground">Projected</p>
               </div>
               {result.simulated.score > result.current.score && (
                 <Badge variant="secondary" className="text-[10px]">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  +{result.simulated.score - result.current.score}
+                  <TrendingUp className="h-3 w-3 mr-1" />+
+                  {result.simulated.score - result.current.score}
                 </Badge>
               )}
             </div>
 
             {result.simulated.rank < result.current.rank && (
               <p className="text-[10px] text-center text-muted-foreground">
-                Rank: #{result.current.rank} → <span className="font-semibold text-foreground">#{result.simulated.rank}</span>
+                Rank: #{result.current.rank} →{' '}
+                <span className="font-semibold text-foreground">#{result.simulated.rank}</span>
               </p>
             )}
 
             <div className="grid grid-cols-2 gap-2 text-[10px]">
               <div>
                 <span className="text-muted-foreground">Participation:</span>{' '}
-                <span className="font-medium">{result.current.participation}% → {result.simulated.participation}%</span>
+                <span className="font-medium">
+                  {result.current.participation}% → {result.simulated.participation}%
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground">Rationale:</span>{' '}
-                <span className="font-medium">{result.current.rationale}% → {result.simulated.rationale}%</span>
+                <span className="font-medium">
+                  {result.current.rationale}% → {result.simulated.rationale}%
+                </span>
               </div>
             </div>
           </div>

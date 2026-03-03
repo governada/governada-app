@@ -25,8 +25,8 @@ export default function AdminIntegrityPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: adminAddress }),
     })
-      .then(r => r.json())
-      .then(data => setIsAdmin(data.isAdmin === true))
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(data.isAdmin === true))
       .catch(() => setIsAdmin(false))
       .finally(() => setChecking(false));
   }, [adminAddress]);

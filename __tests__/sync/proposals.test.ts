@@ -94,7 +94,9 @@ describe('GET /api/sync/proposals', () => {
 
   it('returns 207 when Koios fails but route continues gracefully', async () => {
     setupMockChain();
-    (fetchProposals as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Koios API error: 500'));
+    (fetchProposals as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('Koios API error: 500'),
+    );
 
     const req = createRequest('/api/sync/proposals', {
       headers: { authorization: `Bearer ${CRON_SECRET}` },

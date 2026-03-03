@@ -30,15 +30,19 @@ export function CompetitiveContext({ drepId }: { drepId: string }) {
   useEffect(() => {
     if (!drepId) return;
     fetch(`/api/dashboard/competitive?drepId=${encodeURIComponent(drepId)}`)
-      .then(r => r.json())
-      .then(d => { if (d.rank) setData(d); })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.rank) setData(d);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [drepId]);
 
   useEffect(() => {
     if (data) {
-      try { posthog?.capture('competitive_context_viewed', { drepId, rank: data.rank }); } catch {}
+      try {
+        posthog?.capture('competitive_context_viewed', { drepId, rank: data.rank });
+      } catch {}
     }
   }, [data, drepId]);
 
@@ -72,17 +76,23 @@ export function CompetitiveContext({ drepId }: { drepId: string }) {
         {/* Rank display */}
         <div className="text-center py-2">
           <span className="text-3xl font-bold tabular-nums">#{data.rank}</span>
-          <span className="text-sm text-muted-foreground ml-1">of {data.totalActive} active DReps</span>
+          <span className="text-sm text-muted-foreground ml-1">
+            of {data.totalActive} active DReps
+          </span>
         </div>
 
         {/* Nearby DReps */}
         <div className="space-y-1">
-          {data.nearbyAbove.map(d => (
+          {data.nearbyAbove.map((d) => (
             <Link
               key={d.drepId}
               href={`/drep/${encodeURIComponent(d.drepId)}`}
               className="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-muted/50 transition-colors"
-              onClick={() => { try { posthog?.capture('nearby_drep_clicked', { drepId: d.drepId }); } catch {} }}
+              onClick={() => {
+                try {
+                  posthog?.capture('nearby_drep_clicked', { drepId: d.drepId });
+                } catch {}
+              }}
             >
               <div className="flex items-center gap-2">
                 <ArrowUp className="h-3 w-3 text-green-500" />
@@ -100,12 +110,16 @@ export function CompetitiveContext({ drepId }: { drepId: string }) {
             </div>
           </div>
 
-          {data.nearbyBelow.map(d => (
+          {data.nearbyBelow.map((d) => (
             <Link
               key={d.drepId}
               href={`/drep/${encodeURIComponent(d.drepId)}`}
               className="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-muted/50 transition-colors"
-              onClick={() => { try { posthog?.capture('nearby_drep_clicked', { drepId: d.drepId }); } catch {} }}
+              onClick={() => {
+                try {
+                  posthog?.capture('nearby_drep_clicked', { drepId: d.drepId });
+                } catch {}
+              }}
             >
               <div className="flex items-center gap-2">
                 <ArrowDown className="h-3 w-3 text-red-500" />
@@ -120,11 +134,10 @@ export function CompetitiveContext({ drepId }: { drepId: string }) {
         {/* Top 10 path */}
         {data.distanceToTop10 > 0 && data.top10FocusArea && (
           <div className="bg-muted/40 rounded-lg p-3 space-y-1">
-            <p className="text-xs font-medium">
-              {data.distanceToTop10} points from top 10
-            </p>
+            <p className="text-xs font-medium">{data.distanceToTop10} points from top 10</p>
             <p className="text-[10px] text-muted-foreground">
-              Focus on <span className="font-semibold text-foreground">{data.top10FocusArea.pillar}</span> —
+              Focus on{' '}
+              <span className="font-semibold text-foreground">{data.top10FocusArea.pillar}</span> —
               you're {data.top10FocusArea.gap} points below the top-10 average
             </p>
           </div>

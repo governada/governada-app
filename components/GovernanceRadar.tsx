@@ -26,12 +26,7 @@ interface GovernanceRadarProps {
 const SIZE_MAP: Record<RadarSize, number> = { full: 220, medium: 80, mini: 32 };
 const PADDING_MAP: Record<RadarSize, number> = { full: 44, medium: 8, mini: 2 };
 
-function getPolygonPoints(
-  scores: number[],
-  cx: number,
-  cy: number,
-  maxR: number,
-): string {
+function getPolygonPoints(scores: number[], cx: number, cy: number, maxR: number): string {
   return scores
     .map((score, i) => {
       const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
@@ -61,7 +56,7 @@ function useAnimatedScores(targets: number[], shouldAnimate: boolean): number[] 
     springs.forEach((s, i) => {
       setTimeout(() => s.set(targets[i]), i * 60);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldAnimate, ...targets]);
 
   useEffect(() => {
@@ -75,7 +70,7 @@ function useAnimatedScores(targets: number[], shouldAnimate: boolean): number[] 
       ),
     );
     return () => unsubs.forEach((u) => u());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return values;
@@ -99,9 +94,7 @@ function BreathingVertices({
 
   const animate = useCallback(() => {
     const now = Date.now();
-    setOffsets(
-      scores.map((_, i) => Math.sin(now / 1200 + i * 1.05) * 1.8),
-    );
+    setOffsets(scores.map((_, i) => Math.sin(now / 1200 + i * 1.05) * 1.8));
     rafRef.current = requestAnimationFrame(animate);
   }, [scores]);
 
@@ -119,16 +112,7 @@ function BreathingVertices({
         const r = maxR * (score / 100) + offsets[i];
         const x = cx + r * Math.cos(angle);
         const y = cy + r * Math.sin(angle);
-        return (
-          <circle
-            key={i}
-            cx={x}
-            cy={y}
-            r={3}
-            fill={color}
-            opacity={0.9}
-          />
-        );
+        return <circle key={i} cx={x} cy={y} r={3} fill={color} opacity={0.9} />;
       })}
     </>
   );
@@ -240,7 +224,14 @@ export function GovernanceRadar({
         {axisEndpoints.map((_, i) => {
           const dimColor = getIdentityColor(dimensions[i]);
           return (
-            <linearGradient key={i} id={`${uid}-axis-${i}`} x1="50%" y1="50%" x2={`${(axisEndpoints[i][0] / svgSize) * 100}%`} y2={`${(axisEndpoints[i][1] / svgSize) * 100}%`}>
+            <linearGradient
+              key={i}
+              id={`${uid}-axis-${i}`}
+              x1="50%"
+              y1="50%"
+              x2={`${(axisEndpoints[i][0] / svgSize) * 100}%`}
+              y2={`${(axisEndpoints[i][1] / svgSize) * 100}%`}
+            >
               <stop offset="0%" stopColor={dimColor.hex} stopOpacity={0} />
               <stop offset="50%" stopColor={dimColor.hex} stopOpacity={0.3} />
               <stop offset="100%" stopColor={dimColor.hex} stopOpacity={0.1} />

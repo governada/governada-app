@@ -25,7 +25,11 @@ export async function POST(request: NextRequest) {
       viewer_wallet: viewerWallet,
     });
 
-    captureServerEvent('profile_viewed', { drep_id: drepId, authenticated: !!viewerWallet }, viewerWallet || 'anonymous');
+    captureServerEvent(
+      'profile_viewed',
+      { drep_id: drepId, authenticated: !!viewerWallet },
+      viewerWallet || 'anonymous',
+    );
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });

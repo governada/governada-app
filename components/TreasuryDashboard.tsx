@@ -52,14 +52,19 @@ export function TreasuryDashboard() {
   const treasuryIntelligenceEnabled = useFeatureFlag('treasury_intelligence');
   const [data, setData] = useState<TreasuryData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'simulator' | 'accountability'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'simulator' | 'accountability'>(
+    'overview',
+  );
 
   useEffect(() => {
     posthog.capture('treasury_page_viewed');
 
     fetch('/api/treasury/current')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { setData(d); setLoading(false); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        setData(d);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -69,21 +74,29 @@ export function TreasuryDashboard() {
       <div className="container mx-auto px-4 py-12 text-center">
         <Landmark className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold mb-2">Treasury Data Unavailable</h2>
-        <p className="text-muted-foreground">Treasury snapshots have not been synced yet. Data will appear after the first epoch sync.</p>
+        <p className="text-muted-foreground">
+          Treasury snapshots have not been synced yet. Data will appear after the first epoch sync.
+        </p>
       </div>
     );
   }
 
-  const trendIcon = data.trend === 'growing'
-    ? <TrendingUp className="h-5 w-5 text-green-500" />
-    : data.trend === 'shrinking'
-    ? <TrendingDown className="h-5 w-5 text-red-500" />
-    : <Minus className="h-5 w-5 text-muted-foreground" />;
+  const trendIcon =
+    data.trend === 'growing' ? (
+      <TrendingUp className="h-5 w-5 text-green-500" />
+    ) : data.trend === 'shrinking' ? (
+      <TrendingDown className="h-5 w-5 text-red-500" />
+    ) : (
+      <Minus className="h-5 w-5 text-muted-foreground" />
+    );
 
-  const healthColor = !data.healthScore ? 'text-muted-foreground'
-    : data.healthScore >= 75 ? 'text-green-500'
-    : data.healthScore >= 50 ? 'text-amber-500'
-    : 'text-red-500';
+  const healthColor = !data.healthScore
+    ? 'text-muted-foreground'
+    : data.healthScore >= 75
+      ? 'text-green-500'
+      : data.healthScore >= 50
+        ? 'text-amber-500'
+        : 'text-red-500';
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -105,14 +118,19 @@ export function TreasuryDashboard() {
           <CardContent className="pt-4 pb-3">
             <div className="text-xs text-muted-foreground mb-1">Treasury Balance</div>
             <div className="text-2xl font-bold tabular-nums">{formatAda(data.balance)}</div>
-            <div className="flex items-center gap-1 mt-1">{trendIcon}<span className="text-xs text-muted-foreground">vs last epoch</span></div>
+            <div className="flex items-center gap-1 mt-1">
+              {trendIcon}
+              <span className="text-xs text-muted-foreground">vs last epoch</span>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="pt-4 pb-3">
             <div className="text-xs text-muted-foreground mb-1">Runway</div>
-            <div className="text-2xl font-bold tabular-nums">{data.runwayMonths >= 999 ? '∞' : `${data.runwayMonths}mo`}</div>
+            <div className="text-2xl font-bold tabular-nums">
+              {data.runwayMonths >= 999 ? '∞' : `${data.runwayMonths}mo`}
+            </div>
             <div className="flex items-center gap-1 mt-1">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">at current rate</span>
@@ -124,7 +142,8 @@ export function TreasuryDashboard() {
           <CardContent className="pt-4 pb-3">
             <div className="text-xs text-muted-foreground mb-1">Health Score</div>
             <div className={`text-2xl font-bold tabular-nums ${healthColor}`}>
-              {data.healthScore ?? '—'}<span className="text-sm font-normal text-muted-foreground">/100</span>
+              {data.healthScore ?? '—'}
+              <span className="text-sm font-normal text-muted-foreground">/100</span>
             </div>
             <div className="flex items-center gap-1 mt-1">
               <Shield className="h-3.5 w-3.5 text-muted-foreground" />
@@ -136,7 +155,9 @@ export function TreasuryDashboard() {
         <Card>
           <CardContent className="pt-4 pb-3">
             <div className="text-xs text-muted-foreground mb-1">Burn Rate</div>
-            <div className="text-2xl font-bold tabular-nums">{formatAda(data.burnRatePerEpoch)}</div>
+            <div className="text-2xl font-bold tabular-nums">
+              {formatAda(data.burnRatePerEpoch)}
+            </div>
             <div className="flex items-center gap-1 mt-1">
               <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">per epoch</span>
@@ -152,7 +173,9 @@ export function TreasuryDashboard() {
               {data.pendingTotalAda > 0 && (
                 <>
                   <Scale className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{formatAda(data.pendingTotalAda)} ADA</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatAda(data.pendingTotalAda)} ADA
+                  </span>
                 </>
               )}
             </div>
@@ -245,7 +268,10 @@ export function TreasuryDashboard() {
       {activeTab === 'overview' && (
         <div className="space-y-8">
           <TreasuryCharts />
-          <TreasuryPendingProposals treasuryBalanceAda={data.balance} runwayMonths={data.runwayMonths} />
+          <TreasuryPendingProposals
+            treasuryBalanceAda={data.balance}
+            runwayMonths={data.runwayMonths}
+          />
           <TreasuryHistoryTimeline />
         </div>
       )}
@@ -273,7 +299,7 @@ function TreasurySkeleton() {
         <Skeleton className="h-4 w-96" />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {[1, 2, 3, 4, 5].map(i => (
+        {[1, 2, 3, 4, 5].map((i) => (
           <Card key={i}>
             <CardContent className="pt-4 pb-3 space-y-2">
               <Skeleton className="h-3 w-20" />

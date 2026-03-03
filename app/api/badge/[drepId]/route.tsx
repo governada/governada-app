@@ -34,10 +34,21 @@ function buildShieldSvg(score: number, tier: string, color: string): string {
 </svg>`;
 }
 
-function buildCardSvg(name: string, score: number, tier: string, color: string, topPillar: string, topPillarValue: number): string {
-  const w = 300, h = 100;
+function buildCardSvg(
+  name: string,
+  score: number,
+  tier: string,
+  color: string,
+  topPillar: string,
+  topPillarValue: number,
+): string {
+  const w = 300,
+    h = 100;
   const displayName = name.length > 22 ? name.slice(0, 20) + '…' : name;
-  const ringR = 28, cx = 44, cy = 50, sw = 5;
+  const ringR = 28,
+    cx = 44,
+    cy = 50,
+    sw = 5;
   const circ = 2 * Math.PI * ringR;
   const offset = circ * (1 - score / 100);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
@@ -55,25 +66,35 @@ function buildCardSvg(name: string, score: number, tier: string, color: string, 
 }
 
 function buildFullSvg(
-  name: string, drepId: string, score: number, tier: string, color: string,
-  pillars: { label: string; value: number }[]
+  name: string,
+  drepId: string,
+  score: number,
+  tier: string,
+  color: string,
+  pillars: { label: string; value: number }[],
 ): string {
-  const w = 480, h = 200;
+  const w = 480,
+    h = 200;
   const displayName = name.length > 28 ? name.slice(0, 26) + '…' : name;
   const shortId = drepId.length > 24 ? `${drepId.slice(0, 12)}...${drepId.slice(-8)}` : drepId;
-  const ringR = 50, cx = 72, cy = 90, sw = 8;
+  const ringR = 50,
+    cx = 72,
+    cy = 90,
+    sw = 8;
   const circ = 2 * Math.PI * ringR;
   const offset = circ * (1 - score / 100);
 
-  const pillarBars = pillars.map((p, i) => {
-    const barY = 60 + i * 28;
-    const barW = Math.max(2, (p.value / 100) * 180);
-    const pColor = p.value >= 80 ? '#22c55e' : p.value >= 50 ? '#f59e0b' : '#ef4444';
-    return `<text x="160" y="${barY}" font-family="sans-serif" font-size="11" fill="#94a3b8">${p.label}</text>
+  const pillarBars = pillars
+    .map((p, i) => {
+      const barY = 60 + i * 28;
+      const barW = Math.max(2, (p.value / 100) * 180);
+      const pColor = p.value >= 80 ? '#22c55e' : p.value >= 50 ? '#f59e0b' : '#ef4444';
+      return `<text x="160" y="${barY}" font-family="sans-serif" font-size="11" fill="#94a3b8">${p.label}</text>
     <rect x="260" y="${barY - 10}" width="180" height="14" rx="7" fill="#1e293b"/>
     <rect x="260" y="${barY - 10}" width="${barW}" height="14" rx="7" fill="${pColor}"/>
     <text x="448" y="${barY}" font-family="sans-serif" font-size="10" fill="#e2e8f0" text-anchor="end">${p.value}%</text>`;
-  }).join('\n');
+    })
+    .join('\n');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
   <title>${name} — DRepScore ${score}/100</title>
@@ -100,10 +121,13 @@ function buildFullSvg(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> }
+  { params }: { params: Promise<{ drepId: string }> },
 ) {
   const { drepId } = await params;
-  const format = (request.nextUrl.searchParams.get('format') || 'shield') as 'shield' | 'card' | 'full';
+  const format = (request.nextUrl.searchParams.get('format') || 'shield') as
+    | 'shield'
+    | 'card'
+    | 'full';
   const outputType = request.nextUrl.searchParams.get('type') || 'svg';
 
   const drep = await getDRepById(decodeURIComponent(drepId));
@@ -132,7 +156,7 @@ export async function GET(
     { label: 'Reliability', value: drep.reliabilityScore },
     { label: 'Profile', value: drep.profileCompleteness },
   ];
-  const topPillar = pillars.reduce((best, p) => p.value > best.value ? p : best, pillars[0]);
+  const topPillar = pillars.reduce((best, p) => (p.value > best.value ? p : best), pillars[0]);
 
   let svg: string;
   if (format === 'card') {
@@ -151,17 +175,19 @@ export async function GET(
     };
     const { width, height } = sizes[format] || sizes.shield;
     return new ImageResponse(
-      (
-        <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`data:image/svg+xml,${encodeURIComponent(svg)}`} alt="" style={{ width: '100%', height: '100%' }} />
-        </div>
-      ),
+      <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`data:image/svg+xml,${encodeURIComponent(svg)}`}
+          alt=""
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>,
       {
         width,
         height,
         headers: { 'Cache-Control': 'public, max-age=900, s-maxage=900' },
-      }
+      },
     );
   }
 

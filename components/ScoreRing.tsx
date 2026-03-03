@@ -51,9 +51,7 @@ export function ScoreRing({ score, size = 140, strokeWidth = 10 }: ScoreRingProp
         <span className="text-3xl font-bold tabular-nums leading-none" style={{ color: stroke }}>
           {score}
         </span>
-        <span className="text-[11px] font-medium text-muted-foreground mt-0.5">
-          {label}
-        </span>
+        <span className="text-[11px] font-medium text-muted-foreground mt-0.5">{label}</span>
       </div>
     </div>
   );

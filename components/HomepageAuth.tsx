@@ -30,10 +30,16 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) { setLoading(false); return; }
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
 
     const token = getStoredSession();
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     const params = new URLSearchParams();
     if (delegatedDrepId) params.set('drepId', delegatedDrepId);
@@ -41,8 +47,10 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
     fetch(`/api/governance/holder?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.ok ? res.json() : null)
-      .then(d => { if (d) setData(d); })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => {
+        if (d) setData(d);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [isAuthenticated, delegatedDrepId]);
@@ -63,10 +71,7 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
   return (
     <div className="space-y-6">
       {previousVisitAt && (
-        <SinceLastVisit
-          previousVisitAt={previousVisitAt}
-          delegatedDrepId={delegatedDrepId}
-        />
+        <SinceLastVisit previousVisitAt={previousVisitAt} delegatedDrepId={delegatedDrepId} />
       )}
 
       <FeatureGate flag="ai_governance_brief">
@@ -92,7 +97,10 @@ export function HomepageAuth({ previousVisitAt }: HomepageAuthProps) {
           <DelegationIntelligence
             currentDrepName={data.delegationHealth?.drepName}
             currentMatchScore={data.representationScore.score}
-            suggestions={data.redelegationSuggestions.map(s => ({ ...s, drepName: s.drepName ?? '' }))}
+            suggestions={data.redelegationSuggestions.map((s) => ({
+              ...s,
+              drepName: s.drepName ?? '',
+            }))}
             totalPollVotes={data.pollHistory?.length ?? 0}
           />
         </>

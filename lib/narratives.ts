@@ -136,16 +136,21 @@ export function generateDRepNarrative(data: DRepNarrativeData): string | null {
     contextParts.push(`Ranked #${data.rank}`);
   }
   if (data.delegatorCount > 0) {
-    contextParts.push(`${data.delegatorCount.toLocaleString()} delegator${data.delegatorCount !== 1 ? 's' : ''}`);
+    contextParts.push(
+      `${data.delegatorCount.toLocaleString()} delegator${data.delegatorCount !== 1 ? 's' : ''}`,
+    );
   }
   if (data.votingPower > 0) {
     contextParts.push(`${formatAdaCompact(data.votingPower)} ADA delegated`);
   }
 
   if (contextParts.length > 0) {
-    const sizeComment = data.sizeTier === 'Whale' ? ' — one of the largest voices in governance'
-      : data.sizeTier === 'Large' ? ' — a significant voice in governance'
-      : '';
+    const sizeComment =
+      data.sizeTier === 'Whale'
+        ? ' — one of the largest voices in governance'
+        : data.sizeTier === 'Large'
+          ? ' — a significant voice in governance'
+          : '';
     parts.push(`${contextParts.join(' · ')}${sizeComment}.`);
   }
 
@@ -175,15 +180,21 @@ export function generateProposalsNarrative(data: ProposalsNarrativeData): string
   const parts: string[] = [];
 
   if (data.expiringCount > 0) {
-    parts.push(`${data.openCount} proposal${data.openCount !== 1 ? 's are' : ' is'} live. ${data.expiringCount} expire${data.expiringCount === 1 ? 's' : ''} this epoch`);
+    parts.push(
+      `${data.openCount} proposal${data.openCount !== 1 ? 's are' : ' is'} live. ${data.expiringCount} expire${data.expiringCount === 1 ? 's' : ''} this epoch`,
+    );
     if (data.totalAdaAtStake > 0) {
       parts[0] += `, requesting ${formatAdaCompact(data.totalAdaAtStake)} ADA from the treasury`;
     }
     parts[0] += '.';
   } else {
-    parts.push(`${data.openCount} proposal${data.openCount !== 1 ? 's are' : ' is'} open for voting.`);
+    parts.push(
+      `${data.openCount} proposal${data.openCount !== 1 ? 's are' : ' is'} open for voting.`,
+    );
     if (data.totalAdaAtStake > 0) {
-      parts.push(`${formatAdaCompact(data.totalAdaAtStake)} ADA in treasury requests are on the table.`);
+      parts.push(
+        `${formatAdaCompact(data.totalAdaAtStake)} ADA in treasury requests are on the table.`,
+      );
     }
   }
 
@@ -211,14 +222,18 @@ export function generateDashboardNarrative(data: DashboardNarrativeData): string
   const parts: string[] = [];
 
   if (data.pendingCount > 0) {
-    parts.push(`${data.pendingCount} proposal${data.pendingCount !== 1 ? 's are' : ' is'} waiting for your vote.`);
+    parts.push(
+      `${data.pendingCount} proposal${data.pendingCount !== 1 ? 's are' : ' is'} waiting for your vote.`,
+    );
   } else {
     parts.push("You're all caught up — no proposals need your attention right now.");
   }
 
   if (data.scoreChange !== null && data.scoreChange !== 0) {
     const topPct = Math.max(1, Math.round(100 - data.percentile));
-    parts.push(`Your score is ${trendWord(data.scoreChange)} ${Math.abs(data.scoreChange)} point${Math.abs(data.scoreChange) !== 1 ? 's' : ''} — you're in the top ${topPct}% of active DReps.`);
+    parts.push(
+      `Your score is ${trendWord(data.scoreChange)} ${Math.abs(data.scoreChange)} point${Math.abs(data.scoreChange) !== 1 ? 's' : ''} — you're in the top ${topPct}% of active DReps.`,
+    );
   } else {
     const topPct = Math.max(1, Math.round(100 - data.percentile));
     parts.push(`Score holding at ${data.drepScore} — top ${topPct}% of active DReps.`);
@@ -245,16 +260,22 @@ export function generatePulseNarrative(data: PulseNarrativeData): string | null 
 
   if (data.votesLastWeek && data.votesLastWeek > 0) {
     const delta = data.votesThisWeek - data.votesLastWeek;
-    const pctChange = Math.round(Math.abs(delta) / data.votesLastWeek * 100);
+    const pctChange = Math.round((Math.abs(delta) / data.votesLastWeek) * 100);
     if (delta > 0) {
-      parts.push(`Governance is heating up: ${data.votesThisWeek.toLocaleString()} votes this week, up ${pctChange}% from last week.`);
+      parts.push(
+        `Governance is heating up: ${data.votesThisWeek.toLocaleString()} votes this week, up ${pctChange}% from last week.`,
+      );
     } else if (delta < 0) {
-      parts.push(`${data.votesThisWeek.toLocaleString()} votes this week, cooling off ${pctChange}% from last week.`);
+      parts.push(
+        `${data.votesThisWeek.toLocaleString()} votes this week, cooling off ${pctChange}% from last week.`,
+      );
     } else {
       parts.push(`${data.votesThisWeek.toLocaleString()} votes this week, holding steady.`);
     }
   } else if (data.votesThisWeek > 0) {
-    parts.push(`${data.votesThisWeek.toLocaleString()} votes cast this week across ${data.activeProposals} active proposal${data.activeProposals !== 1 ? 's' : ''}.`);
+    parts.push(
+      `${data.votesThisWeek.toLocaleString()} votes cast this week across ${data.activeProposals} active proposal${data.activeProposals !== 1 ? 's' : ''}.`,
+    );
   }
 
   if (data.activeDReps > 0) {

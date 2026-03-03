@@ -29,7 +29,12 @@ const ENDPOINTS: EndpointDef[] = [
     tier: 'public',
     params: [
       { name: 'search', type: 'string', description: 'Search by name, ticker, or ID' },
-      { name: 'sort', type: 'string', default: 'score', description: 'Sort field: score, name, voting_power' },
+      {
+        name: 'sort',
+        type: 'string',
+        default: 'score',
+        description: 'Sort field: score, name, voting_power',
+      },
       { name: 'limit', type: 'number', default: '20', description: 'Results per page (max 100)' },
       { name: 'offset', type: 'number', default: '0', description: 'Pagination offset' },
     ],
@@ -42,9 +47,7 @@ const ENDPOINTS: EndpointDef[] = [
     title: 'Get DRep',
     description: 'Get detailed profile, score breakdown, and alignment data for a specific DRep.',
     tier: 'public',
-    params: [
-      { name: 'drepId', type: 'string', description: 'DRep bech32 ID (drep1...)' },
-    ],
+    params: [{ name: 'drepId', type: 'string', description: 'DRep bech32 ID (drep1...)' }],
     examplePath: '/api/v1/dreps/drep1...',
   },
   {
@@ -81,7 +84,11 @@ const ENDPOINTS: EndpointDef[] = [
     description: 'Governance proposals with status filtering and AI summaries.',
     tier: 'public',
     params: [
-      { name: 'status', type: 'string', description: 'Filter: open, ratified, enacted, dropped, expired' },
+      {
+        name: 'status',
+        type: 'string',
+        description: 'Filter: open, ratified, enacted, dropped, expired',
+      },
       { name: 'type', type: 'string', description: 'Proposal type filter' },
       { name: 'limit', type: 'number', default: '20', description: 'Results per page' },
     ],
@@ -106,7 +113,12 @@ const ENDPOINTS: EndpointDef[] = [
     tier: 'public',
     params: [
       { name: 'format', type: 'string', default: 'svg', description: 'Output: svg, html, json' },
-      { name: 'style', type: 'string', default: 'card', description: 'SVG style: badge, card, minimal' },
+      {
+        name: 'style',
+        type: 'string',
+        default: 'card',
+        description: 'SVG style: badge, card, minimal',
+      },
       { name: 'theme', type: 'string', default: 'dark', description: 'Theme: dark, light' },
     ],
     examplePath: '/api/v1/embed/drep1...?format=json',
@@ -140,13 +152,19 @@ export function ApiExplorer() {
   const [response, setResponse] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const endpoint = ENDPOINTS.find(e => e.id === selected) ?? ENDPOINTS[0];
+  const endpoint = ENDPOINTS.find((e) => e.id === selected) ?? ENDPOINTS[0];
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://drepscore.io';
   const codeExamples = generateCodeExamples(endpoint, baseUrl);
 
   const tryEndpoint = useCallback(async () => {
     if (endpoint.examplePath.includes('drep1...')) {
-      setResponse(JSON.stringify({ hint: 'Replace drep1... with a real DRep ID to try this endpoint.' }, null, 2));
+      setResponse(
+        JSON.stringify(
+          { hint: 'Replace drep1... with a real DRep ID to try this endpoint.' },
+          null,
+          2,
+        ),
+      );
       return;
     }
     setLoading(true);
@@ -156,7 +174,13 @@ export function ApiExplorer() {
       const data = await res.json();
       setResponse(JSON.stringify(data, null, 2));
     } catch (err) {
-      setResponse(JSON.stringify({ error: 'Request failed. The endpoint may require authentication.' }, null, 2));
+      setResponse(
+        JSON.stringify(
+          { error: 'Request failed. The endpoint may require authentication.' },
+          null,
+          2,
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -166,25 +190,36 @@ export function ApiExplorer() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
       {/* Endpoint list */}
       <div className="space-y-1">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Endpoints</h3>
-        {ENDPOINTS.map(ep => (
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Endpoints
+        </h3>
+        {ENDPOINTS.map((ep) => (
           <button
             key={ep.id}
-            onClick={() => { setSelected(ep.id); setResponse(null); }}
+            onClick={() => {
+              setSelected(ep.id);
+              setResponse(null);
+            }}
             className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
               selected === ep.id
                 ? 'bg-primary/10 text-primary'
                 : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
             }`}
           >
-            <span className={`inline-flex w-10 justify-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-              ep.method === 'GET' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'
-            }`}>
+            <span
+              className={`inline-flex w-10 justify-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                ep.method === 'GET'
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : 'bg-blue-500/15 text-blue-400'
+              }`}
+            >
               {ep.method}
             </span>
             <span className="flex-1 truncate">{ep.title}</span>
             {ep.tier === 'pro' && (
-              <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">PRO</span>
+              <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">
+                PRO
+              </span>
             )}
           </button>
         ))}
@@ -207,7 +242,9 @@ export function ApiExplorer() {
               </span>
               <code className="text-sm font-mono text-foreground">{endpoint.path}</code>
               {endpoint.tier === 'pro' && (
-                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">Pro Tier</span>
+                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                  Pro Tier
+                </span>
               )}
             </div>
             <p className="text-sm text-muted-foreground">{endpoint.description}</p>
@@ -216,24 +253,36 @@ export function ApiExplorer() {
           {/* Parameters */}
           {endpoint.params.length > 0 && (
             <div>
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parameters</h4>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Parameters
+              </h4>
               <div className="overflow-hidden rounded-lg border border-border/40">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/40 bg-muted/20">
-                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Name</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Type</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Description</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                        Name
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                        Type
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                        Description
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {endpoint.params.map(p => (
+                    {endpoint.params.map((p) => (
                       <tr key={p.name} className="border-b border-border/20 last:border-0">
                         <td className="px-3 py-2 font-mono text-xs text-primary">{p.name}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{p.type}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
                           {p.description}
-                          {p.default && <span className="ml-1 text-muted-foreground/60">(default: {p.default})</span>}
+                          {p.default && (
+                            <span className="ml-1 text-muted-foreground/60">
+                              (default: {p.default})
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -245,14 +294,20 @@ export function ApiExplorer() {
 
           {/* Code examples */}
           <div>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Example</h4>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Example
+            </h4>
             <CodeExample code={codeExamples} />
           </div>
 
           {/* Try it */}
           <div className="flex items-center gap-3">
             <Button onClick={tryEndpoint} disabled={loading} className="gap-2">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
               Try it
             </Button>
             <span className="text-xs text-muted-foreground">
@@ -267,7 +322,9 @@ export function ApiExplorer() {
               animate={{ opacity: 1, height: 'auto' }}
               transition={{ ...spring.snappy }}
             >
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Response</h4>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Response
+              </h4>
               <pre className="max-h-[400px] overflow-auto rounded-lg border border-border/40 bg-[#0d0e1a] p-4 text-xs leading-relaxed text-emerald-300/80 font-mono">
                 {response}
               </pre>

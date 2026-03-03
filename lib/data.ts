@@ -15,7 +15,7 @@ const CACHE_FRESHNESS_MINUTES = 15;
  */
 function transformSupabaseRowToDRep(row: any): EnrichedDRep {
   const info = row.info || {};
-  
+
   return {
     drepId: row.id,
     drepHash: info.drepHash || '',
@@ -105,47 +105,47 @@ export async function getAllDReps(): Promise<{
   totalAvailable: number;
 }> {
   const isDev = process.env.NODE_ENV === 'development';
-  
+
   try {
     if (isDev) {
       console.log('[Data] Querying Supabase cache...');
     }
-    
+
     const supabase = createClient();
-    
+
     // Query all DReps ordered by score
     const { data: rows, error: supabaseError } = await supabase
       .from('dreps')
       .select('*')
       .order('score', { ascending: false });
-    
+
     if (supabaseError) {
       console.error('[Data] Supabase query failed:', supabaseError.message);
       throw new Error('Supabase unavailable');
     }
-    
+
     // Check if we have data
     if (!rows || rows.length === 0) {
       console.warn('[Data] No data in Supabase, falling back to Koios');
       console.warn('[Data] Run: npm run sync');
       return await getEnrichedDReps(false);
     }
-    
+
     if (isDev) {
       console.log(`[Data] ✓ Retrieved ${rows.length} DReps from Supabase`);
     }
-    
+
     // Check freshness
     const timestamps = rows
-      .map(r => r.updated_at ? new Date(r.updated_at).getTime() : 0)
-      .filter(t => t > 0);
-    
+      .map((r) => (r.updated_at ? new Date(r.updated_at).getTime() : 0))
+      .filter((t) => t > 0);
+
     if (timestamps.length > 0) {
       const maxTimestamp = Math.max(...timestamps);
       const maxUpdatedAt = new Date(maxTimestamp);
       const freshnessThreshold = new Date(Date.now() - CACHE_FRESHNESS_MINUTES * 60 * 1000);
       const isStale = maxUpdatedAt < freshnessThreshold;
-      
+
       if (isStale) {
         const ageMinutes = Math.round((Date.now() - maxTimestamp) / 1000 / 60);
         if (isDev) {
@@ -158,32 +158,31 @@ export async function getAllDReps(): Promise<{
         console.log(`[Data] ✓ Cache is fresh (${ageMinutes} min old)`);
       }
     }
-    
+
     // Transform Supabase rows to EnrichedDRep[] (full data)
     const allDReps = rows.map(transformSupabaseRowToDRep);
-    
+
     // Filter to well-documented DReps (default view)
-    const wellDocumentedDReps = allDReps.filter(d => isWellDocumented(d));
-    
+    const wellDocumentedDReps = allDReps.filter((d) => isWellDocumented(d));
+
     if (isDev) {
       console.log(`[Data] Well documented: ${wellDocumentedDReps.length}/${allDReps.length}`);
     }
-    
+
     return {
       dreps: wellDocumentedDReps,
       allDReps: allDReps,
       error: false,
       totalAvailable: allDReps.length,
     };
-    
   } catch (error: any) {
     console.error('[Data] Cache read failed, falling back to Koios:', error.message);
-    
+
     // Fallback to direct Koios fetch
     if (isDev) {
       console.log('[Data] Fetching directly from Koios (slow)...');
     }
-    
+
     return await getEnrichedDReps(false);
   }
 }
@@ -209,7 +208,8 @@ export async function getActiveProposalEpochs(): Promise<Map<number, number>> {
     const SHELLEY_GENESIS = 1596491091;
     const EPOCH_LEN = 432000;
     const SHELLEY_BASE = 209;
-    const currentEpoch = Math.floor((Date.now() / 1000 - SHELLEY_GENESIS) / EPOCH_LEN) + SHELLEY_BASE;
+    const currentEpoch =
+      Math.floor((Date.now() / 1000 - SHELLEY_GENESIS) / EPOCH_LEN) + SHELLEY_BASE;
 
     const counts = new Map<number, number>();
     for (const row of rows) {
@@ -217,8 +217,9 @@ export async function getActiveProposalEpochs(): Promise<Map<number, number>> {
       const start = row.proposed_epoch;
       // End epoch is the earliest lifecycle termination, or current epoch
       const endEpoch = Math.min(
-        ...[row.expired_epoch, row.ratified_epoch, row.dropped_epoch, currentEpoch]
-          .filter((e): e is number => e != null)
+        ...[row.expired_epoch, row.ratified_epoch, row.dropped_epoch, currentEpoch].filter(
+          (e): e is number => e != null,
+        ),
       );
       for (let e = start; e <= endEpoch; e++) {
         counts.set(e, (counts.get(e) || 0) + 1);
@@ -275,38 +276,44 @@ export interface CachedProposal {
  * Used to enrich vote records with proposal metadata
  */
 export async function getProposalsByIds(
-  proposalIds: { txHash: string; index: number }[]
+  proposalIds: { txHash: string; index: number }[],
 ): Promise<Map<string, CachedProposal>> {
   const result = new Map<string, CachedProposal>();
-  
+
   if (proposalIds.length === 0) return result;
-  
+
   try {
     const supabase = createClient();
-    
+
     // Build a filter for all the proposal IDs
     // Note: Supabase doesn't support compound key IN queries easily,
     // so we'll fetch all proposals and filter client-side for simplicity
-    const txHashes = [...new Set(proposalIds.map(p => p.txHash))];
-    
+    const txHashes = [...new Set(proposalIds.map((p) => p.txHash))];
+
     const { data: rows, error } = await supabase
       .from('proposals')
-      .select('tx_hash, proposal_index, title, abstract, ai_summary, proposal_type, withdrawal_amount, treasury_tier, relevant_prefs')
+      .select(
+        'tx_hash, proposal_index, title, abstract, ai_summary, proposal_type, withdrawal_amount, treasury_tier, relevant_prefs',
+      )
       .in('tx_hash', txHashes);
-    
+
     if (error) {
       console.warn('[Data] getProposalsByIds query failed:', error.message);
       return result;
     }
-    
+
     if (!rows || rows.length === 0) {
-      console.warn('[Data] getProposalsByIds: no proposals found for', txHashes.length, 'tx hashes');
+      console.warn(
+        '[Data] getProposalsByIds: no proposals found for',
+        txHashes.length,
+        'tx hashes',
+      );
       return result;
     }
-    
+
     // Supabase doesn't support compound-key IN queries; we filter client-side after fetching by tx_hash
-    const requestedIds = new Set(proposalIds.map(p => `${p.txHash}-${p.index}`));
-    
+    const requestedIds = new Set(proposalIds.map((p) => `${p.txHash}-${p.index}`));
+
     for (const row of rows) {
       const key = `${row.tx_hash}-${row.proposal_index}`;
       if (requestedIds.has(key)) {
@@ -323,7 +330,7 @@ export async function getProposalsByIds(
         });
       }
     }
-    
+
     return result;
   } catch (err) {
     console.error('[Data] getProposalsByIds error:', err);
@@ -341,27 +348,27 @@ export interface RationaleRecord {
  * Get cached rationale text and AI summary for votes by their tx hashes
  */
 export async function getRationalesByVoteTxHashes(
-  voteTxHashes: string[]
+  voteTxHashes: string[],
 ): Promise<Map<string, RationaleRecord>> {
   const result = new Map<string, RationaleRecord>();
-  
+
   if (voteTxHashes.length === 0) return result;
-  
+
   try {
     const supabase = createClient();
-    
+
     const { data: rows, error } = await supabase
       .from('vote_rationales')
       .select('vote_tx_hash, rationale_text, ai_summary, hash_verified')
       .in('vote_tx_hash', voteTxHashes);
-    
+
     if (error) {
       console.warn('[Data] getRationalesByVoteTxHashes query failed:', error.message);
       return result;
     }
-    
+
     if (!rows) return result;
-    
+
     for (const row of rows) {
       result.set(row.vote_tx_hash, {
         rationaleText: row.rationale_text || null,
@@ -369,7 +376,7 @@ export async function getRationalesByVoteTxHashes(
         hashVerified: row.hash_verified ?? null,
       });
     }
-    
+
     return result;
   } catch (err) {
     console.error('[Data] getRationalesByVoteTxHashes error:', err);
@@ -424,41 +431,40 @@ export async function getVotesByDRepId(drepId: string): Promise<DRepVoteRow[]> {
  */
 export async function getDRepById(drepId: string): Promise<EnrichedDRep | null> {
   const isDev = process.env.NODE_ENV === 'development';
-  
+
   try {
     if (isDev) {
       console.log(`[Data] Querying Supabase for DRep: ${drepId}`);
     }
-    
+
     const supabase = createClient();
-    
+
     const { data: row, error: supabaseError } = await supabase
       .from('dreps')
       .select('*')
       .eq('id', drepId)
       .single();
-    
+
     if (supabaseError) {
       console.error('[Data] Supabase query failed:', supabaseError.message);
       throw new Error('Supabase unavailable');
     }
-    
+
     if (!row) {
       if (isDev) {
         console.warn(`[Data] DRep ${drepId} not found in cache`);
       }
       return null;
     }
-    
+
     if (isDev) {
       console.log(`[Data] ✓ Found DRep ${drepId} in cache`);
     }
-    
+
     return transformSupabaseRowToDRep(row);
-    
   } catch (error: any) {
     console.error('[Data] Cache read failed for DRep:', drepId, error.message);
-    
+
     return null;
   }
 }
@@ -526,11 +532,19 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
     }
 
     // Aggregate vote counts + voter DRep IDs per proposal
-    const countMap = new Map<string, { yes: number; no: number; abstain: number; drepIds: Set<string> }>();
+    const countMap = new Map<
+      string,
+      { yes: number; no: number; abstain: number; drepIds: Set<string> }
+    >();
     if (voteCounts) {
       for (const v of voteCounts) {
         const key = `${v.proposal_tx_hash}-${v.proposal_index}`;
-        const entry = countMap.get(key) || { yes: 0, no: 0, abstain: 0, drepIds: new Set<string>() };
+        const entry = countMap.get(key) || {
+          yes: 0,
+          no: 0,
+          abstain: 0,
+          drepIds: new Set<string>(),
+        };
         if (v.vote === 'Yes') entry.yes++;
         else if (v.vote === 'No') entry.no++;
         else entry.abstain++;
@@ -597,7 +611,7 @@ export interface ProposalVoteDetail {
  */
 export async function getProposalByKey(
   txHash: string,
-  proposalIndex: number
+  proposalIndex: number,
 ): Promise<ProposalWithVoteSummary | null> {
   try {
     const supabase = createClient();
@@ -618,7 +632,9 @@ export async function getProposalByKey(
       .eq('proposal_tx_hash', txHash)
       .eq('proposal_index', proposalIndex);
 
-    let yes = 0, no = 0, abstain = 0;
+    let yes = 0,
+      no = 0,
+      abstain = 0;
     const drepIds = new Set<string>();
     if (votes) {
       for (const v of votes) {
@@ -663,7 +679,7 @@ export async function getProposalByKey(
  */
 export async function getVotesByProposal(
   txHash: string,
-  proposalIndex: number
+  proposalIndex: number,
 ): Promise<ProposalVoteDetail[]> {
   try {
     const supabase = createClient();
@@ -678,10 +694,12 @@ export async function getVotesByProposal(
     if (error || !votes) return [];
 
     // Fetch DRep names and alignment data
-    const drepIds = [...new Set(votes.map(v => v.drep_id))];
+    const drepIds = [...new Set(votes.map((v) => v.drep_id))];
     const { data: dreps } = await supabase
       .from('dreps')
-      .select('id, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency')
+      .select(
+        'id, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+      )
       .in('id', drepIds);
 
     const drepNameMap = new Map<string, string | null>();
@@ -701,13 +719,16 @@ export async function getVotesByProposal(
     }
 
     // Fetch rationale text and AI summaries
-    const voteTxHashes = votes.map(v => v.vote_tx_hash);
+    const voteTxHashes = votes.map((v) => v.vote_tx_hash);
     const { data: rationales } = await supabase
       .from('vote_rationales')
       .select('vote_tx_hash, rationale_text, ai_summary, hash_verified')
       .in('vote_tx_hash', voteTxHashes);
 
-    const rationaleMap = new Map<string, { text: string | null; summary: string | null; verified: boolean | null }>();
+    const rationaleMap = new Map<
+      string,
+      { text: string | null; summary: string | null; verified: boolean | null }
+    >();
     if (rationales) {
       for (const r of rationales) {
         rationaleMap.set(r.vote_tx_hash, {
@@ -718,7 +739,7 @@ export async function getVotesByProposal(
       }
     }
 
-    return votes.map(v => {
+    return votes.map((v) => {
       const rat = rationaleMap.get(v.vote_tx_hash);
       return {
         voteTxHash: v.vote_tx_hash,
@@ -886,7 +907,9 @@ export async function getScoreHistory(drepId: string): Promise<ScoreSnapshot[]> 
 
     const { data: rows, error } = await supabase
       .from('drep_score_history')
-      .select('snapshot_date, score, effective_participation, rationale_rate, reliability_score, profile_completeness')
+      .select(
+        'snapshot_date, score, effective_participation, rationale_rate, reliability_score, profile_completeness',
+      )
       .eq('drep_id', drepId)
       .order('snapshot_date', { ascending: true });
 
@@ -1012,7 +1035,7 @@ async function getGovernanceThresholds(): Promise<Record<string, number> | null>
 export async function getVotingPowerSummary(
   txHash: string,
   proposalIndex: number,
-  proposalType: string
+  proposalType: string,
 ): Promise<VotingPowerSummary> {
   const supabase = createClient();
 
@@ -1044,12 +1067,15 @@ export async function getVotingPowerSummary(
     const totalActivePower = yesPower + noPower + abstainPower + alwaysAbstain;
 
     return {
-      yesPower, noPower, abstainPower,
+      yesPower,
+      noPower,
+      abstainPower,
       yesCount: canonical.drep_yes_votes_cast || 0,
       noCount: canonical.drep_no_votes_cast || 0,
       abstainCount: canonical.drep_abstain_votes_cast || 0,
       totalActivePower,
-      threshold, thresholdLabel,
+      threshold,
+      thresholdLabel,
     };
   }
 
@@ -1061,15 +1087,26 @@ export async function getVotingPowerSummary(
     .eq('proposal_index', proposalIndex)
     .not('voting_power_lovelace', 'is', null);
 
-  let yesPower = 0, noPower = 0, abstainPower = 0;
-  let yesCount = 0, noCount = 0, abstainCount = 0;
+  let yesPower = 0,
+    noPower = 0,
+    abstainPower = 0;
+  let yesCount = 0,
+    noCount = 0,
+    abstainCount = 0;
 
   if (votes) {
     for (const v of votes) {
       const power = Number(v.voting_power_lovelace) || 0;
-      if (v.vote === 'Yes') { yesPower += power; yesCount++; }
-      else if (v.vote === 'No') { noPower += power; noCount++; }
-      else { abstainPower += power; abstainCount++; }
+      if (v.vote === 'Yes') {
+        yesPower += power;
+        yesCount++;
+      } else if (v.vote === 'No') {
+        noPower += power;
+        noCount++;
+      } else {
+        abstainPower += power;
+        abstainCount++;
+      }
     }
   }
 
@@ -1087,10 +1124,15 @@ export async function getVotingPowerSummary(
   }
 
   return {
-    yesPower, noPower, abstainPower,
-    yesCount, noCount, abstainCount,
+    yesPower,
+    noPower,
+    abstainPower,
+    yesCount,
+    noCount,
+    abstainCount,
     totalActivePower,
-    threshold, thresholdLabel,
+    threshold,
+    thresholdLabel,
   };
 }
 

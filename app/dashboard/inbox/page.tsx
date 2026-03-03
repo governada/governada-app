@@ -116,7 +116,15 @@ export default function InboxPage() {
 }
 
 function InboxPageInner() {
-  const { connected, isAuthenticated, reconnecting, ownDRepId, sessionAddress, address, connecting } = useWallet();
+  const {
+    connected,
+    isAuthenticated,
+    reconnecting,
+    ownDRepId,
+    sessionAddress,
+    address,
+    connecting,
+  } = useWallet();
   const searchParams = useSearchParams();
   const urlDRepId = searchParams.get('drepId');
   const [data, setData] = useState<InboxData | null>(null);
@@ -138,22 +146,24 @@ function InboxPageInner() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: adminCheckAddress }),
     })
-      .then(r => r.json())
-      .then(d => setIsAdmin(d.isAdmin === true))
+      .then((r) => r.json())
+      .then((d) => setIsAdmin(d.isAdmin === true))
       .catch(() => setIsAdmin(false));
   }, [adminCheckAddress]);
 
   useEffect(() => {
     if (!isAdmin) return;
     fetch('/api/dreps')
-      .then(r => r.json())
-      .then(d => {
+      .then((r) => r.json())
+      .then((d) => {
         const all = (d.allDReps || d.dreps || []) as Record<string, unknown>[];
-        setDrepList(all.map((dr) => ({
-          drepId: dr.drepId as string,
-          name: dr.name as string | null,
-          drepScore: (dr.drepScore as number) ?? 0,
-        })));
+        setDrepList(
+          all.map((dr) => ({
+            drepId: dr.drepId as string,
+            name: dr.name as string | null,
+            drepScore: (dr.drepScore as number) ?? 0,
+          })),
+        );
       })
       .catch(() => {});
   }, [isAdmin]);
@@ -181,21 +191,29 @@ function InboxPageInner() {
             });
           } catch {}
         }
-      } catch { /* ignore */ }
-      finally { if (!cancelled) setLoading(false); }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [connecting, reconnecting, drepId]);
 
-  const handleSort = useCallback((field: SortField) => {
-    if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
-  }, [sortField]);
+  const handleSort = useCallback(
+    (field: SortField) => {
+      if (sortField === field) {
+        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      } else {
+        setSortField(field);
+        setSortDir('asc');
+      }
+    },
+    [sortField],
+  );
 
   const openDrawer = useCallback((proposal: PendingProposal) => {
     setSelectedProposal(proposal);
@@ -212,7 +230,7 @@ function InboxPageInner() {
   // Derive unique proposal types for filter
   const proposalTypes = useMemo(() => {
     if (!data) return [];
-    const types = new Set(data.pendingProposals.map(p => p.proposalType));
+    const types = new Set(data.pendingProposals.map((p) => p.proposalType));
     return [...types].sort();
   }, [data]);
 
@@ -222,7 +240,7 @@ function InboxPageInner() {
     let list = [...data.pendingProposals];
 
     if (typeFilter !== 'all') {
-      list = list.filter(p => p.proposalType === typeFilter);
+      list = list.filter((p) => p.proposalType === typeFilter);
     }
 
     list.sort((a, b) => {
@@ -265,7 +283,10 @@ function InboxPageInner() {
 
       {/* Header */}
       <div className="mb-6">
-        <Link href="/dashboard" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3"
+        >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to Dashboard
         </Link>
@@ -280,9 +301,7 @@ function InboxPageInner() {
             )}
           </div>
           {data && data.currentEpoch > 0 && (
-            <span className="text-xs text-muted-foreground">
-              Epoch {data.currentEpoch}
-            </span>
+            <span className="text-xs text-muted-foreground">Epoch {data.currentEpoch}</span>
           )}
         </div>
       </div>
@@ -323,7 +342,8 @@ function InboxPageInner() {
             <Vote className="h-12 w-12 mx-auto text-green-600 dark:text-green-400" />
             <h2 className="text-lg font-bold">All Caught Up!</h2>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-              There are no open proposals waiting for your vote. Check back later or review your voting history on the dashboard.
+              There are no open proposals waiting for your vote. Check back later or review your
+              voting history on the dashboard.
             </p>
             <Link href="/dashboard">
               <Button variant="outline" className="gap-2 mt-2">
@@ -348,7 +368,7 @@ function InboxPageInner() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    {proposalTypes.map(t => (
+                    {proposalTypes.map((t) => (
                       <SelectItem key={t} value={t}>
                         {TYPE_LABELS[t] || t}
                       </SelectItem>
@@ -363,32 +383,60 @@ function InboxPageInner() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableHeader field="priority" current={sortField} dir={sortDir} onSort={handleSort}>
+                    <SortableHeader
+                      field="priority"
+                      current={sortField}
+                      dir={sortDir}
+                      onSort={handleSort}
+                    >
                       Priority
                     </SortableHeader>
                     <TableHead className="min-w-[200px]">Proposal</TableHead>
-                    <SortableHeader field="type" current={sortField} dir={sortDir} onSort={handleSort}>
+                    <SortableHeader
+                      field="type"
+                      current={sortField}
+                      dir={sortDir}
+                      onSort={handleSort}
+                    >
                       Type
                     </SortableHeader>
-                    <SortableHeader field="deadline" current={sortField} dir={sortDir} onSort={handleSort}>
+                    <SortableHeader
+                      field="deadline"
+                      current={sortField}
+                      dir={sortDir}
+                      onSort={handleSort}
+                    >
                       Deadline
                     </SortableHeader>
                     <TableHead className="text-right">Votes</TableHead>
-                    <SortableHeader field="impact" current={sortField} dir={sortDir} onSort={handleSort} className="text-right">
+                    <SortableHeader
+                      field="impact"
+                      current={sortField}
+                      dir={sortDir}
+                      onSort={handleSort}
+                      className="text-right"
+                    >
                       Impact
                     </SortableHeader>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sorted.map(p => (
+                  {sorted.map((p) => (
                     <TableRow
                       key={`${p.txHash}-${p.proposalIndex}`}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => openDrawer(p)}
                     >
                       <TableCell>
-                        <Badge variant="outline" className={`text-[10px] ${PRIORITY_STYLES[p.priority]}`}>
-                          {p.priority === 'critical' ? 'Critical' : p.priority === 'important' ? 'Important' : 'Standard'}
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${PRIORITY_STYLES[p.priority]}`}
+                        >
+                          {p.priority === 'critical'
+                            ? 'Critical'
+                            : p.priority === 'important'
+                              ? 'Important'
+                              : 'Standard'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -410,11 +458,15 @@ function InboxPageInner() {
                       </TableCell>
                       <TableCell>
                         {p.epochsRemaining != null ? (
-                          <span className={`text-xs tabular-nums ${
-                            p.epochsRemaining <= 1 ? 'text-red-600 dark:text-red-400 font-semibold' :
-                            p.epochsRemaining <= 2 ? 'text-amber-600 dark:text-amber-400' :
-                            'text-muted-foreground'
-                          }`}>
+                          <span
+                            className={`text-xs tabular-nums ${
+                              p.epochsRemaining <= 1
+                                ? 'text-red-600 dark:text-red-400 font-semibold'
+                                : p.epochsRemaining <= 2
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-muted-foreground'
+                            }`}
+                          >
                             {p.epochsRemaining} epoch{p.epochsRemaining !== 1 ? 's' : ''}
                           </span>
                         ) : (
@@ -480,7 +532,8 @@ function SortableHeader({
     >
       <span className="inline-flex items-center gap-1">
         {children}
-        {active && (dir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+        {active &&
+          (dir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
       </span>
     </TableHead>
   );
@@ -508,13 +561,23 @@ function StatCard({
           {icon}
           <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</span>
           {pro && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-primary/10 text-primary border-primary/30">Pro</Badge>
+            <Badge
+              variant="outline"
+              className="text-[9px] px-1 py-0 bg-primary/10 text-primary border-primary/30"
+            >
+              Pro
+            </Badge>
           )}
         </div>
-        <p className={`text-lg font-bold tabular-nums ${
-          highlight ? 'text-green-600 dark:text-green-400' :
-          warn ? 'text-amber-600 dark:text-amber-400' : ''
-        }`}>
+        <p
+          className={`text-lg font-bold tabular-nums ${
+            highlight
+              ? 'text-green-600 dark:text-green-400'
+              : warn
+                ? 'text-amber-600 dark:text-amber-400'
+                : ''
+          }`}
+        >
           {value}
         </p>
       </CardContent>
@@ -528,7 +591,9 @@ function InboxSkeleton() {
       <Skeleton className="h-4 w-32 mb-3" />
       <Skeleton className="h-8 w-64 mb-6" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+        {[...Array(4)].map((_, i) => (
+          <Skeleton key={i} className="h-20 w-full" />
+        ))}
       </div>
       <Skeleton className="h-[400px] w-full" />
     </div>
@@ -559,7 +624,8 @@ function NotADRepCTA() {
           <Shield className="h-12 w-12 mx-auto text-muted-foreground" />
           <h2 className="text-xl font-bold">DRep Access Required</h2>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            The Governance Inbox is available for registered DReps. Connect the wallet associated with your DRep registration.
+            The Governance Inbox is available for registered DReps. Connect the wallet associated
+            with your DRep registration.
           </p>
           <Link href="/dashboard">
             <Button variant="outline" className="gap-2 mt-2">
@@ -589,11 +655,11 @@ function AdminDRepSwitcher({
     if (!query) return drepList.slice(0, 50);
     const q = query.toLowerCase();
     return drepList
-      .filter(d => (d.name?.toLowerCase().includes(q)) || d.drepId.toLowerCase().includes(q))
+      .filter((d) => d.name?.toLowerCase().includes(q) || d.drepId.toLowerCase().includes(q))
       .slice(0, 50);
   }, [drepList, query]);
 
-  const selectedName = drepList.find(d => d.drepId === selectedDRepId)?.name;
+  const selectedName = drepList.find((d) => d.drepId === selectedDRepId)?.name;
 
   useEffect(() => {
     if (!open) return;
@@ -609,7 +675,10 @@ function AdminDRepSwitcher({
   return (
     <div className="mb-6" ref={dropdownRef}>
       <div className="flex items-center gap-2 mb-2">
-        <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+        <Badge
+          variant="outline"
+          className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+        >
           Admin
         </Badge>
         <span className="text-xs text-muted-foreground">View any DRep&apos;s inbox</span>
@@ -621,9 +690,7 @@ function AdminDRepSwitcher({
           onClick={() => setOpen(!open)}
         >
           <span className="truncate">
-            {selectedDRepId
-              ? (selectedName || selectedDRepId.slice(0, 20) + '…')
-              : 'Select a DRep…'}
+            {selectedDRepId ? selectedName || selectedDRepId.slice(0, 20) + '…' : 'Select a DRep…'}
           </span>
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -636,20 +703,26 @@ function AdminDRepSwitcher({
                   placeholder="Search DReps…"
                   className="pl-8 h-9 text-sm"
                   value={query}
-                  onChange={e => setQuery(e.target.value)}
+                  onChange={(e) => setQuery(e.target.value)}
                   autoFocus
                 />
               </div>
             </div>
             <div className="max-h-60 overflow-y-auto p-1">
-              {filtered.map(d => (
+              {filtered.map((d) => (
                 <button
                   key={d.drepId}
                   className="w-full text-left px-3 py-2 text-sm rounded hover:bg-muted flex items-center justify-between"
-                  onClick={() => { onSelect(d.drepId); setOpen(false); setQuery(''); }}
+                  onClick={() => {
+                    onSelect(d.drepId);
+                    setOpen(false);
+                    setQuery('');
+                  }}
                 >
                   <span className="truncate">{d.name || d.drepId.slice(0, 20) + '…'}</span>
-                  <span className="text-xs text-muted-foreground tabular-nums ml-2">{d.drepScore}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums ml-2">
+                    {d.drepScore}
+                  </span>
                 </button>
               ))}
               {filtered.length === 0 && (

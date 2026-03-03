@@ -109,9 +109,16 @@ export interface ProposalInfo {
   proposal_tx_hash: string;
   proposal_index: number;
   proposal_id: string; // CIP-129 bech32 gov_action1... format
-  proposal_type: 'TreasuryWithdrawals' | 'ParameterChange' | 'HardForkInitiation' 
-                | 'InfoAction' | 'NoConfidence' | 'NewCommittee' | 'NewConstitution'
-                | 'NewConstitutionalCommittee' | 'UpdateConstitution';
+  proposal_type:
+    | 'TreasuryWithdrawals'
+    | 'ParameterChange'
+    | 'HardForkInitiation'
+    | 'InfoAction'
+    | 'NoConfidence'
+    | 'NewCommittee'
+    | 'NewConstitution'
+    | 'NewConstitutionalCommittee'
+    | 'UpdateConstitution';
   proposal_description: string | null;
   deposit: string;
   return_address: string;
@@ -142,10 +149,12 @@ export interface ProposalInfo {
   } | null;
   meta_comment: string | null;
   meta_is_valid: boolean | null;
-  withdrawal: {
-    stake_address: string;
-    amount: string;
-  }[] | null;
+  withdrawal:
+    | {
+        stake_address: string;
+        amount: string;
+      }[]
+    | null;
   param_proposal: Record<string, unknown> | null;
   block_time: number;
 }

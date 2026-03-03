@@ -1,20 +1,18 @@
 'use client';
 
-import {
-  useEffect,
-  useRef,
-  useImperativeHandle,
-  forwardRef,
-  useState,
-  useMemo,
-} from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Instances, Instance, CameraControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { computeLayout } from '@/lib/constellation/layout';
 import { getIdentityColor } from '@/lib/drepIdentity';
-import type { ConstellationApiData, FindMeTarget, ConstellationNode3D, ConstellationEdge3D } from '@/lib/constellation/types';
+import type {
+  ConstellationApiData,
+  FindMeTarget,
+  ConstellationNode3D,
+  ConstellationEdge3D,
+} from '@/lib/constellation/types';
 
 export interface ConstellationRef {
   findMe: (target: FindMeTarget) => Promise<void>;
@@ -47,8 +45,13 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
     const cameraControlsRef = useRef<CameraControls>(null);
     const [ready, setReady] = useState(false);
     const [sceneState, setSceneState] = useState<SceneState>({
-      nodes: [], edges: [], nodeMap: new Map(),
-      highlightId: null, dimmed: false, pulseId: null, animating: false,
+      nodes: [],
+      edges: [],
+      nodeMap: new Map(),
+      highlightId: null,
+      dimmed: false,
+      pulseId: null,
+      animating: false,
     });
     const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
 
@@ -56,55 +59,71 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
       findMe: async (target: FindMeTarget) => {
         const controls = cameraControlsRef.current;
         if (!controls || sceneState.nodes.length === 0) return;
-        setSceneState(prev => ({ ...prev, animating: true }));
+        setSceneState((prev) => ({ ...prev, animating: true }));
 
         if (target.type === 'undelegated') {
           const edgePos: [number, number, number] = [10, -5, 2];
-          setSceneState(prev => ({
+          setSceneState((prev) => ({
             ...prev,
             highlightId: '__user__',
             dimmed: true,
-            nodes: [...prev.nodes, {
-              id: '__user__', name: 'You', power: 0, score: 50,
-              dominant: 'transparency', alignments: [50, 50, 50, 50, 50, 50],
-              position: edgePos, scale: 0.08,
-            }],
+            nodes: [
+              ...prev.nodes,
+              {
+                id: '__user__',
+                name: 'You',
+                power: 0,
+                score: 50,
+                dominant: 'transparency',
+                alignments: [50, 50, 50, 50, 50, 50],
+                position: edgePos,
+                scale: 0.08,
+              },
+            ],
           }));
           const mid: [number, number, number] = [5, -2.5, 1];
           await controls.setLookAt(mid[0], mid[1], 16, mid[0], mid[1], 0, true);
           await sleep(2000);
-          setSceneState(prev => ({ ...prev, animating: false }));
+          setSceneState((prev) => ({ ...prev, animating: false }));
           onContracted?.();
           return;
         }
 
         const drepId = target.drepId;
-        if (!drepId) { setSceneState(prev => ({ ...prev, animating: false })); onContracted?.(); return; }
+        if (!drepId) {
+          setSceneState((prev) => ({ ...prev, animating: false }));
+          onContracted?.();
+          return;
+        }
 
         const node = sceneState.nodeMap.get(drepId);
-        if (!node) { setSceneState(prev => ({ ...prev, animating: false })); onContracted?.(); return; }
+        if (!node) {
+          setSceneState((prev) => ({ ...prev, animating: false }));
+          onContracted?.();
+          return;
+        }
 
-        setSceneState(prev => ({ ...prev, highlightId: drepId, dimmed: true }));
+        setSceneState((prev) => ({ ...prev, highlightId: drepId, dimmed: true }));
 
         const [x, y, z] = node.position;
         await controls.setLookAt(x, y, z + 5, x, y, z, true);
         await sleep(2000);
 
-        setSceneState(prev => ({ ...prev, highlightId: null, dimmed: false }));
+        setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false }));
         await controls.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
         await sleep(800);
-        setSceneState(prev => ({ ...prev, animating: false }));
+        setSceneState((prev) => ({ ...prev, animating: false }));
         onContracted?.();
       },
 
       pulseNode: (drepId: string) => {
-        setSceneState(prev => ({ ...prev, pulseId: drepId }));
-        setTimeout(() => setSceneState(prev => ({ ...prev, pulseId: null })), 1200);
+        setSceneState((prev) => ({ ...prev, pulseId: drepId }));
+        setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 1200);
       },
 
       resetCamera: () => {
         cameraControlsRef.current?.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
-        setSceneState(prev => ({ ...prev, highlightId: null, dimmed: false }));
+        setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false }));
       },
     }));
 
@@ -124,17 +143,20 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
           const { nodes, edges, nodeMap } = computeLayout(data.nodes, nodeLimit);
           if (cancelled) return;
 
-          setSceneState(prev => ({ ...prev, nodes, edges, nodeMap }));
+          setSceneState((prev) => ({ ...prev, nodes, edges, nodeMap }));
           setReady(true);
           onReady?.();
         } catch (err) {
           console.error('Constellation init failed:', err);
         }
       })();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }, [onReady]);
 
-    const dpr = quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);
+    const dpr =
+      quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);
 
     return (
       <div
@@ -146,7 +168,13 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
             dpr={dpr}
             camera={{ position: INITIAL_CAMERA, fov: 60 }}
             gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+            }}
             role="img"
             aria-label="Interactive 3D visualization of Cardano governance showing DRep representatives as a glowing constellation"
           >
@@ -188,13 +216,16 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
         )}
       </div>
     );
-  }
+  },
 );
 
 // --- Scene sub-components ---
 
 function ConstellationNodes({
-  nodes, highlightId, dimmed, pulseId,
+  nodes,
+  highlightId,
+  dimmed,
+  pulseId,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -210,8 +241,8 @@ function ConstellationNodes({
 
   if (nodes.length === 0 || !frameReady) return null;
 
-  const regularNodes = nodes.filter(n => !n.isAnchor);
-  const anchorNodes = nodes.filter(n => n.isAnchor);
+  const regularNodes = nodes.filter((n) => !n.isAnchor);
+  const anchorNodes = nodes.filter((n) => n.isAnchor);
 
   return (
     <>
@@ -223,20 +254,13 @@ function ConstellationNodes({
           toneMapped={false}
           transparent
         />
-        {regularNodes.map(node => {
+        {regularNodes.map((node) => {
           const color = getIdentityColor(node.dominant);
           const isHighlighted = highlightId === node.id;
           const isPulsing = pulseId === node.id;
           const s = isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale;
 
-          return (
-            <Instance
-              key={node.id}
-              position={node.position}
-              scale={s}
-              color={color.hex}
-            />
-          );
+          return <Instance key={node.id} position={node.position} scale={s} color={color.hex} />;
         })}
       </Instances>
 
@@ -248,15 +272,10 @@ function ConstellationNodes({
           toneMapped={false}
           transparent
         />
-        {anchorNodes.map(node => {
+        {anchorNodes.map((node) => {
           const color = getIdentityColor(node.dominant);
           return (
-            <Instance
-              key={node.id}
-              position={node.position}
-              scale={node.scale}
-              color={color.hex}
-            />
+            <Instance key={node.id} position={node.position} scale={node.scale} color={color.hex} />
           );
         })}
       </Instances>
@@ -341,10 +360,7 @@ function AmbientStarfield({ count }: { count: number }) {
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[points, 3]}
-        />
+        <bufferAttribute attach="attributes-position" args={[points, 3]} />
       </bufferGeometry>
       <pointsMaterial
         size={0.06}
@@ -417,14 +433,18 @@ function ShootingStars() {
     stateRef.current.timer -= delta;
     if (stateRef.current.timer <= 0) {
       stateRef.current.timer = SPAWN_MIN_S + Math.random() * (SPAWN_MAX_S - SPAWN_MIN_S);
-      const slot = meteors.find(m => !m.active);
+      const slot = meteors.find((m) => !m.active);
       if (slot) {
         const angle = Math.random() * Math.PI * 2;
         const r = 13 + Math.random() * 5;
         slot.start.set(Math.cos(angle) * r, Math.sin(angle) * r, (Math.random() - 0.5) * 8);
         const endAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
         const endR = 1 + Math.random() * 6;
-        slot.end.set(Math.cos(endAngle) * endR, Math.sin(endAngle) * endR, (Math.random() - 0.5) * 6);
+        slot.end.set(
+          Math.cos(endAngle) * endR,
+          Math.sin(endAngle) * endR,
+          (Math.random() - 0.5) * 6,
+        );
         slot.progress = 0;
         slot.speed = 0.5 + Math.random() * 0.4;
         slot.active = true;
@@ -436,10 +456,17 @@ function ShootingStars() {
       const mesh = group.children[i] as THREE.Mesh;
       if (!mesh) continue;
 
-      if (!m.active) { mesh.visible = false; continue; }
+      if (!m.active) {
+        mesh.visible = false;
+        continue;
+      }
 
       m.progress += delta * m.speed;
-      if (m.progress >= 1) { m.active = false; mesh.visible = false; continue; }
+      if (m.progress >= 1) {
+        m.active = false;
+        mesh.visible = false;
+        continue;
+      }
 
       _pos.current.lerpVectors(m.start, m.end, m.progress);
       mesh.position.copy(_pos.current);
@@ -476,7 +503,10 @@ function ShootingStars() {
   );
 }
 
-function AutoRotate({ controlsRef, enabled }: {
+function AutoRotate({
+  controlsRef,
+  enabled,
+}: {
   controlsRef: { current: { azimuthAngle: number } | null };
   enabled: boolean;
 }) {
@@ -491,7 +521,7 @@ function AutoRotate({ controlsRef, enabled }: {
 // --- Helpers ---
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function estimateGPUTier(): 'low' | 'mid' | 'high' {

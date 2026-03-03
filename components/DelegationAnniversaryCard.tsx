@@ -68,9 +68,7 @@ export function DelegationAnniversaryCard({
             <Icon className="h-5 w-5 text-amber-500" />
           </div>
           <div>
-            <h3 className="font-semibold text-base leading-tight">
-              {milestone.label}!
-            </h3>
+            <h3 className="font-semibold text-base leading-tight">{milestone.label}!</h3>
             <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
           </div>
         </div>

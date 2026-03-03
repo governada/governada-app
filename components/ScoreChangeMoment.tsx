@@ -24,8 +24,8 @@ export function ScoreChangeMoment({ drepId, drepName, currentScore }: ScoreChang
 
   useEffect(() => {
     fetch(`/api/dashboard/score-change?drepId=${encodeURIComponent(drepId)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (data?.delta && Math.abs(data.delta) >= 3) {
           setChange(data);
           posthog.capture('score_change_moment_viewed', {

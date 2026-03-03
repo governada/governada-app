@@ -39,7 +39,9 @@ export function DashboardUrgentBar({ drepId }: DashboardUrgentBarProps) {
       .catch(() => {});
   }, [drepId]);
 
-  const visibleUnexplained = unexplained.filter(v => !dismissedExplain.has(`${v.txHash}-${v.index}`));
+  const visibleUnexplained = unexplained.filter(
+    (v) => !dismissedExplain.has(`${v.txHash}-${v.index}`),
+  );
 
   if (proposals.length === 0 && visibleUnexplained.length === 0) return null;
 
@@ -101,7 +103,10 @@ export function DashboardUrgentBar({ drepId }: DashboardUrgentBarProps) {
           </p>
           <div className="space-y-2">
             {visibleUnexplained.slice(0, 3).map((v) => (
-              <div key={`${v.txHash}-${v.index}`} className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors">
+              <div
+                key={`${v.txHash}-${v.index}`}
+                className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors"
+              >
                 <Link
                   href={`/proposals/${v.txHash}/${v.index}#explain`}
                   className="flex items-center gap-2 min-w-0 flex-1"
@@ -110,7 +115,9 @@ export function DashboardUrgentBar({ drepId }: DashboardUrgentBarProps) {
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 </Link>
                 <button
-                  onClick={() => setDismissedExplain(prev => new Set([...prev, `${v.txHash}-${v.index}`]))}
+                  onClick={() =>
+                    setDismissedExplain((prev) => new Set([...prev, `${v.txHash}-${v.index}`]))
+                  }
                   className="p-1 rounded hover:bg-muted/50 transition-colors shrink-0"
                   title="Dismiss"
                 >

@@ -1,6 +1,6 @@
 ---
 description: Session protocol, continuous learning, and validation standards
-globs: ["**/*"]
+globs: ['**/*']
 alwaysApply: true
 ---
 
@@ -9,6 +9,7 @@ alwaysApply: true
 > **Read `.cursor/rules/critical.md` FIRST.** It contains 12 non-negotiable rules that override everything in this file when in conflict. Every rule there has caused a production failure or wasted session.
 
 ## Session Start
+
 1. Read `tasks/lessons.md` for relevant patterns before doing anything
 2. Read `tasks/todo.md` for any in-progress work from prior sessions
 3. Orient to current state: check git status, recent commits, any open PRs
@@ -20,6 +21,7 @@ alwaysApply: true
    - `git branch -r --no-merged origin/main | Where-Object { $_ -notmatch "dependabot" }` — for each result, check if it was **squash-merged** by running `gh pr list --head <branch> --state merged --json number --jq length`. Squash merges are invisible to `--no-merged`. If merged, delete. If genuinely unmerged and older than ~2 sessions, flag for triage (ship, close, or rebase) before starting new work.
 
 ## Planning Phase (Required for 3+ step tasks)
+
 1. Review `tasks/lessons.md` for patterns that appeared 2+ times — propose promoting to cursor rule before proceeding
 2. Apply first-principles checklist (see below)
 3. Write a plan document to `.cursor/plans/<feature-name>.plan.md` with: goals, approach, phases, affected files/systems, validation gates, and analytics considerations
@@ -28,7 +30,9 @@ alwaysApply: true
 6. **Commit the plan to `main` before creating a worktree.** This is mandatory — the plan must be in the repo so the new worktree conversation can read it. Use commit message: `docs: plan for <feature>`
 
 ### Session Chunking for Large Features
+
 When a feature spans multiple areas (IA, UX, visual, data, infra), break it into focused sessions of 15-20 changes max. Each session should:
+
 - Have a single theme (e.g., "IA Restructure", "Visual Identity", "DRep Command Center")
 - Be independently deployable and testable
 - Preserve strategic context in a shared doc (e.g., `docs/strategy/`) so future sessions maintain alignment
@@ -37,7 +41,9 @@ When a feature spans multiple areas (IA, UX, visual, data, infra), break it into
 This prevents context degradation, keeps diffs reviewable, and allows course correction between sessions.
 
 ### First-Principles Checklist
+
 Before any plan is finalized, answer:
+
 - **What's the actual problem?** → If the user proposes a solution, diagnose the underlying constraint first. The simplest fix is often the platform's own feature, not an external tool.
 - **What's the cost?** → For any decision involving paid tools, infra changes, or migrations, do the cost math before building. What plan, what budget, what does the current platform offer?
 - Will this feature need persistent storage? → Start with DB migration, not frontend
@@ -48,6 +54,7 @@ Before any plan is finalized, answer:
 - Is there a more elegant approach? → If the solution feels hacky, pause and reconsider
 
 ## Build Phase
+
 - **Branch check (step 0)**: Before writing any code, run `git branch --show-current`. If on `main` and the task is not a single-commit hotfix, **STOP and create a feature branch or worktree first**. See `git-branch-hygiene.mdc` for the decision logic. This check prevents the most common workflow violation.
 - **Research before build**: For any new library/API integration, produce a research summary (exact API calls, response shapes, known gotchas) before writing implementation code
 - **Fast validation**: For any pipeline (sync, migration, backfill), validate first 3-5 results before running to completion. Report validation results before proceeding. Do NOT wait on long processes without checking intermediate results
@@ -59,6 +66,7 @@ Before any plan is finalized, answer:
 - **Deprecation audit**: When removing or replacing a system (preferences, wizard, scoring model, etc.), search for all consumers of its **data and state** — not just direct imports of deleted files. Hooks, effects, API routes, and conditional logic that depend on the removed system's output will silently break if not updated.
 
 ## Continuous Learning Protocol
+
 - **On correction**: When the user corrects you on ANYTHING, immediately append to `tasks/lessons.md` with: date, pattern, context, takeaway
 - **On surprise**: When an API/library behaves unexpectedly, log it
 - **On rework**: When a plan changes mid-execution, log why
@@ -159,6 +167,7 @@ When all code changes compile clean (`npx tsc --noEmit`), run these steps **imme
    When CI passes, Railway deploy follows automatically. Hit the affected page on `drepscore.io` to smoke-test.
 
 **After deploying:**
+
 - Check if something was learned during the build → update `tasks/lessons.md`
 - Clean up: no stale files, no debug `console.log`s left behind
 - **Branch cleanup**: GitHub auto-deletes the remote head branch on merge. Also delete the local branch: `git checkout main ; git branch -D <branch-name>`. Never leave a local branch pointing at merged work.
@@ -166,11 +175,14 @@ When all code changes compile clean (`npx tsc --noEmit`), run these steps **imme
 - Concise summary of changes unless deep review is requested
 
 **Additional rules:**
+
 - **Dependency safety**: Never `npm uninstall` a package without checking if it exists in production deps. Use `npx` for one-time scripts to avoid touching `package.json`.
 - **Self-resolve**: Deploy failures from your changes are your responsibility. Fix and re-push — do not wait for the user to report it.
 
 ### Analytics Completion Checklist
+
 Before marking a feature complete, verify all five layers. "Analytics inline" catches most events during build, but these are the gaps that consistently slip through:
+
 1. **Client events**: Every new component that renders user-visible content has a `_viewed` event; every interaction (click, toggle, dismiss) has an action event
 2. **Server events**: Every POST/PUT API route captures a server event via `captureServerEvent()` with the wallet address as distinctId
 3. **Observable loaders**: Any new Supabase table or data dimension has a corresponding `analytics/src/data/*.json.ts` loader
@@ -182,6 +194,7 @@ Before marking a feature complete, verify all five layers. "Analytics inline" ca
 DRepScore must be unmistakably premium. Every user-facing surface should look and feel like it was purpose-built — not assembled from a component library. This principle overrides default engineering instincts toward simplicity or minimal bundle size.
 
 **Decision framework for implementation approach:**
+
 1. **Default to the most visually distinctive option.** When choosing between Recharts vs. custom SVG, CSS animations vs. physics-based (Framer Motion/spring), standard components vs. bespoke visualizations — default to the one that produces a result no other app has. The user must explicitly request the simpler option.
 2. **Performance is a constraint, not a goal.** Lazy-loading (`next/dynamic`, `ssr: false`), code splitting, adaptive quality tiers (GPU detection), and progressive enhancement handle most bundle concerns. A 200KB lazy-loaded package with zero LCP impact is always acceptable if it produces a premium result.
 3. **Every screenshot must be unmistakably DRepScore.** If a component could exist in any shadcn/Next.js app, it needs more work. Custom visualizations (radar, hex score, constellation), branded animations, identity-colored accents, and dark-mode-first polish are the baseline.
@@ -190,7 +203,9 @@ DRepScore must be unmistakably premium. Every user-facing surface should look an
 **Apply this to:** hero sections, profile pages, data visualizations, OG images, share cards, onboarding flows, and any surface that represents the brand. **Exception:** admin tools, internal dashboards, and developer-facing surfaces can be functional over beautiful.
 
 ## Proactive Advocacy Protocol
+
 You are the CTO. Act like it. Do not defer to the path of least resistance.
+
 - **Architecture**: When a simple and robust path both exist, recommend the robust path first. Explain the tradeoff. Let the user choose to simplify — never the reverse.
 - **Tooling**: During planning phases or at milestones, proactively check: are there new tools, MCPs, platform features, or workflow improvements that would materially help? Surface them without being asked.
 - **Push back early**: If a request would create technical debt, say so immediately with a concrete alternative. Do not silently comply and let the user discover the problem later.
@@ -198,19 +213,20 @@ You are the CTO. Act like it. Do not defer to the path of least resistance.
 - **Visual quality**: When proposing implementation for any user-facing visual, always recommend the approach that maximizes distinctiveness. Reference the "Ambitious by Default" principle above.
 
 ## Mode Awareness
+
 If the user's message is a question, discussion, or exploration (not a request for changes), suggest switching to **Ask mode** for cost efficiency. Agent mode burns tokens on tool definitions and proactive exploration that aren't needed for conversation.
 
 ## Shell Compatibility (PowerShell — mandatory patterns)
 
 This project runs on Windows with PowerShell. **Do not attempt bash syntax and then fix it — use these patterns from the start.** Agents have failed on these patterns 5+ times; there are no exceptions.
 
-| Task | Correct (PowerShell) | Wrong (bash — will fail) |
-|------|---------------------|--------------------------|
-| Chain commands | `cmd1 ; cmd2` or separate Shell calls | `cmd1 && cmd2` |
-| Multi-line commit | Write to `.git/COMMIT_MSG`, then `git commit -F .git/COMMIT_MSG` | `git commit -m "$(cat <<'EOF'..."` |
+| Task               | Correct (PowerShell)                                                        | Wrong (bash — will fail)             |
+| ------------------ | --------------------------------------------------------------------------- | ------------------------------------ |
+| Chain commands     | `cmd1 ; cmd2` or separate Shell calls                                       | `cmd1 && cmd2`                       |
+| Multi-line commit  | Write to `.git/COMMIT_MSG`, then `git commit -F .git/COMMIT_MSG`            | `git commit -m "$(cat <<'EOF'..."`   |
 | Multi-line PR body | Write to `.git/PR_BODY.md`, then `gh pr create --body-file .git/PR_BODY.md` | `gh pr create --body "line1\nline2"` |
-| Search files | Use Grep tool or `rg` | `grep`, `head`, `tail` |
-| Read files | Use Read tool | `cat`, `less`, `head` |
+| Search files       | Use Grep tool or `rg`                                                       | `grep`, `head`, `tail`               |
+| Read files         | Use Read tool                                                               | `cat`, `less`, `head`                |
 
 ## Git Hygiene Policy
 
@@ -223,6 +239,7 @@ This project runs on Windows with PowerShell. **Do not attempt bash syntax and t
 **One branch per task**: Do not work across multiple branches in parallel unless using worktrees. Parallel local branches lead to stash accumulation and conflict debt.
 
 ## Anti-Patterns (Do Not)
+
 - Do NOT create `*_STATUS_REPORT.md` files in the project root — use `tasks/todo.md` for tracking
 - Do NOT proceed past a failed or unvalidated step
 - Do NOT build features that bypass the Supabase cache layer

@@ -21,7 +21,7 @@ export function ProposalExplainer({ txHash, index, cachedExplanation }: Proposal
 
   const generate = useCallback(async () => {
     if (explanation) {
-      setExpanded(e => !e);
+      setExpanded((e) => !e);
       return;
     }
 
@@ -58,12 +58,19 @@ export function ProposalExplainer({ txHash, index, cachedExplanation }: Proposal
             <Sparkles className="h-4 w-4 text-primary" />
           )}
           <span className="text-sm font-semibold text-primary">
-            {loading ? 'Generating explanation...' : explanation ? 'AI Explanation' : 'Explain this proposal'}
+            {loading
+              ? 'Generating explanation...'
+              : explanation
+                ? 'AI Explanation'
+                : 'Explain this proposal'}
           </span>
         </div>
-        {explanation && (
-          expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
+        {explanation &&
+          (expanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ))}
       </button>
 
       <AnimatePresence>

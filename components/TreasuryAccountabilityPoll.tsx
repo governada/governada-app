@@ -25,8 +25,18 @@ interface Props {
 }
 
 const RATING_OPTIONS = [
-  { value: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-green-600 dark:text-green-400' },
-  { value: 'partial', label: 'Partially Delivered', icon: AlertCircle, color: 'text-amber-600 dark:text-amber-400' },
+  {
+    value: 'delivered',
+    label: 'Delivered',
+    icon: CheckCircle2,
+    color: 'text-green-600 dark:text-green-400',
+  },
+  {
+    value: 'partial',
+    label: 'Partially Delivered',
+    icon: AlertCircle,
+    color: 'text-amber-600 dark:text-amber-400',
+  },
   { value: 'not_delivered', label: 'Did Not Deliver', icon: XCircle, color: 'text-red-500' },
   { value: 'too_early', label: 'Too Early to Tell', icon: Clock, color: 'text-muted-foreground' },
 ] as const;
@@ -48,11 +58,14 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isEnacted) { setLoading(false); return; }
+    if (!isEnacted) {
+      setLoading(false);
+      return;
+    }
 
     fetch(`/api/treasury/accountability?txHash=${txHash}&index=${proposalIndex}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (data?.polls) setPolls(data.polls);
         setLoading(false);
       })
@@ -61,8 +74,10 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
 
   if (!isEnacted || loading) return null;
 
-  const openPoll = polls.find(p => p.status === 'open');
-  const closedPolls = polls.filter(p => p.status === 'closed').sort((a, b) => b.cycle_number - a.cycle_number);
+  const openPoll = polls.find((p) => p.status === 'open');
+  const closedPolls = polls
+    .filter((p) => p.status === 'closed')
+    .sort((a, b) => b.cycle_number - a.cycle_number);
 
   const handleSubmit = async () => {
     if (!selectedRating || !selectedApproval || !address || !openPoll) return;
@@ -102,7 +117,8 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
       <Card>
         <CardContent className="py-4 text-center text-sm text-muted-foreground">
           <Clock className="h-5 w-5 mx-auto mb-2 opacity-50" />
-          Accountability poll not yet open. Polls are scheduled based on proposal size and time since enactment.
+          Accountability poll not yet open. Polls are scheduled based on proposal size and time
+          since enactment.
         </CardContent>
       </Card>
     );
@@ -114,7 +130,11 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
         <CardTitle className="text-sm flex items-center gap-2">
           <Scale className="h-4 w-4 text-primary" />
           Treasury Accountability
-          {openPoll && <Badge variant="secondary" className="text-xs">Cycle {openPoll.cycle_number}</Badge>}
+          {openPoll && (
+            <Badge variant="secondary" className="text-xs">
+              Cycle {openPoll.cycle_number}
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -126,7 +146,7 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
             </p>
 
             <div className="grid grid-cols-2 gap-2">
-              {RATING_OPTIONS.map(opt => {
+              {RATING_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 return (
                   <button
@@ -151,7 +171,7 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
                   Knowing the outcome, would you approve this spending again?
                 </p>
                 <div className="flex gap-2">
-                  {APPROVAL_OPTIONS.map(opt => (
+                  {APPROVAL_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       onClick={() => setSelectedApproval(opt.value)}
@@ -172,13 +192,15 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
               <div>
                 <textarea
                   value={evidence}
-                  onChange={e => setEvidence(e.target.value)}
+                  onChange={(e) => setEvidence(e.target.value)}
                   placeholder="Optional: Share evidence or reasoning (max 500 chars)"
                   maxLength={500}
                   className="w-full p-3 rounded-lg border bg-background text-sm resize-none"
                   rows={3}
                 />
-                <div className="text-xs text-muted-foreground text-right">{evidence.length}/500</div>
+                <div className="text-xs text-muted-foreground text-right">
+                  {evidence.length}/500
+                </div>
               </div>
             )}
 
@@ -201,7 +223,9 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
           <div className="text-center py-4">
             <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <p className="text-sm font-medium">Assessment submitted</p>
-            <p className="text-xs text-muted-foreground">Thank you for contributing to treasury accountability.</p>
+            <p className="text-xs text-muted-foreground">
+              Thank you for contributing to treasury accountability.
+            </p>
           </div>
         )}
 
@@ -209,7 +233,7 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
         {closedPolls.length > 0 && (
           <div className="space-y-3 pt-2 border-t">
             <div className="text-xs font-medium text-muted-foreground">Previous Assessments</div>
-            {closedPolls.map(poll => {
+            {closedPolls.map((poll) => {
               const ratings = poll.results_summary?.ratings || {};
               const total = poll.results_summary?.totalResponses || 0;
               return (
@@ -220,7 +244,7 @@ export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }:
                   </div>
                   <div className="flex gap-3 text-xs">
                     {Object.entries(ratings).map(([key, count]) => {
-                      const ratingOpt = RATING_OPTIONS.find(r => r.value === key);
+                      const ratingOpt = RATING_OPTIONS.find((r) => r.value === key);
                       if (!ratingOpt) return null;
                       const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (

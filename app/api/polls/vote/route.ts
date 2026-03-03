@@ -33,9 +33,7 @@ async function authenticateRequest(request: NextRequest): Promise<string | null>
   return session?.walletAddress ?? null;
 }
 
-async function lookupDelegation(
-  stakeAddress: string
-): Promise<string | null> {
+async function lookupDelegation(stakeAddress: string): Promise<string | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
     const apiKey = process.env.KOIOS_API_KEY;
@@ -60,7 +58,12 @@ async function lookupDelegation(
   }
 }
 
-function aggregateCounts(rows: { vote: string }[]): { yes: number; no: number; abstain: number; total: number } {
+function aggregateCounts(rows: { vote: string }[]): {
+  yes: number;
+  no: number;
+  abstain: number;
+  total: number;
+} {
   const counts = { yes: 0, no: 0, abstain: 0, total: rows.length };
   for (const row of rows) {
     if (row.vote === 'yes') counts.yes++;
@@ -80,7 +83,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  let body: { proposalTxHash?: string; proposalIndex?: number; vote?: string; stakeAddress?: string; delegatedDrepId?: string };
+  let body: {
+    proposalTxHash?: string;
+    proposalIndex?: number;
+    vote?: string;
+    stakeAddress?: string;
+    delegatedDrepId?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -160,7 +169,9 @@ export async function POST(request: NextRequest) {
       .eq('proposal_index', proposalIndex)
       .single();
     proposalTitle = proposal?.title || null;
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 
   supabase
     .from('governance_events')

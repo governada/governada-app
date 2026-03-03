@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
-import {
-  extractAlignments,
-  alignmentsToArray,
-  getDominantDimension,
-} from '@/lib/drepIdentity';
+import { extractAlignments, alignmentsToArray, getDominantDimension } from '@/lib/drepIdentity';
 import type { ConstellationApiData } from '@/lib/constellation/types';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +17,7 @@ export async function GET() {
         supabase
           .from('dreps')
           .select(
-            'id, score, info, size_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency'
+            'id, score, info, size_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
           )
           .eq('info->>isActive', 'true'),
 
@@ -41,7 +37,9 @@ export async function GET() {
 
         supabase
           .from('proposals')
-          .select('tx_hash, proposal_index, title, proposal_type, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch')
+          .select(
+            'tx_hash, proposal_index, title, proposal_type, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+          )
           .order('created_at', { ascending: false })
           .limit(20),
 
@@ -71,14 +69,13 @@ export async function GET() {
           : `${Math.round(totalAda).toLocaleString()}`;
 
     const openProposals = proposals.filter(
-      (p: any) =>
-        !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch
+      (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
     );
 
     // Build nodes
     const maxPower = Math.max(
       ...dreps.map((d: any) => parseInt(d.info?.votingPowerLovelace || '0', 10) || 0),
-      1
+      1,
     );
 
     const nodes: ConstellationApiData['nodes'] = dreps.map((d: any) => {
@@ -97,9 +94,7 @@ export async function GET() {
 
     // Build recent events
     const drepsMap = new Map(dreps.map((d: any) => [d.id, d]));
-    const proposalMap = new Map(
-      proposals.map((p: any) => [p.tx_hash, p])
-    );
+    const proposalMap = new Map(proposals.map((p: any) => [p.tx_hash, p]));
 
     const recentEvents: ConstellationApiData['recentEvents'] = [];
 

@@ -59,13 +59,37 @@ function ScoreRing({ score, size = 140 }: { score: number; size?: number }) {
   const color = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444';
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
       <svg width={size} height={size} className="absolute -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted/30" />
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className="text-muted/30"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          className="transition-all duration-1000 ease-out"
+        />
       </svg>
       <div className="flex flex-col items-center">
-        <span className="text-3xl font-bold tabular-nums" style={{ color }}>{score}</span>
+        <span className="text-3xl font-bold tabular-nums" style={{ color }}>
+          {score}
+        </span>
         <span className="text-[10px] text-muted-foreground">/100</span>
       </div>
     </div>
@@ -80,25 +104,42 @@ function PillarBar({ label, value, max }: { label: string; value: number; max: n
     <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground w-24 shrink-0">{label}</span>
       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${color}`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
-      <span className="text-xs font-semibold tabular-nums w-10 text-right">{points}/{max}</span>
+      <span className="text-xs font-semibold tabular-nums w-10 text-right">
+        {points}/{max}
+      </span>
     </div>
   );
 }
 
-function getLowestPillar(p: { participation: number; rationale: number; reliability: number; profile: number }) {
+function getLowestPillar(p: {
+  participation: number;
+  rationale: number;
+  reliability: number;
+  profile: number;
+}) {
   const pillars = [
     { key: 'Participation', value: p.participation },
     { key: 'Rationale', value: p.rationale },
     { key: 'Reliability', value: p.reliability },
     { key: 'Profile', value: p.profile },
   ];
-  return pillars.reduce((min, curr) => curr.value < min.value ? curr : min);
+  return pillars.reduce((min, curr) => (curr.value < min.value ? curr : min));
 }
 
 export function ClaimPageClient({
-  drepId, name, score, participation, rationale, reliability, profile, isClaimed,
+  drepId,
+  name,
+  score,
+  participation,
+  rationale,
+  reliability,
+  profile,
+  isClaimed,
 }: ClaimPageClientProps) {
   const router = useRouter();
   const { isAuthenticated, ownDRepId, connecting, reconnecting } = useWallet();
@@ -108,22 +149,53 @@ export function ClaimPageClient({
   const [claiming, setClaiming] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const lowestPillar = useMemo(() => getLowestPillar({ participation, rationale, reliability, profile }), [participation, rationale, reliability, profile]);
+  const lowestPillar = useMemo(
+    () => getLowestPillar({ participation, rationale, reliability, profile }),
+    [participation, rationale, reliability, profile],
+  );
 
   useEffect(() => {
-    posthog.capture('claim_page_viewed', { drep_id: drepId, drep_score: score, is_claimed: isClaimed });
+    posthog.capture('claim_page_viewed', {
+      drep_id: drepId,
+      drep_score: score,
+      is_claimed: isClaimed,
+    });
     fetch('/api/governance/pulse')
-      .then(r => r.json())
-      .then(d => setPulse({ votesThisWeek: d.votesThisWeek, activeDReps: d.activeDReps, claimedDReps: d.claimedDReps, activeProposals: d.activeProposals }))
+      .then((r) => r.json())
+      .then((d) =>
+        setPulse({
+          votesThisWeek: d.votesThisWeek,
+          activeDReps: d.activeDReps,
+          claimedDReps: d.claimedDReps,
+          activeProposals: d.activeProposals,
+        }),
+      )
       .catch(() => {});
     fetch('/api/dreps?limit=3&sort=score&claimed=true')
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setTopDreps(d.slice(0, 3).map((x: any) => ({ drepId: x.drepId, name: x.name || x.drepId.slice(0, 16), score: x.drepScore }))); })
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d))
+          setTopDreps(
+            d.slice(0, 3).map((x: any) => ({
+              drepId: x.drepId,
+              name: x.name || x.drepId.slice(0, 16),
+              score: x.drepScore,
+            })),
+          );
+      })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || !ownDRepId || ownDRepId !== drepId || isClaimed || claiming || showCelebration) return;
+    if (
+      !isAuthenticated ||
+      !ownDRepId ||
+      ownDRepId !== drepId ||
+      isClaimed ||
+      claiming ||
+      showCelebration
+    )
+      return;
     const token = getStoredSession();
     if (!token) return;
     setClaiming(true);
@@ -133,10 +205,14 @@ export function ClaimPageClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionToken: token, drepId }),
     })
-      .then(r => r.json())
-      .then(d => {
+      .then((r) => r.json())
+      .then((d) => {
         if (d.claimed) {
-          posthog.capture('claim_completed', { drep_id: drepId, drep_score: score, source: 'claim_page' });
+          posthog.capture('claim_completed', {
+            drep_id: drepId,
+            drep_score: score,
+            source: 'claim_page',
+          });
           setShowCelebration(true);
           posthog.capture('claim_celebration_seen', { drep_id: drepId });
         }
@@ -185,7 +261,9 @@ export function ClaimPageClient({
       <div className="container mx-auto px-4 py-24 max-w-lg text-center space-y-6">
         <Shield className="h-12 w-12 mx-auto text-muted-foreground" />
         <h1 className="text-2xl font-bold">Profile Already Claimed</h1>
-        <p className="text-sm text-muted-foreground">This DRep profile has been claimed by its owner.</p>
+        <p className="text-sm text-muted-foreground">
+          This DRep profile has been claimed by its owner.
+        </p>
         <Link href={`/drep/${encodeURIComponent(drepId)}`}>
           <Button variant="outline" className="gap-2">
             View Public Profile <ExternalLink className="h-4 w-4" />
@@ -199,13 +277,19 @@ export function ClaimPageClient({
     <div className="container mx-auto px-4 py-10 max-w-2xl space-y-8">
       {/* Outcome-driven hero */}
       <div className="text-center space-y-4">
-        <Badge variant="secondary" className="text-xs">Unclaimed Profile</Badge>
+        <Badge variant="secondary" className="text-xs">
+          Unclaimed Profile
+        </Badge>
         <h1 className="text-3xl font-bold tracking-tight">{name}</h1>
         {pulse && (
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            <span className="font-semibold text-foreground">{pulse.votesThisWeek.toLocaleString()}</span> votes cast this week across{' '}
+            <span className="font-semibold text-foreground">
+              {pulse.votesThisWeek.toLocaleString()}
+            </span>{' '}
+            votes cast this week across{' '}
             <span className="font-semibold text-foreground">{pulse.activeDReps}</span> active DReps.
-            Your profile is live. <span className="font-medium text-primary">Own your reputation.</span>
+            Your profile is live.{' '}
+            <span className="font-medium text-primary">Own your reputation.</span>
           </p>
         )}
       </div>
@@ -220,7 +304,9 @@ export function ClaimPageClient({
           <PillarBar label="Profile" value={profile} max={15} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Biggest opportunity: <span className="font-semibold text-foreground">{lowestPillar.key}</span> ({lowestPillar.value}%) — claim to get actionable steps
+          Biggest opportunity:{' '}
+          <span className="font-semibold text-foreground">{lowestPillar.key}</span> (
+          {lowestPillar.value}%) — claim to get actionable steps
         </p>
       </div>
 
@@ -229,7 +315,9 @@ export function ClaimPageClient({
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
           <Lock className="h-6 w-6 text-primary mb-2" />
           <p className="text-sm font-semibold">Unlock your command center</p>
-          <p className="text-xs text-muted-foreground">Governance Inbox, Score Simulator, Delegator Analytics</p>
+          <p className="text-xs text-muted-foreground">
+            Governance Inbox, Score Simulator, Delegator Analytics
+          </p>
         </div>
         <CardContent className="py-6 opacity-40 pointer-events-none select-none">
           <div className="grid grid-cols-2 gap-3">
@@ -246,12 +334,17 @@ export function ClaimPageClient({
       {(pulse?.claimedDReps ?? 0) > 0 && (
         <div className="text-center space-y-3">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{pulse!.claimedDReps}</span> DReps have claimed their profile
+            <span className="font-semibold text-foreground">{pulse!.claimedDReps}</span> DReps have
+            claimed their profile
           </p>
           {topDreps.length > 0 && (
             <div className="flex justify-center gap-3">
-              {topDreps.map(d => (
-                <Link key={d.drepId} href={`/drep/${encodeURIComponent(d.drepId)}`} className="text-center group">
+              {topDreps.map((d) => (
+                <Link
+                  key={d.drepId}
+                  href={`/drep/${encodeURIComponent(d.drepId)}`}
+                  className="text-center group"
+                >
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-1 group-hover:bg-primary/20 transition-colors">
                     <Trophy className="h-4 w-4 text-primary" />
                   </div>
@@ -269,12 +362,36 @@ export function ClaimPageClient({
         <CardContent className="pt-6 space-y-3">
           <h2 className="text-sm font-semibold text-center mb-4">What you unlock</h2>
           <div className="grid gap-2">
-            <ValueProp icon={<BarChart3 className="h-4 w-4 text-primary" />} title="Score Simulator" desc="See exactly how your score changes with each vote and rationale" />
-            <ValueProp icon={<Inbox className="h-4 w-4 text-primary" />} title="Governance Inbox" desc="Prioritized proposals with deadlines, impact scores, and AI rationale drafting" />
-            <ValueProp icon={<Users className="h-4 w-4 text-primary" />} title="Delegator Analytics" desc="Track delegator growth, profile views, and representation alignment" />
-            <ValueProp icon={<TrendingUp className="h-4 w-4 text-primary" />} title="Competitive Context" desc="Your rank, nearby DReps, and a path to the top 10" />
-            <ValueProp icon={<Eye className="h-4 w-4 text-primary" />} title="Notifications" desc="Score changes, delegation shifts, proposal deadlines — push, Discord, or Telegram" />
-            <ValueProp icon={<Sparkles className="h-4 w-4 text-primary" />} title="Milestones & Report Cards" desc="Earn achievement badges and share branded score cards" />
+            <ValueProp
+              icon={<BarChart3 className="h-4 w-4 text-primary" />}
+              title="Score Simulator"
+              desc="See exactly how your score changes with each vote and rationale"
+            />
+            <ValueProp
+              icon={<Inbox className="h-4 w-4 text-primary" />}
+              title="Governance Inbox"
+              desc="Prioritized proposals with deadlines, impact scores, and AI rationale drafting"
+            />
+            <ValueProp
+              icon={<Users className="h-4 w-4 text-primary" />}
+              title="Delegator Analytics"
+              desc="Track delegator growth, profile views, and representation alignment"
+            />
+            <ValueProp
+              icon={<TrendingUp className="h-4 w-4 text-primary" />}
+              title="Competitive Context"
+              desc="Your rank, nearby DReps, and a path to the top 10"
+            />
+            <ValueProp
+              icon={<Eye className="h-4 w-4 text-primary" />}
+              title="Notifications"
+              desc="Score changes, delegation shifts, proposal deadlines — push, Discord, or Telegram"
+            />
+            <ValueProp
+              icon={<Sparkles className="h-4 w-4 text-primary" />}
+              title="Milestones & Report Cards"
+              desc="Earn achievement badges and share branded score cards"
+            />
           </div>
         </CardContent>
       </Card>
@@ -284,10 +401,17 @@ export function ClaimPageClient({
         <Button
           size="lg"
           className="gap-2 text-base px-8"
-          onClick={() => { posthog.capture('claim_wallet_connect_clicked', { drep_id: drepId }); window.dispatchEvent(new Event('openWalletConnect')); }}
+          onClick={() => {
+            posthog.capture('claim_wallet_connect_clicked', { drep_id: drepId });
+            window.dispatchEvent(new Event('openWalletConnect'));
+          }}
           disabled={connecting || reconnecting}
         >
-          {connecting || reconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-5 w-5" />}
+          {connecting || reconnecting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Shield className="h-5 w-5" />
+          )}
           Connect Wallet to Claim
           <ArrowRight className="h-4 w-4" />
         </Button>

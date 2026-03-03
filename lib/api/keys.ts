@@ -27,9 +27,7 @@ export function hashApiKey(rawKey: string): string {
 }
 
 export function generateApiKey(): string {
-  const rand = randomBytes(KEY_BYTE_LENGTH)
-    .toString('base64url')
-    .slice(0, 40);
+  const rand = randomBytes(KEY_BYTE_LENGTH).toString('base64url').slice(0, 40);
   return `${KEY_PREFIX}${rand}`;
 }
 

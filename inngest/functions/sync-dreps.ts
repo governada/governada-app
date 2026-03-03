@@ -12,6 +12,13 @@ export const syncDreps = inngest.createFunction(
   async ({ step }) => {
     const result = await step.run('execute-dreps-sync', () => executeDrepsSync());
     await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_BATCH'));
+
+    // Trigger PCA alignment sync as a follow-on event
+    await step.sendEvent('trigger-alignment-sync', {
+      name: 'drepscore/sync.alignment',
+      data: { triggeredBy: 'sync-dreps' },
+    });
+
     return result;
   },
 );

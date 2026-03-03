@@ -5,15 +5,7 @@ import { getStoredSession } from '@/lib/supabaseAuth';
 import { posthog } from '@/lib/posthog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Vote,
-  Users,
-  TrendingUp,
-  TrendingDown,
-  CheckCircle,
-  Star,
-  Clock,
-} from 'lucide-react';
+import { Vote, Users, TrendingUp, TrendingDown, CheckCircle, Star, Clock } from 'lucide-react';
 
 interface TimelineEvent {
   id: string;
@@ -37,7 +29,10 @@ const EVENT_CONFIG: Record<
   poll_vote: {
     icon: Vote,
     label: (d) => {
-      const vote = String(d.vote || '').charAt(0).toUpperCase() + String(d.vote || '').slice(1);
+      const vote =
+        String(d.vote || '')
+          .charAt(0)
+          .toUpperCase() + String(d.vote || '').slice(1);
       const title = d.proposalTitle ? `on "${d.proposalTitle}"` : 'on a proposal';
       return `You voted ${vote} ${title}`;
     },
@@ -97,15 +92,19 @@ function getEventConfig(event: TimelineEvent) {
     dotColor = delta > 0 ? 'bg-green-500' : delta < 0 ? 'bg-red-500' : 'bg-blue-500';
   } else if (event.type === 'proposal_outcome') {
     const outcome = String(event.data.outcome || '').toLowerCase();
-    dotColor = outcome === 'passed' || outcome === 'enacted'
-      ? 'bg-green-500'
-      : outcome === 'failed' || outcome === 'dropped'
-        ? 'bg-red-500'
-        : 'bg-blue-500';
+    dotColor =
+      outcome === 'passed' || outcome === 'enacted'
+        ? 'bg-green-500'
+        : outcome === 'failed' || outcome === 'dropped'
+          ? 'bg-red-500'
+          : 'bg-blue-500';
   }
 
   return {
-    icon: event.type === 'score_change' && Number(event.data.delta || 0) < 0 ? TrendingDown : config.icon,
+    icon:
+      event.type === 'score_change' && Number(event.data.delta || 0) < 0
+        ? TrendingDown
+        : config.icon,
     label: config.label(event.data),
     dotColor,
   };

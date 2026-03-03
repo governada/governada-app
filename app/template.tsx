@@ -2,11 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useNavDirection } from '@/components/NavDirectionProvider';
-import {
-  pageTransitionVariants,
-  getPageTransition,
-  getPageInitial,
-} from '@/lib/animations';
+import { pageTransitionVariants, getPageTransition, getPageInitial } from '@/lib/animations';
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const direction = useNavDirection();

@@ -89,12 +89,16 @@ export function ActivityFeed({ limit = 10 }: { limit?: number }) {
             const Icon = config.icon;
             return (
               <li key={`${event.timestamp}-${i}`} className="flex items-start gap-3">
-                <div className={`flex items-center justify-center w-7 h-7 rounded-full ${config.bg} shrink-0 mt-0.5`}>
+                <div
+                  className={`flex items-center justify-center w-7 h-7 rounded-full ${config.bg} shrink-0 mt-0.5`}
+                >
                   <Icon className={`h-3.5 w-3.5 ${config.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm leading-snug">{formatEventText(event)}</p>
-                  <span className="text-xs text-muted-foreground">{formatRelativeTime(event.timestamp)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatRelativeTime(event.timestamp)}
+                  </span>
                 </div>
               </li>
             );

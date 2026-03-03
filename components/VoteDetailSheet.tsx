@@ -10,7 +10,18 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Copy, Check, Shield, Zap, Landmark, Eye, Scale, ArrowRight, Sparkles } from 'lucide-react';
+import {
+  ExternalLink,
+  Copy,
+  Check,
+  Shield,
+  Zap,
+  Landmark,
+  Eye,
+  Scale,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { MarkdownContent } from '@/components/MarkdownContent';
@@ -68,12 +79,21 @@ function CopyButton({ text }: { text: string }) {
 
   return (
     <button onClick={handleCopy} className="p-1 rounded hover:bg-muted transition-colors">
-      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+      {copied ? (
+        <Check className="h-3 w-3 text-green-500" />
+      ) : (
+        <Copy className="h-3 w-3 text-muted-foreground" />
+      )}
     </button>
   );
 }
 
-export function VoteDetailSheet({ vote, open, onOpenChange, userPrefs = [] }: VoteDetailSheetProps) {
+export function VoteDetailSheet({
+  vote,
+  open,
+  onOpenChange,
+  userPrefs = [],
+}: VoteDetailSheetProps) {
   if (!vote) return null;
 
   const alignment = evaluateVoteAlignment(
@@ -82,7 +102,7 @@ export function VoteDetailSheet({ vote, open, onOpenChange, userPrefs = [] }: Vo
     vote.proposalType,
     vote.treasuryTier,
     vote.relevantPrefs,
-    userPrefs
+    userPrefs,
   );
 
   const typeInfo = vote.proposalType ? PROPOSAL_TYPE_LABELS[vote.proposalType] : null;
@@ -94,13 +114,19 @@ export function VoteDetailSheet({ vote, open, onOpenChange, userPrefs = [] }: Vo
         <SheetHeader className="pb-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
-              variant={vote.vote === 'Yes' ? 'default' : vote.vote === 'No' ? 'destructive' : 'secondary'}
+              variant={
+                vote.vote === 'Yes' ? 'default' : vote.vote === 'No' ? 'destructive' : 'secondary'
+              }
               className="text-sm"
             >
               {vote.vote}
             </Badge>
             <span className="text-sm text-muted-foreground">
-              {vote.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              {vote.date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
             </span>
             <AlignmentBadge alignment={alignment} />
           </div>
@@ -146,7 +172,13 @@ export function VoteDetailSheet({ vote, open, onOpenChange, userPrefs = [] }: Vo
               <ul className="space-y-1">
                 {alignment.reasons.map((reason, i) => (
                   <li key={i} className="text-sm text-foreground/80 flex items-start gap-2">
-                    <span className={alignment.status === 'aligned' ? 'text-green-500' : 'text-orange-500'}>•</span>
+                    <span
+                      className={
+                        alignment.status === 'aligned' ? 'text-green-500' : 'text-orange-500'
+                      }
+                    >
+                      •
+                    </span>
                     {reason}
                   </li>
                 ))}
@@ -174,7 +206,10 @@ export function VoteDetailSheet({ vote, open, onOpenChange, userPrefs = [] }: Vo
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 {vote.aiSummary ? 'Full Description' : 'Proposal Description'}
               </p>
-              <MarkdownContent content={vote.abstract} className="text-sm text-foreground/90 leading-relaxed" />
+              <MarkdownContent
+                content={vote.abstract}
+                className="text-sm text-foreground/90 leading-relaxed"
+              />
             </div>
           )}
 
@@ -185,7 +220,10 @@ export function VoteDetailSheet({ vote, open, onOpenChange, userPrefs = [] }: Vo
                 Voting Rationale
               </p>
               <div className="bg-muted/20 rounded-lg p-4 border border-border/20">
-                <MarkdownContent content={vote.rationaleText} className="text-sm text-foreground/90 leading-relaxed" />
+                <MarkdownContent
+                  content={vote.rationaleText}
+                  className="text-sm text-foreground/90 leading-relaxed"
+                />
               </div>
             </div>
           )}
@@ -198,7 +236,8 @@ export function VoteDetailSheet({ vote, open, onOpenChange, userPrefs = [] }: Vo
               </p>
               <div className="bg-muted/20 rounded-lg p-3 border border-border/20">
                 <p className="text-xs text-muted-foreground">
-                  This DRep submitted a rationale, but it hasn&apos;t been indexed yet. Check back soon.
+                  This DRep submitted a rationale, but it hasn&apos;t been indexed yet. Check back
+                  soon.
                 </p>
               </div>
             </div>

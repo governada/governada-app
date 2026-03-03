@@ -24,7 +24,8 @@ export type DelegationPhase =
   | { status: 'error'; code: string; message: string; hint: string };
 
 export function useDelegation() {
-  const { wallet, walletName, connected, isAuthenticated, delegatedDrepId, refreshDelegation } = useWallet();
+  const { wallet, walletName, connected, isAuthenticated, delegatedDrepId, refreshDelegation } =
+    useWallet();
   const [phase, setPhase] = useState<DelegationPhase>({ status: 'idle' });
   const preflightRef = useRef<DelegationPreflight | null>(null);
 
@@ -32,116 +33,148 @@ export function useDelegation() {
    * Step 1: Check governance support, run preflight checks (network, stake
    * registration), and move to the confirmation state.
    */
-  const startDelegation = useCallback(async (drepId: string) => {
-    if (!wallet || !connected) {
-      setPhase({ status: 'error', code: 'no_wallet', message: 'Wallet not connected', hint: 'Connect your wallet first.' });
-      return;
-    }
-
-    if (walletName) {
-      const govCheck = checkGovernanceSupport(walletName);
-      if (!govCheck.supported) {
+  const startDelegation = useCallback(
+    async (drepId: string) => {
+      if (!wallet || !connected) {
         setPhase({
           status: 'error',
-          code: 'wallet_unsupported',
-          message: 'Wallet does not support governance delegation.',
-          hint: govCheck.hint || 'Try Eternl or Lace.',
+          code: 'no_wallet',
+          message: 'Wallet not connected',
+          hint: 'Connect your wallet first.',
         });
         return;
       }
-    }
 
-    setPhase({ status: 'preflight' });
-
-    try {
-      const preflight = await preflightDelegation(wallet);
-      preflightRef.current = preflight;
-      setPhase({ status: 'confirming', preflight });
-    } catch (err) {
-      if (err instanceof DelegationError) {
-        setPhase({ status: 'error', code: err.code, message: err.message, hint: err.hint });
-        import('@/lib/posthog').then(({ posthog }) => {
-          posthog.capture('delegation_preflight_failed', { drep_id: drepId, error_code: err.code });
-        }).catch(() => {});
-      } else {
-        setPhase({ status: 'error', code: 'unknown', message: String(err), hint: 'Something went wrong. Please try again.' });
+      if (walletName) {
+        const govCheck = checkGovernanceSupport(walletName);
+        if (!govCheck.supported) {
+          setPhase({
+            status: 'error',
+            code: 'wallet_unsupported',
+            message: 'Wallet does not support governance delegation.',
+            hint: govCheck.hint || 'Try Eternl or Lace.',
+          });
+          return;
+        }
       }
-    }
-  }, [wallet, walletName, connected]);
+
+      setPhase({ status: 'preflight' });
+
+      try {
+        const preflight = await preflightDelegation(wallet);
+        preflightRef.current = preflight;
+        setPhase({ status: 'confirming', preflight });
+      } catch (err) {
+        if (err instanceof DelegationError) {
+          setPhase({ status: 'error', code: err.code, message: err.message, hint: err.hint });
+          import('@/lib/posthog')
+            .then(({ posthog }) => {
+              posthog.capture('delegation_preflight_failed', {
+                drep_id: drepId,
+                error_code: err.code,
+              });
+            })
+            .catch(() => {});
+        } else {
+          setPhase({
+            status: 'error',
+            code: 'unknown',
+            message: String(err),
+            hint: 'Something went wrong. Please try again.',
+          });
+        }
+      }
+    },
+    [wallet, walletName, connected],
+  );
 
   /**
    * Step 2: User confirmed -- build, sign, and submit the transaction.
    * Requires preflight to have been run first (reads from ref).
    */
-  const confirmDelegation = useCallback(async (drepId: string): Promise<DelegationResult | null> => {
-    if (!wallet || !connected) return null;
+  const confirmDelegation = useCallback(
+    async (drepId: string): Promise<DelegationResult | null> => {
+      if (!wallet || !connected) return null;
 
-    const preflight = preflightRef.current;
-    if (!preflight) return null;
+      const preflight = preflightRef.current;
+      if (!preflight) return null;
 
-    try {
-      const result = await delegateToDRep(wallet, drepId, {
-        registerStake: !preflight.stakeRegistered,
-        onPhase: (p) => setPhase({ status: p }),
-      });
-
-      if (isAuthenticated) {
-        const token = getStoredSession();
-        if (token) {
-          fetch('/api/user', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-              delegation_history: [{
-                drepId,
-                timestamp: new Date().toISOString(),
-                txHash: result.txHash,
-              }],
-            }),
-          }).catch(() => {});
-        }
-      }
-
-      if (refreshDelegation) {
-        refreshDelegation();
-      }
-
-      setPhase({ status: 'success', txHash: result.txHash, confirmed: false });
-
-      import('@/lib/posthog').then(({ posthog }) => {
-        posthog.capture('delegation_completed', {
-          drep_id: drepId,
-          previous_drep_id: delegatedDrepId || null,
-          tx_hash: result.txHash,
-          stake_registered: preflight.stakeRegistered,
+      try {
+        const result = await delegateToDRep(wallet, drepId, {
+          registerStake: !preflight.stakeRegistered,
+          onPhase: (p) => setPhase({ status: p }),
         });
-      }).catch(() => {});
 
-      waitForTxConfirmation(result.txHash, {
-        maxAttempts: 30,
-        intervalMs: 10_000,
-        onConfirmed: () => {
-          setPhase(prev =>
-            prev.status === 'success' && prev.txHash === result.txHash
-              ? { ...prev, confirmed: true }
-              : prev,
-          );
-        },
-      }).catch(() => {});
+        if (isAuthenticated) {
+          const token = getStoredSession();
+          if (token) {
+            fetch('/api/user', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                delegation_history: [
+                  {
+                    drepId,
+                    timestamp: new Date().toISOString(),
+                    txHash: result.txHash,
+                  },
+                ],
+              }),
+            }).catch(() => {});
+          }
+        }
 
-      return result;
-    } catch (err) {
-      if (err instanceof DelegationError) {
-        setPhase({ status: 'error', code: err.code, message: err.message, hint: err.hint });
-        import('@/lib/posthog').then(({ posthog }) => {
-          posthog.capture('delegation_failed', { drep_id: drepId, error_code: err.code });
+        if (refreshDelegation) {
+          refreshDelegation();
+        }
+
+        setPhase({ status: 'success', txHash: result.txHash, confirmed: false });
+
+        import('@/lib/posthog')
+          .then(({ posthog }) => {
+            posthog.capture('delegation_completed', {
+              drep_id: drepId,
+              previous_drep_id: delegatedDrepId || null,
+              tx_hash: result.txHash,
+              stake_registered: preflight.stakeRegistered,
+            });
+          })
+          .catch(() => {});
+
+        waitForTxConfirmation(result.txHash, {
+          maxAttempts: 30,
+          intervalMs: 10_000,
+          onConfirmed: () => {
+            setPhase((prev) =>
+              prev.status === 'success' && prev.txHash === result.txHash
+                ? { ...prev, confirmed: true }
+                : prev,
+            );
+          },
         }).catch(() => {});
-      } else {
-        setPhase({ status: 'error', code: 'unknown', message: String(err), hint: 'Something went wrong. Please try again.' });
+
+        return result;
+      } catch (err) {
+        if (err instanceof DelegationError) {
+          setPhase({ status: 'error', code: err.code, message: err.message, hint: err.hint });
+          import('@/lib/posthog')
+            .then(({ posthog }) => {
+              posthog.capture('delegation_failed', { drep_id: drepId, error_code: err.code });
+            })
+            .catch(() => {});
+        } else {
+          setPhase({
+            status: 'error',
+            code: 'unknown',
+            message: String(err),
+            hint: 'Something went wrong. Please try again.',
+          });
+        }
+        return null;
       }
-      return null;
-    }
-  }, [wallet, connected, isAuthenticated, refreshDelegation, delegatedDrepId]);
+    },
+    [wallet, connected, isAuthenticated, refreshDelegation, delegatedDrepId],
+  );
 
   const reset = useCallback(() => {
     preflightRef.current = null;

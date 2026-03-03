@@ -60,12 +60,14 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
       }
 
       const ipHash = hashIp(
-        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
       );
 
       let rlHeaders: Record<string, string> = {};
       if (!options.skipRateLimit) {
-        const keyResult = keyId ? await import('./keys').then(m => m.getTierDefaults(tier)) : undefined;
+        const keyResult = keyId
+          ? await import('./keys').then((m) => m.getTierDefaults(tier))
+          : undefined;
         const rl = await checkRateLimit({
           keyId,
           ipHash,
@@ -75,10 +77,14 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
         rlHeaders = rateLimitHeaders(rl);
 
         if (!rl.allowed) {
-          return apiError('rate_limit_exceeded', {
-            limit: rl.limit,
-            window: rl.window,
-          }, { requestId, rateLimitHeaders: rlHeaders });
+          return apiError(
+            'rate_limit_exceeded',
+            {
+              limit: rl.limit,
+              window: rl.window,
+            },
+            { requestId, rateLimitHeaders: rlHeaders },
+          );
         }
       }
 
@@ -87,7 +93,10 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
 
       const responseMs = Date.now() - startMs;
       logApiRequest({
-        keyId, keyPrefix, tier, endpoint,
+        keyId,
+        keyPrefix,
+        tier,
+        endpoint,
         method: request.method,
         statusCode: response.status,
         responseMs,
@@ -109,7 +118,10 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
       const errorCode = err instanceof Error ? err.message : 'internal_error';
 
       logApiRequest({
-        keyId, keyPrefix, tier, endpoint,
+        keyId,
+        keyPrefix,
+        tier,
+        endpoint,
         method: request.method,
         statusCode: 500,
         responseMs,

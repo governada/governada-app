@@ -5,7 +5,7 @@ vi.mock('@/utils/display', () => ({
     const knownDomains = ['twitter.com', 'x.com', 'github.com', 'linkedin.com', 'youtube.com'];
     try {
       const url = new URL(uri);
-      return knownDomains.some(d => url.hostname === d || url.hostname === `www.${d}`);
+      return knownDomains.some((d) => url.hostname === d || url.hostname === `www.${d}`);
     } catch {
       return false;
     }
@@ -90,7 +90,7 @@ describe('getSizeBadgeClass', () => {
     const tiers = ['Small', 'Medium', 'Large', 'Whale'] as const;
     const classes = tiers.map(getSizeBadgeClass);
     expect(new Set(classes).size).toBe(4);
-    classes.forEach(c => expect(c).toContain('bg-'));
+    classes.forEach((c) => expect(c).toContain('bg-'));
   });
 });
 
@@ -140,10 +140,7 @@ describe('calculateRationaleRate', () => {
   });
 
   it('handles VoteRecord format', () => {
-    const records = [
-      { hasRationale: true } as any,
-      { hasRationale: false } as any,
-    ];
+    const records = [{ hasRationale: true } as any, { hasRationale: false } as any];
     expect(calculateRationaleRate(records)).toBe(50);
   });
 });
@@ -157,7 +154,7 @@ describe('calculateDeliberationModifier', () => {
   });
 
   it('returns 0.70 for > 95% dominant', () => {
-    expect(calculateDeliberationModifier(20, 0, 0)).toBe(0.70);
+    expect(calculateDeliberationModifier(20, 0, 0)).toBe(0.7);
   });
 
   it('returns 0.85 for 90-95% dominant', () => {
@@ -213,7 +210,11 @@ describe('calculateReliability', () => {
   });
 
   it('respects proposalEpochs filter', () => {
-    const proposalEpochs = new Map([[95, 1], [96, 0], [97, 1]]);
+    const proposalEpochs = new Map([
+      [95, 1],
+      [96, 0],
+      [97, 1],
+    ]);
     const counts = [0, 0, 1, 0, 0];
     const result = calculateReliability(counts, 95, 99, proposalEpochs);
     expect(result.score).toBeGreaterThan(0);
@@ -225,7 +226,7 @@ describe('calculateReliability', () => {
 describe('calculateEffectiveParticipation', () => {
   it('multiplies participation rate by modifier', () => {
     expect(calculateEffectiveParticipation(80, 1.0)).toBe(80);
-    expect(calculateEffectiveParticipation(80, 0.70)).toBe(56);
+    expect(calculateEffectiveParticipation(80, 0.7)).toBe(56);
     expect(calculateEffectiveParticipation(100, 0.85)).toBe(85);
   });
 
@@ -367,9 +368,7 @@ describe('calculateWeightedRationaleRate', () => {
   });
 
   it('excludes InfoAction proposals from calculation', () => {
-    const map = new Map([
-      ['tx1-0', { proposalType: 'InfoAction', treasuryTier: null }],
-    ]);
+    const map = new Map([['tx1-0', { proposalType: 'InfoAction', treasuryTier: null }]]);
     const votes = [makeVote({ proposal_tx_hash: 'tx1', proposal_index: 0 })];
     const rate = calculateWeightedRationaleRate(votes, map as any);
     expect(rate).toBe(0); // totalWeight = 0 -> returns 0
@@ -456,19 +455,13 @@ describe('calculateValueAlignment', () => {
   });
 
   it('rewards high participation', () => {
-    const votes = [
-      makeVote({ vote: 'Yes' }),
-      makeVote({ vote: 'No' }),
-    ];
+    const votes = [makeVote({ vote: 'Yes' }), makeVote({ vote: 'No' })];
     const score = calculateValueAlignment(votes, ['High Participation']);
     expect(score).toBe(100);
   });
 
   it('penalizes abstain for High Participation', () => {
-    const votes = [
-      makeVote({ vote: 'Abstain' }),
-      makeVote({ vote: 'Abstain' }),
-    ];
+    const votes = [makeVote({ vote: 'Abstain' }), makeVote({ vote: 'Abstain' })];
     const score = calculateValueAlignment(votes, ['High Participation']);
     expect(score).toBe(0);
   });
@@ -485,13 +478,19 @@ describe('getVoteDistribution', () => {
       makeVote({ vote: 'Abstain' }),
     ];
     expect(getVoteDistribution(votes)).toEqual({
-      yes: 2, no: 1, abstain: 1, total: 4,
+      yes: 2,
+      no: 1,
+      abstain: 1,
+      total: 4,
     });
   });
 
   it('handles empty array', () => {
     expect(getVoteDistribution([])).toEqual({
-      yes: 0, no: 0, abstain: 0, total: 0,
+      yes: 0,
+      no: 0,
+      abstain: 0,
+      total: 0,
     });
   });
 });
@@ -698,9 +697,7 @@ describe('getMissingProfileFields', () => {
       motivations: 'Service',
       qualifications: 'PhD',
       bio: 'Builder',
-      references: [
-        { uri: 'https://twitter.com/alice', label: 'Twitter' },
-      ],
+      references: [{ uri: 'https://twitter.com/alice', label: 'Twitter' }],
     };
     const missing = getMissingProfileFields(metadata);
     expect(missing).toContain('a second social link (2+ recommended)');
@@ -728,9 +725,7 @@ describe('getEasiestWin', () => {
   });
 
   it('handles all pillars being low', () => {
-    const pillars = [
-      { label: 'Profile', value: 20, maxPoints: 15 },
-    ];
+    const pillars = [{ label: 'Profile', value: 20, maxPoints: 15 }];
     const result = getEasiestWin(pillars);
     expect(result).toContain('Profile');
     expect(result).toContain('Needs Work');

@@ -17,9 +17,8 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
   const [copied, setCopied] = useState(false);
 
   const isOwner = isAuthenticated && ownDRepId === drepId;
-  const profileUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/drep/${drepId}`
-    : `/drep/${drepId}`;
+  const profileUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/drep/${drepId}` : `/drep/${drepId}`;
 
   const handleShare = async () => {
     const shareData = {
@@ -29,7 +28,12 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
     };
 
     if (navigator.share) {
-      try { await navigator.share(shareData); return; } catch { /* user cancelled */ }
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {
+        /* user cancelled */
+      }
     }
 
     await navigator.clipboard.writeText(profileUrl);
@@ -68,7 +72,9 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
       <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-muted-foreground/25 px-4 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <Wallet className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="text-sm text-muted-foreground truncate">Is this your DRep? Claim it to access insights.</span>
+          <span className="text-sm text-muted-foreground truncate">
+            Is this your DRep? Claim it to access insights.
+          </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {shareButton}
@@ -86,9 +92,5 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
   }
 
   // Claimed by someone else — just show share
-  return (
-    <div className="flex items-center justify-end px-1 py-1">
-      {shareButton}
-    </div>
-  );
+  return <div className="flex items-center justify-end px-1 py-1">{shareButton}</div>;
 }

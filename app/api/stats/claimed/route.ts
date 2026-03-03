@@ -12,9 +12,7 @@ export async function GET() {
         .from('users')
         .select('wallet_address', { count: 'exact', head: true })
         .not('claimed_drep_id', 'is', null),
-      supabase
-        .from('dreps')
-        .select('id', { count: 'exact', head: true }),
+      supabase.from('dreps').select('id', { count: 'exact', head: true }),
     ]);
 
     return NextResponse.json({
@@ -22,9 +20,6 @@ export async function GET() {
       totalDReps: totalResult.count ?? 0,
     });
   } catch {
-    return NextResponse.json(
-      { claimedCount: 0, totalDReps: 0 },
-      { status: 500 }
-    );
+    return NextResponse.json({ claimedCount: 0, totalDReps: 0 }, { status: 500 });
   }
 }

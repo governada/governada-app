@@ -4,8 +4,15 @@ import { getSupabaseAdmin } from '../lib/supabase';
 
 async function main() {
   const sb = getSupabaseAdmin();
-  const { data } = await sb.from('dreps').select('id, info').order('score', { ascending: false }).limit(1);
-  if (!data?.length) { console.log('No data'); return; }
+  const { data } = await sb
+    .from('dreps')
+    .select('id, info')
+    .order('score', { ascending: false })
+    .limit(1);
+  if (!data?.length) {
+    console.log('No data');
+    return;
+  }
   const info = data[0].info as Record<string, unknown>;
   console.log('DRep:', data[0].id);
   console.log('Info keys:', Object.keys(info));
@@ -14,4 +21,7 @@ async function main() {
   console.log('amount:', info.amount);
   console.log('Full info (first 500 chars):', JSON.stringify(info).slice(0, 500));
 }
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

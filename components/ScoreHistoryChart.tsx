@@ -113,7 +113,8 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Score tracking started recently. Check back soon to see how this DRep&apos;s score changes over time.
+            Score tracking started recently. Check back soon to see how this DRep&apos;s score
+            changes over time.
           </p>
         </CardContent>
       </Card>
@@ -137,7 +138,8 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
           <div className="text-center py-6">
             <p className="text-3xl font-bold tabular-nums">{latest.score}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              First snapshot recorded {formatDate(latest.date)}. Trend data will appear as more snapshots are collected.
+              First snapshot recorded {formatDate(latest.date)}. Trend data will appear as more
+              snapshots are collected.
             </p>
           </div>
         </CardContent>
@@ -148,7 +150,10 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
   const hovered = hoveredIndex !== null ? chartData[hoveredIndex] : null;
   const hoveredAttr = hovered ? attributionMap.get(hovered.rawDate) : undefined;
   const ticks = yScale.ticks(5);
-  const xTicks = chartData.length <= 10 ? chartData : chartData.filter((_, i) => i % Math.ceil(chartData.length / 8) === 0);
+  const xTicks =
+    chartData.length <= 10
+      ? chartData
+      : chartData.filter((_, i) => i % Math.ceil(chartData.length / 8) === 0);
 
   return (
     <Card>
@@ -160,11 +165,19 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
           </CardTitle>
           <div className="flex items-center gap-3">
             {history.length > 1 && (
-              <span className={`text-sm font-medium ${scoreChange > 0 ? 'text-green-600 dark:text-green-400' : scoreChange < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
-                {scoreChange > 0 ? '+' : ''}{scoreChange} pts since tracking started
+              <span
+                className={`text-sm font-medium ${scoreChange > 0 ? 'text-green-600 dark:text-green-400' : scoreChange < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}
+              >
+                {scoreChange > 0 ? '+' : ''}
+                {scoreChange} pts since tracking started
               </span>
             )}
-            <Button variant="outline" size="sm" onClick={() => setShowPillars(!showPillars)} className="text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPillars(!showPillars)}
+              className="text-xs"
+            >
               {showPillars ? 'Hide Pillars' : 'Show Pillars'}
             </Button>
           </div>
@@ -176,7 +189,12 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
             <svg width={width} height={250}>
               <defs>
                 <GlowFilter id="score-glow" stdDeviation={3} />
-                <AreaGradient id="score-area-grad" color="oklch(0.72 0.14 200)" topOpacity={0.15} bottomOpacity={0} />
+                <AreaGradient
+                  id="score-area-grad"
+                  color="oklch(0.72 0.14 200)"
+                  topOpacity={0.15}
+                  bottomOpacity={0}
+                />
               </defs>
               <g transform={`translate(${margin.left},${margin.top})`}>
                 {/* Grid lines */}
@@ -253,7 +271,13 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
                       cx={xScale(d.date) ?? 0}
                       cy={yScale(d.Score)}
                       r={hoveredIndex === i ? 5 : isSignificant ? 6 : 3}
-                      fill={isSignificant ? (attr!.totalDelta > 0 ? '#22c55e' : '#ef4444') : 'oklch(0.72 0.14 200)'}
+                      fill={
+                        isSignificant
+                          ? attr!.totalDelta > 0
+                            ? '#22c55e'
+                            : '#ef4444'
+                          : 'oklch(0.72 0.14 200)'
+                      }
                       fillOpacity={isSignificant ? 0.4 : 1}
                       stroke={isSignificant ? 'none' : 'oklch(0.07 0.015 260)'}
                       strokeWidth={1.5}
@@ -317,7 +341,10 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
                 <p className="font-medium text-card-foreground mb-1">{hovered.date}</p>
                 <div className="flex items-center justify-between gap-4">
                   <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'oklch(0.72 0.14 200)' }} />
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: 'oklch(0.72 0.14 200)' }}
+                    />
                     Score
                   </span>
                   <span className="font-mono tabular-nums">{hovered.Score}</span>
@@ -326,7 +353,10 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
                   PILLAR_KEYS.map((key, i) => (
                     <div key={key} className="flex items-center justify-between gap-4">
                       <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PILLAR_COLORS[i] }} />
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: PILLAR_COLORS[i] }}
+                        />
                         {key}
                       </span>
                       <span className="font-mono tabular-nums">{hovered[key]}</span>
@@ -334,16 +364,23 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
                   ))}
                 {hoveredAttr && hoveredAttr.totalDelta !== 0 && (
                   <div className="mt-2 pt-2 border-t border-border">
-                    <p className={`text-xs font-medium ${hoveredAttr.totalDelta > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {hoveredAttr.totalDelta > 0 ? '+' : ''}{hoveredAttr.totalDelta} pts from previous
+                    <p
+                      className={`text-xs font-medium ${hoveredAttr.totalDelta > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                    >
+                      {hoveredAttr.totalDelta > 0 ? '+' : ''}
+                      {hoveredAttr.totalDelta} pts from previous
                     </p>
                     {hoveredAttr.pillars
                       .filter((p) => Math.abs(p.weightedDelta) >= 0.5)
                       .sort((a, b) => Math.abs(b.weightedDelta) - Math.abs(a.weightedDelta))
                       .map((p) => (
                         <p key={p.key} className="text-xs text-muted-foreground">
-                          {p.label}: {p.weightedDelta > 0 ? '+' : ''}{p.weightedDelta.toFixed(1)} pts
-                          <span className="opacity-60"> ({p.prev}→{p.curr})</span>
+                          {p.label}: {p.weightedDelta > 0 ? '+' : ''}
+                          {p.weightedDelta.toFixed(1)} pts
+                          <span className="opacity-60">
+                            {' '}
+                            ({p.prev}→{p.curr})
+                          </span>
                         </p>
                       ))}
                   </div>

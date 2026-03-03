@@ -22,9 +22,9 @@ export function ProposalContextInsight({ proposalType }: Props) {
     const relevantIds = TYPE_INSIGHT_MAP[proposalType] ?? ['top-agreement'];
 
     fetch('/api/governance/insights')
-      .then(r => r.ok ? r.json() : [])
+      .then((r) => (r.ok ? r.json() : []))
       .then((insights: GovernanceInsight[]) => {
-        const match = insights.find(i => relevantIds.includes(i.id));
+        const match = insights.find((i) => relevantIds.includes(i.id));
         if (match) setInsight(match);
       })
       .catch(() => {});
@@ -39,9 +39,7 @@ export function ProposalContextInsight({ proposalType }: Props) {
         <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-0.5">
           Did you know?
         </p>
-        <p className="text-sm text-muted-foreground">
-          {insight.description}
-        </p>
+        <p className="text-sm text-muted-foreground">{insight.description}</p>
       </div>
     </div>
   );

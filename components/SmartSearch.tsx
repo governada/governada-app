@@ -23,7 +23,7 @@ function getRecentSearches(): string[] {
 
 function saveRecentSearch(query: string) {
   if (typeof window === 'undefined' || !query.trim()) return;
-  const existing = getRecentSearches().filter(s => s !== query);
+  const existing = getRecentSearches().filter((s) => s !== query);
   localStorage.setItem(RECENT_KEY, JSON.stringify([query, ...existing].slice(0, MAX_RECENT)));
 }
 
@@ -73,37 +73,50 @@ export function SmartSearch({ dreps, value, onChange, onSelectDRep, className }:
     return fuse.search(value).slice(0, MAX_SUGGESTIONS);
   }, [fuse, value]);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
-  }, [onChange]);
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(e.target.value);
+    },
+    [onChange],
+  );
 
-  const handleSelect = useCallback((query: string) => {
-    onChange(query);
-    saveRecentSearch(query);
-    setRecentSearches(getRecentSearches());
-    setIsFocused(false);
-  }, [onChange]);
-
-  const handleSelectDRep = useCallback((drepId: string, name: string) => {
-    saveRecentSearch(name);
-    setRecentSearches(getRecentSearches());
-    setIsFocused(false);
-    onSelectDRep?.(drepId);
-  }, [onSelectDRep]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && value.trim()) {
-      saveRecentSearch(value.trim());
+  const handleSelect = useCallback(
+    (query: string) => {
+      onChange(query);
+      saveRecentSearch(query);
       setRecentSearches(getRecentSearches());
       setIsFocused(false);
-    }
-    if (e.key === 'Escape') {
-      setIsFocused(false);
-      inputRef.current?.blur();
-    }
-  }, [value]);
+    },
+    [onChange],
+  );
 
-  const showDropdown = isFocused && (suggestions.length > 0 || (recentSearches.length > 0 && !value.trim()));
+  const handleSelectDRep = useCallback(
+    (drepId: string, name: string) => {
+      saveRecentSearch(name);
+      setRecentSearches(getRecentSearches());
+      setIsFocused(false);
+      onSelectDRep?.(drepId);
+    },
+    [onSelectDRep],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && value.trim()) {
+        saveRecentSearch(value.trim());
+        setRecentSearches(getRecentSearches());
+        setIsFocused(false);
+      }
+      if (e.key === 'Escape') {
+        setIsFocused(false);
+        inputRef.current?.blur();
+      }
+    },
+    [value],
+  );
+
+  const showDropdown =
+    isFocused && (suggestions.length > 0 || (recentSearches.length > 0 && !value.trim()));
 
   return (
     <div ref={wrapperRef} className={cn('relative', className)}>

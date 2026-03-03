@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
     let brief;
     if (isDRep) {
       const ctx = await assembleDRepBriefContext(user.claimed_drep_id!, wallet);
-      if (!ctx) return NextResponse.json({ error: 'Could not assemble DRep context' }, { status: 500 });
+      if (!ctx)
+        return NextResponse.json({ error: 'Could not assemble DRep context' }, { status: 500 });
       brief = generateDRepBrief(ctx);
       await storeBrief(wallet, 'drep', brief, ctx.epoch);
     } else {

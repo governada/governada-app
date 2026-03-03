@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
 
   const { data: openProposals } = await supabase
     .from('proposals')
-    .select(`
+    .select(
+      `
       tx_hash,
       proposal_index,
       proposal_type,
@@ -60,7 +61,8 @@ export async function GET(request: NextRequest) {
         drep_no_votes_cast,
         drep_abstain_votes_cast
       )
-    `)
+    `,
+    )
     .is('enacted_epoch', null)
     .is('ratified_epoch', null)
     .is('dropped_epoch', null)
@@ -73,12 +75,16 @@ export async function GET(request: NextRequest) {
   const SHELLEY_START = 1591566291;
   const EPOCH_LENGTH = 432000;
   const SHELLEY_EPOCH = 208;
-  const currentEpoch = Math.floor((Date.now() / 1000 - SHELLEY_START) / EPOCH_LENGTH) + SHELLEY_EPOCH;
+  const currentEpoch =
+    Math.floor((Date.now() / 1000 - SHELLEY_START) / EPOCH_LENGTH) + SHELLEY_EPOCH;
 
   const CRITICAL_TYPES = new Set([
-    'HardForkInitiation', 'NoConfidence',
-    'NewCommittee', 'NewConstitutionalCommittee',
-    'NewConstitution', 'UpdateConstitution',
+    'HardForkInitiation',
+    'NoConfidence',
+    'NewCommittee',
+    'NewConstitutionalCommittee',
+    'NewConstitution',
+    'UpdateConstitution',
   ]);
 
   let totalDrepVotes = 0;
@@ -87,11 +93,16 @@ export async function GET(request: NextRequest) {
     const vs = Array.isArray(p.proposal_voting_summary)
       ? p.proposal_voting_summary[0]
       : p.proposal_voting_summary;
-    const drepVotes = (vs?.drep_yes_votes_cast ?? 0) + (vs?.drep_no_votes_cast ?? 0) + (vs?.drep_abstain_votes_cast ?? 0);
+    const drepVotes =
+      (vs?.drep_yes_votes_cast ?? 0) +
+      (vs?.drep_no_votes_cast ?? 0) +
+      (vs?.drep_abstain_votes_cast ?? 0);
     totalDrepVotes += drepVotes;
     const coverage = Math.round((drepVotes / totalActiveDreps) * 100);
-    const expirationEpoch = p.expiration_epoch ?? (p.proposed_epoch != null ? p.proposed_epoch + 6 : null);
-    const epochsRemaining = expirationEpoch != null ? Math.max(0, expirationEpoch - currentEpoch) : null;
+    const expirationEpoch =
+      p.expiration_epoch ?? (p.proposed_epoch != null ? p.proposed_epoch + 6 : null);
+    const epochsRemaining =
+      expirationEpoch != null ? Math.max(0, expirationEpoch - currentEpoch) : null;
     const isCritical = CRITICAL_TYPES.has(p.proposal_type);
     const label = p.title || `${p.tx_hash.slice(0, 12)}...#${p.proposal_index}`;
 
@@ -112,9 +123,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const avgCoverage = openProposals.length > 0
-    ? Math.round((totalDrepVotes / openProposals.length / totalActiveDreps) * 100)
-    : 0;
+  const avgCoverage =
+    openProposals.length > 0
+      ? Math.round((totalDrepVotes / openProposals.length / totalActiveDreps) * 100)
+      : 0;
   if (avgCoverage < 30) {
     alerts.push({
       level: 'warning',
@@ -142,9 +154,12 @@ export async function GET(request: NextRequest) {
       blocks: [
         {
           type: 'header',
-          text: { type: 'plain_text', text: `DRepScore Governance Alert — ${alerts.length} issue${alerts.length !== 1 ? 's' : ''}` },
+          text: {
+            type: 'plain_text',
+            text: `DRepScore Governance Alert — ${alerts.length} issue${alerts.length !== 1 ? 's' : ''}`,
+          },
         },
-        ...alerts.map(a => ({
+        ...alerts.map((a) => ({
           type: 'section',
           text: {
             type: 'mrkdwn',
@@ -154,18 +169,20 @@ export async function GET(request: NextRequest) {
       ],
     };
   } else {
-    const lines = alerts.map(a => {
+    const lines = alerts.map((a) => {
       const icon = a.level === 'critical' ? '🔴' : '🟡';
       return `${icon} **${a.title}**\n↳ ${a.detail}`;
     });
     body = {
-      embeds: [{
-        title: `Governance Engagement Alert — ${alerts.length} issue${alerts.length !== 1 ? 's' : ''}`,
-        description: lines.join('\n\n'),
-        color: alerts.some(a => a.level === 'critical') ? 0xff4444 : 0xf59e0b,
-        footer: { text: 'DRepScore Inbox Monitor' },
-        timestamp: new Date().toISOString(),
-      }],
+      embeds: [
+        {
+          title: `Governance Engagement Alert — ${alerts.length} issue${alerts.length !== 1 ? 's' : ''}`,
+          description: lines.join('\n\n'),
+          color: alerts.some((a) => a.level === 'critical') ? 0xff4444 : 0xf59e0b,
+          footer: { text: 'DRepScore Inbox Monitor' },
+          timestamp: new Date().toISOString(),
+        },
+      ],
     };
   }
 
@@ -179,16 +196,19 @@ export async function GET(request: NextRequest) {
 
     captureServerEvent('inbox_engagement_alert_sent', {
       alertCount: alerts.length,
-      criticalCount: alerts.filter(a => a.level === 'critical').length,
+      criticalCount: alerts.filter((a) => a.level === 'critical').length,
       webhookStatus: res.status,
     });
 
     return NextResponse.json({ alerts: alerts.length, sent: res.ok, details: alerts });
   } catch (err) {
-    return NextResponse.json({
-      alerts: alerts.length,
-      sent: false,
-      error: err instanceof Error ? err.message : 'Webhook failed',
-    }, { status: 502 });
+    return NextResponse.json(
+      {
+        alerts: alerts.length,
+        sent: false,
+        error: err instanceof Error ? err.message : 'Webhook failed',
+      },
+      { status: 502 },
+    );
   }
 }

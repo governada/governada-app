@@ -2,7 +2,15 @@ import { ImageResponse } from 'next/og';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getDRepById } from '@/lib/data';
 import { getDRepPrimaryName } from '@/utils/display';
-import { OGBackground, OGScoreRing, OGFooter, OGFallback, OG, tierColor, tierLabel } from '@/lib/og-utils';
+import {
+  OGBackground,
+  OGScoreRing,
+  OGFooter,
+  OGFallback,
+  OG,
+  tierColor,
+  tierLabel,
+} from '@/lib/og-utils';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -13,10 +21,10 @@ export async function GET(request: Request) {
     const wallet = searchParams.get('wallet');
 
     if (!wallet) {
-      return new ImageResponse(
-        <OGFallback message="Missing wallet parameter" />,
-        { width: 1200, height: 630 },
-      );
+      return new ImageResponse(<OGFallback message="Missing wallet parameter" />, {
+        width: 1200,
+        height: 630,
+      });
     }
 
     const supabase = getSupabaseAdmin();
@@ -28,8 +36,11 @@ export async function GET(request: Request) {
       .single();
 
     // Extract most recent delegation from history array
-    const history = (user?.delegation_history as { drepId: string; timestamp: string }[] | null) ?? [];
-    const sorted = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const history =
+      (user?.delegation_history as { drepId: string; timestamp: string }[] | null) ?? [];
+    const sorted = [...history].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
     const drepId = sorted[0]?.drepId ?? null;
     const drep = drepId ? await getDRepById(drepId) : null;
     const drepName = drep ? getDRepPrimaryName(drep) : null;
@@ -40,20 +51,22 @@ export async function GET(request: Request) {
     const tier = tierLabel(drepScore);
 
     return new ImageResponse(
-      (
-        <OGBackground glow={color}>
-          <div style={{
+      <OGBackground glow={color}>
+        <div
+          style={{
             display: 'flex',
             flexDirection: 'column',
             width: '100%',
             height: '100%',
             padding: '48px 64px',
             justifyContent: 'space-between',
-          }}>
-            {/* Top: governance level badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              {governanceLevel && (
-                <div style={{
+          }}
+        >
+          {/* Top: governance level badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {governanceLevel && (
+              <div
+                style={{
                   display: 'flex',
                   padding: '6px 20px',
                   borderRadius: '20px',
@@ -62,28 +75,48 @@ export async function GET(request: Request) {
                   fontSize: '18px',
                   fontWeight: 600,
                   color: OG.indigo,
-                }}>
-                  {governanceLevel}
-                </div>
-              )}
-            </div>
+                }}
+              >
+                {governanceLevel}
+              </div>
+            )}
+          </div>
 
-            {/* Center: DRep info + score */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '48px', flex: 1, justifyContent: 'center' }}>
-              <OGScoreRing score={drepScore} size={200} />
+          {/* Center: DRep info + score */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '48px',
+              flex: 1,
+              justifyContent: 'center',
+            }}
+          >
+            <OGScoreRing score={drepScore} size={200} />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', fontSize: '22px', color: OG.textMuted }}>
-                  I&apos;m delegated to
-                </div>
-                <div style={{ display: 'flex', fontSize: '40px', fontWeight: 700, color: OG.text, lineHeight: 1.2 }}>
-                  {drepName
-                    ? (drepName.length > 28 ? drepName.slice(0, 26) + '…' : drepName)
-                    : 'Unknown DRep'}
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', fontSize: '22px', color: OG.textMuted }}>
+                I&apos;m delegated to
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  fontSize: '40px',
+                  fontWeight: 700,
+                  color: OG.text,
+                  lineHeight: 1.2,
+                }}
+              >
+                {drepName
+                  ? drepName.length > 28
+                    ? drepName.slice(0, 26) + '…'
+                    : drepName
+                  : 'Unknown DRep'}
+              </div>
 
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <div style={{
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div
+                  style={{
                     display: 'flex',
                     padding: '4px 16px',
                     borderRadius: '16px',
@@ -92,35 +125,35 @@ export async function GET(request: Request) {
                     fontSize: '16px',
                     fontWeight: 600,
                     color,
-                  }}>
-                    {tier} — {drepScore}/100
-                  </div>
+                  }}
+                >
+                  {tier} — {drepScore}/100
                 </div>
-
-                {pollCount > 0 && (
-                  <div style={{ display: 'flex', fontSize: '18px', color: OG.textMuted }}>
-                    Voted on {pollCount} proposals
-                  </div>
-                )}
               </div>
-            </div>
 
-            {/* Bottom: CTA */}
-            <div style={{
+              {pollCount > 0 && (
+                <div style={{ display: 'flex', fontSize: '18px', color: OG.textMuted }}>
+                  Voted on {pollCount} proposals
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom: CTA */}
+          <div
+            style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-end',
-            }}>
-              <div style={{ display: 'flex', fontSize: '32px', fontWeight: 700, color: OG.brand }}>
-                Who&apos;s your DRep?
-              </div>
-              <div style={{ display: 'flex', fontSize: '18px', color: OG.textDim }}>
-                drepscore.io
-              </div>
+            }}
+          >
+            <div style={{ display: 'flex', fontSize: '32px', fontWeight: 700, color: OG.brand }}>
+              Who&apos;s your DRep?
             </div>
+            <div style={{ display: 'flex', fontSize: '18px', color: OG.textDim }}>drepscore.io</div>
           </div>
-        </OGBackground>
-      ),
+        </div>
+      </OGBackground>,
       {
         width: 1200,
         height: 630,
@@ -129,9 +162,9 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error('[OG Delegator] Error:', error);
-    return new ImageResponse(
-      <OGFallback message="Who's your DRep?" />,
-      { width: 1200, height: 630 },
-    );
+    return new ImageResponse(<OGFallback message="Who's your DRep?" />, {
+      width: 1200,
+      height: 630,
+    });
   }
 }

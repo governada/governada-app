@@ -17,19 +17,17 @@ export async function GET(request: NextRequest) {
       ? parseFloat(searchParams.get('pendingAda')!)
       : undefined;
 
-    const [balance, snapshots] = await Promise.all([
-      getTreasuryBalance(),
-      getTreasuryTrend(30),
-    ]);
+    const [balance, snapshots] = await Promise.all([getTreasuryBalance(), getTreasuryTrend(30)]);
 
     if (!balance) {
       return NextResponse.json({ error: 'No treasury data' }, { status: 404 });
     }
 
     const burnRate = calculateBurnRate(snapshots, 10) * burnAdjust;
-    const avgIncome = snapshots.length > 0
-      ? snapshots.reduce((s, r) => s + r.reservesIncomeAda, 0) / snapshots.length
-      : 0;
+    const avgIncome =
+      snapshots.length > 0
+        ? snapshots.reduce((s, r) => s + r.reservesIncomeAda, 0) / snapshots.length
+        : 0;
 
     // Calculate pending total from DB unless overridden
     let pendingTotalAda = customPendingAda ?? 0;
@@ -53,7 +51,7 @@ export async function GET(request: NextRequest) {
       avgIncome,
       balance.epoch,
       pendingTotalAda,
-      365
+      365,
     );
 
     const counterfactual = await getCounterfactualAnalysis(balance.balanceAda, burnRate);
@@ -64,12 +62,14 @@ export async function GET(request: NextRequest) {
       burnRatePerEpoch: Math.round(burnRate),
       avgIncomePerEpoch: Math.round(avgIncome),
       pendingTotalAda,
-      scenarios: scenarios.map(s => ({
+      scenarios: scenarios.map((s) => ({
         name: s.name,
         key: s.key,
         projectedMonths: s.projectedMonths,
         depletionEpoch: s.depletionEpoch,
-        balanceCurve: s.balanceCurve.filter((_, i) => i % 5 === 0 || i === s.balanceCurve.length - 1),
+        balanceCurve: s.balanceCurve.filter(
+          (_, i) => i % 5 === 0 || i === s.balanceCurve.length - 1,
+        ),
       })),
       counterfactual,
     });

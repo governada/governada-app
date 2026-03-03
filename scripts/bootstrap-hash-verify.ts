@@ -15,9 +15,9 @@ config({ path: resolve(process.cwd(), '.env.local') });
 import { blake2bHex } from 'blakejs';
 import { getSupabaseAdmin } from '../lib/supabase';
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-const DB_BATCH_SIZE = 100;  // rows fetched per DB query
-const CONCURRENCY = 10;     // parallel URL fetches per chunk
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const DB_BATCH_SIZE = 100; // rows fetched per DB query
+const CONCURRENCY = 10; // parallel URL fetches per chunk
 const CHUNK_SLEEP_MS = 150; // pause between concurrent chunks
 
 async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<string | null> {
@@ -45,7 +45,11 @@ async function main() {
   console.log('Part 1: Rationale hash verification (blake2b-256)...');
   const p1Start = Date.now();
 
-  let verified = 0, mismatched = 0, noHash = 0, fetchErrors = 0, offset = 0;
+  let verified = 0,
+    mismatched = 0,
+    noHash = 0,
+    fetchErrors = 0,
+    offset = 0;
 
   while (true) {
     const { data: batch } = await supabase
@@ -59,7 +63,7 @@ async function main() {
     if (!batch || batch.length === 0) break;
 
     // Fetch meta_hashes for this batch in one query
-    const txHashes = batch.map(r => r.vote_tx_hash);
+    const txHashes = batch.map((r) => r.vote_tx_hash);
     const { data: votes } = await supabase
       .from('drep_votes')
       .select('vote_tx_hash, meta_hash')
@@ -71,7 +75,7 @@ async function main() {
     }
 
     // Filter to items that have a meta_hash to check
-    const itemsWithHash = batch.filter(r => hashMap.has(r.vote_tx_hash));
+    const itemsWithHash = batch.filter((r) => hashMap.has(r.vote_tx_hash));
     const itemsWithoutHash = batch.length - itemsWithHash.length;
     noHash += itemsWithoutHash;
 
@@ -99,7 +103,7 @@ async function main() {
 
           if (isVerified) verified++;
           else mismatched++;
-        })
+        }),
       );
 
       if (i + CONCURRENCY < itemsWithHash.length) await sleep(CHUNK_SLEEP_MS);
@@ -107,20 +111,27 @@ async function main() {
 
     const total = verified + mismatched + fetchErrors;
     const elapsed = ((Date.now() - p1Start) / 1000).toFixed(0);
-    console.log(`  [${elapsed}s] processed=${total} verified=${verified} mismatch=${mismatched} fetchErr=${fetchErrors} noHash=${noHash}`);
+    console.log(
+      `  [${elapsed}s] processed=${total} verified=${verified} mismatch=${mismatched} fetchErr=${fetchErrors} noHash=${noHash}`,
+    );
 
     if (batch.length < DB_BATCH_SIZE) break;
     offset += batch.length; // advance by full batch — no per-item offset drift
   }
 
-  console.log(`\n  Final: verified=${verified} mismatch=${mismatched} fetchErr=${fetchErrors} noHash=${noHash}`);
+  console.log(
+    `\n  Final: verified=${verified} mismatch=${mismatched} fetchErr=${fetchErrors} noHash=${noHash}`,
+  );
   console.log(`  Part 1 done in ${((Date.now() - p1Start) / 1000).toFixed(1)}s\n`);
 
   // ═══ PART 2: DRep Metadata Hash Verification ══════════════════════════════
   console.log('Part 2: DRep metadata hash verification (blake2b-256)...');
   const p2Start = Date.now();
 
-  let metaVerified = 0, metaMismatch = 0, metaFetchErr = 0, metaNoUrl = 0;
+  let metaVerified = 0,
+    metaMismatch = 0,
+    metaFetchErr = 0,
+    metaNoUrl = 0;
   offset = 0;
 
   while (true) {
@@ -133,7 +144,7 @@ async function main() {
     if (!batch || batch.length === 0) break;
 
     // Filter to DReps that have both anchor_url and anchor_hash
-    const itemsWithAnchors = batch.filter(d => d.anchor_url && d.anchor_hash);
+    const itemsWithAnchors = batch.filter((d) => d.anchor_url && d.anchor_hash);
     metaNoUrl += batch.length - itemsWithAnchors.length;
 
     // Process in parallel chunks of CONCURRENCY
@@ -159,7 +170,7 @@ async function main() {
 
           if (isVerified) metaVerified++;
           else metaMismatch++;
-        })
+        }),
       );
 
       if (i + CONCURRENCY < itemsWithAnchors.length) await sleep(CHUNK_SLEEP_MS);
@@ -167,13 +178,17 @@ async function main() {
 
     const total = metaVerified + metaMismatch + metaFetchErr;
     const elapsed = ((Date.now() - p2Start) / 1000).toFixed(0);
-    console.log(`  [${elapsed}s] processed=${total} verified=${metaVerified} mismatch=${metaMismatch} fetchErr=${metaFetchErr} noUrl=${metaNoUrl}`);
+    console.log(
+      `  [${elapsed}s] processed=${total} verified=${metaVerified} mismatch=${metaMismatch} fetchErr=${metaFetchErr} noUrl=${metaNoUrl}`,
+    );
 
     if (batch.length < DB_BATCH_SIZE) break;
     offset += batch.length;
   }
 
-  console.log(`\n  Final: verified=${metaVerified} mismatch=${metaMismatch} fetchErr=${metaFetchErr} noUrl=${metaNoUrl}`);
+  console.log(
+    `\n  Final: verified=${metaVerified} mismatch=${metaMismatch} fetchErr=${metaFetchErr} noUrl=${metaNoUrl}`,
+  );
   console.log(`  Part 2 done in ${((Date.now() - p2Start) / 1000).toFixed(1)}s\n`);
 
   console.log('╔══════════════════════════════════════════════════╗');
@@ -184,4 +199,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => { console.error('FATAL:', err); process.exit(1); });
+main().catch((err) => {
+  console.error('FATAL:', err);
+  process.exit(1);
+});

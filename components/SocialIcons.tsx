@@ -19,12 +19,7 @@ import {
   SiTwitch,
 } from '@icons-pack/react-simple-icons';
 import { Linkedin, Link as LinkIcon, Mail } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SocialIconsProps {
   metadata: Record<string, unknown> | null;
@@ -32,20 +27,20 @@ interface SocialIconsProps {
 
 const BRAND_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
   'Twitter/X': SiX,
-  'GitHub': SiGithub,
-  'Facebook': SiFacebook,
-  'Instagram': SiInstagram,
-  'YouTube': SiYoutube,
-  'Discord': SiDiscord,
-  'Telegram': SiTelegram,
-  'Reddit': SiReddit,
-  'Medium': SiMedium,
-  'GitLab': SiGitlab,
-  'Linktree': SiLinktree,
-  'WhatsApp': SiWhatsapp,
-  'Bluesky': SiBluesky,
-  'Mastodon': SiMastodon,
-  'Twitch': SiTwitch,
+  GitHub: SiGithub,
+  Facebook: SiFacebook,
+  Instagram: SiInstagram,
+  YouTube: SiYoutube,
+  Discord: SiDiscord,
+  Telegram: SiTelegram,
+  Reddit: SiReddit,
+  Medium: SiMedium,
+  GitLab: SiGitlab,
+  Linktree: SiLinktree,
+  WhatsApp: SiWhatsapp,
+  Bluesky: SiBluesky,
+  Mastodon: SiMastodon,
+  Twitch: SiTwitch,
 };
 
 function getIcon(platform: string) {
@@ -59,7 +54,13 @@ function isValidUrl(url: string) {
   try {
     if (!url || url.length < 5) return false;
     const lower = url.toLowerCase();
-    if (lower.includes('example.com') || lower === 'http://' || lower === 'https://' || lower === 'na' || lower === 'none') {
+    if (
+      lower.includes('example.com') ||
+      lower === 'http://' ||
+      lower === 'https://' ||
+      lower === 'na' ||
+      lower === 'none'
+    ) {
       return false;
     }
     new URL(url);
@@ -72,13 +73,14 @@ function isValidUrl(url: string) {
 export function SocialIcons({ metadata }: SocialIconsProps) {
   if (!metadata) return null;
 
-  const references = (metadata.references as Array<{ label: string; uri: string }> | undefined) || [];
+  const references =
+    (metadata.references as Array<{ label: string; uri: string }> | undefined) || [];
   const email = metadata.email as string | undefined;
 
   if (references.length === 0 && !email) return null;
 
   const seenUris = new Set<string>();
-  const dedupedRefs = references.filter(ref => {
+  const dedupedRefs = references.filter((ref) => {
     if (!isValidUrl(ref.uri) || seenUris.has(ref.uri)) return false;
     seenUris.add(ref.uri);
     return true;
@@ -109,7 +111,7 @@ export function SocialIcons({ metadata }: SocialIconsProps) {
           </TooltipProvider>
         );
       })}
-      
+
       {email && (
         <TooltipProvider>
           <Tooltip>

@@ -12,6 +12,7 @@ import {
   parseMetadataFields,
 } from '@/utils/koios';
 import { logger } from '@/lib/logger';
+import { withRetry } from '@/lib/retry';
 import type { DRepVotesResponse } from '@/types/koios';
 import {
   calculateParticipationRate,
@@ -245,13 +246,17 @@ export async function getEnrichedDReps(
       logger.info('[DRepScore] Epoch context', { currentEpoch, activeProposalEpochs: activeProposalEpochs.size, actualProposalCount });
     }
 
-    let drepList = await fetchAllDReps();
-    if (!drepList || drepList.length === 0) {
-      logger.warn('[DRepScore] Empty DRep list from Koios — retrying once after 3s');
-      await new Promise((r) => setTimeout(r, 3000));
-      drepList = await fetchAllDReps();
-    }
-    if (!drepList || drepList.length === 0) {
+    let drepList: Awaited<ReturnType<typeof fetchAllDReps>>;
+    try {
+      drepList = await withRetry(
+        async () => {
+          const result = await fetchAllDReps();
+          if (!result || result.length === 0) throw new Error('Empty DRep list');
+          return result;
+        },
+        { maxRetries: 1, baseDelayMs: 3000, label: 'getEnrichedDReps' },
+      );
+    } catch {
       logger.error('[DRepScore] No DReps found after retry');
       return { dreps: [], allDReps: [], error: true, totalAvailable: 0 };
     }

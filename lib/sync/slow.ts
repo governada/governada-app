@@ -12,6 +12,7 @@ import { fetchDRepVotingPowerHistory, fetchDRepInfo } from '@/utils/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
 import { broadcastDiscord, broadcastEvent } from '@/lib/notifications';
 import { precomputeSimilarityCache } from '@/lib/proposalSimilarity';
+import * as Sentry from '@sentry/nextjs';
 
 const RATIONALE_FETCH_TIMEOUT_MS = 5000;
 const RATIONALE_MAX_CONTENT_SIZE = 50_000;
@@ -593,6 +594,9 @@ async function runCriticalProposalNotifications(supabase: SupabaseClient) {
  * Throws on fatal errors (Inngest retries); returns result on success/degraded.
  */
 export async function executeSlowSync(): Promise<Record<string, unknown>> {
+  return Sentry.startSpan(
+    { name: 'sync.slow', op: 'task' },
+    async () => {
   const supabase = getSupabaseAdmin();
   const syncLog = new SyncLogger(supabase, 'slow');
   await syncLog.start();
@@ -691,4 +695,6 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
     errors: syncErrors.length > 0 ? syncErrors : undefined,
     timestamp: new Date().toISOString(),
   };
+    },
+  );
 }

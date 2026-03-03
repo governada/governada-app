@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { withRetry } from '@/lib/retry';
 
 export type SyncType =
   | 'dreps'
@@ -27,10 +28,6 @@ export type SyncType =
 
 const BATCH_SIZE = 100;
 const MAX_UPSERT_RETRIES = 3;
-
-function upsertRetryDelay(attempt: number): number {
-  return Math.pow(2, attempt + 1) * 1000 + Math.random() * 500;
-}
 
 export function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message;
@@ -78,29 +75,24 @@ export async function batchUpsert<T extends Record<string, unknown>>(
   const total = Math.ceil(rows.length / BATCH_SIZE);
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    let lastError: string | null = null;
 
-    for (let attempt = 0; attempt < MAX_UPSERT_RETRIES; attempt++) {
-      const { error } = await supabase
-        .from(table)
-        .upsert(batch, { onConflict, ignoreDuplicates: false });
-      if (!error) {
-        success += batch.length;
-        lastError = null;
-        break;
-      }
-      lastError = error.message;
-      if (attempt < MAX_UPSERT_RETRIES - 1 && isTransientError(error.message)) {
-        const delay = upsertRetryDelay(attempt);
-        logger.warn(`[Sync] ${label} batch transient error, retrying`, { delayMs: Math.round(delay), attempt: attempt + 1, maxRetries: MAX_UPSERT_RETRIES, error: error.message });
-        await new Promise((r) => setTimeout(r, delay));
-      } else {
-        break;
-      }
-    }
-
-    if (lastError) {
-      logger.error(`[Sync] ${label} batch error`, { error: lastError });
+    try {
+      await withRetry(
+        async () => {
+          const { error } = await supabase
+            .from(table)
+            .upsert(batch, { onConflict, ignoreDuplicates: false });
+          if (error) throw error;
+        },
+        {
+          maxRetries: MAX_UPSERT_RETRIES - 1,
+          isTransient: (err) => isTransientError(errMsg(err)),
+          label: `Sync ${label} batch`,
+        },
+      );
+      success += batch.length;
+    } catch (err) {
+      logger.error(`[Sync] ${label} batch error`, { error: errMsg(err) });
       errors += batch.length;
     }
   }
@@ -286,31 +278,71 @@ export async function emitPostHog(
 
 /**
  * Send an alert to the configured Discord webhook.
- * Fire-and-forget — never throws, never blocks syncs.
+ * Retries once after 5s on failure. Never throws — alerting must not crash callers.
  */
 export async function alertDiscord(title: string, details: string): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return;
+
+  await withRetry(
+    async () => {
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: `⚠️ ${title}`,
+              description: details,
+              color: 0xf59e0b,
+              footer: { text: 'DRepScore Sync Monitor' },
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!res.ok) throw new Error(`Discord webhook returned ${res.status}`);
+    },
+    { maxRetries: 1, baseDelayMs: 5000, label: 'alertDiscord' },
+  ).catch(() => {
+    // swallow — alerting should not crash the caller
+  });
+}
+
+/**
+ * Send a critical alert email via Resend.
+ * Never throws — alerting must not crash callers.
+ */
+export async function alertEmail(subject: string, body: string): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
   try {
-    await fetch(webhookUrl, {
+    await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        embeds: [
-          {
-            title: `⚠️ ${title}`,
-            description: details,
-            color: 0xf59e0b,
-            footer: { text: 'DRepScore Sync Monitor' },
-            timestamp: new Date().toISOString(),
-          },
-        ],
+        from: 'DRepScore Alerts <alerts@drepscore.io>',
+        to: ['admin@drepscore.io'],
+        subject: `[DRepScore Alert] ${subject}`,
+        text: body,
       }),
-      signal: AbortSignal.timeout(5_000),
     });
-  } catch (e) {
-    logger.error('[alertDiscord] Failed', { error: errMsg(e) });
+  } catch {
+    // swallow — alerting should not crash the caller
   }
+}
+
+/**
+ * Send a critical alert to all channels (Discord + Email).
+ * Never throws — uses allSettled to ensure both channels are attempted.
+ */
+export async function alertCritical(title: string, details: string): Promise<void> {
+  await Promise.allSettled([
+    alertDiscord(title, details),
+    alertEmail(title, details),
+  ]);
 }
 
 /**

@@ -8,7 +8,7 @@
 import { inngest } from '@/lib/inngest';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { alertDiscord, emitPostHog, type SyncType } from '@/lib/sync-utils';
+import { alertCritical, emitPostHog, type SyncType } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 interface CheckResult {
@@ -264,7 +264,7 @@ export const checkSnapshotCompleteness = inngest.createFunction(
       await step.run('alert-failures', async () => {
         const failureList = failures.map((f) => `- **${f.name}**: ${f.detail}`).join('\n');
 
-        await alertDiscord(
+        await alertCritical(
           'Snapshot Completeness Failed',
           `${failures.length} of ${checks.length} checks failed:\n${failureList}`,
         );

@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger';
 import { SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
 import { fetchDRepDelegatorCount } from '@/utils/koios';
 import { blockTimeToEpoch } from '@/lib/koios';
+import * as Sentry from '@sentry/nextjs';
 
 const BATCH_SIZE = 100;
 const DELEGATOR_CONCURRENCY = 20;
@@ -12,6 +13,9 @@ const DELEGATOR_CONCURRENCY = 20;
  * Throws on fatal errors (Inngest retries); returns result on success/degraded.
  */
 export async function executeSecondarySync(): Promise<Record<string, unknown>> {
+  return Sentry.startSpan(
+    { name: 'sync.secondary', op: 'task' },
+    async () => {
   const supabase = getSupabaseAdmin();
   const syncLog = new SyncLogger(supabase, 'secondary');
   await syncLog.start();
@@ -166,4 +170,6 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
     durationSeconds: (syncLog.elapsed / 1000).toFixed(1),
     timestamp: new Date().toISOString(),
   };
+    },
+  );
 }

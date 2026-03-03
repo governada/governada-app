@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
-
-const KOIOS_BASE_URL = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
-const KOIOS_API_KEY = process.env.KOIOS_API_KEY;
+import { fetchDelegatedDRep } from '@/utils/koios';
 
 export const POST = withRouteHandler(async (request: NextRequest) => {
   const { stakeAddress } = await request.json();
@@ -12,35 +10,13 @@ export const POST = withRouteHandler(async (request: NextRequest) => {
     return NextResponse.json({ error: 'stakeAddress required' }, { status: 400 });
   }
 
-  try {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(KOIOS_API_KEY && { Authorization: `Bearer ${KOIOS_API_KEY}` }),
-    };
+  const drepId = await fetchDelegatedDRep(stakeAddress);
 
-    const res = await fetch(`${KOIOS_BASE_URL}/account_info`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ _stake_addresses: [stakeAddress] }),
-      cache: 'no-store',
-    });
+  captureServerEvent(
+    'delegation_updated',
+    { wallet_address: stakeAddress, drep_id: drepId },
+    stakeAddress,
+  );
 
-    if (!res.ok) {
-      return NextResponse.json({ drepId: null });
-    }
-
-    const data = await res.json();
-    const account = Array.isArray(data) ? data[0] : null;
-    const drepId = account?.vote_delegation || account?.delegated_drep || null;
-
-    captureServerEvent(
-      'delegation_updated',
-      { wallet_address: stakeAddress, drep_id: drepId },
-      stakeAddress,
-    );
-
-    return NextResponse.json({ drepId });
-  } catch {
-    return NextResponse.json({ drepId: null });
-  }
+  return NextResponse.json({ drepId });
 });

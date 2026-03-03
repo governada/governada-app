@@ -6,6 +6,7 @@ import { fetchProposals, fetchVotesForProposals, fetchProposalVotingSummary } fr
 import { classifyProposals } from '@/lib/alignment';
 import { KoiosProposalSchema, validateArray } from '@/utils/koios-schemas';
 import type { ProposalListResponse } from '@/types/koios';
+import * as Sentry from '@sentry/nextjs';
 
 const BATCH_SIZE = 100;
 const SUMMARY_CONCURRENCY = 5;
@@ -16,6 +17,9 @@ const TAG = '[proposals]';
  * Throws on fatal errors (Inngest retries); returns result on success/degraded.
  */
 export async function executeProposalsSync(): Promise<Record<string, unknown>> {
+  return Sentry.startSpan(
+    { name: 'sync.proposals', op: 'task' },
+    async () => {
   const supabase = getSupabaseAdmin();
   const syncLog = new SyncLogger(supabase, 'proposals');
   await syncLog.start();
@@ -347,4 +351,6 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
     durationSeconds: (syncLog.elapsed / 1000).toFixed(1),
     timestamp: new Date().toISOString(),
   };
+    },
+  );
 }

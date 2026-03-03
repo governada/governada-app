@@ -6,7 +6,7 @@
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { alertDiscord, errMsg, emitPostHog, type SyncType } from '@/lib/sync-utils';
+import { alertDiscord, alertCritical, errMsg, emitPostHog, type SyncType } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {
@@ -127,10 +127,10 @@ export const syncFreshnessGuard = inngest.createFunction(
             recentTriggerCount,
             max: SELF_HEAL_MAX_TRIGGERS,
           });
-          await alertDiscord(
-            `Self-Heal Throttled: ${syncType}`,
-            `${recentTriggerCount} runs in last 2h but still stale (${staleMins}m). Possible persistent failure — needs manual investigation.`,
-          );
+        await alertCritical(
+          `Self-Heal Throttled: ${syncType}`,
+          `${recentTriggerCount} runs in last 2h but still stale (${staleMins}m). Possible persistent failure — needs manual investigation.`,
+        );
           return null;
         }
 

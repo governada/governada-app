@@ -16,6 +16,8 @@ import {
   CCVote,
   KoiosAccountInfo,
 } from '@/types/koios';
+import { logger } from '@/lib/logger';
+import * as Sentry from '@sentry/nextjs';
 
 const KOIOS_BASE_URL = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
 const KOIOS_API_KEY = process.env.KOIOS_API_KEY;
@@ -95,12 +97,10 @@ async function koiosFetch<T>(
 
   try {
     const startTime = Date.now();
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      cache: 'no-store',
-      signal: controller.signal,
-    });
+    const response = await Sentry.startSpan(
+      { name: `koios${endpoint}`, op: 'http.client', attributes: { 'http.method': options.method || 'GET' } },
+      async () => fetch(url, { ...options, headers, cache: 'no-store', signal: controller.signal }),
+    );
     clearTimeout(timeoutId);
     const elapsed = Date.now() - startTime;
     _koiosCallCount++;
@@ -527,7 +527,7 @@ export async function fetchDelegatedDRep(stakeAddress: string): Promise<string |
     const account = Array.isArray(data) ? data[0] : null;
     return account?.vote_delegation || account?.delegated_drep || null;
   } catch (err) {
-    console.error('[Koios] Error fetching delegated DRep:', err);
+    logger.error('[Koios] Error fetching delegated DRep', { error: err });
     return null;
   }
 }

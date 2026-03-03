@@ -6,31 +6,7 @@ import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { PollVoteSchema } from '@/lib/api/schemas/governance';
-
-async function lookupDelegation(stakeAddress: string): Promise<string | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
-    const apiKey = process.env.KOIOS_API_KEY;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
-    };
-
-    const res = await fetch(`${baseUrl}/account_info`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ _stake_addresses: [stakeAddress] }),
-      cache: 'no-store',
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    const account = Array.isArray(data) ? data[0] : null;
-    return account?.vote_delegation || account?.delegated_drep || null;
-  } catch {
-    return null;
-  }
-}
+import { fetchDelegatedDRep } from '@/utils/koios';
 
 function aggregateCounts(rows: { vote: string }[]): {
   yes: number;
@@ -56,7 +32,7 @@ export const POST = withRouteHandler(async (request: NextRequest, { requestId, w
   let resolvedDrepId = delegatedDrepId || null;
 
   if (!resolvedDrepId && resolvedStakeAddress) {
-    resolvedDrepId = await lookupDelegation(resolvedStakeAddress);
+    resolvedDrepId = await fetchDelegatedDRep(resolvedStakeAddress);
   }
 
   const supabase = getSupabaseAdmin();

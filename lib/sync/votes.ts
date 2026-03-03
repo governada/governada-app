@@ -12,6 +12,7 @@ import {
   alertDiscord,
 } from '@/lib/sync-utils';
 import { KoiosVoteListSchema, validateArray } from '@/utils/koios-schemas';
+import * as Sentry from '@sentry/nextjs';
 
 interface SupabaseVoteRow {
   vote_tx_hash: string;
@@ -30,6 +31,9 @@ interface SupabaseVoteRow {
  * Throws on fatal errors (Inngest retries); returns result on success/degraded.
  */
 export async function executeVotesSync(): Promise<Record<string, unknown>> {
+  return Sentry.startSpan(
+    { name: 'sync.votes', op: 'task' },
+    async () => {
   const supabase = getSupabaseAdmin();
   const syncLog = new SyncLogger(supabase, 'votes');
   await syncLog.start();
@@ -188,4 +192,6 @@ export async function executeVotesSync(): Promise<Record<string, unknown>> {
     await emitPostHog(false, 'votes', syncLog.elapsed, metrics);
     throw err;
   }
+    },
+  );
 }

@@ -28,7 +28,7 @@ import { scoreRationalesBatch } from '@/lib/alignment/rationaleQuality';
 import { normalizeToPercentiles, type RawScoreRow } from '@/lib/alignment/normalize';
 import { computePCA, storePCAResults } from '@/lib/alignment/pca';
 import { validateDimensionIndependence } from '@/lib/alignment/validate';
-import { batchUpsert, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
+import { batchUpsert, errMsg, emitPostHog, capMsg, fetchAll } from '@/lib/sync-utils';
 import type { ProposalInfo } from '@/types/koios';
 
 function mapDBProposal(row: Record<string, unknown>): ProposalInfo {
@@ -176,23 +176,22 @@ export const syncAlignment = inngest.createFunction(
       const sb = getSupabaseAdmin();
       const s1 = Date.now();
 
-      const [{ data: dbRows }, { data: drepRows }, { data: voteRows }, { data: classRows }] =
-        await Promise.all([
-          sb.from('proposals').select(DB_PROPOSAL_COLUMNS).range(0, 99999),
-          sb
-            .from('dreps')
-            .select('id, info, score, participation_rate, rationale_rate, size_tier')
-            .range(0, 99999),
+      const [dbRows, drepRows, voteRows, classRows] = await Promise.all([
+        fetchAll(sb.from('proposals').select(DB_PROPOSAL_COLUMNS)),
+        fetchAll(
+          sb.from('dreps').select('id, info, score, participation_rate, rationale_rate, size_tier'),
+        ),
+        fetchAll(
           sb
             .from('drep_votes')
             .select(
               'drep_id, proposal_tx_hash, proposal_index, vote, block_time, meta_url, rationale_quality',
-            )
-            .range(0, 99999),
-          sb.from('proposal_classifications').select('*').range(0, 99999),
-        ]);
+            ),
+        ),
+        fetchAll(sb.from('proposal_classifications').select('*')),
+      ]);
 
-      if (!dbRows?.length || !drepRows?.length || !voteRows?.length) {
+      if (!dbRows.length || !drepRows.length || !voteRows.length) {
         return {
           skipped: true,
           reason: 'insufficient data',
@@ -208,7 +207,7 @@ export const syncAlignment = inngest.createFunction(
       const loadMs = Date.now() - s1;
 
       const classMap = new Map<string, ProposalClassification>();
-      for (const c of (classRows || []) as any[]) {
+      for (const c of classRows as any[]) {
         classMap.set(`${c.proposal_tx_hash}-${c.proposal_index}`, {
           proposalTxHash: c.proposal_tx_hash,
           proposalIndex: c.proposal_index,
@@ -354,20 +353,21 @@ export const syncAlignment = inngest.createFunction(
     // Step 5: PCA compute + persist (CPU + DB)
     const pcaResult = await step.run('compute-pca', async () => {
       const sb = getSupabaseAdmin();
-      const [{ data: dbRows }, { data: voteRows }, { data: classRows }] = await Promise.all([
-        sb.from('proposals').select(DB_PROPOSAL_COLUMNS).range(0, 99999),
-        sb
-          .from('drep_votes')
-          .select('drep_id, proposal_tx_hash, proposal_index, vote, block_time')
-          .range(0, 99999),
-        sb.from('proposal_classifications').select('*').range(0, 99999),
+      const [dbRows, voteRows, classRows] = await Promise.all([
+        fetchAll(sb.from('proposals').select(DB_PROPOSAL_COLUMNS)),
+        fetchAll(
+          sb
+            .from('drep_votes')
+            .select('drep_id, proposal_tx_hash, proposal_index, vote, block_time'),
+        ),
+        fetchAll(sb.from('proposal_classifications').select('*')),
       ]);
 
-      if (!dbRows?.length || !voteRows?.length) return { pcaComponents: 0, variance: 'N/A' };
+      if (!dbRows.length || !voteRows.length) return { pcaComponents: 0, variance: 'N/A' };
 
       const proposals = dbRows.map(mapDBProposal);
       const classMap = new Map<string, ProposalClassification>();
-      for (const c of (classRows || []) as any[]) {
+      for (const c of classRows as any[]) {
         classMap.set(`${c.proposal_tx_hash}-${c.proposal_index}`, {
           proposalTxHash: c.proposal_tx_hash,
           proposalIndex: c.proposal_index,

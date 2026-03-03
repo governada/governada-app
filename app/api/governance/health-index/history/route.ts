@@ -44,11 +44,30 @@ export async function GET(request: NextRequest) {
       trend.streakEpochs = streak;
     }
 
+    // Component-level trends: compare current vs most recent snapshot
+    let componentTrends: Record<string, { direction: string; delta: number }> = {};
+    if (snapshots?.length) {
+      const lastSnapshot = snapshots[0];
+      const prevComponents = (lastSnapshot.components as any[]) ?? [];
+
+      for (const comp of current.components) {
+        const prev = prevComponents.find((c: any) => c.name === comp.name);
+        if (prev) {
+          const d = comp.value - prev.value;
+          componentTrends[comp.name] = {
+            direction: d > 1 ? 'up' : d < -1 ? 'down' : 'flat',
+            delta: Math.round(d * 10) / 10,
+          };
+        }
+      }
+    }
+
     return NextResponse.json(
-      { current, history, trend } satisfies {
-        current: GHIResult;
-        history: { epoch: number; score: number; band: string }[];
-        trend: { direction: string; delta: number; streakEpochs: number };
+      {
+        current: current as GHIResult,
+        history,
+        trend,
+        componentTrends,
       },
       { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' } },
     );

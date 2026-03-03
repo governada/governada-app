@@ -239,9 +239,17 @@ export default async function PulsePage() {
             <h2 className="text-lg font-semibold">Governance Health Index</h2>
             {showNarratives && <NarrativeSummary text={pulseNarrative} />}
             <p className="text-xs text-muted-foreground">
-              A composite score measuring participation, rationale quality, delegation spread, and
-              DRep diversity.
+              A composite score across engagement, quality, and resilience — powered by EDI
+              decentralization metrics.
             </p>
+            <Link
+              href="/decentralization"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <BarChart3 className="h-3 w-3" />
+              Governance Decentralization Dashboard
+              <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </div>
       )}

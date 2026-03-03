@@ -178,12 +178,14 @@ function GHIHero({
       )}
 
       <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-center">
-        {data.components.map((comp) => (
-          <div key={comp.name} className="flex flex-col items-center">
-            <span className="text-xs text-muted-foreground">{comp.name}</span>
-            <span className="text-sm font-semibold tabular-nums">{comp.value}</span>
-          </div>
-        ))}
+        {data.components
+          .filter((comp) => comp.weight > 0)
+          .map((comp) => (
+            <div key={comp.name} className="flex flex-col items-center">
+              <span className="text-xs text-muted-foreground">{comp.name}</span>
+              <span className="text-sm font-semibold tabular-nums">{comp.value}</span>
+            </div>
+          ))}
       </div>
     </motion.div>
   );

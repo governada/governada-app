@@ -48,12 +48,7 @@ export function CivicaHomePage({
 
     case 'citizen':
       // Segment = citizen means wallet is connected and delegated to a DRep
-      return (
-        <HomeCitizen
-          ssrHolderData={ssrHolderData}
-          ssrWalletAddress={ssrWalletAddress}
-        />
-      );
+      return <HomeCitizen ssrHolderData={ssrHolderData} ssrWalletAddress={ssrWalletAddress} />;
 
     case 'anonymous':
     default:

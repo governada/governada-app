@@ -107,10 +107,7 @@ export function HomeSPO() {
 
       {/* ── Governance Score Hero ────────────────────────────────────── */}
       <div
-        className={cn(
-          'rounded-2xl border p-6 space-y-4',
-          TIER_BG[tier] ?? 'bg-card border-border',
-        )}
+        className={cn('rounded-2xl border p-6 space-y-4', TIER_BG[tier] ?? 'bg-card border-border')}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -213,7 +210,9 @@ export function HomeSPO() {
                   #{n.rank} {n.ticker ?? n.poolName ?? n.poolId.slice(0, 12)}
                   {n.isTarget && ' (You)'}
                 </span>
-                <span className={cn('tabular-nums', n.isTarget ? 'text-primary' : 'text-foreground')}>
+                <span
+                  className={cn('tabular-nums', n.isTarget ? 'text-primary' : 'text-foreground')}
+                >
                   {n.score ?? '—'}
                 </span>
               </div>

@@ -3,12 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getGovTerm, getWhyItMatters, type GovTermSegment } from '@/lib/microcopy';
 import { useSegment } from '@/components/providers/SegmentProvider';
 
@@ -108,9 +103,7 @@ export function GovTerm({ term, children, segmentOverride, className }: GovTermP
             {children ?? def.label}
             {showHint && (
               <span
-                className={cn(
-                  'relative inline-flex h-1.5 w-1.5 ml-0.5 -mt-1 shrink-0',
-                )}
+                className={cn('relative inline-flex h-1.5 w-1.5 ml-0.5 -mt-1 shrink-0')}
                 aria-hidden
               >
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />

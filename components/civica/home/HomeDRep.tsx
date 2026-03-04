@@ -1,7 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus, ArrowRight, Users, AlertTriangle, ChevronRight, Trophy } from 'lucide-react';
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ArrowRight,
+  Users,
+  AlertTriangle,
+  ChevronRight,
+  Trophy,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,7 +61,14 @@ function SparkLine({ history }: { history: { score: number }[] }) {
   const color = trend > 0 ? '#34d399' : trend < 0 ? '#f87171' : '#6b7280';
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -92,10 +108,7 @@ export function HomeDRep() {
     <div className="mx-auto max-w-3xl px-4 pt-8 pb-16 space-y-4">
       {/* ── Score Hero ─────────────────────────────────────────────── */}
       <div
-        className={cn(
-          'rounded-2xl border p-6 space-y-4',
-          TIER_BG[tier] ?? 'bg-card border-border',
-        )}
+        className={cn('rounded-2xl border p-6 space-y-4', TIER_BG[tier] ?? 'bg-card border-border')}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -153,9 +166,7 @@ export function HomeDRep() {
                     : 'Stable'}
               </span>
             </div>
-            {reportCard?.scoreHistory && (
-              <SparkLine history={reportCard.scoreHistory} />
-            )}
+            {reportCard?.scoreHistory && <SparkLine history={reportCard.scoreHistory} />}
           </div>
         </div>
 
@@ -197,7 +208,9 @@ export function HomeDRep() {
       <div className="flex items-center gap-3 px-1">
         <Users className="h-4 w-4 text-muted-foreground shrink-0" />
         <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground tabular-nums">{delegatorCount.toLocaleString()}</span>{' '}
+          <span className="font-semibold text-foreground tabular-nums">
+            {delegatorCount.toLocaleString()}
+          </span>{' '}
           delegators trust you with their <GovTerm term="votingPower">voting power</GovTerm>
         </p>
       </div>
@@ -218,7 +231,12 @@ export function HomeDRep() {
                 ? 'Expires this epoch'
                 : `${topUrgent.epochsRemaining} epoch${topUrgent.epochsRemaining !== 1 ? 's' : ''} remaining`}
             </span>
-            <Button asChild size="sm" variant="outline" className="border-amber-700/50 text-amber-400 hover:bg-amber-950/40">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="border-amber-700/50 text-amber-400 hover:bg-amber-950/40"
+            >
               <Link href={`/proposals/${topUrgent.txHash}/${topUrgent.index}`}>
                 Vote now <ChevronRight className="ml-1 h-3.5 w-3.5" />
               </Link>
@@ -227,9 +245,7 @@ export function HomeDRep() {
         </div>
       )}
 
-      {urgentLoading && (
-        <Skeleton className="h-24 rounded-xl" />
-      )}
+      {urgentLoading && <Skeleton className="h-24 rounded-xl" />}
 
       {/* ── Competitive context ──────────────────────────────────────── */}
       {!compLoading && competitive?.nearbyAbove?.length > 0 && (
@@ -250,9 +266,7 @@ export function HomeDRep() {
               </div>
             ))}
             <div className="flex items-center justify-between text-xs border-t border-border pt-2">
-              <span className="font-medium text-primary">
-                #{rank} You
-              </span>
+              <span className="font-medium text-primary">#{rank} You</span>
               <span className="tabular-nums font-bold text-primary">{score}</span>
             </div>
             {competitive.nearbyBelow?.map((d: any) => (

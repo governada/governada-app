@@ -56,10 +56,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
       {/* ── Constellation hero (75vh) ────────────────────────────────── */}
       <section className="relative h-[75vh] min-h-[480px] overflow-hidden" aria-hidden="true">
         <div className="absolute inset-0">
-          <GovernanceConstellation
-            className="w-full h-full"
-            interactive={false}
-          />
+          <GovernanceConstellation className="w-full h-full" interactive={false} />
         </div>
 
         {/* Gradient fade at bottom */}
@@ -166,13 +163,14 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary/60 shrink-0" />
-              <strong className="text-foreground">{pulseData.totalDReps.toLocaleString()}</strong>{' '}
+              <strong className="text-foreground">
+                {pulseData.totalDReps.toLocaleString()}
+              </strong>{' '}
               DReps scored
             </span>
             <span className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary/60 shrink-0" />
-              <strong className="text-foreground">{pulseData.claimedDReps}</strong> profiles
-              claimed
+              <strong className="text-foreground">{pulseData.claimedDReps}</strong> profiles claimed
             </span>
             <span className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary/60 shrink-0" />

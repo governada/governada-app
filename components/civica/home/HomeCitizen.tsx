@@ -44,7 +44,8 @@ interface HomeCitizenProps {
 }
 
 function MomentumIcon({ momentum }: { momentum: number | null }) {
-  if (momentum === null || momentum === undefined) return <Minus className="h-4 w-4 text-muted-foreground" />;
+  if (momentum === null || momentum === undefined)
+    return <Minus className="h-4 w-4 text-muted-foreground" />;
   if (momentum > 0.5) return <TrendingUp className="h-4 w-4 text-emerald-400" />;
   if (momentum < -0.5) return <TrendingDown className="h-4 w-4 text-rose-400" />;
   return <Minus className="h-4 w-4 text-muted-foreground" />;
@@ -76,8 +77,7 @@ export function HomeCitizen({ ssrHolderData, ssrWalletAddress }: HomeCitizenProp
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center space-y-4">
         <p className="text-muted-foreground">
-          Your wallet is connected but not delegated to a{' '}
-          <GovTerm term="drep">DRep</GovTerm>.
+          Your wallet is connected but not delegated to a <GovTerm term="drep">DRep</GovTerm>.
         </p>
         <Button asChild>
           <Link href="/match">
@@ -91,14 +91,8 @@ export function HomeCitizen({ ssrHolderData, ssrWalletAddress }: HomeCitizenProp
   return (
     <div className="relative flex flex-col">
       {/* ── Ambient constellation header (15vh) ─────────────────────── */}
-      <section
-        className="relative h-[15vh] min-h-[80px] overflow-hidden"
-        aria-hidden="true"
-      >
-        <GovernanceConstellation
-          className="w-full h-full opacity-40"
-          interactive={false}
-        />
+      <section className="relative h-[15vh] min-h-[80px] overflow-hidden" aria-hidden="true">
+        <GovernanceConstellation className="w-full h-full opacity-40" interactive={false} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
       </section>
 
@@ -145,7 +139,9 @@ export function HomeCitizen({ ssrHolderData, ssrWalletAddress }: HomeCitizenProp
               <Skeleton className="h-14 w-20" />
             ) : (
               <div className="text-center">
-                <p className={cn('font-display text-5xl font-bold tabular-nums', TIER_COLORS[tier])}>
+                <p
+                  className={cn('font-display text-5xl font-bold tabular-nums', TIER_COLORS[tier])}
+                >
                   {score}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">

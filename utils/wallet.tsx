@@ -21,7 +21,6 @@ interface CIP30Api {
   signData(addr: string, payload: string): Promise<{ signature: string; key: string }>;
 }
 
-
 function extractErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
@@ -118,7 +117,6 @@ function getCardanoApi(name: string): { enable(): Promise<CIP30Api> } | undefine
 }
 
 const WALLET_NAME_KEY = 'drepscore_wallet_name';
-
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [wallet, setWallet] = useState<BrowserWallet | null>(null);
@@ -462,4 +460,3 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     </WalletContext.Provider>
   );
 }
-

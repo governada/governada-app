@@ -402,8 +402,7 @@ export function useDRepReportCard(drepId: string | null | undefined, wallet?: st
 export function useDashboardCompetitive(drepId: string | null | undefined) {
   return useQuery({
     queryKey: ['dashboard-competitive', drepId],
-    queryFn: () =>
-      fetchJson(`/api/dashboard/competitive?drepId=${encodeURIComponent(drepId!)}`),
+    queryFn: () => fetchJson(`/api/dashboard/competitive?drepId=${encodeURIComponent(drepId!)}`),
     enabled: !!drepId,
     staleTime: 60_000,
   });
@@ -412,8 +411,7 @@ export function useDashboardCompetitive(drepId: string | null | undefined) {
 export function useSPOPoolCompetitive(poolId: string | null | undefined) {
   return useQuery({
     queryKey: ['spo-pool-competitive', poolId],
-    queryFn: () =>
-      fetchJson(`/api/governance/pools/${encodeURIComponent(poolId!)}/competitive`),
+    queryFn: () => fetchJson(`/api/governance/pools/${encodeURIComponent(poolId!)}/competitive`),
     enabled: !!poolId,
     staleTime: 60_000,
   });

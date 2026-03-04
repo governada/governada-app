@@ -270,15 +270,16 @@ export function ConstellationHero({
 
       {/* Interactive constellation search overlay */}
       {isInteractive && constellationReady && !showPersonalCard && (
-        <div ref={searchInputRef} className="absolute top-20 left-1/2 -translate-x-1/2 z-20 w-full max-w-sm px-4 animate-fade-in-up pointer-events-auto">
+        <div
+          ref={searchInputRef}
+          className="absolute top-20 left-1/2 -translate-x-1/2 z-20 w-full max-w-sm px-4 animate-fade-in-up pointer-events-auto"
+        >
           <ConstellationSearch onSelect={handleSearchSelect} />
         </div>
       )}
 
       {/* Interactive constellation detail panel */}
-      {isInteractive && (
-        <ConstellationNodeDetail node={selectedNode} onClose={handleDetailClose} />
-      )}
+      {isInteractive && <ConstellationNodeDetail node={selectedNode} onClose={handleDetailClose} />}
 
       {/* First-hover educational tooltip */}
       {showTooltip && (

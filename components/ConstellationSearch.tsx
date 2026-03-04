@@ -28,9 +28,13 @@ export function ConstellationSearch({ onSelect, className }: ConstellationSearch
     let cancelled = false;
     fetch('/api/dreps?limit=500&fields=drepId,name,ticker,drepScore')
       .then((r) => r.json())
-      .then((data) => { if (!cancelled) setDreps(data?.dreps || data || []); })
+      .then((data) => {
+        if (!cancelled) setDreps(data?.dreps || data || []);
+      })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const results = useMemo(() => {
@@ -133,9 +137,7 @@ export function ConstellationSearch({ onSelect, className }: ConstellationSearch
                 <div className="truncate font-medium">
                   {d.name || d.drepId.slice(0, 20) + '...'}
                 </div>
-                {d.ticker && (
-                  <div className="text-xs text-white/40 truncate">{d.ticker}</div>
-                )}
+                {d.ticker && <div className="text-xs text-white/40 truncate">{d.ticker}</div>}
               </div>
               {d.drepScore > 0 && (
                 <span className="ml-2 shrink-0 text-xs font-mono text-white/50">

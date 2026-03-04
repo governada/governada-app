@@ -45,7 +45,10 @@ const INITIAL_CAMERA: [number, number, number] = [0, 0, 22];
 const INITIAL_TARGET: [number, number, number] = [0, 0, 0];
 
 export const GovernanceConstellation = forwardRef<ConstellationRef, ConstellationProps>(
-  function GovernanceConstellation({ interactive, onReady, onContracted, onNodeSelect, className }, ref) {
+  function GovernanceConstellation(
+    { interactive, onReady, onContracted, onNodeSelect, className },
+    ref,
+  ) {
     const cameraControlsRef = useRef<CameraControls>(null);
     const [ready, setReady] = useState(false);
     const [sceneState, setSceneState] = useState<SceneState>({
@@ -60,15 +63,15 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
     const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
 
     const onNodeSelectRef = useRef(onNodeSelect);
-    useEffect(() => { onNodeSelectRef.current = onNodeSelect; }, [onNodeSelect]);
+    useEffect(() => {
+      onNodeSelectRef.current = onNodeSelect;
+    }, [onNodeSelect]);
 
     const flyToNodeImpl = async (nodeId: string): Promise<ConstellationNode3D | null> => {
       const controls = cameraControlsRef.current;
       if (!controls || sceneState.nodes.length === 0) return null;
 
-      const node = sceneState.nodes.find(
-        (n) => n.id === nodeId || n.fullId === nodeId,
-      );
+      const node = sceneState.nodes.find((n) => n.id === nodeId || n.fullId === nodeId);
       if (!node || node.isAnchor) return null;
 
       setSceneState((prev) => ({ ...prev, animating: true, highlightId: node.id, dimmed: true }));
@@ -268,10 +271,14 @@ function ConstellationNodes({
   const anchorNodes = nodes.filter((n) => n.isAnchor);
 
   const handlePointerEnter = interactive
-    ? () => { document.body.style.cursor = 'pointer'; }
+    ? () => {
+        document.body.style.cursor = 'pointer';
+      }
     : undefined;
   const handlePointerLeave = interactive
-    ? () => { document.body.style.cursor = ''; }
+    ? () => {
+        document.body.style.cursor = '';
+      }
     : undefined;
 
   return (

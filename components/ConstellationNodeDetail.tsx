@@ -34,7 +34,9 @@ const NODE_TYPE_COLORS: Record<string, string> = {
 
 function arrayToAlignmentScores(arr: number[]): AlignmentScores {
   const dims = getDimensionOrder();
-  return Object.fromEntries(dims.map((dim, i) => [dim, arr[i] ?? 50])) as unknown as AlignmentScores;
+  return Object.fromEntries(
+    dims.map((dim, i) => [dim, arr[i] ?? 50]),
+  ) as unknown as AlignmentScores;
 }
 
 function getProfileHref(node: ConstellationNode3D): string | null {
@@ -86,12 +88,7 @@ export function ConstellationNodeDetail({ node, onClose }: ConstellationNodeDeta
           </button>
 
           <div className="flex items-start gap-4">
-            <HexScore
-              score={node.score}
-              alignments={alignments}
-              size="card"
-              animate={false}
-            />
+            <HexScore score={node.score} alignments={alignments} size="card" animate={false} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <span
@@ -127,7 +124,8 @@ export function ConstellationNodeDetail({ node, onClose }: ConstellationNodeDeta
               {getDimensionLabel(node.dominant)}
             </div>
             <div className="text-xs text-white/40">
-              Power: <span className="text-white/60 font-mono">{(node.power * 100).toFixed(0)}%</span>
+              Power:{' '}
+              <span className="text-white/60 font-mono">{(node.power * 100).toFixed(0)}%</span>
             </div>
           </div>
 

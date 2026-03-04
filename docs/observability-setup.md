@@ -67,6 +67,7 @@ Navigate to **PostHog > Funnels > New Funnel**.
 ### 3a. Quick Match Funnel
 
 Steps:
+
 1. `quick_match_page_viewed`
 2. `governance_dna_quiz_started`
 3. `governance_dna_quiz_completed`
@@ -78,6 +79,7 @@ Steps:
 ### 3b. Discovery Funnel
 
 Steps:
+
 1. `homepage_viewed`
 2. `discover_page_viewed` OR `quick_match_page_viewed`
 3. `drep_profile_viewed`
@@ -93,31 +95,31 @@ Navigate to **PostHog > Dashboards > New Dashboard**.
 
 ### 4a. Acquisition Dashboard
 
-| Insight | Type | Event(s) |
-|---------|------|----------|
-| Weekly page views | Trends | `homepage_viewed`, `discover_page_viewed`, `quick_match_page_viewed` (unique users) |
-| Quick Match conversion | Funnel | See 3a above |
-| Wallet connections | Trends | `wallet_connected`, `wallet_authenticated` (unique users, weekly) |
-| Delegations | Trends | `delegation_completed` (total count, weekly) |
+| Insight                | Type   | Event(s)                                                                            |
+| ---------------------- | ------ | ----------------------------------------------------------------------------------- |
+| Weekly page views      | Trends | `homepage_viewed`, `discover_page_viewed`, `quick_match_page_viewed` (unique users) |
+| Quick Match conversion | Funnel | See 3a above                                                                        |
+| Wallet connections     | Trends | `wallet_connected`, `wallet_authenticated` (unique users, weekly)                   |
+| Delegations            | Trends | `delegation_completed` (total count, weekly)                                        |
 
 ### 4b. Engagement Dashboard
 
-| Insight | Type | Event(s) |
-|---------|------|----------|
-| DAU/WAU ratio | Formula | `unique_users(any event, daily)` / `unique_users(any event, weekly)` |
-| Profile views | Trends | `drep_profile_viewed` (unique sessions) |
-| Proposal detail views | Trends | `proposal_detail_viewed` (unique sessions) |
-| Quiz completions | Trends | `governance_dna_quiz_completed` (cumulative) |
-| Share actions | Breakdown | `share_action` by `type` property |
+| Insight               | Type      | Event(s)                                                             |
+| --------------------- | --------- | -------------------------------------------------------------------- |
+| DAU/WAU ratio         | Formula   | `unique_users(any event, daily)` / `unique_users(any event, weekly)` |
+| Profile views         | Trends    | `drep_profile_viewed` (unique sessions)                              |
+| Proposal detail views | Trends    | `proposal_detail_viewed` (unique sessions)                           |
+| Quiz completions      | Trends    | `governance_dna_quiz_completed` (cumulative)                         |
+| Share actions         | Breakdown | `share_action` by `type` property                                    |
 
 ### 4c. DRep Dashboard
 
-| Insight | Type | Event(s) |
-|---------|------|----------|
-| Profile claims | Trends | `drep_profile_claimed` (cumulative) |
-| Philosophy saves | Trends | `philosophy_saved`, `position_statement_saved` |
-| AI rationale usage | Trends | `rationale_draft_generated` |
-| Dashboard visits | Trends | `dashboard_page_viewed` (weekly uniques) |
+| Insight            | Type   | Event(s)                                       |
+| ------------------ | ------ | ---------------------------------------------- |
+| Profile claims     | Trends | `drep_profile_claimed` (cumulative)            |
+| Philosophy saves   | Trends | `philosophy_saved`, `position_statement_saved` |
+| AI rationale usage | Trends | `rationale_draft_generated`                    |
+| Dashboard visits   | Trends | `dashboard_page_viewed` (weekly uniques)       |
 
 ---
 
@@ -127,9 +129,9 @@ Sign up at [betterstack.com](https://betterstack.com) (free tier: 5 monitors, 3-
 
 ### Monitors to Create
 
-| Monitor | URL | Method | Interval | Expected |
-|---------|-----|--------|----------|----------|
-| Deep Health | `https://drepscore.io/api/health/deep` | GET | 3 min | status 200, body contains `"status":"ok"` |
+| Monitor     | URL                                    | Method | Interval | Expected                                  |
+| ----------- | -------------------------------------- | ------ | -------- | ----------------------------------------- |
+| Deep Health | `https://drepscore.io/api/health/deep` | GET    | 3 min    | status 200, body contains `"status":"ok"` |
 
 ### Heartbeat URLs
 

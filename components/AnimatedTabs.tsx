@@ -27,7 +27,13 @@ interface AnimatedTabsProps {
 
 const SLIDE_DISTANCE = 60;
 
-export function AnimatedTabs({ tabs, defaultTab, stickyOffset, trackingContext, className }: AnimatedTabsProps) {
+export function AnimatedTabs({
+  tabs,
+  defaultTab,
+  stickyOffset,
+  trackingContext,
+  className,
+}: AnimatedTabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || '');
   const prevIndexRef = useRef(tabs.findIndex((t) => t.id === activeTab));
   const [direction, setDirection] = useState(0);

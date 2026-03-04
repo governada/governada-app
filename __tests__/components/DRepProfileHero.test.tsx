@@ -4,8 +4,12 @@ import { DRepProfileHero } from '@/components/DRepProfileHero';
 
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: Record<string, unknown>) => <div {...props}>{children as React.ReactNode}</div>,
-    span: ({ children, ...props }: Record<string, unknown>) => <span {...props}>{children as React.ReactNode}</span>,
+    div: ({ children, ...props }: Record<string, unknown>) => (
+      <div {...props}>{children as React.ReactNode}</div>
+    ),
+    span: ({ children, ...props }: Record<string, unknown>) => (
+      <span {...props}>{children as React.ReactNode}</span>
+    ),
   },
   useScroll: () => ({ scrollYProgress: { get: () => 0 } }),
   useTransform: () => 0,

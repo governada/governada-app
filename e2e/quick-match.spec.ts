@@ -20,7 +20,10 @@ test.describe('Quick Match flow', () => {
     await page.goto('/match');
     await page.waitForLoadState('networkidle');
 
-    const startButton = page.locator('button').filter({ hasText: /start|begin|match|find/i }).first();
+    const startButton = page
+      .locator('button')
+      .filter({ hasText: /start|begin|match|find/i })
+      .first();
     if (await startButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       await startButton.click();
       await page.waitForTimeout(500);

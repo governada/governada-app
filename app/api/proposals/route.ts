@@ -17,7 +17,11 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     .limit(limit);
 
   if (error) {
-    logger.error('Failed to fetch proposals', { context: 'proposals', error: error.message, requestId });
+    logger.error('Failed to fetch proposals', {
+      context: 'proposals',
+      error: error.message,
+      requestId,
+    });
     return NextResponse.json({ error: 'Failed to fetch proposals' }, { status: 500 });
   }
 

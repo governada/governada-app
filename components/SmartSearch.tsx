@@ -108,7 +108,10 @@ export function SmartSearch({ dreps, value, onChange, onSelectDRep, className }:
         saveRecentSearch(value.trim());
         setRecentSearches(getRecentSearches());
         setIsFocused(false);
-        posthog?.capture('smart_search_query', { query: value.trim(), result_count: suggestions.length });
+        posthog?.capture('smart_search_query', {
+          query: value.trim(),
+          result_count: suggestions.length,
+        });
       }
       if (e.key === 'Escape') {
         setIsFocused(false);

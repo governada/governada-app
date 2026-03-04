@@ -58,24 +58,27 @@ Active patterns not yet encoded in cursor rules. Reviewed at session start.
 ---
 
 ### TanStack Query migration pattern
+
 When migrating `fetch` + `useEffect` + `useState` to `useQuery`, create shared hooks in `hooks/queries.ts` with the `fetchJson<T>` helper. The `enabled` option prevents requests when dependencies are null/undefined. Components that previously passed `Authorization` headers via `getStoredSession()` need verification since the shared `fetchJson` helper uses plain `fetch` — cookie-based auth covers most cases.
 
 ### withRouteHandler changes error shapes
+
 When routes are wrapped with `withRouteHandler`, unhandled exceptions now return `{ error: 'Internal server error' }` instead of custom error messages. Tests expecting specific error messages must be updated. This is by design — never leak internal error details to clients.
 
 ### Dynamic imports for bundle optimization
+
 Use `next/dynamic` with `ssr: false` for components importing heavy libs (Three.js, d3, canvas-confetti, fuse.js). For page-level wrappers like `template.tsx`, use `React.lazy` + `Suspense` with a fallback that renders children directly to avoid blocking initial paint.
 
 ## Session Correction Log
 
-| Session | Date | Corrections | Notes |
-|---------|------|-------------|-------|
-| S18 | 2026-03-03 | 2 | CI cascade, hooks order |
-| S19 | 2026-03-04 | 2 | test error shape after withRouteHandler wrap |
-| S20 | 2026-03-04 | 1 | Sentry Cron Monitors: use captureCheckIn (start/end) not withMonitor for Inngest step-based functions |
-| S21 | 2026-03-04 | 1 | React version mismatch (react vs react-dom) blocks jsdom render — keep versions pinned together |
-| S22 | 2026-03-04 | 1 | @testing-library/react needs explicit cleanup() in vitest jsdom env when tests share test-ids |
-| S23 | 2026-03-04 | 1 | Dashboard config (Sentry alerts, PostHog funnels) can't be automated via code — document reproducible setup in docs/ |
+| Session | Date       | Corrections | Notes                                                                                                                |
+| ------- | ---------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| S18     | 2026-03-03 | 2           | CI cascade, hooks order                                                                                              |
+| S19     | 2026-03-04 | 2           | test error shape after withRouteHandler wrap                                                                         |
+| S20     | 2026-03-04 | 1           | Sentry Cron Monitors: use captureCheckIn (start/end) not withMonitor for Inngest step-based functions                |
+| S21     | 2026-03-04 | 1           | React version mismatch (react vs react-dom) blocks jsdom render — keep versions pinned together                      |
+| S22     | 2026-03-04 | 1           | @testing-library/react needs explicit cleanup() in vitest jsdom env when tests share test-ids                        |
+| S23     | 2026-03-04 | 1           | Dashboard config (Sentry alerts, PostHog funnels) can't be automated via code — document reproducible setup in docs/ |
 
 _Last updated: 2026-03-04_
 _Review at session start. Archive promoted entries immediately._

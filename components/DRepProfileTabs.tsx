@@ -46,5 +46,12 @@ export function DRepProfileTabs({
     },
   ];
 
-  return <AnimatedTabs tabs={tabs} defaultTab="voting" stickyOffset={64} trackingContext={drepId ? { drepId } : undefined} />;
+  return (
+    <AnimatedTabs
+      tabs={tabs}
+      defaultTab="voting"
+      stickyOffset={64}
+      trackingContext={drepId ? { drepId } : undefined}
+    />
+  );
 }

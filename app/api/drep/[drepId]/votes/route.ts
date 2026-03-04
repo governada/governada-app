@@ -23,7 +23,12 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     .eq('drep_id', drepId);
 
   if (error) {
-    logger.error('Failed to fetch DRep votes', { context: 'drep/votes', drepId, error: error.message, requestId });
+    logger.error('Failed to fetch DRep votes', {
+      context: 'drep/votes',
+      drepId,
+      error: error.message,
+      requestId,
+    });
     return NextResponse.json({ error: 'Failed to fetch votes' }, { status: 500 });
   }
 

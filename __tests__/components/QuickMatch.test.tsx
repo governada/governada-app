@@ -4,9 +4,13 @@ import { QuickMatch } from '@/components/QuickMatch';
 
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: Record<string, unknown>) => <div {...props}>{children as React.ReactNode}</div>,
+    div: ({ children, ...props }: Record<string, unknown>) => (
+      <div {...props}>{children as React.ReactNode}</div>
+    ),
     button: ({ children, onClick, ...props }: Record<string, unknown>) => (
-      <button onClick={onClick as () => void} {...props}>{children as React.ReactNode}</button>
+      <button onClick={onClick as () => void} {...props}>
+        {children as React.ReactNode}
+      </button>
     ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -24,7 +28,9 @@ vi.mock('next/link', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
-    <button onClick={onClick as () => void} {...props}>{children as React.ReactNode}</button>
+    <button onClick={onClick as () => void} {...props}>
+      {children as React.ReactNode}
+    </button>
   ),
 }));
 

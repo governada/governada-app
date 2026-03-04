@@ -204,9 +204,7 @@ export const GET = withRouteHandler(async (request) => {
         body: lines.join('\n'),
         url: 'https://analytics.drepscore.io/api-analytics',
       }),
-      criticalFailures.length > 0
-        ? alertEmail(alertTitle, lines.join('\n'))
-        : Promise.resolve(),
+      criticalFailures.length > 0 ? alertEmail(alertTitle, lines.join('\n')) : Promise.resolve(),
     ]);
   }
 

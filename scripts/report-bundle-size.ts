@@ -75,7 +75,11 @@ function main() {
   }
 
   const baselineFile = path.join(__dirname, '..', '.bundle-baseline.json');
-  const currentBaseline = { totalSize, timestamp: new Date().toISOString(), chunkCount: chunks.length };
+  const currentBaseline = {
+    totalSize,
+    timestamp: new Date().toISOString(),
+    chunkCount: chunks.length,
+  };
 
   if (fs.existsSync(baselineFile)) {
     const prev = JSON.parse(fs.readFileSync(baselineFile, 'utf8'));

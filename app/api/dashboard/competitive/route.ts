@@ -20,7 +20,11 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     .order('score', { ascending: false });
 
   if (error || !allDreps) {
-    logger.error('Failed to fetch DReps', { context: 'dashboard/competitive', error: error?.message, requestId });
+    logger.error('Failed to fetch DReps', {
+      context: 'dashboard/competitive',
+      error: error?.message,
+      requestId,
+    });
     return NextResponse.json({ error: 'Failed to fetch DReps' }, { status: 500 });
   }
 

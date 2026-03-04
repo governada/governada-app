@@ -385,3 +385,36 @@ export function useAdminIntegrity(address: string | null | undefined) {
     enabled: !!address,
   });
 }
+
+export function useDRepReportCard(drepId: string | null | undefined, wallet?: string | null) {
+  return useQuery({
+    queryKey: ['drep-report-card', drepId, wallet],
+    queryFn: () => {
+      const params = new URLSearchParams({ drepId: drepId! });
+      if (wallet) params.set('wallet', wallet);
+      return fetchJson(`/api/governance/report-card?${params}`);
+    },
+    enabled: !!drepId,
+    staleTime: 60_000,
+  });
+}
+
+export function useDashboardCompetitive(drepId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['dashboard-competitive', drepId],
+    queryFn: () =>
+      fetchJson(`/api/dashboard/competitive?drepId=${encodeURIComponent(drepId!)}`),
+    enabled: !!drepId,
+    staleTime: 60_000,
+  });
+}
+
+export function useSPOPoolCompetitive(poolId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['spo-pool-competitive', poolId],
+    queryFn: () =>
+      fetchJson(`/api/governance/pools/${encodeURIComponent(poolId!)}/competitive`),
+    enabled: !!poolId,
+    staleTime: 60_000,
+  });
+}

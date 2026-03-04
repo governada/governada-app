@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -5,8 +6,27 @@ import { getProposalPriority } from '@/utils/proposalPriority';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { HomepageDualMode } from '@/components/HomepageDualMode';
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { getFeatureFlag } from '@/lib/featureFlags';
+import { CivicaHomePage } from '@/components/civica/CivicaHomePage';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Civica — Cardano Governance Intelligence',
+  description:
+    'Cardano has a government. Know who represents you. Find your DRep, track governance proposals, and participate in on-chain democracy.',
+  openGraph: {
+    title: 'Civica — Cardano Governance Intelligence',
+    description:
+      'Know who represents your ADA in Cardano governance. Discover DReps, track proposals, and take action.',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Civica — Cardano Governance Intelligence',
+    description: 'Cardano has a government. Know who represents you.',
+  },
+};
 
 async function getGovernancePulse() {
   const supabase = createClient();
@@ -169,11 +189,25 @@ async function getSSRHolderData(): Promise<{ data: any; walletAddress: string } 
 }
 
 export default async function HomePage() {
-  const [pulseData, topDReps, ssrAuth] = await Promise.all([
+  const [pulseData, topDReps, ssrAuth, civicaEnabled] = await Promise.all([
     getGovernancePulse(),
     getTopDReps(),
     getSSRHolderData(),
+    getFeatureFlag('civica_frontend', false),
   ]);
+
+  if (civicaEnabled) {
+    return (
+      <>
+        <PageViewTracker event="homepage_viewed" />
+        <CivicaHomePage
+          pulseData={pulseData}
+          ssrHolderData={ssrAuth?.data || null}
+          ssrWalletAddress={ssrAuth?.walletAddress || null}
+        />
+      </>
+    );
+  }
 
   return (
     <>

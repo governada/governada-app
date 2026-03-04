@@ -5,9 +5,20 @@ import { PageViewTracker } from '@/components/PageViewTracker';
 import { DiscoverTabs } from '@/components/DiscoverTabs';
 
 export const metadata: Metadata = {
-  title: 'Discover Governance — DRepScore',
+  title: 'Civica — Discover',
   description:
-    'Find and compare Cardano DReps, governance-active stake pools, and Constitutional Committee members.',
+    'Find and compare Cardano DReps, governance-active stake pools, and Constitutional Committee members. Filter by score, tier, and alignment.',
+  openGraph: {
+    title: 'Civica — Discover Governance',
+    description:
+      'Browse every DRep, stake pool, and Constitutional Committee member participating in Cardano governance.',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Civica — Discover Governance',
+    description: 'Find the representative that matches your governance values.',
+  },
 };
 
 export const dynamic = 'force-dynamic';

@@ -36,6 +36,14 @@ For agents: run preflight after each batch of changes during multi-batch plans, 
 
 **PR required:** Migrations, API contract changes, auth/security, scoring model, new features, 10+ files, Inngest schedule changes.
 
+## Incremental Build Pipeline
+
+CI skips entirely for docs-only changes (`docs/**`, `tasks/**`, `.cursor/**`, `*.md`, `LICENSE`). Code changes trigger the full pipeline.
+
+`.next/cache` is persisted in CI via `actions/cache` — incremental Next.js builds are 30-50% faster on code-only changes. The Dockerfile uses `--mount=type=cache,target=/app/.next/cache` for the same benefit on Railway (cache hits not guaranteed but no downside on miss).
+
+E2E reuses the build artifact from the `build` job (no double build). It runs after `build` completes and remains `continue-on-error: true`.
+
 ## Railway Build Parity
 
 Railway's Docker build has NO runtime env vars during `next build`. Local builds with `.env.local` are NOT equivalent. Always verify Railway deploy succeeds.

@@ -3,8 +3,20 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'tasks/**'
+      - '.cursor/**'
+      - '*.md'
+      - 'LICENSE'
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'tasks/**'
+      - '.cursor/**'
+      - '*.md'
+      - 'LICENSE'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -120,13 +132,30 @@ jobs:
         with:
           path: node_modules
           key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Restore Next.js build cache
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            nextjs-${{ runner.os }}-
       - run: npm run build
       - name: Report bundle size
         if: github.event_name == 'pull_request'
         run: npx tsx scripts/report-bundle-size.ts
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: |
+            .next/standalone
+            .next/static
+            public
+          retention-days: 1
 
   e2e:
-    needs: install
+    needs: build
     runs-on: ubuntu-latest
     continue-on-error: true
     env:
@@ -160,7 +189,10 @@ jobs:
       - name: Install Playwright system deps
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - run: npm run build
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
       - name: Start server and run E2E
         run: |
           node .next/standalone/server.js &

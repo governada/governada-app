@@ -70,8 +70,8 @@
 
 ### Production domain is drepscore.io, NOT drepscore.com
 
-- **Context**: `drepscore.com` DNS still points to Vercel. The actual Railway production domain is `drepscore.io`.
-- **Pattern**: Always use `drepscore.io` for production URLs.
+- **Context**: `drepscore.com` is a legacy domain (previously pointed to Vercel, now a redirect). The production domain is `drepscore.io` on Railway.
+- **Pattern**: Always use `drepscore.io` for production URLs. Never reference Vercel for hosting — we migrated fully to Railway (see ADR-003).
 - **Promoted to rule**: `architecture.md`, `critical.md` (#3).
 
 ### PowerShell — consolidated (appeared 6+ times across Sessions 8-21)

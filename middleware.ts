@@ -24,7 +24,14 @@ export function middleware(request: NextRequest) {
   // Auth gate: redirect to home if no session cookie
   if (AUTH_REQUIRED_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     const session = request.cookies.get('drepscore_session');
+    const isPrefetch =
+      request.headers.get('next-router-prefetch') === '1' ||
+      request.headers.get('purpose') === 'prefetch' ||
+      request.headers.get('x-middleware-prefetch') === '1';
     if (!session?.value) {
+      if (isPrefetch) {
+        return new NextResponse(null, { status: 204 });
+      }
       return NextResponse.redirect(new URL('/', request.url));
     }
   }

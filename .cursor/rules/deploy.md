@@ -40,7 +40,7 @@ For agents: run preflight after each batch of changes during multi-batch plans, 
 
 CI skips entirely for docs-only changes (`docs/**`, `tasks/**`, `.cursor/**`, `*.md`, `LICENSE`). Code changes trigger the full pipeline.
 
-`.next/cache` is persisted in CI via `actions/cache` — incremental Next.js builds are 30-50% faster on code-only changes. The Dockerfile uses `--mount=type=cache,target=/app/.next/cache` for the same benefit on Railway (cache hits not guaranteed but no downside on miss).
+`.next/cache` is persisted in CI via `actions/cache` — incremental Next.js builds are 30-50% faster on code-only changes. Railway relies on its default Docker layer caching (deps layer is cached when only source changes).
 
 E2E reuses the build artifact from the `build` job (no double build). It runs after `build` completes and remains `continue-on-error: true`.
 

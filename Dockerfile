@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 FROM node:20-slim AS base
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -13,7 +12,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN --mount=type=cache,id=nextjs-cache,target=/app/.next/cache npm run build
+RUN npm run build
 
 # ── Runtime ──
 FROM base AS runner

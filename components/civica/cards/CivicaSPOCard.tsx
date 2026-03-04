@@ -1,0 +1,151 @@
+'use client';
+
+import Link from 'next/link';
+import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { computeTier } from '@/lib/scoring/tiers';
+import { TIER_SCORE_COLOR, TIER_BORDER, TIER_BG, TIER_GLOW, TIER_BADGE_BG, tierKey } from './tierStyles';
+
+export interface CivicaSPOData {
+  poolId: string;
+  ticker: string | null;
+  poolName: string | null;
+  governanceScore: number | null;
+  voteCount: number;
+  participationPct: number | null;
+  consistencyPct?: number | null;
+  reliabilityPct?: number | null;
+  delegatorCount: number;
+  liveStakeAda: number;
+  claimedBy?: string | null;
+}
+
+function formatAda(ada: number): string {
+  if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${Math.round(ada / 1_000)}K`;
+  return String(ada);
+}
+
+interface CivicaSPOCardProps {
+  pool: CivicaSPOData;
+  rank?: number;
+}
+
+export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
+  const score = pool.governanceScore ?? 0;
+  const tier = tierKey(computeTier(score));
+  const displayName = pool.ticker || pool.poolName || pool.poolId.slice(0, 12);
+  const isClaimed = !!pool.claimedBy;
+
+  const pillars: { label: string; value: number | null | undefined }[] = [
+    { label: 'Participation', value: pool.participationPct },
+    { label: 'Consistency', value: pool.consistencyPct },
+    { label: 'Reliability', value: pool.reliabilityPct },
+  ];
+
+  return (
+    <Link
+      href={`/pool/${pool.poolId}`}
+      className={cn(
+        'group relative flex flex-col rounded-xl border p-4 transition-all duration-200',
+        'hover:shadow-lg hover:-translate-y-0.5',
+        TIER_BG[tier],
+        TIER_BORDER[tier],
+        TIER_GLOW[tier],
+      )}
+    >
+      {/* ── Header ──────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="min-w-0 flex-1">
+          {rank && (
+            <span className="text-[10px] text-muted-foreground/60 font-medium tabular-nums mb-0.5 block">
+              #{rank}
+            </span>
+          )}
+          <h3 className="font-semibold text-sm text-foreground truncate leading-tight">
+            {pool.ticker ? (
+              <>
+                <span className="font-bold">{pool.ticker}</span>
+                {pool.poolName && pool.poolName !== pool.ticker && (
+                  <span className="text-muted-foreground font-normal ml-1 text-xs">
+                    {pool.poolName}
+                  </span>
+                )}
+              </>
+            ) : (
+              pool.poolName || pool.poolId.slice(0, 16)
+            )}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {isClaimed && (
+              <span className="flex items-center gap-0.5 text-[10px] text-primary font-medium">
+                <ShieldCheck className="h-3 w-3" /> Claimed
+              </span>
+            )}
+            {pool.delegatorCount > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                {isClaimed ? '· ' : ''}{pool.delegatorCount.toLocaleString()} delegators
+              </span>
+            )}
+            {pool.liveStakeAda > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                · ₳{formatAda(pool.liveStakeAda)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Score + tier */}
+        <div className="text-right shrink-0">
+          <div className={cn('font-display text-3xl font-bold tabular-nums leading-none', TIER_SCORE_COLOR[tier])}>
+            {score}
+          </div>
+          <span className={cn('text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full mt-1 inline-block', TIER_BADGE_BG[tier])}>
+            {tier}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Pillar bars ──────────────────────────────────────── */}
+      {pillars.some((p) => p.value != null) && (
+        <div className="space-y-1.5 mb-3">
+          {pillars.map(({ label, value }) => {
+            if (value == null) return null;
+            const pct = Math.round(value);
+            return (
+              <div key={label} className="space-y-0.5">
+                <div className="flex justify-between text-[10px] text-muted-foreground/70">
+                  <span>{label}</span>
+                  <span className="tabular-nums">{pct}%</span>
+                </div>
+                <div className="h-0.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${pct}%`,
+                      background: `hsl(var(--primary) / ${0.4 + pct / 250})`,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Footer ──────────────────────────────────────────── */}
+      <div className="mt-auto pt-2 flex items-center justify-between">
+        <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+          {pool.voteCount} governance votes
+        </span>
+        <span className={cn(
+          'flex items-center gap-0.5 text-xs font-medium transition-colors',
+          'text-muted-foreground group-hover:text-primary',
+        )}>
+          View <ChevronRight className="h-3.5 w-3.5" />
+        </span>
+      </div>
+    </Link>
+  );
+}

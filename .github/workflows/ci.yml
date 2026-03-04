@@ -200,6 +200,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: nextjs-build
+      - name: Prepare standalone server
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
       - name: Start server and run E2E
         run: |
           node .next/standalone/server.js &

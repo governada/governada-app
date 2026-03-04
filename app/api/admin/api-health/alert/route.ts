@@ -3,9 +3,10 @@
  * Checks API operational health and sends Discord alerts on threshold breaches.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { broadcastDiscord } from '@/lib/notifications';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -17,7 +18,7 @@ interface HealthCheck {
   detail: string;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request) => {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
 
@@ -226,4 +227,4 @@ export async function GET(request: NextRequest) {
       warnings: warnings.length,
     },
   });
-}
+});

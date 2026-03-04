@@ -5,37 +5,31 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getAllDReps, getDRepById } from '@/lib/data';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const checkId = searchParams.get('id');
+export const GET = withRouteHandler(async (request, { requestId }) => {
+  const { searchParams } = new URL(request.url);
+  const checkId = searchParams.get('id');
 
-    // Lightweight existence check for DRep ID verification
-    if (checkId && searchParams.get('check') === '1') {
-      const drep = await getDRepById(checkId);
-      return NextResponse.json({ exists: drep !== null });
-    }
-
-    const { dreps, allDReps, error, totalAvailable } = await getAllDReps();
-
-    return NextResponse.json(
-      {
-        dreps,
-        allDReps,
-        error,
-        totalAvailable,
-      },
-      {
-        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
-      },
-    );
-  } catch (error) {
-    logger.error('Error fetching DReps', { context: 'api', error: error });
-    return NextResponse.json({ error: 'Failed to fetch DReps' }, { status: 500 });
+  if (checkId && searchParams.get('check') === '1') {
+    const drep = await getDRepById(checkId);
+    return NextResponse.json({ exists: drep !== null });
   }
-}
+
+  const { dreps, allDReps, error, totalAvailable } = await getAllDReps();
+
+  return NextResponse.json(
+    {
+      dreps,
+      allDReps,
+      error,
+      totalAvailable,
+    },
+    {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
+    },
+  );
+});

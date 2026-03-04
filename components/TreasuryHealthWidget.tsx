@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Landmark, TrendingUp, TrendingDown, Minus, Clock, Shield, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { formatAda } from '@/lib/treasury';
 import { posthog } from '@/lib/posthog';
+import { useTreasuryCurrent } from '@/hooks/queries';
 
 interface TreasuryWidgetData {
   balance: number;
@@ -17,21 +18,16 @@ interface TreasuryWidgetData {
 }
 
 export function TreasuryHealthWidget() {
-  const [data, setData] = useState<TreasuryWidgetData | null>(null);
+  const { data: raw } = useTreasuryCurrent();
+  const data = raw as TreasuryWidgetData | undefined;
 
   useEffect(() => {
-    fetch('/api/treasury/current')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setData(d);
-        if (d)
-          posthog.capture('treasury_widget_viewed', {
-            health_score: d.healthScore,
-            balance: d.balance,
-          });
-      })
-      .catch(() => {});
-  }, []);
+    if (data)
+      posthog.capture('treasury_widget_viewed', {
+        health_score: data.healthScore,
+        balance: data.balance,
+      });
+  }, [data]);
 
   if (!data) return null;
 

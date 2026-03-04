@@ -40,8 +40,16 @@ Any `app/` file importing `@/lib/supabase` (directly or via `@/lib/data`) that i
 - **Production URL**: `https://drepscore.io`
 - **GitHub CLI**: Always `gh auth switch --user drepscore` before `gh` API calls. `tim-dd` account lacks collaborator perms.
 - **MCP config** (`.cursor/mcp.json`): gitignored, contains secrets — NEVER overwrite
-- **Inngest**: PUT `https://drepscore.io/api/inngest` after every deploy to sync functions. 20 durable functions total (see `architecture.md`)
-- **Post-deploy autonomous**: After any deploy, autonomously: (1) apply pending migrations via MCP, (2) PUT Inngest, (3) trigger new compute functions if they need initial data, (4) verify results. Do not ask the user for permission on these steps
+- **Railway CLI**: Installed globally (`railway`). Use `railway logs` for build/deploy logs, `railway status` for current state. Linked to the drepscore project
+- **Inngest**: PUT `https://drepscore.io/api/inngest` after every deploy to sync functions. 22 durable functions total (see `architecture.md`). Verify with `npm run inngest:status`
+- **Post-deploy autonomous**: After any deploy, autonomously:
+  1. Apply pending migrations via Supabase MCP `apply_migration`
+  2. PUT Inngest to sync functions
+  3. `npm run inngest:status` — verify functions registered + recent runs healthy
+  4. `npm run posthog:check <event>` — verify new instrumentation is firing (when deploying features with new events)
+  5. Trigger new compute functions if they need initial data
+  6. Hit new/changed endpoints on `drepscore.io` to verify 200 responses
+  Do not ask the user for permission on these steps
 - **INNGEST_SERVE_HOST**: `https://drepscore.io`
 
 ## Key Env Vars (managed in Railway dashboard)

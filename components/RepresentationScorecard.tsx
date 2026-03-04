@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { posthog } from '@/lib/posthog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { useDashboardRepresentation } from '@/hooks/queries';
 
 interface ProposalAlignment {
   key: string;
@@ -23,17 +24,8 @@ interface RepresentationData {
 }
 
 export function RepresentationScorecard({ drepId }: { drepId: string }) {
-  const [data, setData] = useState<RepresentationData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!drepId) return;
-    fetch(`/api/dashboard/representation?drepId=${encodeURIComponent(drepId)}`)
-      .then((r) => r.json())
-      .then((d) => setData(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [drepId]);
+  const { data: raw, isLoading: loading } = useDashboardRepresentation(drepId);
+  const data = raw as RepresentationData | undefined;
 
   useEffect(() => {
     if (data?.alignment !== null && data?.alignment !== undefined) {

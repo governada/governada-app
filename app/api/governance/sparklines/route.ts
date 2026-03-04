@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const supabase = createClient();
 
     const [participation, treasury, decentralization] = await Promise.all([
@@ -32,8 +32,4 @@ export async function GET() {
       treasury: treasury.data ?? [],
       decentralization: decentralization.data ?? [],
     });
-  } catch (err) {
-    logger.error('Error', { context: 'sparklines', error: err });
-    return NextResponse.json({ participation: [], treasury: [], decentralization: [] });
-  }
-}
+});

@@ -12,7 +12,8 @@ import { EpochSummaryCard } from '@/components/EpochSummaryCard';
 import { GovernanceLevelBadge } from '@/components/GovernanceLevelBadge';
 import { checkDelegationMilestones } from '@/lib/delegationMilestones';
 import { checkLevel, type GovernanceLevel } from '@/lib/governanceLevels';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useGovernanceHolder, useGovernanceTimeline } from '@/hooks/queries';
 
 interface CitizenState {
   milestone: { key: string; label: string; description: string; days: number } | null;
@@ -38,10 +39,14 @@ interface CitizenState {
 
 export function GovernanceCitizenSection() {
   const { connected, isAuthenticated, address, delegatedDrepId } = useWallet();
-  const [state, setState] = useState<CitizenState | null>(null);
+  const stakeAddress = isAuthenticated && address ? address : undefined;
+  const { data: holderData } = useGovernanceHolder(stakeAddress);
+  const { data: timelineData } = useGovernanceTimeline();
 
-  useEffect(() => {
-    if (!isAuthenticated || !address) return;
+  const state = useMemo<CitizenState | null>(() => {
+    if (!isAuthenticated || !address) return null;
+    const holder = holderData as any;
+    const timeline = timelineData as any;
 
     const init: CitizenState = {
       milestone: null,
@@ -54,54 +59,44 @@ export function GovernanceCitizenSection() {
       isDelegated: !!delegatedDrepId,
     };
 
-    Promise.allSettled([
-      fetch(`/api/governance/holder?wallet=${address}`).then((r) => (r.ok ? r.json() : null)),
-      fetch('/api/governance/timeline', { headers: { 'x-wallet-address': address } }).then((r) =>
-        r.ok ? r.json() : null,
-      ),
-    ]).then(([holderResult, timelineResult]) => {
-      const holder = holderResult.status === 'fulfilled' ? holderResult.value : null;
-      const timeline = timelineResult.status === 'fulfilled' ? timelineResult.value : null;
+    if (holder) {
+      init.drepName = holder.drepName || 'Your DRep';
+      init.proposalCount = holder.proposalsVotedOn || 0;
+      init.pollCount = holder.pollCount || 0;
+      init.visitStreak = holder.visitStreak || 0;
+      init.isDelegated = !!holder.delegatedDrepId;
+      init.level = checkLevel(init.pollCount, init.visitStreak, init.isDelegated);
 
-      if (holder) {
-        init.drepName = holder.drepName || 'Your DRep';
-        init.proposalCount = holder.proposalsVotedOn || 0;
-        init.pollCount = holder.pollCount || 0;
-        init.visitStreak = holder.visitStreak || 0;
-        init.isDelegated = !!holder.delegatedDrepId;
-        init.level = checkLevel(init.pollCount, init.visitStreak, init.isDelegated);
-
-        if (holder.delegatedSince) {
-          const milestones = checkDelegationMilestones(new Date(holder.delegatedSince), []);
-          if (milestones.length > 0) {
-            init.milestone = milestones[milestones.length - 1];
-          }
+      if (holder.delegatedSince) {
+        const milestones = checkDelegationMilestones(new Date(holder.delegatedSince), []);
+        if (milestones.length > 0) {
+          init.milestone = milestones[milestones.length - 1];
         }
       }
+    }
 
-      if (timeline?.events?.length) {
-        const summaryEvent = timeline.events.find(
-          (e: { type: string }) => e.type === 'epoch_summary',
-        );
-        if (summaryEvent?.data) {
-          init.epochSummary = {
-            epoch: summaryEvent.epoch || 0,
-            summary: {
-              proposalsClosed: summaryEvent.data.proposalsClosed || 0,
-              proposalsOpened: summaryEvent.data.proposalsOpened || 0,
-              drepVoteCount: summaryEvent.data.drepVoteCount || 0,
-              drepRationaleCount: summaryEvent.data.drepRationaleCount || 0,
-              representationScore: summaryEvent.data.representationScore ?? null,
-              repScoreDelta: summaryEvent.data.repScoreDelta ?? null,
-              highlightProposal: summaryEvent.data.highlightProposal ?? null,
-            },
-          };
-        }
+    if (timeline?.events?.length) {
+      const summaryEvent = timeline.events.find(
+        (e: { type: string }) => e.type === 'epoch_summary',
+      );
+      if (summaryEvent?.data) {
+        init.epochSummary = {
+          epoch: summaryEvent.epoch || 0,
+          summary: {
+            proposalsClosed: summaryEvent.data.proposalsClosed || 0,
+            proposalsOpened: summaryEvent.data.proposalsOpened || 0,
+            drepVoteCount: summaryEvent.data.drepVoteCount || 0,
+            drepRationaleCount: summaryEvent.data.drepRationaleCount || 0,
+            representationScore: summaryEvent.data.representationScore ?? null,
+            repScoreDelta: summaryEvent.data.repScoreDelta ?? null,
+            highlightProposal: summaryEvent.data.highlightProposal ?? null,
+          },
+        };
       }
+    }
 
-      setState(init);
-    });
-  }, [isAuthenticated, address, delegatedDrepId]);
+    return init;
+  }, [holderData, timelineData, isAuthenticated, address, delegatedDrepId]);
 
   if (!connected || !isAuthenticated || !state) return null;
 

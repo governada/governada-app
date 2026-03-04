@@ -3,6 +3,7 @@ description: DRepScore architecture, data flow, scoring model, and key file map
 globs: ['lib/**', 'utils/**', 'app/api/**', 'components/**', 'app/**']
 alwaysApply: false
 ---
+<!-- LINE BUDGET: 120 lines. Inngest/sync details → architecture-jobs.md. DB tables → query via Supabase MCP. -->
 
 # DRepScore Architecture
 
@@ -16,23 +17,22 @@ The governance intelligence layer for Cardano -- ingests every governance action
 
 - **Framework**: Next.js 16 App Router, TypeScript strict, server components for data fetching
 - **UI**: shadcn/ui + Tailwind CSS v4 + Recharts/Tremor. Dark mode via next-themes
+- **Client data fetching**: TanStack Query (`@tanstack/react-query`) — use for ALL client-side data fetching. Never raw `fetch` + `useState` + `useEffect` for API calls. Provider in `components/Providers.tsx`, client config in `lib/queryClient.ts`
 - **Wallet**: MeshJS (Eternl, Nami, Lace, Typhon+). Wallet connection is optional — show value first
 - **Data**: Koios API (mainnet) → Supabase (cache) → Next.js (reads)
-- **Hosting**: Railway (Docker, health checks, auto-deploy from `main`). **NOT Vercel** — see Platform Constraints below
+- **Caching/Rate Limiting**: Upstash Redis (primary, via `lib/redis.ts` + `@upstash/ratelimit`). Falls back to Supabase `api_usage_log` when Redis env vars are unset. Use `cached()` from `lib/redis.ts` for shared server-side caching
+- **Hosting**: Railway (Docker, health checks, auto-deploy from `main`)
 - **CDN/DNS**: Cloudflare
-- **Background Jobs**: Inngest Cloud (20 durable functions — syncs, scoring, alignment, integrity, notifications, treasury, cross-chain benchmarks, all feature-flagged)
+- **Background Jobs**: Inngest Cloud (see `architecture-jobs.md` for full function list)
 - **Error Tracking**: Sentry (Next.js SDK)
 - **Analytics**: PostHog (JS + Node SDKs)
+- **Testing**: Vitest (unit/integration in `__tests__/`), Playwright (E2E in `e2e/`), smoke tests (`scripts/smoke-test.ts`)
+- **Code Quality**: Prettier + ESLint + lint-staged (pre-commit). `npm run format:check` in CI
+- **Type Safety**: Supabase types generated via `npm run gen:types` (run after every migration)
 
-## Platform Constraints (Railway, NOT Vercel)
+## Platform Constraints (Railway)
 
-This project is fully deployed on Railway. Vercel is not part of any workflow, integration, or deployment path. Agents have introduced Vercel references 3 times — this rule exists to stop it permanently.
-
-**Prohibited:**
-
-- `process.env.VERCEL_URL`, `VERCEL_ENV`, `VERCEL_GIT_COMMIT_SHA`, or any `VERCEL_*` env var
-- `vercel.json`, `.vercel/` directories, `@vercel/*` packages (except transitive deps in lockfile)
-- Any code path, fallback, or comment that references Vercel as a deployment target
+This project is fully deployed on Railway (Docker). Railway auto-deploys on merge to `main`.
 
 **Required for server-side URL construction:**
 
@@ -89,20 +89,9 @@ Supabase-backed `feature_flags` table (41 flags across 14 categories) with admin
 - **API routes**: Check flag and return empty/404 if disabled
 - **Admin API**: `GET /api/admin/feature-flags` (public read), `PATCH` (admin-only, requires `address` in body)
 
-**Flag categories:** AI (4), Cross-Chain (3), Platform (3), Social (5), Intelligence (3), Narrative (2), Discovery (5), DRep Tools (3), Governance (5), Treasury (1), Visual (1), Dashboard (3), Sharing (1), Notifications (2)
-
 **Key convention:** Flat namespace, underscores, descriptive: `category_feature`. All default to `enabled: true`. When adding a new feature that is controversial, untested, or costly — add a flag with an appropriate category.
 
-## Admin Pages
-
-All admin-only pages and tools follow a standard pattern:
-
-- **Route prefix**: `app/admin/*` (e.g., `/admin/integrity`, `/admin/flags`)
-- **Client-side auth**: Each page uses `useWallet()` → `POST /api/admin/check` to verify the connected wallet against `ADMIN_WALLETS` env var. Shows "Admin Access Required" if not authorized.
-- **Server-side auth (write APIs)**: All admin `PATCH/POST/DELETE` endpoints validate the `address` field in the request body against `ADMIN_WALLETS`.
-- **Navigation**: Admin pages are grouped under an "Admin" section in the Header wallet dropdown (desktop `DropdownMenu`) and MobileNav sheet. The section only renders when `isAdmin` is true.
-- **Sitemap exclusion**: `robots.ts` already disallows `/admin/`
-- **When adding a new admin page**: Add the route under `app/admin/`, implement the auth guard, and add a nav link to both `Header.tsx` (wallet dropdown Admin section) and `MobileNav.tsx` (Admin section).
+**Admin pages**: All under `app/admin/`, client auth via `POST /api/admin/check`, write endpoints validate `address` against `ADMIN_WALLETS`. Add nav links to Header dropdown + MobileNav Admin section.
 
 ## Scoring Model (V3, Mar 2026)
 
@@ -116,7 +105,7 @@ DRep Score (0-100, percentile-normalized) =
 
 Each pillar is computed as a raw score, then percentile-normalized across the full DRep population. The composite is a weighted sum of percentile scores. Implementation: `lib/scoring/`.
 
-- **Engagement Quality**: provision rate (decay-weighted), AI rationale quality, deliberation signal (diversity, dissent, breadth)
+- **Engagement Quality**: provision rate (decay-weighted), AI rationale quality, deliberation signal
 - **Effective Participation**: importance-weighted participation with treasury scaling and close-margin bonus
 - **Reliability**: consistency, abstention penalty, responsiveness (median days to vote)
 - **Governance Identity**: quality-tiered profile completeness + delegator count percentile
@@ -124,22 +113,31 @@ Each pillar is computed as a raw score, then percentile-normalized across the fu
 - Influence/voting power intentionally excluded (conflicts with decentralization mission)
 - Temporal decay: exponential with 180-day half-life on vote-related metrics
 
-## Sync Architecture
+## Server Component Constraints
 
-All syncs are per-type Inngest durable functions (no monolithic `/api/sync` route):
+- Any `app/**/page.tsx` or `app/**/route.ts` that calls `createClient()`, `getSupabaseAdmin()`, or any runtime-only service must export `dynamic = 'force-dynamic'`. Railway's Docker build has no env vars at build time — Next.js will attempt static prerendering and crash.
+- **NEVER use `export const revalidate`** on routes that touch Supabase or any env-var-dependent service. `revalidate` triggers build-time prerendering, which crashes in Railway's Docker build. This has caused production deploy failures 3 times. Use `force-dynamic` instead — cache at the application layer if needed.
+- Client components (`'use client'`) that fetch via `useEffect` are unaffected since they never run during build.
+- When creating any new server page or API route that fetches data, default to `force-dynamic`. Only use static generation for truly static content (no DB, no env vars).
 
-- **sync-proposals**: Every 30 min (new/updated proposals)
-- **sync-dreps**: Every 6h (all DReps, scores, alignment, history)
-- **sync-votes**: Every 6h (bulk vote upsert + reconciliation)
-- **sync-secondary**: Every 6h (delegator counts, power snapshots, integrity)
-- **sync-slow**: Daily 04:00 UTC (rationales, AI summaries, hash verification, push notifications)
-- **sync-freshness-guard**: Every 30 min (detects stale sync_log entries, re-triggers)
-- **sync-treasury-snapshot**: Daily 22:30 UTC (Koios /totals → treasury_snapshots)
-- **Integrity alerts** (`alert-integrity`): Every 6h, Discord webhooks
+### Next.js 16 Route Export Rule
 
-## Database (Supabase)
+Next.js 16 enforces strict validation of named exports from route files. **Only these exports are permitted in `app/**/route.ts` files:**
 
-33 migrations (032 = GHI v2). Key tables: `dreps`, `drep_votes`, `vote_rationales`, `proposals`, `drep_score_history`, `proposal_voting_summary`, `drep_power_snapshots`, `poll_responses`, `sync_log`, `integrity_snapshots`, `api_keys`, `api_usage_log`, `drep_milestones`, `position_statements`, `vote_explanations`, `governance_philosophy`, `governance_benchmarks`, `feature_flags` (with `category` column, 42 rows), `proposal_classifications`, `pca_results`, `drep_pca_coordinates`, `alignment_snapshots`, `user_governance_profiles`, `ghi_snapshots`, `decentralization_snapshots`, `governance_stats`
+- HTTP method handlers: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`
+- Config fields: `dynamic`, `revalidate`, `fetchCache`, `runtime`, `preferredRegion`, `maxDuration`, `generateStaticParams`
+
+**Any other named export causes a build failure**: `"X" is not a valid Route export field.`
+
+This means: helper functions, business logic, type re-exports, and utility functions **must not be exported from route files**. For sync logic that needs to be callable from both a route and an Inngest function:
+
+```
+lib/sync/<name>.ts   ← export function execute*Sync()  (durable logic lives here)
+app/api/sync/<name>/route.ts  ← import from lib/sync/, thin auth wrapper only
+inngest/functions/sync-<name>.ts  ← import from lib/sync/, call inside step.run()
+```
+
+This pattern also improves testability — lib functions can be tested without HTTP request mocking.
 
 ### `dreps` Table Schema Convention
 
@@ -157,69 +155,6 @@ The `lib/data.ts` `mapRow()` function unpacks `info` into flat `EnrichedDRep` pr
 ### File Extension Rule for JSX
 
 Any API route that uses JSX (e.g., `ImageResponse` from `next/og`) **must** use the `.tsx` extension, not `.ts`. TypeScript will not parse JSX syntax in `.ts` files. This applies to all OG image routes under `app/api/og/` and the badge route under `app/api/badge/`.
-
-## Background Jobs (Inngest Cloud)
-
-All scheduled work runs via Inngest durable functions (no platform-specific crons).
-When adding or removing functions, update this list AND the count in the Tech Stack section above.
-
-**Data syncs** — call `execute*Sync()` from `lib/sync/` directly inside `step.run()`:
-
-- `sync-dreps` — every 6h + `drepscore/sync.dreps` event (all DReps, scores, alignment, history)
-- `sync-votes` — every 6h + `drepscore/sync.votes` event (bulk vote upsert + reconciliation)
-- `sync-secondary` — every 6h + `drepscore/sync.secondary` event (delegator counts, power snapshots, integrity)
-- `sync-slow` — daily 04:00 UTC + `drepscore/sync.slow` event (rationales, AI summaries, hash verification, push notifications)
-- `sync-proposals` — every 30 min + `drepscore/sync.proposals` event (new/updated proposals)
-- `sync-freshness-guard` — every 30 min (detects stale sync_log entries, re-triggers via `inngest.send()`)
-- `sync-treasury-snapshot` — daily 22:30 UTC (Koios /totals → treasury_snapshots)
-- `sync-governance-benchmarks` — weekly Sunday 06:00 UTC (Tally/SubSquare → governance_benchmarks, feature-flagged via `cross_chain_sync`)
-- `sync-alignment` — `drepscore/sync.alignment` event (PCA alignment computation → pca_results, drep_pca_coordinates)
-- `sync-drep-scores` — `drepscore/sync.scores` event, chained after sync-dreps (V3 pillar computation → dreps columns + drep_score_history)
-
-**Alerts & health:**
-
-- `alert-integrity` — every 6h (data quality + Discord alerts)
-- `alert-inbox` — daily 03:00, 09:00, 15:00, 21:00 UTC (new proposal inbox alerts)
-- `alert-api-health` — every 15 min (API health checks)
-
-**Notifications & generation:**
-
-- `check-notifications` — every 6h at :15 (DRep-specific: score changes, delegation, rank, milestones, deadlines, treasury)
-- `check-accountability-polls` — daily 23:00 UTC (open/close/schedule treasury accountability polls)
-- `generate-epoch-summary` — daily 22:00 UTC (detects epoch transitions, writes governance_events)
-- `snapshot-ghi` — daily 04:30 UTC (computes GHI + stores epoch snapshot)
-- `generate-governance-brief` — weekly Monday 10:00 UTC (personalized governance briefs for active users)
-- `generate-state-of-governance` — weekly Sunday 20:00 UTC (canonical State of Governance report)
-
-### Inngest Step Return Type Rule
-
-All code paths in a `step.run()` callback must return the same object shape. Inngest serializes step results to JSON; TypeScript infers a union from divergent return paths. Later steps accessing properties that only exist on one branch will fail type-check. Always include all properties in early returns with empty defaults.
-
-## Server Component Constraints
-
-- Any `app/**/page.tsx` or `app/**/route.ts` that calls `createClient()`, `getSupabaseAdmin()`, or any runtime-only service must export `dynamic = 'force-dynamic'`. Railway's Docker build has no env vars at build time — Next.js will attempt static prerendering and crash.
-- **NEVER use `export const revalidate`** on routes that touch Supabase or any env-var-dependent service. `revalidate` triggers build-time prerendering, which crashes in Railway's Docker build. This has caused production deploy failures 3 times. Use `force-dynamic` instead — cache at the application layer if needed.
-- Client components (`'use client'`) that fetch via `useEffect` are unaffected since they never run during build.
-- When creating any new server page or API route that fetches data, default to `force-dynamic`. Only use static generation for truly static content (no DB, no env vars).
-
-### Next.js 16 Route Export Rule
-
-Next.js 16 enforces strict validation of named exports from route files. **Only these exports are permitted in `app/**/route.ts` files:\*\*
-
-- HTTP method handlers: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`
-- Config fields: `dynamic`, `revalidate`, `fetchCache`, `runtime`, `preferredRegion`, `maxDuration`, `generateStaticParams`
-
-**Any other named export causes a build failure**: `"X" is not a valid Route export field.`
-
-This means: helper functions, business logic, type re-exports, and utility functions **must not be exported from route files**. For sync logic that needs to be callable from both a route and an Inngest function:
-
-```
-lib/sync/<name>.ts   ← export function execute*Sync()  (durable logic lives here)
-app/api/sync/<name>/route.ts  ← import from lib/sync/, thin auth wrapper only
-inngest/functions/sync-<name>.ts  ← import from lib/sync/, call inside step.run()
-```
-
-This pattern also improves testability — lib functions can be tested without HTTP request mocking.
 
 ## UX Principles
 

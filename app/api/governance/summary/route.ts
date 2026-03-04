@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
@@ -12,10 +13,8 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
-
-  try {
     const supabase = createClient();
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
@@ -93,8 +92,4 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch (err) {
-    logger.error('Error', { context: 'governance-summary-api', error: err });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
+});

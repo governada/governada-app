@@ -70,11 +70,11 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
 
         const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
         const rows = dreps
-          .filter((d: any) => {
+          .filter((d) => {
             const info = d.info as Record<string, unknown> | null;
             return info?.votingPowerLovelace != null;
           })
-          .map((d: any) => {
+          .map((d) => {
             const info = (d.info || {}) as Record<string, unknown>;
             return {
               drep_id: d.id as string,

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getScoreHistory } from '@/lib/data';
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) {
     return NextResponse.json([], { status: 400 });
@@ -9,4 +10,4 @@ export async function GET(request: NextRequest) {
 
   const history = await getScoreHistory(drepId);
   return NextResponse.json(history);
-}
+});

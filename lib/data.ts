@@ -7,15 +7,72 @@ import { createClient } from './supabase';
 import { getEnrichedDReps, EnrichedDRep } from './koios';
 import { isWellDocumented } from '@/utils/documentation';
 import { logger } from '@/lib/logger';
+import type { SizeTier } from '@/utils/scoring';
 
 const CACHE_FRESHNESS_MINUTES = 15;
+
+interface DRepRowInfo {
+  drepHash?: string;
+  handle?: string | null;
+  name?: string | null;
+  ticker?: string | null;
+  description?: string | null;
+  votingPower?: number;
+  votingPowerLovelace?: string;
+  delegatorCount?: number;
+  totalVotes?: number;
+  yesVotes?: number;
+  noVotes?: number;
+  abstainVotes?: number;
+  isActive?: boolean;
+  anchorUrl?: string | null;
+  epochVoteCounts?: number[];
+  [key: string]: unknown;
+}
+
+interface SupabaseDRepRow {
+  id: string;
+  info: DRepRowInfo | null;
+  score: number;
+  participation_rate: number;
+  rationale_rate: number;
+  reliability_score: number;
+  reliability_streak: number;
+  reliability_recency: number;
+  reliability_longest_gap: number;
+  reliability_tenure: number;
+  deliberation_modifier: number;
+  effective_participation: number;
+  size_tier: SizeTier;
+  anchor_hash: string | null;
+  metadata: Record<string, unknown> | null;
+  profile_completeness: number;
+  alignment_treasury_conservative: number | null;
+  alignment_treasury_growth: number | null;
+  alignment_decentralization: number | null;
+  alignment_security: number | null;
+  alignment_innovation: number | null;
+  alignment_transparency: number | null;
+  last_vote_time: number | null;
+  metadata_hash_verified: boolean | null;
+  updated_at: string | null;
+  engagement_quality: number | null;
+  engagement_quality_raw: number | null;
+  effective_participation_v3: number | null;
+  effective_participation_v3_raw: number | null;
+  reliability_v3: number | null;
+  reliability_v3_raw: number | null;
+  governance_identity: number | null;
+  governance_identity_raw: number | null;
+  score_momentum: number | null;
+}
 
 /**
  * Transform Supabase row to EnrichedDRep
  * Full transformation with all fields preserved for API route serving
  */
-function transformSupabaseRowToDRep(row: any): EnrichedDRep {
-  const info = row.info || {};
+function transformSupabaseRowToDRep(row: SupabaseDRepRow): EnrichedDRep {
+  const info = row.info || ({} as DRepRowInfo);
 
   return {
     drepId: row.id,
@@ -186,8 +243,8 @@ export async function getAllDReps(): Promise<{
       error: false,
       totalAvailable: allDReps.length,
     };
-  } catch (error: any) {
-    logger.error('[Data] Cache read failed, falling back to Koios', { error: error.message });
+  } catch (error: unknown) {
+    logger.error('[Data] Cache read failed, falling back to Koios', { error: error instanceof Error ? error.message : String(error) });
 
     // Fallback to direct Koios fetch
     if (isDev) {
@@ -469,8 +526,8 @@ export async function getDRepById(drepId: string): Promise<EnrichedDRep | null> 
     }
 
     return transformSupabaseRowToDRep(row);
-  } catch (error: any) {
-    logger.error('[Data] Cache read failed for DRep', { drepId, error: error.message });
+  } catch (error: unknown) {
+    logger.error('[Data] Cache read failed for DRep', { drepId, error: error instanceof Error ? error.message : String(error) });
 
     return null;
   }
@@ -598,7 +655,7 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
       }
     }
 
-    return proposals.map((p: any) => {
+    return proposals.map((p) => {
       const key = `${p.tx_hash}-${p.proposal_index}`;
       const counts = countMap.get(key) || { yes: 0, no: 0, abstain: 0, drepIds: new Set<string>() };
       return {
@@ -795,7 +852,7 @@ export async function getVotesByProposal(
     const drepAlignmentMap = new Map<string, ProposalVoteDetail['alignments']>();
     if (dreps) {
       for (const d of dreps) {
-        drepNameMap.set(d.id, (d.info as any)?.name || null);
+        drepNameMap.set(d.id, (d.info as DRepRowInfo | null)?.name || null);
         drepAlignmentMap.set(d.id, {
           treasuryConservative: d.alignment_treasury_conservative,
           treasuryGrowth: d.alignment_treasury_growth,
@@ -963,7 +1020,7 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
     }
 
     // Fetch vote counts for open proposals
-    const openTxHashes = proposals.map((p: any) => p.tx_hash);
+    const openTxHashes = proposals.map((p) => p.tx_hash);
     const { data: allVotes } = await supabase
       .from('drep_votes')
       .select('proposal_tx_hash, proposal_index, vote')
@@ -983,8 +1040,8 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
 
     // Filter to proposals the DRep hasn't voted on
     return proposals
-      .filter((p: any) => !votedKeys.has(`${p.tx_hash}-${p.proposal_index}`))
-      .map((p: any) => {
+      .filter((p) => !votedKeys.has(`${p.tx_hash}-${p.proposal_index}`))
+      .map((p) => {
         const key = `${p.tx_hash}-${p.proposal_index}`;
         const counts = countMap.get(key) || { yes: 0, no: 0, abstain: 0 };
         return {
@@ -1061,7 +1118,7 @@ export async function getScoreHistory(drepId: string): Promise<ScoreSnapshot[]> 
 
     if (error || !rows) return [];
 
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       date: r.snapshot_date,
       score: r.score ?? 0,
       effectiveParticipation: r.effective_participation ?? 0,
@@ -1120,7 +1177,7 @@ export async function getSocialLinkChecks(drepId: string): Promise<SocialLinkChe
 
     if (error || !data) return [];
 
-    return data.map((r: any) => ({
+    return data.map((r) => ({
       uri: r.uri,
       status: r.status as 'valid' | 'broken' | 'pending',
       httpStatus: r.http_status,

@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { authorizeCron, errMsg } from '@/lib/sync-utils';
 import { executeProposalsSync } from '@/lib/sync/proposals';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request) => {
   const authError = authorizeCron(request);
   if (authError) return authError;
 
@@ -23,4 +24,4 @@ export async function GET(request: NextRequest) {
       { status: 207 },
     );
   }
-}
+});

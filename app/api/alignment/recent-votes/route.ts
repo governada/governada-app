@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getVotesByDRepId, getProposalsByIds } from '@/lib/data';
 import { evaluateVoteAlignment } from '@/lib/alignment';
 import { UserPrefKey } from '@/types/drep';
@@ -21,7 +22,7 @@ const VALID_PREFS: UserPrefKey[] = [
 
 const MAX_VOTES = 10;
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const { searchParams } = new URL(request.url);
   const drepId = searchParams.get('drepId');
   const prefsParam = searchParams.get('prefs');
@@ -78,4 +79,4 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json({ votes: results });
-}
+});

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { posthog } from '@/lib/posthog';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,23 +17,26 @@ export function GovernancePhilosophyEditor({
   drepId,
   readOnly = false,
 }: GovernancePhilosophyEditorProps) {
+  const { data: philData, isLoading: loading } = useQuery({
+    queryKey: ['drep-philosophy', drepId],
+    queryFn: () =>
+      fetch(`/api/drep/${encodeURIComponent(drepId)}/philosophy`).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+    enabled: !!drepId,
+  });
+  const initialText = (philData as any)?.philosophy_text || '';
   const [text, setText] = useState('');
   const [savedText, setSavedText] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    fetch(`/api/drep/${encodeURIComponent(drepId)}/philosophy`)
-      .then((r) => r.json())
-      .then((d) => {
-        const t = d?.philosophy_text || '';
-        setText(t);
-        setSavedText(t);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [drepId]);
+  if (!initialized && philData !== undefined) {
+    setText(initialText);
+    setSavedText(initialText);
+    setInitialized(true);
+  }
 
   const handleSave = useCallback(async () => {
     const token = getStoredSession();

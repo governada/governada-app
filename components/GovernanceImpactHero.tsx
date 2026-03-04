@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useWallet } from '@/utils/wallet';
-import { getStoredSession } from '@/lib/supabaseAuth';
+import { useGovernanceHolder } from '@/hooks/queries';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FileText, Coins, Flame, TrendingUp } from 'lucide-react';
@@ -29,59 +29,33 @@ function formatAda(lovelace: number): string {
 }
 
 export function GovernanceImpactHero() {
-  const { isAuthenticated, reconnecting, delegatedDrepId } = useWallet();
-  const [data, setData] = useState<HeroData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, reconnecting, delegatedDrepId, address } = useWallet();
+  const stakeAddress = isAuthenticated && !reconnecting ? (address ?? undefined) : undefined;
+  const { data: holderData, isLoading } = useGovernanceHolder(stakeAddress);
 
-  useEffect(() => {
-    if (reconnecting) return;
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
-    const token = getStoredSession();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    const params = new URLSearchParams();
-    if (delegatedDrepId) params.set('drepId', delegatedDrepId);
-
-    fetch(`/api/governance/holder?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((json) => {
-        const drepVoteCount = json.delegationHealth
-          ? (json.pollHistory?.length ?? 0) + (json.representationScore?.total ?? 0)
-          : 0;
-
-        const proposalsShaped = json.representationScore?.total ?? 0;
-        const votingPower = json.delegationHealth?.votingPowerLovelace ?? 0;
-        const adaGoverned = proposalsShaped > 0 ? votingPower * proposalsShaped : 0;
-
-        setData({
-          proposalsShaped,
-          adaGoverned,
-          epochStreak: json.visitStreak ?? 0,
-          governanceLevel: json.governanceLevel ?? 'observer',
-          pollCount: json.pollCount ?? 0,
-          visitStreak: json.visitStreak ?? 0,
-          isDelegated: !!json.delegationHealth,
-        });
-      })
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [isAuthenticated, delegatedDrepId, reconnecting]);
+  const data = useMemo<HeroData | null>(() => {
+    const json = holderData as any;
+    if (!json) return null;
+    const proposalsShaped = json.representationScore?.total ?? 0;
+    const votingPower = json.delegationHealth?.votingPowerLovelace ?? 0;
+    const adaGoverned = proposalsShaped > 0 ? votingPower * proposalsShaped : 0;
+    return {
+      proposalsShaped,
+      adaGoverned,
+      epochStreak: json.visitStreak ?? 0,
+      governanceLevel: json.governanceLevel ?? 'observer',
+      pollCount: json.pollCount ?? 0,
+      visitStreak: json.visitStreak ?? 0,
+      isDelegated: !!json.delegationHealth,
+    };
+  }, [holderData]);
 
   useEffect(() => {
     if (data) posthog.capture('governance_impact_hero_viewed');
   }, [data]);
 
   if (!isAuthenticated || reconnecting) return null;
-  if (loading) return <HeroSkeleton />;
+  if (isLoading) return <HeroSkeleton />;
   if (!data) return null;
 
   return (

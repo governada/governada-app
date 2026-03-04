@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
@@ -19,8 +20,7 @@ interface BenchmarkRow {
   fetched_at: string;
 }
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const supabase = createClient();
 
     const { data: latest, error: latestErr } = await supabase
@@ -56,8 +56,4 @@ export async function GET() {
         },
       },
     );
-  } catch (err) {
-    logger.error('Unexpected error', { context: 'benchmarks', error: err });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+});

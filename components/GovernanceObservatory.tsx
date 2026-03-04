@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useGovernanceBenchmarks } from '@/hooks/queries';
 import { Globe, Sparkles } from 'lucide-react';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
 import { CrossChainReportCard } from './CrossChainReportCard';
@@ -47,31 +47,14 @@ export function GovernanceObservatory({
   variant = 'full',
   className = '',
 }: GovernanceObservatoryProps) {
-  const [benchmarks, setBenchmarks] = useState<Record<string, BenchmarkRow | null>>({});
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch('/api/governance/benchmarks');
-        if (!res.ok) return;
-        const data = await res.json();
-        setBenchmarks(data.benchmarks ?? {});
-        setAiInsight(data.aiInsight ?? null);
-      } catch {
-        // Graceful degradation
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+  const { data: rawData, isLoading } = useGovernanceBenchmarks();
+  const benchmarks = (rawData as { benchmarks?: Record<string, BenchmarkRow | null>; aiInsight?: string | null })?.benchmarks ?? {};
+  const aiInsight = (rawData as { aiInsight?: string | null })?.aiInsight ?? null;
 
   const chains: Chain[] = ['cardano', 'ethereum', 'polkadot'];
   const hasData = chains.some((c) => benchmarks[c] != null);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className={className}>
         <CardHeader>

@@ -129,8 +129,8 @@ function categorizeError(err: unknown, walletName?: string): WalletError {
 }
 
 function getCardanoApi(name: string): { enable(): Promise<CIP30Api> } | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).cardano?.[name];
+  const w = window as unknown as { cardano?: Record<string, { enable(): Promise<CIP30Api> }> };
+  return w.cardano?.[name];
 }
 
 const WALLET_NAME_KEY = 'drepscore_wallet_name';

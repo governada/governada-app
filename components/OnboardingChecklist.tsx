@@ -6,6 +6,7 @@ import { getStoredSession } from '@/lib/supabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Circle, Sparkles, ExternalLink, FileText, Share2, X } from 'lucide-react';
+import { useOnboarding } from '@/hooks/queries';
 
 interface OnboardingChecklistProps {
   drepId: string;
@@ -49,22 +50,18 @@ export function OnboardingChecklist({
   walletAddress,
   profileCompleteness,
 }: OnboardingChecklistProps) {
+  const { data: raw, isLoading: loading } = useOnboarding(walletAddress);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [dismissed, setDismissed] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/dashboard/onboarding?wallet=${encodeURIComponent(walletAddress)}`)
-      .then((r) => r.json())
-      .then((d) => {
-        const cl = d.checklist || {};
-        if (cl._dismissed) setDismissed(true);
-        if (profileCompleteness >= 80 && !cl.profile) cl.profile = true;
-        setChecklist(cl);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [walletAddress, profileCompleteness]);
+    if (!raw) return;
+    const d = raw as any;
+    const cl = d.checklist || {};
+    if (cl._dismissed) setDismissed(true);
+    if (profileCompleteness >= 80 && !cl.profile) cl.profile = true;
+    setChecklist(cl);
+  }, [raw, profileCompleteness]);
 
   const toggleItem = useCallback(
     async (key: string) => {

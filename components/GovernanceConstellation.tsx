@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { useGovernanceConstellation } from '@/hooks/queries';
 import { Instances, Instance, CameraControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -128,33 +129,19 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
       },
     }));
 
+    const { data: apiData } = useGovernanceConstellation();
+
     useEffect(() => {
-      let cancelled = false;
-      (async () => {
-        try {
-          const gpu = estimateGPUTier();
-          setQuality(gpu);
-
-          const nodeLimit = gpu === 'low' ? 200 : gpu === 'mid' ? 500 : 800;
-
-          const res = await fetch('/api/governance/constellation');
-          if (!res.ok || cancelled) return;
-          const data: ConstellationApiData = await res.json();
-
-          const { nodes, edges, nodeMap } = computeLayout(data.nodes, nodeLimit);
-          if (cancelled) return;
-
-          setSceneState((prev) => ({ ...prev, nodes, edges, nodeMap }));
-          setReady(true);
-          onReady?.();
-        } catch (err) {
-          console.error('Constellation init failed:', err);
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [onReady]);
+      if (!apiData) return;
+      const gpu = estimateGPUTier();
+      setQuality(gpu);
+      const nodeLimit = gpu === 'low' ? 200 : gpu === 'mid' ? 500 : 800;
+      const typedData = apiData as ConstellationApiData;
+      const { nodes, edges, nodeMap } = computeLayout(typedData.nodes, nodeLimit);
+      setSceneState((prev) => ({ ...prev, nodes, edges, nodeMap }));
+      setReady(true);
+      onReady?.();
+    }, [apiData, onReady]);
 
     const dpr =
       quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);

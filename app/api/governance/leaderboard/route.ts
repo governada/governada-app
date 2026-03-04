@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { shortenDRepId } from '@/utils/display';
 import { captureServerEvent } from '@/lib/posthog-server';
@@ -11,12 +12,10 @@ function displayName(row: any): string {
   return info.name || info.ticker || info.handle || shortenDRepId(row.id);
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const tier = request.nextUrl.searchParams.get('tier') || 'all';
   const limitParam = parseInt(request.nextUrl.searchParams.get('limit') || '20');
   const limit = Math.min(50, Math.max(1, limitParam));
-
-  try {
     const supabase = createClient();
 
     let query = supabase
@@ -135,10 +134,4 @@ export async function GET(request: NextRequest) {
       weeklyMovers: { gainers, losers },
       hallOfFame,
     });
-  } catch (err: any) {
-    const msg = err?.message || err?.details || err?.hint || JSON.stringify(err);
-    logger.error('Error', { context: 'leaderboard-api', error: msg });
-    captureServerEvent('leaderboard_api_error', { error: msg });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
+});

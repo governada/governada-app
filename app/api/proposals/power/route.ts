@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getVotingPowerSummary } from '@/lib/data';
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const { searchParams } = request.nextUrl;
   const txHash = searchParams.get('txHash');
   const index = searchParams.get('index');
@@ -15,4 +16,4 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data, {
     headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
   });
-}
+});

@@ -6,6 +6,50 @@ import { computeSpoScores, type SpoVoteData } from '@/lib/scoring/spoScore';
 import { getExtendedImportanceWeight } from '@/lib/scoring';
 import { logger } from '@/lib/logger';
 
+interface SpoProposalRow {
+  tx_hash: string;
+  proposal_index: number;
+  proposal_type: string;
+  treasury_tier: string | null;
+  withdrawal_amount: number | null;
+  block_time: number;
+  proposed_epoch: number | null;
+  expired_epoch: number | null;
+  ratified_epoch: number | null;
+  dropped_epoch: number | null;
+}
+
+interface SpoVoteRow {
+  pool_id: string;
+  proposal_tx_hash: string;
+  proposal_index: number;
+  vote: string;
+  block_time: number;
+  epoch: number | null;
+}
+
+interface ClassificationRow {
+  proposal_tx_hash: string;
+  proposal_index: number;
+  dim_treasury_conservative: number | null;
+  dim_treasury_growth: number | null;
+  dim_decentralization: number | null;
+  dim_security: number | null;
+  dim_innovation: number | null;
+  dim_transparency: number | null;
+}
+
+interface KoiosPoolInfo {
+  pool_id_bech32?: string;
+  ticker?: string;
+  meta_json?: { name?: string };
+  pledge?: number;
+  margin?: number;
+  fixed_cost?: number;
+  live_delegators?: number;
+  live_stake?: number;
+}
+
 const KOIOS_BASE = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
 
 export const syncSpoScores = inngest.createFunction(
@@ -51,7 +95,7 @@ export const syncSpoScores = inngest.createFunction(
         const proposalContexts = new Map<string, { blockTime: number; importanceWeight: number }>();
         const allProposalTypes = new Set<string>();
 
-        for (const p of (proposalRows || []) as any[]) {
+        for (const p of (proposalRows || []) as SpoProposalRow[]) {
           const key = `${p.tx_hash}-${p.proposal_index}`;
           const weight = getExtendedImportanceWeight(
             p.proposal_type,
@@ -75,17 +119,17 @@ export const syncSpoScores = inngest.createFunction(
         const allVotes: SpoVoteData[] = [];
         const poolVotes = new Map<string, SpoVoteData[]>();
 
-        for (const v of voteRows as any[]) {
+        for (const v of voteRows as SpoVoteRow[]) {
           const proposalKey = `${v.proposal_tx_hash}-${v.proposal_index}`;
           const ctx = proposalContexts.get(proposalKey);
-          const proposal = ((proposalRows || []) as any[]).find(
-            (p: any) => `${p.tx_hash}-${p.proposal_index}` === proposalKey,
+          const proposal = ((proposalRows || []) as SpoProposalRow[]).find(
+            (p) => `${p.tx_hash}-${p.proposal_index}` === proposalKey,
           );
 
           const voteData: SpoVoteData = {
             poolId: v.pool_id,
             proposalKey,
-            vote: v.vote,
+            vote: v.vote as 'Yes' | 'No' | 'Abstain',
             blockTime: v.block_time,
             epoch: v.epoch ?? blockTimeToEpoch(v.block_time),
             proposalType: proposal?.proposal_type ?? 'InfoAction',
@@ -105,7 +149,7 @@ export const syncSpoScores = inngest.createFunction(
         );
 
         const classificationMap = new Map<string, Record<string, number>>();
-        for (const c of (classificationRows || []) as any[]) {
+        for (const c of (classificationRows || []) as ClassificationRow[]) {
           const key = `${c.proposal_tx_hash}-${c.proposal_index}`;
           classificationMap.set(key, {
             treasury_conservative: c.dim_treasury_conservative ?? 0,
@@ -256,7 +300,7 @@ export const syncSpoScores = inngest.createFunction(
 
       if (!poolsNeedingMeta?.length) return { fetched: 0 };
 
-      const poolIds = poolsNeedingMeta.map((p: any) => p.pool_id);
+      const poolIds = poolsNeedingMeta.map((p: { pool_id: string }) => p.pool_id);
 
       try {
         const res = await fetch(`${KOIOS_BASE}/pool_info`, {
@@ -271,7 +315,7 @@ export const syncSpoScores = inngest.createFunction(
           return { fetched: 0, error: res.status };
         }
 
-        const data = (await res.json()) as any[];
+        const data = (await res.json()) as KoiosPoolInfo[];
         const metaByPool = new Map<string, Record<string, unknown>>();
         for (const p of data) {
           if (!p.pool_id_bech32) continue;

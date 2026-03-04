@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useGovernanceInterBody } from '@/hooks/queries';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users } from 'lucide-react';
 
@@ -26,18 +26,10 @@ function AlignmentBar({ value, color }: { value: number; color: string }) {
 }
 
 export function InterBodyPulse() {
-  const [data, setData] = useState<SystemAlignment | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: rawData, isLoading } = useGovernanceInterBody();
+  const data = (rawData as SystemAlignment) ?? null;
 
-  useEffect(() => {
-    fetch('/api/governance/inter-body')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setData(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>

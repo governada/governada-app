@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardListSkeleton } from '@/components/ui/content-skeletons';
@@ -8,6 +8,7 @@ import { Scale, ExternalLink, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { formatAda } from '@/lib/treasury';
 import { posthog } from '@/lib/posthog';
+import { useTreasuryPending } from '@/hooks/queries';
 
 interface PendingData {
   proposals: Array<{
@@ -36,24 +37,17 @@ const tierColors: Record<string, string> = {
 };
 
 export function TreasuryPendingProposals({ treasuryBalanceAda, runwayMonths }: Props) {
-  const [data, setData] = useState<PendingData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: raw, isLoading: loading } = useTreasuryPending();
+  const data = raw as PendingData | undefined;
 
   useEffect(() => {
-    fetch('/api/treasury/pending')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-        if (d?.proposals?.length) {
-          posthog.capture('treasury_pending_viewed', {
-            count: d.proposals.length,
-            total_ada: d.totalAda,
-          });
-        }
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    if (data?.proposals?.length) {
+      posthog.capture('treasury_pending_viewed', {
+        count: data.proposals.length,
+        total_ada: data.totalAda,
+      });
+    }
+  }, [data]);
 
   if (loading) return <CardListSkeleton count={3} />;
   if (!data || !data.proposals.length) {

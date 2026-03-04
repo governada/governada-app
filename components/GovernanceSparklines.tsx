@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useGovernanceSparklines } from '@/hooks/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -83,17 +83,10 @@ function getTrend(values: number[]): 'up' | 'down' | 'flat' {
 }
 
 export function GovernanceSparklines() {
-  const [data, setData] = useState<SparklinesData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: rawData, isLoading } = useGovernanceSparklines();
+  const data = (rawData as SparklinesData) ?? null;
 
-  useEffect(() => {
-    fetch('/api/governance/sparklines')
-      .then((r) => r.json())
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSimilarProposals } from '@/hooks/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronRight, GitCompare } from 'lucide-react';
@@ -20,20 +20,10 @@ interface SimilarProposalsProps {
 }
 
 export function SimilarProposals({ txHash, proposalIndex }: SimilarProposalsProps) {
-  const [proposals, setProposals] = useState<SimilarProposal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rawData, isLoading } = useSimilarProposals(txHash, proposalIndex);
+  const proposals = Array.isArray(rawData) ? (rawData as SimilarProposal[]) : [];
 
-  useEffect(() => {
-    fetch(`/api/proposals/similar?tx=${txHash}&index=${proposalIndex}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        if (Array.isArray(data)) setProposals(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [txHash, proposalIndex]);
-
-  if (loading || proposals.length === 0) return null;
+  if (isLoading || proposals.length === 0) return null;
 
   return (
     <Card>

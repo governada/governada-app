@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
@@ -15,8 +16,7 @@ interface ActivityEvent {
   proposalIndex?: number;
 }
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withRouteHandler(async (request, { requestId }) => {
     const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') || '30', 10), 50);
     const drepIdFilter = request.nextUrl.searchParams.get('drepId') || null;
     const supabase = createClient();
@@ -193,8 +193,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(events.slice(0, limit), {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
     });
-  } catch (error) {
-    logger.error('Activity API error', { context: 'governance/activity', error: error });
-    return NextResponse.json({ error: 'Failed to fetch activity' }, { status: 500 });
-  }
-}
+});

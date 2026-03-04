@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDReps } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -28,8 +29,8 @@ export function CompareButton({ currentDrepId, currentDrepName }: CompareButtonP
   const router = useRouter();
   const { delegatedDrepId, connected } = useWallet();
   const [open, setOpen] = useState(false);
-  const [allDreps, setAllDreps] = useState<EnrichedDRep[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: drepsData, isLoading: loading } = useDReps();
+  const allDreps = ((drepsData as any)?.dreps || []) as EnrichedDRep[];
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -57,16 +58,6 @@ export function CompareButton({ currentDrepId, currentDrepName }: CompareButtonP
     }
     return [];
   }, []);
-
-  useEffect(() => {
-    if (!open || allDreps.length > 0) return;
-    setLoading(true);
-    fetch('/api/dreps')
-      .then((r) => r.json())
-      .then((d) => setAllDreps((d.dreps || []) as EnrichedDRep[]))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [open, allDreps.length]);
 
   const sortedDreps = useMemo(() => {
     let list = allDreps.filter((d) => d.drepId !== currentDrepId);

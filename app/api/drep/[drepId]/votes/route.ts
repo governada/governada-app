@@ -4,40 +4,32 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> },
-) {
-  const { drepId } = await params;
+export const GET = withRouteHandler(async (request, { requestId }) => {
+  const drepId = request.nextUrl.pathname.split('/api/drep/')[1]?.split('/')[0];
   if (!drepId) {
     return NextResponse.json({ error: 'Missing drepId' }, { status: 400 });
   }
 
-  try {
-    const supabase = createClient();
-    const { data: votes, error } = await supabase
-      .from('drep_votes')
-      .select('proposal_tx_hash, proposal_index, vote')
-      .eq('drep_id', drepId);
+  const supabase = createClient();
+  const { data: votes, error } = await supabase
+    .from('drep_votes')
+    .select('proposal_tx_hash, proposal_index, vote')
+    .eq('drep_id', drepId);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      votes: (votes || []).map((v: any) => ({
-        proposalTxHash: v.proposal_tx_hash,
-        proposalIndex: v.proposal_index,
-        vote: v.vote,
-      })),
-    });
-  } catch (err) {
-    logger.error('Error', { context: 'drep-votes-api', error: err });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+
+  return NextResponse.json({
+    votes: (votes || []).map((v: any) => ({
+      proposalTxHash: v.proposal_tx_hash,
+      proposalIndex: v.proposal_index,
+      vote: v.vote,
+    })),
+  });
+});

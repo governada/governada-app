@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History, CheckCircle2, XCircle, Clock, AlertCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { formatAda } from '@/lib/treasury';
 import { posthog } from '@/lib/posthog';
+import { useTreasurySimilar } from '@/hooks/queries';
 
 interface SimilarProposal {
   txHash: string;
@@ -20,10 +21,8 @@ interface SimilarProposal {
 }
 
 interface Props {
-  title: string;
-  withdrawalAda: number;
-  treasuryTier: string | null;
-  excludeTxHash: string;
+  txHash: string;
+  index: number;
 }
 
 const outcomeConfig: Record<string, { label: string; icon: typeof CheckCircle2; color: string }> = {
@@ -34,35 +33,17 @@ const outcomeConfig: Record<string, { label: string; icon: typeof CheckCircle2; 
   active: { label: 'Active', icon: AlertCircle, color: 'text-amber-500' },
 };
 
-export function SimilarProposalsCard({ title, withdrawalAda, treasuryTier, excludeTxHash }: Props) {
-  const [similar, setSimilar] = useState<SimilarProposal[]>([]);
-  const [loading, setLoading] = useState(true);
+export function SimilarProposalsCard({ txHash, index }: Props) {
+  const { data: raw, isLoading } = useTreasurySimilar(txHash, index);
+  const similar: SimilarProposal[] = (raw as any)?.similar ?? [];
 
   useEffect(() => {
-    const params = new URLSearchParams({
-      title,
-      amount: String(withdrawalAda),
-      ...(treasuryTier && { tier: treasuryTier }),
-      exclude: excludeTxHash,
-    });
+    if (similar.length > 0) {
+      posthog.capture('similar_proposals_viewed', { count: similar.length });
+    }
+  }, [similar.length]);
 
-    fetch(`/api/treasury/similar?${params}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.similar) {
-          setSimilar(data.similar);
-          posthog.capture('similar_proposals_viewed', {
-            count: data.similar.length,
-            proposal_title: title,
-            withdrawal_ada: withdrawalAda,
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [title, withdrawalAda, treasuryTier, excludeTxHash]);
-
-  if (loading || similar.length === 0) return null;
+  if (isLoading || similar.length === 0) return null;
 
   const enacted = similar.filter((s) => s.outcome === 'enacted');
   const delivered = enacted.filter(

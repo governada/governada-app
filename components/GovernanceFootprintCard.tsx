@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Footprints, Shield, Vote, Flame, TrendingUp } from 'lucide-react';
-import { getStoredSession } from '@/lib/supabaseAuth';
+import { useGovernanceFootprint } from '@/hooks/queries';
 
 interface GovernanceFootprint {
   identity: {
@@ -69,34 +68,12 @@ const WEIGHT_STYLES: Record<'whale' | 'significant' | 'moderate' | 'light', stri
 };
 
 export function GovernanceFootprintCard({ stakeAddress }: { stakeAddress: string }) {
-  const [data, setData] = useState<GovernanceFootprint | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    if (!stakeAddress) return;
-
-    const token = getStoredSession();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    fetch(`/api/governance/footprint?stakeAddress=${encodeURIComponent(stakeAddress)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed');
-        return res.json();
-      })
-      .then(setData)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [stakeAddress]);
+  const { data: rawData, isLoading, isError } = useGovernanceFootprint(stakeAddress);
+  const data = (rawData as GovernanceFootprint) ?? null;
 
   if (!stakeAddress) return null;
-  if (error) return null;
-  if (loading) return <GovernanceFootprintSkeleton />;
+  if (isError) return null;
+  if (isLoading) return <GovernanceFootprintSkeleton />;
   if (!data) return null;
 
   const tier = TIER_STYLES[data.identity.participationTier];

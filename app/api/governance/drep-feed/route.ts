@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) {
     return NextResponse.json({ error: 'drepId is required' }, { status: 400 });
   }
 
   const supabase = createClient();
-
-  try {
     const [explanationsRes, positionsRes, philosophyRes, drepRes] = await Promise.all([
       supabase
         .from('vote_explanations')
@@ -104,8 +103,4 @@ export async function GET(request: NextRequest) {
       philosophy: philosophyRes.data?.philosophy_text || null,
       drepName,
     });
-  } catch (error) {
-    logger.error('Error', { context: 'drep-feed-api', error: error });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
+});

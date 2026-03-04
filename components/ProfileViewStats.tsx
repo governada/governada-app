@@ -1,17 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Eye } from 'lucide-react';
+import { useProfileViews } from '@/hooks/queries';
 
 export function ProfileViewStats({ drepId }: { drepId: string }) {
-  const [stats, setStats] = useState<{ weekViews: number; totalViews: number } | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/views?drepId=${encodeURIComponent(drepId)}`)
-      .then((r) => r.json())
-      .then(setStats)
-      .catch(() => {});
-  }, [drepId]);
+  const { data: raw } = useProfileViews(drepId);
+  const stats = raw as { weekViews: number; totalViews: number } | undefined;
 
   if (!stats || stats.totalViews === 0) return null;
 

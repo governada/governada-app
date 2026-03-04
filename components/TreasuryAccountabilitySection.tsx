@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PollSkeleton } from '@/components/ui/content-skeletons';
 import { CheckCircle2, AlertCircle, Clock, XCircle, Scale, TrendingUp } from 'lucide-react';
 import { formatAda } from '@/lib/treasury';
 import { posthog } from '@/lib/posthog';
+import { useTreasuryAccountability } from '@/hooks/queries';
 
 interface Effectiveness {
   totalSpentAda: number;
@@ -80,18 +81,11 @@ function DonutChart({ data }: { data: Array<{ name: string; value: number; color
 }
 
 export function TreasuryAccountabilitySection() {
-  const [data, setData] = useState<Effectiveness | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: raw, isLoading: loading } = useTreasuryAccountability();
+  const data = raw as Effectiveness | undefined;
 
   useEffect(() => {
     posthog.capture('treasury_accountability_viewed');
-    fetch('/api/treasury/accountability')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
   }, []);
 
   const pieData = useMemo(() => {

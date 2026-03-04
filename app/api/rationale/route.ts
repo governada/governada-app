@@ -6,10 +6,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(_request: NextRequest) {
+export const POST = withRouteHandler(async (request, { requestId }) => {
   return NextResponse.json(
     {
       results: [],
@@ -18,4 +19,4 @@ export async function POST(_request: NextRequest) {
     },
     { status: 200 },
   );
-}
+});

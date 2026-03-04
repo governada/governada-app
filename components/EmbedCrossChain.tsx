@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useGovernanceBenchmarks } from '@/hooks/queries';
 import { CHAIN_IDENTITIES, type Chain } from '@/lib/crossChain';
 
 interface EmbedCrossChainProps {
@@ -39,18 +39,8 @@ function fmt(n: number): string {
 
 export function EmbedCrossChain({ theme }: EmbedCrossChainProps) {
   const isDark = theme === 'dark';
-  const [benchmarks, setBenchmarks] = useState<Record<string, BenchmarkData | null>>({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/governance/benchmarks')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.benchmarks) setBenchmarks(data.benchmarks);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: benchmarkData, isLoading: loading } = useGovernanceBenchmarks();
+  const benchmarks = ((benchmarkData as any)?.benchmarks ?? {}) as Record<string, BenchmarkData | null>;
 
   const chains: Chain[] = ['cardano', 'ethereum', 'polkadot'];
 

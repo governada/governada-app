@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { bech32 } from 'bech32';
 import { requireAuth } from '@/lib/supabaseAuth';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 function deriveStakeFromPaymentAddress(paymentAddress: string): string | null {
   try {
@@ -48,7 +49,7 @@ function isAdminWallet(address: string): boolean {
  * POST: Check if the authenticated wallet is an admin.
  * Requires a valid session token via Authorization header.
  */
-export async function POST(request: NextRequest) {
+export const POST = withRouteHandler(async (request) => {
   try {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
@@ -57,4 +58,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ isAdmin: false });
   }
-}
+});

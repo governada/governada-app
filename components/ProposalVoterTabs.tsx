@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ProposalVoteDetail, SpoVoteDetail, CcVoteDetail } from '@/lib/data';
+import { useSpoVotes, useCcVotes } from '@/hooks/queries';
 import { ProposalVotersWithContext } from '@/components/ProposalVotersWithContext';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,19 +24,9 @@ function VoteBadge({ vote }: { vote: string }) {
 }
 
 function SpoVotersList({ txHash, proposalIndex }: { txHash: string; proposalIndex: number }) {
-  const [spoVotes, setSpoVotes] = useState<SpoVoteDetail[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: spoData, isLoading: loading } = useSpoVotes(txHash, proposalIndex);
+  const spoVotes = (Array.isArray(spoData) ? spoData : []) as SpoVoteDetail[];
   const [showAll, setShowAll] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/governance/spo-votes?tx=${txHash}&index=${proposalIndex}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        if (Array.isArray(data)) setSpoVotes(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [txHash, proposalIndex]);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-4 text-center">Loading SPO votes...</p>;
@@ -94,18 +85,8 @@ function SpoVotersList({ txHash, proposalIndex }: { txHash: string; proposalInde
 }
 
 function CcVotersList({ txHash, proposalIndex }: { txHash: string; proposalIndex: number }) {
-  const [ccVotes, setCcVotes] = useState<CcVoteDetail[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/governance/cc-votes?tx=${txHash}&index=${proposalIndex}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        if (Array.isArray(data)) setCcVotes(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [txHash, proposalIndex]);
+  const { data: ccData, isLoading: loading } = useCcVotes(txHash, proposalIndex);
+  const ccVotes = (Array.isArray(ccData) ? ccData : []) as CcVoteDetail[];
 
   if (loading) {
     return <p className="text-sm text-muted-foreground py-4 text-center">Loading CC votes...</p>;

@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getStoredSession } from '@/lib/supabaseAuth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { HeartPulse, Users } from 'lucide-react';
 import type { PollResultsResponse } from '@/types/supabase';
+import { usePollResults } from '@/hooks/queries';
 
 interface DelegatorPulseProps {
   txHash: string;
@@ -21,28 +20,13 @@ interface Counts {
 }
 
 export function DelegatorPulse({ txHash, proposalIndex, drepId }: DelegatorPulseProps) {
-  const [results, setResults] = useState<PollResultsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const params = new URLSearchParams({
-      proposalTxHash: txHash,
-      proposalIndex: String(proposalIndex),
-      drepId,
-    });
-
-    const headers: HeadersInit = {};
-    const token = getStoredSession();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    fetch(`/api/polls/results?${params}`, { headers })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: PollResultsResponse | null) => {
-        if (data) setResults(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [txHash, proposalIndex, drepId]);
+  const params = new URLSearchParams({
+    proposalTxHash: txHash,
+    proposalIndex: String(proposalIndex),
+    drepId,
+  }).toString();
+  const { data: raw, isLoading: loading } = usePollResults(params);
+  const results = raw as PollResultsResponse | undefined;
 
   if (loading) {
     return (

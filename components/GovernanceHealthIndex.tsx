@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { motion, useSpring, useTransform } from 'framer-motion';
+import { useGovernanceHealthIndex } from '@/hooks/queries';
 import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand, type GHIComponent } from '@/lib/ghi';
 import { spring } from '@/lib/animations';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -33,37 +34,14 @@ export function GovernanceHealthIndex({
   size = 'hero',
   className = '',
 }: GovernanceHealthIndexProps) {
-  const [data, setData] = useState<GHIData | null>(null);
-  const [history, setHistory] = useState<GHIHistoryPoint[]>([]);
-  const [trend, setTrend] = useState<GHITrend | null>(null);
+  const { data: rawData, isLoading, isError } = useGovernanceHealthIndex(20);
+  const ghiResponse = rawData as { current: GHIData; history?: GHIHistoryPoint[]; trend?: GHITrend } | undefined;
+  const data = ghiResponse?.current ?? null;
+  const history = ghiResponse?.history ?? [];
+  const trend = ghiResponse?.trend ?? null;
 
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/governance/health-index/history?epochs=20')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => {
-        if (res) {
-          setData(res.current);
-          setHistory(res.history ?? []);
-          setTrend(res.trend ?? null);
-        } else {
-          setFailed(true);
-        }
-      })
-      .catch(() => {
-        fetch('/api/governance/health-index')
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d) => {
-            if (d) setData(d);
-            else setFailed(true);
-          })
-          .catch(() => setFailed(true));
-      });
-  }, []);
-
-  if (failed) return <GHIUnavailable size={size} />;
-  if (!data) return <GHISkeleton size={size} />;
+  if (isError) return <GHIUnavailable size={size} />;
+  if (isLoading || !data) return <GHISkeleton size={size} />;
 
   return size === 'hero' ? (
     <GHIHero data={data} history={history} trend={trend} className={className} />

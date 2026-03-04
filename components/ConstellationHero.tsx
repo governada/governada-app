@@ -5,11 +5,11 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
+import { useGovernanceHolder } from '@/hooks/queries';
 import { ActivityTicker } from '@/components/ActivityTicker';
 import { PersonalizedStatsStrip } from '@/components/PersonalizedStatsStrip';
 
 import type { UserSegment } from '@/components/PersonalGovernanceCard';
-import { getStoredSession } from '@/lib/supabaseAuth';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 
@@ -46,7 +46,7 @@ export function ConstellationHero({
   onPersonalCard,
 }: ConstellationHeroProps) {
   const constellationRef = useRef<ConstellationRef>(null);
-  const { isAuthenticated, delegatedDrepId, ownDRepId } = useWallet();
+  const { isAuthenticated, delegatedDrepId, ownDRepId, address } = useWallet();
   const [constellationReady, setConstellationReady] = useState(false);
   const [showPersonalCard, setShowPersonalCard] = useState(!!ssrHolderData);
   const [holderData, setHolderData] = useState<any>(ssrHolderData || null);
@@ -83,52 +83,43 @@ export function ConstellationHero({
     prevAuth.current = isAuthenticated;
   }, [isAuthenticated]);
 
-  // When wallet connects (client-side), fetch holder data and trigger find-me
+  // Fetch holder data via TanStack Query (skip if SSR data provided)
+  const holderStakeAddress = !ssrHolderData && isAuthenticated ? (address ?? undefined) : undefined;
+  const { data: hookHolderData } = useGovernanceHolder(holderStakeAddress);
+
+  useEffect(() => {
+    if (hookHolderData) setHolderData(hookHolderData as any);
+  }, [hookHolderData]);
+
+  // Trigger find-me animation when holder data becomes available
   useEffect(() => {
     if (!isAuthenticated || ssrHolderData || hasTriggeredFindMe) return;
+    if (!hookHolderData) return;
     setHasTriggeredFindMe(true);
 
-    const token = getStoredSession();
-    if (!token) return;
+    if (constellationReady && constellationRef.current) {
+      const target = ownDRepId
+        ? { type: 'drep' as const, drepId: ownDRepId }
+        : delegatedDrepId
+          ? { type: 'delegated' as const, drepId: delegatedDrepId }
+          : { type: 'undelegated' as const };
 
-    const params = new URLSearchParams();
-    if (delegatedDrepId) params.set('drepId', delegatedDrepId);
-
-    fetch(`/api/governance/holder?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) setHolderData(data);
-
-        // Trigger find-me animation
-        if (constellationReady && constellationRef.current) {
-          const target = ownDRepId
-            ? { type: 'drep' as const, drepId: ownDRepId }
-            : delegatedDrepId
-              ? { type: 'delegated' as const, drepId: delegatedDrepId }
-              : { type: 'undelegated' as const };
-
-          constellationRef.current.findMe(target).then(() => {
-            setContracted(true);
-            setShowPersonalCard(true);
-          });
-        } else {
-          setContracted(true);
-          setShowPersonalCard(true);
-        }
-      })
-      .catch(() => {
+      constellationRef.current.findMe(target).then(() => {
         setContracted(true);
         setShowPersonalCard(true);
       });
+    } else {
+      setContracted(true);
+      setShowPersonalCard(true);
+    }
   }, [
+    hookHolderData,
     isAuthenticated,
-    delegatedDrepId,
-    ownDRepId,
     ssrHolderData,
-    constellationReady,
     hasTriggeredFindMe,
+    constellationReady,
+    ownDRepId,
+    delegatedDrepId,
   ]);
 
   const handleConstellationReady = useCallback(() => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useProposalPower } from '@/hooks/queries';
 import { Badge } from '@/components/ui/badge';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -48,20 +49,16 @@ export function ThresholdMeter({
   isOpen,
   variant = 'compact',
 }: ThresholdMeterProps) {
-  const [power, setPower] = useState<PowerData | null>(null);
+  const { data: powerData } = useProposalPower(txHash, proposalIndex, proposalType);
+  const power = (powerData as PowerData) ?? null;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    fetch(
-      `/api/proposals/power?txHash=${encodeURIComponent(txHash)}&index=${proposalIndex}&type=${encodeURIComponent(proposalType)}`,
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setPower(d);
-        setTimeout(() => setMounted(true), 50);
-      })
-      .catch(() => {});
-  }, [txHash, proposalIndex, proposalType]);
+    if (power) {
+      const t = setTimeout(() => setMounted(true), 50);
+      return () => clearTimeout(t);
+    }
+  }, [power]);
 
   const hasPowerData =
     power && power.totalActivePower > 0 && power.yesPower + power.noPower + power.abstainPower > 0;

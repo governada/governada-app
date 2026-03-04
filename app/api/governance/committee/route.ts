@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const supabase = createClient();
 
     const { data: votes, error } = await supabase.from('cc_votes').select('cc_hot_id, vote');
@@ -50,8 +50,4 @@ export async function GET() {
         },
       },
     );
-  } catch (error) {
-    logger.error('Error', { context: 'governance/committee', error: error });
-    return NextResponse.json({ members: [] }, { status: 500 });
-  }
-}
+});

@@ -7,7 +7,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-require-imports': 'warn',
       'react/no-unescaped-entities': 'warn',
       'prefer-const': 'warn',

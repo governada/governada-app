@@ -1,20 +1,13 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useNavDirection } from '@/components/NavDirectionProvider';
-import { pageTransitionVariants, getPageTransition, getPageInitial } from '@/lib/animations';
+import { lazy, Suspense } from 'react';
+
+const PageTransition = lazy(() => import('@/components/PageTransition'));
 
 export default function Template({ children }: { children: React.ReactNode }) {
-  const direction = useNavDirection();
-
   return (
-    <motion.div
-      variants={pageTransitionVariants}
-      initial={getPageInitial(direction)}
-      animate="center"
-      transition={getPageTransition(direction)}
-    >
-      {children}
-    </motion.div>
+    <Suspense fallback={<div>{children}</div>}>
+      <PageTransition>{children}</PageTransition>
+    </Suspense>
   );
 }

@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { detectProposalTrends } from '@/lib/proposalTrends';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const trends = await detectProposalTrends();
     return NextResponse.json(trends);
-  } catch (err) {
-    logger.error('Error', { context: 'proposaltrends', error: err });
-    return NextResponse.json({ trends: [], epochRange: { start: 0, end: 0 }, totalProposals: 0 });
-  }
-}
+});

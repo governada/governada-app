@@ -9,9 +9,10 @@
  * Designed to run every 6h via Inngest scheduled function.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -22,7 +23,7 @@ interface InboxAlert {
   detail: string;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request) => {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -211,4 +212,4 @@ export async function GET(request: NextRequest) {
       { status: 502 },
     );
   }
-}
+});

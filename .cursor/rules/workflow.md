@@ -1,103 +1,61 @@
 ---
-description: Session protocol, continuous learning, and behavioral standards
+description: Core workflow protocol and behavioral standards
 globs: ['**/*']
 alwaysApply: true
 ---
-
+<!-- LINE BUDGET: 60 lines. Overflow → workflow-procedures.md -->
 # Workflow Protocol
-
 > Read `.cursor/rules/critical.md` FIRST. It overrides everything here.
-
 ## Session Start
-
 1. Read `tasks/lessons.md` for patterns from prior sessions
 2. Read `tasks/todo.md` for any in-progress work
 3. `git branch --show-current` + `git status` — orient to current state
 4. For multi-step tasks, run `/start` for a full session setup
-
+5. Check `tasks/lessons.md` line count — if over 80 lines, archive promoted entries to `tasks/lessons-archive.md`
 ## Planning (3+ step tasks)
-
-1. Check lessons for patterns that appeared 2+ times — propose promoting to a rule
-2. First-principles checklist:
-   - What's the actual problem? (Diagnose before solving)
-   - What external APIs/libraries? (Research before building)
-   - What's the validation strategy? (Define checkpoints)
-   - What does the 6-month version look like? (Build toward it)
-   - Could this cause rework? (Flag risks)
-3. Write plan to `.cursor/plans/<feature>.plan.md` with goals, phases, validation gates
-4. Commit plan to `main` before creating a worktree
-5. Large features: 15-20 changes per session, single theme, independently deployable
-
+First-principles checklist:
+- What's the actual problem? (Diagnose before solving)
+- What external APIs/libraries? (Research before building)
+- What's the validation strategy? (Define checkpoints)
+- What does the 6-month version look like? (Build toward it)
+- Could this cause rework? (Flag risks)
+- Check lessons for patterns that appeared 2+ times — propose promoting to a rule
+Write plan to `.cursor/plans/<feature>.plan.md` with goals, phases, validation gates.
 ## Build Phase
-
 - **Branch check (step 0)**: `git branch --show-current`. On `main` and not a hotfix → STOP and branch first
 - **Research before build**: New library/API → research summary before implementation
 - **Analytics inline**: Every new user interaction gets a PostHog event in the same diff (see `analytics.mdc`)
 - **No orphaned components**: Every component created must be imported and rendered in the same commit
 - **Deprecation audit**: When removing a system, search for all consumers of its data and state — not just imports
-
-## Post-Build: Ship It (MANDATORY — every feature, every time)
-
-> A build is NOT complete until production is running the new code. This applies to ALL features, not just hotfixes. See `critical.md #2`. Corrected 5 times.
-
-After code compiles clean and all local checks pass, execute this IMMEDIATELY without asking:
-
-1. `git add` relevant files → `git commit -F COMMIT_MSG.txt` → `Remove-Item COMMIT_MSG.txt`
-2. `git push -u origin HEAD`
-3. `gh pr create --title "..." --body-file PR_BODY.md` → `Remove-Item PR_BODY.md`
-4. `gh pr checks <N> --watch` — fix failures if yours, verify pre-existing if not
-5. `gh pr merge <N> --squash --delete-branch`
-6. Apply pending migrations via Supabase MCP `apply_migration`
-7. Monitor Railway deployment: poll `gh api .../deployments/.../statuses` until `state: success`
-8. PUT `/api/inngest` if Inngest functions were added/modified
-9. Hit new/changed endpoints on `drepscore.io` to verify
-10. `git checkout main; git pull`
-11. Update `tasks/lessons.md` if corrections occurred
-
-**Never** say "build complete — PR next" or "ready for review." Just ship it.
-
-## Pre-PR Plan Audit
-
-When a `.cursor/plans/*.plan.md` drove the work, audit before PR. See global workflow rule for full protocol.
-
-**Trigger**: 2+ phases OR 5+ files changed. Otherwise skip.
-
-**Process**: Spawn a readonly `generalPurpose` subagent with the plan file + `git diff main...HEAD`. It reports each plan item as Done / Adapted / Gap. Fix all Gaps, then include the audit summary in the PR body under `## Plan Audit`.
-
-**DRepScore-specific checks** the auditor must also verify:
-
-- PostHog events for every new user interaction (per `analytics.mdc`)
-- Supabase RLS policies if new tables/columns were added
-- Score/tier display consistency with `scoring-system.md`
-- No orphaned components or unused imports
-
-## Continuous Learning
-
-- **On correction**: Immediately append to `tasks/lessons.md` (date, pattern, context, takeaway)
-- **On surprise/rework/debugging (2+ attempts)**: Log the pattern
-- **Rule promotion**: 2+ occurrences or permanent architectural decision → propose a cursor rule
-
-## Hotfix Protocol
-
-When the user says "hotfix": deploy autonomously end-to-end. Create todos for ALL phases before writing code. Fix on `main` → commit → push → monitor CI → monitor deploy → validate → report. Run `/hotfix` for the full procedure. Never report success before post-deploy validation passes.
-
+- **After migrations**: Run `npm run gen:types` to regenerate Supabase types. Commit the updated `types/database.ts`
+- **Client data fetching**: Use TanStack Query (`useQuery`/`useMutation`) for ALL new client-side API calls. Never raw `fetch` + `useState` + `useEffect`. See `lib/queryClient.ts` for defaults
+- **Server-side caching**: Use `cached()` from `lib/redis.ts` instead of in-memory `Map` caches for data that should survive deploys or be shared across replicas
+- **E2E tests**: For UI-touching changes, add or update Playwright tests in `e2e/`. Run `npm run test:e2e` locally before pushing
+## Ship It (MANDATORY)
+> A build is NOT complete until production is running the new code. See `workflow-procedures.md` for the full checklist.
+> Your TodoWrite MUST include ship-it steps (commit → PR → CI → merge → deploy) before starting implementation.
 ## Shell Compatibility (PowerShell — mandatory)
-
-| Task               | Correct                                                                                      | Wrong                              |
-| ------------------ | -------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Chain commands     | `cmd1 ; cmd2`                                                                                | `cmd1 && cmd2`                     |
-| Multi-line commit  | Write to `COMMIT_MSG.txt`, `git commit -F COMMIT_MSG.txt`, then `Remove-Item COMMIT_MSG.txt` | Heredocs, `.git/COMMIT_MSG`        |
-| Multi-line PR body | Write to `PR_BODY.md`, `--body-file PR_BODY.md`, then `Remove-Item PR_BODY.md`               | Inline `--body`, `.git/PR_BODY.md` |
-| Search/Read files  | Grep/Read tools                                                                              | `grep`/`cat`/`head`/`tail`         |
-
+| Task | Correct | Wrong |
+|---|---|---|
+| Chain commands | `cmd1 ; cmd2` | `cmd1 && cmd2` |
+| Multi-line commit | Write to `COMMIT_MSG.txt`, `git commit -F COMMIT_MSG.txt`, then `Remove-Item COMMIT_MSG.txt` | Heredocs, `.git/COMMIT_MSG` |
+| Multi-line PR body | Write to `PR_BODY.md`, `--body-file PR_BODY.md`, then `Remove-Item PR_BODY.md` | Inline `--body`, `.git/PR_BODY.md` |
+| Search/Read files | Grep/Read tools | `grep`/`cat`/`head`/`tail` |
 ## Anti-Patterns
-
 - Do NOT create status report files in project root — use `tasks/todo.md`
 - Do NOT proceed past a failed or unvalidated step
 - Do NOT build features that bypass Supabase
 - Do NOT assume library/API behavior — verify first
 - Do NOT use `git add -A` without reviewing staged files
-
 ## Mode Awareness
-
 If the user's message is a question (not a change request), suggest Ask mode for cost efficiency.
+## Continuous Learning
+### Lesson Lifecycle (on every correction)
+1. **Search before writing** — grep existing rules for the pattern. If a rule covers it, increment its violation count in `critical.md` and clarify the wording. Don't create a duplicate lesson.
+2. **Route correctly** — New pattern → `tasks/lessons.md`. Restatement of existing rule → harden the rule.
+3. **Promote = archive** — When promoting a lesson to a rule, move it to `tasks/lessons-archive.md` in the same commit. Promotion and archival are one atomic action.
+### Session-End Rule Hygiene (mandatory, 5 min)
+1. New lessons this session? Check against existing rules. Deduplicate.
+2. Any rule violated? Update violation count + date in `critical.md`.
+3. `tasks/lessons.md` over 80 lines? Archive oldest promoted entries.
+4. Any always-apply file over its line budget? Move overflow to contextual files.

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@/utils/wallet';
+import { useGovernanceSummary } from '@/hooks/queries';
 import { Badge } from '@/components/ui/badge';
 import { Scroll, ChevronRight, AlertTriangle, Wallet } from 'lucide-react';
 
@@ -17,22 +17,10 @@ interface GovernanceSummary {
 
 export function GovernanceWidget() {
   const { delegatedDrepId } = useWallet();
-  const [data, setData] = useState<GovernanceSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: rawData, isLoading } = useGovernanceSummary(delegatedDrepId);
+  const data = (rawData as GovernanceSummary) ?? null;
 
-  useEffect(() => {
-    const url = delegatedDrepId
-      ? `/api/governance/summary?drepId=${encodeURIComponent(delegatedDrepId)}`
-      : '/api/governance/summary';
-
-    fetch(url)
-      .then((res) => (res.ok ? res.json() : null))
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [delegatedDrepId]);
-
-  if (loading) {
+  if (isLoading) {
     return <div className="h-12 animate-pulse bg-muted rounded-lg" />;
   }
 

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { computeGHI, type GHIResult } from '@/lib/ghi';
 import { logger } from '@/lib/logger';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withRouteHandler(async (request, { requestId }) => {
     const epochs = Math.min(parseInt(request.nextUrl.searchParams.get('epochs') ?? '20', 10), 50);
 
     const supabase = createClient();
@@ -72,8 +72,4 @@ export async function GET(request: NextRequest) {
       },
       { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' } },
     );
-  } catch (error) {
-    logger.error('Failed', { context: 'ghi-history', error: error });
-    return NextResponse.json({ error: 'Failed to fetch GHI history' }, { status: 500 });
-  }
-}
+});

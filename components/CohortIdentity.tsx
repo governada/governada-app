@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users } from 'lucide-react';
-import { getStoredSession } from '@/lib/supabaseAuth';
-import { posthog } from '@/lib/posthog';
+import { useGovernanceCohorts } from '@/hooks/queries';
 
 interface CohortData {
   userCohort: string;
@@ -22,42 +20,12 @@ const COHORT_ACCENTS: Record<string, string> = {
 };
 
 export function CohortIdentity() {
-  const [cohort, setCohort] = useState<CohortData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [insufficient, setInsufficient] = useState(false);
+  const { data: rawData, isLoading } = useGovernanceCohorts();
+  const cohortResponse = rawData as { cohort?: CohortData } | undefined;
+  const cohort = cohortResponse?.cohort ?? null;
+  const insufficient = !!cohortResponse && !cohort;
 
-  useEffect(() => {
-    async function fetchCohort() {
-      const token = getStoredSession();
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const res = await fetch('/api/governance/cohorts', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          setLoading(false);
-          return;
-        }
-        const json = await res.json();
-        if (!json.cohort) {
-          setInsufficient(true);
-        } else {
-          setCohort(json.cohort);
-          posthog.capture('cohort_identity_viewed', { cohort: json.cohort.userCohort });
-        }
-      } catch {
-        // silent fail
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchCohort();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className="animate-pulse">
         <CardContent className="p-4">

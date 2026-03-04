@@ -81,6 +81,6 @@ describe('GET /api/dreps', () => {
     const body = (await parseJson(res)) as any;
 
     expect(res.status).toBe(500);
-    expect(body.error).toBe('Failed to fetch DReps');
+    expect(body.error).toBe('Internal server error');
   });
 });

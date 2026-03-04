@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
@@ -6,8 +7,7 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const supabase = createClient();
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
     const oneWeekAgoBlockTime = Math.floor(Date.now() / 1000) - 604800;
@@ -41,9 +41,9 @@ export async function GET() {
     const dreps = drepsResult.data || [];
     const proposals = proposalsResult.data || [];
 
-    const activeDReps = dreps.filter((d: any) => d.info?.isActive);
-    const totalAdaGovernedLovelace = activeDReps.reduce((sum: number, d: any) => {
-      const lovelace = parseInt(d.info?.votingPowerLovelace || '0', 10);
+    const activeDReps = dreps.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
+    const totalAdaGovernedLovelace = activeDReps.reduce((sum, d) => {
+      const lovelace = parseInt(String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'), 10);
       return sum + (isNaN(lovelace) ? 0 : lovelace);
     }, 0);
 
@@ -58,36 +58,36 @@ export async function GET() {
     }
 
     const participationRates = dreps
-      .map((d: any) => d.effective_participation || 0)
-      .filter((r: number) => r > 0);
+      .map((d) => (d.effective_participation as number) || 0)
+      .filter((r) => r > 0);
     const rationaleRates = dreps
-      .map((d: any) => d.rationale_rate || 0)
-      .filter((r: number) => r > 0);
+      .map((d) => (d.rationale_rate as number) || 0)
+      .filter((r) => r > 0);
     const avgParticipation =
       participationRates.length > 0
         ? Math.round(
-            participationRates.reduce((a: number, b: number) => a + b, 0) /
+            participationRates.reduce((a, b) => a + b, 0) /
               participationRates.length,
           )
         : 0;
     const avgRationale =
       rationaleRates.length > 0
         ? Math.round(
-            rationaleRates.reduce((a: number, b: number) => a + b, 0) / rationaleRates.length,
+            rationaleRates.reduce((a, b) => a + b, 0) / rationaleRates.length,
           )
         : 0;
 
     const openProposals = proposals.filter(
-      (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
+      (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
     );
     const criticalCount = openProposals.filter(
-      (p: any) => getProposalPriority(p.proposal_type) === 'critical',
+      (p) => getProposalPriority(p.proposal_type) === 'critical',
     ).length;
 
     const spotlight =
       openProposals
-        .filter((p: any) => p.title)
-        .sort((a: any, b: any) => {
+        .filter((p) => p.title)
+        .sort((a, b) => {
           const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
           const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
           return bTime - aTime;
@@ -118,7 +118,7 @@ export async function GET() {
     const topOpenForGap = openProposals.slice(0, 5);
     let drepVoteCounts = new Map<string, number>();
     if (topOpenForGap.length > 0) {
-      const txHashes = topOpenForGap.map((p: any) => p.tx_hash);
+      const txHashes = topOpenForGap.map((p) => p.tx_hash);
       const { data: drepVotesForGap } = await supabase
         .from('drep_votes')
         .select('proposal_tx_hash, proposal_index')
@@ -132,7 +132,7 @@ export async function GET() {
     }
 
     const communityGap = topOpenForGap
-      .map((p: any) => {
+      .map((p) => {
         const key = `${p.tx_hash}:${p.proposal_index}`;
         const agg = pollAgg.get(key);
         const drepVoteCount = drepVoteCounts.get(key) || 0;
@@ -180,8 +180,4 @@ export async function GET() {
         headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
       },
     );
-  } catch (err) {
-    logger.error('Error', { context: 'governance-pulse-api', error: err });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
+});

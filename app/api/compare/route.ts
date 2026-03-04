@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import {
   getDRepById,
   getVotesByDRepId,
@@ -18,7 +19,6 @@ import {
 import { computeOverallAlignment, getPrecomputedBreakdown } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
 import type { UserPrefKey } from '@/types/drep';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,7 +154,7 @@ function computePairwiseOverlap(
   };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const drepsParam = request.nextUrl.searchParams.get('dreps');
   const prefsParam = request.nextUrl.searchParams.get('prefs');
 
@@ -170,154 +170,146 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Provide 2-3 DRep IDs' }, { status: 400 });
   }
 
-  try {
-    const dreps = await Promise.all(drepIds.map((id) => getDRepById(id)));
-    const missing = drepIds.filter((_, i) => !dreps[i]);
-    if (missing.length > 0) {
-      return NextResponse.json(
-        { error: `DRep(s) not found: ${missing.join(', ')}` },
-        { status: 404 },
-      );
-    }
-    const validDreps = dreps as EnrichedDRep[];
-
-    const [allVotes, allHistory] = await Promise.all([
-      Promise.all(drepIds.map((id) => getVotesByDRepId(id))),
-      Promise.all(drepIds.map((id) => getScoreHistory(id))),
-    ]);
-
-    const profiles = validDreps.map(buildProfile);
-    const scoreHistory: Record<string, ScoreSnapshot[]> = {};
-    drepIds.forEach((id, i) => {
-      scoreHistory[id] = allHistory[i];
-    });
-
-    // Pairwise vote overlap
-    const pairs: [number, number][] = [];
-    for (let i = 0; i < drepIds.length; i++) {
-      for (let j = i + 1; j < drepIds.length; j++) {
-        pairs.push([i, j]);
-      }
-    }
-
-    const rawOverlaps = pairs.map(([i, j]) =>
-      computePairwiseOverlap(drepIds[i], drepIds[j], allVotes[i], allVotes[j]),
+  const dreps = await Promise.all(drepIds.map((id) => getDRepById(id)));
+  const missing = drepIds.filter((_, i) => !dreps[i]);
+  if (missing.length > 0) {
+    return NextResponse.json(
+      { error: `DRep(s) not found: ${missing.join(', ')}` },
+      { status: 404 },
     );
+  }
+  const validDreps = dreps as EnrichedDRep[];
 
-    // Enrich disagreements with proposal titles and rationale snippets
-    const allDisagreementProposalIds = rawOverlaps.flatMap((o) =>
-      o.disagreementKeys.map((d) => ({ txHash: d.txHash, index: d.proposalIndex })),
-    );
-    const uniqueProposalIds = [
-      ...new Map(allDisagreementProposalIds.map((p) => [`${p.txHash}-${p.index}`, p])).values(),
-    ];
+  const [allVotes, allHistory] = await Promise.all([
+    Promise.all(drepIds.map((id) => getVotesByDRepId(id))),
+    Promise.all(drepIds.map((id) => getScoreHistory(id))),
+  ]);
 
-    const allDisagreementVoteTxHashes = new Set<string>();
-    for (const overlap of rawOverlaps) {
-      const [idA, idB] = overlap.pair;
-      const mapA = new Map<string, DRepVoteRow>();
-      const mapB = new Map<string, DRepVoteRow>();
-      for (const v of allVotes[drepIds.indexOf(idA)])
-        mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
-      for (const v of allVotes[drepIds.indexOf(idB)])
-        mapB.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
-      for (const d of overlap.disagreementKeys) {
-        const key = `${d.txHash}-${d.proposalIndex}`;
-        const a = mapA.get(key);
-        const b = mapB.get(key);
-        if (a?.vote_tx_hash) allDisagreementVoteTxHashes.add(a.vote_tx_hash);
-        if (b?.vote_tx_hash) allDisagreementVoteTxHashes.add(b.vote_tx_hash);
-      }
+  const profiles = validDreps.map(buildProfile);
+  const scoreHistory: Record<string, ScoreSnapshot[]> = {};
+  drepIds.forEach((id, i) => {
+    scoreHistory[id] = allHistory[i];
+  });
+
+  const pairs: [number, number][] = [];
+  for (let i = 0; i < drepIds.length; i++) {
+    for (let j = i + 1; j < drepIds.length; j++) {
+      pairs.push([i, j]);
     }
+  }
 
-    const [proposalMap, rationaleMap] = await Promise.all([
-      uniqueProposalIds.length > 0 ? getProposalsByIds(uniqueProposalIds) : new Map(),
-      allDisagreementVoteTxHashes.size > 0
-        ? getRationalesByVoteTxHashes([...allDisagreementVoteTxHashes])
-        : new Map(),
-    ]);
+  const rawOverlaps = pairs.map(([i, j]) =>
+    computePairwiseOverlap(drepIds[i], drepIds[j], allVotes[i], allVotes[j]),
+  );
 
-    const voteOverlap: PairwiseOverlap[] = rawOverlaps.map((raw) => {
-      const [idA, idB] = raw.pair;
-      const votesForA = allVotes[drepIds.indexOf(idA)];
-      const votesForB = allVotes[drepIds.indexOf(idB)];
-      const mapA = new Map<string, DRepVoteRow>();
-      const mapB = new Map<string, DRepVoteRow>();
-      for (const v of votesForA) mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
-      for (const v of votesForB) mapB.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
+  const allDisagreementProposalIds = rawOverlaps.flatMap((o) =>
+    o.disagreementKeys.map((d) => ({ txHash: d.txHash, index: d.proposalIndex })),
+  );
+  const uniqueProposalIds = [
+    ...new Map(allDisagreementProposalIds.map((p) => [`${p.txHash}-${p.index}`, p])).values(),
+  ];
 
-      const disagreements: DisagreementDetail[] = raw.disagreementKeys.map((d) => {
-        const key = `${d.txHash}-${d.proposalIndex}`;
-        const proposal = proposalMap.get(key);
-        const a = mapA.get(key);
-        const b = mapB.get(key);
-        const ratA = a?.vote_tx_hash ? rationaleMap.get(a.vote_tx_hash) : undefined;
-        const ratB = b?.vote_tx_hash ? rationaleMap.get(b.vote_tx_hash) : undefined;
+  const allDisagreementVoteTxHashes = new Set<string>();
+  for (const overlap of rawOverlaps) {
+    const [idA, idB] = overlap.pair;
+    const mapA = new Map<string, DRepVoteRow>();
+    const mapB = new Map<string, DRepVoteRow>();
+    for (const v of allVotes[drepIds.indexOf(idA)])
+      mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
+    for (const v of allVotes[drepIds.indexOf(idB)])
+      mapB.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
+    for (const d of overlap.disagreementKeys) {
+      const key = `${d.txHash}-${d.proposalIndex}`;
+      const a = mapA.get(key);
+      const b = mapB.get(key);
+      if (a?.vote_tx_hash) allDisagreementVoteTxHashes.add(a.vote_tx_hash);
+      if (b?.vote_tx_hash) allDisagreementVoteTxHashes.add(b.vote_tx_hash);
+    }
+  }
 
-        return {
-          txHash: d.txHash,
-          proposalIndex: d.proposalIndex,
-          title: proposal?.title || null,
-          proposalType: proposal?.proposalType || null,
-          blockTime: d.blockTime,
-          votes: {
-            [idA]: d.voteA as 'Yes' | 'No' | 'Abstain',
-            [idB]: d.voteB as 'Yes' | 'No' | 'Abstain',
-          },
-          rationales: {
-            [idA]: ratA?.rationaleAiSummary || ratA?.rationaleText?.slice(0, 200) || null,
-            [idB]: ratB?.rationaleAiSummary || ratB?.rationaleText?.slice(0, 200) || null,
-          },
-        };
-      });
+  const [proposalMap, rationaleMap] = await Promise.all([
+    uniqueProposalIds.length > 0 ? getProposalsByIds(uniqueProposalIds) : new Map(),
+    allDisagreementVoteTxHashes.size > 0
+      ? getRationalesByVoteTxHashes([...allDisagreementVoteTxHashes])
+      : new Map(),
+  ]);
+
+  const voteOverlap: PairwiseOverlap[] = rawOverlaps.map((raw) => {
+    const [idA, idB] = raw.pair;
+    const votesForA = allVotes[drepIds.indexOf(idA)];
+    const votesForB = allVotes[drepIds.indexOf(idB)];
+    const mapA = new Map<string, DRepVoteRow>();
+    const mapB = new Map<string, DRepVoteRow>();
+    for (const v of votesForA) mapA.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
+    for (const v of votesForB) mapB.set(`${v.proposal_tx_hash}-${v.proposal_index}`, v);
+
+    const disagreements: DisagreementDetail[] = raw.disagreementKeys.map((d) => {
+      const key = `${d.txHash}-${d.proposalIndex}`;
+      const proposal = proposalMap.get(key);
+      const a = mapA.get(key);
+      const b = mapB.get(key);
+      const ratA = a?.vote_tx_hash ? rationaleMap.get(a.vote_tx_hash) : undefined;
+      const ratB = b?.vote_tx_hash ? rationaleMap.get(b.vote_tx_hash) : undefined;
 
       return {
-        pair: raw.pair,
-        sharedVotes: raw.sharedVotes,
-        agreedCount: raw.agreedCount,
-        agreedPct: raw.agreedPct,
-        disagreements,
-        abstentionGaps: raw.abstentionGaps,
+        txHash: d.txHash,
+        proposalIndex: d.proposalIndex,
+        title: proposal?.title || null,
+        proposalType: proposal?.proposalType || null,
+        blockTime: d.blockTime,
+        votes: {
+          [idA]: d.voteA as 'Yes' | 'No' | 'Abstain',
+          [idB]: d.voteB as 'Yes' | 'No' | 'Abstain',
+        },
+        rationales: {
+          [idA]: ratA?.rationaleAiSummary || ratA?.rationaleText?.slice(0, 200) || null,
+          [idB]: ratB?.rationaleAiSummary || ratB?.rationaleText?.slice(0, 200) || null,
+        },
       };
     });
 
-    // Alignment (only if prefs provided)
-    let alignment: Record<string, AlignmentResult> | null = null;
-    if (prefsParam) {
-      const prefs = prefsParam
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean) as UserPrefKey[];
-      if (prefs.length > 0) {
-        const categoryLabels: Record<string, string> = {
-          treasury: 'Treasury',
-          decentralization: 'Decentralization',
-          security: 'Security',
-          innovation: 'Innovation',
-          transparency: 'Transparency',
-        };
-        alignment = {};
-        for (const drep of validDreps) {
-          const overall = computeOverallAlignment(drep, prefs);
-          const bd = getPrecomputedBreakdown(drep, prefs);
-          const breakdown = Object.entries(categoryLabels).map(([key, label]) => ({
-            key,
-            label,
-            score: bd[key as keyof typeof bd] as number,
-          }));
-          alignment[drep.drepId] = { overall, breakdown };
-        }
+    return {
+      pair: raw.pair,
+      sharedVotes: raw.sharedVotes,
+      agreedCount: raw.agreedCount,
+      agreedPct: raw.agreedPct,
+      disagreements,
+      abstentionGaps: raw.abstentionGaps,
+    };
+  });
+
+  let alignment: Record<string, AlignmentResult> | null = null;
+  if (prefsParam) {
+    const prefs = prefsParam
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean) as UserPrefKey[];
+    if (prefs.length > 0) {
+      const categoryLabels: Record<string, string> = {
+        treasury: 'Treasury',
+        decentralization: 'Decentralization',
+        security: 'Security',
+        innovation: 'Innovation',
+        transparency: 'Transparency',
+      };
+      alignment = {};
+      for (const drep of validDreps) {
+        const overall = computeOverallAlignment(drep, prefs);
+        const bd = getPrecomputedBreakdown(drep, prefs);
+        const breakdown = Object.entries(categoryLabels).map(([key, label]) => ({
+          key,
+          label,
+          score: bd[key as keyof typeof bd] as number,
+        }));
+        alignment[drep.drepId] = { overall, breakdown };
       }
     }
-
-    return NextResponse.json({
-      dreps: profiles,
-      scoreHistory,
-      voteOverlap,
-      alignment,
-    });
-  } catch (error) {
-    logger.error('Error', { context: 'compare-api', error: error });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
-}
+
+  return NextResponse.json({
+    dreps: profiles,
+    scoreHistory,
+    voteOverlap,
+    alignment,
+  });
+});

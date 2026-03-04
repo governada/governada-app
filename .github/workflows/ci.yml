@@ -112,6 +112,34 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npx tsx scripts/report-bundle-size.ts
 
+  e2e:
+    needs: install
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+      NEXT_PUBLIC_KOIOS_BASE_URL: https://api.koios.rest/api/v1
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: actions/cache/restore@v5
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Start server and run E2E
+        run: |
+          node .next/standalone/server.js &
+          npx wait-on http://localhost:3000 --timeout 30000
+          npx playwright test --project=chromium
+        env:
+          PORT: 3000
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+
   sentry-release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build

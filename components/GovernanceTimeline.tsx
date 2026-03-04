@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { getStoredSession } from '@/lib/supabaseAuth';
-import { posthog } from '@/lib/posthog';
+import { useMemo } from 'react';
+import { useGovernanceTimeline } from '@/hooks/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Vote, Users, TrendingUp, TrendingDown, CheckCircle, Star, Clock } from 'lucide-react';
@@ -111,30 +110,8 @@ function getEventConfig(event: TimelineEvent) {
 }
 
 export function GovernanceTimeline() {
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const token = getStoredSession();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    posthog.capture('governance_timeline_viewed');
-
-    fetch('/api/governance/timeline', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load timeline');
-        return res.json();
-      })
-      .then((data) => setEvents(data.events || []))
-      .catch(() => setError('Could not load your governance timeline.'))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: rawData, isLoading, isError } = useGovernanceTimeline();
+  const events = ((rawData as { events?: TimelineEvent[] })?.events) ?? [];
 
   const grouped = useMemo(() => {
     const map = new Map<number | 'unknown', TimelineEvent[]>();
@@ -151,8 +128,8 @@ export function GovernanceTimeline() {
     });
   }, [events]);
 
-  if (loading) return <TimelineSkeleton />;
-  if (error) return <p className="text-destructive text-center py-8 text-sm">{error}</p>;
+  if (isLoading) return <TimelineSkeleton />;
+  if (isError) return <p className="text-destructive text-center py-8 text-sm">Could not load your governance timeline.</p>;
 
   if (events.length === 0) {
     return (

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const supabase = createClient();
 
     const { data: poolRows } = await supabase
@@ -74,8 +74,4 @@ export async function GET() {
       { pools },
       { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300' } },
     );
-  } catch (error) {
-    logger.error('Error', { context: 'governance/pools', error: error });
-    return NextResponse.json({ pools: [] }, { status: 500 });
-  }
-}
+});

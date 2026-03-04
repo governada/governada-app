@@ -88,8 +88,7 @@ async function fetchRationaleFromUrl(url: string): Promise<string | null> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseClient = any;
+type SupabaseClient = ReturnType<typeof getSupabaseAdmin>;
 
 // ── Operation 1: Rationale pipeline ──────────────────────────────────────────
 

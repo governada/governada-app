@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -76,24 +76,12 @@ function getEventHref(event: ActivityEvent): string | null {
 }
 
 export function LiveVoteFeed({ limit = 10 }: { limit?: number }) {
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-
-  const fetchEvents = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/governance/activity?limit=${limit}`);
-      if (!res.ok) return;
-      const data: ActivityEvent[] = await res.json();
-      setEvents(data);
-    } catch {}
-  }, [limit]);
-
-  useEffect(() => {
-    fetchEvents();
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') fetchEvents();
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [fetchEvents]);
+  const { data } = useQuery({
+    queryKey: ['governance-activity', limit],
+    queryFn: () => fetch(`/api/governance/activity?limit=${limit}`).then((r) => r.json()),
+    refetchInterval: 30000,
+  });
+  const events = (data as ActivityEvent[]) ?? [];
 
   return (
     <Card>

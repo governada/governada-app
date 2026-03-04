@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@/utils/wallet';
-import { getStoredSession } from '@/lib/supabaseAuth';
+import { useGovernanceHolder } from '@/hooks/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -90,45 +90,20 @@ export function GovernanceHealthStory({
   showCitizenPanels: boolean;
 }) {
   const { connected, isAuthenticated, reconnecting, delegatedDrepId, address } = useWallet();
-  const [data, setData] = useState<ExtendedDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const stakeAddress = isAuthenticated && !reconnecting ? (address ?? undefined) : undefined;
+  const { data: holderData, isLoading, isError } = useGovernanceHolder(stakeAddress);
+  const data = (holderData as ExtendedDashboardData) ?? null;
 
   useEffect(() => {
-    if (reconnecting) return;
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
+    if (data) {
+      posthog.capture('governance_health_check_viewed', {
+        has_delegation: !!data.delegationHealth,
+        health_status: getHealthStatus(data.delegationHealth),
+      });
     }
+  }, [data]);
 
-    const token = getStoredSession();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    const params = new URLSearchParams();
-    if (delegatedDrepId) params.set('drepId', delegatedDrepId);
-
-    fetch(`/api/governance/holder?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load');
-        return res.json();
-      })
-      .then((json) => {
-        setData(json);
-        posthog.capture('governance_health_check_viewed', {
-          has_delegation: !!json.delegationHealth,
-          health_status: getHealthStatus(json.delegationHealth),
-        });
-      })
-      .catch(() => setError('Could not load your governance dashboard.'))
-      .finally(() => setLoading(false));
-  }, [isAuthenticated, delegatedDrepId, reconnecting]);
-
-  if (reconnecting || (loading && isAuthenticated)) return <HealthCheckSkeleton />;
+  if (reconnecting || (isLoading && isAuthenticated)) return <HealthCheckSkeleton />;
 
   if (!isAuthenticated) {
     return (
@@ -149,8 +124,8 @@ export function GovernanceHealthStory({
     );
   }
 
-  if (loading) return <HealthCheckSkeleton />;
-  if (error) return <p className="text-destructive text-center py-12">{error}</p>;
+  if (isLoading) return <HealthCheckSkeleton />;
+  if (isError) return <p className="text-destructive text-center py-12">Could not load your governance dashboard.</p>;
   if (!data) return null;
 
   const healthStatus = getHealthStatus(data.delegationHealth);

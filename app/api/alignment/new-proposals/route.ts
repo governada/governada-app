@@ -4,12 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request, { requestId }) => {
   const { searchParams } = new URL(request.url);
   const sinceParam = searchParams.get('since');
 
@@ -22,21 +23,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'since must be a valid unix timestamp' }, { status: 400 });
   }
 
-  try {
-    const supabase = createClient();
+  const supabase = createClient();
 
-    const { count, error } = await supabase
-      .from('proposals')
-      .select('*', { count: 'exact', head: true })
-      .gt('block_time', since);
+  const { count, error } = await supabase
+    .from('proposals')
+    .select('*', { count: 'exact', head: true })
+    .gt('block_time', since);
 
-    if (error) {
-      logger.error('new-proposals count error', { context: 'api', error: error.message });
-      return NextResponse.json({ count: 0 });
-    }
-
-    return NextResponse.json({ count: count || 0 });
-  } catch {
+  if (error) {
+    logger.error('new-proposals count error', { context: 'api', error: error.message });
     return NextResponse.json({ count: 0 });
   }
-}
+
+  return NextResponse.json({ count: count || 0 });
+});

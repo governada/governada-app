@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient, getSupabaseAdmin } from '@/lib/supabase';
 import { inngest } from '@/lib/inngest';
 import { logger } from '@/lib/logger';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -92,7 +93,7 @@ const SYNC_CONFIG: Record<
 
 const ACTIVE_SYNC_TYPES = new Set(Object.keys(SYNC_CONFIG));
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request) => {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -376,4 +377,4 @@ export async function GET(request: NextRequest) {
       { status: 502 },
     );
   }
-}
+});

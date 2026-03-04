@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { CompareView } from '@/components/CompareView';
+import dynamic from 'next/dynamic';
+const CompareView = dynamic(() => import('@/components/CompareView').then(m => m.CompareView), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
 import { PageViewTracker } from '@/components/PageViewTracker';
 
 interface Props {

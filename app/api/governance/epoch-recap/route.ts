@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withRouteHandler(async (request, { requestId }) => {
     const epochParam = request.nextUrl.searchParams.get('epoch');
     const supabase = createClient();
 
@@ -71,8 +71,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
     });
-  } catch (error) {
-    logger.error('Error', { context: 'governance/epoch-recap', error: error });
-    return NextResponse.json({ error: 'Failed to fetch epoch recap' }, { status: 500 });
-  }
-}
+});

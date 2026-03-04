@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { posthog } from '@/lib/posthog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { PositionStatementEditor } from '@/components/PositionStatementEditor';
+import { useDashboardInbox } from '@/hooks/queries';
 
 interface PendingProposal {
   txHash: string;
@@ -51,41 +52,20 @@ const PRIORITY_STYLES = {
 };
 
 export function GovernanceInboxWidget({ drepId }: { drepId: string }) {
-  const [data, setData] = useState<InboxData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: raw, isLoading: loading } = useDashboardInbox(drepId);
+  const data = raw as InboxData | undefined;
 
   useEffect(() => {
-    if (!drepId) return;
-    let cancelled = false;
-
-    (async () => {
+    if (data?.pendingCount && data.pendingCount > 0) {
       try {
-        const res = await fetch(`/api/dashboard/inbox?drepId=${encodeURIComponent(drepId)}`);
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!cancelled) {
-          setData(json);
-          if (json?.pendingCount > 0) {
-            try {
-              posthog?.capture('inbox_widget_viewed', {
-                drepId,
-                pendingCount: json.pendingCount,
-                criticalCount: json.criticalCount,
-              });
-            } catch {}
-          }
-        }
-      } catch {
-        /* ignore */
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [drepId]);
+        posthog?.capture('inbox_widget_viewed', {
+          drepId,
+          pendingCount: data.pendingCount,
+          criticalCount: data.criticalCount,
+        });
+      } catch {}
+    }
+  }, [data, drepId]);
 
   if (loading) {
     return (

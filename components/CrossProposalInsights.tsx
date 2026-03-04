@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useGovernanceInsights } from '@/hooks/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
@@ -45,14 +46,8 @@ export function CrossProposalInsights({
   maxInsights,
   showHighlight = true,
 }: CrossProposalInsightsProps) {
-  const [insights, setInsights] = useState<GovernanceInsight[]>([]);
-
-  useEffect(() => {
-    fetch('/api/governance/insights')
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setInsights)
-      .catch(() => {});
-  }, []);
+  const { data: rawData } = useGovernanceInsights();
+  const insights = (rawData as GovernanceInsight[]) ?? [];
 
   if (insights.length === 0) return null;
 

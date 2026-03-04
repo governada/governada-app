@@ -11,6 +11,34 @@ import { checkAndAwardMilestones, MILESTONES } from '@/lib/milestones';
 import { errMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
+interface ClaimedUserRow {
+  wallet_address: string;
+  claimed_drep_id: string | null;
+}
+
+interface DRepRow {
+  id: string;
+  score: number;
+  info: Record<string, unknown>;
+  effective_participation: number | null;
+  rationale_rate: number | null;
+  reliability_score: number | null;
+  profile_completeness: number | null;
+}
+
+interface OpenProposalRow {
+  tx_hash: string;
+  proposal_index: number;
+  proposal_type: string;
+  title: string | null;
+  expiration_epoch: number | null;
+}
+
+interface DRepScoreRow {
+  id: string;
+  score: number;
+}
+
 const SCORE_CHANGE_THRESHOLD = 3;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://drepscore.io';
 
@@ -43,10 +71,10 @@ export const checkNotifications = inngest.createFunction(
 
       if (!users || users.length === 0)
         return {
-          users: [] as any[],
-          dreps: [] as any[],
-          proposals: [] as any[],
-          allDreps: [] as any[],
+          users: [] as ClaimedUserRow[],
+          dreps: [] as DRepRow[],
+          proposals: [] as OpenProposalRow[],
+          allDreps: [] as DRepScoreRow[],
         };
 
       const drepIds = users.map((u) => u.claimed_drep_id).filter(Boolean);
@@ -89,7 +117,7 @@ export const checkNotifications = inngest.createFunction(
       const supabase = getSupabaseAdmin();
 
       for (const user of context.users) {
-        const drep = context.dreps.find((d: any) => d.id === user.claimed_drep_id);
+        const drep = context.dreps.find((d: DRepRow) => d.id === user.claimed_drep_id);
         if (!drep) continue;
 
         // Score change: check last score history entry
@@ -165,7 +193,7 @@ export const checkNotifications = inngest.createFunction(
         stats.pending++;
       }
 
-      const urgentProposals = openProposals.filter((p: any) => {
+      const urgentProposals = openProposals.filter((p: OpenProposalRow) => {
         if (!p.expiration_epoch) return false;
         return p.expiration_epoch - currentEpoch <= 2;
       });
@@ -195,10 +223,10 @@ export const checkNotifications = inngest.createFunction(
       const allDreps = context.allDreps || [];
 
       for (const user of context.users) {
-        const drep = context.dreps.find((d: any) => d.id === user.claimed_drep_id);
+        const drep = context.dreps.find((d: DRepRow) => d.id === user.claimed_drep_id);
         if (!drep) continue;
 
-        const rank = allDreps.findIndex((d: any) => d.id === drep.id) + 1;
+        const rank = allDreps.findIndex((d: DRepScoreRow) => d.id === drep.id) + 1;
         if (rank <= 0) continue;
 
         // Near top 10 opportunity
@@ -222,7 +250,7 @@ export const checkNotifications = inngest.createFunction(
       const supabase = getSupabaseAdmin();
 
       for (const user of context.users) {
-        const drep = context.dreps.find((d: any) => d.id === user.claimed_drep_id);
+        const drep = context.dreps.find((d: DRepRow) => d.id === user.claimed_drep_id);
         if (!drep) continue;
 
         try {

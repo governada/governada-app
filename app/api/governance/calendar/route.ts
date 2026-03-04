@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { captureServerEvent } from '@/lib/posthog-server';
@@ -14,8 +15,7 @@ function epochStartTime(epoch: number): number {
   return SHELLEY_GENESIS_TIMESTAMP + (epoch - SHELLEY_BASE_EPOCH) * EPOCH_LENGTH_SECONDS;
 }
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const now = Math.floor(Date.now() / 1000);
     const currentEpoch = blockTimeToEpoch(now);
     const epochEnd = epochStartTime(currentEpoch + 1);
@@ -69,8 +69,4 @@ export async function GET() {
         headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
       },
     );
-  } catch (err) {
-    logger.error('Error', { context: 'governance-calendar-api', error: err });
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
+});

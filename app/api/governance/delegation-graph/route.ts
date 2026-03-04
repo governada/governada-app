@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import {
@@ -38,8 +39,7 @@ export interface DelegationGraphResponse {
   totalPowerAda: number;
 }
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const supabase = createClient();
 
     const [epochRes, statsRes] = await Promise.all([
@@ -180,8 +180,4 @@ export async function GET() {
         'Cache-Control': `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`,
       },
     });
-  } catch (error) {
-    logger.error('Delegation graph API error', { context: 'governance/delegation-graph', error: error });
-    return NextResponse.json({ error: 'Failed to fetch delegation graph' }, { status: 500 });
-  }
-}
+});

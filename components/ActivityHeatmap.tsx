@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { posthog } from '@/lib/posthog';
+import { useDRepVotes } from '@/hooks/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Activity } from 'lucide-react';
@@ -18,47 +19,36 @@ interface ActivityHeatmapProps {
 }
 
 export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
-  const [data, setData] = useState<EpochActivity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rawVotes, isLoading } = useDRepVotes(drepId);
+
+  const data = useMemo(() => {
+    const votes = rawVotes as any;
+    if (!Array.isArray(votes)) return [];
+    const epochMap = new Map<number, { votes: number; withRationale: number }>();
+    for (const v of votes) {
+      const epoch = v.epochNo || v.epoch_no;
+      if (!epoch) continue;
+      if (!epochMap.has(epoch)) epochMap.set(epoch, { votes: 0, withRationale: 0 });
+      const entry = epochMap.get(epoch)!;
+      entry.votes++;
+      if (v.hasRationale || v.meta_url) entry.withRationale++;
+    }
+    return [...epochMap.entries()]
+      .map(([epoch, d]) => ({
+        epoch,
+        votes: d.votes,
+        totalProposals: 0,
+        withRationale: d.withRationale,
+      }))
+      .sort((a, b) => a.epoch - b.epoch)
+      .slice(-50);
+  }, [rawVotes]);
 
   useEffect(() => {
-    if (!drepId) return;
-    // Fetch vote data and build epoch activity from it
-    fetch(`/api/drep/${encodeURIComponent(drepId)}/votes`)
-      .then((r) => r.json())
-      .then((votes) => {
-        if (!Array.isArray(votes)) {
-          setLoading(false);
-          return;
-        }
-
-        // Group votes by epoch
-        const epochMap = new Map<number, { votes: number; withRationale: number }>();
-        for (const v of votes) {
-          const epoch = v.epochNo || v.epoch_no;
-          if (!epoch) continue;
-          if (!epochMap.has(epoch)) epochMap.set(epoch, { votes: 0, withRationale: 0 });
-          const entry = epochMap.get(epoch)!;
-          entry.votes++;
-          if (v.hasRationale || v.meta_url) entry.withRationale++;
-        }
-
-        const epochs = [...epochMap.entries()]
-          .map(([epoch, data]) => ({
-            epoch,
-            votes: data.votes,
-            totalProposals: 0, // We don't have per-epoch proposal counts here
-            withRationale: data.withRationale,
-          }))
-          .sort((a, b) => a.epoch - b.epoch)
-          .slice(-50);
-
-        setData(epochs);
-        posthog.capture('activity_heatmap_viewed', { drepId, epochCount: epochs.length });
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [drepId]);
+    if (data.length > 0) {
+      posthog.capture('activity_heatmap_viewed', { drepId, epochCount: data.length });
+    }
+  }, [data.length, drepId]);
 
   const { minEpoch, maxEpoch, grid } = useMemo(() => {
     if (data.length === 0) return { minEpoch: 0, maxEpoch: 0, grid: [] };
@@ -80,7 +70,7 @@ export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
     return 'bg-primary/40';
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader className="pb-2">

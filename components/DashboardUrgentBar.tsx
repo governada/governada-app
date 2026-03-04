@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Clock, ArrowRight, MessageSquare, X } from 'lucide-react';
+import { useDashboardUrgent } from '@/hooks/queries';
 
 interface UrgentProposal {
   txHash: string;
@@ -25,19 +26,10 @@ interface DashboardUrgentBarProps {
 }
 
 export function DashboardUrgentBar({ drepId }: DashboardUrgentBarProps) {
-  const [proposals, setProposals] = useState<UrgentProposal[]>([]);
-  const [unexplained, setUnexplained] = useState<UnexplainedVote[]>([]);
+  const { data: raw } = useDashboardUrgent(drepId);
+  const proposals: UrgentProposal[] = (raw as any)?.proposals ?? [];
+  const unexplained: UnexplainedVote[] = (raw as any)?.unexplainedVotes ?? [];
   const [dismissedExplain, setDismissedExplain] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetch(`/api/dashboard/urgent?drepId=${encodeURIComponent(drepId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.proposals) setProposals(data.proposals);
-        if (data?.unexplainedVotes) setUnexplained(data.unexplainedVotes);
-      })
-      .catch(() => {});
-  }, [drepId]);
 
   const visibleUnexplained = unexplained.filter(
     (v) => !dismissedExplain.has(`${v.txHash}-${v.index}`),

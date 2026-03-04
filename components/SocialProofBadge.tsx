@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Eye, Users, BarChart3 } from 'lucide-react';
+import { useSocialProof } from '@/hooks/queries';
 import { posthog } from '@/lib/posthog';
 
 interface SocialProofBadgeProps {
@@ -31,24 +31,14 @@ export function SocialProofBadge({
   variant = 'views',
   className = '',
 }: SocialProofBadgeProps) {
-  const [count, setCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (drepId) params.set('drepId', drepId);
-    if (proposalTxHash) params.set('proposalTxHash', proposalTxHash);
-    if (proposalIndex !== undefined) params.set('proposalIndex', String(proposalIndex));
-
-    fetch(`/api/social-proof?${params}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        if (variant === 'views') setCount(data.weeklyViews ?? 0);
-        else if (variant === 'poll') setCount(data.pollResponses ?? 0);
-        else setCount(data.activeParticipants ?? 0);
-      })
-      .catch(() => {});
-  }, [drepId, proposalTxHash, proposalIndex, variant]);
+  const { data: proofData } = useSocialProof(drepId);
+  const count = (() => {
+    const d = proofData as any;
+    if (!d) return null;
+    if (variant === 'views') return (d.weeklyViews ?? 0) as number;
+    if (variant === 'poll') return (d.pollResponses ?? 0) as number;
+    return (d.activeParticipants ?? 0) as number;
+  })();
 
   if (count === null || count < (MIN_THRESHOLD[variant] ?? 1)) return null;
 

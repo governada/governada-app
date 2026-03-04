@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { bech32 } from 'bech32';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
   return !!(stakeAddr && adminWallets.includes(stakeAddr.toLowerCase()));
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRouteHandler(async (request) => {
   if (!(await isAuthorized(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -230,4 +231,4 @@ export async function GET(request: NextRequest) {
     alerts,
     comparison,
   });
-}
+});

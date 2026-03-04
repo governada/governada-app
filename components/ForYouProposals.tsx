@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, AlertTriangle } from 'lucide-react';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getStoredSession } from '@/lib/supabaseAuth';
+import { useGovernanceForYou } from '@/hooks/queries';
 
 interface Recommendation {
   txHash: string;
@@ -26,28 +25,10 @@ interface ForYouResponse {
 }
 
 export function ForYouProposals() {
-  const [data, setData] = useState<ForYouResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: rawData, isLoading } = useGovernanceForYou();
+  const data = (rawData as ForYouResponse) ?? null;
 
-  useEffect(() => {
-    const token = getStoredSession();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    fetch('/api/governance/for-you', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => setData(json ?? null))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const token = typeof window !== 'undefined' ? getStoredSession() : null;
-
-  if (loading && token) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -69,7 +50,7 @@ export function ForYouProposals() {
     );
   }
 
-  if (!token || !data || data.profileSource === 'none') {
+  if (!data || data.profileSource === 'none') {
     return (
       <Card>
         <CardHeader className="pb-2">

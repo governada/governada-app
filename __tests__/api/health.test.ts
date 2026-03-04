@@ -11,6 +11,10 @@ vi.mock('@/lib/supabase', () => ({
 
 import { GET } from '@/app/api/health/route';
 
+function makeReq() {
+  return createRequest('/api/health');
+}
+
 describe('GET /api/health', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -19,7 +23,7 @@ describe('GET /api/health', () => {
   it('returns "unknown" when no sync data exists', async () => {
     mockSelect.mockResolvedValue({ data: [], error: null });
 
-    const res = await GET();
+    const res = await GET(makeReq());
     const body = (await parseJson(res)) as any;
 
     expect(res.status).toBe(200);
@@ -49,7 +53,7 @@ describe('GET /api/health', () => {
       error: null,
     });
 
-    const res = await GET();
+    const res = await GET(makeReq());
     const body = (await parseJson(res)) as any;
 
     expect(res.status).toBe(200);
@@ -72,7 +76,7 @@ describe('GET /api/health', () => {
       error: null,
     });
 
-    const res = await GET();
+    const res = await GET(makeReq());
     const body = (await parseJson(res)) as any;
 
     expect(body.status).toBe('critical');
@@ -94,7 +98,7 @@ describe('GET /api/health', () => {
       error: null,
     });
 
-    const res = await GET();
+    const res = await GET(makeReq());
     const body = (await parseJson(res)) as any;
 
     expect(body.status).toBe('degraded');
@@ -104,11 +108,10 @@ describe('GET /api/health', () => {
   it('returns 500 on unexpected error', async () => {
     mockSelect.mockRejectedValue(new Error('DB connection failed'));
 
-    const res = await GET();
+    const res = await GET(makeReq());
     const body = (await parseJson(res)) as any;
 
     expect(res.status).toBe(500);
-    expect(body.status).toBe('error');
-    expect(body.message).toBe('DB connection failed');
+    expect(body.error).toBe('Internal server error');
   });
 });

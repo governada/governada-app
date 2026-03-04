@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 import { logger } from '@/lib/logger';
@@ -43,7 +44,7 @@ interface ScoredProposal {
  * Select proposals where DReps are most split (30-70% Yes/No ratio)
  * with type diversity and alignment dimension coverage.
  */
-export async function GET() {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
   const supabase = createClient();
 
   const { data: votes, error: votesError } = await supabase
@@ -173,7 +174,7 @@ export async function GET() {
   });
 
   return NextResponse.json({ proposals: result });
-}
+});
 
 function greedyDiverseSelect(
   candidates: ScoredProposal[],

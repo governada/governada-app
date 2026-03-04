@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useGovernanceProposalTrends } from '@/hooks/queries';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,18 +46,10 @@ function formatMagnitude(mag: number): number {
 }
 
 export function ProposalTrends() {
-  const [data, setData] = useState<TrendAnalysis | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: rawData, isLoading } = useGovernanceProposalTrends();
+  const data = (rawData as TrendAnalysis) ?? null;
 
-  useEffect(() => {
-    fetch('/api/governance/proposal-trends')
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>

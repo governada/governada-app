@@ -275,8 +275,8 @@ export async function findPCAMatches(
 
   if (!coordRows?.length) return [];
 
-  const similarities = coordRows.map((row: any) => ({
-    drepId: row.drep_id,
+  const similarities = coordRows.map((row) => ({
+    drepId: row.drep_id as string,
     similarity: cosineSimilarity(userCoords, row.coordinates as number[]),
   }));
 
@@ -294,7 +294,7 @@ export async function findPCAMatches(
 
   const infoMap = new Map<string, { name: string | null; score: number }>();
   if (drepRows) {
-    for (const d of drepRows as any[]) {
+    for (const d of drepRows) {
       infoMap.set(d.id, {
         name: ((d.info as Record<string, unknown>)?.name as string) || null,
         score: Number(d.score) || 0,
@@ -330,8 +330,8 @@ export async function drepSimilarity(drepIdA: string, drepIdB: string): Promise<
 
   if (!data || data.length < 2) return null;
 
-  const coordA = (data as any[]).find((d) => d.drep_id === drepIdA)?.coordinates as number[];
-  const coordB = (data as any[]).find((d) => d.drep_id === drepIdB)?.coordinates as number[];
+  const coordA = data.find((d) => d.drep_id === drepIdA)?.coordinates as number[] | undefined;
+  const coordB = data.find((d) => d.drep_id === drepIdB)?.coordinates as number[] | undefined;
 
   if (!coordA || !coordB) return null;
 

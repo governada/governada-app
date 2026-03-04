@@ -1,28 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getTreasuryTrend, getIncomeVsOutflow } from '@/lib/treasury';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const epochs = Math.min(parseInt(searchParams.get('epochs') || '90'), 500);
+export const GET = withRouteHandler(async (request, { requestId }) => {
+  const { searchParams } = new URL(request.url);
+  const epochs = Math.min(parseInt(searchParams.get('epochs') || '90'), 500);
 
-    const snapshots = await getTreasuryTrend(epochs);
-    const incomeVsOutflow = getIncomeVsOutflow(snapshots);
+  const snapshots = await getTreasuryTrend(epochs);
+  const incomeVsOutflow = getIncomeVsOutflow(snapshots);
 
-    return NextResponse.json({
-      snapshots: snapshots.map((s) => ({
-        epoch: s.epoch,
-        balanceAda: s.balanceAda,
-        withdrawalsAda: s.withdrawalsAda,
-        reservesIncomeAda: s.reservesIncomeAda,
-      })),
-      incomeVsOutflow,
-    });
-  } catch (error) {
-    logger.error('Error', { context: 'treasury/history', error: error });
-    return NextResponse.json({ error: 'Failed to fetch treasury history' }, { status: 500 });
-  }
-}
+  return NextResponse.json({
+    snapshots: snapshots.map((s) => ({
+      epoch: s.epoch,
+      balanceAda: s.balanceAda,
+      withdrawalsAda: s.withdrawalsAda,
+      reservesIncomeAda: s.reservesIncomeAda,
+    })),
+    incomeVsOutflow,
+  });
+});

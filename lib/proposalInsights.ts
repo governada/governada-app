@@ -21,7 +21,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
   try {
     // Insight 1: Rationale correlates with dissent
     const [votesWithRat, votesWithoutRat] = await Promise.all([
-      supabase.rpc('count_votes_with_rationale_by_vote', undefined as any).then((r) => r.data),
+      supabase.rpc('count_votes_with_rationale_by_vote', {}).then((r) => r.data),
       supabase
         .from('drep_votes')
         .select('vote', { count: 'exact', head: false })

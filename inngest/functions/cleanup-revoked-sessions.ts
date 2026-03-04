@@ -17,9 +17,8 @@ export const cleanupRevokedSessions = inngest.createFunction(
 
       const { count, error } = await supabase
         .from('revoked_sessions')
-        .delete()
-        .lt('revoked_at', cutoff)
-        .select('*', { count: 'exact', head: true });
+        .delete({ count: 'exact' })
+        .lt('revoked_at', cutoff);
 
       if (error) {
         logger.error('Failed to cleanup revoked sessions', { error: error.message });

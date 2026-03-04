@@ -1,30 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> },
-) {
-  try {
-    const { drepId } = await params;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('drep_milestones')
-      .select('milestone_key, achieved_at')
-      .eq('drep_id', drepId)
-      .order('achieved_at', { ascending: false });
+export const GET = withRouteHandler(async (request, { requestId }) => {
+  const drepId = request.nextUrl.pathname.split('/api/dreps/')[1]?.split('/')[0];
 
-    const milestones = (data || []).map((d: { milestone_key: string; achieved_at: string }) => ({
-      milestoneKey: d.milestone_key,
-      achievedAt: d.achieved_at,
-    }));
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('drep_milestones')
+    .select('milestone_key, achieved_at')
+    .eq('drep_id', drepId)
+    .order('achieved_at', { ascending: false });
 
-    return NextResponse.json({ milestones });
-  } catch (error) {
-    logger.error('Milestones API error', { context: 'dreps/:drepId/milestones', error: error });
-    return NextResponse.json({ milestones: [] });
-  }
-}
+  const milestones = (data || []).map((d: { milestone_key: string; achieved_at: string }) => ({
+    milestoneKey: d.milestone_key,
+    achievedAt: d.achieved_at,
+  }));
+
+  return NextResponse.json({ milestones });
+});

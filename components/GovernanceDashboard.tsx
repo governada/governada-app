@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@/utils/wallet';
-import { getStoredSession } from '@/lib/supabaseAuth';
+import { useGovernanceHolder } from '@/hooks/queries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,39 +32,11 @@ import { DelegatorShareCard } from '@/components/DelegatorShareCard';
 
 export function GovernanceDashboard() {
   const { connected, isAuthenticated, reconnecting, delegatedDrepId, address } = useWallet();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const stakeAddress = isAuthenticated && !reconnecting ? (address ?? undefined) : undefined;
+  const { data: holderData, isLoading, isError } = useGovernanceHolder(stakeAddress);
+  const data = (holderData as DashboardData) ?? null;
 
-  useEffect(() => {
-    if (reconnecting) return;
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
-    const token = getStoredSession();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    const params = new URLSearchParams();
-    if (delegatedDrepId) params.set('drepId', delegatedDrepId);
-
-    fetch(`/api/governance/holder?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load');
-        return res.json();
-      })
-      .then(setData)
-      .catch(() => setError('Could not load your governance dashboard.'))
-      .finally(() => setLoading(false));
-  }, [isAuthenticated, delegatedDrepId, reconnecting]);
-
-  if (reconnecting || (loading && isAuthenticated)) return <DashboardSkeleton />;
+  if (reconnecting || (isLoading && isAuthenticated)) return <DashboardSkeleton />;
 
   if (!isAuthenticated) {
     return (
@@ -85,8 +57,8 @@ export function GovernanceDashboard() {
     );
   }
 
-  if (loading) return <DashboardSkeleton />;
-  if (error) return <p className="text-destructive text-center py-12">{error}</p>;
+  if (isLoading) return <DashboardSkeleton />;
+  if (isError) return <p className="text-destructive text-center py-12">Could not load your governance dashboard.</p>;
   if (!data) return null;
 
   return (

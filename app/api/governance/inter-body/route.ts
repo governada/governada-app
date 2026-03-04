@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { computeInterBodyAlignment, getSystemAlignment } from '@/lib/interBodyAlignment';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withRouteHandler(async (request, { requestId }) => {
     const proposal = request.nextUrl.searchParams.get('proposal');
 
     if (proposal) {
@@ -29,8 +29,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(system, {
       headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
     });
-  } catch (error) {
-    logger.error('Error', { context: 'governance/inter-body', error: error });
-    return NextResponse.json({ error: 'Failed to compute alignment' }, { status: 500 });
-  }
-}
+});

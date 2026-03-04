@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
+import { useDashboardDelegatorTrends } from '@/hooks/queries';
 
 const DelegatorTrendChart = dynamic(
   () => import('@/components/DelegatorTrendChart').then((m) => m.DelegatorTrendChart),
@@ -27,19 +27,8 @@ function formatAda(v: number): string {
 }
 
 export function DelegatorAnalytics({ drepId }: DelegatorAnalyticsProps) {
-  const [data, setData] = useState<{
-    snapshots: Snapshot[];
-    currentDelegators: number | null;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/dashboard/delegator-trends?drepId=${encodeURIComponent(drepId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [drepId]);
+  const { data: raw, isLoading: loading } = useDashboardDelegatorTrends(drepId);
+  const data = raw as { snapshots: Snapshot[]; currentDelegators: number | null } | undefined;
 
   if (loading) return <DelegatorSkeleton />;
   if (!data) return null;

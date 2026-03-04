@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
@@ -9,8 +10,7 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
+export const GET = withRouteHandler(async (_request, { requestId }) => {
     const supabase = createClient();
     const oneWeekAgo = Math.floor(Date.now() / 1000) - 604800;
 
@@ -201,8 +201,4 @@ export async function GET() {
     return NextResponse.json(response, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
     });
-  } catch (error) {
-    logger.error('Constellation API error', { context: 'governance/constellation', error: error });
-    return NextResponse.json({ error: 'Failed to fetch constellation data' }, { status: 500 });
-  }
-}
+});

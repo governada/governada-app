@@ -38,12 +38,12 @@ export async function computeDRepParticipation({
     .select('effective_participation, info')
     .not('info->isActive', 'is', null);
 
-  const active = (dreps ?? []).filter((d: any) => d.info?.isActive);
+  const active = (dreps ?? []).filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
   if (active.length === 0) return { raw: 0 };
 
   const participationValues = active
-    .map((d: any) => d.effective_participation ?? 0)
-    .sort((a: number, b: number) => a - b);
+    .map((d) => (d.effective_participation as number) ?? 0)
+    .sort((a, b) => a - b);
 
   // Median (not mean) — resistant to outlier auto-voters
   const mid = Math.floor(participationValues.length / 2);
@@ -81,9 +81,9 @@ export async function computeCitizenEngagement({
       .from('dreps')
       .select('info')
       .not('info->isActive', 'is', null);
-    const activeDreps = (dreps ?? []).filter((d: any) => d.info?.isActive);
+    const activeDreps = (dreps ?? []).filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
     const totalDelegatedLovelace = activeDreps.reduce(
-      (sum: number, d: any) => sum + parseInt(d.info?.votingPowerLovelace || '0', 10),
+      (sum, d) => sum + parseInt(String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'), 10),
       0,
     );
     const delegationRate = totalDelegatedLovelace / circulatingSupply;
@@ -104,7 +104,7 @@ export async function computeCitizenEngagement({
     .eq('epoch_no', prevEpoch);
 
   if (currentSnaps?.length && prevSnaps?.length) {
-    const prevMap = new Map(prevSnaps.map((s: any) => [s.drep_id, s.delegator_count ?? 0]));
+    const prevMap = new Map(prevSnaps.map((s) => [s.drep_id, s.delegator_count ?? 0]));
     let changed = 0;
     for (const snap of currentSnaps) {
       const prev = prevMap.get(snap.drep_id);
@@ -162,7 +162,7 @@ export async function computeDeliberationQuality({
   let rationaleScore = 50;
   if (votesWithQuality?.length) {
     const avg =
-      votesWithQuality.reduce((s: number, v: any) => s + (v.rationale_quality ?? 0), 0) /
+      votesWithQuality.reduce((s, v) => s + ((v.rationale_quality as number) ?? 0), 0) /
       votesWithQuality.length;
     rationaleScore = Math.min(100, avg);
   } else {
@@ -172,7 +172,7 @@ export async function computeDeliberationQuality({
       .select('meta_url')
       .gte('epoch_no', recentEpochMin);
     if (allVotes?.length) {
-      const withRationale = allVotes.filter((v: any) => v.meta_url).length;
+      const withRationale = allVotes.filter((v) => v.meta_url).length;
       rationaleScore = Math.round((withRationale / allVotes.length) * 100);
     }
   }
@@ -218,7 +218,7 @@ export async function computeDeliberationQuality({
 
   let independenceScore = 50;
   if (topDreps?.length && recentVotes?.length) {
-    const topIds = new Set(topDreps.map((d: any) => d.id));
+    const topIds = new Set(topDreps.map((d) => d.id));
     const proposalTopVotes = new Map<string, string[]>();
     for (const v of recentVotes) {
       if (!topIds.has(v.drep_id)) continue;
@@ -276,20 +276,20 @@ export async function computeGovernanceEffectiveness({
 
   // --- Sub-signal 1: Resolution rate (40%) ---
   const resolved = allProposals.filter(
-    (p: any) => p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch,
+    (p) => p.ratified_epoch || p.enacted_epoch || p.dropped_epoch || p.expired_epoch,
   );
-  const enacted = resolved.filter((p: any) => p.enacted_epoch || p.ratified_epoch);
+  const enacted = resolved.filter((p) => p.enacted_epoch || p.ratified_epoch);
   const resolutionRate =
     resolved.length > 0 ? Math.round((enacted.length / resolved.length) * 100) : 50;
 
   // --- Sub-signal 2: Decision velocity (30%) ---
   const resolvedWithTiming = resolved
-    .map((p: any) => {
+    .map((p) => {
       const resEpoch = p.enacted_epoch ?? p.ratified_epoch ?? p.dropped_epoch ?? p.expired_epoch;
       return resEpoch && p.proposed_epoch ? resEpoch - p.proposed_epoch : null;
     })
-    .filter((v: number | null): v is number => v !== null && v >= 0)
-    .sort((a: number, b: number) => a - b);
+    .filter((v): v is number => v !== null && v >= 0)
+    .sort((a, b) => a - b);
 
   let velocityScore = 50;
   if (resolvedWithTiming.length > 0) {
@@ -308,7 +308,7 @@ export async function computeGovernanceEffectiveness({
   }
 
   // --- Sub-signal 3: Throughput rate (30%) ---
-  const votedKeys = new Set(allVotes.map((v: any) => `${v.proposal_tx_hash}-${v.proposal_index}`));
+  const votedKeys = new Set(allVotes.map((v) => `${v.proposal_tx_hash}-${v.proposal_index}`));
   const throughput =
     allProposals.length > 0
       ? Math.min(100, Math.round((votedKeys.size / allProposals.length) * 100))
@@ -339,10 +339,10 @@ export async function computePowerDistribution({
     .select('id, info')
     .not('info->isActive', 'is', null);
 
-  const activeDreps = (dreps ?? []).filter((d: any) => d.info?.isActive);
+  const activeDreps = (dreps ?? []).filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
   const votingPowers = activeDreps
-    .map((d: any) => parseInt(d.info?.votingPowerLovelace || '0', 10))
-    .filter((v: number) => v > 0);
+    .map((d) => parseInt(String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'), 10))
+    .filter((v) => v > 0);
 
   const edi = computeEDI(votingPowers);
 
@@ -355,7 +355,7 @@ export async function computePowerDistribution({
 
   let onboardingBonus = 0;
   if (recentFirstVotes?.length && activeDreps.length > 0) {
-    const uniqueRecentVoters = new Set(recentFirstVotes.map((v: any) => v.drep_id));
+    const uniqueRecentVoters = new Set(recentFirstVotes.map((v) => v.drep_id));
     // Approximate: DReps active in recent 3 epochs who might be new
     // A more precise check would compare earliest vote per DRep, but this is a reasonable proxy
     const newRate = uniqueRecentVoters.size / activeDreps.length;
@@ -391,19 +391,20 @@ export async function computeSystemStability({
 
   let retentionScore = 70; // neutral-healthy default
   if (ghiSnaps?.length === 2) {
-    const currentComps = ghiSnaps[0].components as any[];
-    const prevComps = ghiSnaps[1].components as any[];
-    const getCurrent = currentComps?.find((c: any) => c.name === 'DRep Participation');
-    const getPrev = prevComps?.find((c: any) => c.name === 'DRep Participation');
-    if (getCurrent && getPrev && getPrev.detail?.activeDreps > 0) {
-      const ratio = getCurrent.detail?.activeDreps / getPrev.detail?.activeDreps;
+    interface GHIComponentSnapshot { name: string; detail?: Record<string, number>; [key: string]: unknown; }
+    const currentComps = ghiSnaps[0].components as GHIComponentSnapshot[];
+    const prevComps = ghiSnaps[1].components as GHIComponentSnapshot[];
+    const getCurrent = currentComps?.find((c) => c.name === 'DRep Participation');
+    const getPrev = prevComps?.find((c) => c.name === 'DRep Participation');
+    if (getCurrent && getPrev && (getPrev.detail?.activeDreps ?? 0) > 0) {
+      const ratio = (getCurrent.detail?.activeDreps ?? 0) / (getPrev.detail?.activeDreps ?? 1);
       retentionScore = Math.min(100, Math.round(ratio * 80));
     }
   } else {
     // Fallback: use current active vs total
     const { data: dreps } = await supabase.from('dreps').select('info');
     const all = dreps ?? [];
-    const active = all.filter((d: any) => d.info?.isActive);
+    const active = all.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
     retentionScore = all.length > 0 ? Math.round((active.length / all.length) * 100) : 50;
   }
 
@@ -448,7 +449,7 @@ export async function computeSystemStability({
 
   if (syncHealth?.length) {
     const total = syncHealth.length;
-    const healthy = syncHealth.filter((s: any) => s.last_success === true).length;
+    const healthy = syncHealth.filter((s) => s.last_success === true).length;
     infraScore = Math.round((healthy / total) * 100);
   }
 

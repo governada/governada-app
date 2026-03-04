@@ -32,6 +32,37 @@ import { batchUpsert, errMsg, emitPostHog, capMsg, fetchAll } from '@/lib/sync-u
 import { logger } from '@/lib/logger';
 import type { ProposalInfo } from '@/types/koios';
 
+interface ClassificationRow {
+  proposal_tx_hash: string;
+  proposal_index: number;
+  dim_treasury_conservative: number;
+  dim_treasury_growth: number;
+  dim_decentralization: number;
+  dim_security: number;
+  dim_innovation: number;
+  dim_transparency: number;
+  ai_summary?: string | null;
+}
+
+interface VoteRow {
+  drep_id: string;
+  proposal_tx_hash: string;
+  proposal_index: number;
+  vote: string;
+  block_time: number;
+  meta_url?: string | null;
+  rationale_quality?: number | null;
+}
+
+interface DRepRow {
+  id: string;
+  info: Record<string, unknown> | null;
+  score: number | null;
+  participation_rate: number | null;
+  rationale_rate: number | null;
+  size_tier: string | null;
+}
+
 function mapDBProposal(row: Record<string, unknown>): ProposalInfo {
   const withdrawalAmount = row.withdrawal_amount as string | null;
   return {
@@ -161,7 +192,7 @@ export const syncAlignment = inngest.createFunction(
 
       if (!rationales?.length) return { scored: 0, remaining: 0 };
 
-      const forScoring = rationales.map((v: any) => ({
+      const forScoring = rationales.map((v) => ({
         drepId: v.drep_id,
         proposalTxHash: v.proposal_tx_hash,
         proposalIndex: v.proposal_index,
@@ -208,7 +239,7 @@ export const syncAlignment = inngest.createFunction(
       const loadMs = Date.now() - s1;
 
       const classMap = new Map<string, ProposalClassification>();
-      for (const c of classRows as any[]) {
+      for (const c of classRows as ClassificationRow[]) {
         classMap.set(`${c.proposal_tx_hash}-${c.proposal_index}`, {
           proposalTxHash: c.proposal_tx_hash,
           proposalIndex: c.proposal_index,
@@ -238,17 +269,17 @@ export const syncAlignment = inngest.createFunction(
         proposalAmountMap.set(key, amount);
       }
 
-      const votesByDrep = new Map<string, typeof voteRows>();
-      for (const v of voteRows as any[]) {
+      const votesByDrep = new Map<string, VoteRow[]>();
+      for (const v of voteRows as VoteRow[]) {
         if (!votesByDrep.has(v.drep_id)) votesByDrep.set(v.drep_id, []);
         votesByDrep.get(v.drep_id)!.push(v);
       }
 
       const s2 = Date.now();
       const rawScores: RawScoreRow[] = [];
-      for (const row of drepRows as any[]) {
+      for (const row of drepRows as DRepRow[]) {
         const votes = votesByDrep.get(row.id) || [];
-        const dimensionInputs: DimensionInput[] = votes.map((v: any) => {
+        const dimensionInputs: DimensionInput[] = votes.map((v) => {
           const key = `${v.proposal_tx_hash}-${v.proposal_index}`;
           return {
             vote: v.vote as 'Yes' | 'No' | 'Abstain',
@@ -315,8 +346,8 @@ export const syncAlignment = inngest.createFunction(
             finished_at: new Date().toISOString(),
             duration_ms: Date.now() - startTime,
             success: true,
-            error_message: capMsg('skipped: ' + ((computeResult as any).reason || 'unknown')),
-            metrics: { skipped: true, reason: (computeResult as any).reason },
+            error_message: capMsg('skipped: ' + ('reason' in computeResult ? String(computeResult.reason) : 'unknown')),
+            metrics: { skipped: true, reason: 'reason' in computeResult ? String(computeResult.reason) : 'unknown' },
           })
           .eq('id', logId);
       });
@@ -368,7 +399,7 @@ export const syncAlignment = inngest.createFunction(
 
       const proposals = dbRows.map(mapDBProposal);
       const classMap = new Map<string, ProposalClassification>();
-      for (const c of classRows as any[]) {
+      for (const c of classRows as ClassificationRow[]) {
         classMap.set(`${c.proposal_tx_hash}-${c.proposal_index}`, {
           proposalTxHash: c.proposal_tx_hash,
           proposalIndex: c.proposal_index,
@@ -382,11 +413,11 @@ export const syncAlignment = inngest.createFunction(
         });
       }
 
-      const voteMatrixInputs: VoteMatrixInput[] = (voteRows as any[]).map((v) => ({
+      const voteMatrixInputs: VoteMatrixInput[] = (voteRows as VoteRow[]).map((v) => ({
         drepId: v.drep_id,
         proposalTxHash: v.proposal_tx_hash,
         proposalIndex: v.proposal_index,
-        vote: v.vote,
+        vote: v.vote as 'Yes' | 'No' | 'Abstain',
         blockTime: v.block_time,
       }));
 
@@ -442,7 +473,7 @@ export const syncAlignment = inngest.createFunction(
         .select('proposed_epoch')
         .order('proposed_epoch', { ascending: false })
         .limit(1);
-      const currentEpoch = (tipData as any)?.[0]?.proposed_epoch || 0;
+      const currentEpoch = (tipData as { proposed_epoch: number }[] | null)?.[0]?.proposed_epoch || 0;
       if (currentEpoch === 0) return { epoch: 0, snapshots: 0 };
 
       const snapshots = computeResult.scores.map((row) => ({

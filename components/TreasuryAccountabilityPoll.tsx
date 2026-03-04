@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Scale, CheckCircle2, AlertCircle, XCircle, Clock, Send } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { posthog } from '@/lib/posthog';
+import { useTreasuryAccountability } from '@/hooks/queries';
 
 interface Poll {
   proposal_tx_hash: string;
@@ -49,30 +50,15 @@ const APPROVAL_OPTIONS = [
 
 export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }: Props) {
   const { address, isAuthenticated } = useWallet();
-  const [polls, setPolls] = useState<Poll[]>([]);
+  const { data: rawPollData, isLoading } = useTreasuryAccountability(txHash, proposalIndex);
+  const polls: Poll[] = (rawPollData as any)?.polls ?? [];
   const [selectedRating, setSelectedRating] = useState<string>('');
   const [selectedApproval, setSelectedApproval] = useState<string>('');
   const [evidence, setEvidence] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!isEnacted) {
-      setLoading(false);
-      return;
-    }
-
-    fetch(`/api/treasury/accountability?txHash=${txHash}&index=${proposalIndex}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.polls) setPolls(data.polls);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [txHash, proposalIndex, isEnacted]);
-
-  if (!isEnacted || loading) return null;
+  if (!isEnacted || isLoading) return null;
 
   const openPoll = polls.find((p) => p.status === 'open');
   const closedPolls = polls

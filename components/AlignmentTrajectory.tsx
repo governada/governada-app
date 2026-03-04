@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, type MouseEvent } from 'react';
 import { scaleLinear, scalePoint } from 'd3-scale';
+import { useDRepTrajectory } from '@/hooks/queries';
 import { line, curveMonotoneX } from 'd3-shape';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartDimensions } from '@/lib/charts/useChartDimensions';
@@ -35,29 +36,23 @@ const DIMENSIONS: { key: AlignmentDimension; label: string; color: string }[] = 
 ];
 
 export function AlignmentTrajectory({ drepId }: AlignmentTrajectoryProps) {
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: trajectoryData, isLoading } = useDRepTrajectory(drepId);
+  const snapshots = useMemo<Snapshot[]>(
+    () => ((trajectoryData as any)?.snapshots || []).slice(-20),
+    [trajectoryData],
+  );
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { containerRef, dimensions } = useChartDimensions(280);
   const { width, innerWidth, innerHeight, margin } = dimensions;
 
   useEffect(() => {
-    if (!drepId) return;
-    fetch(`/api/drep/${encodeURIComponent(drepId)}/trajectory`)
-      .then((r) => r.json())
-      .then((data) => {
-        const snaps: Snapshot[] = (data.snapshots || []).slice(-20);
-        setSnapshots(snaps);
-        if (snaps.length > 0) {
-          posthog.capture('alignment_trajectory_viewed', {
-            drep_id: drepId,
-            epoch_count: snaps.length,
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [drepId]);
+    if (snapshots.length > 0) {
+      posthog.capture('alignment_trajectory_viewed', {
+        drep_id: drepId,
+        epoch_count: snapshots.length,
+      });
+    }
+  }, [snapshots.length, drepId]);
 
   const xScale = useMemo(
     () =>
@@ -98,7 +93,7 @@ export function AlignmentTrajectory({ drepId }: AlignmentTrajectoryProps) {
     [snapshots.length, innerWidth, margin.left],
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader className="pb-2">

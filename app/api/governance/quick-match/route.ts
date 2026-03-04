@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import {
   extractAlignments,
@@ -59,7 +60,7 @@ function distanceToScore(distance: number): number {
   return Math.max(0, Math.round((1 - distance / maxDist) * 100));
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withRouteHandler(async (request, { requestId }) => {
   let body: { treasury?: string; protocol?: string; transparency?: string };
   try {
     body = await request.json();
@@ -156,4 +157,4 @@ export async function POST(request: NextRequest) {
     personalityLabel,
     identityColor: identityColor.hex,
   });
-}
+});

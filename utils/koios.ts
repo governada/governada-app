@@ -267,23 +267,19 @@ export async function fetchDRepMetadata(drepIds: string[]): Promise<DRepMetadata
  * Extract value from JSON-LD format metadata
  * Handles both plain strings and JSON-LD objects with @value property
  */
-function extractJsonLdValue(value: any): string | null {
+function extractJsonLdValue(value: unknown): string | null {
   if (value === null || value === undefined) {
     return null;
   }
-  // If it's already a string, return it
   if (typeof value === 'string') {
     return value;
   }
-  // If it's a JSON-LD object with @value, extract it
   if (typeof value === 'object' && '@value' in value) {
-    return String(value['@value']);
+    return String((value as Record<string, unknown>)['@value']);
   }
-  // If it's another type of object, stringify it (last resort)
   if (typeof value === 'object') {
     return JSON.stringify(value);
   }
-  // Fallback: convert to string
   return String(value);
 }
 
@@ -301,42 +297,37 @@ export function parseMetadataFields(metadata: DRepMetadata | null | undefined): 
   }
 
   const json = metadata.meta_json;
+  const body = json.body as Record<string, unknown> | undefined;
+  const jsonRecord = json as unknown as Record<string, unknown>;
 
   // NAME EXTRACTION (priority order)
-  // 1. Try direct fields first (custom/legacy format)
   let name = extractJsonLdValue(json.name);
 
-  // 2. Try CIP-119 standard: body.givenName (primary governance metadata field)
-  if (!name && json.body) {
-    name = extractJsonLdValue((json.body as any).givenName);
+  if (!name && body) {
+    name = extractJsonLdValue(body.givenName);
   }
 
-  // 3. Try nested body.name (legacy nested format)
-  if (!name && json.body) {
-    name = extractJsonLdValue((json.body as any).name);
+  if (!name && body) {
+    name = extractJsonLdValue(body.name);
   }
 
-  // 4. Try givenName at root (alternative location)
   if (!name) {
-    name = extractJsonLdValue((json as any).givenName);
+    name = extractJsonLdValue(jsonRecord.givenName);
   }
 
   // TICKER EXTRACTION (not part of CIP-119, but check legacy formats)
   let ticker = extractJsonLdValue(json.ticker);
-  if (!ticker && json.body) {
-    ticker = extractJsonLdValue((json.body as any).ticker);
+  if (!ticker && body) {
+    ticker = extractJsonLdValue(body.ticker);
   }
 
   // DESCRIPTION EXTRACTION (priority order)
-  // 1. Try direct description field (custom/legacy)
   let description = extractJsonLdValue(json.description);
 
-  // 2. Try CIP-119 standard: body.objectives (primary description field)
-  if (!description && json.body) {
-    const objectives = extractJsonLdValue((json.body as any).objectives);
-    const motivations = extractJsonLdValue((json.body as any).motivations);
+  if (!description && body) {
+    const objectives = extractJsonLdValue(body.objectives);
+    const motivations = extractJsonLdValue(body.motivations);
 
-    // Combine objectives and motivations if both exist
     if (objectives && motivations) {
       description = `${objectives}\n\n${motivations}`;
     } else {
@@ -344,9 +335,8 @@ export function parseMetadataFields(metadata: DRepMetadata | null | undefined): 
     }
   }
 
-  // 3. Try nested body.description (legacy nested format)
-  if (!description && json.body) {
-    description = extractJsonLdValue((json.body as any).description);
+  if (!description && body) {
+    description = extractJsonLdValue(body.description);
   }
 
   return { name, ticker, description };

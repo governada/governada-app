@@ -6,6 +6,7 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import type { Metadata } from 'next';
 import { getProposalDisplayTitle } from '@/utils/display';
 import { getDRepPrimaryName } from '@/utils/display';
@@ -21,7 +22,7 @@ import {
 import { VoteRecord } from '@/types/drep';
 import { VotingHistoryWithPrefs } from '@/components/VotingHistoryWithPrefs';
 import { InlineDelegationCTA } from '@/components/InlineDelegationCTA';
-import { ScoreHistoryChart } from '@/components/ScoreHistoryChart';
+const ScoreHistoryChart = dynamic(() => import('@/components/ScoreHistoryChart').then(m => m.ScoreHistoryChart), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
 import { ScoreCard } from '@/components/ScoreCard';
 import { DRepProfileTabs } from '@/components/DRepProfileTabs';
 import { Button } from '@/components/ui/button';
@@ -37,12 +38,12 @@ import { CompareButton } from '@/components/CompareButton';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { ProfileViewStats } from '@/components/ProfileViewStats';
-import { MilestoneBadges } from '@/components/MilestoneBadges';
+const MilestoneBadges = dynamic(() => import('@/components/MilestoneBadges').then(m => m.MilestoneBadges), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
-import { AlignmentTrajectory } from '@/components/AlignmentTrajectory';
+const AlignmentTrajectory = dynamic(() => import('@/components/AlignmentTrajectory').then(m => m.AlignmentTrajectory), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
 import {
   extractAlignments,
   getIdentityColor,

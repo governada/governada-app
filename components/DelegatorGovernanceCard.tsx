@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Award, Calendar, Shield, Share2 } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
-import { getStoredSession } from '@/lib/supabaseAuth';
+import { useGovernanceHolder } from '@/hooks/queries';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { ShareActions } from './ShareActions';
@@ -23,45 +23,24 @@ interface GovernanceIdentity {
 
 export function DelegatorGovernanceCard() {
   const { isAuthenticated, address, delegatedDrepId } = useWallet();
-  const [identity, setIdentity] = useState<GovernanceIdentity | null>(null);
-  const [loading, setLoading] = useState(true);
+  const stakeAddress = isAuthenticated ? (address ?? undefined) : undefined;
+  const { data: holderData, isLoading } = useGovernanceHolder(stakeAddress);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
+  const identity = useMemo<GovernanceIdentity | null>(() => {
+    const d = holderData as any;
+    if (!d) return null;
+    return {
+      drepName: d.delegation?.drepName ?? null,
+      drepScore: d.delegation?.drepScore ?? null,
+      drepId: d.delegation?.drepId ?? delegatedDrepId ?? null,
+      delegatedSinceEpoch: d.delegation?.delegatedSinceEpoch ?? null,
+      currentEpoch: d.currentEpoch ?? null,
+      quizAlignment: d.quizResult?.topAlignment ?? null,
+      delegationStreak: d.delegation?.streak ?? 0,
+    };
+  }, [holderData, delegatedDrepId]);
 
-    const token = getStoredSession();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    const params = new URLSearchParams();
-    if (delegatedDrepId) params.set('drepId', delegatedDrepId);
-
-    fetch(`/api/governance/holder?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        setIdentity({
-          drepName: data.delegation?.drepName ?? null,
-          drepScore: data.delegation?.drepScore ?? null,
-          drepId: data.delegation?.drepId ?? delegatedDrepId ?? null,
-          delegatedSinceEpoch: data.delegation?.delegatedSinceEpoch ?? null,
-          currentEpoch: data.currentEpoch ?? null,
-          quizAlignment: data.quizResult?.topAlignment ?? null,
-          delegationStreak: data.delegation?.streak ?? 0,
-        });
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [isAuthenticated, delegatedDrepId]);
-
-  if (!isAuthenticated || loading || !identity) return null;
+  if (!isAuthenticated || isLoading || !identity) return null;
 
   const epochsActive =
     identity.currentEpoch && identity.delegatedSinceEpoch

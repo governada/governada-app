@@ -57,8 +57,6 @@ analytics/src/.observablehq/cache
 analytics/dist
 analytics/.env
 
-# Vercel (legacy, no longer used)
-.vercel/
 
 # Bundle analyzer
 .next/analyze/

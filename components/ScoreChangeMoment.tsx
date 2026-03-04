@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { ShareActions } from '@/components/ShareActions';
 import { buildDRepUrl } from '@/lib/share';
 import { posthog } from '@/lib/posthog';
+import { useDashboardScoreChange } from '@/hooks/queries';
 
 interface ScoreChangeMomentProps {
   drepId: string;
@@ -20,23 +21,19 @@ interface ScoreChange {
 }
 
 export function ScoreChangeMoment({ drepId, drepName, currentScore }: ScoreChangeMomentProps) {
-  const [change, setChange] = useState<ScoreChange | null>(null);
+  const { data: raw } = useDashboardScoreChange(drepId);
+  const scoreData = raw as ScoreChange | undefined;
+  const change = scoreData?.delta && Math.abs(scoreData.delta) >= 3 ? scoreData : null;
 
   useEffect(() => {
-    fetch(`/api/dashboard/score-change?drepId=${encodeURIComponent(drepId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.delta && Math.abs(data.delta) >= 3) {
-          setChange(data);
-          posthog.capture('score_change_moment_viewed', {
-            drep_id: drepId,
-            delta: data.delta,
-            previous_score: data.previousScore,
-          });
-        }
-      })
-      .catch(() => {});
-  }, [drepId]);
+    if (change) {
+      posthog.capture('score_change_moment_viewed', {
+        drep_id: drepId,
+        delta: change.delta,
+        previous_score: change.previousScore,
+      });
+    }
+  }, [change, drepId]);
 
   if (!change) return null;
 

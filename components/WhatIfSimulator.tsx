@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useDReps } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,44 +34,23 @@ export function WhatIfSimulator({ currentDRepId: propCurrentDRepId }: WhatIfSimu
   const { delegatedDrepId } = useWallet();
   const currentDRepId = propCurrentDRepId ?? delegatedDrepId;
 
-  const [dreps, setDreps] = useState<DRepData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: drepsData, isLoading: loading } = useDReps();
+  const dreps = useMemo<DRepData[]>(() => {
+    const raw = drepsData as any;
+    if (!raw) return [];
+    const list = raw?.allDReps?.length ? raw.allDReps : (raw?.dreps || []);
+    return list.map((d: Record<string, unknown>) => ({
+      drepId: d.drepId as string,
+      name: (d.name as string) ?? null,
+      ticker: (d.ticker as string) ?? null,
+      drepScore: (d.drepScore as number) ?? 0,
+      effectiveParticipation: (d.effectiveParticipation as number) ?? 0,
+      rationaleRate: (d.rationaleRate as number) ?? 0,
+      alignments: toAlignments(d),
+    }));
+  }, [drepsData]);
   const [searchQuery, setSearchQuery] = useState('');
   const [compareDrep, setCompareDrep] = useState<DRepData | null>(null);
-
-  useEffect(() => {
-    fetch('/api/dreps')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data?.allDReps?.length) {
-          setDreps(
-            (data?.dreps || []).map((d: Record<string, unknown>) => ({
-              drepId: d.drepId as string,
-              name: (d.name as string) ?? null,
-              ticker: (d.ticker as string) ?? null,
-              drepScore: (d.drepScore as number) ?? 0,
-              effectiveParticipation: (d.effectiveParticipation as number) ?? 0,
-              rationaleRate: (d.rationaleRate as number) ?? 0,
-              alignments: toAlignments(d),
-            })),
-          );
-        } else {
-          setDreps(
-            data.allDReps.map((d: Record<string, unknown>) => ({
-              drepId: d.drepId as string,
-              name: (d.name as string) ?? null,
-              ticker: (d.ticker as string) ?? null,
-              drepScore: (d.drepScore as number) ?? 0,
-              effectiveParticipation: (d.effectiveParticipation as number) ?? 0,
-              rationaleRate: (d.rationaleRate as number) ?? 0,
-              alignments: toAlignments(d),
-            })),
-          );
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   const currentDrep = useMemo(
     () => (currentDRepId ? (dreps.find((d) => d.drepId === currentDRepId) ?? null) : null),

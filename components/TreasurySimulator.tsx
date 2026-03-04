@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, type MouseEvent } from 'react';
+import { useState, useCallback, useMemo, type MouseEvent } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { line as d3line, curveMonotoneX } from 'd3-shape';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { GlowFilter } from '@/lib/charts/GlowDefs';
 import { chartTheme, SCENARIO_CHART_COLORS } from '@/lib/charts/theme';
 import { posthog } from '@/lib/posthog';
 import { formatAda } from '@/lib/treasury';
+import { useTreasurySimulate } from '@/hooks/queries';
 
 interface SimulationData {
   currentBalance: number;
@@ -41,28 +42,13 @@ interface Props {
 }
 
 export function TreasurySimulator({ currentBalance, burnRate, currentEpoch }: Props) {
-  const [data, setData] = useState<SimulationData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [burnAdjust, setBurnAdjust] = useState(1);
-
-  const fetchSimulation = useCallback((adjust: number) => {
-    setLoading(true);
-    fetch(`/api/treasury/simulate?burnAdjust=${adjust}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetchSimulation(1);
-  }, [fetchSimulation]);
+  const { data: raw, isLoading } = useTreasurySimulate(burnAdjust);
+  const data = raw as SimulationData | undefined;
+  const loading = isLoading;
 
   const handleBurnChange = (value: number) => {
     setBurnAdjust(value);
-    fetchSimulation(value);
     posthog.capture('treasury_simulator_used', { burnAdjust: value });
   };
 

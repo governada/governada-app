@@ -4,14 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ drepId: string }> },
-) {
-  const { drepId } = await params;
+export const GET = withRouteHandler(async (request, { requestId }) => {
+  const drepId = request.nextUrl.pathname.split('/api/drep/')[1]?.split('/')[0];
 
   if (!drepId) {
     return NextResponse.json({ error: 'drepId is required' }, { status: 400 });
@@ -47,4 +45,4 @@ export async function GET(
     snapshots,
     totalEpochs: snapshots.length,
   });
-}
+});

@@ -149,9 +149,9 @@ jobs:
         with:
           name: nextjs-build
           path: |
-            .next/standalone
-            .next/static
+            .next
             public
+            !.next/cache
           retention-days: 1
 
   e2e:

@@ -15,6 +15,8 @@ import { ShortcutsHelpOverlay } from '@/components/ShortcutsHelpOverlay';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { EasterEggs } from '@/components/EasterEggs';
+import { CivicaShell } from '@/components/civica/CivicaShell';
+import { getFeatureFlag } from '@/lib/featureFlags';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -45,11 +47,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const civicaEnabled = await getFeatureFlag('civica_frontend', false);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -66,19 +70,25 @@ export default function RootLayout({
               >
                 Skip to main content
               </a>
-              <HeaderClient />
-              <SyncFreshnessBanner />
-              <main id="main-content" className="min-h-screen pb-16 sm:pb-0" tabIndex={-1}>
-                {children}
-              </main>
-              <Footer />
-              <MobileBottomNav />
+              {civicaEnabled ? (
+                <CivicaShell>{children}</CivicaShell>
+              ) : (
+                <>
+                  <HeaderClient />
+                  <SyncFreshnessBanner />
+                  <main id="main-content" className="min-h-screen pb-16 sm:pb-0" tabIndex={-1}>
+                    {children}
+                  </main>
+                  <Footer />
+                  <MobileBottomNav />
+                </>
+              )}
               <CommandPalette />
               <KeyboardShortcuts />
               <ShortcutsHelpOverlay />
               <InstallPrompt />
               <OfflineBanner />
-              <EasterEggs />
+              {!civicaEnabled && <EasterEggs />}
             </NavDirectionProvider>
           </Providers>
         </ThemeProvider>

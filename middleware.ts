@@ -16,7 +16,7 @@ const CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 };
 
-const AUTH_REQUIRED_PATHS = ['/dashboard'];
+const AUTH_REQUIRED_PATHS = ['/dashboard', '/my-gov'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -55,5 +55,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/v1/:path*', '/dashboard/:path*'],
+  matcher: ['/api/v1/:path*', '/dashboard/:path*', '/my-gov/:path*'],
 };

@@ -73,6 +73,23 @@ First-principles checklist:
 
 If the user's message is a question (not a change request), suggest Ask mode for cost efficiency.
 
+## Cost & Loop Risk Assessment
+
+Before attempting any high-effort autonomous action, evaluate whether it's worth trying vs. telling the user to do it themselves:
+
+**Stop and tell the user instead of attempting autonomously when:**
+
+- Writing or restoring a file > 300 lines — prefer StrReplace for targeted edits; if the whole file must be rewritten and Write fails once, stop and say why
+- A task requires recovering lost/uncommitted data — point to Cursor Timeline, git stash, or local history first; these are instant and free
+- You've already failed at the same action twice — looping costs more credits than asking
+- The user action is < 5 seconds (e.g., "right-click → Open Timeline → click restore") vs. your approach being 10+ tool calls
+
+**Pattern to follow:**
+
+1. Attempt once with the right tool
+2. If it fails, immediately explain the failure and offer the user-action alternative
+3. Never retry the same failed approach more than once without a different strategy
+
 ## Continuous Learning
 
 ### Lesson Lifecycle (on every correction)

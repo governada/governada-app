@@ -202,7 +202,7 @@ This is NOT just the score badge — it's the nav underline, the card borders, t
 
 For citizens viewing a DRep's profile: the profile page adopts that DRep's tier ambient. You walk into their tier world.
 
-  1.4 — **New `CivicaShell` layout**
+1.4 — **New `CivicaShell` layout**
 
 - `app/(civica)/layout.tsx` — the new layout group
 - Desktop: `CivicaHeader` with 4 nav items + wallet + ⌘K
@@ -321,7 +321,7 @@ Technical: the existing `ConstellationHero.tsx` already has expanded/contracted 
 
 **SPO matching toggle (scaffolded):** After DRep results render, a subtle toggle: "Also find an SPO aligned with your values." Same 3 answers, different result set via `/api/governance/quick-match-pool` (already built). Not prominent in Phase A — just scaffolded.
 
-  2.2 — **Home page — delegated citizen**
+2.2 — **Home page — delegated citizen**
 
 **VP1 contract:** Your DRep's name, score hex (tier-colored), and one-sentence verdict ("Voted on 4/5 proposals this epoch. Alignment: strong."). Below: one urgent action card if applicable, otherwise epoch recap CTA. The constellation shrinks to a decorative background element. VP1 answers: "Is my governance voice being used well?" in 3 seconds.
 

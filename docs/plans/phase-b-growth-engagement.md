@@ -7,6 +7,7 @@
 ## What Phase A Delivered (Prerequisites)
 
 ### Backend (Batches 0-8)
+
 - **SPO Score V2** — 4-pillar model with Governance Identity, momentum, percentile normalization (ADR-006)
 - **Score Tier System** — Emerging → Legendary, tier history, tier change detection, tier API
 - **Alignment Drift Detection** — 6D drift engine, Inngest function, drift API, re-delegation intelligence
@@ -21,6 +22,7 @@
 - **`spo_power_snapshots` table** — epoch-level snapshots of `delegator_count` + `live_stake_lovelace` per pool, mirroring `drep_power_snapshots`. Populated each `sync-spo-scores` run. Enables SPO delegator trend charts and temporal analysis.
 
 ### Frontend Plan (Batch 9)
+
 - Clean-sheet redesign plan in `docs/plans/civica-frontend-redesign.md`
 - 4-destination navigation, segment detection, action feed, celebration/sharing system, tier visual identity
 - The Civica frontend plan creates the **surfaces** Phase B fills with content
@@ -31,17 +33,18 @@
 
 Three workstreams, all building on Phase A infrastructure:
 
-| Workstream | Core Idea | Phase A Foundation |
-| --- | --- | --- |
-| **B1: Governance Wrapped** | Shareable civic identity cards | Epoch summaries, tier history, score snapshots, OG image infrastructure, share modal |
-| **B2: DRep-to-Citizen Communication** | Representative-constituent channel | Action feed, notification registry, DRep profiles, citizen inbox |
-| **B3: Notification-Driven Civic Life** | Return visits with purpose | Channel renderers, notification triggers, epoch summaries, deep-linking |
+| Workstream                             | Core Idea                          | Phase A Foundation                                                                   |
+| -------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------ |
+| **B1: Governance Wrapped**             | Shareable civic identity cards     | Epoch summaries, tier history, score snapshots, OG image infrastructure, share modal |
+| **B2: DRep-to-Citizen Communication**  | Representative-constituent channel | Action feed, notification registry, DRep profiles, citizen inbox                     |
+| **B3: Notification-Driven Civic Life** | Return visits with purpose         | Channel renderers, notification triggers, epoch summaries, deep-linking              |
 
 ---
 
 ## B1: Governance Wrapped & Shareable Moments
 
 ### Concept
+
 Every citizen, DRep, and SPO gets a "Wrapped" — a visual summary of their governance life over an epoch or a year. Every stat in the Wrapped generates a shareable card. This is the primary viral growth mechanic.
 
 ### Backend Tasks
@@ -49,17 +52,20 @@ Every citizen, DRep, and SPO gets a "Wrapped" — a visual summary of their gove
 **B1.1 — Wrapped Data Aggregation Engine**
 
 New Inngest function: `generate-governance-wrapped`
+
 - Triggers: end of each epoch + annually
 - Computes per-entity Wrapped data packages:
 
-*Citizen Wrapped:*
+_Citizen Wrapped:_
+
 - DRep accountability: how their DRep voted, score trend, tier changes
 - Alignment status: drift events, dimension shifts
 - Governance footprint: epoch participation, delegation duration
 - Civic engagement level progression
 - Top governance moments (achievements unlocked)
 
-*DRep Wrapped:*
+_DRep Wrapped:_
+
 - Score journey: start → end, tier changes, personal best
 - Votes cast, rationales written, rationale quality trend
 - Delegators: gained, lost, net, milestone
@@ -67,7 +73,8 @@ New Inngest function: `generate-governance-wrapped`
 - Most impactful votes (proposals where their vote was decisive)
 - Pillar breakdown comparison: start of period vs end
 
-*SPO Wrapped:*
+_SPO Wrapped:_
+
 - Governance participation rate vs SPO average
 - Score + tier journey
 - Voting consistency analysis
@@ -80,6 +87,7 @@ Storage: `governance_wrapped` table with `entity_type`, `entity_id`, `period_typ
 **B1.2 — Shareable Card Generation**
 
 Extend OG image infrastructure:
+
 - New OG routes per Wrapped stat type:
   - `/api/og/wrapped/citizen/[userId]/[period]`
   - `/api/og/wrapped/drep/[drepId]/[period]`
@@ -92,6 +100,7 @@ Extend OG image infrastructure:
 **B1.3 — "Your Staking Governance" Card**
 
 Special Wrapped card for stakers:
+
 - How their SPO voted this epoch/year
 - SPO governance score + tier
 - Participation rate vs SPO average
@@ -106,6 +115,7 @@ Special Wrapped card for stakers:
 **B1.4 — Wrapped Experience Flow**
 
 New route: `/my-gov/wrapped/[period]`
+
 - Full-screen, story-like presentation (swipe through stats)
 - Each stat is a screen with:
   - Visual (custom, animated)
@@ -115,12 +125,14 @@ New route: `/my-gov/wrapped/[period]`
 - Final screen: "Share your Governance Wrapped" with combined card
 
 **B1.5 — Wrapped Entry Points**
+
 - Notification on epoch end: "Your Governance Wrapped is ready"
 - My Gov action feed card: "View your epoch summary"
 - Profile badge: "Wrapped available" indicator
 - Home page highlight when Wrapped is new
 
 **B1.6 — Share Flow Enhancement**
+
 - Extend `ShareModal` from Phase A frontend plan:
   - Pre-filled tweet text with governance stats
   - Card preview with download option
@@ -158,6 +170,7 @@ VALUES ('governance_wrapped', false, 'Enable Governance Wrapped generation and d
 ## B2: DRep-to-Citizen Communication Loop
 
 ### Concept
+
 DReps can post position statements that their delegators see in their action feed. Citizens can see what their DRep thinks about active proposals. This creates the first direct representative-constituent communication channel in crypto governance.
 
 ### Backend Tasks
@@ -217,6 +230,7 @@ VALUES ('drep_communication', false, 'Enable DRep-to-citizen communication featu
 **B2.4 — Communication Notification Triggers**
 
 New Inngest function: `notify-drep-communication`
+
 - Trigger: new position statement published
 - Find all delegators of this DRep
 - Check notification preferences
@@ -224,6 +238,7 @@ New Inngest function: `notify-drep-communication`
 - Dispatch via existing channel renderers
 
 New event types in notification registry:
+
 - `drep-position-statement` — DRep publishes a position
 - `citizen-question` — citizen submits a question (notify DRep)
 - `question-upvote-milestone` — question reaches 5/10/25 upvotes (notify DRep)
@@ -233,12 +248,14 @@ New event types in notification registry:
 **B2.5 — DRep Profile: Communication Section**
 
 On DRep profile page (`/drep/[drepId]`):
+
 - "Statements" tab showing position statements
 - Pinned statement at top
 - Statement cards: title, preview, proposal link, timestamp
 - Expand to read full statement
 
 For the DRep themselves (authenticated):
+
 - "Write a Statement" button in My Gov action feed
 - Statement editor: rich text, proposal link, visibility toggle
 - Draft/publish flow
@@ -246,11 +263,13 @@ For the DRep themselves (authenticated):
 **B2.6 — Citizen Feed Integration**
 
 In My Gov action feed (delegated citizen):
+
 - Statement cards: "Your DRep posted about [Proposal]"
 - CTA: "Read their position" → expands or navigates to profile
 - Questions CTA: "Ask your DRep a question"
 
 On proposal detail page:
+
 - "What representatives are saying" section
 - Position statements from DReps who voted on this proposal
 - Your DRep's statement highlighted if they posted
@@ -258,6 +277,7 @@ On proposal detail page:
 **B2.7 — Questions Feed**
 
 On DRep profile:
+
 - "Questions from citizens" section
 - Sorted by upvotes + recency
 - Citizens can submit + upvote
@@ -268,6 +288,7 @@ On DRep profile:
 ## B3: Notification-Driven Civic Life
 
 ### Concept
+
 Notifications become the primary return-visit driver. Every notification has a specific purpose and deep-links to an action. Weekly digest gives citizens a reason to return even during quiet epochs.
 
 ### Backend Tasks
@@ -275,6 +296,7 @@ Notifications become the primary return-visit driver. Every notification has a s
 **B3.1 — Weekly Governance Digest**
 
 New Inngest scheduled function: `generate-weekly-digest`
+
 - Runs weekly (configurable day)
 - For each authenticated citizen:
   - DRep score change summary
@@ -288,6 +310,7 @@ New Inngest scheduled function: `generate-weekly-digest`
 **B3.2 — Epoch Recap Notification**
 
 New Inngest function: `notify-epoch-recap`
+
 - Triggers on epoch boundary (detected from sync pipeline)
 - For each citizen with notifications enabled:
   - "Epoch [N] Recap: Your government made [X] decisions"
@@ -297,6 +320,7 @@ New Inngest function: `notify-epoch-recap`
 **B3.3 — Deep-Link Resolution**
 
 Notification deep-links must resolve to specific actions, not just pages:
+
 - Tier change → My Gov with celebration overlay triggered
 - Alignment drift → My Gov with drift alert expanded
 - New proposal → Proposal detail page with DRep's expected impact highlighted
@@ -309,6 +333,7 @@ Frontend reads these on mount and triggers appropriate behavior.
 **B3.4 — Notification Scheduling & Rate Limiting**
 
 Prevent notification fatigue:
+
 - Maximum 3 push notifications per day per user
 - Batch low-priority notifications into daily summary
 - Priority system: tier changes > alignment drift > proposals > digest > achievements
@@ -316,6 +341,7 @@ Prevent notification fatigue:
 - Quiet hours: no push between 22:00-08:00 user local time (stored preference)
 
 Storage: `notification_preferences` table if not already sufficient. Add columns for:
+
 - `quiet_hours_start`, `quiet_hours_end`
 - `max_daily_push`
 - Per-category toggles
@@ -323,6 +349,7 @@ Storage: `notification_preferences` table if not already sufficient. Add columns
 **B3.5 — Notification Analytics**
 
 Track engagement to optimize:
+
 - `notification_events` table: sent, delivered, opened, action_taken
 - Weekly digest open rate
 - Push → app return rate
@@ -349,6 +376,7 @@ CREATE INDEX idx_notif_analytics_type ON notification_analytics (notification_ty
 **B3.6 — Digest Email Template**
 
 Rich HTML email:
+
 - Civica branded header
 - Personalized greeting with segment acknowledgment
 - Score/tier update section
@@ -360,6 +388,7 @@ Rich HTML email:
 **B3.7 — Push Notification Handling**
 
 Service worker updates:
+
 - Click handler routes to deep-linked URL
 - Badge count management
 - Notification grouping by category
@@ -375,16 +404,16 @@ Service worker updates:
 
 ## Build Sequence
 
-| Batch | Workstream | Scope | Depends On |
-| --- | --- | --- | --- |
-| B-0 | Infrastructure | Database migrations, feature flags, notification preferences schema | Phase A complete |
-| B-1 | B1 | Wrapped data aggregation engine + OG card generation | Epoch summary data (A), score snapshots |
-| B-2 | B2 | Position statements + questions backend (API, data model) | DRep profiles (A) |
-| B-3 | B3 | Weekly digest + epoch recap + deep-link resolution | Notification triggers (A), channel renderers |
-| B-4 | B1 | Wrapped frontend: story flow, share enhancement, public Wrapped page | B-1, Civica frontend (A7) |
-| B-5 | B2 | Communication frontend: statement editor, feed integration, questions | B-2, Civica frontend (A7) |
-| B-6 | B3 | Digest email template, push handling, in-app indicators, rate limiting | B-3, Civica frontend (A7) |
-| B-7 | All | Notification analytics, A/B testing hooks, polish | B-4, B-5, B-6 |
+| Batch | Workstream     | Scope                                                                  | Depends On                                   |
+| ----- | -------------- | ---------------------------------------------------------------------- | -------------------------------------------- |
+| B-0   | Infrastructure | Database migrations, feature flags, notification preferences schema    | Phase A complete                             |
+| B-1   | B1             | Wrapped data aggregation engine + OG card generation                   | Epoch summary data (A), score snapshots      |
+| B-2   | B2             | Position statements + questions backend (API, data model)              | DRep profiles (A)                            |
+| B-3   | B3             | Weekly digest + epoch recap + deep-link resolution                     | Notification triggers (A), channel renderers |
+| B-4   | B1             | Wrapped frontend: story flow, share enhancement, public Wrapped page   | B-1, Civica frontend (A7)                    |
+| B-5   | B2             | Communication frontend: statement editor, feed integration, questions  | B-2, Civica frontend (A7)                    |
+| B-6   | B3             | Digest email template, push handling, in-app indicators, rate limiting | B-3, Civica frontend (A7)                    |
+| B-7   | All            | Notification analytics, A/B testing hooks, polish                      | B-4, B-5, B-6                                |
 
 **Note:** Batches B-1, B-2, B-3 are backend-only and can proceed in parallel. Batches B-4, B-5, B-6 require the Civica frontend (Phase A7) to be at least partially shipped. B-7 is integration and polish.
 

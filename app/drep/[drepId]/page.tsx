@@ -22,7 +22,7 @@ import {
 import { VoteRecord } from '@/types/drep';
 import { VotingHistoryWithPrefs } from '@/components/VotingHistoryWithPrefs';
 import { InlineDelegationCTA } from '@/components/InlineDelegationCTA';
-const ScoreHistoryChart = dynamic(() => import('@/components/ScoreHistoryChart').then(m => m.ScoreHistoryChart), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
+const ScoreHistoryChart = dynamic(() => import('@/components/ScoreHistoryChart').then(m => m.ScoreHistoryChart), { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
 import { ScoreCard } from '@/components/ScoreCard';
 import { DRepProfileTabs } from '@/components/DRepProfileTabs';
 import { Button } from '@/components/ui/button';
@@ -38,12 +38,12 @@ import { CompareButton } from '@/components/CompareButton';
 import { ProfileViewTracker } from '@/components/ProfileViewTracker';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { ProfileViewStats } from '@/components/ProfileViewStats';
-const MilestoneBadges = dynamic(() => import('@/components/MilestoneBadges').then(m => m.MilestoneBadges), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
+const MilestoneBadges = dynamic(() => import('@/components/MilestoneBadges').then(m => m.MilestoneBadges), { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
-const AlignmentTrajectory = dynamic(() => import('@/components/AlignmentTrajectory').then(m => m.AlignmentTrajectory), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
+const AlignmentTrajectory = dynamic(() => import('@/components/AlignmentTrajectory').then(m => m.AlignmentTrajectory), { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> });
 import {
   extractAlignments,
   getIdentityColor,

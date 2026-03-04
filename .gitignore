@@ -71,3 +71,11 @@ outreach-data.json
 
 # Local scripts
 scripts/trigger-sync.js
+
+# Vercel local
+.vercel/
+analytics/.vercel/
+
+# Temp commit/PR files
+COMMIT_MSG*.txt
+PR_BODY*.md

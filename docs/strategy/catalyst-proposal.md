@@ -8,7 +8,6 @@
 ## Fund Intelligence
 
 ### Fund 15 Reference (Most Recent)
-
 - Total budget: 18.5M ADA + 250K USDM
 - 4 categories
 - Max 2 proposals per participant
@@ -19,13 +18,11 @@
 - Voting: TBA
 
 ### Target Categories for DRepScore
-
 1. **Cardano Open: Ecosystem** — Governance tooling, ecosystem growth, education. This is our primary fit.
 2. **Cardano Open: Developers** — If we open-source the scoring engine / API. Secondary option.
 3. **Midnight: Compact DApps** — For a separate Midnight-specific proposal (if we have a concrete ZK governance concept by then).
 
 ### Budget Guidance
-
 - Up to 75K ADA: 2 milestones + final milestone
 - 75K-150K ADA: 3 milestones + final
 - 150K-300K ADA: 4 milestones + final
@@ -75,21 +72,18 @@ This proposal funds the **next phase** — turning a working MVP into the defini
 ### What Catalyst Funding Enables
 
 #### Phase 1: Public API & Integrations (Months 1-3)
-
 - Design and launch a public Governance Data API
 - Create embeddable DRep Score widget for third-party sites
 - Outreach to wallet providers (Lace, Eternl, Vespr) for integration partnerships
 - API documentation and developer portal
 
 #### Phase 2: DRep Engagement Tools (Months 3-5)
-
 - DRep Pro features — enhanced analytics, smart governance inbox, AI rationale assistant
 - Delegator engagement tools — polls, position statements, update notifications
 - Score history and trend visualization
 - Push notification system for governance events
 
 #### Phase 3: Community & Education (Months 5-7)
-
 - Governance education content integrated into the platform
 - "State of Cardano Governance" data-driven reporting
 - Onboarding flow improvements for first-time governance participants
@@ -97,33 +91,33 @@ This proposal funds the **next phase** — turning a working MVP into the defini
 
 ### Milestones (for 75K-150K ADA ask)
 
-| Milestone | Deliverable                                                                  | Verification                                                     | Timeline |
-| --------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------- |
-| M1        | Public API beta with documentation; embeddable widget deployed               | API docs live, widget demo, 1+ integration partner in discussion | Month 3  |
-| M2        | DRep Pro features launched; delegator engagement tools live                  | Feature demo, user metrics, DRep adoption numbers                | Month 5  |
-| M3        | Education content live; governance reporting published; onboarding optimized | Content published, traffic metrics, user feedback survey         | Month 7  |
-| Final     | Full project report; open-source scoring engine; sustainability plan         | Report published, GitHub repo, revenue/sustainability metrics    | Month 8  |
+| Milestone | Deliverable | Verification | Timeline |
+| --- | --- | --- | --- |
+| M1 | Public API beta with documentation; embeddable widget deployed | API docs live, widget demo, 1+ integration partner in discussion | Month 3 |
+| M2 | DRep Pro features launched; delegator engagement tools live | Feature demo, user metrics, DRep adoption numbers | Month 5 |
+| M3 | Education content live; governance reporting published; onboarding optimized | Content published, traffic metrics, user feedback survey | Month 7 |
+| Final | Full project report; open-source scoring engine; sustainability plan | Report published, GitHub repo, revenue/sustainability metrics | Month 8 |
 
 ### Budget Breakdown (Estimated — Adjust Based on ADA Price)
 
-| Category              | %   | Purpose                                                  |
-| --------------------- | --- | -------------------------------------------------------- |
-| Development           | 60% | API, features, integrations, infrastructure              |
-| Infrastructure        | 15% | Hosting, database, API costs, monitoring                 |
-| Design & UX           | 10% | UI improvements, education content, widget design        |
+| Category | % | Purpose |
+| --- | --- | --- |
+| Development | 60% | API, features, integrations, infrastructure |
+| Infrastructure | 15% | Hosting, database, API costs, monitoring |
+| Design & UX | 10% | UI improvements, education content, widget design |
 | Community & Marketing | 10% | Wallet partner outreach, governance community engagement |
-| Project Management    | 5%  | Milestone reporting, coordination                        |
+| Project Management | 5% | Milestone reporting, coordination |
 
 ### Impact & Success Metrics
 
-| Metric                          | Target by Final Milestone       |
-| ------------------------------- | ------------------------------- |
-| Monthly Active Users            | 500+                            |
-| DReps with claimed profiles     | 50+                             |
-| API integration partners        | 2+                              |
-| Governance proposals analyzed   | 100% of on-chain proposals      |
-| DRep coverage                   | 100% of registered DReps scored |
-| Delegator satisfaction (survey) | 80%+ positive                   |
+| Metric | Target by Final Milestone |
+| --- | --- |
+| Monthly Active Users | 500+ |
+| DReps with claimed profiles | 50+ |
+| API integration partners | 2+ |
+| Governance proposals analyzed | 100% of on-chain proposals |
+| DRep coverage | 100% of registered DReps scored |
+| Delegator satisfaction (survey) | 80%+ positive |
 
 ### Team
 
@@ -134,7 +128,6 @@ This proposal funds the **next phase** — turning a working MVP into the defini
 ### Sustainability Plan
 
 DRepScore is designed for long-term sustainability beyond Catalyst funding:
-
 - **DRep Pro tier** — Premium features for DReps ($15-25/mo in ADA)
 - **Governance Data API** — Paid API access for wallets and third-party tools
 - **Ecosystem sponsorships** — Cardano projects supporting governance tooling
@@ -151,28 +144,24 @@ CIP-1694 governance only works if delegators can make informed decisions. Withou
 Based on Catalyst scoring criteria (impact, feasibility, value for money, resources):
 
 ### Impact
-
 - [ ] Clearly quantify how many users benefit
 - [ ] Show how this improves governance participation rates
 - [ ] Reference CIP-1694 and governance health metrics
 - [ ] Demonstrate ecosystem-wide benefit (not just DRepScore users)
 
 ### Feasibility
-
 - [ ] Highlight that the platform already exists and works (de-risks the proposal)
 - [ ] Show technical architecture diagram
 - [ ] Reference existing codebase and scoring iterations (V1-V3)
 - [ ] Concrete, measurable milestones with clear verification
 
 ### Value for Money
-
 - [ ] Budget is reasonable relative to deliverables
 - [ ] Compare cost vs. building governance tooling from scratch
 - [ ] Show sustainability plan (not a one-time spend)
 - [ ] Milestone-based accountability (they only pay for delivered work)
 
 ### Resources
-
 - [ ] Team capabilities clearly documented
 - [ ] Technical stack is proven and production-tested
 - [ ] No dependencies on unproven technology

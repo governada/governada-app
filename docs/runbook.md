@@ -1,4 +1,4 @@
-# DRepScore Operational Runbook
+# Civica Operational Runbook
 
 ## Sync Pipeline Failure
 
@@ -49,7 +49,7 @@
 
 - Trigger a full DRep resync: Replay `sync-dreps` in Inngest
 - For a single DRep, manually trigger `sync-drep-scores` (recalculates all scores)
-- Score weights are in `lib/koios.ts` (DEFAULT_WEIGHTS): effective_participation 30%, rationale 35%, reliability 20%, profile 15%
+- DRep Score V3 uses 4-pillar model in `lib/scoring/`: Engagement Quality 35%, Effective Participation 25%, Reliability 25%, Governance Identity 15%
 
 ---
 

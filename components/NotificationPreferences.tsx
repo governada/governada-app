@@ -46,12 +46,14 @@ const CHANNEL_ICONS: Record<Channel, typeof Bell> = {
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   drep: 'DRep Alerts',
+  spo: 'SPO Alerts',
   holder: 'Holder Alerts',
+  citizen: 'Citizen Alerts',
   ecosystem: 'Ecosystem',
   digest: 'Digest & Briefs',
 };
 
-const CATEGORY_ORDER: EventCategory[] = ['drep', 'holder', 'ecosystem', 'digest'];
+const CATEGORY_ORDER: EventCategory[] = ['drep', 'spo', 'holder', 'citizen', 'ecosystem', 'digest'];
 
 const DIGEST_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'weekly', label: 'Weekly' },

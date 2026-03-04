@@ -4,8 +4,16 @@ export interface MilestoneDefinition {
   key: string;
   label: string;
   description: string;
-  icon: string; // lucide icon name
-  category: 'delegators' | 'score' | 'rationale' | 'participation' | 'profile';
+  icon: string;
+  category:
+    | 'delegators'
+    | 'score'
+    | 'rationale'
+    | 'participation'
+    | 'profile'
+    | 'tier'
+    | 'streak'
+    | 'anniversary';
 }
 
 export const MILESTONES: MilestoneDefinition[] = [
@@ -71,6 +79,102 @@ export const MILESTONES: MilestoneDefinition[] = [
     description: 'Voted on all proposals in an epoch',
     icon: 'CheckCircle2',
     category: 'participation',
+  },
+
+  // Phase A: Tier milestones
+  {
+    key: 'first-bronze',
+    label: 'Bronze Tier',
+    description: 'Reached Bronze governance tier',
+    icon: 'Medal',
+    category: 'tier',
+  },
+  {
+    key: 'first-silver',
+    label: 'Silver Tier',
+    description: 'Reached Silver governance tier',
+    icon: 'Medal',
+    category: 'tier',
+  },
+  {
+    key: 'first-gold',
+    label: 'Gold Tier',
+    description: 'Reached Gold governance tier',
+    icon: 'Award',
+    category: 'tier',
+  },
+  {
+    key: 'first-diamond',
+    label: 'Diamond Tier',
+    description: 'Reached Diamond governance tier',
+    icon: 'Gem',
+    category: 'tier',
+  },
+  {
+    key: 'first-legendary',
+    label: 'Legendary Tier',
+    description: 'Reached Legendary governance tier',
+    icon: 'Crown',
+    category: 'tier',
+  },
+
+  // Phase A: Voting streak milestones
+  {
+    key: 'voting-streak-10',
+    label: '10-Epoch Streak',
+    description: 'Voted in 10 consecutive epochs',
+    icon: 'Flame',
+    category: 'streak',
+  },
+  {
+    key: 'voting-streak-25',
+    label: '25-Epoch Streak',
+    description: 'Voted in 25 consecutive epochs',
+    icon: 'Flame',
+    category: 'streak',
+  },
+  {
+    key: 'voting-streak-50',
+    label: '50-Epoch Streak',
+    description: 'Voted in 50 consecutive epochs',
+    icon: 'Flame',
+    category: 'streak',
+  },
+
+  // Phase A: Delegation anniversaries
+  {
+    key: 'delegation-anniversary-1',
+    label: 'First Anniversary',
+    description: 'One year as a DRep',
+    icon: 'Cake',
+    category: 'anniversary',
+  },
+
+  // Phase A: Score personal bests
+  {
+    key: 'score-personal-best',
+    label: 'Personal Best',
+    description: 'Achieved your highest-ever governance score',
+    icon: 'TrendingUp',
+    category: 'score',
+  },
+
+  // Phase A: First rationale
+  {
+    key: 'first-rationale',
+    label: 'First Rationale',
+    description: 'Submitted your first vote rationale',
+    icon: 'PenLine',
+    category: 'rationale',
+  },
+
+  // Phase A: Delegator milestones (extended)
+  {
+    key: 'first-500-delegators',
+    label: 'First 500 Delegators',
+    description: 'Reached 500 delegators',
+    icon: 'Users',
+    category: 'delegators',
   },
 ];
 
@@ -141,6 +245,7 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
   const delegators = (drep.info as { delegatorCount?: number })?.delegatorCount || 0;
   if (delegators >= 10) award('first-10-delegators');
   if (delegators >= 100) award('first-100-delegators');
+  if (delegators >= 500) award('first-500-delegators');
   if (delegators >= 1000) award('first-1000-delegators');
 
   // Score milestones
@@ -195,6 +300,60 @@ export async function checkAndAwardMilestones(drepId: string): Promise<string[]>
       award('perfect-participation-epoch');
       break;
     }
+  }
+
+  // Tier milestones
+  const { data: tierData } = await supabase
+    .from('dreps')
+    .select('current_tier')
+    .eq('id', drepId)
+    .single();
+  const currentTier = tierData?.current_tier;
+  const tierMap: Record<string, string> = {
+    Bronze: 'first-bronze',
+    Silver: 'first-silver',
+    Gold: 'first-gold',
+    Diamond: 'first-diamond',
+    Legendary: 'first-legendary',
+  };
+  if (currentTier && tierMap[currentTier]) {
+    const tierKeys = Object.keys(tierMap);
+    const tierIdx = tierKeys.indexOf(currentTier);
+    for (let i = 0; i <= tierIdx; i++) {
+      award(tierMap[tierKeys[i]]);
+    }
+  }
+
+  // Voting streak milestones (consecutive epochs with votes)
+  const epochSet = new Set(
+    votes.map((v: { epoch_no?: number | null }) => v.epoch_no).filter(Boolean),
+  );
+  const sortedEpochs = [...epochSet].sort((a, b) => (a as number) - (b as number));
+  let maxVotingStreak = 0;
+  let currentStreak = 1;
+  for (let i = 1; i < sortedEpochs.length; i++) {
+    if ((sortedEpochs[i] as number) === (sortedEpochs[i - 1] as number) + 1) {
+      currentStreak++;
+      maxVotingStreak = Math.max(maxVotingStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
+  }
+  maxVotingStreak = Math.max(maxVotingStreak, currentStreak);
+  if (maxVotingStreak >= 10) award('voting-streak-10');
+  if (maxVotingStreak >= 25) award('voting-streak-25');
+  if (maxVotingStreak >= 50) award('voting-streak-50');
+
+  // First rationale
+  if (votes.some((v: { meta_url?: string | null }) => v.meta_url)) {
+    award('first-rationale');
+  }
+
+  // Score personal best
+  if (scoreHistory.length > 1) {
+    const currentScore = drep.score ?? 0;
+    const previousBest = Math.max(...scoreHistory.slice(1).map((s: { score: number }) => s.score));
+    if (currentScore > previousBest) award('score-personal-best');
   }
 
   // Persist new milestones

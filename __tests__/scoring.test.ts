@@ -24,18 +24,10 @@ import {
   hasQualityRationale,
   calculateWeightedRationaleRate,
   applyRationaleCurve,
-  calculateAbstentionPenalty,
-  calculateValueAlignment,
-  getVoteDistribution,
   lovelaceToAda,
   formatAda,
-  getParticipationColor,
-  getDRepScoreBadgeVariant,
   getDRepScoreBadgeClass,
-  getRationaleColor,
-  shortenDRepId,
   getReliabilityHintFromStored,
-  getReliabilityHint,
   getPillarStatus,
   getMissingProfileFields,
   getEasiestWin,
@@ -407,94 +399,6 @@ describe('applyRationaleCurve', () => {
   });
 });
 
-// ── calculateAbstentionPenalty ───────────────────────────────────────────────
-
-describe('calculateAbstentionPenalty', () => {
-  it('returns 0 for empty array', () => {
-    expect(calculateAbstentionPenalty([])).toBe(0);
-  });
-
-  it('returns 0 for no abstentions', () => {
-    const votes = [makeVote({ vote: 'Yes' }), makeVote({ vote: 'No' })];
-    expect(calculateAbstentionPenalty(votes)).toBe(0);
-  });
-
-  it('applies mild penalty for < 25% abstention', () => {
-    const votes = [
-      makeVote({ vote: 'Yes' }),
-      makeVote({ vote: 'Yes' }),
-      makeVote({ vote: 'Yes' }),
-      makeVote({ vote: 'Yes' }),
-      makeVote({ vote: 'Abstain' }),
-    ];
-    const penalty = calculateAbstentionPenalty(votes);
-    expect(penalty).toBe(Math.round(20 * 0.5)); // 20% * 0.5 = 10
-  });
-
-  it('applies severe penalty for > 50% abstention', () => {
-    const votes = [
-      makeVote({ vote: 'Abstain' }),
-      makeVote({ vote: 'Abstain' }),
-      makeVote({ vote: 'Abstain' }),
-      makeVote({ vote: 'Yes' }),
-    ];
-    const penalty = calculateAbstentionPenalty(votes);
-    expect(penalty).toBe(75); // 75% * 1.0 = 75
-  });
-});
-
-// ── calculateValueAlignment ──────────────────────────────────────────────────
-
-describe('calculateValueAlignment', () => {
-  it('returns 0 for empty preferences', () => {
-    expect(calculateValueAlignment([makeVote()], [])).toBe(0);
-  });
-
-  it('returns 0 for empty votes', () => {
-    expect(calculateValueAlignment([], ['High Participation'])).toBe(0);
-  });
-
-  it('rewards high participation', () => {
-    const votes = [makeVote({ vote: 'Yes' }), makeVote({ vote: 'No' })];
-    const score = calculateValueAlignment(votes, ['High Participation']);
-    expect(score).toBe(100);
-  });
-
-  it('penalizes abstain for High Participation', () => {
-    const votes = [makeVote({ vote: 'Abstain' }), makeVote({ vote: 'Abstain' })];
-    const score = calculateValueAlignment(votes, ['High Participation']);
-    expect(score).toBe(0);
-  });
-});
-
-// ── getVoteDistribution ──────────────────────────────────────────────────────
-
-describe('getVoteDistribution', () => {
-  it('counts votes correctly', () => {
-    const votes = [
-      makeVote({ vote: 'Yes' }),
-      makeVote({ vote: 'Yes' }),
-      makeVote({ vote: 'No' }),
-      makeVote({ vote: 'Abstain' }),
-    ];
-    expect(getVoteDistribution(votes)).toEqual({
-      yes: 2,
-      no: 1,
-      abstain: 1,
-      total: 4,
-    });
-  });
-
-  it('handles empty array', () => {
-    expect(getVoteDistribution([])).toEqual({
-      yes: 0,
-      no: 0,
-      abstain: 0,
-      total: 0,
-    });
-  });
-});
-
 // ── lovelaceToAda ────────────────────────────────────────────────────────────
 
 describe('lovelaceToAda', () => {
@@ -530,36 +434,6 @@ describe('formatAda', () => {
 
 // ── Color and badge utilities ────────────────────────────────────────────────
 
-describe('getParticipationColor', () => {
-  it('returns green for >= 70', () => {
-    expect(getParticipationColor(70)).toContain('green');
-    expect(getParticipationColor(100)).toContain('green');
-  });
-
-  it('returns yellow for 40-69', () => {
-    expect(getParticipationColor(40)).toContain('yellow');
-  });
-
-  it('returns red for < 40', () => {
-    expect(getParticipationColor(0)).toContain('red');
-    expect(getParticipationColor(39)).toContain('red');
-  });
-});
-
-describe('getDRepScoreBadgeVariant', () => {
-  it('returns default for >= 80', () => {
-    expect(getDRepScoreBadgeVariant(80)).toBe('default');
-  });
-
-  it('returns secondary for 60-79', () => {
-    expect(getDRepScoreBadgeVariant(60)).toBe('secondary');
-  });
-
-  it('returns destructive for < 60', () => {
-    expect(getDRepScoreBadgeVariant(59)).toBe('destructive');
-  });
-});
-
 describe('getDRepScoreBadgeClass', () => {
   it('returns green for >= 80', () => {
     expect(getDRepScoreBadgeClass(80)).toContain('green');
@@ -571,42 +445,6 @@ describe('getDRepScoreBadgeClass', () => {
 
   it('returns red for < 60', () => {
     expect(getDRepScoreBadgeClass(30)).toContain('red');
-  });
-});
-
-describe('getRationaleColor', () => {
-  it('returns green for >= 80', () => {
-    expect(getRationaleColor(80)).toContain('green');
-  });
-
-  it('returns yellow for 50-79', () => {
-    expect(getRationaleColor(50)).toContain('yellow');
-  });
-
-  it('returns orange for < 50', () => {
-    expect(getRationaleColor(49)).toContain('orange');
-  });
-});
-
-// ── shortenDRepId ────────────────────────────────────────────────────────────
-
-describe('shortenDRepId', () => {
-  it('returns full ID if short enough', () => {
-    expect(shortenDRepId('abcdef')).toBe('abcdef');
-  });
-
-  it('truncates long IDs with ellipsis', () => {
-    const id = 'drep1abcdef1234567890abcdef';
-    const result = shortenDRepId(id);
-    expect(result).toContain('...');
-    expect(result.startsWith('drep1abc')).toBe(true);
-    expect(result.endsWith('abcdef')).toBe(true);
-  });
-
-  it('supports custom prefix/suffix lengths', () => {
-    const id = 'drep1abcdefghijklmnop';
-    const result = shortenDRepId(id, 4, 4);
-    expect(result).toBe('drep...mnop');
   });
 });
 
@@ -627,21 +465,6 @@ describe('getReliabilityHintFromStored', () => {
 
   it('handles singular epoch', () => {
     expect(getReliabilityHintFromStored(0, 1)).toBe('Last voted 1 epoch ago');
-  });
-});
-
-// ── getReliabilityHint (legacy) ──────────────────────────────────────────────
-
-describe('getReliabilityHint', () => {
-  it('returns "No voting history" for empty data', () => {
-    expect(getReliabilityHint([], undefined, 100)).toBe('No voting history');
-    expect(getReliabilityHint([0, 0, 0], 95, 100)).toBe('No voting history');
-  });
-
-  it('returns hint for valid data', () => {
-    const counts = [0, 0, 0, 0, 1];
-    const result = getReliabilityHint(counts, 96, 100);
-    expect(result).toContain('Voted this epoch');
   });
 });
 

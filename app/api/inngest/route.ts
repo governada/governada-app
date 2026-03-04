@@ -23,6 +23,8 @@ import { syncSpoAndCcVotes } from '@/inngest/functions/sync-spo-cc-votes';
 import { syncSpoScores } from '@/inngest/functions/sync-spo-scores';
 import { checkSnapshotCompleteness } from '@/inngest/functions/check-snapshot-completeness';
 import { cleanupRevokedSessions } from '@/inngest/functions/cleanup-revoked-sessions';
+import { detectAlignmentDrift } from '@/inngest/functions/detect-alignment-drift';
+import { precomputeCitizenSummaries } from '@/inngest/functions/precompute-citizen-summaries';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -50,5 +52,7 @@ export const { GET, POST, PUT } = serve({
     syncSpoScores,
     checkSnapshotCompleteness,
     cleanupRevokedSessions,
+    detectAlignmentDrift,
+    precomputeCitizenSummaries,
   ],
 });

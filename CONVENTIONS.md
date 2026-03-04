@@ -1,4 +1,4 @@
-# DRepScore Coding Conventions
+# Civica Coding Conventions
 
 ## TypeScript
 
@@ -21,17 +21,21 @@
 - Koios calls only in `utils/koios.ts` (used by sync scripts)
 - Supabase client via `lib/supabase.ts`
 
-## UI
+## UI & Design
 
-- shadcn/ui components — never build custom when shadcn has it
+- **Custom visualizations over chart libraries** — if a charting library has it, we build our own. Governance data deserves purpose-built visual design
+- shadcn/ui for structural components (dialogs, dropdowns, inputs) — never for data visualizations
 - Tailwind CSS v4 utility classes — no custom CSS unless absolutely necessary
 - Dark mode via `next-themes` — always support both themes
-- Responsive design: mobile-first approach
+- Mobile-considered design throughout
+- Every page's first viewport must be emotionally complete without scrolling
 
 ## Scoring
 
-- DRep Score (0-100): Rationale Quality 35%, Effective Participation 30%, Reliability 20%, Profile Completeness 15%
-- Voting power/influence is explicitly excluded from scoring
+- **DRep Score V3** (0-100, percentile-normalized): Engagement Quality 35%, Effective Participation 25%, Reliability 25%, Governance Identity 15%
+- **SPO Governance Score** (0-100): Participation 45%, Consistency 30%, Reliability 25% (4th pillar Governance Identity planned)
+- **Score Tiers:** Emerging (0-39), Bronze (40-54), Silver (55-69), Gold (70-84), Diamond (85-94), Legendary (95-100)
+- Voting power/influence explicitly excluded from scoring
 - Size tiers: Small (<10k), Medium (10k-1M), Large (1M-10M), Whale (>10M ADA)
 
 ## File Naming
@@ -65,3 +69,10 @@
 - Build must pass (`npm run build`) before pushing
 - No console.log in committed code — use proper logging
 - No hardcoded secrets — environment variables only
+
+## Post-Execution Review
+
+- **Every completed plan** gets a structured review before shipping (see `.cursor/rules/workflow-procedures.md`)
+- Covers: opportunities, bugs, dead code, open questions, and vision alignment
+- Agent presents findings and asks which recommendations to execute before shipping
+- Deferred items are tracked in plan docs or Linear — nothing is lost

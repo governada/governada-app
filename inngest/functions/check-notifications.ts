@@ -40,6 +40,7 @@ interface DRepScoreRow {
 }
 
 const SCORE_CHANGE_THRESHOLD = 3;
+const INACTIVITY_EPOCH_THRESHOLD = 3;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://drepscore.io';
 
 export const checkNotifications = inngest.createFunction(
@@ -333,6 +334,193 @@ export const checkNotifications = inngest.createFunction(
       }
     });
 
+    // Step 7: Tier change notifications (Phase A)
+    await step.run('check-tier-changes', async () => {
+      const supabase = getSupabaseAdmin();
+      const { getFeatureFlag } = await import('@/lib/featureFlags');
+      const tiersEnabled = await getFeatureFlag('score_tiers', false);
+      if (!tiersEnabled) return;
+
+      const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
+      const { data: recentTierChanges } = await supabase
+        .from('tier_changes')
+        .select('entity_type, entity_id, old_tier, new_tier, new_score')
+        .gte('created_at', oneDayAgo);
+
+      if (!recentTierChanges?.length) return;
+
+      for (const tc of recentTierChanges) {
+        const isUp = tierRank(tc.new_tier) > tierRank(tc.old_tier);
+
+        if (tc.entity_type === 'drep') {
+          const user = context.users.find(
+            (u: ClaimedUserRow) => u.claimed_drep_id === tc.entity_id,
+          );
+          if (user) {
+            await notifyUser(user.wallet_address, {
+              eventType: 'tier-change',
+              title: `${isUp ? '🎉' : '⚠️'} Tier ${isUp ? 'up' : 'down'}: ${tc.old_tier} → ${tc.new_tier}`,
+              body: `Your governance tier ${isUp ? 'rose' : 'dropped'} to ${tc.new_tier} (score: ${tc.new_score}).${isUp ? ' Share your achievement!' : ''}`,
+              url: `${BASE_URL}/dashboard`,
+            });
+          }
+        } else if (tc.entity_type === 'spo') {
+          const { data: pool } = await supabase
+            .from('pools')
+            .select('claimed_by')
+            .eq('pool_id', tc.entity_id)
+            .single();
+          if (pool?.claimed_by) {
+            await notifyUser(pool.claimed_by, {
+              eventType: 'spo-tier-change',
+              title: `Pool tier ${isUp ? 'up' : 'down'}: ${tc.old_tier} → ${tc.new_tier}`,
+              body: `Your pool's governance tier ${isUp ? 'rose' : 'dropped'} to ${tc.new_tier} (score: ${tc.new_score}).`,
+              url: `${BASE_URL}/pool/${tc.entity_id}`,
+            });
+          }
+        }
+      }
+    });
+
+    // Step 8: Alignment drift notifications (Phase A)
+    await step.run('check-alignment-drift', async () => {
+      const supabase = getSupabaseAdmin();
+      const { getFeatureFlag } = await import('@/lib/featureFlags');
+      const driftEnabled = await getFeatureFlag('alignment_drift', false);
+      if (!driftEnabled) return;
+
+      const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
+      const { data: recentDrifts } = await supabase
+        .from('alignment_drift_records')
+        .select('user_id, drep_id, drift_score, drift_classification')
+        .gte('created_at', oneDayAgo)
+        .in('drift_classification', ['moderate', 'high']);
+
+      if (!recentDrifts?.length) return;
+
+      for (const drift of recentDrifts) {
+        const severity = drift.drift_classification === 'high' ? 'significantly' : 'noticeably';
+        await notifyUser(drift.user_id, {
+          eventType: 'alignment-drift',
+          title: `Your DRep has ${severity} drifted from your values`,
+          body: `Alignment drift score: ${drift.drift_score}. Review your delegation or explore alternatives.`,
+          url: `${BASE_URL}/my-gov`,
+        });
+      }
+    });
+
+    // Step 9: Delegation milestone notifications (Phase A)
+    await step.run('check-delegation-milestones', async () => {
+      const supabase = getSupabaseAdmin();
+      const milestoneThresholds = [100, 500, 1000, 5000];
+
+      for (const user of context.users) {
+        const drep = context.dreps.find((d: DRepRow) => d.id === user.claimed_drep_id);
+        if (!drep) continue;
+
+        const currentDelegators = (drep.info as { delegatorCount?: number })?.delegatorCount ?? 0;
+        if (currentDelegators === 0) continue;
+
+        const { data: snapshots } = await supabase
+          .from('drep_power_snapshots')
+          .select('delegator_count')
+          .eq('drep_id', drep.id)
+          .order('epoch_no', { ascending: false })
+          .limit(2);
+
+        if (!snapshots || snapshots.length < 2) continue;
+        const previousDelegators = snapshots[1].delegator_count ?? 0;
+
+        for (const threshold of milestoneThresholds) {
+          if (currentDelegators >= threshold && previousDelegators < threshold) {
+            await notifyUser(user.wallet_address, {
+              eventType: 'delegation-milestone',
+              title: `🎉 ${threshold.toLocaleString()} delegators!`,
+              body: `You've reached ${threshold.toLocaleString()} delegators. Your governance voice represents a growing community.`,
+              url: `${BASE_URL}/dashboard`,
+            });
+          }
+        }
+      }
+    });
+
+    // Step 10: SPO inactivity warnings (Phase A)
+    await step.run('check-spo-inactivity', async () => {
+      const supabase = getSupabaseAdmin();
+      const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+
+      const { data: inactivePools } = await supabase
+        .from('pools')
+        .select('pool_id, pool_name, ticker')
+        .gt('vote_count', 0)
+        .lt('vote_count', 2);
+
+      if (!inactivePools?.length) return;
+
+      for (const pool of inactivePools) {
+        const { data: lastVote } = await supabase
+          .from('spo_votes')
+          .select('epoch')
+          .eq('pool_id', pool.pool_id)
+          .order('epoch', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!lastVote?.epoch) continue;
+        const epochsSinceVote = currentEpoch - lastVote.epoch;
+        if (epochsSinceVote < INACTIVITY_EPOCH_THRESHOLD) continue;
+
+        const poolName = pool.pool_name || pool.ticker || pool.pool_id.slice(0, 12);
+        await broadcastEvent({
+          eventType: 'spo-inactivity',
+          title: `Pool ${poolName} has been inactive for ${epochsSinceVote} epochs`,
+          body: `This pool hasn't voted in ${epochsSinceVote} epochs. If you're staked here, check their governance commitment.`,
+          url: `${BASE_URL}/pool/${pool.pool_id}`,
+        });
+      }
+    });
+
+    // Step 11: Competitive movement (Phase A)
+    await step.run('check-competitive-movement', async () => {
+      const supabase = getSupabaseAdmin();
+
+      const { data: pools } = await supabase
+        .from('pools')
+        .select('pool_id, governance_score, claimed_by')
+        .gt('vote_count', 0)
+        .not('claimed_by', 'is', null)
+        .order('governance_score', { ascending: false });
+
+      if (!pools || pools.length < 3) return;
+
+      for (let i = 1; i < pools.length; i++) {
+        const current = pools[i];
+        const above = pools[i - 1];
+
+        const gap = (above.governance_score ?? 0) - (current.governance_score ?? 0);
+        if (gap <= 3 && gap > 0 && current.claimed_by) {
+          await notifyUser(current.claimed_by, {
+            eventType: 'competitive-movement',
+            title: `You're ${gap} point${gap !== 1 ? 's' : ''} from overtaking a competitor`,
+            body: `A few more governance actions could move your pool up in the rankings.`,
+            url: `${BASE_URL}/pool/${current.pool_id}`,
+          });
+        }
+      }
+    });
+
     return { stats };
   },
 );
+
+function tierRank(tier: string): number {
+  const ranks: Record<string, number> = {
+    Emerging: 0,
+    Bronze: 1,
+    Silver: 2,
+    Gold: 3,
+    Diamond: 4,
+    Legendary: 5,
+  };
+  return ranks[tier] ?? 0;
+}

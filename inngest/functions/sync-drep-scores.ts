@@ -14,11 +14,14 @@ import {
   computeReliability,
   computeGovernanceIdentity,
   computeDRepScores,
+  computeTier,
+  detectTierChange,
   type VoteData,
   type ProposalScoringContext,
   type ProposalVotingSummary,
   type DRepProfileData,
 } from '@/lib/scoring';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import { batchUpsert, SyncLogger, errMsg, emitPostHog } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
@@ -337,11 +340,60 @@ export const syncDrepScores = inngest.createFunction(
 
         timing.step6_persist_ms = Date.now() - s6;
 
+        // ── Step 7: Tier assignment ──────────────────────────────────────
+        const tiersEnabled = await getFeatureFlag('score_tiers', false);
+        let tierChangesDetected = 0;
+
+        if (tiersEnabled) {
+          const s7 = Date.now();
+
+          const { data: currentDreps } = await supabase
+            .from('dreps')
+            .select('id, score, current_tier')
+            .in('id', [...finalScores.keys()]);
+
+          const tierChangeInserts: Record<string, unknown>[] = [];
+
+          for (const drep of currentDreps || []) {
+            const newScore = finalScores.get(drep.id)?.composite ?? drep.score ?? 0;
+            const newTier = computeTier(newScore);
+            const oldScore = drep.score ?? 0;
+            const oldTier = drep.current_tier ?? computeTier(oldScore);
+
+            if (oldTier !== newTier) {
+              const change = detectTierChange('drep', drep.id, oldScore, newScore);
+              if (change) {
+                tierChangeInserts.push({
+                  entity_type: 'drep',
+                  entity_id: drep.id,
+                  old_tier: change.oldTier,
+                  new_tier: change.newTier,
+                  old_score: change.oldScore,
+                  new_score: change.newScore,
+                  epoch_no: currentEpoch,
+                });
+              }
+            }
+
+            await supabase.from('dreps').update({ current_tier: newTier }).eq('id', drep.id);
+          }
+
+          if (tierChangeInserts.length > 0) {
+            await batchUpsert(supabase, 'tier_changes', tierChangeInserts, 'id', 'tier_changes');
+            tierChangesDetected = tierChangeInserts.length;
+          }
+
+          timing.step7_tiers_ms = Date.now() - s7;
+        }
+
+        timing.step6_persist_ms = Date.now() - s6;
+
         const summary = {
           success: true,
           drepsScored: finalScores.size,
           proposalsLoaded: proposalContexts.size,
           votesProcessed: voteRows.length,
+          tierChangesDetected,
           timing,
         };
 

@@ -1,200 +1,116 @@
-# DRepScore
+# Civica
 
-**Find Your Ideal Cardano DRep**
+**The Civic Hub for the Cardano Nation**
 
-DRepScore is an educational tool that helps casual Cardano ADA holders discover and delegate to Delegated Representatives (DReps) who align with their values. Compare participation rates, voting history, decentralization scores, and rationale provision to make informed delegation decisions.
+Civica (formerly DRepScore) is the governance intelligence and civic engagement platform for Cardano. It serves every participant in the ecosystem — citizens (ADA holders), DReps, SPOs, Constitutional Committee, treasury proposal teams, and governance researchers — through one interconnected data engine.
 
-## Features
+## What It Does
 
-- **🔍 Value-Based Discovery**: Select up to 5 values (Treasury Conservative, Pro-DeFi, High Participation, etc.) to find matching DReps
-- **📊 Comprehensive Metrics**: View voting power, participation rates, rationale provision, and decentralization scores
-- **📈 Voting History**: Explore detailed voting timelines with both governance and Catalyst votes
-- **💼 Wallet Integration**: Connect Cardano wallets (Eternl, Nami, Lace, Typhon) for delegation
-- **📚 Educational Content**: Tooltips and modals explaining DReps, governance, and delegation
-- **🎨 Modern UI**: Clean, Cardano-themed design with responsive tables and charts
+- **Citizen Matching** — Find an aligned DRep or SPO in 60 seconds via PCA-based governance value matching
+- **DRep Scoring (V3)** — 4-pillar accountability scoring (Engagement Quality, Effective Participation, Reliability, Governance Identity) with percentile normalization
+- **SPO Governance Scoring** — First-of-its-kind scoring of stake pool operators on governance participation
+- **Governance Health Index** — 6-component system health metric with Edinburgh Decentralization Index (7 mathematical metrics)
+- **Inter-Body Alignment** — Tri-body analysis showing how DReps, SPOs, and Constitutional Committee vote on the same proposals
+- **Treasury Intelligence** — Spending effectiveness, DRep treasury judgment, accountability polls, proposal similarity
+- **AI-Powered Narratives** — Epoch recaps, governance briefs, rationale quality analysis, personalized summaries
+- **6D Alignment System** — PCA-based alignment across Treasury, Decentralization, Security, Innovation, Transparency dimensions with temporal trajectories
 
 ## Tech Stack
 
-- **Framework**: Next.js 16.1.6 (App Router, TypeScript strict mode)
-- **UI Components**: shadcn/ui + Radix UI + Tailwind CSS
-- **Charts**: Recharts
-- **Wallet Integration**: MeshJS
-- **Data Source**: Koios API (Cardano mainnet)
-- **Deployment**: Railway (Docker)
+- **Framework**: Next.js 16 App Router, TypeScript strict mode
+- **UI**: shadcn/ui + Radix UI + Tailwind CSS v4 + custom governance visualizations
+- **Wallet**: MeshJS (Eternl, Lace, Typhon, Vespr)
+- **Data**: Koios API (mainnet) → Supabase (persistent cache) → Next.js (reads)
+- **Background Jobs**: Inngest Cloud (22 durable functions)
+- **Hosting**: Railway (Docker)
+- **CDN/DNS**: Cloudflare
+- **Caching/Rate Limiting**: Upstash Redis
+- **Error Tracking**: Sentry
+- **Analytics**: PostHog (JS + Node SDKs)
+- **AI**: Anthropic Claude (narratives, classification, rationale analysis)
+- **Testing**: Vitest + Playwright
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.17.0 or higher
-- npm or yarn
+- Node.js 18.17.0+
+- npm
 
 ### Installation
 
-1. Clone the repository:
-
-\`\`\`bash
+```bash
 git clone <repository-url>
 cd drepscore-app
-\`\`\`
-
-2. Install dependencies:
-
-\`\`\`bash
 npm install
-\`\`\`
-
-3. Set up environment variables:
-
-\`\`\`bash
 cp .env.example .env.local
-\`\`\`
-
-Edit `.env.local` and optionally add your Koios API key:
-
-\`\`\`env
-
-# Optional - for higher rate limits
-
-KOIOS_API_KEY=your_api_key_here
-
-# Default Koios mainnet URL (no need to change)
-
-NEXT_PUBLIC_KOIOS_BASE_URL=https://api.koios.rest/api/v1
-\`\`\`
-
-4. Run the development server:
-
-\`\`\`bash
 npm run dev
-\`\`\`
+```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Project Structure
+See `.env.example` for required environment variables. Note: `.env.local` connects to **production** Supabase — treat all local operations as production operations.
 
-\`\`\`
-drepscore-app/
-├── app/ # Next.js App Router pages
-│ ├── drep/[drepId]/ # DRep detail page
-│ ├── layout.tsx # Root layout with header
-│ ├── page.tsx # Homepage
-│ └── globals.css # Global styles + Tailwind
-├── components/ # React components
-│ ├── ui/ # shadcn/ui components
-│ ├── DRepTable.tsx # Main DRep table
-│ ├── Header.tsx # Global header with branding
-│ ├── WalletConnect.tsx # Wallet integration
-│ ├── VotingHistoryChart.tsx # Recharts visualizations
-│ └── ... # Other components
-├── utils/ # Utility functions
-│ ├── koios.ts # Koios API helpers
-│ ├── scoring.ts # Metrics calculations
-│ └── wallet.tsx # Wallet context
-├── types/ # TypeScript types
-│ ├── drep.ts # DRep types
-│ └── koios.ts # Koios API types
-└── lib/
-└── utils.ts # shadcn utilities
-\`\`\`
+## Architecture
 
-## Key Features Explained
+```
+Koios API (source of truth)
+    ↓  Inngest durable functions (22 functions, 30min-weekly schedules)
+Supabase (persistent cache, 33+ tables)
+    ↓  lib/data.ts reads
+Next.js App (server components + 90+ API routes + client components)
+```
 
-### Value Selector
+All frontend reads go through Supabase via `lib/data.ts`. Direct Koios calls only happen inside sync functions. See `.cursor/rules/architecture.md` for the full technical reference.
 
-Choose from preset value tags to find DReps aligned with your preferences:
+## Key Directories
 
-- **Treasury Conservative**: Prefers fiscal responsibility
-- **Pro-DeFi**: Supports DeFi ecosystem growth
-- **High Participation**: Actively votes on most proposals
-- **Pro-Privacy**: Prioritizes privacy-focused proposals
-- **Pro-Decentralization**: Supports decentralization initiatives
-- **Active Rationale Provider**: Regularly provides voting rationale
-
-### Scoring Metrics
-
-1. **Participation Rate**: Percentage of proposals voted on (color-coded: green 70%+, yellow 40-70%, red <40%)
-2. **Rationale Provision Rate**: Percentage of votes with written rationale
-3. **Decentralization Score**: Distribution quality of delegators and voting power (0-100)
-4. **Match Score**: Alignment with your selected values (shown when filters active)
-
-### Data Caching
-
-- Koios API responses are cached for 15 minutes (900 seconds)
-- Server Components automatically handle caching
-- Revalidation ensures fresh data without constant refetching
+| Directory        | Purpose                                                               |
+| ---------------- | --------------------------------------------------------------------- |
+| `app/`           | Next.js App Router pages and API routes                               |
+| `components/`    | React components (223 files)                                          |
+| `lib/`           | Core logic — data access, scoring, alignment, GHI, matching, treasury |
+| `lib/scoring/`   | V3 DRep scoring engine (4 pillars + percentile normalization)         |
+| `lib/alignment/` | PCA alignment system (6 dimensions, AI classification)                |
+| `lib/ghi/`       | Governance Health Index (6 components + EDI)                          |
+| `lib/matching/`  | Citizen-to-representative matching engine                             |
+| `lib/sync/`      | Durable sync logic (called by Inngest functions)                      |
+| `inngest/`       | Background function definitions                                       |
+| `utils/`         | Koios helpers, scoring utilities                                      |
+| `types/`         | TypeScript type definitions                                           |
+| `docs/`          | Strategy, ADRs, runbook, observability                                |
 
 ## Deployment
 
-### Deploy to Railway
+Deployed on Railway via Docker. Auto-deploys from `main`. Background jobs run on Inngest Cloud. DNS/CDN via Cloudflare.
 
-1. Push your code to GitHub
-2. Connect the repository in Railway dashboard
-3. Configure environment variables in Railway:
-   - `KOIOS_API_KEY` (optional)
-   - `NEXT_PUBLIC_KOIOS_BASE_URL` (default: https://api.koios.rest/api/v1)
-   - See `.env.example` for the full list
-4. Railway auto-deploys from `main` via Docker
-
-DNS/CDN is managed via Cloudflare. Background jobs run on Inngest Cloud.
-
-## Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
-
-## Koios API
-
-This project uses the [Koios API](https://koios.rest/) to fetch Cardano governance data:
-
-- DRep list and details
-- Voting history
-- Metadata and rationale
-- Delegation information
-
-The free tier works without an API key, but registering for a key provides higher rate limits.
-
-## Roadmap
-
-- [ ] Integrate ADA Handle lookup for DRep names
-- [ ] Add actual vote history fetching (currently placeholder)
-- [ ] Implement full delegation functionality with MeshJS
-- [ ] Add stake pool operator links for transparency
-- [ ] Enhanced value alignment algorithms based on proposal content analysis
-- [ ] User accounts to track delegation history
-- [ ] Email notifications for DRep activity
+```bash
+npm run build          # Production build
+npm run gen:types      # Regenerate Supabase types (after migrations)
+npm run inngest:status # Verify Inngest function health
+npm run smoke-test     # HTTP health checks against production
+npm run test           # Vitest unit/integration tests
+npm run test:e2e       # Playwright E2E tests
+```
 
 ## Security
 
-DRepScore implements multiple layers of security hardening:
+- Content Security Policy (CSP) with report-only mode
+- HSTS with 2-year max-age, includeSubDomains, preload
+- Row Level Security (RLS) on all Supabase tables
+- JWT wallet auth with session revocation (Redis + Supabase)
+- Upstash Redis rate limiting on all API endpoints (fails closed)
+- Admin audit logging for all privileged actions
 
-- **Content Security Policy (CSP)**: Report-only CSP header blocks XSS vectors. Covers script-src, connect-src, frame-ancestors, and object-src restrictions.
-- **Strict-Transport-Security (HSTS)**: Enforces HTTPS with 2-year max-age, includeSubDomains, and preload.
-- **Row Level Security (RLS)**: All Supabase tables have RLS enabled with least-privilege policies. Write operations restricted to service_role; public access limited to SELECT.
-- **Session Management**: 7-day JWT sessions with revocation support (Redis + Supabase). Session refresh at 50% lifetime. Secure httpOnly cookies.
-- **Rate Limiting**: Upstash Redis sliding window rate limiting on all API endpoints. Fails closed if Redis is unreachable.
-- **Admin Audit Logging**: All admin actions (feature flag toggles, etc.) are logged with wallet address, action, and payload.
+## Documentation
 
-To report a security vulnerability, please email security@drepscore.io.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- `docs/strategy/ultimate-vision.md` — Product vision (the north star)
+- `docs/strategy/monetization-strategy.md` — Business model and revenue phases
+- `docs/strategy/catalyst-proposal.md` — Catalyst Fund 16 proposal draft
+- `docs/adr/` — Architecture Decision Records
+- `docs/runbook.md` — Operational runbook
+- `docs/observability-setup.md` — Monitoring setup guide
 
 ## License
 
 This project is licensed under the MIT License.
-
-## Branding
-
-**$drepscore** - Powered by the Cardano community
-
-## Acknowledgments
-
-- [Cardano Foundation](https://cardanofoundation.org/) for governance infrastructure
-- [Koios](https://koios.rest/) for providing the API
-- [MeshJS](https://meshjs.dev/) for wallet integration
-- [shadcn/ui](https://ui.shadcn.com/) for beautiful components

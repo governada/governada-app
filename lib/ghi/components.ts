@@ -124,27 +124,16 @@ export async function computeCitizenEngagement({
     else dynamismScore = Math.max(30, 100 - (churnRate - 20) * 2);
   }
 
-  // --- Sub-signal 3: Platform engagement (20%) ---
-  let platformScore = 50; // neutral fallback
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const { count: pollResponseCount } = await supabase
-    .from('poll_responses')
-    .select('wallet_address', { count: 'exact', head: true })
-    .gte('created_at', thirtyDaysAgo);
-
-  if (pollResponseCount != null && pollResponseCount > 0) {
-    // Scale: 50+ unique poll voters in 30 days = 100
-    platformScore = Math.min(100, (pollResponseCount / 50) * 100);
-  }
-
-  const raw = delegationRateScore * 0.5 + dynamismScore * 0.3 + platformScore * 0.2;
+  // Platform engagement sub-signal deprecated (was 20%).
+  // Redistributed: delegation rate 62.5%, dynamism 37.5%.
+  const raw = delegationRateScore * 0.625 + dynamismScore * 0.375;
 
   return {
     raw: Math.min(100, Math.max(0, Math.round(raw))),
     detail: {
       delegationRate: Math.round(delegationRateScore),
       dynamism: Math.round(dynamismScore),
-      platformEngagement: Math.round(platformScore),
+      platformEngagement: 0,
     },
   };
 }

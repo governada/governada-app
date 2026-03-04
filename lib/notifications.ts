@@ -62,7 +62,13 @@ export type EventType =
   | 'poll-deadline'
   | 'watchlist-alert'
   | 'governance-pattern-alert'
-  | 'platform-announcement';
+  | 'platform-announcement'
+  | 'tier-change'
+  | 'spo-tier-change'
+  | 'alignment-drift'
+  | 'delegation-milestone'
+  | 'spo-inactivity'
+  | 'competitive-movement';
 
 /** @deprecated Use NotificationPayload instead */
 export interface NotificationEvent {

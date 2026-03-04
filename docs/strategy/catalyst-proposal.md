@@ -1,8 +1,8 @@
-# Project Catalyst Funding Proposal — DRepScore
+# Project Catalyst Funding Proposal — Civica
 
 > **Status:** Active — Drafting for Fund 16
 > **Parent:** [monetization-strategy.md](monetization-strategy.md) — Section 3
-> **Last updated:** February 2026
+> **Last updated:** March 2026 (Civica rebrand, expanded vision)
 > **Target fund:** Fund 16 (estimated mid-2026, prepare proposal by May 2026)
 
 ## Fund Intelligence
@@ -18,9 +18,9 @@
 - Community review: Dec 2 - Jan 8, 2026
 - Voting: TBA
 
-### Target Categories for DRepScore
+### Target Categories for Civica
 
-1. **Cardano Open: Ecosystem** — Governance tooling, ecosystem growth, education. This is our primary fit.
+1. **Cardano Open: Ecosystem** — Governance tooling, civic engagement, ecosystem growth. This is our primary fit.
 2. **Cardano Open: Developers** — If we open-source the scoring engine / API. Secondary option.
 3. **Midnight: Compact DApps** — For a separate Midnight-specific proposal (if we have a concrete ZK governance concept by then).
 
@@ -35,74 +35,79 @@
 
 ---
 
-## Proposal Draft: "DRepScore — Governance Accountability & DRep Discovery Platform"
+## Proposal Draft: "Civica — The Civic Hub for the Cardano Nation"
 
 ### Problem Statement
 
-Cardano's governance model (CIP-1694) relies on Delegated Representatives (DReps) to vote on behalf of ADA holders. But delegators face critical challenges:
+Cardano's governance model (CIP-1694) created a decentralized nation with elected representatives (DReps), infrastructure governors (SPOs), a constitutional judiciary (CC), and a public treasury. But this nation has no civic infrastructure:
 
-1. **No accountability metrics** — There's no standardized way to evaluate whether a DRep is actually doing their job (voting, providing rationale, staying active).
-2. **Discovery is broken** — GovTool provides a list of DReps but no scoring, filtering by values, or comparison tools. Finding a DRep aligned with your governance preferences is needlessly difficult.
-3. **Engagement is low** — Most ADA holders don't participate in governance because the tooling makes it feel inaccessible and opaque.
-4. **DReps lack feedback loops** — DReps who do their job well have no way to demonstrate accountability or differentiate themselves from inactive DReps.
+1. **No accountability metrics** — There's no standardized way to evaluate whether DReps or SPOs are doing their governance jobs (voting, providing rationale, staying active).
+2. **Discovery is broken** — GovTool provides a list of DReps but no scoring, filtering by values, or comparison tools. Finding aligned representatives is needlessly difficult. SPO governance participation is completely invisible.
+3. **Engagement is low** — Most ADA holders don't participate in governance because the tooling makes it feel inaccessible and opaque. Citizens have no civic hub.
+4. **Representatives lack feedback loops** — DReps and SPOs who do their job well have no way to demonstrate accountability or differentiate themselves.
+5. **No tri-body visibility** — No tool shows how DReps, SPOs, and CC vote on the same proposals, making checks-and-balances invisible.
 
-This undermines the entire premise of delegated governance. If delegators can't evaluate DReps, delegation becomes random — and governance quality suffers.
+This undermines the entire premise of delegated governance. If citizens can't evaluate their representatives, delegation becomes random — and governance quality suffers.
 
 ### Solution
 
-DRepScore is a governance accountability platform that:
+Civica is the civic hub for the Cardano Nation:
 
-1. **Scores every DRep (0-100)** based on transparent, verifiable metrics — participation rate, rationale quality, reliability, and profile completeness. No subjective ratings; pure on-chain data.
-2. **Matches delegators to aligned DReps** through a value-preference system (Treasury Conservative, Treasury Growth, Decentralization, Security, Innovation/DeFi, Transparency).
-3. **Provides DRep dashboards** with performance analytics, governance inbox, and engagement tools — giving DReps the feedback loop they need.
-4. **Tracks governance health** through proposal analytics, vote breakdowns, and delegation patterns — making Cardano governance transparent and accessible.
+1. **Scores every DRep and SPO (0-100)** based on transparent, verifiable metrics — participation, rationale quality, reliability, and governance identity. No subjective ratings; pure on-chain data.
+2. **Matches citizens to aligned representatives** through a PCA-based value-preference system across 6 governance dimensions. 60 seconds to delegation.
+3. **Provides representative dashboards** with performance analytics, governance inbox, and engagement tools — giving DReps and SPOs the feedback loop they need.
+4. **Tracks governance health** through the Governance Health Index, Edinburgh Decentralization Index, treasury intelligence, inter-body alignment, and AI-powered epoch recaps — making the entire governance ecosystem transparent and accessible.
+5. **Serves all three governance bodies** — DReps, SPOs, and Constitutional Committee with unified analysis, enabling citizens to see the full picture.
 
 ### What Already Exists (Traction)
 
-DRepScore is not a concept — it's a live, functioning platform:
+Civica is not a concept — it's a live, functioning platform with 90+ API routes and 22 background sync functions:
 
-- **Production URL:** https://drepscore.app (or current URL)
-- **Scoring engine V3** — Iterated 3 times based on community feedback
-- **Full DRep directory** with scores, voting history, rationale analysis
-- **Wallet integration** — Delegation via Eternl, Lace, Typhon, Vespr (MeshJS)
-- **Value-based matching** — 6-category preference system
-- **DRep dashboards** — Claimed profiles with governance inbox
-- **Automated data pipeline** — Daily full sync + 30-min fast sync from Koios API
-- **AI-powered rationale summaries** — Claude-powered analysis of voting rationale
+- **Production URL:** https://drepscore.io (domain transition planned)
+- **DRep Scoring V3** — 4-pillar model (Engagement Quality, Effective Participation, Reliability, Governance Identity) with percentile normalization
+- **SPO Governance Scoring** — 3-pillar model scoring ~3,000 pool operators on governance participation
+- **PCA Alignment System** — 6D alignment with AI proposal classification, temporal trajectories
+- **Governance Health Index** — 6-component system health metric + Edinburgh Decentralization Index (7 mathematical metrics)
+- **Inter-Body Alignment** — Tri-body analysis across DReps, SPOs, and Constitutional Committee
+- **Treasury Intelligence** — Spending effectiveness, DRep treasury judgment, accountability polls
+- **Quick Match** — 60-second DRep matching with confidence scores and dimension-level explanations
+- **Full Wallet Integration** — Delegation via Eternl, Lace, Typhon, Vespr (MeshJS)
+- **AI-powered narratives** — Claude-powered rationale analysis, epoch recaps, governance briefs
+- **Real-time data pipeline** — 22 Inngest durable functions with 30-min to weekly sync schedules
 
-This proposal funds the **next phase** — turning a working MVP into the definitive Cardano governance platform.
+This proposal funds the **next phase** — transforming a robust governance intelligence engine into the definitive civic experience for Cardano citizens.
 
 ### What Catalyst Funding Enables
 
-#### Phase 1: Public API & Integrations (Months 1-3)
+#### Phase 1: Civica Civic Experience (Months 1-3)
 
-- Design and launch a public Governance Data API
-- Create embeddable DRep Score widget for third-party sites
-- Outreach to wallet providers (Lace, Eternl, Vespr) for integration partnerships
-- API documentation and developer portal
+- Clean-sheet frontend redesign with citizen-centric UX (4-nav architecture, segment detection, action-first design)
+- Score tier system with emotional design (Emerging → Bronze → Silver → Gold → Diamond → Legendary)
+- Alignment drift detection and re-delegation intelligence for citizens
+- SPO experience completion (claim flow, 4th scoring pillar, profile parity with DReps)
 
-#### Phase 2: DRep Engagement Tools (Months 3-5)
+#### Phase 2: Growth & Engagement (Months 3-5)
 
-- DRep Pro features — enhanced analytics, smart governance inbox, AI rationale assistant
-- Delegator engagement tools — polls, position statements, update notifications
-- Score history and trend visualization
-- Push notification system for governance events
+- Governance Wrapped (per-epoch and annual shareable civic identity cards for all segments)
+- DRep-to-citizen communication loop (position statements, notifications)
+- Intelligent notification-driven civic life (epoch recaps, score changes, alignment drift)
+- Embeddable governance badges for DRep and SPO websites
 
-#### Phase 3: Community & Education (Months 5-7)
+#### Phase 3: Monetization & API (Months 5-7)
 
-- Governance education content integrated into the platform
+- DRep Pro + SPO Pro tiers launched
+- Public Governance Data API v2 with wallet and pool-tool integrations
+- Developer documentation and embeddable Quick Match widget
 - "State of Cardano Governance" data-driven reporting
-- Onboarding flow improvements for first-time governance participants
-- Community feedback integration and scoring methodology refinement
 
 ### Milestones (for 75K-150K ADA ask)
 
-| Milestone | Deliverable                                                                  | Verification                                                     | Timeline |
-| --------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------- |
-| M1        | Public API beta with documentation; embeddable widget deployed               | API docs live, widget demo, 1+ integration partner in discussion | Month 3  |
-| M2        | DRep Pro features launched; delegator engagement tools live                  | Feature demo, user metrics, DRep adoption numbers                | Month 5  |
-| M3        | Education content live; governance reporting published; onboarding optimized | Content published, traffic metrics, user feedback survey         | Month 7  |
-| Final     | Full project report; open-source scoring engine; sustainability plan         | Report published, GitHub repo, revenue/sustainability metrics    | Month 8  |
+| Milestone | Deliverable                                                                                | Verification                                                  | Timeline |
+| --------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | -------- |
+| M1        | Civica frontend launched with citizen-centric UX; score tiers live; SPO profiles at parity | Live platform demo, user metrics, DRep + SPO profiles live    | Month 3  |
+| M2        | Governance Wrapped shipped; notification system live; growth loops operational             | Wrapped demo, sharing metrics, return visit data              | Month 5  |
+| M3        | DRep Pro + SPO Pro launched; API v2 with 1+ integration partner                            | Revenue metrics, API docs, integration demo                   | Month 7  |
+| Final     | Full project report; open-source scoring engine; sustainability plan                       | Report published, GitHub repo, revenue/sustainability metrics | Month 8  |
 
 ### Budget Breakdown (Estimated — Adjust Based on ADA Price)
 
@@ -116,33 +121,36 @@ This proposal funds the **next phase** — turning a working MVP into the defini
 
 ### Impact & Success Metrics
 
-| Metric                          | Target by Final Milestone       |
-| ------------------------------- | ------------------------------- |
-| Monthly Active Users            | 500+                            |
-| DReps with claimed profiles     | 50+                             |
-| API integration partners        | 2+                              |
-| Governance proposals analyzed   | 100% of on-chain proposals      |
-| DRep coverage                   | 100% of registered DReps scored |
-| Delegator satisfaction (survey) | 80%+ positive                   |
+| Metric                             | Target by Final Milestone  |
+| ---------------------------------- | -------------------------- |
+| Monthly Active Citizens            | 500+                       |
+| DReps with claimed profiles        | 50+                        |
+| SPOs with claimed profiles         | 50+                        |
+| API integration partners           | 2+                         |
+| Governance proposals analyzed      | 100% of on-chain proposals |
+| DRep + SPO coverage                | 100% scored                |
+| Citizen satisfaction (survey)      | 80%+ positive              |
+| Weekly return rate (authenticated) | 40%+                       |
 
 ### Team
 
 - **Lead:** Dalton (Product & Analytics lead, Cardano governance enthusiast)
 - Full-stack development capability (Next.js, Supabase, Cardano APIs)
-- Track record: Live production platform with V3 scoring engine, multiple wallet integrations
+- Track record: Live production platform with V3 scoring engine, 90+ API routes, 22 background functions, multi-wallet integration
 
 ### Sustainability Plan
 
-DRepScore is designed for long-term sustainability beyond Catalyst funding:
+Civica is designed for long-term sustainability beyond Catalyst funding:
 
-- **DRep Pro tier** — Premium features for DReps ($15-25/mo in ADA)
-- **Governance Data API** — Paid API access for wallets and third-party tools
+- **DRep Pro + SPO Pro tiers** — Premium features for representatives ($15-25/mo in ADA)
+- **Governance Data API** — Paid API access for wallets, pool comparison tools, and researchers
+- **Verified Project badges** — Treasury proposal teams ($10-25/project)
 - **Ecosystem sponsorships** — Cardano projects supporting governance tooling
-- Open-source scoring engine increases trust while proprietary data aggregation provides revenue moat
+- Open-source scoring engine increases trust while proprietary historical data provides revenue moat
 
 ### Why This Matters for Cardano
 
-CIP-1694 governance only works if delegators can make informed decisions. Without accountability tooling, delegation becomes random noise. DRepScore turns Cardano's governance experiment into a transparent, data-driven democracy — which is exactly what the ecosystem needs to prove to the world that on-chain governance can work.
+CIP-1694 created a decentralized nation but gave its citizens no civic infrastructure. Without accountability tooling, delegation becomes random noise. Without governance visibility for SPOs, staking and governance remain disconnected. Civica turns Cardano's governance experiment into a transparent, participatory democracy — the civic infrastructure the Cardano Nation needs to prove to the world that on-chain governance can work at scale.
 
 ---
 
@@ -223,4 +231,4 @@ Concrete pre-submission roadmap with deadlines. Monitor Fund 16 timeline via @Ca
 - [ ] Should we open-source the scoring engine as part of the proposal? (builds trust, but reduces moat)
 - [ ] Solo proposer vs. adding team members? (team = more credibility but need verifiable references)
 - [ ] Should the sustainability plan include specific pricing? (shows business thinking but commits us early)
-- [ ] What existing DRep tooling should we reference as competitors/complements?
+- [ ] What existing governance tooling should we reference as competitors/complements? (gov.tools, DRep.tools, PoolTool — see competitive analysis in ultimate-vision.md)

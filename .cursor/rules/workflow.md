@@ -42,6 +42,10 @@ First-principles checklist:
 - **Server-side caching**: Use `cached()` from `lib/redis.ts` instead of in-memory `Map` caches for data that should survive deploys or be shared across replicas
 - **E2E tests**: For UI-touching changes, add or update Playwright tests in `e2e/`. Run `npm run test:e2e` locally before pushing
 
+## Post-Execution Review (MANDATORY)
+
+> After completing any plan/batch: run `workflow-procedures.md` → "Post-Execution Review" (opportunities, bugs, dead code, open questions, vision alignment). Ask user which recs to execute before shipping.
+
 ## Ship It (MANDATORY)
 
 > A build is NOT complete until production is running the new code. See `workflow-procedures.md` for the full checklist.

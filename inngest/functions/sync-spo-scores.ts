@@ -3,7 +3,12 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
 import { computeSpoScores, type SpoVoteData } from '@/lib/scoring/spoScore';
+import {
+  computeSpoGovernanceIdentity,
+  type SpoProfileData,
+} from '@/lib/scoring/spoGovernanceIdentity';
 import { getExtendedImportanceWeight } from '@/lib/scoring';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import { logger } from '@/lib/logger';
 
 interface SpoProposalRow {
@@ -39,10 +44,21 @@ interface ClassificationRow {
   dim_transparency: number | null;
 }
 
+interface PoolRow {
+  pool_id: string;
+  ticker: string | null;
+  pool_name: string | null;
+  governance_statement: string | null;
+  homepage_url: string | null;
+  social_links: Array<{ uri: string; label?: string }> | null;
+  metadata_hash_verified: boolean | null;
+  delegator_count: number | null;
+}
+
 interface KoiosPoolInfo {
   pool_id_bech32?: string;
   ticker?: string;
-  meta_json?: { name?: string };
+  meta_json?: { name?: string; description?: string; homepage?: string };
   pledge?: number;
   margin?: number;
   fixed_cost?: number;
@@ -60,6 +76,10 @@ export const syncSpoScores = inngest.createFunction(
   },
   [{ event: 'drepscore/sync.spo-scores' }, { cron: '0 3 * * *' }],
   async ({ step }) => {
+    const identityEnabled = await step.run('check-feature-flag', async () => {
+      return getFeatureFlag('spo_governance_identity', false);
+    });
+
     const computeResult = await step.run('compute-scores', async () => {
       const supabase = getSupabaseAdmin();
       const syncLog = new SyncLogger(supabase, 'spo_scores');
@@ -70,6 +90,7 @@ export const syncSpoScores = inngest.createFunction(
         { data: proposalRows },
         { data: classificationRows },
         { data: statsRow },
+        { data: poolRows },
       ] = await Promise.all([
         supabase
           .from('spo_votes')
@@ -81,6 +102,11 @@ export const syncSpoScores = inngest.createFunction(
           ),
         supabase.from('proposal_classifications').select('*'),
         supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
+        supabase
+          .from('pools')
+          .select(
+            'pool_id, ticker, pool_name, governance_statement, homepage_url, social_links, metadata_hash_verified, delegator_count',
+          ),
       ]);
 
       const currentEpoch =
@@ -94,6 +120,7 @@ export const syncSpoScores = inngest.createFunction(
         const nowSeconds = Math.floor(Date.now() / 1000);
         const proposalContexts = new Map<string, { blockTime: number; importanceWeight: number }>();
         const allProposalTypes = new Set<string>();
+        const proposalBlockTimes = new Map<string, number>();
 
         for (const p of (proposalRows || []) as SpoProposalRow[]) {
           const key = `${p.tx_hash}-${p.proposal_index}`;
@@ -106,6 +133,7 @@ export const syncSpoScores = inngest.createFunction(
             blockTime: p.block_time || 0,
             importanceWeight: weight,
           });
+          proposalBlockTimes.set(key, p.block_time || 0);
           allProposalTypes.add(p.proposal_type);
         }
 
@@ -134,6 +162,7 @@ export const syncSpoScores = inngest.createFunction(
             epoch: v.epoch ?? blockTimeToEpoch(v.block_time),
             proposalType: proposal?.proposal_type ?? 'InfoAction',
             importanceWeight: ctx?.importanceWeight ?? 1,
+            proposalBlockTime: proposalBlockTimes.get(proposalKey) ?? 0,
           };
 
           allVotes.push(voteData);
@@ -141,13 +170,64 @@ export const syncSpoScores = inngest.createFunction(
           poolVotes.get(v.pool_id)!.push(voteData);
         }
 
+        // Build SPO profile data for Governance Identity pillar
+        const spoProfiles = new Map<string, SpoProfileData>();
+        const allDelegatorCounts: number[] = [];
+        const poolMetaMap = new Map<string, PoolRow>();
+
+        for (const p of (poolRows || []) as PoolRow[]) {
+          poolMetaMap.set(p.pool_id, p);
+          allDelegatorCounts.push(p.delegator_count ?? 0);
+        }
+
+        // Include pools that voted but don't have a pools row yet
+        for (const poolId of poolVotes.keys()) {
+          const meta = poolMetaMap.get(poolId);
+          spoProfiles.set(poolId, {
+            poolId,
+            ticker: meta?.ticker ?? null,
+            poolName: meta?.pool_name ?? null,
+            governanceStatement: meta?.governance_statement ?? null,
+            poolDescription: null,
+            homepageUrl: meta?.homepage_url ?? null,
+            socialLinks: Array.isArray(meta?.social_links) ? meta!.social_links : [],
+            metadataHashVerified: meta?.metadata_hash_verified ?? false,
+            delegatorCount: meta?.delegator_count ?? 0,
+          });
+          if (!poolMetaMap.has(poolId)) {
+            allDelegatorCounts.push(0);
+          }
+        }
+
+        // Compute identity scores (returns 0 for pools without profiles if flag disabled)
+        const identityScores = identityEnabled
+          ? computeSpoGovernanceIdentity(spoProfiles, allDelegatorCounts)
+          : new Map<string, number>();
+
+        // Load score history for momentum
+        const { data: historyRows } = await supabase
+          .from('spo_score_snapshots')
+          .select('pool_id, governance_score, snapshot_at')
+          .gte('snapshot_at', new Date(Date.now() - 14 * 86400000).toISOString());
+
+        const scoreHistory = new Map<string, { date: string; score: number }[]>();
+        for (const h of historyRows || []) {
+          if (!h.governance_score || !h.snapshot_at) continue;
+          const arr = scoreHistory.get(h.pool_id) ?? [];
+          arr.push({ date: h.snapshot_at.slice(0, 10), score: h.governance_score });
+          scoreHistory.set(h.pool_id, arr);
+        }
+
         const finalScores = computeSpoScores(
           allVotes,
           totalWeightedPool,
           currentEpoch,
           allProposalTypes,
+          identityScores,
+          scoreHistory,
         );
 
+        // Alignment computation
         const classificationMap = new Map<string, Record<string, number>>();
         for (const c of (classificationRows || []) as ClassificationRow[]) {
           const key = `${c.proposal_tx_hash}-${c.proposal_index}`;
@@ -200,6 +280,7 @@ export const syncSpoScores = inngest.createFunction(
           poolAlignments.set(poolId, alignments);
         }
 
+        // Upsert pools with full pillar breakdown
         const poolUpdates = [...finalScores.entries()].map(([poolId, s]) => {
           const align = poolAlignments.get(poolId) ?? {};
           const voteCount = poolVotes.get(poolId)?.length ?? 0;
@@ -212,6 +293,9 @@ export const syncSpoScores = inngest.createFunction(
             consistency_pct: Math.round(s.consistencyPercentile),
             reliability_raw: Math.round(s.reliabilityRaw),
             reliability_pct: Math.round(s.reliabilityPercentile),
+            governance_identity_raw: Math.round(s.governanceIdentityRaw),
+            governance_identity_pct: Math.round(s.governanceIdentityPercentile),
+            score_momentum: s.momentum,
             vote_count: voteCount,
             alignment_treasury_conservative: align.treasury_conservative ?? null,
             alignment_treasury_growth: align.treasury_growth ?? null,
@@ -233,11 +317,20 @@ export const syncSpoScores = inngest.createFunction(
           );
         }
 
+        // Full pillar breakdown snapshots
         const scoreSnapshots = [...finalScores.entries()].map(([poolId, s]) => ({
           pool_id: poolId,
           epoch_no: currentEpoch,
           governance_score: s.composite,
-          participation_rate: Math.round(s.participationPercentile),
+          participation_rate: Math.round(s.participationRaw),
+          participation_pct: Math.round(s.participationPercentile),
+          consistency_raw: Math.round(s.consistencyRaw),
+          consistency_pct: Math.round(s.consistencyPercentile),
+          reliability_raw: Math.round(s.reliabilityRaw),
+          reliability_pct: Math.round(s.reliabilityPercentile),
+          governance_identity_raw: Math.round(s.governanceIdentityRaw),
+          governance_identity_pct: Math.round(s.governanceIdentityPercentile),
+          score_momentum: s.momentum,
           rationale_rate: null,
           vote_count: poolVotes.get(poolId)?.length ?? 0,
         }));
@@ -273,10 +366,31 @@ export const syncSpoScores = inngest.createFunction(
           );
         }
 
+        // Completeness log
+        await supabase.from('snapshot_completeness_log').upsert(
+          {
+            snapshot_type: 'spo_scores',
+            epoch_no: currentEpoch,
+            snapshot_date: new Date().toISOString().slice(0, 10),
+            record_count: finalScores.size,
+            expected_count: poolVotes.size,
+            coverage_pct:
+              poolVotes.size > 0 ? Math.round((finalScores.size / poolVotes.size) * 100) : 100,
+            metadata: {
+              identityEnabled,
+              votesProcessed: voteRows.length,
+              poolsWithIdentity: identityScores.size,
+            },
+          },
+          { onConflict: 'snapshot_type,epoch_no' },
+        );
+
         const summary = {
           success: true,
           poolsScored: finalScores.size,
           votesProcessed: voteRows.length,
+          identityEnabled,
+          poolsWithIdentity: identityScores.size,
         };
         await syncLog.finalize(true, null, summary);
         await emitPostHog(true, 'spo_scores', syncLog.elapsed, summary);
@@ -327,6 +441,7 @@ export const syncSpoScores = inngest.createFunction(
             fixed_cost_lovelace: p.fixed_cost ?? 0,
             delegator_count: p.live_delegators ?? 0,
             live_stake_lovelace: p.live_stake ?? 0,
+            homepage_url: p.meta_json?.homepage ?? null,
           });
         }
 
@@ -343,6 +458,163 @@ export const syncSpoScores = inngest.createFunction(
         return { fetched: 0, error: errMsg(err) };
       }
     });
+
+    // Refresh delegator_count + live_stake for ALL pools that already have metadata.
+    // The fetch-koios-metadata step above only targets pools with null ticker/name,
+    // so after first enrichment delegator counts go stale. This step fixes that.
+    await step.run('refresh-delegator-counts', async () => {
+      const supabase = getSupabaseAdmin();
+      const { data: enrichedPools } = await supabase
+        .from('pools')
+        .select('pool_id')
+        .not('ticker', 'is', null)
+        .not('pool_name', 'is', null);
+
+      if (!enrichedPools?.length) return { refreshed: 0 };
+
+      const BATCH = 100;
+      let refreshed = 0;
+
+      for (let i = 0; i < enrichedPools.length; i += BATCH) {
+        const batch = enrichedPools.slice(i, i + BATCH);
+        const poolIds = batch.map((p: { pool_id: string }) => p.pool_id);
+
+        try {
+          const res = await fetch(`${KOIOS_BASE}/pool_info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ _pool_bech32_ids: poolIds }),
+            signal: AbortSignal.timeout(15_000),
+          });
+
+          if (!res.ok) {
+            logger.warn('[sync-spo-scores] delegator refresh batch failed', { status: res.status });
+            continue;
+          }
+
+          const data = (await res.json()) as KoiosPoolInfo[];
+          for (const p of data) {
+            if (!p.pool_id_bech32) continue;
+            const { error } = await supabase
+              .from('pools')
+              .update({
+                delegator_count: p.live_delegators ?? 0,
+                live_stake_lovelace: p.live_stake ?? 0,
+              })
+              .eq('pool_id', p.pool_id_bech32);
+            if (!error) refreshed++;
+          }
+        } catch (err) {
+          logger.warn('[sync-spo-scores] delegator refresh batch error', { error: errMsg(err) });
+        }
+      }
+
+      return { refreshed };
+    });
+
+    // Snapshot SPO power (delegator count + live stake) for trend tracking
+    await step.run('snapshot-spo-power', async () => {
+      const supabase = getSupabaseAdmin();
+
+      const { data: statsRow } = await supabase
+        .from('governance_stats')
+        .select('current_epoch')
+        .eq('id', 1)
+        .single();
+      const currentEpoch =
+        statsRow?.current_epoch ?? blockTimeToEpoch(Math.floor(Date.now() / 1000));
+
+      const { data: scoredPools } = await supabase
+        .from('pools')
+        .select('pool_id, delegator_count, live_stake_lovelace')
+        .gt('vote_count', 0);
+
+      if (!scoredPools?.length) return { snapshotted: 0 };
+
+      const rows = scoredPools.map(
+        (p: {
+          pool_id: string;
+          delegator_count: number | null;
+          live_stake_lovelace: number | null;
+        }) => ({
+          pool_id: p.pool_id,
+          epoch_no: currentEpoch,
+          delegator_count: p.delegator_count ?? 0,
+          live_stake_lovelace: p.live_stake_lovelace ?? 0,
+        }),
+      );
+
+      const BATCH_SIZE = 200;
+      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+        const batch = rows.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase
+          .from('spo_power_snapshots')
+          .upsert(batch, { onConflict: 'pool_id,epoch_no', ignoreDuplicates: true });
+        if (error) {
+          logger.error('[sync-spo-scores] spo_power_snapshots upsert error', {
+            error: error.message,
+          });
+        }
+      }
+
+      return { snapshotted: rows.length };
+    });
+
+    // Tier assignment for SPOs
+    const tierResult = await step.run('assign-spo-tiers', async () => {
+      const tiersEnabled = await getFeatureFlag('score_tiers', false);
+      if (!tiersEnabled) return { tierChanges: 0 };
+
+      const { computeTier, detectTierChange } = await import('@/lib/scoring/tiers');
+      const supabase = getSupabaseAdmin();
+
+      const { data: currentPools } = await supabase
+        .from('pools')
+        .select('pool_id, governance_score, current_tier')
+        .gt('vote_count', 0);
+
+      const tierChangeInserts: Record<string, unknown>[] = [];
+
+      for (const pool of currentPools || []) {
+        const newScore = pool.governance_score ?? 0;
+        const newTier = computeTier(newScore);
+        const oldTier = pool.current_tier ?? computeTier(0);
+
+        if (oldTier !== newTier) {
+          const change = detectTierChange('spo', pool.pool_id, 0, newScore);
+          if (change) {
+            tierChangeInserts.push({
+              entity_type: 'spo',
+              entity_id: pool.pool_id,
+              old_tier: change.oldTier,
+              new_tier: change.newTier,
+              old_score: change.oldScore,
+              new_score: change.newScore,
+              epoch_no: null,
+            });
+          }
+        }
+
+        await supabase.from('pools').update({ current_tier: newTier }).eq('pool_id', pool.pool_id);
+      }
+
+      if (tierChangeInserts.length > 0) {
+        const { batchUpsert } = await import('@/lib/sync-utils');
+        await batchUpsert(supabase, 'tier_changes', tierChangeInserts, 'id', 'tier_changes');
+      }
+
+      return { tierChanges: tierChangeInserts.length };
+    });
+
+    if ('poolsScored' in computeResult) {
+      await step.sendEvent('spo-scores-complete', {
+        name: 'drepscore/sync.spo-scores.complete',
+        data: {
+          poolsScored: computeResult.poolsScored,
+          votesProcessed: computeResult.votesProcessed,
+        },
+      });
+    }
 
     return computeResult;
   },

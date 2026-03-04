@@ -1,6 +1,6 @@
 # Observability Setup Guide
 
-Dashboard and external service configurations for the DRepScore observability stack. These cannot be automated via code and must be set up manually.
+Dashboard and external service configurations for the Civica observability stack. These cannot be automated via code and must be set up manually.
 
 ---
 

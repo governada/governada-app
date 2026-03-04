@@ -2,27 +2,32 @@
 
 ## Status
 
-Accepted (V3 — Rationale-Forward)
+Accepted — **V3 (current, Mar 2026)**. Supersedes earlier V1/V2 models.
 
 ## Context
 
-DRepScore needs a single 0-100 score per DRep that measures governance accountability. The score must be objective, transparent, and resistant to gaming.
+Civica needs a single 0-100 score per DRep that measures governance accountability. The score must be objective, transparent, and resistant to gaming.
 
-## Decision
+## Decision (V3 — 4-Pillar Model)
 
-Weighted composite score with four components:
+Weighted composite with four pillars, each percentile-normalized across the full DRep population:
 
-- **Rationale Quality (35%)**: Do they explain their votes? Highest weight because explaining governance decisions is what separates engaged DReps from rubber-stampers.
-- **Effective Participation (30%)**: Do they vote? Penalized for rubber-stamping (voting the same on everything without rationale).
-- **Reliability (20%)**: Can delegators count on consistent participation? Measures streak, recency, gap penalty, and tenure.
-- **Profile Completeness (15%)**: Did they fill out their CIP-119 profile? Lowest weight because it's a one-time action.
+- **Engagement Quality (35%)**: Rationale provision rate (decay-weighted), AI-assessed rationale quality, deliberation signal (dissent, type breadth). Highest weight because explaining governance decisions separates engaged DReps from rubber-stampers.
+- **Effective Participation (25%)**: Importance-weighted participation with treasury scaling and close-margin bonus.
+- **Reliability (25%)**: Consistency, abstention penalty, responsiveness (median days to vote).
+- **Governance Identity (15%)**: Quality-tiered profile completeness + delegator count percentile. Lowest weight — may tune down further per citizen-centric vision review.
 
-Deliberation modifier adjusts effective participation when a DRep provides rationale — rewarding considered voting over blind participation.
+Momentum: linear regression slope over score history. Temporal decay: exponential with 180-day half-life. Implementation: `lib/scoring/`.
+
+### Historical note (V1/V2)
+
+V1 used simple participation rate + rationale provision rate. V2 added reliability and profile completeness with different weights (rationale 35%, participation 30%, reliability 20%, profile 15%). V3 redesigned all pillars, added percentile normalization, momentum, and temporal decay. V1/V2 code may exist in `utils/scoring.ts` as legacy — audit and remove.
 
 ## Consequences
 
-- Rationale-heavy weighting incentivizes DReps to explain votes (positive community effect)
-- Score is deterministic and reproducible — no AI/ML black box
-- Weights are configurable via `DEFAULT_WEIGHTS` in `lib/koios.ts` but changes affect all historical comparisons
+- 4-pillar model incentivizes DReps to explain votes, participate consistently, and maintain quality profiles
+- Score is deterministic and reproducible — AI only used for rationale quality assessment, not the score itself
+- Percentile normalization means scores reflect relative standing, not absolute thresholds
 - DReps with few votes get naturally low scores (no minimum-vote threshold) — this is intentional
-- Percentile rankings computed across all active DReps for relative positioning
+- Voting power/influence intentionally excluded (conflicts with decentralization mission)
+- Score tiers (Emerging → Legendary) planned to add emotional weight to numeric scores

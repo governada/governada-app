@@ -1,18 +1,18 @@
 ---
-description: DRepScore architecture, data flow, scoring model, and key file map
+description: Civica architecture, data flow, scoring model, and key file map
 globs: ['lib/**', 'utils/**', 'app/api/**', 'components/**', 'app/**']
 alwaysApply: false
 ---
 
 <!-- LINE BUDGET: 120 lines. Inngest/sync details → architecture-jobs.md. DB tables → query via Supabase MCP. -->
 
-# DRepScore Architecture
+# Civica Architecture
 
 ## What This Is
 
-The governance intelligence layer for Cardano -- ingests every governance action on-chain, layers opinionated analysis, and delivers personalized, actionable insight to every ecosystem participant. Brand: `$drepscore`. Tone: neutral, educational.
+The civic hub for the Cardano Nation — makes governance visible, accountable, and participatory for every citizen. Ingests every governance action on-chain, layers opinionated scoring and analysis, and delivers personalized, actionable civic intelligence. Formerly DRepScore.
 
-**Product vision and build sequence:** See `docs/strategy/ultimate-vision.md` for the definitive north star -- build order, monetization phases, data flywheel, and how every system connects.
+**Product vision and build sequence:** See `docs/strategy/ultimate-vision.md` for the definitive north star — citizen-centric vision, scoring audit, build phases, and how every system connects. See `.cursor/rules/strategy.md` for the condensed agent cheat sheet.
 
 ## Tech Stack
 
@@ -94,7 +94,9 @@ Supabase-backed `feature_flags` table (41 flags across 14 categories) with admin
 
 **Admin pages**: All under `app/admin/`, client auth via `POST /api/admin/check`, write endpoints validate `address` against `ADMIN_WALLETS`. Add nav links to Header dropdown + MobileNav Admin section.
 
-## Scoring Model (V3, Mar 2026)
+## Scoring Models
+
+### DRep Score V3 (Mar 2026)
 
 ```
 DRep Score (0-100, percentile-normalized) =
@@ -104,7 +106,7 @@ DRep Score (0-100, percentile-normalized) =
   Governance Identity (15%)
 ```
 
-Each pillar is computed as a raw score, then percentile-normalized across the full DRep population. The composite is a weighted sum of percentile scores. Implementation: `lib/scoring/`.
+Each pillar: raw score → percentile-normalized across full DRep population → weighted sum. Implementation: `lib/scoring/`.
 
 - **Engagement Quality**: provision rate (decay-weighted), AI rationale quality, deliberation signal
 - **Effective Participation**: importance-weighted participation with treasury scaling and close-margin bonus
@@ -113,6 +115,19 @@ Each pillar is computed as a raw score, then percentile-normalized across the fu
 - **Momentum**: linear regression slope over score history (stored as `score_momentum`)
 - Influence/voting power intentionally excluded (conflicts with decentralization mission)
 - Temporal decay: exponential with 180-day half-life on vote-related metrics
+
+### SPO Governance Score
+
+```
+SPO Score (0-100, percentile-normalized) =
+  Participation (45%) + Consistency (30%) + Reliability (25%)
+```
+
+Phase A adds a 4th pillar: Governance Identity (governance statement, rationale provision, communication).
+
+### Score Tiers (Phase A — not yet shipped)
+
+Emerging (0-39), Bronze (40-54), Silver (55-69), Gold (70-84), Diamond (85-94), Legendary (95-100). Applied to both DRep and SPO scores. Tier changes trigger celebrations and sharing.
 
 ## Server Component Constraints
 
@@ -157,16 +172,18 @@ The `lib/data.ts` `mapRow()` function unpacks `info` into flat `EnrichedDRep` pr
 
 Any API route that uses JSX (e.g., `ImageResponse` from `next/og`) **must** use the `.tsx` extension, not `.ts`. TypeScript will not parse JSX syntax in `.ts` files. This applies to all OG image routes under `app/api/og/` and the badge route under `app/api/badge/`.
 
-## UX Principles
+## UX Principles (Civica Vision)
 
+- **Citizens first** — every screen answers "what does a citizen need here?"
+- **Action over information** — command center is an action feed, not a data wall
+- **Segment detection** — wallet connect auto-detects: anonymous, undelegated citizen, delegated citizen, DRep, SPO. Each sees a tailored experience
+- **4 nav items max** — Home, Discover, Pulse, My Gov. Everything else via search (⌘K) or inline
+- **Custom everything** — if a chart library has it, we're not using it. Purpose-built visualizations for governance data
+- **Score tiers create emotional weight** — not just numbers, but Emerging → Bronze → Silver → Gold → Diamond → Legendary with visual identity and celebrations
 - Show value first (no forced wallet connect)
-- Educational tooltips on every metric
-- Well-documented DRep filter by default (has name + ticker or description)
-- Summary view default, depth on demand (hover tooltips, expandable sections)
 - Loading skeletons, <3s target page loads
-- Encourage delegation to smaller, quality DReps (size tier badges, decentralization scoring)
-- **Ambitious by default**: Every user-facing visual must be unmistakably DRepScore — not generic shadcn. Custom visualizations over chart libraries, physics-based animations over CSS transitions, identity-colored accents on every surface. See "Ambitious by Default" in `workflow.md` for the full decision framework.
+- Progressive complexity — Layer 1 (viewport 1) must be emotionally complete without scrolling
 
 ## Production URL
 
-https://drepscore.io
+https://drepscore.io (Civica domain TBD)

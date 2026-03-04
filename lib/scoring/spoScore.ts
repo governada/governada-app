@@ -1,10 +1,17 @@
+/**
+ * SPO Governance Score V2 — 4-pillar composite calculator.
+ * Participation (38%) + Consistency (24%) + Reliability (23%) + Governance Identity (15%).
+ * Percentile-normalized, with momentum and close-margin bonus (ADR-006).
+ */
+
 import { percentileNormalize } from './percentile';
 import { DECAY_LAMBDA } from './types';
 
 export const SPO_PILLAR_WEIGHTS = {
-  participation: 0.45,
-  consistency: 0.3,
-  reliability: 0.25,
+  participation: 0.38,
+  consistency: 0.24,
+  reliability: 0.23,
+  governanceIdentity: 0.15,
 } as const;
 
 export interface SpoVoteData {
@@ -15,6 +22,7 @@ export interface SpoVoteData {
   epoch: number;
   proposalType: string;
   importanceWeight: number;
+  proposalBlockTime: number;
 }
 
 export interface SpoScoreResult {
@@ -25,13 +33,22 @@ export interface SpoScoreResult {
   consistencyPercentile: number;
   reliabilityRaw: number;
   reliabilityPercentile: number;
+  governanceIdentityRaw: number;
+  governanceIdentityPercentile: number;
+  momentum: number | null;
 }
 
+/**
+ * Compute SPO scores for all pools from vote data + identity scores.
+ * Identity scores are computed externally via computeSpoGovernanceIdentity().
+ */
 export function computeSpoScores(
   allVotes: SpoVoteData[],
   totalProposalPool: number,
   currentEpoch: number,
   allProposalTypes: Set<string>,
+  identityScores: Map<string, number>,
+  scoreHistory: Map<string, { date: string; score: number }[]>,
 ): Map<string, SpoScoreResult> {
   const byPool = new Map<string, SpoVoteData[]>();
   for (const v of allVotes) {
@@ -44,13 +61,17 @@ export function computeSpoScores(
   const totalTypes = allProposalTypes.size || 1;
 
   const spoMajorityByProposal = computeSpoMajorityByProposal(allVotes);
+  const spoMarginByProposal = computeSpoMarginByProposal(allVotes);
 
   const participationRaw = new Map<string, number>();
   const consistencyRaw = new Map<string, number>();
   const reliabilityRaw = new Map<string, number>();
 
   for (const [poolId, votes] of byPool) {
-    participationRaw.set(poolId, computeParticipation(votes, totalProposalPool, nowSeconds));
+    participationRaw.set(
+      poolId,
+      computeParticipation(votes, totalProposalPool, nowSeconds, spoMarginByProposal),
+    );
     consistencyRaw.set(poolId, computeConsistency(votes, spoMajorityByProposal, totalTypes));
     reliabilityRaw.set(poolId, computeReliability(votes, currentEpoch));
   }
@@ -58,29 +79,39 @@ export function computeSpoScores(
   const participationPct = percentileNormalize(participationRaw);
   const consistencyPct = percentileNormalize(consistencyRaw);
   const reliabilityPct = percentileNormalize(reliabilityRaw);
+  const identityPct = percentileNormalize(identityScores);
 
   const result = new Map<string, SpoScoreResult>();
-  for (const poolId of byPool.keys()) {
-    const p = participationRaw.get(poolId) ?? 0;
-    const c = consistencyRaw.get(poolId) ?? 0;
-    const r = reliabilityRaw.get(poolId) ?? 0;
-    const composite = Math.min(
-      100,
-      Math.max(
-        0,
-        SPO_PILLAR_WEIGHTS.participation * (participationPct.get(poolId) ?? 0) +
-          SPO_PILLAR_WEIGHTS.consistency * (consistencyPct.get(poolId) ?? 0) +
-          SPO_PILLAR_WEIGHTS.reliability * (reliabilityPct.get(poolId) ?? 0),
-      ),
+
+  const allPoolIds = new Set([...byPool.keys(), ...identityScores.keys()]);
+
+  for (const poolId of allPoolIds) {
+    const pPct = participationPct.get(poolId) ?? 0;
+    const cPct = consistencyPct.get(poolId) ?? 0;
+    const rPct = reliabilityPct.get(poolId) ?? 0;
+    const iPct = identityPct.get(poolId) ?? 0;
+
+    const composite = Math.round(
+      SPO_PILLAR_WEIGHTS.participation * pPct +
+        SPO_PILLAR_WEIGHTS.consistency * cPct +
+        SPO_PILLAR_WEIGHTS.reliability * rPct +
+        SPO_PILLAR_WEIGHTS.governanceIdentity * iPct,
     );
+
+    const history = scoreHistory.get(poolId);
+    const momentum = history ? computeMomentum(history) : null;
+
     result.set(poolId, {
-      composite: Math.round(composite),
-      participationRaw: p,
-      participationPercentile: participationPct.get(poolId) ?? 0,
-      consistencyRaw: c,
-      consistencyPercentile: consistencyPct.get(poolId) ?? 0,
-      reliabilityRaw: r,
-      reliabilityPercentile: reliabilityPct.get(poolId) ?? 0,
+      composite: clamp(composite),
+      participationRaw: participationRaw.get(poolId) ?? 0,
+      participationPercentile: pPct,
+      consistencyRaw: consistencyRaw.get(poolId) ?? 0,
+      consistencyPercentile: cPct,
+      reliabilityRaw: reliabilityRaw.get(poolId) ?? 0,
+      reliabilityPercentile: rPct,
+      governanceIdentityRaw: identityScores.get(poolId) ?? 0,
+      governanceIdentityPercentile: iPct,
+      momentum,
     });
   }
   return result;
@@ -90,6 +121,7 @@ function computeParticipation(
   votes: SpoVoteData[],
   totalProposalPool: number,
   nowSeconds: number,
+  spoMarginByProposal: Map<string, number>,
 ): number {
   if (totalProposalPool === 0) return 0;
   const seen = new Set<string>();
@@ -99,7 +131,15 @@ function computeParticipation(
     seen.add(v.proposalKey);
     const ageDays = Math.max(0, (nowSeconds - v.blockTime) / 86400);
     const decay = Math.exp(-DECAY_LAMBDA * ageDays);
-    weighted += v.importanceWeight * decay;
+
+    let weight = v.importanceWeight * decay;
+
+    const margin = spoMarginByProposal.get(v.proposalKey);
+    if (margin !== undefined && margin < 0.2) {
+      weight *= 1.5;
+    }
+
+    weighted += weight;
   }
   return Math.min(100, (weighted / totalProposalPool) * 100);
 }
@@ -165,6 +205,31 @@ function computeSpoMajorityByProposal(
   return result;
 }
 
+/**
+ * Compute vote margin for close-margin bonus.
+ * Margin = |yesRate - noRate| among non-abstain votes.
+ */
+function computeSpoMarginByProposal(allVotes: SpoVoteData[]): Map<string, number> {
+  const byProposal = new Map<string, { yes: number; no: number }>();
+  for (const v of allVotes) {
+    if (v.vote === 'Abstain') continue;
+    const cur = byProposal.get(v.proposalKey) ?? { yes: 0, no: 0 };
+    if (v.vote === 'Yes') cur.yes++;
+    else cur.no++;
+    byProposal.set(v.proposalKey, cur);
+  }
+  const result = new Map<string, number>();
+  for (const [key, counts] of byProposal) {
+    const total = counts.yes + counts.no;
+    if (total === 0) {
+      result.set(key, 1);
+      continue;
+    }
+    result.set(key, Math.abs(counts.yes / total - counts.no / total));
+  }
+  return result;
+}
+
 function computeReliability(votes: SpoVoteData[], currentEpoch: number): number {
   const epochs = [...new Set(votes.map((v) => v.epoch))].sort((a, b) => a - b);
   if (epochs.length === 0) return 0;
@@ -195,7 +260,71 @@ function computeReliability(votes: SpoVoteData[], currentEpoch: number): number 
   const activeStreakScore = Math.min(streak * 15, 100);
   const recencyScore = 100 * Math.exp(-epochsSinceLastVote / 5);
   const gapScore = Math.max(0, 100 - longestGap * 15);
-  const tenureScore = Math.min(Math.sqrt(Math.max(0, epochsSinceFirst)) * 20, 100);
 
-  return activeStreakScore * 0.35 + recencyScore * 0.3 + gapScore * 0.2 + tenureScore * 0.15;
+  // Responsiveness: median days from proposal creation to vote
+  const responseDays: number[] = [];
+  for (const v of votes) {
+    if (v.proposalBlockTime > 0 && v.blockTime > v.proposalBlockTime) {
+      responseDays.push((v.blockTime - v.proposalBlockTime) / 86400);
+    }
+  }
+  let responsivenessScore = 50; // default if no data
+  if (responseDays.length > 0) {
+    responseDays.sort((a, b) => a - b);
+    const medianDays = responseDays[Math.floor(responseDays.length / 2)];
+    responsivenessScore = 100 * Math.exp(-medianDays / 14);
+  }
+
+  const tenureScore = Math.min(20 + 80 * (1 - Math.exp(-epochsSinceFirst / 30)), 100);
+
+  return (
+    activeStreakScore * 0.3 +
+    recencyScore * 0.25 +
+    gapScore * 0.15 +
+    responsivenessScore * 0.15 +
+    tenureScore * 0.15
+  );
+}
+
+/**
+ * Linear regression slope from recent score history (same as DRep momentum).
+ */
+function computeMomentum(history: { date: string; score: number }[]): number | null {
+  if (history.length < 2) return null;
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 14);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const recent = history.filter((h) => h.date >= cutoffStr);
+  if (recent.length < 2) return null;
+
+  const baseDate = new Date(recent[0].date).getTime();
+  const points = recent.map((h) => ({
+    x: (new Date(h.date).getTime() - baseDate) / 86400000,
+    y: h.score,
+  }));
+
+  const n = points.length;
+  let sumX = 0,
+    sumY = 0,
+    sumXY = 0,
+    sumX2 = 0;
+
+  for (const p of points) {
+    sumX += p.x;
+    sumY += p.y;
+    sumXY += p.x * p.y;
+    sumX2 += p.x * p.x;
+  }
+
+  const denominator = n * sumX2 - sumX * sumX;
+  if (denominator === 0) return 0;
+
+  const slope = (n * sumXY - sumX * sumY) / denominator;
+  return Math.round(slope * 100) / 100;
+}
+
+function clamp(v: number): number {
+  return Math.max(0, Math.min(100, v));
 }

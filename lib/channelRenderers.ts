@@ -54,27 +54,77 @@ function escapeMarkdown(text: string): string {
   return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
+// ── Event-Specific Content Builders ───────────────────────────────────────────
+
+function buildTierChangeContent(data: Record<string, unknown>): { title: string; body: string } {
+  const entity = data.entityType === 'spo' ? 'Pool' : 'DRep';
+  const direction = data.direction === 'up' ? '↑' : '↓';
+  return {
+    title: `${entity} Tier ${direction} ${data.newTier}`,
+    body: `Your governance tier changed from ${data.oldTier} to ${data.newTier} (score: ${data.newScore})`,
+  };
+}
+
+function buildDriftContent(data: Record<string, unknown>): { title: string; body: string } {
+  return {
+    title: 'Alignment Drift Detected',
+    body: `Your DRep has drifted ${data.driftScore} points from your governance values. ${data.classification === 'high' ? 'Consider reviewing alternative matches.' : 'Keep an eye on this.'}`,
+  };
+}
+
+function buildCompetitiveContent(data: Record<string, unknown>): { title: string; body: string } {
+  return {
+    title: 'Competitive Movement',
+    body: `${data.competitorTicker ?? 'A nearby pool'} just passed your pool in governance score.`,
+  };
+}
+
+const CONTENT_BUILDERS: Record<
+  string,
+  (data: Record<string, unknown>) => { title: string; body: string }
+> = {
+  'tier-change': buildTierChangeContent,
+  'spo-tier-change': buildTierChangeContent,
+  'alignment-drift': buildDriftContent,
+  'competitive-movement': buildCompetitiveContent,
+};
+
+function resolveContent(payload: NotificationPayload): {
+  title: string;
+  body: string;
+  url?: string;
+} {
+  const builder = CONTENT_BUILDERS[payload.eventType];
+  if (builder && payload.data) {
+    const { title, body } = builder(payload.data);
+    return { title, body, url: payload.fallback.url };
+  }
+  return payload.fallback;
+}
+
 // ── Per-Channel Renderers ─────────────────────────────────────────────────────
 
 export function renderPush(payload: NotificationPayload): PushContent {
+  const content = resolveContent(payload);
   return {
-    title: payload.fallback.title,
-    body: payload.fallback.body,
-    url: payload.fallback.url,
+    title: content.title,
+    body: content.body,
+    url: content.url,
     tag: payload.eventType,
   };
 }
 
 export function renderDiscord(payload: NotificationPayload): DiscordContent {
+  const content = resolveContent(payload);
   const color = getEventColor(payload.eventType);
   return {
     embeds: [
       {
-        title: payload.fallback.title,
-        description: payload.fallback.body,
+        title: content.title,
+        description: content.body,
         color,
-        url: payload.fallback.url,
-        footer: { text: 'DRepScore' },
+        url: content.url,
+        footer: { text: 'Civica' },
         timestamp: new Date().toISOString(),
       },
     ],
@@ -82,8 +132,9 @@ export function renderDiscord(payload: NotificationPayload): DiscordContent {
 }
 
 export function renderTelegram(payload: NotificationPayload): TelegramContent {
-  let text = `*${escapeMarkdown(payload.fallback.title)}*\n${escapeMarkdown(payload.fallback.body)}`;
-  if (payload.fallback.url) text += `\n[View on DRepScore](${payload.fallback.url})`;
+  const content = resolveContent(payload);
+  let text = `*${escapeMarkdown(content.title)}*\n${escapeMarkdown(content.body)}`;
+  if (content.url) text += `\n[View on Civica](${content.url})`;
   return { text, parseMode: 'MarkdownV2' };
 }
 
@@ -91,13 +142,14 @@ export function renderEmail(payload: NotificationPayload): {
   subject: string;
   data: Record<string, unknown>;
 } {
+  const content = resolveContent(payload);
   return {
-    subject: payload.fallback.title,
+    subject: content.title,
     data: {
       ...payload.data,
-      title: payload.fallback.title,
-      body: payload.fallback.body,
-      url: payload.fallback.url,
+      title: content.title,
+      body: content.body,
+      url: content.url,
       eventType: payload.eventType,
     },
   };

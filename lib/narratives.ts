@@ -7,6 +7,7 @@
  */
 
 import { getDimensionLabel, type AlignmentScores, getDominantDimension } from './drepIdentity';
+import { computeTier, type TierName } from '@/lib/scoring/tiers';
 import { logger } from '@/lib/logger';
 
 // ---------------------------------------------------------------------------
@@ -280,4 +281,124 @@ export function generatePulseNarrative(data: PulseNarrativeData): string | null 
   }
 
   return parts.length > 0 ? parts.join(' ') : null;
+}
+
+// ---------------------------------------------------------------------------
+// SPO Profile Narrative
+// ---------------------------------------------------------------------------
+
+export interface SpoNarrativeData {
+  poolName: string | null;
+  ticker: string | null;
+  governanceScore: number;
+  participationRate: number;
+  voteCount: number;
+  delegatorCount: number;
+  liveStakeAda: number;
+  alignments: AlignmentScores | null;
+  isClaimed: boolean;
+  governanceStatement: string | null;
+  scoreMomentum: number | null;
+}
+
+export async function generateAISpoNarrative(data: SpoNarrativeData): Promise<string | null> {
+  const template = generateSpoNarrative(data);
+  if (!template || data.voteCount < 3) return template;
+
+  try {
+    const { generateText } = await import('./ai');
+    const name = data.poolName || data.ticker || 'This pool';
+    const tier = computeTier(data.governanceScore);
+    const dominant = data.alignments ? getDominantDimension(data.alignments) : null;
+    const dominantLabel = dominant ? getDimensionLabel(dominant).toLowerCase() : 'governance';
+
+    const prompt = `Write a 2-sentence governance profile for a Cardano stake pool operator. Tone: editorial, warm, like a journalist profiling a public institution. Use the data below — keep all numbers accurate. Do NOT start with the pool name as the first word.
+
+Pool: ${name} (${data.ticker || 'no ticker'})
+Governance score: ${data.governanceScore}/100 (${tier} tier)
+Focus: ${dominantLabel}
+Participation: votes on ${Math.round(data.participationRate)}% of proposals
+Total votes: ${data.voteCount}
+Delegators: ${data.delegatorCount.toLocaleString()}
+Live stake: ${formatAdaCompact(data.liveStakeAda)} ADA
+Claimed profile: ${data.isClaimed ? 'yes' : 'no'}
+
+Output only the 2-sentence profile. No quotation marks, no preamble.`;
+
+    const aiNarrative = await generateText(prompt, { maxTokens: 200 });
+    if (aiNarrative && aiNarrative.length > 20) return aiNarrative.trim();
+  } catch (err) {
+    logger.error('[Narrative] SPO AI generation failed', { error: err });
+  }
+  return template;
+}
+
+export function generateSpoNarrative(data: SpoNarrativeData): string | null {
+  const name = data.poolName || data.ticker || 'This pool';
+
+  if (data.voteCount === 0) {
+    return `${name} hasn't participated in on-chain governance yet. As governance becomes more central to Cardano, their participation — or lack of it — affects every staker.`;
+  }
+
+  const tier = computeTier(data.governanceScore);
+  const parts: string[] = [];
+
+  const participationDesc = participationWord(data.participationRate);
+  const tierColor = tierDescriptor(tier);
+
+  if (data.isClaimed) {
+    parts.push(
+      pick([
+        `${name} is an active governance participant, voting on ${participationDesc} and earning a ${tierColor} governance rating.`,
+        `A ${tierColor}-rated pool, ${name} votes on ${participationDesc} put before the SPO body.`,
+        `With a ${tierColor} governance tier, ${name} has shown commitment by voting on ${participationDesc}.`,
+      ]),
+    );
+  } else {
+    parts.push(
+      pick([
+        `${name} votes on ${participationDesc}, earning a ${tierColor} governance rating — though they haven't claimed their governance profile yet.`,
+        `Currently unclaimed, ${name} still participates in governance by voting on ${participationDesc}. Claiming would tell stakers what they stand for.`,
+      ]),
+    );
+  }
+
+  const contextParts: string[] = [];
+  if (data.delegatorCount > 0) {
+    contextParts.push(
+      `${data.delegatorCount.toLocaleString()} delegator${data.delegatorCount !== 1 ? 's' : ''}`,
+    );
+  }
+  if (data.liveStakeAda > 0) {
+    contextParts.push(`${formatAdaCompact(data.liveStakeAda)} ADA staked`);
+  }
+
+  if (contextParts.length > 0) {
+    parts.push(`${contextParts.join(' · ')}.`);
+  }
+
+  if (data.scoreMomentum !== null && data.scoreMomentum !== 0) {
+    parts.push(
+      `Score is ${trendWord(data.scoreMomentum)} — ${data.scoreMomentum > 0 ? 'improving' : 'declining'} over recent epochs.`,
+    );
+  }
+
+  return parts.join(' ');
+}
+
+function tierDescriptor(tier: TierName): string {
+  switch (tier) {
+    case 'Legendary':
+      return 'Legendary';
+    case 'Diamond':
+      return 'Diamond-tier';
+    case 'Gold':
+      return 'Gold-tier';
+    case 'Silver':
+      return 'Silver-tier';
+    case 'Bronze':
+      return 'Bronze-tier';
+    default:
+      return 'Emerging';
+  }
 }

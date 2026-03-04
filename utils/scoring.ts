@@ -3,7 +3,7 @@
  */
 
 import { DRepVote } from '@/types/koios';
-import { ValuePreference, VoteRecord } from '@/types/drep';
+import { VoteRecord } from '@/types/drep';
 import { isValidatedSocialLink } from '@/utils/display';
 
 // ---------------------------------------------------------------------------
@@ -377,112 +377,6 @@ export function applyRationaleCurve(rawRate: number): number {
   return Math.round(Math.max(0, Math.min(100, adjusted)));
 }
 
-// ---------------------------------------------------------------------------
-// Legacy / Utilities
-// ---------------------------------------------------------------------------
-
-/**
- * Calculate abstention penalty
- * Excessive abstentions reduce overall effectiveness
- *
- * @param votes Array of vote records
- * @returns Penalty percentage (0-100, higher = worse)
- */
-export function calculateAbstentionPenalty(votes: DRepVote[]): number {
-  if (votes.length === 0) return 0;
-
-  const abstentions = votes.filter((vote) => vote.vote === 'Abstain').length;
-  const abstentionRate = (abstentions / votes.length) * 100;
-
-  // Mild penalty for <25%, moderate for 25-50%, severe for >50%
-  if (abstentionRate < 25) return Math.round(abstentionRate * 0.5);
-  if (abstentionRate < 50) return Math.round(abstentionRate * 0.75);
-  return Math.round(abstentionRate);
-}
-
-/**
- * Calculate value alignment score
- * Matches DRep voting patterns with user's value preferences
- *
- * @param votes Array of DRep votes
- * @param userValues Selected value preferences
- * @returns Alignment score (0-100)
- */
-export function calculateValueAlignment(votes: DRepVote[], userValues: ValuePreference[]): number {
-  if (userValues.length === 0 || votes.length === 0) return 0;
-
-  let totalScore = 0;
-  let scoredValues = 0;
-
-  for (const value of userValues) {
-    let valueScore = 0;
-
-    switch (value) {
-      case 'High Participation': {
-        // Reward high participation (non-abstain votes)
-        const participationRate = votes.filter((v) => v.vote !== 'Abstain').length / votes.length;
-        valueScore = participationRate * 100;
-        break;
-      }
-
-      case 'Active Rationale Provider': {
-        // Reward providing rationale
-        valueScore = calculateRationaleRate(votes);
-        break;
-      }
-
-      case 'Treasury Conservative': {
-        // Reward 'No' votes on treasury spending proposals
-        // This is a simplified heuristic - would need proposal type analysis
-        const noVoteRate = votes.filter((v) => v.vote === 'No').length / votes.length;
-        valueScore = noVoteRate * 100;
-        break;
-      }
-
-      case 'Pro-DeFi': {
-        // Reward 'Yes' votes (simplified - would need proposal type analysis)
-        const yesVoteRate = votes.filter((v) => v.vote === 'Yes').length / votes.length;
-        valueScore = yesVoteRate * 70; // Weight lower as this is a rough heuristic
-        break;
-      }
-
-      case 'Pro-Privacy': {
-        // Placeholder - would need proposal content analysis
-        // For now, give moderate score based on rationale provision
-        valueScore = calculateRationaleRate(votes) * 0.5;
-        break;
-      }
-
-      case 'Pro-Decentralization': {
-        // Placeholder - would need proposal content analysis
-        // Give moderate score based on consistent voting (not just abstaining)
-        const activeVoteRate = votes.filter((v) => v.vote !== 'Abstain').length / votes.length;
-        valueScore = activeVoteRate * 70;
-        break;
-      }
-    }
-
-    totalScore += valueScore;
-    scoredValues++;
-  }
-
-  return scoredValues > 0 ? Math.round(totalScore / scoredValues) : 0;
-}
-
-/**
- * Get vote distribution
- * @param votes Array of vote records
- * @returns Object with counts for each vote type
- */
-export function getVoteDistribution(votes: DRepVote[]) {
-  return {
-    yes: votes.filter((v) => v.vote === 'Yes').length,
-    no: votes.filter((v) => v.vote === 'No').length,
-    abstain: votes.filter((v) => v.vote === 'Abstain').length,
-    total: votes.length,
-  };
-}
-
 /**
  * Format voting power from lovelace to ADA
  * @param lovelace Voting power in lovelace (string)
@@ -505,60 +399,12 @@ export function formatAda(ada: number): string {
 }
 
 /**
- * Get color class for participation rate
- * @param rate Participation rate (0-100)
- * @returns Tailwind color class
- */
-export function getParticipationColor(rate: number): string {
-  if (rate >= 70) return 'text-green-600 dark:text-green-400';
-  if (rate >= 40) return 'text-yellow-600 dark:text-yellow-400';
-  return 'text-red-600 dark:text-red-400';
-}
-
-/**
- * Get badge variant for DRep Score (0-100)
- * Green ≥80, Yellow 60-79, Red <60
- */
-export function getDRepScoreBadgeVariant(score: number): 'default' | 'secondary' | 'destructive' {
-  if (score >= 80) return 'default'; // green
-  if (score >= 60) return 'secondary'; // yellow
-  return 'destructive'; // red
-}
-
-/**
  * Get badge/background color class for DRep Score
  */
 export function getDRepScoreBadgeClass(score: number): string {
   if (score >= 80) return 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30';
   if (score >= 60) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30';
   return 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30';
-}
-
-/**
- * Get color class for rationale rate
- * @param rate Rationale rate (0-100)
- * @returns Tailwind color class
- */
-export function getRationaleColor(rate: number): string {
-  if (rate >= 80) return 'text-green-600 dark:text-green-400';
-  if (rate >= 50) return 'text-yellow-600 dark:text-yellow-400';
-  return 'text-orange-600 dark:text-orange-400';
-}
-
-/**
- * Shorten DRep ID for display
- * @param drepId Full DRep ID
- * @param prefixLength Characters to show at start
- * @param suffixLength Characters to show at end
- * @returns Shortened ID with ellipsis
- */
-export function shortenDRepId(
-  drepId: string,
-  prefixLength: number = 8,
-  suffixLength: number = 6,
-): string {
-  if (drepId.length <= prefixLength + suffixLength) return drepId;
-  return `${drepId.slice(0, prefixLength)}...${drepId.slice(-suffixLength)}`;
 }
 
 /**
@@ -570,40 +416,6 @@ export function getReliabilityHintFromStored(streak: number, recency: number): s
   if (streak >= 3) return `${streak}-epoch active streak`;
   if (recency === 0) return 'Voted this epoch';
   return `Last voted ${recency} epoch${recency === 1 ? '' : 's'} ago`;
-}
-
-/**
- * Legacy: Compute reliability hint from raw vote data.
- * Use getReliabilityHintFromStored when stored values are available.
- */
-export function getReliabilityHint(
-  epochVoteCounts: number[],
-  firstEpoch: number | undefined,
-  currentEpoch: number,
-): string {
-  if (!epochVoteCounts || epochVoteCounts.length === 0 || firstEpoch === undefined) {
-    return 'No voting history';
-  }
-
-  const votedEpochs = new Set<number>();
-  for (let i = 0; i < epochVoteCounts.length; i++) {
-    if (epochVoteCounts[i] > 0) votedEpochs.add(firstEpoch + i);
-  }
-  if (votedEpochs.size === 0) return 'No voting history';
-
-  const lastVotedEpoch = Math.max(...votedEpochs);
-  const epochsSince = currentEpoch - lastVotedEpoch;
-
-  let streak = 0;
-  for (let e = currentEpoch; e >= firstEpoch; e--) {
-    if (votedEpochs.has(e)) {
-      streak++;
-    } else if (streak > 0) {
-      break;
-    }
-  }
-
-  return getReliabilityHintFromStored(streak, epochsSince);
 }
 
 // ---------------------------------------------------------------------------
@@ -688,11 +500,3 @@ export function getEasiestWin(
 
   return best?.label ?? null;
 }
-
-/** V3 pillar labels for UI rendering */
-export const V3_PILLAR_LABELS = {
-  engagementQuality: 'Engagement Quality',
-  effectiveParticipation: 'Effective Participation',
-  reliability: 'Reliability',
-  governanceIdentity: 'Governance Identity',
-} as const;

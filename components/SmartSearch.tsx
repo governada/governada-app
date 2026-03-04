@@ -99,7 +99,7 @@ export function SmartSearch({ dreps, value, onChange, onSelectDRep, className }:
       posthog?.capture('smart_search_result_clicked', { drep_id: drepId, query: value });
       onSelectDRep?.(drepId);
     },
-    [onSelectDRep],
+    [onSelectDRep, value],
   );
 
   const handleKeyDown = useCallback(
@@ -118,7 +118,7 @@ export function SmartSearch({ dreps, value, onChange, onSelectDRep, className }:
         inputRef.current?.blur();
       }
     },
-    [value],
+    [value, suggestions.length],
   );
 
   const showDropdown =

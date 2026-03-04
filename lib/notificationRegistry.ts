@@ -10,9 +10,9 @@
  */
 
 export type Channel = 'push' | 'email' | 'discord' | 'telegram';
-export type EventCategory = 'drep' | 'holder' | 'ecosystem' | 'digest';
+export type EventCategory = 'drep' | 'holder' | 'ecosystem' | 'digest' | 'spo' | 'citizen';
 export type Urgency = 'realtime' | 'batched' | 'scheduled';
-export type Audience = 'drep' | 'holder' | 'all';
+export type Audience = 'drep' | 'holder' | 'all' | 'spo' | 'citizen';
 
 export interface EventDefinition {
   key: string;
@@ -342,6 +342,72 @@ export const EVENT_REGISTRY: EventDefinition[] = [
     description: 'AI-personalized weekly summary of your governance activity',
     defaultChannels: ['email', 'push'],
     channels: ['email', 'push', 'telegram'],
+  },
+
+  // ── Tier Notifications (Phase A) ────────────────────────────────────────────
+  {
+    key: 'tier-change',
+    category: 'drep',
+    audience: 'all',
+    urgency: 'realtime',
+    label: 'Tier Changes',
+    description: 'When your governance tier changes (e.g., Silver → Gold)',
+    defaultChannels: ['push', 'email'],
+    channels: ['push', 'email', 'discord', 'telegram'],
+  },
+
+  // ── SPO Notifications (Phase A) ───────────────────────────────────────────
+  {
+    key: 'spo-tier-change',
+    category: 'spo',
+    audience: 'spo',
+    urgency: 'realtime',
+    label: 'SPO Tier Changes',
+    description: 'When your pool governance tier changes',
+    defaultChannels: ['push', 'email'],
+    channels: ['push', 'email', 'discord'],
+  },
+  {
+    key: 'spo-inactivity',
+    category: 'citizen',
+    audience: 'holder',
+    urgency: 'batched',
+    label: 'Pool Governance Inactivity',
+    description: 'When your staked pool goes inactive in governance',
+    defaultChannels: ['push', 'email'],
+    channels: ['push', 'email'],
+  },
+  {
+    key: 'competitive-movement',
+    category: 'spo',
+    audience: 'spo',
+    urgency: 'batched',
+    label: 'Competitive Movement',
+    description: 'When a nearby pool passes you in governance score',
+    defaultChannels: ['push'],
+    channels: ['push', 'email', 'discord'],
+  },
+  {
+    key: 'delegation-milestone',
+    category: 'drep',
+    audience: 'all',
+    urgency: 'realtime',
+    label: 'Delegation Milestones',
+    description: 'When you reach delegation count milestones (100, 500, 1000)',
+    defaultChannels: ['push', 'email'],
+    channels: ['push', 'email', 'discord', 'telegram'],
+  },
+
+  // ── Alignment Drift (Phase A) ─────────────────────────────────────────────
+  {
+    key: 'alignment-drift',
+    category: 'citizen',
+    audience: 'holder',
+    urgency: 'batched',
+    label: 'Alignment Drift',
+    description: "When your DRep's voting alignment drifts from your values",
+    defaultChannels: ['push', 'email'],
+    channels: ['push', 'email'],
   },
 
   // ── System (not user-visible in preferences) ──────────────────────────────

@@ -54,7 +54,7 @@ ALTER TABLE sync_log ADD CONSTRAINT sync_log_sync_type_check
   CHECK (sync_type IN (
     'fast', 'full', 'integrity_check', 'proposals', 'dreps', 'votes',
     'secondary', 'slow', 'treasury', 'api_health_check', 'scoring',
-    'alignment', 'ghi', 'benchmarks', 'spo_scores', 'spo_votes'
+    'alignment', 'ghi', 'benchmarks', 'spo_scores', 'spo_votes', 'cc_votes'
   ));
 
 -- 5. Index for confidence-gated tier queries

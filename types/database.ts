@@ -1,0 +1,2966 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  public: {
+    Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: number
+          payload: Json | null
+          target: string | null
+          wallet_address: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: never
+          payload?: Json | null
+          target?: string | null
+          wallet_address: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: never
+          payload?: Json | null
+          target?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      alignment_drift_records: {
+        Row: {
+          alternative_dreps: Json | null
+          created_at: string | null
+          dimension_drifts: Json
+          drep_id: string
+          drift_classification: string
+          drift_score: number
+          epoch_no: number | null
+          id: number
+          user_id: string
+        }
+        Insert: {
+          alternative_dreps?: Json | null
+          created_at?: string | null
+          dimension_drifts?: Json
+          drep_id: string
+          drift_classification: string
+          drift_score: number
+          epoch_no?: number | null
+          id?: never
+          user_id: string
+        }
+        Update: {
+          alternative_dreps?: Json | null
+          created_at?: string | null
+          dimension_drifts?: Json
+          drep_id?: string
+          drift_classification?: string
+          drift_score?: number
+          epoch_no?: number | null
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
+      alignment_snapshots: {
+        Row: {
+          alignment_decentralization: number | null
+          alignment_innovation: number | null
+          alignment_security: number | null
+          alignment_transparency: number | null
+          alignment_treasury_conservative: number | null
+          alignment_treasury_growth: number | null
+          drep_id: string
+          epoch: number
+          pca_coordinates: number[] | null
+          snapshot_at: string | null
+        }
+        Insert: {
+          alignment_decentralization?: number | null
+          alignment_innovation?: number | null
+          alignment_security?: number | null
+          alignment_transparency?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_growth?: number | null
+          drep_id: string
+          epoch: number
+          pca_coordinates?: number[] | null
+          snapshot_at?: string | null
+        }
+        Update: {
+          alignment_decentralization?: number | null
+          alignment_innovation?: number | null
+          alignment_security?: number | null
+          alignment_transparency?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_growth?: number | null
+          drep_id?: string
+          epoch?: number
+          pca_coordinates?: number[] | null
+          snapshot_at?: string | null
+        }
+        Relationships: []
+      }
+      api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          metadata: Json
+          name: string
+          owner_wallet: string | null
+          rate_limit: number
+          rate_window: string
+          revoked_at: string | null
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          metadata?: Json
+          name: string
+          owner_wallet?: string | null
+          rate_limit?: number
+          rate_window?: string
+          revoked_at?: string | null
+          tier?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          metadata?: Json
+          name?: string
+          owner_wallet?: string | null
+          rate_limit?: number
+          rate_window?: string
+          revoked_at?: string | null
+          tier?: string
+        }
+        Relationships: []
+      }
+      api_usage_log: {
+        Row: {
+          created_at: string
+          data_age_s: number | null
+          endpoint: string
+          error_code: string | null
+          id: number
+          ip_hash: string | null
+          key_id: string | null
+          key_prefix: string | null
+          method: string
+          response_ms: number | null
+          status_code: number
+          tier: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_age_s?: number | null
+          endpoint: string
+          error_code?: string | null
+          id?: never
+          ip_hash?: string | null
+          key_id?: string | null
+          key_prefix?: string | null
+          method?: string
+          response_ms?: number | null
+          status_code: number
+          tier?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_age_s?: number | null
+          endpoint?: string
+          error_code?: string | null
+          id?: never
+          ip_hash?: string | null
+          key_id?: string | null
+          key_prefix?: string | null
+          method?: string
+          response_ms?: number | null
+          status_code?: number
+          tier?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_usage_log_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_usage_log_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "v_api_key_stats"
+            referencedColumns: ["key_id"]
+          },
+        ]
+      }
+      cc_votes: {
+        Row: {
+          block_time: number
+          cc_hot_id: string
+          epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          tx_hash: string
+          vote: string
+        }
+        Insert: {
+          block_time: number
+          cc_hot_id: string
+          epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          tx_hash: string
+          vote: string
+        }
+        Update: {
+          block_time?: number
+          cc_hot_id?: string
+          epoch?: number
+          proposal_index?: number
+          proposal_tx_hash?: string
+          tx_hash?: string
+          vote?: string
+        }
+        Relationships: []
+      }
+      citizen_epoch_summaries: {
+        Row: {
+          alignment_drift_score: number | null
+          created_at: string | null
+          delegated_drep_id: string | null
+          delegated_pool_id: string | null
+          drep_score_at_epoch: number | null
+          drep_tier_at_epoch: string | null
+          drep_votes_cast: number | null
+          epoch_no: number
+          id: number
+          proposals_voted_on: number | null
+          spo_score_at_epoch: number | null
+          spo_votes_cast: number | null
+          summary_json: Json | null
+          treasury_allocated_lovelace: number | null
+          user_id: string
+        }
+        Insert: {
+          alignment_drift_score?: number | null
+          created_at?: string | null
+          delegated_drep_id?: string | null
+          delegated_pool_id?: string | null
+          drep_score_at_epoch?: number | null
+          drep_tier_at_epoch?: string | null
+          drep_votes_cast?: number | null
+          epoch_no: number
+          id?: never
+          proposals_voted_on?: number | null
+          spo_score_at_epoch?: number | null
+          spo_votes_cast?: number | null
+          summary_json?: Json | null
+          treasury_allocated_lovelace?: number | null
+          user_id: string
+        }
+        Update: {
+          alignment_drift_score?: number | null
+          created_at?: string | null
+          delegated_drep_id?: string | null
+          delegated_pool_id?: string | null
+          drep_score_at_epoch?: number | null
+          drep_tier_at_epoch?: string | null
+          drep_votes_cast?: number | null
+          epoch_no?: number
+          id?: never
+          proposals_voted_on?: number | null
+          spo_score_at_epoch?: number | null
+          spo_votes_cast?: number | null
+          summary_json?: Json | null
+          treasury_allocated_lovelace?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classification_history: {
+        Row: {
+          classified_at: string
+          classifier_version: string
+          dim_decentralization: number
+          dim_innovation: number
+          dim_security: number
+          dim_transparency: number
+          dim_treasury_conservative: number
+          dim_treasury_growth: number
+          proposal_index: number
+          proposal_tx_hash: string
+        }
+        Insert: {
+          classified_at?: string
+          classifier_version?: string
+          dim_decentralization: number
+          dim_innovation: number
+          dim_security: number
+          dim_transparency: number
+          dim_treasury_conservative: number
+          dim_treasury_growth: number
+          proposal_index: number
+          proposal_tx_hash: string
+        }
+        Update: {
+          classified_at?: string
+          classifier_version?: string
+          dim_decentralization?: number
+          dim_innovation?: number
+          dim_security?: number
+          dim_transparency?: number
+          dim_treasury_conservative?: number
+          dim_treasury_growth?: number
+          proposal_index?: number
+          proposal_tx_hash?: string
+        }
+        Relationships: []
+      }
+      decentralization_snapshots: {
+        Row: {
+          active_drep_count: number | null
+          composite_score: number
+          concentration_ratio: number
+          epoch_no: number
+          gini: number
+          hhi: number
+          nakamoto_coefficient: number
+          shannon_entropy: number
+          snapshot_at: string | null
+          tau_decentralization: number
+          theil_index: number
+          total_delegated_ada: number | null
+        }
+        Insert: {
+          active_drep_count?: number | null
+          composite_score: number
+          concentration_ratio: number
+          epoch_no: number
+          gini: number
+          hhi: number
+          nakamoto_coefficient: number
+          shannon_entropy: number
+          snapshot_at?: string | null
+          tau_decentralization: number
+          theil_index: number
+          total_delegated_ada?: number | null
+        }
+        Update: {
+          active_drep_count?: number | null
+          composite_score?: number
+          concentration_ratio?: number
+          epoch_no?: number
+          gini?: number
+          hhi?: number
+          nakamoto_coefficient?: number
+          shannon_entropy?: number
+          snapshot_at?: string | null
+          tau_decentralization?: number
+          theil_index?: number
+          total_delegated_ada?: number | null
+        }
+        Relationships: []
+      }
+      delegation_snapshots: {
+        Row: {
+          delegator_count: number
+          drep_id: string
+          epoch: number
+          lost_delegators: number | null
+          new_delegators: number | null
+          snapshot_at: string
+          top_10_delegator_pct: number | null
+          total_power_lovelace: number
+        }
+        Insert: {
+          delegator_count: number
+          drep_id: string
+          epoch: number
+          lost_delegators?: number | null
+          new_delegators?: number | null
+          snapshot_at?: string
+          top_10_delegator_pct?: number | null
+          total_power_lovelace: number
+        }
+        Update: {
+          delegator_count?: number
+          drep_id?: string
+          epoch?: number
+          lost_delegators?: number | null
+          new_delegators?: number | null
+          snapshot_at?: string
+          top_10_delegator_pct?: number | null
+          total_power_lovelace?: number
+        }
+        Relationships: []
+      }
+      drep_milestones: {
+        Row: {
+          achieved_at: string
+          drep_id: string
+          milestone_key: string
+        }
+        Insert: {
+          achieved_at?: string
+          drep_id: string
+          milestone_key: string
+        }
+        Update: {
+          achieved_at?: string
+          drep_id?: string
+          milestone_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drep_milestones_drep_id_fkey"
+            columns: ["drep_id"]
+            isOneToOne: false
+            referencedRelation: "dreps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drep_pca_coordinates: {
+        Row: {
+          coordinates: number[]
+          drep_id: string
+          run_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          coordinates: number[]
+          drep_id: string
+          run_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          coordinates?: number[]
+          drep_id?: string
+          run_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drep_pca_coordinates_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pca_results"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      drep_power_snapshots: {
+        Row: {
+          amount_lovelace: number
+          created_at: string | null
+          delegator_count: number | null
+          drep_id: string
+          epoch_no: number
+        }
+        Insert: {
+          amount_lovelace: number
+          created_at?: string | null
+          delegator_count?: number | null
+          drep_id: string
+          epoch_no: number
+        }
+        Update: {
+          amount_lovelace?: number
+          created_at?: string | null
+          delegator_count?: number | null
+          drep_id?: string
+          epoch_no?: number
+        }
+        Relationships: []
+      }
+      drep_questions: {
+        Row: {
+          asker_wallet: string
+          created_at: string | null
+          drep_id: string
+          id: string
+          question_text: string
+          status: string | null
+        }
+        Insert: {
+          asker_wallet: string
+          created_at?: string | null
+          drep_id: string
+          id?: string
+          question_text: string
+          status?: string | null
+        }
+        Update: {
+          asker_wallet?: string
+          created_at?: string | null
+          drep_id?: string
+          id?: string
+          question_text?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      drep_responses: {
+        Row: {
+          created_at: string | null
+          drep_id: string
+          id: string
+          question_id: string | null
+          response_text: string
+        }
+        Insert: {
+          created_at?: string | null
+          drep_id: string
+          id?: string
+          question_id?: string | null
+          response_text: string
+        }
+        Update: {
+          created_at?: string | null
+          drep_id?: string
+          id?: string
+          question_id?: string | null
+          response_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drep_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "drep_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drep_score_history: {
+        Row: {
+          created_at: string | null
+          drep_id: string
+          effective_participation: number
+          effective_participation_v3: number | null
+          effective_participation_v3_raw: number | null
+          engagement_quality: number | null
+          engagement_quality_raw: number | null
+          epoch_no: number | null
+          governance_identity: number | null
+          governance_identity_raw: number | null
+          id: string
+          profile_completeness: number
+          rationale_rate: number
+          reliability_score: number
+          reliability_v3: number | null
+          reliability_v3_raw: number | null
+          score: number
+          score_momentum: number | null
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          drep_id: string
+          effective_participation?: number
+          effective_participation_v3?: number | null
+          effective_participation_v3_raw?: number | null
+          engagement_quality?: number | null
+          engagement_quality_raw?: number | null
+          epoch_no?: number | null
+          governance_identity?: number | null
+          governance_identity_raw?: number | null
+          id?: string
+          profile_completeness?: number
+          rationale_rate?: number
+          reliability_score?: number
+          reliability_v3?: number | null
+          reliability_v3_raw?: number | null
+          score?: number
+          score_momentum?: number | null
+          snapshot_date?: string
+        }
+        Update: {
+          created_at?: string | null
+          drep_id?: string
+          effective_participation?: number
+          effective_participation_v3?: number | null
+          effective_participation_v3_raw?: number | null
+          engagement_quality?: number | null
+          engagement_quality_raw?: number | null
+          epoch_no?: number | null
+          governance_identity?: number | null
+          governance_identity_raw?: number | null
+          id?: string
+          profile_completeness?: number
+          rationale_rate?: number
+          reliability_score?: number
+          reliability_v3?: number | null
+          reliability_v3_raw?: number | null
+          score?: number
+          score_momentum?: number | null
+          snapshot_date?: string
+        }
+        Relationships: []
+      }
+      drep_votes: {
+        Row: {
+          block_time: number
+          created_at: string | null
+          drep_id: string
+          epoch_no: number | null
+          meta_hash: string | null
+          meta_url: string | null
+          power_source: string | null
+          proposal_index: number
+          proposal_tx_hash: string
+          rationale_quality: number | null
+          vote: string
+          vote_tx_hash: string
+          voting_power_lovelace: number | null
+        }
+        Insert: {
+          block_time: number
+          created_at?: string | null
+          drep_id: string
+          epoch_no?: number | null
+          meta_hash?: string | null
+          meta_url?: string | null
+          power_source?: string | null
+          proposal_index: number
+          proposal_tx_hash: string
+          rationale_quality?: number | null
+          vote: string
+          vote_tx_hash: string
+          voting_power_lovelace?: number | null
+        }
+        Update: {
+          block_time?: number
+          created_at?: string | null
+          drep_id?: string
+          epoch_no?: number | null
+          meta_hash?: string | null
+          meta_url?: string | null
+          power_source?: string | null
+          proposal_index?: number
+          proposal_tx_hash?: string
+          rationale_quality?: number | null
+          vote?: string
+          vote_tx_hash?: string
+          voting_power_lovelace?: number | null
+        }
+        Relationships: []
+      }
+      dreps: {
+        Row: {
+          alignment_decentralization: number | null
+          alignment_decentralization_raw: number | null
+          alignment_innovation: number | null
+          alignment_innovation_raw: number | null
+          alignment_security: number | null
+          alignment_security_raw: number | null
+          alignment_transparency: number | null
+          alignment_transparency_raw: number | null
+          alignment_treasury_conservative: number | null
+          alignment_treasury_conservative_raw: number | null
+          alignment_treasury_growth: number | null
+          alignment_treasury_growth_raw: number | null
+          anchor_hash: string | null
+          anchor_url: string | null
+          current_tier: string | null
+          deliberation_modifier: number | null
+          effective_participation: number | null
+          effective_participation_v3: number | null
+          effective_participation_v3_raw: number | null
+          engagement_quality: number | null
+          engagement_quality_raw: number | null
+          governance_identity: number | null
+          governance_identity_raw: number | null
+          id: string
+          info: Json | null
+          last_personality_label: string | null
+          last_vote_time: number | null
+          metadata: Json | null
+          metadata_hash_verified: boolean | null
+          participation_rate: number | null
+          profile_completeness: number | null
+          rationale_rate: number | null
+          reliability_longest_gap: number | null
+          reliability_recency: number | null
+          reliability_score: number | null
+          reliability_streak: number | null
+          reliability_tenure: number | null
+          reliability_v3: number | null
+          reliability_v3_raw: number | null
+          score: number | null
+          score_momentum: number | null
+          size_tier: string | null
+          updated_at: string | null
+          votes: Json[] | null
+        }
+        Insert: {
+          alignment_decentralization?: number | null
+          alignment_decentralization_raw?: number | null
+          alignment_innovation?: number | null
+          alignment_innovation_raw?: number | null
+          alignment_security?: number | null
+          alignment_security_raw?: number | null
+          alignment_transparency?: number | null
+          alignment_transparency_raw?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_conservative_raw?: number | null
+          alignment_treasury_growth?: number | null
+          alignment_treasury_growth_raw?: number | null
+          anchor_hash?: string | null
+          anchor_url?: string | null
+          current_tier?: string | null
+          deliberation_modifier?: number | null
+          effective_participation?: number | null
+          effective_participation_v3?: number | null
+          effective_participation_v3_raw?: number | null
+          engagement_quality?: number | null
+          engagement_quality_raw?: number | null
+          governance_identity?: number | null
+          governance_identity_raw?: number | null
+          id: string
+          info?: Json | null
+          last_personality_label?: string | null
+          last_vote_time?: number | null
+          metadata?: Json | null
+          metadata_hash_verified?: boolean | null
+          participation_rate?: number | null
+          profile_completeness?: number | null
+          rationale_rate?: number | null
+          reliability_longest_gap?: number | null
+          reliability_recency?: number | null
+          reliability_score?: number | null
+          reliability_streak?: number | null
+          reliability_tenure?: number | null
+          reliability_v3?: number | null
+          reliability_v3_raw?: number | null
+          score?: number | null
+          score_momentum?: number | null
+          size_tier?: string | null
+          updated_at?: string | null
+          votes?: Json[] | null
+        }
+        Update: {
+          alignment_decentralization?: number | null
+          alignment_decentralization_raw?: number | null
+          alignment_innovation?: number | null
+          alignment_innovation_raw?: number | null
+          alignment_security?: number | null
+          alignment_security_raw?: number | null
+          alignment_transparency?: number | null
+          alignment_transparency_raw?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_conservative_raw?: number | null
+          alignment_treasury_growth?: number | null
+          alignment_treasury_growth_raw?: number | null
+          anchor_hash?: string | null
+          anchor_url?: string | null
+          current_tier?: string | null
+          deliberation_modifier?: number | null
+          effective_participation?: number | null
+          effective_participation_v3?: number | null
+          effective_participation_v3_raw?: number | null
+          engagement_quality?: number | null
+          engagement_quality_raw?: number | null
+          governance_identity?: number | null
+          governance_identity_raw?: number | null
+          id?: string
+          info?: Json | null
+          last_personality_label?: string | null
+          last_vote_time?: number | null
+          metadata?: Json | null
+          metadata_hash_verified?: boolean | null
+          participation_rate?: number | null
+          profile_completeness?: number | null
+          rationale_rate?: number | null
+          reliability_longest_gap?: number | null
+          reliability_recency?: number | null
+          reliability_score?: number | null
+          reliability_streak?: number | null
+          reliability_tenure?: number | null
+          reliability_v3?: number | null
+          reliability_v3_raw?: number | null
+          score?: number | null
+          score_momentum?: number | null
+          size_tier?: string | null
+          updated_at?: string | null
+          votes?: Json[] | null
+        }
+        Relationships: []
+      }
+      epoch_recaps: {
+        Row: {
+          ai_narrative: string | null
+          computed_at: string | null
+          drep_participation_pct: number | null
+          epoch: number
+          proposals_dropped: number | null
+          proposals_expired: number | null
+          proposals_ratified: number | null
+          proposals_submitted: number | null
+          treasury_withdrawn_ada: number | null
+        }
+        Insert: {
+          ai_narrative?: string | null
+          computed_at?: string | null
+          drep_participation_pct?: number | null
+          epoch: number
+          proposals_dropped?: number | null
+          proposals_expired?: number | null
+          proposals_ratified?: number | null
+          proposals_submitted?: number | null
+          treasury_withdrawn_ada?: number | null
+        }
+        Update: {
+          ai_narrative?: string | null
+          computed_at?: string | null
+          drep_participation_pct?: number | null
+          epoch?: number
+          proposals_dropped?: number | null
+          proposals_expired?: number | null
+          proposals_ratified?: number | null
+          proposals_submitted?: number | null
+          treasury_withdrawn_ada?: number | null
+        }
+        Relationships: []
+      }
+      feature_flags: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          enabled: boolean
+          key: string
+          targeting: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          key: string
+          targeting?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          targeting?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ghi_snapshots: {
+        Row: {
+          band: string
+          components: Json
+          computed_at: string | null
+          epoch_no: number
+          score: number
+        }
+        Insert: {
+          band: string
+          components: Json
+          computed_at?: string | null
+          epoch_no: number
+          score: number
+        }
+        Update: {
+          band?: string
+          components?: Json
+          computed_at?: string | null
+          epoch_no?: number
+          score?: number
+        }
+        Relationships: []
+      }
+      governance_benchmarks: {
+        Row: {
+          ai_insight: string | null
+          avg_rationale_rate: number | null
+          chain: string
+          delegate_count: number | null
+          fetched_at: string | null
+          governance_score: number | null
+          grade: string | null
+          id: string
+          participation_rate: number | null
+          period_label: string
+          proposal_count: number | null
+          proposal_throughput: number | null
+          raw_data: Json | null
+        }
+        Insert: {
+          ai_insight?: string | null
+          avg_rationale_rate?: number | null
+          chain: string
+          delegate_count?: number | null
+          fetched_at?: string | null
+          governance_score?: number | null
+          grade?: string | null
+          id?: string
+          participation_rate?: number | null
+          period_label: string
+          proposal_count?: number | null
+          proposal_throughput?: number | null
+          raw_data?: Json | null
+        }
+        Update: {
+          ai_insight?: string | null
+          avg_rationale_rate?: number | null
+          chain?: string
+          delegate_count?: number | null
+          fetched_at?: string | null
+          governance_score?: number | null
+          grade?: string | null
+          id?: string
+          participation_rate?: number | null
+          period_label?: string
+          proposal_count?: number | null
+          proposal_throughput?: number | null
+          raw_data?: Json | null
+        }
+        Relationships: []
+      }
+      governance_briefs: {
+        Row: {
+          brief_type: string
+          content_json: Json
+          created_at: string | null
+          delivered_channels: string[] | null
+          epoch: number | null
+          id: string
+          rendered_html: string | null
+          wallet_address: string
+        }
+        Insert: {
+          brief_type: string
+          content_json: Json
+          created_at?: string | null
+          delivered_channels?: string[] | null
+          epoch?: number | null
+          id?: string
+          rendered_html?: string | null
+          wallet_address: string
+        }
+        Update: {
+          brief_type?: string
+          content_json?: Json
+          created_at?: string | null
+          delivered_channels?: string[] | null
+          epoch?: number | null
+          id?: string
+          rendered_html?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      governance_epoch_stats: {
+        Row: {
+          active_dreps: number | null
+          avg_drep_score: number | null
+          computed_at: string | null
+          epoch_no: number
+          participation_rate: number | null
+          proposals_dropped: number | null
+          proposals_expired: number | null
+          proposals_ratified: number | null
+          proposals_submitted: number | null
+          rationale_rate: number | null
+          total_delegated_ada_lovelace: string | null
+          total_dreps: number | null
+          total_proposals: number | null
+        }
+        Insert: {
+          active_dreps?: number | null
+          avg_drep_score?: number | null
+          computed_at?: string | null
+          epoch_no: number
+          participation_rate?: number | null
+          proposals_dropped?: number | null
+          proposals_expired?: number | null
+          proposals_ratified?: number | null
+          proposals_submitted?: number | null
+          rationale_rate?: number | null
+          total_delegated_ada_lovelace?: string | null
+          total_dreps?: number | null
+          total_proposals?: number | null
+        }
+        Update: {
+          active_dreps?: number | null
+          avg_drep_score?: number | null
+          computed_at?: string | null
+          epoch_no?: number
+          participation_rate?: number | null
+          proposals_dropped?: number | null
+          proposals_expired?: number | null
+          proposals_ratified?: number | null
+          proposals_submitted?: number | null
+          rationale_rate?: number | null
+          total_delegated_ada_lovelace?: string | null
+          total_dreps?: number | null
+          total_proposals?: number | null
+        }
+        Relationships: []
+      }
+      governance_events: {
+        Row: {
+          created_at: string | null
+          epoch: number | null
+          event_data: Json | null
+          event_type: string
+          id: number
+          related_drep_id: string | null
+          related_proposal_index: number | null
+          related_proposal_tx_hash: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          epoch?: number | null
+          event_data?: Json | null
+          event_type: string
+          id?: number
+          related_drep_id?: string | null
+          related_proposal_index?: number | null
+          related_proposal_tx_hash?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          epoch?: number | null
+          event_data?: Json | null
+          event_type?: string
+          id?: number
+          related_drep_id?: string | null
+          related_proposal_index?: number | null
+          related_proposal_tx_hash?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      governance_participation_snapshots: {
+        Row: {
+          active_drep_count: number
+          avg_rationale_length: number | null
+          avg_vote_delay_epochs: number | null
+          epoch: number
+          participation_rate: number
+          rationale_rate: number | null
+          snapshot_at: string
+          total_drep_count: number
+          total_voting_power_lovelace: number | null
+        }
+        Insert: {
+          active_drep_count: number
+          avg_rationale_length?: number | null
+          avg_vote_delay_epochs?: number | null
+          epoch: number
+          participation_rate: number
+          rationale_rate?: number | null
+          snapshot_at?: string
+          total_drep_count: number
+          total_voting_power_lovelace?: number | null
+        }
+        Update: {
+          active_drep_count?: number
+          avg_rationale_length?: number | null
+          avg_vote_delay_epochs?: number | null
+          epoch?: number
+          participation_rate?: number
+          rationale_rate?: number | null
+          snapshot_at?: string
+          total_drep_count?: number
+          total_voting_power_lovelace?: number | null
+        }
+        Relationships: []
+      }
+      governance_philosophy: {
+        Row: {
+          drep_id: string
+          philosophy_text: string
+          updated_at: string | null
+        }
+        Insert: {
+          drep_id: string
+          philosophy_text: string
+          updated_at?: string | null
+        }
+        Update: {
+          drep_id?: string
+          philosophy_text?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      governance_stats: {
+        Row: {
+          circulating_supply_lovelace: number | null
+          current_epoch: number | null
+          epoch_end_time: string | null
+          id: number
+          treasury_balance_lovelace: number | null
+          treasury_balance_updated_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          circulating_supply_lovelace?: number | null
+          current_epoch?: number | null
+          epoch_end_time?: string | null
+          id?: number
+          treasury_balance_lovelace?: number | null
+          treasury_balance_updated_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          circulating_supply_lovelace?: number | null
+          current_epoch?: number | null
+          epoch_end_time?: string | null
+          id?: number
+          treasury_balance_lovelace?: number | null
+          treasury_balance_updated_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      governance_wrapped: {
+        Row: {
+          data: Json
+          entity_id: string
+          entity_type: string
+          generated_at: string
+          id: string
+          period_id: string
+          period_type: string
+        }
+        Insert: {
+          data?: Json
+          entity_id: string
+          entity_type: string
+          generated_at?: string
+          id?: string
+          period_id: string
+          period_type: string
+        }
+        Update: {
+          data?: Json
+          entity_id?: string
+          entity_type?: string
+          generated_at?: string
+          id?: string
+          period_id?: string
+          period_type?: string
+        }
+        Relationships: []
+      }
+      integrity_snapshots: {
+        Row: {
+          ai_proposal_pct: number | null
+          ai_rationale_pct: number | null
+          canonical_summary_pct: number | null
+          created_at: string | null
+          hash_mismatch_rate_pct: number | null
+          id: number
+          metrics_json: Json | null
+          snapshot_date: string
+          total_dreps: number | null
+          total_proposals: number | null
+          total_rationales: number | null
+          total_votes: number | null
+          vote_power_coverage_pct: number | null
+        }
+        Insert: {
+          ai_proposal_pct?: number | null
+          ai_rationale_pct?: number | null
+          canonical_summary_pct?: number | null
+          created_at?: string | null
+          hash_mismatch_rate_pct?: number | null
+          id?: number
+          metrics_json?: Json | null
+          snapshot_date: string
+          total_dreps?: number | null
+          total_proposals?: number | null
+          total_rationales?: number | null
+          total_votes?: number | null
+          vote_power_coverage_pct?: number | null
+        }
+        Update: {
+          ai_proposal_pct?: number | null
+          ai_rationale_pct?: number | null
+          canonical_summary_pct?: number | null
+          created_at?: string | null
+          hash_mismatch_rate_pct?: number | null
+          id?: number
+          metrics_json?: Json | null
+          snapshot_date?: string
+          total_dreps?: number | null
+          total_proposals?: number | null
+          total_rationales?: number | null
+          total_votes?: number | null
+          vote_power_coverage_pct?: number | null
+        }
+        Relationships: []
+      }
+      inter_body_alignment: {
+        Row: {
+          alignment_score: number | null
+          cc_no_pct: number | null
+          cc_yes_pct: number | null
+          computed_at: string | null
+          drep_no_pct: number | null
+          drep_yes_pct: number | null
+          proposal_index: number
+          proposal_tx_hash: string
+          spo_no_pct: number | null
+          spo_yes_pct: number | null
+        }
+        Insert: {
+          alignment_score?: number | null
+          cc_no_pct?: number | null
+          cc_yes_pct?: number | null
+          computed_at?: string | null
+          drep_no_pct?: number | null
+          drep_yes_pct?: number | null
+          proposal_index: number
+          proposal_tx_hash: string
+          spo_no_pct?: number | null
+          spo_yes_pct?: number | null
+        }
+        Update: {
+          alignment_score?: number | null
+          cc_no_pct?: number | null
+          cc_yes_pct?: number | null
+          computed_at?: string | null
+          drep_no_pct?: number | null
+          drep_yes_pct?: number | null
+          proposal_index?: number
+          proposal_tx_hash?: string
+          spo_no_pct?: number | null
+          spo_yes_pct?: number | null
+        }
+        Relationships: []
+      }
+      inter_body_alignment_snapshots: {
+        Row: {
+          alignment_score: number
+          cc_no_pct: number
+          cc_total: number
+          cc_yes_pct: number
+          drep_no_pct: number
+          drep_total: number
+          drep_yes_pct: number
+          epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          snapshot_at: string
+          spo_no_pct: number
+          spo_total: number
+          spo_yes_pct: number
+        }
+        Insert: {
+          alignment_score: number
+          cc_no_pct: number
+          cc_total: number
+          cc_yes_pct: number
+          drep_no_pct: number
+          drep_total: number
+          drep_yes_pct: number
+          epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          snapshot_at?: string
+          spo_no_pct: number
+          spo_total: number
+          spo_yes_pct: number
+        }
+        Update: {
+          alignment_score?: number
+          cc_no_pct?: number
+          cc_total?: number
+          cc_yes_pct?: number
+          drep_no_pct?: number
+          drep_total?: number
+          drep_yes_pct?: number
+          epoch?: number
+          proposal_index?: number
+          proposal_tx_hash?: string
+          snapshot_at?: string
+          spo_no_pct?: number
+          spo_total?: number
+          spo_yes_pct?: number
+        }
+        Relationships: []
+      }
+      notification_log: {
+        Row: {
+          channel: string
+          event_type: string
+          id: string
+          payload: Json | null
+          sent_at: string
+          user_wallet: string
+        }
+        Insert: {
+          channel: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          sent_at?: string
+          user_wallet: string
+        }
+        Update: {
+          channel?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          sent_at?: string
+          user_wallet?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          channel: string
+          enabled: boolean
+          event_type: string
+          id: string
+          user_wallet: string
+        }
+        Insert: {
+          channel: string
+          enabled?: boolean
+          event_type: string
+          id?: string
+          user_wallet: string
+        }
+        Update: {
+          channel?: string
+          enabled?: boolean
+          event_type?: string
+          id?: string
+          user_wallet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_wallet_fkey"
+            columns: ["user_wallet"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["wallet_address"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          body: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          read: boolean
+          title: string
+          type: string
+          user_stake_address: string
+        }
+        Insert: {
+          action_url?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          read?: boolean
+          title: string
+          type: string
+          user_stake_address: string
+        }
+        Update: {
+          action_url?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          read?: boolean
+          title?: string
+          type?: string
+          user_stake_address?: string
+        }
+        Relationships: []
+      }
+      pca_results: {
+        Row: {
+          components: number
+          computed_at: string | null
+          explained_variance: number[]
+          is_active: boolean | null
+          loadings: Json
+          num_dreps: number
+          num_proposals: number
+          proposal_ids: string[]
+          run_id: string
+          total_explained_variance: number
+        }
+        Insert: {
+          components: number
+          computed_at?: string | null
+          explained_variance: number[]
+          is_active?: boolean | null
+          loadings: Json
+          num_dreps: number
+          num_proposals: number
+          proposal_ids: string[]
+          run_id?: string
+          total_explained_variance: number
+        }
+        Update: {
+          components?: number
+          computed_at?: string | null
+          explained_variance?: number[]
+          is_active?: boolean | null
+          loadings?: Json
+          num_dreps?: number
+          num_proposals?: number
+          proposal_ids?: string[]
+          run_id?: string
+          total_explained_variance?: number
+        }
+        Relationships: []
+      }
+      poll_responses: {
+        Row: {
+          created_at: string | null
+          delegated_drep_id: string | null
+          id: string
+          initial_vote: string
+          proposal_index: number
+          proposal_tx_hash: string
+          source: string | null
+          stake_address: string | null
+          updated_at: string | null
+          vote: string
+          vote_count: number | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          delegated_drep_id?: string | null
+          id?: string
+          initial_vote: string
+          proposal_index: number
+          proposal_tx_hash: string
+          source?: string | null
+          stake_address?: string | null
+          updated_at?: string | null
+          vote: string
+          vote_count?: number | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          delegated_drep_id?: string | null
+          id?: string
+          initial_vote?: string
+          proposal_index?: number
+          proposal_tx_hash?: string
+          source?: string | null
+          stake_address?: string | null
+          updated_at?: string | null
+          vote?: string
+          vote_count?: number | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      pools: {
+        Row: {
+          alignment_decentralization: number | null
+          alignment_innovation: number | null
+          alignment_security: number | null
+          alignment_transparency: number | null
+          alignment_treasury_conservative: number | null
+          alignment_treasury_growth: number | null
+          claimed_at: string | null
+          claimed_by: string | null
+          confidence: number | null
+          consistency_pct: number | null
+          consistency_raw: number | null
+          current_tier: string | null
+          delegator_count: number | null
+          deliberation_pct: number | null
+          deliberation_raw: number | null
+          fixed_cost_lovelace: number | null
+          governance_identity_pct: number | null
+          governance_identity_raw: number | null
+          governance_score: number | null
+          governance_statement: string | null
+          homepage_url: string | null
+          live_stake_lovelace: number | null
+          margin: number | null
+          metadata_hash_verified: boolean | null
+          narrative: string | null
+          participation_pct: number | null
+          participation_raw: number | null
+          pledge_lovelace: number | null
+          pool_id: string
+          pool_name: string | null
+          reliability_pct: number | null
+          reliability_raw: number | null
+          score_momentum: number | null
+          social_links: Json | null
+          ticker: string | null
+          updated_at: string | null
+          vote_count: number | null
+        }
+        Insert: {
+          alignment_decentralization?: number | null
+          alignment_innovation?: number | null
+          alignment_security?: number | null
+          alignment_transparency?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_growth?: number | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          confidence?: number | null
+          consistency_pct?: number | null
+          consistency_raw?: number | null
+          current_tier?: string | null
+          delegator_count?: number | null
+          deliberation_pct?: number | null
+          deliberation_raw?: number | null
+          fixed_cost_lovelace?: number | null
+          governance_identity_pct?: number | null
+          governance_identity_raw?: number | null
+          governance_score?: number | null
+          governance_statement?: string | null
+          homepage_url?: string | null
+          live_stake_lovelace?: number | null
+          margin?: number | null
+          metadata_hash_verified?: boolean | null
+          narrative?: string | null
+          participation_pct?: number | null
+          participation_raw?: number | null
+          pledge_lovelace?: number | null
+          pool_id: string
+          pool_name?: string | null
+          reliability_pct?: number | null
+          reliability_raw?: number | null
+          score_momentum?: number | null
+          social_links?: Json | null
+          ticker?: string | null
+          updated_at?: string | null
+          vote_count?: number | null
+        }
+        Update: {
+          alignment_decentralization?: number | null
+          alignment_innovation?: number | null
+          alignment_security?: number | null
+          alignment_transparency?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_growth?: number | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          confidence?: number | null
+          consistency_pct?: number | null
+          consistency_raw?: number | null
+          current_tier?: string | null
+          delegator_count?: number | null
+          deliberation_pct?: number | null
+          deliberation_raw?: number | null
+          fixed_cost_lovelace?: number | null
+          governance_identity_pct?: number | null
+          governance_identity_raw?: number | null
+          governance_score?: number | null
+          governance_statement?: string | null
+          homepage_url?: string | null
+          live_stake_lovelace?: number | null
+          margin?: number | null
+          metadata_hash_verified?: boolean | null
+          narrative?: string | null
+          participation_pct?: number | null
+          participation_raw?: number | null
+          pledge_lovelace?: number | null
+          pool_id?: string
+          pool_name?: string | null
+          reliability_pct?: number | null
+          reliability_raw?: number | null
+          score_momentum?: number | null
+          social_links?: Json | null
+          ticker?: string | null
+          updated_at?: string | null
+          vote_count?: number | null
+        }
+        Relationships: []
+      }
+      position_statements: {
+        Row: {
+          created_at: string | null
+          drep_id: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          proposal_index: number
+          proposal_tx_hash: string
+          statement_text: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          drep_id: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          proposal_index: number
+          proposal_tx_hash: string
+          statement_text: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          drep_id?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          proposal_index?: number
+          proposal_tx_hash?: string
+          statement_text?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profile_views: {
+        Row: {
+          drep_id: string
+          id: string
+          viewed_at: string
+          viewer_wallet: string | null
+        }
+        Insert: {
+          drep_id: string
+          id?: string
+          viewed_at?: string
+          viewer_wallet?: string | null
+        }
+        Update: {
+          drep_id?: string
+          id?: string
+          viewed_at?: string
+          viewer_wallet?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_views_drep_id_fkey"
+            columns: ["drep_id"]
+            isOneToOne: false
+            referencedRelation: "dreps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_classifications: {
+        Row: {
+          ai_summary: string | null
+          classified_at: string | null
+          dim_decentralization: number | null
+          dim_innovation: number | null
+          dim_security: number | null
+          dim_transparency: number | null
+          dim_treasury_conservative: number | null
+          dim_treasury_growth: number | null
+          proposal_index: number
+          proposal_tx_hash: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          classified_at?: string | null
+          dim_decentralization?: number | null
+          dim_innovation?: number | null
+          dim_security?: number | null
+          dim_transparency?: number | null
+          dim_treasury_conservative?: number | null
+          dim_treasury_growth?: number | null
+          proposal_index: number
+          proposal_tx_hash: string
+        }
+        Update: {
+          ai_summary?: string | null
+          classified_at?: string | null
+          dim_decentralization?: number | null
+          dim_innovation?: number | null
+          dim_security?: number | null
+          dim_transparency?: number | null
+          dim_treasury_conservative?: number | null
+          dim_treasury_growth?: number | null
+          proposal_index?: number
+          proposal_tx_hash?: string
+        }
+        Relationships: []
+      }
+      proposal_similarity_cache: {
+        Row: {
+          computed_at: string | null
+          proposal_index: number
+          proposal_tx_hash: string
+          similar_index: number
+          similar_tx_hash: string
+          similarity_score: number
+        }
+        Insert: {
+          computed_at?: string | null
+          proposal_index: number
+          proposal_tx_hash: string
+          similar_index: number
+          similar_tx_hash: string
+          similarity_score: number
+        }
+        Update: {
+          computed_at?: string | null
+          proposal_index?: number
+          proposal_tx_hash?: string
+          similar_index?: number
+          similar_tx_hash?: string
+          similarity_score?: number
+        }
+        Relationships: []
+      }
+      proposal_vote_snapshots: {
+        Row: {
+          cc_abstain_count: number
+          cc_no_count: number
+          cc_yes_count: number
+          drep_abstain_count: number
+          drep_no_count: number
+          drep_no_power: number
+          drep_yes_count: number
+          drep_yes_power: number
+          epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          snapshot_at: string
+          spo_abstain_count: number
+          spo_no_count: number
+          spo_yes_count: number
+        }
+        Insert: {
+          cc_abstain_count: number
+          cc_no_count: number
+          cc_yes_count: number
+          drep_abstain_count: number
+          drep_no_count: number
+          drep_no_power?: number
+          drep_yes_count: number
+          drep_yes_power?: number
+          epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          snapshot_at?: string
+          spo_abstain_count: number
+          spo_no_count: number
+          spo_yes_count: number
+        }
+        Update: {
+          cc_abstain_count?: number
+          cc_no_count?: number
+          cc_yes_count?: number
+          drep_abstain_count?: number
+          drep_no_count?: number
+          drep_no_power?: number
+          drep_yes_count?: number
+          drep_yes_power?: number
+          epoch?: number
+          proposal_index?: number
+          proposal_tx_hash?: string
+          snapshot_at?: string
+          spo_abstain_count?: number
+          spo_no_count?: number
+          spo_yes_count?: number
+        }
+        Relationships: []
+      }
+      proposal_voting_summary: {
+        Row: {
+          committee_abstain_votes_cast: number | null
+          committee_no_votes_cast: number | null
+          committee_yes_votes_cast: number | null
+          drep_abstain_vote_power: number | null
+          drep_abstain_votes_cast: number | null
+          drep_always_abstain_power: number | null
+          drep_always_no_confidence_power: number | null
+          drep_no_vote_power: number | null
+          drep_no_votes_cast: number | null
+          drep_yes_vote_power: number | null
+          drep_yes_votes_cast: number | null
+          epoch_no: number
+          fetched_at: string | null
+          pool_abstain_vote_power: number | null
+          pool_abstain_votes_cast: number | null
+          pool_no_vote_power: number | null
+          pool_no_votes_cast: number | null
+          pool_yes_vote_power: number | null
+          pool_yes_votes_cast: number | null
+          proposal_index: number
+          proposal_tx_hash: string
+        }
+        Insert: {
+          committee_abstain_votes_cast?: number | null
+          committee_no_votes_cast?: number | null
+          committee_yes_votes_cast?: number | null
+          drep_abstain_vote_power?: number | null
+          drep_abstain_votes_cast?: number | null
+          drep_always_abstain_power?: number | null
+          drep_always_no_confidence_power?: number | null
+          drep_no_vote_power?: number | null
+          drep_no_votes_cast?: number | null
+          drep_yes_vote_power?: number | null
+          drep_yes_votes_cast?: number | null
+          epoch_no: number
+          fetched_at?: string | null
+          pool_abstain_vote_power?: number | null
+          pool_abstain_votes_cast?: number | null
+          pool_no_vote_power?: number | null
+          pool_no_votes_cast?: number | null
+          pool_yes_vote_power?: number | null
+          pool_yes_votes_cast?: number | null
+          proposal_index: number
+          proposal_tx_hash: string
+        }
+        Update: {
+          committee_abstain_votes_cast?: number | null
+          committee_no_votes_cast?: number | null
+          committee_yes_votes_cast?: number | null
+          drep_abstain_vote_power?: number | null
+          drep_abstain_votes_cast?: number | null
+          drep_always_abstain_power?: number | null
+          drep_always_no_confidence_power?: number | null
+          drep_no_vote_power?: number | null
+          drep_no_votes_cast?: number | null
+          drep_yes_vote_power?: number | null
+          drep_yes_votes_cast?: number | null
+          epoch_no?: number
+          fetched_at?: string | null
+          pool_abstain_vote_power?: number | null
+          pool_abstain_votes_cast?: number | null
+          pool_no_vote_power?: number | null
+          pool_no_votes_cast?: number | null
+          pool_yes_vote_power?: number | null
+          pool_yes_votes_cast?: number | null
+          proposal_index?: number
+          proposal_tx_hash?: string
+        }
+        Relationships: []
+      }
+      proposals: {
+        Row: {
+          abstract: string | null
+          ai_summary: string | null
+          block_time: number | null
+          dropped_epoch: number | null
+          enacted_epoch: number | null
+          expiration_epoch: number | null
+          expired_epoch: number | null
+          meta_json: Json | null
+          param_changes: Json | null
+          proposal_id: string | null
+          proposal_index: number
+          proposal_type: string
+          proposed_epoch: number | null
+          ratified_epoch: number | null
+          relevant_prefs: string[] | null
+          title: string | null
+          treasury_tier: string | null
+          tx_hash: string
+          updated_at: string | null
+          withdrawal_amount: number | null
+        }
+        Insert: {
+          abstract?: string | null
+          ai_summary?: string | null
+          block_time?: number | null
+          dropped_epoch?: number | null
+          enacted_epoch?: number | null
+          expiration_epoch?: number | null
+          expired_epoch?: number | null
+          meta_json?: Json | null
+          param_changes?: Json | null
+          proposal_id?: string | null
+          proposal_index: number
+          proposal_type: string
+          proposed_epoch?: number | null
+          ratified_epoch?: number | null
+          relevant_prefs?: string[] | null
+          title?: string | null
+          treasury_tier?: string | null
+          tx_hash: string
+          updated_at?: string | null
+          withdrawal_amount?: number | null
+        }
+        Update: {
+          abstract?: string | null
+          ai_summary?: string | null
+          block_time?: number | null
+          dropped_epoch?: number | null
+          enacted_epoch?: number | null
+          expiration_epoch?: number | null
+          expired_epoch?: number | null
+          meta_json?: Json | null
+          param_changes?: Json | null
+          proposal_id?: string | null
+          proposal_index?: number
+          proposal_type?: string
+          proposed_epoch?: number | null
+          ratified_epoch?: number | null
+          relevant_prefs?: string[] | null
+          title?: string | null
+          treasury_tier?: string | null
+          tx_hash?: string
+          updated_at?: string | null
+          withdrawal_amount?: number | null
+        }
+        Relationships: []
+      }
+      revoked_sessions: {
+        Row: {
+          jti: string
+          revoked_at: string
+          wallet_address: string
+        }
+        Insert: {
+          jti: string
+          revoked_at?: string
+          wallet_address: string
+        }
+        Update: {
+          jti?: string
+          revoked_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      snapshot_completeness_log: {
+        Row: {
+          coverage_pct: number | null
+          created_at: string | null
+          epoch_no: number
+          expected_count: number | null
+          id: number
+          metadata: Json | null
+          record_count: number
+          snapshot_date: string
+          snapshot_type: string
+        }
+        Insert: {
+          coverage_pct?: number | null
+          created_at?: string | null
+          epoch_no?: number
+          expected_count?: number | null
+          id?: number
+          metadata?: Json | null
+          record_count: number
+          snapshot_date?: string
+          snapshot_type: string
+        }
+        Update: {
+          coverage_pct?: number | null
+          created_at?: string | null
+          epoch_no?: number
+          expected_count?: number | null
+          id?: number
+          metadata?: Json | null
+          record_count?: number
+          snapshot_date?: string
+          snapshot_type?: string
+        }
+        Relationships: []
+      }
+      social_link_checks: {
+        Row: {
+          created_at: string | null
+          drep_id: string
+          http_status: number | null
+          id: string
+          last_checked_at: string | null
+          status: string
+          uri: string
+        }
+        Insert: {
+          created_at?: string | null
+          drep_id: string
+          http_status?: number | null
+          id?: string
+          last_checked_at?: string | null
+          status?: string
+          uri: string
+        }
+        Update: {
+          created_at?: string | null
+          drep_id?: string
+          http_status?: number | null
+          id?: string
+          last_checked_at?: string | null
+          status?: string
+          uri?: string
+        }
+        Relationships: []
+      }
+      spo_alignment_snapshots: {
+        Row: {
+          alignment_decentralization: number | null
+          alignment_innovation: number | null
+          alignment_security: number | null
+          alignment_transparency: number | null
+          alignment_treasury_conservative: number | null
+          alignment_treasury_growth: number | null
+          epoch_no: number
+          pool_id: string
+          snapshot_at: string | null
+        }
+        Insert: {
+          alignment_decentralization?: number | null
+          alignment_innovation?: number | null
+          alignment_security?: number | null
+          alignment_transparency?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_growth?: number | null
+          epoch_no: number
+          pool_id: string
+          snapshot_at?: string | null
+        }
+        Update: {
+          alignment_decentralization?: number | null
+          alignment_innovation?: number | null
+          alignment_security?: number | null
+          alignment_transparency?: number | null
+          alignment_treasury_conservative?: number | null
+          alignment_treasury_growth?: number | null
+          epoch_no?: number
+          pool_id?: string
+          snapshot_at?: string | null
+        }
+        Relationships: []
+      }
+      spo_power_snapshots: {
+        Row: {
+          delegator_count: number
+          epoch_no: number
+          id: string
+          live_stake_lovelace: number
+          pool_id: string
+          snapshot_at: string
+        }
+        Insert: {
+          delegator_count?: number
+          epoch_no: number
+          id?: string
+          live_stake_lovelace?: number
+          pool_id: string
+          snapshot_at?: string
+        }
+        Update: {
+          delegator_count?: number
+          epoch_no?: number
+          id?: string
+          live_stake_lovelace?: number
+          pool_id?: string
+          snapshot_at?: string
+        }
+        Relationships: []
+      }
+      spo_score_snapshots: {
+        Row: {
+          confidence: number | null
+          consistency_pct: number | null
+          consistency_raw: number | null
+          deliberation_pct: number | null
+          deliberation_raw: number | null
+          epoch_no: number
+          governance_identity_pct: number | null
+          governance_identity_raw: number | null
+          governance_score: number | null
+          participation_pct: number | null
+          participation_rate: number | null
+          pool_id: string
+          rationale_rate: number | null
+          reliability_pct: number | null
+          reliability_raw: number | null
+          score_momentum: number | null
+          snapshot_at: string | null
+          vote_count: number | null
+        }
+        Insert: {
+          confidence?: number | null
+          consistency_pct?: number | null
+          consistency_raw?: number | null
+          deliberation_pct?: number | null
+          deliberation_raw?: number | null
+          epoch_no: number
+          governance_identity_pct?: number | null
+          governance_identity_raw?: number | null
+          governance_score?: number | null
+          participation_pct?: number | null
+          participation_rate?: number | null
+          pool_id: string
+          rationale_rate?: number | null
+          reliability_pct?: number | null
+          reliability_raw?: number | null
+          score_momentum?: number | null
+          snapshot_at?: string | null
+          vote_count?: number | null
+        }
+        Update: {
+          confidence?: number | null
+          consistency_pct?: number | null
+          consistency_raw?: number | null
+          deliberation_pct?: number | null
+          deliberation_raw?: number | null
+          epoch_no?: number
+          governance_identity_pct?: number | null
+          governance_identity_raw?: number | null
+          governance_score?: number | null
+          participation_pct?: number | null
+          participation_rate?: number | null
+          pool_id?: string
+          rationale_rate?: number | null
+          reliability_pct?: number | null
+          reliability_raw?: number | null
+          score_momentum?: number | null
+          snapshot_at?: string | null
+          vote_count?: number | null
+        }
+        Relationships: []
+      }
+      spo_sybil_flags: {
+        Row: {
+          agreement_rate: number
+          detected_at: string | null
+          epoch_no: number
+          id: number
+          pool_a: string
+          pool_b: string
+          resolved: boolean | null
+          shared_votes: number
+        }
+        Insert: {
+          agreement_rate: number
+          detected_at?: string | null
+          epoch_no: number
+          id?: number
+          pool_a: string
+          pool_b: string
+          resolved?: boolean | null
+          shared_votes: number
+        }
+        Update: {
+          agreement_rate?: number
+          detected_at?: string | null
+          epoch_no?: number
+          id?: number
+          pool_a?: string
+          pool_b?: string
+          resolved?: boolean | null
+          shared_votes?: number
+        }
+        Relationships: []
+      }
+      spo_votes: {
+        Row: {
+          block_time: number
+          epoch: number
+          pool_id: string
+          proposal_index: number
+          proposal_tx_hash: string
+          tx_hash: string
+          vote: string
+        }
+        Insert: {
+          block_time: number
+          epoch: number
+          pool_id: string
+          proposal_index: number
+          proposal_tx_hash: string
+          tx_hash: string
+          vote: string
+        }
+        Update: {
+          block_time?: number
+          epoch?: number
+          pool_id?: string
+          proposal_index?: number
+          proposal_tx_hash?: string
+          tx_hash?: string
+          vote?: string
+        }
+        Relationships: []
+      }
+      state_of_governance_reports: {
+        Row: {
+          epoch_no: number
+          generated_at: string | null
+          narrative_html: string | null
+          published: boolean | null
+          report_data: Json
+        }
+        Insert: {
+          epoch_no: number
+          generated_at?: string | null
+          narrative_html?: string | null
+          published?: boolean | null
+          report_data: Json
+        }
+        Update: {
+          epoch_no?: number
+          generated_at?: string | null
+          narrative_html?: string | null
+          published?: boolean | null
+          report_data?: Json
+        }
+        Relationships: []
+      }
+      sync_log: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: number
+          metrics: Json | null
+          started_at: string
+          success: boolean
+          sync_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: number
+          metrics?: Json | null
+          started_at: string
+          success?: boolean
+          sync_type: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: number
+          metrics?: Json | null
+          started_at?: string
+          success?: boolean
+          sync_type?: string
+        }
+        Relationships: []
+      }
+      tier_changes: {
+        Row: {
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          epoch_no: number | null
+          id: number
+          new_score: number
+          new_tier: string
+          old_score: number
+          old_tier: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          epoch_no?: number | null
+          id?: never
+          new_score: number
+          new_tier: string
+          old_score: number
+          old_tier: string
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          epoch_no?: number | null
+          id?: never
+          new_score?: number
+          new_tier?: string
+          old_score?: number
+          old_tier?: string
+        }
+        Relationships: []
+      }
+      treasury_accountability_polls: {
+        Row: {
+          closes_epoch: number
+          created_at: string | null
+          cycle_number: number
+          next_cycle_epoch: number | null
+          opened_epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          results_summary: Json | null
+          status: string
+        }
+        Insert: {
+          closes_epoch: number
+          created_at?: string | null
+          cycle_number?: number
+          next_cycle_epoch?: number | null
+          opened_epoch: number
+          proposal_index: number
+          proposal_tx_hash: string
+          results_summary?: Json | null
+          status?: string
+        }
+        Update: {
+          closes_epoch?: number
+          created_at?: string | null
+          cycle_number?: number
+          next_cycle_epoch?: number | null
+          opened_epoch?: number
+          proposal_index?: number
+          proposal_tx_hash?: string
+          results_summary?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      treasury_accountability_responses: {
+        Row: {
+          created_at: string | null
+          cycle_number: number
+          delivered_rating: string
+          evidence_text: string | null
+          proposal_index: number
+          proposal_tx_hash: string
+          user_address: string
+          would_approve_again: string
+        }
+        Insert: {
+          created_at?: string | null
+          cycle_number: number
+          delivered_rating: string
+          evidence_text?: string | null
+          proposal_index: number
+          proposal_tx_hash: string
+          user_address: string
+          would_approve_again: string
+        }
+        Update: {
+          created_at?: string | null
+          cycle_number?: number
+          delivered_rating?: string
+          evidence_text?: string | null
+          proposal_index?: number
+          proposal_tx_hash?: string
+          user_address?: string
+          would_approve_again?: string
+        }
+        Relationships: []
+      }
+      treasury_health_snapshots: {
+        Row: {
+          balance_trend: number
+          burn_rate_per_epoch: number
+          epoch: number
+          health_score: number
+          income_stability: number
+          pending_count: number
+          pending_load: number
+          pending_total_ada: number
+          runway_adequacy: number
+          runway_months: number
+          snapshot_at: string
+          withdrawal_velocity: number
+        }
+        Insert: {
+          balance_trend: number
+          burn_rate_per_epoch: number
+          epoch: number
+          health_score: number
+          income_stability: number
+          pending_count: number
+          pending_load: number
+          pending_total_ada: number
+          runway_adequacy: number
+          runway_months: number
+          snapshot_at?: string
+          withdrawal_velocity: number
+        }
+        Update: {
+          balance_trend?: number
+          burn_rate_per_epoch?: number
+          epoch?: number
+          health_score?: number
+          income_stability?: number
+          pending_count?: number
+          pending_load?: number
+          pending_total_ada?: number
+          runway_adequacy?: number
+          runway_months?: number
+          snapshot_at?: string
+          withdrawal_velocity?: number
+        }
+        Relationships: []
+      }
+      treasury_snapshots: {
+        Row: {
+          balance_lovelace: number
+          epoch_no: number
+          fees_lovelace: number | null
+          reserves_income_lovelace: number | null
+          reserves_lovelace: number | null
+          snapshot_at: string | null
+          withdrawals_lovelace: number
+        }
+        Insert: {
+          balance_lovelace: number
+          epoch_no: number
+          fees_lovelace?: number | null
+          reserves_income_lovelace?: number | null
+          reserves_lovelace?: number | null
+          snapshot_at?: string | null
+          withdrawals_lovelace?: number
+        }
+        Update: {
+          balance_lovelace?: number
+          epoch_no?: number
+          fees_lovelace?: number | null
+          reserves_income_lovelace?: number | null
+          reserves_lovelace?: number | null
+          snapshot_at?: string | null
+          withdrawals_lovelace?: number
+        }
+        Relationships: []
+      }
+      user_channels: {
+        Row: {
+          channel: string
+          channel_identifier: string
+          config: Json | null
+          connected_at: string
+          id: string
+          user_wallet: string
+        }
+        Insert: {
+          channel: string
+          channel_identifier: string
+          config?: Json | null
+          connected_at?: string
+          id?: string
+          user_wallet: string
+        }
+        Update: {
+          channel?: string
+          channel_identifier?: string
+          config?: Json | null
+          connected_at?: string
+          id?: string
+          user_wallet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_channels_user_wallet_fkey"
+            columns: ["user_wallet"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["wallet_address"]
+          },
+        ]
+      }
+      user_governance_profile_history: {
+        Row: {
+          alignment_scores: Json | null
+          confidence: number | null
+          pca_coordinates: number[] | null
+          personality_label: string | null
+          snapshot_at: string
+          votes_used: number | null
+          wallet_address: string
+        }
+        Insert: {
+          alignment_scores?: Json | null
+          confidence?: number | null
+          pca_coordinates?: number[] | null
+          personality_label?: string | null
+          snapshot_at?: string
+          votes_used?: number | null
+          wallet_address: string
+        }
+        Update: {
+          alignment_scores?: Json | null
+          confidence?: number | null
+          pca_coordinates?: number[] | null
+          personality_label?: string | null
+          snapshot_at?: string
+          votes_used?: number | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      user_governance_profiles: {
+        Row: {
+          alignment_scores: Json | null
+          confidence: number
+          pca_coordinates: number[] | null
+          personality_label: string | null
+          updated_at: string | null
+          votes_used: number
+          wallet_address: string
+        }
+        Insert: {
+          alignment_scores?: Json | null
+          confidence?: number
+          pca_coordinates?: number[] | null
+          personality_label?: string | null
+          updated_at?: string | null
+          votes_used?: number
+          wallet_address: string
+        }
+        Update: {
+          alignment_scores?: Json | null
+          confidence?: number
+          pca_coordinates?: number[] | null
+          personality_label?: string | null
+          updated_at?: string | null
+          votes_used?: number
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          claimed_drep_id: string | null
+          connected_wallets: string[] | null
+          delegation_history: Json[] | null
+          digest_frequency: string | null
+          display_name: string | null
+          email: string | null
+          email_verified: boolean | null
+          governance_level: string | null
+          last_active: string | null
+          last_epoch_visited: number | null
+          last_push_check: string | null
+          last_visit_at: string | null
+          onboarding_checklist: Json | null
+          poll_count: number | null
+          prefs: Json | null
+          push_subscriptions: Json | null
+          visit_streak: number | null
+          wallet_address: string
+          watchlist: string[] | null
+        }
+        Insert: {
+          claimed_drep_id?: string | null
+          connected_wallets?: string[] | null
+          delegation_history?: Json[] | null
+          digest_frequency?: string | null
+          display_name?: string | null
+          email?: string | null
+          email_verified?: boolean | null
+          governance_level?: string | null
+          last_active?: string | null
+          last_epoch_visited?: number | null
+          last_push_check?: string | null
+          last_visit_at?: string | null
+          onboarding_checklist?: Json | null
+          poll_count?: number | null
+          prefs?: Json | null
+          push_subscriptions?: Json | null
+          visit_streak?: number | null
+          wallet_address: string
+          watchlist?: string[] | null
+        }
+        Update: {
+          claimed_drep_id?: string | null
+          connected_wallets?: string[] | null
+          delegation_history?: Json[] | null
+          digest_frequency?: string | null
+          display_name?: string | null
+          email?: string | null
+          email_verified?: boolean | null
+          governance_level?: string | null
+          last_active?: string | null
+          last_epoch_visited?: number | null
+          last_push_check?: string | null
+          last_visit_at?: string | null
+          onboarding_checklist?: Json | null
+          poll_count?: number | null
+          prefs?: Json | null
+          push_subscriptions?: Json | null
+          visit_streak?: number | null
+          wallet_address?: string
+          watchlist?: string[] | null
+        }
+        Relationships: []
+      }
+      vote_explanations: {
+        Row: {
+          ai_assisted: boolean | null
+          created_at: string | null
+          drep_id: string
+          explanation_text: string
+          id: string
+          proposal_index: number
+          proposal_tx_hash: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_assisted?: boolean | null
+          created_at?: string | null
+          drep_id: string
+          explanation_text: string
+          id?: string
+          proposal_index: number
+          proposal_tx_hash: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_assisted?: boolean | null
+          created_at?: string | null
+          drep_id?: string
+          explanation_text?: string
+          id?: string
+          proposal_index?: number
+          proposal_tx_hash?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      vote_rationales: {
+        Row: {
+          ai_summary: string | null
+          drep_id: string
+          fetched_at: string | null
+          hash_check_attempted_at: string | null
+          hash_verified: boolean | null
+          meta_url: string | null
+          proposal_index: number | null
+          proposal_tx_hash: string | null
+          rationale_text: string | null
+          vote_tx_hash: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          drep_id: string
+          fetched_at?: string | null
+          hash_check_attempted_at?: string | null
+          hash_verified?: boolean | null
+          meta_url?: string | null
+          proposal_index?: number | null
+          proposal_tx_hash?: string | null
+          rationale_text?: string | null
+          vote_tx_hash: string
+        }
+        Update: {
+          ai_summary?: string | null
+          drep_id?: string
+          fetched_at?: string | null
+          hash_check_attempted_at?: string | null
+          hash_verified?: boolean | null
+          meta_url?: string | null
+          proposal_index?: number | null
+          proposal_tx_hash?: string | null
+          rationale_text?: string | null
+          vote_tx_hash?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      v_ai_summary_coverage: {
+        Row: {
+          proposals_with_abstract: number | null
+          proposals_with_summary: number | null
+          rationales_with_summary: number | null
+          rationales_with_text: number | null
+          total_proposals: number | null
+          total_rationales: number | null
+        }
+        Relationships: []
+      }
+      v_api_abuse_signals: {
+        Row: {
+          error_rate_pct: number | null
+          ip_hash: string | null
+          rate_limit_hits: number | null
+          requests_last_hour: number | null
+          unique_keys_used: number | null
+        }
+        Relationships: []
+      }
+      v_api_daily_stats: {
+        Row: {
+          day: string | null
+          errors_5xx: number | null
+          p95_ms: number | null
+          rate_limit_hits: number | null
+          tier: string | null
+          total_requests: number | null
+          unique_keys: number | null
+        }
+        Relationships: []
+      }
+      v_api_hourly_stats: {
+        Row: {
+          avg_data_age_s: number | null
+          endpoint: string | null
+          error_rate_pct: number | null
+          errors_5xx: number | null
+          hour: string | null
+          p50_ms: number | null
+          p95_ms: number | null
+          p99_ms: number | null
+          rate_limited: number | null
+          requests: number | null
+          tier: string | null
+        }
+        Relationships: []
+      }
+      v_api_key_stats: {
+        Row: {
+          errors_last_day: number | null
+          key_created_at: string | null
+          key_id: string | null
+          key_prefix: string | null
+          last_used_at: string | null
+          name: string | null
+          rate_limit: number | null
+          rate_limits_last_day: number | null
+          rate_window: string | null
+          requests_last_7d: number | null
+          requests_last_day: number | null
+          requests_last_hour: number | null
+          tier: string | null
+        }
+        Relationships: []
+      }
+      v_canonical_summary_coverage: {
+        Row: {
+          total_proposals: number | null
+          with_canonical_summary: number | null
+          with_proposal_id: number | null
+        }
+        Relationships: []
+      }
+      v_hash_verification: {
+        Row: {
+          mismatch_rate_pct: number | null
+          rationale_mismatch: number | null
+          rationale_pending: number | null
+          rationale_unreachable: number | null
+          rationale_verified: number | null
+        }
+        Relationships: []
+      }
+      v_metadata_verification: {
+        Row: {
+          drep_mismatch: number | null
+          drep_pending: number | null
+          drep_verified: number | null
+          drep_with_anchor_hash: number | null
+        }
+        Relationships: []
+      }
+      v_sync_health: {
+        Row: {
+          failure_count: number | null
+          last_duration_ms: number | null
+          last_error: string | null
+          last_finished: string | null
+          last_run: string | null
+          last_success: boolean | null
+          success_count: number | null
+          sync_type: string | null
+        }
+        Relationships: []
+      }
+      v_system_stats: {
+        Row: {
+          dreps_with_snapshots: number | null
+          newest_summary_fetch: string | null
+          newest_vote_time: number | null
+          total_dreps: number | null
+          total_power_snapshots: number | null
+          total_proposals: number | null
+          total_rationales: number | null
+          total_votes: number | null
+        }
+        Relationships: []
+      }
+      v_vote_power_coverage: {
+        Row: {
+          coverage_pct: number | null
+          exact_count: number | null
+          nearest_count: number | null
+          null_power: number | null
+          total_votes: number | null
+          with_power: number | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

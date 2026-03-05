@@ -12,12 +12,10 @@ import type { AlignmentScores } from '@/lib/drepIdentity';
 import nextDynamic from 'next/dynamic';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 
-const TierCelebrationManager = nextDynamic(
-  () =>
-    import('@/components/civica/shared/TierCelebrationManager').then(
-      (m) => m.TierCelebrationManager,
-    ),
-  { ssr: false },
+const TierCelebrationManager = nextDynamic(() =>
+  import('@/components/civica/shared/TierCelebrationManager').then(
+    (m) => m.TierCelebrationManager,
+  ),
 );
 import { SpoProfileTabsV1 } from '@/components/civica/profiles/SpoProfileTabsV1';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';

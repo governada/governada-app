@@ -15,7 +15,10 @@ import { CameraControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { computeLayout } from '@/lib/constellation/layout';
-import { getIdentityColor } from '@/lib/drepIdentity';
+// Three-body palette: DReps=teal, SPOs=cyan, CC=gold
+const DREP_COLOR = '#2dd4bf';
+const SPO_COLOR = '#06b6d4';
+const CC_COLOR = '#fbbf24';
 import type {
   ConstellationApiData,
   FindMeTarget,
@@ -49,7 +52,7 @@ interface SceneState {
   animating: boolean;
 }
 
-const INITIAL_CAMERA: [number, number, number] = [0, -10, 18];
+const INITIAL_CAMERA: [number, number, number] = [0, -18, 10];
 const INITIAL_TARGET: [number, number, number] = [0, 0, 0];
 
 export const GovernanceConstellation = forwardRef<ConstellationRef, ConstellationProps>(
@@ -328,12 +331,9 @@ function ConstellationNodes({
     return { drep, spo, cc, anchor };
   }, [nodes]);
 
-  const getDrepColor = useCallback(
-    (n: ConstellationNode3D) => getIdentityColor(n.dominant).hex,
-    [],
-  );
-  const getSpoColor = useCallback(() => '#06b6d4', []);
-  const getCcColor = useCallback(() => '#f59e0b', []);
+  const getDrepColor = useCallback(() => DREP_COLOR, []);
+  const getSpoColor = useCallback(() => SPO_COLOR, []);
+  const getCcColor = useCallback(() => CC_COLOR, []);
 
   if (nodes.length === 0 || !frameReady) return null;
 
@@ -601,15 +601,15 @@ function GovernanceCore() {
   return (
     <group>
       <mesh ref={coreRef}>
-        <sphereGeometry args={[1.1, 32, 32]} />
+        <sphereGeometry args={[0.35, 24, 24]} />
         <meshStandardMaterial
-          emissive="#ffd280"
-          emissiveIntensity={3.5}
-          color="#ffd280"
+          emissive={CC_COLOR}
+          emissiveIntensity={1.5}
+          color={CC_COLOR}
           toneMapped={false}
         />
       </mesh>
-      <pointLight color="#ffd280" intensity={8} distance={18} decay={2} />
+      <pointLight color={CC_COLOR} intensity={2} distance={6} decay={2} />
     </group>
   );
 }

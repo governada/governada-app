@@ -8,6 +8,7 @@ import { Home, Compass, Activity, Landmark, Search, Building2 } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { useWallet } from '@/utils/wallet-context';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { Button } from '@/components/ui/button';
 
 const WalletConnectModal = dynamic(
@@ -33,7 +34,8 @@ const SEGMENT_LABELS: Record<UserSegment, string> = {
 export function CivicaHeader() {
   const pathname = usePathname();
   const { isAuthenticated, connected } = useWallet();
-  const { segment } = useSegment();
+  const { segment, stakeAddress } = useSegment();
+  const unreadCount = useUnreadNotifications(stakeAddress ?? null);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
   const isActive = (href: string) => {
@@ -66,7 +68,14 @@ export function CivicaHeader() {
                   )}
                   aria-current={active ? 'page' : undefined}
                 >
-                  <Icon className="h-4 w-4" />
+                  <span className="relative inline-flex">
+                    <Icon className="h-4 w-4" />
+                    {href === '/my-gov' && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </span>
                   {label}
                   {active && (
                     <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />

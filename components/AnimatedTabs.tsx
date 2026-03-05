@@ -10,7 +10,7 @@ import type { LucideIcon } from 'lucide-react';
 
 export interface TabDefinition {
   id: string;
-  label: string;
+  label: ReactNode;
   icon?: LucideIcon;
   content: ReactNode;
 }

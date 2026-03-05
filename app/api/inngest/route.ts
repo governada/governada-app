@@ -25,6 +25,9 @@ import { checkSnapshotCompleteness } from '@/inngest/functions/check-snapshot-co
 import { cleanupRevokedSessions } from '@/inngest/functions/cleanup-revoked-sessions';
 import { detectAlignmentDrift } from '@/inngest/functions/detect-alignment-drift';
 import { precomputeCitizenSummaries } from '@/inngest/functions/precompute-citizen-summaries';
+import { generateGovernanceWrapped } from '@/inngest/functions/generate-governance-wrapped';
+import { generateWeeklyDigest } from '@/inngest/functions/generate-weekly-digest';
+import { notifyEpochRecap } from '@/inngest/functions/notify-epoch-recap';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -54,5 +57,8 @@ export const { GET, POST, PUT } = serve({
     cleanupRevokedSessions,
     detectAlignmentDrift,
     precomputeCitizenSummaries,
+    generateGovernanceWrapped,
+    generateWeeklyDigest,
+    notifyEpochRecap,
   ],
 });

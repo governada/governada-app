@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Vote, AlertCircle, TrendingDown, Clock, Star, ChevronRight } from 'lucide-react';
+import { Vote, AlertCircle, TrendingDown, Clock, Star, Sparkles, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Action, ActionType } from '@/lib/actionFeed';
 
@@ -12,6 +12,7 @@ const TYPE_ICON: Record<ActionType, React.FC<{ className?: string }>> = {
   score_dropped: TrendingDown,
   proposal_expiring: Clock,
   tier_approaching: Star,
+  wrapped_ready: Sparkles,
 };
 
 const TYPE_COLOR: Record<ActionType, string> = {
@@ -20,6 +21,7 @@ const TYPE_COLOR: Record<ActionType, string> = {
   score_dropped: 'text-amber-400 border-amber-900/40 bg-amber-950/10',
   proposal_expiring: 'text-amber-400 border-amber-900/40 bg-amber-950/10',
   tier_approaching: 'text-violet-400 border-violet-900/40 bg-violet-950/10',
+  wrapped_ready: 'text-amber-300 border-violet-900/40 bg-violet-950/10',
 };
 
 const TYPE_ICON_COLOR: Record<ActionType, string> = {
@@ -28,6 +30,7 @@ const TYPE_ICON_COLOR: Record<ActionType, string> = {
   score_dropped: 'text-amber-400',
   proposal_expiring: 'text-amber-400',
   tier_approaching: 'text-violet-400',
+  wrapped_ready: 'text-amber-300',
 };
 
 function ActionCard({ action, featured = false }: { action: Action; featured?: boolean }) {

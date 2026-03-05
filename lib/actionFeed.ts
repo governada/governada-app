@@ -3,7 +3,8 @@ export type ActionType =
   | 'delegation_stale'
   | 'score_dropped'
   | 'proposal_expiring'
-  | 'tier_approaching';
+  | 'tier_approaching'
+  | 'wrapped_ready';
 
 export interface Action {
   id: string;
@@ -31,6 +32,8 @@ export interface ActionFeedInput {
   spoScoreDelta?: number;
   spoVoteCount?: number;
   spoIsClaimed?: boolean;
+  /** When set, injects a wrapped_ready action linking to /my-gov/wrapped/[period] */
+  wrappedReadyPeriod?: string;
 }
 
 const TIER_THRESHOLDS: Record<string, number> = {
@@ -244,6 +247,18 @@ export function generateActions(input: ActionFeedInput): Action[] {
         cta: 'View Now',
       });
     }
+  }
+
+  if (input.wrappedReadyPeriod) {
+    actions.push({
+      id: 'wrapped_ready',
+      type: 'wrapped_ready',
+      title: 'Your Governance Wrapped is ready',
+      description: `See your governance story for ${input.wrappedReadyPeriod}.`,
+      href: `/my-gov/wrapped/${input.wrappedReadyPeriod}`,
+      priority: 2,
+      cta: 'View Wrapped',
+    });
   }
 
   return actions.sort((a, b) => a.priority - b.priority);

@@ -13,6 +13,13 @@ interface TierChange {
   created_at: string;
 }
 
+interface MilestoneResult {
+  personalBest: boolean;
+  score: number;
+  previousBest: number;
+  newlyThresholds: number[];
+}
+
 interface TierCelebrationManagerProps {
   entityType: 'drep' | 'spo';
   entityId: string;
@@ -31,6 +38,7 @@ export function TierCelebrationManager({
   shareUrl,
 }: TierCelebrationManagerProps) {
   const [change, setChange] = useState<TierChange | null>(null);
+  const [milestone, setMilestone] = useState<{ score: number } | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -39,50 +47,75 @@ export function TierCelebrationManager({
     const lastVisit = localStorage.getItem(storageKey);
 
     if (!lastVisit) {
-      // First ever visit — record timestamp but don't celebrate
       localStorage.setItem(storageKey, Date.now().toString());
       return;
     }
 
-    const apiPath =
+    const tierApiPath =
       entityType === 'drep'
         ? `/api/drep/${encodeURIComponent(entityId)}/tier-changes?since=${lastVisit}`
         : `/api/spo/${encodeURIComponent(entityId)}/tier-changes?since=${lastVisit}`;
 
-    fetch(apiPath)
+    fetch(tierApiPath)
       .then((r) => r.json())
       .then((json: { data?: TierChange[] }) => {
         if (json.data && json.data.length > 0) {
           setChange(json.data[0]);
+          return;
+        }
+        // No tier change — check for personal best (DRep only)
+        if (entityType === 'drep') {
+          fetch(`/api/drep/${encodeURIComponent(entityId)}/milestones?since=${lastVisit}`)
+            .then((r) => r.json())
+            .then((m: MilestoneResult) => {
+              if (m.personalBest) {
+                setMilestone({ score: m.score });
+              }
+            })
+            .catch(() => {});
         }
       })
-      .catch(() => {
-        // Silently fail — celebration is non-critical
-      });
+      .catch(() => {});
   }, [enabled, entityType, entityId]);
 
   const handleDismiss = () => {
     const storageKey = `tier_celebration_seen_${entityType}_${entityId}`;
     localStorage.setItem(storageKey, Date.now().toString());
     setChange(null);
+    setMilestone(null);
   };
 
-  if (!change) return null;
+  if (change) {
+    const shareText = `${entityName} just reached the ${change.new_tier} tier on DRepScore! Score: ${change.new_score}`;
+    return (
+      <CelebrationOverlay
+        entityType={entityType}
+        entityId={entityId}
+        entityName={entityName}
+        oldTier={change.old_tier}
+        newTier={change.new_tier}
+        newScore={change.new_score}
+        onDismiss={handleDismiss}
+        ogImageUrl={ogImageUrl}
+        shareText={shareText}
+        shareUrl={shareUrl}
+      />
+    );
+  }
 
-  const shareText = `${entityName} just reached the ${change.new_tier} tier on DRepScore! Score: ${change.new_score}`;
+  if (milestone) {
+    return (
+      <CelebrationOverlay
+        entityType={entityType}
+        entityId={entityId}
+        entityName={entityName}
+        oldTier="Personal Best"
+        newTier="Personal Best"
+        newScore={milestone.score}
+        onDismiss={handleDismiss}
+      />
+    );
+  }
 
-  return (
-    <CelebrationOverlay
-      entityType={entityType}
-      entityId={entityId}
-      entityName={entityName}
-      oldTier={change.old_tier}
-      newTier={change.new_tier}
-      newScore={change.new_score}
-      onDismiss={handleDismiss}
-      ogImageUrl={ogImageUrl}
-      shareText={shareText}
-      shareUrl={shareUrl}
-    />
-  );
+  return null;
 }

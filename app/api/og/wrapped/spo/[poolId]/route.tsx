@@ -13,9 +13,21 @@ import {
 
 export const runtime = 'edge';
 
-export async function GET(_request: Request, { params }: { params: Promise<{ poolId: string }> }) {
+interface SPOWrappedData {
+  score_start?: number;
+  score_end?: number;
+  score_delta?: number;
+  votes_cast?: number;
+  participation_rate?: number;
+  delegator_count_end?: number;
+  live_stake_end?: number;
+}
+
+export async function GET(request: Request, { params }: { params: Promise<{ poolId: string }> }) {
   try {
     const { poolId } = await params;
+    const url = new URL(request.url);
+    const period = url.searchParams.get('period');
     const supabase = getSupabaseAdmin();
 
     const { data: pool } = await supabase
@@ -53,12 +65,46 @@ export async function GET(_request: Request, { params }: { params: Promise<{ poo
     const rank = (betterCount ?? 0) + 1;
     const percentile = totalPools ? Math.round(((totalPools - rank) / totalPools) * 100) : 0;
 
+    // Fetch period data if ?period param provided
+    let periodData: SPOWrappedData | null = null;
+    if (period) {
+      const { data: wrapped } = await supabase
+        .from('governance_wrapped')
+        .select('data')
+        .eq('entity_type', 'spo')
+        .eq('entity_id', decodeURIComponent(poolId))
+        .eq('period_id', period)
+        .single();
+      if (wrapped?.data) {
+        periodData = wrapped.data as SPOWrappedData;
+      }
+    }
+
     const stats = [
-      { label: 'Votes Cast', value: `${voteCount ?? 0}` },
+      {
+        label: period ? 'Voted' : 'Votes Cast',
+        value: period && periodData ? `${periodData.votes_cast ?? voteCount ?? 0}` : `${voteCount ?? 0}`,
+      },
       { label: 'Live Stake', value: formatAdaCompact(pool.live_stake ?? 0) },
       { label: 'Delegators', value: `${pool.delegator_count ?? 0}` },
       { label: 'Rank', value: `#${rank}` },
     ];
+
+    const delta = periodData?.score_delta;
+    const deltaColor =
+      delta !== undefined
+        ? delta > 0
+          ? OG.green
+          : delta < 0
+            ? OG.red
+            : OG.textMuted
+        : OG.textMuted;
+    const deltaLabel =
+      delta !== undefined
+        ? delta > 0
+          ? `+${delta} pts this epoch`
+          : `${delta} pts this epoch`
+        : null;
 
     return new ImageResponse(
       <OGBackground glow={color}>
@@ -82,7 +128,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ poo
               marginBottom: '16px',
             }}
           >
-            My SPO Score
+            {period ? 'My SPO Score This Epoch' : 'My SPO Score'}
           </div>
 
           <OGScoreRing score={score} size={280} />
@@ -152,6 +198,24 @@ export async function GET(_request: Request, { params }: { params: Promise<{ poo
               </div>
             ))}
           </div>
+
+          {deltaLabel && (
+            <div
+              style={{
+                display: 'flex',
+                marginTop: '20px',
+                padding: '6px 20px',
+                borderRadius: '20px',
+                backgroundColor: `${deltaColor}15`,
+                border: `1px solid ${deltaColor}30`,
+                fontSize: '20px',
+                fontWeight: 600,
+                color: deltaColor,
+              }}
+            >
+              {deltaLabel}
+            </div>
+          )}
 
           <OGFooter left="$drepscore" right="drepscore.io" />
         </div>

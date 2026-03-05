@@ -19,7 +19,7 @@ export function PoolGovernanceCard({ walletAddress }: PoolGovernanceCardProps) {
       <CardContent>
         <p className="text-sm text-muted-foreground">
           Track your staking pool&apos;s governance participation.
-          <Link href="/discover?tab=pools" className="text-cyan-500 hover:underline ml-1">
+          <Link href="/discover?tab=spos" className="text-cyan-500 hover:underline ml-1">
             Explore governance-active pools &rarr;
           </Link>
         </p>

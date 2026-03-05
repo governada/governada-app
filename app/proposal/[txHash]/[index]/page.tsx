@@ -17,6 +17,7 @@ import { ProposalVoterTabs } from '@/components/ProposalVoterTabs';
 import { SimilarProposals } from '@/components/SimilarProposals';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { ProposalHeroV1 } from '@/components/civica/proposals/ProposalHeroV1';
+import { VoteAdoptionCurve } from '@/components/civica/charts/VoteAdoptionCurve';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,26 @@ export default async function ProposalDetailPage({ params }: PageProps) {
     vote: v.vote,
     blockTime: v.blockTime,
   }));
+
+  // Aggregate votes by epoch for adoption curve
+  const votesByEpoch = new Map<number, { yes: number; no: number; abstain: number }>();
+  for (const v of votes) {
+    const epoch = v.blockTime ? blockTimeToEpoch(v.blockTime) : null;
+    if (epoch == null) continue;
+    const bucket = votesByEpoch.get(epoch) ?? { yes: 0, no: 0, abstain: 0 };
+    if (v.vote === 'Yes') bucket.yes++;
+    else if (v.vote === 'No') bucket.no++;
+    else bucket.abstain++;
+    votesByEpoch.set(epoch, bucket);
+  }
+  const adoptionData = [...votesByEpoch.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([epoch, counts]) => ({
+      epoch,
+      yesCount: counts.yes,
+      noCount: counts.no,
+      abstainCount: counts.abstain,
+    }));
 
   const title = proposal.title || `Proposal ${txHash.slice(0, 12)}...`;
 
@@ -127,6 +148,18 @@ export default async function ProposalDetailPage({ params }: PageProps) {
           </p>
         </CardContent>
       </Card>
+
+      {/* 3b. Vote Adoption Curve */}
+      {adoptionData.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Vote Adoption</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <VoteAdoptionCurve votes={adoptionData} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* 4. Representative comments scaffold (Phase 3D) */}
       <Card>

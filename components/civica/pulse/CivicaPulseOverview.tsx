@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   Activity,
@@ -12,7 +13,6 @@ import {
   DollarSign,
   BarChart3,
   ChevronRight,
-  Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,6 +36,14 @@ const TABS: { id: PulseTab; label: string }[] = [
   { id: 'observatory', label: 'Observatory' },
   { id: 'calendar', label: 'Calendar' },
 ];
+
+const VALID_PULSE_TABS = new Set<PulseTab>(TABS.map((t) => t.id));
+
+function resolvePulseTab(param: string | null): PulseTab {
+  if (!param) return 'overview';
+  const lower = param.toLowerCase() as PulseTab;
+  return VALID_PULSE_TABS.has(lower) ? lower : 'overview';
+}
 
 function StatCard({
   label,
@@ -105,7 +113,26 @@ function formatAda(ada: number): string {
 }
 
 export function CivicaPulseOverview() {
-  const [activeTab, setActiveTab] = useState<PulseTab>('overview');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const activeTab = resolvePulseTab(searchParams.get('tab'));
+
+  const setActiveTab = useCallback(
+    (tab: PulseTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === 'overview') {
+        params.delete('tab');
+      } else {
+        params.set('tab', tab);
+      }
+      const qs = params.toString();
+      router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
   const pulse = rawPulse as any;
 

@@ -1,0 +1,26 @@
+# Cube.js local development stack
+# Usage: docker compose up -d
+# API available at http://localhost:4000
+
+services:
+  cube:
+    image: cubejs/cube:v1.3
+    ports:
+      - '4000:4000' # REST API
+      - '15432:15432' # SQL API (for BI tools / Evidence.dev)
+    env_file:
+      - .env
+    volumes:
+      - ./model:/cube/conf/model:ro
+    depends_on:
+      - cubestore
+
+  cubestore:
+    image: cubejs/cubestore:latest
+    environment:
+      - CUBESTORE_REMOTE_DIR=/cube/data
+    volumes:
+      - cubestore_data:/cube/data
+
+volumes:
+  cubestore_data:

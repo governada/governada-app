@@ -1,0 +1,112 @@
+cubes:
+  - name: drep_votes
+    sql_table: public.drep_votes
+    title: DRep Votes
+    description: Individual DRep voting records on governance proposals
+
+    joins:
+      - name: dreps
+        sql: '{CUBE}.drep_id = {dreps}.id'
+        relationship: many_to_one
+
+      - name: proposals
+        sql: '{CUBE}.proposal_tx_hash = {proposals}.tx_hash AND {CUBE}.proposal_index = {proposals}.proposal_index'
+        relationship: many_to_one
+
+    measures:
+      - name: count
+        type: count
+        title: Total Votes
+
+      - name: yes_count
+        type: count
+        title: Yes Votes
+        filters:
+          - sql: "{CUBE}.vote = 'Yes'"
+
+      - name: no_count
+        type: count
+        title: No Votes
+        filters:
+          - sql: "{CUBE}.vote = 'No'"
+
+      - name: abstain_count
+        type: count
+        title: Abstain Votes
+        filters:
+          - sql: "{CUBE}.vote = 'Abstain'"
+
+      - name: with_rationale_count
+        type: count
+        title: Votes With Rationale
+        filters:
+          - sql: '{CUBE}.meta_url IS NOT NULL'
+
+      - name: avg_rationale_quality
+        type: avg
+        sql: rationale_quality
+        title: Avg Rationale Quality
+
+      - name: total_voting_power
+        type: sum
+        sql: 'COALESCE({CUBE}.voting_power_lovelace, 0)'
+        title: Total Voting Power (Lovelace)
+
+      - name: unique_voters
+        type: count_distinct
+        sql: drep_id
+        title: Unique Voters
+
+    dimensions:
+      - name: vote_tx_hash
+        sql: vote_tx_hash
+        type: string
+        primary_key: true
+
+      - name: drep_id
+        sql: drep_id
+        type: string
+
+      - name: vote
+        sql: vote
+        type: string
+        title: Vote Choice
+
+      - name: epoch_no
+        sql: epoch_no
+        type: number
+        title: Epoch
+
+      - name: proposal_tx_hash
+        sql: proposal_tx_hash
+        type: string
+
+      - name: proposal_index
+        sql: proposal_index
+        type: number
+
+      - name: rationale_quality
+        sql: rationale_quality
+        type: number
+
+      - name: voting_power_lovelace
+        sql: voting_power_lovelace
+        type: number
+
+      - name: block_time
+        sql: 'to_timestamp({CUBE}.block_time)'
+        type: time
+        title: Vote Time
+
+    pre_aggregations:
+      - name: votes_by_epoch
+        measures:
+          - count
+          - yes_count
+          - no_count
+          - abstain_count
+          - unique_voters
+        dimensions:
+          - epoch_no
+        refresh_key:
+          every: 1 hour

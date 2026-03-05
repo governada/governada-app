@@ -1,0 +1,186 @@
+cubes:
+  - name: dreps
+    sql_table: public.dreps
+    title: DReps
+    description: Delegated Representatives — core governance entities
+
+    measures:
+      - name: count
+        type: count
+        title: Total DReps
+
+      - name: avg_score
+        type: avg
+        sql: score
+        title: Average Score
+
+      - name: avg_engagement_quality
+        type: avg
+        sql: engagement_quality
+        title: Avg Engagement Quality
+
+      - name: avg_effective_participation
+        type: avg
+        sql: effective_participation_v3
+        title: Avg Effective Participation
+
+      - name: avg_reliability
+        type: avg
+        sql: reliability_v3
+        title: Avg Reliability
+
+      - name: avg_governance_identity
+        type: avg
+        sql: governance_identity
+        title: Avg Governance Identity
+
+      - name: avg_score_momentum
+        type: avg
+        sql: score_momentum
+        title: Avg Score Momentum
+
+      - name: avg_participation_rate
+        type: avg
+        sql: participation_rate
+        title: Avg Participation Rate
+
+      - name: avg_rationale_rate
+        type: avg
+        sql: rationale_rate
+        title: Avg Rationale Rate
+
+    dimensions:
+      - name: id
+        sql: id
+        type: string
+        primary_key: true
+        title: DRep ID (bech32)
+
+      - name: score
+        sql: score
+        type: number
+        title: Composite Score
+
+      - name: current_tier
+        sql: current_tier
+        type: string
+        title: Score Tier
+
+      - name: size_tier
+        sql: size_tier
+        type: string
+        title: Size Tier
+
+      - name: engagement_quality
+        sql: engagement_quality
+        type: number
+
+      - name: engagement_quality_raw
+        sql: engagement_quality_raw
+        type: number
+
+      - name: effective_participation_v3
+        sql: effective_participation_v3
+        type: number
+
+      - name: effective_participation_v3_raw
+        sql: effective_participation_v3_raw
+        type: number
+
+      - name: reliability_v3
+        sql: reliability_v3
+        type: number
+
+      - name: reliability_v3_raw
+        sql: reliability_v3_raw
+        type: number
+
+      - name: governance_identity
+        sql: governance_identity
+        type: number
+
+      - name: governance_identity_raw
+        sql: governance_identity_raw
+        type: number
+
+      - name: score_momentum
+        sql: score_momentum
+        type: number
+
+      - name: participation_rate
+        sql: participation_rate
+        type: number
+
+      - name: rationale_rate
+        sql: rationale_rate
+        type: number
+
+      - name: profile_completeness
+        sql: profile_completeness
+        type: number
+
+      - name: alignment_treasury_conservative
+        sql: alignment_treasury_conservative
+        type: number
+
+      - name: alignment_treasury_growth
+        sql: alignment_treasury_growth
+        type: number
+
+      - name: alignment_decentralization
+        sql: alignment_decentralization
+        type: number
+
+      - name: alignment_innovation
+        sql: alignment_innovation
+        type: number
+
+      - name: alignment_security
+        sql: alignment_security
+        type: number
+
+      - name: alignment_transparency
+        sql: alignment_transparency
+        type: number
+
+      - name: last_personality_label
+        sql: last_personality_label
+        type: string
+        title: Personality Label
+
+      - name: updated_at
+        sql: updated_at
+        type: time
+        title: Last Updated
+
+    segments:
+      - name: has_score
+        sql: '{CUBE}.score IS NOT NULL'
+
+      - name: legendary
+        sql: "{CUBE}.current_tier = 'Legendary'"
+
+      - name: diamond
+        sql: "{CUBE}.current_tier = 'Diamond'"
+
+      - name: gold
+        sql: "{CUBE}.current_tier = 'Gold'"
+
+      - name: silver
+        sql: "{CUBE}.current_tier = 'Silver'"
+
+      - name: bronze
+        sql: "{CUBE}.current_tier = 'Bronze'"
+
+      - name: emerging
+        sql: "{CUBE}.current_tier = 'Emerging'"
+
+    pre_aggregations:
+      - name: tier_distribution
+        measures:
+          - count
+          - avg_score
+        dimensions:
+          - current_tier
+        refresh_key:
+          every: 1 hour

@@ -1,0 +1,108 @@
+cubes:
+  - name: alignment_snapshots
+    sql_table: public.alignment_snapshots
+    title: Alignment Snapshots
+    description: 6D alignment scores per DRep per epoch
+
+    joins:
+      - name: dreps
+        sql: '{CUBE}.drep_id = {dreps}.id'
+        relationship: many_to_one
+
+    measures:
+      - name: count
+        type: count
+        title: Total Snapshots
+
+      - name: unique_dreps
+        type: count_distinct
+        sql: drep_id
+        title: Unique DReps
+
+      - name: avg_treasury_conservative
+        type: avg
+        sql: alignment_treasury_conservative
+        title: Avg Treasury Conservative
+
+      - name: avg_treasury_growth
+        type: avg
+        sql: alignment_treasury_growth
+        title: Avg Treasury Growth
+
+      - name: avg_decentralization
+        type: avg
+        sql: alignment_decentralization
+        title: Avg Decentralization
+
+      - name: avg_innovation
+        type: avg
+        sql: alignment_innovation
+        title: Avg Innovation
+
+      - name: avg_security
+        type: avg
+        sql: alignment_security
+        title: Avg Security
+
+      - name: avg_transparency
+        type: avg
+        sql: alignment_transparency
+        title: Avg Transparency
+
+    dimensions:
+      - name: id
+        sql: "CONCAT({CUBE}.drep_id, '-', {CUBE}.epoch)"
+        type: string
+        primary_key: true
+
+      - name: drep_id
+        sql: drep_id
+        type: string
+
+      - name: epoch
+        sql: epoch
+        type: number
+        title: Epoch
+
+      - name: alignment_treasury_conservative
+        sql: alignment_treasury_conservative
+        type: number
+
+      - name: alignment_treasury_growth
+        sql: alignment_treasury_growth
+        type: number
+
+      - name: alignment_decentralization
+        sql: alignment_decentralization
+        type: number
+
+      - name: alignment_innovation
+        sql: alignment_innovation
+        type: number
+
+      - name: alignment_security
+        sql: alignment_security
+        type: number
+
+      - name: alignment_transparency
+        sql: alignment_transparency
+        type: number
+
+      - name: snapshot_at
+        sql: snapshot_at
+        type: time
+
+    pre_aggregations:
+      - name: network_alignment_by_epoch
+        measures:
+          - avg_treasury_conservative
+          - avg_treasury_growth
+          - avg_decentralization
+          - avg_innovation
+          - avg_security
+          - avg_transparency
+          - unique_dreps
+        dimensions:
+          - epoch
+        refresh_key:
+          every: 6 hours

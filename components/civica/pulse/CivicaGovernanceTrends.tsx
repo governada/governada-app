@@ -11,6 +11,8 @@ import {
 import { tierKey, TIER_SCORE_COLOR, TIER_BADGE_BG } from '@/components/civica/cards/tierStyles';
 import { computeTier } from '@/lib/scoring/tiers';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { GovernanceHealthGauge } from '@/components/civica/charts/GovernanceHealthGauge';
+import { ActivityHeatmap } from '@/components/civica/charts/ActivityHeatmap';
 
 type SparkRow = { epoch: number; participation_rate: number; rationale_rate: number };
 
@@ -205,57 +207,46 @@ export function CivicaGovernanceTrends() {
         )}
       </div>
 
-      {/* GHI trend */}
+      {/* GHI gauge + sparkline */}
       <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">Governance Health Index</p>
-          {trend && (
-            <div className={cn('flex items-center gap-1 text-sm font-medium', trendColor)}>
-              <TrendIcon className="h-4 w-4" />
-              {trend.delta > 0 ? '+' : ''}
-              {trend.delta}
-              {trend.streakEpochs > 1 && (
-                <span className="text-[11px] text-muted-foreground ml-1">
-                  ({trend.streakEpochs} epoch streak)
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        <p className="text-sm font-semibold">Governance Health Index</p>
 
         {isLoading ? (
-          <Skeleton className="h-14 w-full" />
-        ) : ghiValues.length > 1 ? (
-          <>
-            <TrendLine data={ghiValues} color="#818cf8" height={56} />
-            <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>
-                Epoch {ghiHistory[ghiHistory.length - 1]?.epoch}
-                {'  '}
-                <strong className="text-foreground">
-                  {ghiValues[ghiValues.length - 1]?.toFixed(1)}
-                </strong>
-              </span>
-              <span>
-                Current:{' '}
-                <strong className={cn(trendColor)}>{ghi?.current?.score?.toFixed(1) ?? '—'}</strong>{' '}
-                <span
-                  className={cn(
-                    'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
-                    ghi?.current?.band === 'Healthy'
-                      ? 'bg-emerald-900/30 text-emerald-400'
-                      : ghi?.current?.band === 'Moderate'
-                        ? 'bg-amber-900/30 text-amber-400'
-                        : 'bg-rose-900/30 text-rose-400',
-                  )}
-                >
-                  {ghi?.current?.band}
-                </span>
-              </span>
-            </div>
-          </>
+          <Skeleton className="h-32 w-full" />
         ) : (
-          <p className="text-xs text-muted-foreground">No GHI history available yet.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+            {/* Gauge */}
+            {ghi?.current?.score != null && (
+              <GovernanceHealthGauge
+                score={ghi.current.score}
+                band={ghi.current.band ?? 'Unknown'}
+                delta={trend?.delta}
+              />
+            )}
+
+            {/* Sparkline trend */}
+            <div className="space-y-2">
+              {ghiValues.length > 1 ? (
+                <>
+                  <TrendLine data={ghiValues} color="#818cf8" height={72} />
+                  <div className="flex justify-between text-[11px] text-muted-foreground">
+                    <span>Ep {ghiHistory[0]?.epoch}</span>
+                    {trend && (
+                      <span className={cn('font-medium', trendColor)}>
+                        <TrendIcon className="h-3 w-3 inline mr-0.5" />
+                        {trend.delta > 0 ? '+' : ''}
+                        {trend.delta}
+                        {trend.streakEpochs > 1 && ` (${trend.streakEpochs}ep)`}
+                      </span>
+                    )}
+                    <span>Ep {ghiHistory[ghiHistory.length - 1]?.epoch}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">No GHI history available yet.</p>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
@@ -276,6 +267,23 @@ export function CivicaGovernanceTrends() {
           </div>
         )}
       </div>
+
+      {/* Participation heatmap */}
+      {participationRows.length > 4 && (
+        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <p className="text-sm font-semibold">Participation Activity</p>
+          <p className="text-xs text-muted-foreground">
+            Epoch-by-epoch DRep participation rate — darker = higher engagement.
+          </p>
+          <ActivityHeatmap
+            data={participationRows.map((r) => ({
+              epoch: r.epoch,
+              value: r.participation_rate,
+            }))}
+            valueLabel="participation"
+          />
+        </div>
+      )}
 
       {/* Rising vs falling */}
       {leaderboard?.weeklyMovers && (

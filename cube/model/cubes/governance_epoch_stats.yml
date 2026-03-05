@@ -1,0 +1,90 @@
+cubes:
+  - name: governance_epoch_stats
+    sql_table: public.governance_epoch_stats
+    title: Governance Epoch Stats
+    description: Aggregate governance statistics per epoch
+
+    measures:
+      - name: count
+        type: count
+
+      - name: avg_participation_rate
+        type: avg
+        sql: participation_rate
+        title: Avg Participation Rate
+
+      - name: avg_drep_score
+        type: avg
+        sql: avg_drep_score
+        title: Avg DRep Score (across epochs)
+
+      - name: max_total_dreps
+        type: max
+        sql: total_dreps
+        title: Peak Total DReps
+
+      - name: max_active_dreps
+        type: max
+        sql: active_dreps
+        title: Peak Active DReps
+
+    dimensions:
+      - name: epoch_no
+        sql: epoch_no
+        type: number
+        primary_key: true
+        title: Epoch
+
+      - name: total_dreps
+        sql: total_dreps
+        type: number
+        title: Total DReps
+
+      - name: active_dreps
+        sql: active_dreps
+        type: number
+        title: Active DReps
+
+      - name: participation_rate
+        sql: participation_rate
+        type: number
+        title: Participation Rate
+
+      - name: avg_epoch_drep_score
+        sql: avg_drep_score
+        type: number
+        title: Avg DRep Score
+
+      - name: rationale_rate
+        sql: rationale_rate
+        type: number
+        title: Rationale Rate
+
+      - name: proposals_submitted
+        sql: proposals_submitted
+        type: number
+        title: Proposals Submitted
+
+      - name: proposals_ratified
+        sql: proposals_ratified
+        type: number
+        title: Proposals Ratified
+
+      - name: proposals_expired
+        sql: proposals_expired
+        type: number
+        title: Proposals Expired
+
+      - name: proposals_dropped
+        sql: proposals_dropped
+        type: number
+        title: Proposals Dropped
+
+      - name: total_delegated_ada_lovelace
+        sql: total_delegated_ada_lovelace
+        type: string
+        title: Total Delegated ADA (Lovelace)
+
+      - name: computed_at
+        sql: computed_at
+        type: time

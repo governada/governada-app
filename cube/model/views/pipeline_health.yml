@@ -1,0 +1,21 @@
+views:
+  - name: pipeline_health
+    title: Pipeline Health
+    description: Operational view of sync pipeline status and performance
+
+    cubes:
+      - join_path: sync_log
+        includes:
+          - count
+          - success_count
+          - failure_count
+          - success_rate
+          - avg_duration_ms
+          - max_duration_ms
+          - p95_duration_ms
+          - sync_type
+          - success
+          - duration_ms
+          - error_message
+          - started_at
+          - finished_at

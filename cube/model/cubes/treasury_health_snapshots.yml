@@ -1,0 +1,90 @@
+cubes:
+  - name: treasury_health_snapshots
+    sql_table: public.treasury_health_snapshots
+    title: Treasury Health Snapshots
+    description: Treasury health composite score and metrics per epoch
+
+    measures:
+      - name: count
+        type: count
+
+      - name: avg_health_score
+        type: avg
+        sql: health_score
+        title: Avg Health Score
+
+      - name: latest_runway_months
+        type: max
+        sql: runway_months
+        title: Latest Runway (months)
+
+      - name: avg_burn_rate
+        type: avg
+        sql: burn_rate_per_epoch
+        title: Avg Burn Rate (per epoch)
+
+      - name: total_pending_ada
+        type: sum
+        sql: pending_total_ada
+        title: Total Pending ADA
+
+    dimensions:
+      - name: epoch
+        sql: epoch
+        type: number
+        primary_key: true
+        title: Epoch
+
+      - name: health_score
+        sql: health_score
+        type: number
+        title: Health Score
+
+      - name: balance_trend
+        sql: balance_trend
+        type: number
+        title: Balance Trend
+
+      - name: withdrawal_velocity
+        sql: withdrawal_velocity
+        type: number
+        title: Withdrawal Velocity
+
+      - name: income_stability
+        sql: income_stability
+        type: number
+        title: Income Stability
+
+      - name: runway_adequacy
+        sql: runway_adequacy
+        type: number
+        title: Runway Adequacy
+
+      - name: runway_months
+        sql: runway_months
+        type: number
+        title: Runway (months)
+
+      - name: burn_rate_per_epoch
+        sql: burn_rate_per_epoch
+        type: number
+        title: Burn Rate (per epoch)
+
+      - name: pending_count
+        sql: pending_count
+        type: number
+        title: Pending Withdrawal Count
+
+      - name: pending_total_ada
+        sql: pending_total_ada
+        type: number
+        title: Pending Total ADA
+
+      - name: pending_load
+        sql: pending_load
+        type: number
+        title: Pending Load
+
+      - name: snapshot_at
+        sql: snapshot_at
+        type: time

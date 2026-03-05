@@ -1,0 +1,85 @@
+cubes:
+  - name: decentralization_snapshots
+    sql_table: public.decentralization_snapshots
+    title: Decentralization Snapshots
+    description: EDI (Extended Decentralization Index) metrics per epoch
+
+    measures:
+      - name: count
+        type: count
+
+      - name: avg_composite_score
+        type: avg
+        sql: composite_score
+        title: Avg Composite Score
+
+      - name: avg_nakamoto
+        type: avg
+        sql: nakamoto_coefficient
+        title: Avg Nakamoto Coefficient
+
+      - name: avg_gini
+        type: avg
+        sql: gini
+        title: Avg Gini Coefficient
+
+    dimensions:
+      - name: epoch_no
+        sql: epoch_no
+        type: number
+        primary_key: true
+        title: Epoch
+
+      - name: composite_score
+        sql: composite_score
+        type: number
+        title: Composite Score
+
+      - name: nakamoto_coefficient
+        sql: nakamoto_coefficient
+        type: number
+        title: Nakamoto Coefficient
+
+      - name: gini
+        sql: gini
+        type: number
+        title: Gini Coefficient
+
+      - name: shannon_entropy
+        sql: shannon_entropy
+        type: number
+        title: Shannon Entropy
+
+      - name: hhi
+        sql: hhi
+        type: number
+        title: Herfindahl-Hirschman Index
+
+      - name: theil_index
+        sql: theil_index
+        type: number
+        title: Theil Index
+
+      - name: concentration_ratio
+        sql: concentration_ratio
+        type: number
+        title: Concentration Ratio
+
+      - name: tau_decentralization
+        sql: tau_decentralization
+        type: number
+        title: Tau Decentralization
+
+      - name: active_drep_count
+        sql: active_drep_count
+        type: number
+        title: Active DRep Count
+
+      - name: total_delegated_ada
+        sql: total_delegated_ada
+        type: number
+        title: Total Delegated ADA
+
+      - name: snapshot_at
+        sql: snapshot_at
+        type: time

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Users, ShieldCheck, FileText, Scale, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CivicaDRepBrowse } from './CivicaDRepBrowse';
@@ -11,6 +12,25 @@ import { ProposalsBrowse } from './ProposalsBrowse';
 import type { EnrichedDRep } from '@/lib/koios';
 
 type TabId = 'dreps' | 'spos' | 'proposals' | 'committee' | 'rankings';
+
+/** Map legacy/alias param values to canonical tab IDs */
+const TAB_ALIASES: Record<string, TabId> = {
+  dreps: 'dreps',
+  spos: 'spos',
+  pools: 'spos',
+  proposals: 'proposals',
+  committee: 'committee',
+  rankings: 'rankings',
+  leaderboard: 'rankings',
+};
+
+const VALID_TABS = new Set<TabId>(['dreps', 'spos', 'proposals', 'committee', 'rankings']);
+
+function resolveTab(param: string | null): TabId {
+  if (!param) return 'dreps';
+  const resolved = TAB_ALIASES[param.toLowerCase()];
+  return resolved && VALID_TABS.has(resolved) ? resolved : 'dreps';
+}
 
 interface Tab {
   id: TabId;
@@ -26,7 +46,26 @@ interface CivicaDiscoverProps {
 }
 
 export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaDiscoverProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('dreps');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Derive active tab directly from URL — searchParams is the source of truth
+  const activeTab = resolveTab(searchParams.get('tab'));
+
+  const setActiveTab = useCallback(
+    (tab: TabId) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === 'dreps') {
+        params.delete('tab');
+      } else {
+        params.set('tab', tab);
+      }
+      const qs = params.toString();
+      router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
 
   const tabs: Tab[] = [
     { id: 'dreps', label: 'DReps', icon: Users, count: totalAvailable },

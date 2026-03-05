@@ -1,0 +1,122 @@
+cubes:
+  - name: proposals
+    sql_table: public.proposals
+    title: Governance Proposals
+    description: On-chain governance proposals with lifecycle tracking
+
+    measures:
+      - name: count
+        type: count
+        title: Total Proposals
+
+      - name: ratified_count
+        type: count
+        title: Ratified
+        filters:
+          - sql: '{CUBE}.ratified_epoch IS NOT NULL'
+
+      - name: enacted_count
+        type: count
+        title: Enacted
+        filters:
+          - sql: '{CUBE}.enacted_epoch IS NOT NULL'
+
+      - name: expired_count
+        type: count
+        title: Expired
+        filters:
+          - sql: '{CUBE}.expired_epoch IS NOT NULL'
+
+      - name: dropped_count
+        type: count
+        title: Dropped
+        filters:
+          - sql: '{CUBE}.dropped_epoch IS NOT NULL'
+
+      - name: active_count
+        type: count
+        title: Active (Pending)
+        filters:
+          - sql: '{CUBE}.ratified_epoch IS NULL AND {CUBE}.enacted_epoch IS NULL AND {CUBE}.expired_epoch IS NULL AND {CUBE}.dropped_epoch IS NULL'
+
+      - name: total_withdrawal_amount
+        type: sum
+        sql: 'COALESCE({CUBE}.withdrawal_amount, 0)'
+        title: Total Treasury Withdrawals (ADA)
+
+    dimensions:
+      - name: id
+        sql: "CONCAT({CUBE}.tx_hash, '-', {CUBE}.proposal_index)"
+        type: string
+        primary_key: true
+
+      - name: tx_hash
+        sql: tx_hash
+        type: string
+
+      - name: proposal_index
+        sql: proposal_index
+        type: number
+
+      - name: title
+        sql: title
+        type: string
+
+      - name: proposal_type
+        sql: proposal_type
+        type: string
+        title: Type
+
+      - name: proposed_epoch
+        sql: proposed_epoch
+        type: number
+
+      - name: ratified_epoch
+        sql: ratified_epoch
+        type: number
+
+      - name: enacted_epoch
+        sql: enacted_epoch
+        type: number
+
+      - name: expired_epoch
+        sql: expired_epoch
+        type: number
+
+      - name: dropped_epoch
+        sql: dropped_epoch
+        type: number
+
+      - name: withdrawal_amount
+        sql: withdrawal_amount
+        type: number
+
+      - name: treasury_tier
+        sql: treasury_tier
+        type: string
+
+      - name: status
+        type: string
+        sql: >
+          CASE
+            WHEN {CUBE}.enacted_epoch IS NOT NULL THEN 'enacted'
+            WHEN {CUBE}.ratified_epoch IS NOT NULL THEN 'ratified'
+            WHEN {CUBE}.expired_epoch IS NOT NULL THEN 'expired'
+            WHEN {CUBE}.dropped_epoch IS NOT NULL THEN 'dropped'
+            ELSE 'active'
+          END
+        title: Current Status
+
+      - name: updated_at
+        sql: updated_at
+        type: time
+
+    pre_aggregations:
+      - name: by_status_and_type
+        measures:
+          - count
+        dimensions:
+          - status
+          - proposal_type
+        refresh_key:
+          every: 1 hour

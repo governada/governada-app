@@ -1,0 +1,55 @@
+cubes:
+  - name: ghi_snapshots
+    sql_table: public.ghi_snapshots
+    title: GHI Snapshots
+    description: Governance Health Index historical snapshots per epoch
+
+    measures:
+      - name: count
+        type: count
+
+      - name: latest_score
+        type: max
+        sql: score
+        title: Latest GHI Score
+
+      - name: avg_score
+        type: avg
+        sql: score
+        title: Average GHI Score
+
+      - name: min_score
+        type: min
+        sql: score
+        title: Min GHI Score
+
+    dimensions:
+      - name: epoch_no
+        sql: epoch_no
+        type: number
+        primary_key: true
+        title: Epoch
+
+      - name: score
+        sql: score
+        type: number
+        title: GHI Score
+
+      - name: band
+        sql: band
+        type: string
+        title: Health Band
+
+      - name: computed_at
+        sql: computed_at
+        type: time
+
+    pre_aggregations:
+      - name: by_epoch
+        measures:
+          - latest_score
+        dimensions:
+          - epoch_no
+          - band
+        refresh_key:
+          every: 6 hours

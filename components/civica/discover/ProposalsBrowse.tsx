@@ -2,12 +2,14 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Search, X, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet-context';
+import { ProposalStatusFunnel } from '@/components/civica/charts/ProposalStatusFunnel';
+import { DiscoverFilterBar } from './DiscoverFilterBar';
+import { DiscoverPagination } from './DiscoverPagination';
 
 const TYPE_COLORS: Record<string, string> = {
   ParameterChange: 'bg-blue-950/30 text-blue-400 border-blue-800/30',
@@ -28,18 +30,20 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_FILTERS = ['All', 'Open', 'Ratified', 'Enacted', 'Expired', 'Dropped'];
+const TYPE_FILTERS = [
+  { value: 'All', label: 'All types' },
+  { value: 'ParameterChange', label: 'Param Change' },
+  { value: 'HardForkInitiation', label: 'Hard Fork' },
+  { value: 'TreasuryWithdrawals', label: 'Treasury' },
+  { value: 'NewConstitution', label: 'Constitution' },
+  { value: 'NoConfidence', label: 'No Confidence' },
+  { value: 'UpdateCommittee', label: 'Committee' },
+  { value: 'InfoAction', label: 'Info' },
+];
 
 function typeLabel(type: string): string {
-  const map: Record<string, string> = {
-    ParameterChange: 'Param Change',
-    HardForkInitiation: 'Hard Fork',
-    TreasuryWithdrawals: 'Treasury',
-    NewConstitution: 'Constitution',
-    NoConfidence: 'No Confidence',
-    UpdateCommittee: 'Committee',
-    InfoAction: 'Info',
-  };
-  return map[type] ?? type;
+  const found = TYPE_FILTERS.find((t) => t.value === type);
+  return found?.label ?? type;
 }
 
 const VOTE_PILL: Record<string, { label: string; color: string }> = {
@@ -48,15 +52,35 @@ const VOTE_PILL: Record<string, { label: string; color: string }> = {
   Abstain: { label: 'Abstain', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' },
 };
 
+const PAGE_SIZE = 25;
+
 export function ProposalsBrowse() {
   const { data: rawData, isLoading } = useProposals(200);
   const data = rawData as any;
-  const proposals: any[] = data?.proposals ?? [];
+  const proposals: any[] = useMemo(() => data?.proposals ?? [], [data]);
   const { delegatedDrepId } = useWallet();
   const { data: drepVotesRaw } = useDRepVotes(delegatedDrepId);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [page, setPage] = useState(0);
+
+  const isDefault = search === '' && statusFilter === 'All' && typeFilter === 'All';
+
+  const resetFilters = () => {
+    setSearch('');
+    setStatusFilter('All');
+    setTypeFilter('All');
+    setPage(0);
+  };
+
+  const setFilter =
+    <T,>(setter: (v: T) => void) =>
+    (v: T) => {
+      setter(v);
+      setPage(0);
+    };
 
   // Build a lookup: "txHash:index" -> vote
   const drepVoteMap = useMemo(() => {
@@ -85,8 +109,32 @@ export function ProposalsBrowse() {
     if (statusFilter !== 'All') {
       r = r.filter((p: any) => (p.status ?? 'Open').toLowerCase() === statusFilter.toLowerCase());
     }
+    if (typeFilter !== 'All') {
+      r = r.filter((p: any) => p.type === typeFilter);
+    }
     return r;
-  }, [proposals, search, statusFilter]);
+  }, [proposals, search, statusFilter, typeFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of proposals) {
+      const s = (p as any).status ?? 'Open';
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    const STATUS_COLOR_MAP: Record<string, string> = {
+      Open: '#34d399',
+      Ratified: '#38bdf8',
+      Enacted: '#a78bfa',
+      Expired: '#64748b',
+      Dropped: '#94a3b8',
+    };
+    return ['Open', 'Ratified', 'Enacted', 'Expired', 'Dropped']
+      .filter((s) => (counts[s] || 0) > 0)
+      .map((s) => ({ status: s, count: counts[s] || 0, color: STATUS_COLOR_MAP[s] || '#64748b' }));
+  }, [proposals]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pageItems = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   if (isLoading) {
     return (
@@ -100,56 +148,50 @@ export function ProposalsBrowse() {
 
   return (
     <div className="space-y-4 pt-4">
-      {/* ── Filters ──────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search proposals…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+      {/* Status pipeline overview */}
+      {statusCounts.length > 1 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Governance Pipeline
+          </p>
+          <ProposalStatusFunnel statuses={statusCounts} />
         </div>
+      )}
 
-        <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={cn(
-                'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
-                statusFilter === s
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
-              )}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
+      <DiscoverFilterBar
+        search={search}
+        onSearchChange={setFilter(setSearch)}
+        searchPlaceholder="Search proposals…"
+        chipGroups={[
+          {
+            label: 'Status',
+            value: statusFilter,
+            options: STATUS_FILTERS.map((s) => ({ value: s, label: s })),
+            onChange: setFilter(setStatusFilter),
+          },
+          {
+            label: 'Type',
+            value: typeFilter,
+            options: TYPE_FILTERS,
+            onChange: setFilter(setTypeFilter),
+          },
+        ]}
+        resultCount={filtered.length}
+        totalCount={proposals.length}
+        entityLabel="proposals"
+        isFiltered={!isDefault}
+        onReset={resetFilters}
+        pageInfo={totalPages > 1 ? `Page ${page + 1} / ${totalPages}` : undefined}
+      />
 
-      <p className="text-xs text-muted-foreground">
-        <strong className="text-foreground">{filtered.length}</strong> proposals
-      </p>
-
-      {/* ── List ─────────────────────────────────────────────── */}
-      {filtered.length === 0 ? (
+      {/* List */}
+      {pageItems.length === 0 ? (
         <div className="py-16 text-center text-muted-foreground text-sm">
           No proposals match your search.
         </div>
       ) : (
         <div className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden">
-          {filtered.map((p: any) => {
+          {pageItems.map((p: any) => {
             const status = p.status ?? 'Open';
             const drepVote = drepVoteMap.get(`${p.txHash}:${p.index}`);
             const pill = drepVote ? VOTE_PILL[drepVote] : null;
@@ -197,6 +239,8 @@ export function ProposalsBrowse() {
           })}
         </div>
       )}
+
+      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

@@ -1,0 +1,100 @@
+cubes:
+  - name: sync_log
+    sql_table: public.sync_log
+    title: Sync Log
+    description: Pipeline sync execution records for monitoring health
+
+    measures:
+      - name: count
+        type: count
+        title: Total Syncs
+
+      - name: success_count
+        type: count
+        title: Successful Syncs
+        filters:
+          - sql: '{CUBE}.success = true'
+
+      - name: failure_count
+        type: count
+        title: Failed Syncs
+        filters:
+          - sql: '{CUBE}.success = false'
+
+      - name: success_rate
+        type: number
+        sql: 'CASE WHEN COUNT(*) > 0 THEN ROUND(COUNT(*) FILTER (WHERE {CUBE}.success = true) * 100.0 / COUNT(*), 1) ELSE 0 END'
+        title: Success Rate (%)
+
+      - name: avg_duration_ms
+        type: avg
+        sql: duration_ms
+        title: Avg Duration (ms)
+
+      - name: max_duration_ms
+        type: max
+        sql: duration_ms
+        title: Max Duration (ms)
+
+      - name: p95_duration_ms
+        type: number
+        sql: 'PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY {CUBE}.duration_ms)'
+        title: P95 Duration (ms)
+
+    dimensions:
+      - name: id
+        sql: id
+        type: number
+        primary_key: true
+
+      - name: sync_type
+        sql: sync_type
+        type: string
+        title: Sync Type
+
+      - name: success
+        sql: success
+        type: boolean
+
+      - name: duration_ms
+        sql: duration_ms
+        type: number
+
+      - name: error_message
+        sql: error_message
+        type: string
+
+      - name: started_at
+        sql: started_at
+        type: time
+        title: Started At
+
+      - name: finished_at
+        sql: finished_at
+        type: time
+        title: Finished At
+
+      - name: created_at
+        sql: created_at
+        type: time
+
+    segments:
+      - name: recent
+        sql: "{CUBE}.started_at > NOW() - INTERVAL '24 hours'"
+
+      - name: last_week
+        sql: "{CUBE}.started_at > NOW() - INTERVAL '7 days'"
+
+    pre_aggregations:
+      - name: by_type_hourly
+        measures:
+          - count
+          - success_count
+          - failure_count
+          - avg_duration_ms
+        dimensions:
+          - sync_type
+        time_dimension: started_at
+        granularity: hour
+        refresh_key:
+          every: 15 minutes

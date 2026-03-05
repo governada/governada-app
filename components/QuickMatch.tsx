@@ -461,7 +461,7 @@ function QuickMatchPoolResults({ result }: { result: QuickMatchPoolResult }) {
           <p className="text-sm text-muted-foreground">
             Browse governance-active stake pools and compare their voting records.
           </p>
-          <Link href="/discover?tab=pools">
+          <Link href="/discover?tab=spos">
             <Button
               variant="outline"
               className="gap-2 border-cyan-500/40 text-cyan-600 hover:bg-cyan-500/10"

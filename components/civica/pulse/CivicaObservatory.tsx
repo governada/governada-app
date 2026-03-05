@@ -10,6 +10,8 @@ import {
 } from '@/hooks/queries';
 import { getChainMetrics, GOVERNANCE_MODELS } from '@/lib/crossChain/chainMetrics';
 import type { ChainBenchmark } from '@/lib/crossChain';
+import { CrossChainRadar } from '@/components/civica/charts/CrossChainRadar';
+import { VotingPowerTreemap } from '@/components/civica/charts/VotingPowerTreemap';
 
 interface EDIMetric {
   key: string;
@@ -178,6 +180,11 @@ export function CivicaObservatory() {
   const decentralization = rawDecentralization as any;
 
   const ediMetrics = buildEDIMetrics(ghi, decentralization);
+  const topDRepsByPower = (decentralization?.topDRepsByPower ?? []) as {
+    drepId: string;
+    name: string;
+    votingPower: number;
+  }[];
   const loading = ghiLoading || benchLoading;
 
   const cardanoBench = benchmarks.find((b) => b.chain === 'cardano');
@@ -213,11 +220,24 @@ export function CivicaObservatory() {
         )}
       </div>
 
-      {/* Cross-chain comparison */}
+      {/* Voting power treemap */}
+      {topDRepsByPower.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wider mb-1">
+            Voting Power Distribution
+          </h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            How voting power is distributed among the top DReps.
+          </p>
+          <VotingPowerTreemap dreps={topDRepsByPower} />
+        </div>
+      )}
+
+      {/* Cross-chain radar comparison */}
       <div>
         <h3 className="text-sm font-bold uppercase tracking-wider mb-1">Cross-Chain Comparison</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Chain-native metrics — no scores or grades, raw participation and decentralization data.
+          How Cardano governance compares across key dimensions.
         </p>
 
         {benchLoading ? (
@@ -230,20 +250,57 @@ export function CivicaObservatory() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {cardanoBench && (
-              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-                <ChainComparisonBar chain="cardano" benchmark={cardanoBench} />
-              </div>
-            )}
-            {otherBenchmarks.map((b) => (
-              <div key={b.chain} className="rounded-xl border border-border bg-card p-4">
-                <ChainComparisonBar chain={b.chain} benchmark={b} />
-              </div>
-            ))}
+        ) : benchmarks.length > 0 ? (
+          <div className="space-y-4">
+            {/* Radar chart */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <CrossChainRadar
+                chains={benchmarks.map((b) => ({
+                  chain: b.chain,
+                  color:
+                    b.chain === 'cardano'
+                      ? '#818cf8'
+                      : b.chain === 'ethereum'
+                        ? '#6366f1'
+                        : '#ec4899',
+                  values: {
+                    participation: Math.min(100, b.participationRate ?? 0),
+                    delegates: Math.min(
+                      100,
+                      ((b.delegateCount ?? 0) /
+                        Math.max(1, ...benchmarks.map((x) => x.delegateCount ?? 0))) *
+                        100,
+                    ),
+                    onchain: b.chain === 'cardano' ? 90 : b.chain === 'polkadot' ? 85 : 40,
+                    rationale: b.chain === 'cardano' ? 70 : b.chain === 'ethereum' ? 20 : 30,
+                    diversity: Math.min(100, ((b.delegateCount ?? 0) / 10) * 5),
+                  },
+                }))}
+                axes={[
+                  { key: 'participation', label: 'Participation' },
+                  { key: 'delegates', label: 'Delegate Pool' },
+                  { key: 'onchain', label: 'On-chain' },
+                  { key: 'rationale', label: 'Rationale' },
+                  { key: 'diversity', label: 'Diversity' },
+                ]}
+              />
+            </div>
+
+            {/* Individual chain cards (detail) */}
+            <div className="space-y-3">
+              {cardanoBench && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <ChainComparisonBar chain="cardano" benchmark={cardanoBench} />
+                </div>
+              )}
+              {otherBenchmarks.map((b) => (
+                <div key={b.chain} className="rounded-xl border border-border bg-card p-4">
+                  <ChainComparisonBar chain={b.chain} benchmark={b} />
+                </div>
+              ))}
+            </div>
           </div>
-        )}
+        ) : null}
 
         {/* AI insight */}
         {cardanoBench && otherBenchmarks.length > 0 && (

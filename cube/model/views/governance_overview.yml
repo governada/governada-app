@@ -1,0 +1,19 @@
+views:
+  - name: governance_overview
+    title: Governance Overview
+    description: High-level governance network metrics combining epoch stats, GHI, and decentralization
+
+    cubes:
+      - join_path: governance_epoch_stats
+        includes:
+          - epoch_no
+          - total_dreps
+          - active_dreps
+          - participation_rate
+          - avg_epoch_drep_score
+          - rationale_rate
+          - proposals_submitted
+          - proposals_ratified
+          - proposals_expired
+          - proposals_dropped
+          - computed_at

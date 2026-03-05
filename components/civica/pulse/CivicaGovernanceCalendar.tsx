@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Calendar, Clock, AlertTriangle, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useGovernancePulse, useGovernanceEpochRecap } from '@/hooks/queries';
+import {
+  useGovernancePulse,
+  useGovernanceEpochRecap,
+  useGovernanceCalendar,
+} from '@/hooks/queries';
 
 interface CalendarData {
   currentEpoch: number;
@@ -155,28 +159,25 @@ function formatAda(ada: number): string {
 }
 
 export function CivicaGovernanceCalendar() {
-  const [calendar, setCalendar] = useState<CalendarData | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [calendarLoading, setCalendarLoading] = useState(true);
+  const { data: rawCalendar, isLoading: calendarLoading } = useGovernanceCalendar();
+  const calendar = (rawCalendar as CalendarData) ?? null;
 
   const { data: rawPulse } = useGovernancePulse();
   const { data: rawRecap } = useGovernanceEpochRecap();
   const pulse = rawPulse as any;
   const recap = rawRecap as any;
 
+  // Initialize countdown from server data, then tick locally
+  const initialSeconds = calendar?.secondsRemaining ?? null;
+  const lastInitRef = useRef<number | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+
   useEffect(() => {
-    setCalendarLoading(true);
-    fetch('/api/governance/calendar')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d) {
-          setCalendar(d);
-          setCountdown(d.secondsRemaining);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setCalendarLoading(false));
-  }, []);
+    if (initialSeconds !== null && initialSeconds !== lastInitRef.current) {
+      lastInitRef.current = initialSeconds;
+      setCountdown(initialSeconds);
+    }
+  }, [initialSeconds]);
 
   useEffect(() => {
     if (countdown === null || countdown <= 0) return;

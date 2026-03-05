@@ -2,50 +2,62 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { computeTier } from '@/lib/scoring/tiers';
-import {
-  TIER_SCORE_COLOR,
-  TIER_BADGE_BG,
-  TIER_BORDER,
-  TIER_BG,
-  tierKey,
-  type TierKey,
-} from '@/components/civica/cards/tierStyles';
+import { TIER_SCORE_COLOR, TIER_BADGE_BG, tierKey } from '@/components/civica/cards/tierStyles';
 import { useGovernanceLeaderboard } from '@/hooks/queries';
+import { DiscoverFilterBar } from './DiscoverFilterBar';
+import { DiscoverPagination } from './DiscoverPagination';
 
 const PAGE_SIZE = 25;
 
-const TIER_FILTERS: { label: string; min: number }[] = [
-  { label: 'All', min: 0 },
-  { label: 'Bronze+', min: 40 },
-  { label: 'Silver+', min: 55 },
-  { label: 'Gold+', min: 70 },
-  { label: 'Diamond+', min: 85 },
-  { label: 'Legendary', min: 95 },
+const TIER_CHIPS = [
+  { value: 'All', label: 'All' },
+  { value: 'Bronze+', label: 'Bronze+' },
+  { value: 'Silver+', label: 'Silver+' },
+  { value: 'Gold+', label: 'Gold+' },
+  { value: 'Diamond+', label: 'Diamond+' },
+  { value: 'Legendary', label: 'Legendary' },
 ];
 
+const TIER_MIN_SCORES: Record<string, number> = {
+  All: 0,
+  'Bronze+': 40,
+  'Silver+': 55,
+  'Gold+': 70,
+  'Diamond+': 85,
+  Legendary: 95,
+};
+
 const RANK_MEDALS: Record<number, string> = {
-  1: '🥇',
-  2: '🥈',
-  3: '🥉',
+  1: '\u{1F947}',
+  2: '\u{1F948}',
+  3: '\u{1F949}',
 };
 
 export function CivicaLeaderboard() {
-  const [minScore, setMinScore] = useState(0);
+  const [tierFilter, setTierFilter] = useState('All');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
-  // Fetch max 50 results (API cap); filter by tier client-side
   const { data: rawData, isLoading } = useGovernanceLeaderboard();
   const data = rawData as any;
 
-  const allEntries: any[] = data?.leaderboard ?? [];
-  const weeklyMovers: { gainers: any[]; losers: any[] } = data?.weeklyMovers ?? {
-    gainers: [],
-    losers: [],
+  const allEntries: any[] = useMemo(() => data?.leaderboard ?? [], [data]);
+  const weeklyMovers = useMemo<{ gainers: any[]; losers: any[] }>(
+    () => data?.weeklyMovers ?? { gainers: [], losers: [] },
+    [data],
+  );
+
+  const minScore = TIER_MIN_SCORES[tierFilter] ?? 0;
+  const isDefault = tierFilter === 'All' && search === '';
+
+  const resetFilters = () => {
+    setTierFilter('All');
+    setSearch('');
+    setPage(0);
   };
 
   // Build delta map from movers
@@ -56,18 +68,21 @@ export function CivicaLeaderboard() {
     return m;
   }, [weeklyMovers]);
 
-  const filtered = useMemo(
-    () => allEntries.filter((e: any) => e.score >= minScore),
-    [allEntries, minScore],
-  );
+  const filtered = useMemo(() => {
+    let result = allEntries.filter((e: any) => e.score >= minScore);
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (e: any) => e.name?.toLowerCase().includes(q) || e.drepId?.toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [allEntries, minScore, search]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageEntries = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
-  const handleTierFilter = (min: number) => {
-    setMinScore(min);
-    setPage(0);
-  };
 
   if (isLoading) {
     return (
@@ -81,28 +96,33 @@ export function CivicaLeaderboard() {
 
   return (
     <div className="space-y-4 pt-4">
-      {/* ── Tier filter chips ─────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2">
-        {TIER_FILTERS.map(({ label, min }) => (
-          <button
-            key={label}
-            onClick={() => handleTierFilter(min)}
-            className={cn(
-              'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
-              minScore === min
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-        <span className="ml-auto text-xs text-muted-foreground self-center">
-          {filtered.length} DReps
-        </span>
-      </div>
+      <DiscoverFilterBar
+        search={search}
+        onSearchChange={(v) => {
+          setSearch(v);
+          setPage(0);
+        }}
+        searchPlaceholder="Search DRep name or ID…"
+        chipGroups={[
+          {
+            label: 'Tier',
+            value: tierFilter,
+            options: TIER_CHIPS,
+            onChange: (v) => {
+              setTierFilter(v);
+              setPage(0);
+            },
+          },
+        ]}
+        resultCount={filtered.length}
+        totalCount={allEntries.length}
+        entityLabel="DReps"
+        isFiltered={!isDefault}
+        onReset={resetFilters}
+        pageInfo={totalPages > 1 ? `Page ${page + 1} / ${totalPages}` : undefined}
+      />
 
-      {/* ── Ranked list ──────────────────────────────────────── */}
+      {/* Ranked list */}
       <div className="rounded-xl border border-border overflow-hidden">
         {pageEntries.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground text-sm">
@@ -125,14 +145,12 @@ export function CivicaLeaderboard() {
                     'hover:bg-muted/30',
                   )}
                 >
-                  {/* Rank */}
                   <span className="w-8 text-sm font-bold tabular-nums text-center shrink-0">
                     {medal ?? (
                       <span className="text-muted-foreground font-normal">{globalRank}</span>
                     )}
                   </span>
 
-                  {/* Name */}
                   <span className="flex-1 text-sm font-medium text-foreground truncate min-w-0">
                     {entry.name}
                     {!entry.isActive && (
@@ -140,7 +158,6 @@ export function CivicaLeaderboard() {
                     )}
                   </span>
 
-                  {/* Delta (weekly trend) */}
                   <span className="w-14 text-right shrink-0">
                     {delta !== undefined ? (
                       <span
@@ -157,7 +174,6 @@ export function CivicaLeaderboard() {
                     ) : null}
                   </span>
 
-                  {/* Trend icon */}
                   <span className="w-4 shrink-0 flex justify-center">
                     {delta !== undefined && delta > 0 ? (
                       <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
@@ -168,7 +184,6 @@ export function CivicaLeaderboard() {
                     )}
                   </span>
 
-                  {/* Tier badge */}
                   <span
                     className={cn(
                       'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0',
@@ -178,7 +193,6 @@ export function CivicaLeaderboard() {
                     {tier}
                   </span>
 
-                  {/* Score */}
                   <span
                     className={cn(
                       'w-10 text-right font-display font-bold tabular-nums text-base shrink-0',
@@ -194,34 +208,9 @@ export function CivicaLeaderboard() {
         )}
       </div>
 
-      {/* ── Pagination ───────────────────────────────────────── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 0}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Prev
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Page {page + 1} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      )}
+      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
-      {/* ── Weekly movers strip ──────────────────────────────── */}
+      {/* Weekly movers strip */}
       {(weeklyMovers.gainers.length > 0 || weeklyMovers.losers.length > 0) && (
         <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
           <div className="flex items-center gap-1.5">

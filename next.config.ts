@@ -8,13 +8,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  turbopack: {
-    resolveAlias: {
-      'libsodium-wrappers-sumo': path
-        .resolve('./node_modules/libsodium-wrappers-sumo/dist/modules-sumo/libsodium-wrappers.js')
-        .replace(/\\/g, '/'),
-    },
-  },
+  serverExternalPackages: [
+    'libsodium-wrappers-sumo',
+    '@emurgo/cardano-serialization-lib-browser',
+    '@emurgo/cardano-serialization-lib-nodejs',
+  ],
   async headers() {
     const csp = [
       "default-src 'self'",

@@ -406,10 +406,7 @@ export const syncSpoScores = inngest.createFunction(
 
     await step.run('fetch-koios-metadata', async () => {
       const supabase = getSupabaseAdmin();
-      const { data: poolsNeedingMeta } = await supabase
-        .from('pools')
-        .select('pool_id')
-        .limit(100);
+      const { data: poolsNeedingMeta } = await supabase.from('pools').select('pool_id').limit(100);
 
       if (!poolsNeedingMeta?.length) return { fetched: 0 };
 

@@ -174,7 +174,7 @@ The SPO persona mirror. Depends on Step 0 (scoring infrastructure) and Step 2 (S
   - **Reliability (23%):** voting responsiveness, epoch-over-epoch continuity
   - **Governance Identity (15%):** metadata quality, governance statement presence, pledge commitment, active pool status (replaces "Pool Identity")
   - Percentile normalization across all governance-active SPOs
-  - *Note: canonical pillar names match `lib/scoring/spoScore.ts` `SPO_PILLAR_WEIGHTS`. Use these names in all UI, docs, and API responses.*
+  - _Note: canonical pillar names match `lib/scoring/spoScore.ts` `SPO_PILLAR_WEIGHTS`. Use these names in all UI, docs, and API responses._
 - **SPO alignment computation** -- run the same 6D alignment engine on SPO votes, store in `pools` table columns mirroring the `dreps` alignment columns
 - **SPO profiles data layer** -- `getSPOById()`, `getSPOVotes()`, `getSPOAlignment()`, `getSPOTreasuryTrackRecord()` in a new `lib/spoData.ts`
 - **Inter-body alignment per SPO** -- how does this SPO vote relative to the DRep consensus? Relative to the CC?

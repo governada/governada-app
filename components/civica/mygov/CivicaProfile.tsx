@@ -33,11 +33,31 @@ import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEdi
 // ---------------------------------------------------------------------------
 
 const NOTIFICATION_EVENTS = [
-  { key: 'proposal_open', label: 'New governance proposals', description: 'When new proposals are submitted' },
-  { key: 'drep_score_change', label: 'DRep score changes', description: 'When your delegated DRep\'s score changes significantly' },
-  { key: 'alignment_drift', label: 'Alignment drift alerts', description: 'When your DRep\'s values drift from yours' },
-  { key: 'epoch_summary', label: 'Epoch recaps', description: 'Summary of governance activity each epoch' },
-  { key: 'tier_change', label: 'Tier milestones', description: 'When a DRep you follow changes tier' },
+  {
+    key: 'proposal_open',
+    label: 'New governance proposals',
+    description: 'When new proposals are submitted',
+  },
+  {
+    key: 'drep_score_change',
+    label: 'DRep score changes',
+    description: "When your delegated DRep's score changes significantly",
+  },
+  {
+    key: 'alignment_drift',
+    label: 'Alignment drift alerts',
+    description: "When your DRep's values drift from yours",
+  },
+  {
+    key: 'epoch_summary',
+    label: 'Epoch recaps',
+    description: 'Summary of governance activity each epoch',
+  },
+  {
+    key: 'tier_change',
+    label: 'Tier milestones',
+    description: 'When a DRep you follow changes tier',
+  },
 ] as const;
 
 function NotificationToggle({
@@ -237,7 +257,12 @@ export function CivicaProfile() {
           </div>
           {(segment === 'drep' || segment === 'spo') && score > 0 && (
             <div className="shrink-0 text-right">
-              <p className={cn('font-display text-3xl font-bold tabular-nums', TIER_SCORE_COLOR[tKey])}>
+              <p
+                className={cn(
+                  'font-display text-3xl font-bold tabular-nums',
+                  TIER_SCORE_COLOR[tKey],
+                )}
+              >
                 {score.toFixed(0)}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">score</p>
@@ -312,7 +337,9 @@ export function CivicaProfile() {
           >
             <div>
               <p className="text-sm font-medium">Browse all DReps</p>
-              <p className="text-xs text-muted-foreground">Discover and compare governance representatives</p>
+              <p className="text-xs text-muted-foreground">
+                Discover and compare governance representatives
+              </p>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
           </Link>
@@ -322,9 +349,7 @@ export function CivicaProfile() {
       {/* Governance philosophy (DRep / SPO only) */}
       {(segment === 'drep' || segment === 'spo') && (segment === 'drep' ? drepId : poolId) && (
         <Section icon={BookOpen} title="Governance Philosophy">
-          <GovernancePhilosophyEditor
-            drepId={(segment === 'drep' ? drepId : poolId) as string}
-          />
+          <GovernancePhilosophyEditor drepId={(segment === 'drep' ? drepId : poolId) as string} />
         </Section>
       )}
 
@@ -382,10 +407,7 @@ export function CivicaProfile() {
                 Dark mode is the recommended experience for governance data.
               </p>
             </div>
-            <Link
-              href="/my-gov"
-              className="text-xs text-muted-foreground"
-            >
+            <Link href="/my-gov" className="text-xs text-muted-foreground">
               Use system toggle
             </Link>
           </div>

@@ -10,7 +10,16 @@ import { ProposalDescription } from '@/components/ProposalDescription';
 import { ProposalAiSummary } from '@/components/ProposalAiSummary';
 import { ThresholdMeter } from '@/components/ThresholdMeter';
 import { VoteTimeline } from '@/components/VoteTimeline';
-import { ArrowLeft, ExternalLink, Shield, Zap, Landmark, Eye, Scale, MessageSquare } from 'lucide-react';
+import {
+  ArrowLeft,
+  ExternalLink,
+  Shield,
+  Zap,
+  Landmark,
+  Eye,
+  Scale,
+  MessageSquare,
+} from 'lucide-react';
 import {
   ProposalStatusBadge,
   PriorityBadge,

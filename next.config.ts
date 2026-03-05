@@ -60,7 +60,11 @@ const nextConfig: NextConfig = {
       { source: '/methodology', destination: '/discover', permanent: true },
       { source: '/treasury', destination: '/pulse', permanent: true },
       { source: '/decentralization', destination: '/pulse', permanent: true },
-      { source: '/proposals/:txHash/:index', destination: '/proposal/:txHash/:index', permanent: true },
+      {
+        source: '/proposals/:txHash/:index',
+        destination: '/proposal/:txHash/:index',
+        permanent: true,
+      },
       { source: '/committee', destination: '/discover/committee', permanent: true },
     ];
   },

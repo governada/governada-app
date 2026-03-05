@@ -316,7 +316,15 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
   const matchScore = match ? parseInt(match, 10) : null;
 
-  const [scoreHistory, percentile, linkChecks, isClaimed, spoAlignPct, civicaEnabled, drepCommunicationEnabled] = await Promise.all([
+  const [
+    scoreHistory,
+    percentile,
+    linkChecks,
+    isClaimed,
+    spoAlignPct,
+    civicaEnabled,
+    drepCommunicationEnabled,
+  ] = await Promise.all([
     getScoreHistory(drep.drepId),
     getDRepPercentile(drep.drepScore),
     getSocialLinkChecks(drep.drepId),

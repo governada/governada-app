@@ -75,8 +75,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
   const drepIsActive: boolean = card?.isActive ?? true;
   const delegatorCount: number = card?.delegatorCount ?? 0;
   const scoreDelta: number | undefined = card?.momentum;
-  const rationaleRate: number =
-    card?.rationaleRate ?? card?.votingRecord?.rationaleRate ?? 0;
+  const rationaleRate: number = card?.rationaleRate ?? card?.votingRecord?.rationaleRate ?? 0;
   const participationRate: number = card?.participationRate ?? 0;
 
   const activeProposals: number = pulse?.activeProposals ?? 0;

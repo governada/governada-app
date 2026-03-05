@@ -24,10 +24,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ poo
   ]);
 
   const snapshots = (snapshotsResult.data || []).map(
-    (s: { epoch_no: number; delegator_count: number | null; live_stake_lovelace: number | null }) => ({
+    (s: {
+      epoch_no: number;
+      delegator_count: number | null;
+      live_stake_lovelace: number | null;
+    }) => ({
       epoch: s.epoch_no,
       delegatorCount: s.delegator_count,
-      liveStakeAda: s.live_stake_lovelace != null ? Math.round(Number(s.live_stake_lovelace) / 1_000_000) : null,
+      liveStakeAda:
+        s.live_stake_lovelace != null
+          ? Math.round(Number(s.live_stake_lovelace) / 1_000_000)
+          : null,
     }),
   );
 

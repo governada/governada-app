@@ -75,15 +75,15 @@ See `.cursor/plans/civica_phase_3b_eab7f1b4.plan.md` for this phase's detailed p
 ## Completed (Phase 3C — shipped)
 
 - [x] SPO Profile Redesign (5.2): Mirror DRep profile architecture — VP1 hero with SPO Score,
-  alignment radar, governance statement. VP2 tabs: voting record, score analysis, delegator breakdown,
-  competitive context. Wire retrospective #7 (Koios /pool_delegators + /pool_voting_power_history).
+      alignment radar, governance statement. VP2 tabs: voting record, score analysis, delegator breakdown,
+      competitive context. Wire retrospective #7 (Koios /pool_delegators + /pool_voting_power_history).
 - [x] Proposal Detail Redesign (5.3): "Proposal cards that connect everything" — AI category badge,
-  tri-body vote bars, treasury impact, similar proposals, your DRep's vote highlighted,
-  Phase B scaffold "What representatives are saying" section.
+      tri-body vote bars, treasury impact, similar proposals, your DRep's vote highlighted,
+      Phase B scaffold "What representatives are saying" section.
 - [x] CC Members Civica Integration: /discover/committee — server-rendered page with CC transparency
-  scores (participation rate + DRep alignment), alignment tension detection, route redirects
-  (/committee → /discover/committee, /proposals/:txHash/:index → /proposal/:txHash/:index),
-  CommandPalette entry added.
+      scores (participation rate + DRep alignment), alignment tension detection, route redirects
+      (/committee → /discover/committee, /proposals/:txHash/:index → /proposal/:txHash/:index),
+      CommandPalette entry added.
 
 ## Next Up (Phase 3D — Celebrations, Sharing & Communication Preview)
 

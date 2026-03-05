@@ -79,7 +79,9 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
 // Map action types → notification metadata
 // ---------------------------------------------------------------------------
 
-function actionToNotification(action: ReturnType<typeof generateActions>[number]): NotificationItem {
+function actionToNotification(
+  action: ReturnType<typeof generateActions>[number],
+): NotificationItem {
   const map: Record<
     string,
     Pick<NotificationItem, 'category' | 'icon' | 'iconColor' | 'borderColor' | 'bgColor'>
@@ -224,7 +226,12 @@ function buildSystemNotifications(pulse: any): NotificationItem[] {
       id: 'sys_ghi',
       category: 'system',
       icon: BarChart2,
-      iconColor: ghiDir === 'up' ? 'text-emerald-400' : ghiDir === 'down' ? 'text-rose-400' : 'text-muted-foreground',
+      iconColor:
+        ghiDir === 'up'
+          ? 'text-emerald-400'
+          : ghiDir === 'down'
+            ? 'text-rose-400'
+            : 'text-muted-foreground',
       borderColor: 'border-border',
       bgColor: 'bg-card',
       title: `Governance health: ${pulse.ghiScore.toFixed(0)}${pulse.ghiDelta != null ? ` (${pulse.ghiDelta > 0 ? '+' : ''}${pulse.ghiDelta.toFixed(1)} this epoch)` : ''}`,
@@ -266,14 +273,11 @@ export function CivicaInbox() {
     setReadSet((prev) => new Set([...prev, id]));
   }, []);
 
-  const handleMarkAllRead = useCallback(
-    (items: NotificationItem[]) => {
-      const ids = items.map((i) => i.id);
-      markRead(ids);
-      setReadSet((prev) => new Set([...prev, ...ids]));
-    },
-    [],
-  );
+  const handleMarkAllRead = useCallback((items: NotificationItem[]) => {
+    const ids = items.map((i) => i.id);
+    markRead(ids);
+    setReadSet((prev) => new Set([...prev, ...ids]));
+  }, []);
 
   // Build notifications from action feed + system events
   const actions = generateActions({

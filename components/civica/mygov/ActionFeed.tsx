@@ -29,13 +29,7 @@ const TYPE_ICON_COLOR: Record<ActionType, string> = {
   tier_approaching: 'text-violet-400',
 };
 
-function ActionCard({
-  action,
-  featured = false,
-}: {
-  action: Action;
-  featured?: boolean;
-}) {
+function ActionCard({ action, featured = false }: { action: Action; featured?: boolean }) {
   const Icon = TYPE_ICON[action.type];
   const colorClass = TYPE_COLOR[action.type];
   const iconColor = TYPE_ICON_COLOR[action.type];

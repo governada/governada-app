@@ -74,8 +74,8 @@ function deriveRecommendedAction(pillars?: PillarBreakdown): string | null {
     // Weight × (100 - score) gives "impact potential"
     // Weights: EQ 35%, EP 30%, R 20%, GI 15%
     ['engagementQuality', (pillars.engagementQuality ?? 50) * 0.35],
-    ['effectiveParticipation', (pillars.effectiveParticipation ?? 50) * 0.30],
-    ['reliability', (pillars.reliability ?? 50) * 0.20],
+    ['effectiveParticipation', (pillars.effectiveParticipation ?? 50) * 0.3],
+    ['reliability', (pillars.reliability ?? 50) * 0.2],
     ['governanceIdentity', (pillars.governanceIdentity ?? 50) * 0.15],
   ];
 
@@ -84,12 +84,9 @@ function deriveRecommendedAction(pillars?: PillarBreakdown): string | null {
   if (!weakest) return null;
 
   const actions: Record<string, string> = {
-    engagementQuality:
-      'Submit rationales for your next votes to improve Engagement Quality',
-    effectiveParticipation:
-      'Vote on open governance proposals to improve Effective Participation',
-    reliability:
-      'Maintain a consistent voting streak to improve Reliability',
+    engagementQuality: 'Submit rationales for your next votes to improve Engagement Quality',
+    effectiveParticipation: 'Vote on open governance proposals to improve Effective Participation',
+    reliability: 'Maintain a consistent voting streak to improve Reliability',
     governanceIdentity:
       'Complete your governance profile and social links to improve Governance Identity',
   };

@@ -94,11 +94,7 @@ export function CitizenCommandCenter({
           : 'red';
 
   const HealthIcon =
-    healthStatus === 'green'
-      ? CheckCircle2
-      : healthStatus === 'yellow'
-        ? AlertTriangle
-        : XCircle;
+    healthStatus === 'green' ? CheckCircle2 : healthStatus === 'yellow' ? AlertTriangle : XCircle;
 
   const healthLabel =
     healthStatus === 'green'

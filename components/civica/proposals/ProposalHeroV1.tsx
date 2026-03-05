@@ -126,9 +126,7 @@ export function ProposalHeroV1({
         )}
         <TypeExplainerTooltip proposalType={proposalType} />
         {treasuryTier && <TreasuryTierBadge tier={treasuryTier} />}
-        {proposedEpoch && (
-          <Badge variant="secondary">Epoch {proposedEpoch}</Badge>
-        )}
+        {proposedEpoch && <Badge variant="secondary">Epoch {proposedEpoch}</Badge>}
         <DeadlineBadge expirationEpoch={expirationEpoch} currentEpoch={currentEpoch} />
       </div>
 
@@ -155,9 +153,7 @@ export function ProposalHeroV1({
       <DRepVoteCallout txHash={txHash} proposalIndex={proposalIndex} />
 
       {/* Date proposed */}
-      {date && (
-        <p className="text-xs text-muted-foreground">Proposed {date}</p>
-      )}
+      {date && <p className="text-xs text-muted-foreground">Proposed {date}</p>}
     </div>
   );
 }

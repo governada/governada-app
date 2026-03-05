@@ -74,7 +74,14 @@ export const PAGE_COMMANDS: CommandItem[] = [
     icon: User,
     href: '/my-gov/profile',
   },
-  { id: 'page-pulse', label: 'Governance Pulse', sublabel: 'State of Cardano governance', group: 'pages', icon: BarChart3, href: '/pulse' },
+  {
+    id: 'page-pulse',
+    label: 'Governance Pulse',
+    sublabel: 'State of Cardano governance',
+    group: 'pages',
+    icon: BarChart3,
+    href: '/pulse',
+  },
   {
     id: 'page-dashboard-drep',
     label: 'DRep Dashboard',
@@ -91,7 +98,14 @@ export const PAGE_COMMANDS: CommandItem[] = [
     icon: Landmark,
     href: '/discover/committee',
   },
-  { id: 'page-developers', label: 'Developers', sublabel: 'API documentation', group: 'pages', icon: Code2, href: '/developers' },
+  {
+    id: 'page-developers',
+    label: 'Developers',
+    sublabel: 'API documentation',
+    group: 'pages',
+    icon: Code2,
+    href: '/developers',
+  },
 ];
 
 export function buildActionCommands(opts: {

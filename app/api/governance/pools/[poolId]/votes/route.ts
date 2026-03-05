@@ -12,10 +12,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   const poolId = request.nextUrl.pathname.split('/pools/')[1]?.split('/')[0];
   if (!poolId) return NextResponse.json({ error: 'Missing poolId' }, { status: 400 });
 
-  const limit = Math.min(
-    100,
-    parseInt(request.nextUrl.searchParams.get('limit') ?? '50', 10),
-  );
+  const limit = Math.min(100, parseInt(request.nextUrl.searchParams.get('limit') ?? '50', 10));
 
   const supabase = createClient();
 

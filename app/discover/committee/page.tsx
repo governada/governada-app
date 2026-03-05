@@ -55,9 +55,7 @@ export default async function CivicaCommitteePage() {
   const supabase = createClient();
 
   const [{ data: votes }, { count: totalProposals }, { data: alignmentRows }] = await Promise.all([
-    supabase
-      .from('cc_votes')
-      .select('cc_hot_id, proposal_tx_hash, proposal_index, vote'),
+    supabase.from('cc_votes').select('cc_hot_id, proposal_tx_hash, proposal_index, vote'),
     supabase.from('proposals').select('*', { count: 'exact', head: true }),
     supabase
       .from('inter_body_alignment')
@@ -87,14 +85,20 @@ export default async function CivicaCommitteePage() {
   >();
   for (const v of safeVotes) {
     const existing = memberVotesMap.get(v.cc_hot_id) ?? [];
-    existing.push({ proposal_tx_hash: v.proposal_tx_hash, proposal_index: v.proposal_index, vote: v.vote });
+    existing.push({
+      proposal_tx_hash: v.proposal_tx_hash,
+      proposal_index: v.proposal_index,
+      vote: v.vote,
+    });
     memberVotesMap.set(v.cc_hot_id, existing);
   }
 
   // Aggregate per member
   const members: CivicaMemberAgg[] = Array.from(memberVotesMap.entries())
     .map(([ccHotId, memberVotes]) => {
-      let yes = 0, no = 0, abstain = 0;
+      let yes = 0,
+        no = 0,
+        abstain = 0;
       for (const v of memberVotes) {
         if (v.vote === 'Yes') yes++;
         else if (v.vote === 'No') no++;
@@ -145,7 +149,11 @@ export default async function CivicaCommitteePage() {
       unanimousCount++;
       // Check alignment tension
       const alignment = alignmentMap.get(proposalKey);
-      if (alignment && alignment.drepMajority !== 'Abstain' && firstVote !== alignment.drepMajority) {
+      if (
+        alignment &&
+        alignment.drepMajority !== 'Abstain' &&
+        firstVote !== alignment.drepMajority
+      ) {
         const [txHash, idxStr] = proposalKey.split(/-(?=\d+$)/);
         tensionProposals.push({
           txHash,
@@ -158,9 +166,7 @@ export default async function CivicaCommitteePage() {
   }
 
   const unanimousRate =
-    proposalVoteCounts.size > 0
-      ? Math.round((unanimousCount / proposalVoteCounts.size) * 100)
-      : 0;
+    proposalVoteCounts.size > 0 ? Math.round((unanimousCount / proposalVoteCounts.size) * 100) : 0;
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -261,7 +267,10 @@ export default async function CivicaCommitteePage() {
                   </thead>
                   <tbody>
                     {members.map((m) => (
-                      <tr key={m.ccHotId} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                      <tr
+                        key={m.ccHotId}
+                        className="border-b last:border-0 hover:bg-muted/40 transition-colors"
+                      >
                         <td className="px-4 py-3 font-mono text-xs text-foreground/80">
                           {m.ccHotId.slice(0, 12)}…{m.ccHotId.slice(-6)}
                         </td>
@@ -278,10 +287,7 @@ export default async function CivicaCommitteePage() {
                         </td>
                         <td className="px-4 py-3 text-right hidden lg:table-cell tabular-nums">
                           {m.drepAlignmentPct !== null ? (
-                            <Badge
-                              variant="outline"
-                              className="text-xs font-mono"
-                            >
+                            <Badge variant="outline" className="text-xs font-mono">
                               {m.drepAlignmentPct}%
                             </Badge>
                           ) : (
@@ -322,8 +328,8 @@ export default async function CivicaCommitteePage() {
                 </CardTitle>
                 <p className="text-xs text-muted-foreground mt-1">
                   {tensionProposals.length} proposal
-                  {tensionProposals.length !== 1 ? 's' : ''} where the CC voted unanimously
-                  opposite the DRep majority position.
+                  {tensionProposals.length !== 1 ? 's' : ''} where the CC voted unanimously opposite
+                  the DRep majority position.
                 </p>
               </CardHeader>
               <CardContent className="p-0">

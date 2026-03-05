@@ -2,11 +2,18 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
-import { computeSpoScores, type SpoVoteData } from '@/lib/scoring/spoScore';
+import {
+  computeSpoScores,
+  computeProposalMarginMultipliers,
+  type SpoVoteDataV3,
+} from '@/lib/scoring/spoScore';
 import {
   computeSpoGovernanceIdentity,
   type SpoProfileData,
 } from '@/lib/scoring/spoGovernanceIdentity';
+import { computeSpoDeliberationQuality } from '@/lib/scoring/spoDeliberationQuality';
+import { computeConfidence } from '@/lib/scoring/confidence';
+import { detectSybilPairs } from '@/lib/scoring/sybilDetection';
 import { getExtendedImportanceWeight } from '@/lib/scoring';
 import { getFeatureFlag } from '@/lib/featureFlags';
 import { logger } from '@/lib/logger';
@@ -121,6 +128,7 @@ export const syncSpoScores = inngest.createFunction(
         const proposalContexts = new Map<string, { blockTime: number; importanceWeight: number }>();
         const allProposalTypes = new Set<string>();
         const proposalBlockTimes = new Map<string, number>();
+        const proposalEpochs = new Map<string, number>();
 
         for (const p of (proposalRows || []) as SpoProposalRow[]) {
           const key = `${p.tx_hash}-${p.proposal_index}`;
@@ -135,6 +143,20 @@ export const syncSpoScores = inngest.createFunction(
           });
           proposalBlockTimes.set(key, p.block_time || 0);
           allProposalTypes.add(p.proposal_type);
+          if (p.proposed_epoch != null) {
+            proposalEpochs.set(key, p.proposed_epoch);
+          }
+        }
+
+        // Build set of epochs that had votable proposals (for proposal-aware reliability)
+        const activeEpochs = new Set<number>();
+        for (const epoch of proposalEpochs.values()) {
+          activeEpochs.add(epoch);
+        }
+        // Also include epochs where votes were cast
+        for (const v of voteRows as SpoVoteRow[]) {
+          const epoch = v.epoch ?? blockTimeToEpoch(v.block_time);
+          activeEpochs.add(epoch);
         }
 
         let totalWeightedPool = 0;
@@ -144,8 +166,10 @@ export const syncSpoScores = inngest.createFunction(
           totalWeightedPool += ctx.importanceWeight * Math.exp(-DECAY_LAMBDA * ageDays);
         }
 
-        const allVotes: SpoVoteData[] = [];
-        const poolVotes = new Map<string, SpoVoteData[]>();
+        // Build vote data with V3 fields
+        const allVotes: SpoVoteDataV3[] = [];
+        const poolVotes = new Map<string, SpoVoteDataV3[]>();
+        const poolVoteMap = new Map<string, Map<string, 'Yes' | 'No' | 'Abstain'>>();
 
         for (const v of voteRows as SpoVoteRow[]) {
           const proposalKey = `${v.proposal_tx_hash}-${v.proposal_index}`;
@@ -154,7 +178,7 @@ export const syncSpoScores = inngest.createFunction(
             (p) => `${p.tx_hash}-${p.proposal_index}` === proposalKey,
           );
 
-          const voteData: SpoVoteData = {
+          const voteData: SpoVoteDataV3 = {
             poolId: v.pool_id,
             proposalKey,
             vote: v.vote as 'Yes' | 'No' | 'Abstain',
@@ -163,12 +187,65 @@ export const syncSpoScores = inngest.createFunction(
             proposalType: proposal?.proposal_type ?? 'InfoAction',
             importanceWeight: ctx?.importanceWeight ?? 1,
             proposalBlockTime: proposalBlockTimes.get(proposalKey) ?? 0,
+            hasRationale: false, // SPO votes don't have rationale anchors yet
           };
 
           allVotes.push(voteData);
           if (!poolVotes.has(v.pool_id)) poolVotes.set(v.pool_id, []);
           poolVotes.get(v.pool_id)!.push(voteData);
+
+          // Build pool vote map for sybil detection
+          if (!poolVoteMap.has(v.pool_id)) poolVoteMap.set(v.pool_id, new Map());
+          poolVoteMap.get(v.pool_id)!.set(proposalKey, v.vote as 'Yes' | 'No' | 'Abstain');
         }
+
+        // Compute V3 Deliberation Quality scores
+        const deliberationVotes = new Map<
+          string,
+          Array<{
+            proposalKey: string;
+            vote: 'Yes' | 'No' | 'Abstain';
+            blockTime: number;
+            proposalBlockTime: number;
+            proposalType: string;
+            importanceWeight: number;
+            hasRationale: boolean;
+          }>
+        >();
+        for (const [poolId, votes] of poolVotes) {
+          deliberationVotes.set(
+            poolId,
+            votes.map((v) => ({
+              proposalKey: v.proposalKey,
+              vote: v.vote,
+              blockTime: v.blockTime,
+              proposalBlockTime: v.proposalBlockTime,
+              proposalType: v.proposalType,
+              importanceWeight: v.importanceWeight,
+              hasRationale: v.hasRationale,
+            })),
+          );
+        }
+        const deliberationScores = computeSpoDeliberationQuality(
+          deliberationVotes,
+          allProposalTypes,
+          nowSeconds,
+        );
+
+        // Compute confidence per pool
+        const confidences = new Map<string, number>();
+        for (const [poolId, votes] of poolVotes) {
+          const epochs = new Set(votes.map((v) => v.epoch));
+          const sortedEpochs = [...epochs].sort((a, b) => a - b);
+          const epochSpan =
+            sortedEpochs.length > 1 ? sortedEpochs[sortedEpochs.length - 1] - sortedEpochs[0] : 0;
+          const types = new Set(votes.map((v) => v.proposalType));
+          const typeCoverage = allProposalTypes.size > 0 ? types.size / allProposalTypes.size : 0;
+          confidences.set(poolId, computeConfidence(votes.length, epochSpan, typeCoverage));
+        }
+
+        // Compute proposal-level margin multipliers
+        const proposalMarginMultipliers = computeProposalMarginMultipliers(allVotes);
 
         // Build SPO profile data for Governance Identity pillar
         const spoProfiles = new Map<string, SpoProfileData>();
@@ -180,7 +257,6 @@ export const syncSpoScores = inngest.createFunction(
           allDelegatorCounts.push(p.delegator_count ?? 0);
         }
 
-        // Include pools that voted but don't have a pools row yet
         for (const poolId of poolVotes.keys()) {
           const meta = poolMetaMap.get(poolId);
           spoProfiles.set(poolId, {
@@ -199,16 +275,15 @@ export const syncSpoScores = inngest.createFunction(
           }
         }
 
-        // Compute identity scores (returns 0 for pools without profiles if flag disabled)
         const identityScores = identityEnabled
           ? computeSpoGovernanceIdentity(spoProfiles, allDelegatorCounts)
           : new Map<string, number>();
 
-        // Load score history for momentum
+        // Load score history for momentum (30-day window for V3)
         const { data: historyRows } = await supabase
           .from('spo_score_snapshots')
           .select('pool_id, governance_score, snapshot_at')
-          .gte('snapshot_at', new Date(Date.now() - 14 * 86400000).toISOString());
+          .gte('snapshot_at', new Date(Date.now() - 30 * 86400000).toISOString());
 
         const scoreHistory = new Map<string, { date: string; score: number }[]>();
         for (const h of historyRows || []) {
@@ -218,14 +293,40 @@ export const syncSpoScores = inngest.createFunction(
           scoreHistory.set(h.pool_id, arr);
         }
 
+        // Compute V3 scores with all 10 arguments
         const finalScores = computeSpoScores(
           allVotes,
           totalWeightedPool,
           currentEpoch,
           allProposalTypes,
           identityScores,
+          deliberationScores,
+          confidences,
           scoreHistory,
+          proposalMarginMultipliers,
+          activeEpochs,
         );
+
+        // Run sybil detection
+        const sybilFlags = detectSybilPairs(poolVoteMap);
+        if (sybilFlags.length > 0) {
+          logger.warn('[sync-spo-scores] Sybil flags detected', { count: sybilFlags.length });
+          const sybilInserts = sybilFlags.map((f) => ({
+            pool_a: f.poolA,
+            pool_b: f.poolB,
+            agreement_rate: f.agreementRate,
+            shared_votes: f.sharedVotes,
+            detected_at: new Date().toISOString(),
+            epoch_no: currentEpoch,
+          }));
+          await batchUpsert(
+            supabase,
+            'spo_sybil_flags',
+            sybilInserts as unknown as Record<string, unknown>[],
+            'pool_a,pool_b,epoch_no',
+            'spo_sybil_flags',
+          );
+        }
 
         // Alignment computation
         const classificationMap = new Map<string, Record<string, number>>();
@@ -280,7 +381,7 @@ export const syncSpoScores = inngest.createFunction(
           poolAlignments.set(poolId, alignments);
         }
 
-        // Upsert pools with full pillar breakdown
+        // Upsert pools with V3 pillar breakdown
         const poolUpdates = [...finalScores.entries()].map(([poolId, s]) => {
           const align = poolAlignments.get(poolId) ?? {};
           const voteCount = poolVotes.get(poolId)?.length ?? 0;
@@ -289,6 +390,9 @@ export const syncSpoScores = inngest.createFunction(
             governance_score: s.composite,
             participation_raw: Math.round(s.participationRaw),
             participation_pct: Math.round(s.participationPercentile),
+            deliberation_raw: Math.round(s.deliberationRaw),
+            deliberation_pct: Math.round(s.deliberationPercentile),
+            // V2 compat columns
             consistency_raw: Math.round(s.consistencyRaw),
             consistency_pct: Math.round(s.consistencyPercentile),
             reliability_raw: Math.round(s.reliabilityRaw),
@@ -296,6 +400,7 @@ export const syncSpoScores = inngest.createFunction(
             governance_identity_raw: Math.round(s.governanceIdentityRaw),
             governance_identity_pct: Math.round(s.governanceIdentityPercentile),
             score_momentum: s.momentum,
+            confidence: s.confidence,
             vote_count: voteCount,
             alignment_treasury_conservative: align.treasury_conservative ?? null,
             alignment_treasury_growth: align.treasury_growth ?? null,
@@ -317,13 +422,15 @@ export const syncSpoScores = inngest.createFunction(
           );
         }
 
-        // Full pillar breakdown snapshots
+        // Full pillar breakdown snapshots with V3 fields
         const scoreSnapshots = [...finalScores.entries()].map(([poolId, s]) => ({
           pool_id: poolId,
           epoch_no: currentEpoch,
           governance_score: s.composite,
           participation_rate: Math.round(s.participationRaw),
           participation_pct: Math.round(s.participationPercentile),
+          deliberation_raw: Math.round(s.deliberationRaw),
+          deliberation_pct: Math.round(s.deliberationPercentile),
           consistency_raw: Math.round(s.consistencyRaw),
           consistency_pct: Math.round(s.consistencyPercentile),
           reliability_raw: Math.round(s.reliabilityRaw),
@@ -331,6 +438,7 @@ export const syncSpoScores = inngest.createFunction(
           governance_identity_raw: Math.round(s.governanceIdentityRaw),
           governance_identity_pct: Math.round(s.governanceIdentityPercentile),
           score_momentum: s.momentum,
+          confidence: s.confidence,
           rationale_rate: null,
           vote_count: poolVotes.get(poolId)?.length ?? 0,
         }));
@@ -380,6 +488,8 @@ export const syncSpoScores = inngest.createFunction(
               identityEnabled,
               votesProcessed: voteRows.length,
               poolsWithIdentity: identityScores.size,
+              sybilFlagsDetected: sybilFlags.length,
+              v3: true,
             },
           },
           { onConflict: 'snapshot_type,epoch_no' },
@@ -391,6 +501,7 @@ export const syncSpoScores = inngest.createFunction(
           votesProcessed: voteRows.length,
           identityEnabled,
           poolsWithIdentity: identityScores.size,
+          sybilFlags: sybilFlags.length,
         };
         await syncLog.finalize(true, null, summary);
         await emitPostHog(true, 'spo_scores', syncLog.elapsed, summary);
@@ -455,9 +566,7 @@ export const syncSpoScores = inngest.createFunction(
       }
     });
 
-    // Refresh delegator_count + live_stake for ALL pools that already have metadata.
-    // The fetch-koios-metadata step above only targets pools with null ticker/name,
-    // so after first enrichment delegator counts go stale. This step fixes that.
+    // Refresh delegator_count + live_stake for ALL pools that already have metadata
     await step.run('refresh-delegator-counts', async () => {
       const supabase = getSupabaseAdmin();
       const { data: enrichedPools } = await supabase
@@ -484,7 +593,9 @@ export const syncSpoScores = inngest.createFunction(
           });
 
           if (!res.ok) {
-            logger.warn('[sync-spo-scores] delegator refresh batch failed', { status: res.status });
+            logger.warn('[sync-spo-scores] delegator refresh batch failed', {
+              status: res.status,
+            });
             continue;
           }
 
@@ -556,7 +667,7 @@ export const syncSpoScores = inngest.createFunction(
       return { snapshotted: rows.length };
     });
 
-    // Tier assignment for SPOs
+    // Tier assignment for SPOs (now confidence-aware)
     const tierResult = await step.run('assign-spo-tiers', async () => {
       const tiersEnabled = await getFeatureFlag('score_tiers', false);
       if (!tiersEnabled) return { tierChanges: 0 };
@@ -566,14 +677,15 @@ export const syncSpoScores = inngest.createFunction(
 
       const { data: currentPools } = await supabase
         .from('pools')
-        .select('pool_id, governance_score, current_tier')
+        .select('pool_id, governance_score, current_tier, confidence')
         .gt('vote_count', 0);
 
       const tierChangeInserts: Record<string, unknown>[] = [];
 
       for (const pool of currentPools || []) {
         const newScore = pool.governance_score ?? 0;
-        const newTier = computeTier(newScore);
+        const confidence = pool.confidence ?? undefined;
+        const newTier = computeTier(newScore, confidence);
         const oldTier = pool.current_tier ?? computeTier(0);
 
         if (oldTier !== newTier) {

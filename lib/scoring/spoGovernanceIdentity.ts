@@ -1,15 +1,33 @@
 /**
- * SPO Governance Identity pillar (15% of SPO Score V2).
- * Two sub-components: Pool Identity Quality (60%) and Community Presence (40%).
- * Structural parity with DRep Governance Identity (ADR-006).
+ * SPO Governance Identity pillar (15% of SPO Score V3).
+ * Two sub-components: Pool Identity Quality (60%) and Delegation Responsiveness (40%).
  *
- * Works for unclaimed pools (baseline from on-chain metadata) and rewards
- * claimed profiles with governance statement, social links, and homepage.
+ * V3 changes from V2:
+ * - Governance statement uses keyword quality checklist instead of pure character count
+ * - Community Presence replaced by Delegation Responsiveness (delegator retention after votes)
+ * - Falls back to delegator count percentile when insufficient retention data
  */
 
 import { isValidatedSocialLink } from '@/utils/display';
 
-const SUB_WEIGHTS = { poolIdentityQuality: 0.6, communityPresence: 0.4 };
+const SUB_WEIGHTS = { poolIdentityQuality: 0.6, delegationResponsiveness: 0.4 };
+
+/** Keywords that indicate governance-relevant content in a statement. */
+const GOVERNANCE_KEYWORDS = [
+  'vote',
+  'govern',
+  'delegate',
+  'cardano',
+  'treasury',
+  'proposal',
+  'constitution',
+  'drep',
+  'stake',
+  'community',
+  'accountability',
+  'transparency',
+  'decentraliz',
+];
 
 export interface SpoProfileData {
   poolId: string;
@@ -24,23 +42,40 @@ export interface SpoProfileData {
   brokenUris?: Set<string>;
 }
 
+export interface DelegationRetentionData {
+  poolId: string;
+  delegatorsBefore: number;
+  delegatorsAfter: number;
+}
+
 /**
  * Compute raw Governance Identity scores (0-100) for all SPOs.
+ * Uses delegation responsiveness when available, falls back to delegator count percentile.
  */
 export function computeSpoGovernanceIdentity(
   profiles: Map<string, SpoProfileData>,
   allDelegatorCounts: number[],
+  retentionData?: Map<string, DelegationRetentionData>,
 ): Map<string, number> {
   const scores = new Map<string, number>();
   const sortedCounts = [...allDelegatorCounts].sort((a, b) => a - b);
 
   for (const [poolId, profile] of profiles) {
     const identityScore = computePoolIdentityQuality(profile);
-    const communityScore = computeCommunityPresence(profile.delegatorCount, sortedCounts);
+    const responsiveness = retentionData?.get(poolId);
+
+    let communityScore: number;
+    if (responsiveness && responsiveness.delegatorsBefore >= 5) {
+      // Delegation responsiveness: retention rate after governance activity
+      communityScore = computeDelegationResponsiveness(responsiveness);
+    } else {
+      // Fallback: delegator count percentile
+      communityScore = computeCommunityPresencePercentile(profile.delegatorCount, sortedCounts);
+    }
 
     const raw =
       identityScore * SUB_WEIGHTS.poolIdentityQuality +
-      communityScore * SUB_WEIGHTS.communityPresence;
+      communityScore * SUB_WEIGHTS.delegationResponsiveness;
 
     scores.set(poolId, clamp(Math.round(raw)));
   }
@@ -50,31 +85,29 @@ export function computeSpoGovernanceIdentity(
 
 /**
  * Pool Identity Quality (60% of pillar).
- * Quality-tiered scoring — max raw: ticker(10) + poolName(10) + govStatement(20)
- * + description(15) + homepage(10) + social(30) + hashVerified(5) = 100, clamped.
+ * V3: governance statement uses keyword quality checklist:
+ * - Present (5pts) + >100 chars (5pts) + governance keywords (5pts) + unique from description (5pts)
+ * Other fields unchanged from V2.
  *
- * Unclaimed pools score from on-chain data: ticker + poolName + hash = 25 baseline.
- * Claiming unlocks governance statement, description, social links, homepage = +75.
+ * Max raw: ticker(10) + poolName(10) + govStatement(20) + description(15) + homepage(10) + social(30) + hash(5) = 100
  */
 function computePoolIdentityQuality(profile: SpoProfileData): number {
   let score = 0;
 
   if (profile.ticker && profile.ticker.length > 0) score += 10;
-
   if (profile.poolName && profile.poolName.length > 2) score += 10;
 
-  score += tierScore(profile.governanceStatement, [
-    { minLen: 200, pts: 20 },
-    { minLen: 50, pts: 15 },
-    { minLen: 1, pts: 5 },
-  ]);
+  // Governance statement: keyword quality checklist (max 20)
+  score += scoreGovernanceStatement(profile.governanceStatement, profile.poolDescription);
 
+  // Pool description: tiered by length (max 15)
   score += tierScore(profile.poolDescription, [
     { minLen: 200, pts: 15 },
     { minLen: 50, pts: 10 },
     { minLen: 1, pts: 3 },
   ]);
 
+  // Homepage URL (10 pts)
   if (profile.homepageUrl) {
     try {
       const url = new URL(profile.homepageUrl);
@@ -84,10 +117,11 @@ function computePoolIdentityQuality(profile: SpoProfileData): number {
         }
       }
     } catch {
-      // invalid URL — no points
+      // invalid URL
     }
   }
 
+  // Social links (max 30)
   if (Array.isArray(profile.socialLinks)) {
     let validCount = 0;
     const seenUris = new Set<string>();
@@ -109,11 +143,68 @@ function computePoolIdentityQuality(profile: SpoProfileData): number {
 }
 
 /**
- * Community Presence (40% of pillar).
- * Delegator count percentile — count-based to measure trust breadth.
- * Same algorithm as DRep Governance Identity.
+ * Governance statement quality checklist (max 20 points):
+ * - Present and non-empty: 5 pts
+ * - >100 characters: 5 pts
+ * - Contains >= 3 governance keywords: 5 pts
+ * - Content distinct from pool description (Jaccard > 0.5): 5 pts
  */
-function computeCommunityPresence(delegatorCount: number, sortedCounts: number[]): number {
+function scoreGovernanceStatement(
+  statement: string | null | undefined,
+  description: string | null | undefined,
+): number {
+  if (!statement?.trim()) return 0;
+  const trimmed = statement.trim();
+  let pts = 5; // present
+
+  if (trimmed.length > 100) pts += 5;
+
+  // Keyword check
+  const lower = trimmed.toLowerCase();
+  const matchedKeywords = GOVERNANCE_KEYWORDS.filter((kw) => lower.includes(kw));
+  if (matchedKeywords.length >= 3) pts += 5;
+
+  // Uniqueness check: Jaccard distance from description
+  if (description?.trim()) {
+    const stmtWords = new Set(lower.split(/\s+/).filter((w) => w.length > 3));
+    const descWords = new Set(
+      description
+        .trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 3),
+    );
+    const intersection = [...stmtWords].filter((w) => descWords.has(w)).length;
+    const union = new Set([...stmtWords, ...descWords]).size;
+    const jaccard = union > 0 ? intersection / union : 0;
+    if (jaccard < 0.5) pts += 5; // sufficiently unique
+  } else {
+    pts += 5; // no description to compare against, give full credit
+  }
+
+  return pts;
+}
+
+/**
+ * Delegation Responsiveness (40% of pillar).
+ * Measures delegator retention in epochs following governance votes.
+ * retentionRate = delegatorsAfter / delegatorsBefore, clamped to 0-100.
+ */
+function computeDelegationResponsiveness(data: DelegationRetentionData): number {
+  if (data.delegatorsBefore === 0) return 50;
+  const rate = data.delegatorsAfter / data.delegatorsBefore;
+  // Score: 100% retention = 100, 90% = 90, etc.
+  // Allow growth beyond 100% (capped at 100 score)
+  return clamp(Math.round(rate * 100));
+}
+
+/**
+ * Fallback: delegator count percentile (same as V2).
+ */
+function computeCommunityPresencePercentile(
+  delegatorCount: number,
+  sortedCounts: number[],
+): number {
   if (sortedCounts.length === 0) return 0;
   if (sortedCounts.length === 1) return 50;
 

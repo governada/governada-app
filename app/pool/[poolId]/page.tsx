@@ -65,7 +65,7 @@ async function getPoolRow(poolId: string) {
     const { data, error } = await supabase
       .from('pools')
       .select(
-        'pool_id, ticker, pool_name, pledge, governance_score, participation_rate, consistency_score, reliability_score, governance_identity_score, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake, vote_count, governance_statement',
+        'pool_id, ticker, pool_name, pledge, governance_score, participation_pct, deliberation_pct, consistency_pct, reliability_pct, governance_identity_pct, confidence, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake, vote_count, governance_statement, current_tier, score_momentum',
       )
       .eq('pool_id', poolId)
       .single();
@@ -340,10 +340,11 @@ export default async function PoolProfilePage({ params }: PageProps) {
   const liveStake = poolRow.live_stake;
   const pledge = poolRow.pledge;
   const voteCount = (poolRow.vote_count as number) ?? totalVotes;
-  const participationPillar = (poolRow.participation_rate as number) ?? participationRate;
-  const consistencyPillar = (poolRow.consistency_score as number) ?? null;
-  const reliabilityPillar = (poolRow.reliability_score as number) ?? null;
-  const governanceIdentityPillar = (poolRow.governance_identity_score as number) ?? null;
+  const participationPillar = (poolRow.participation_pct as number) ?? participationRate;
+  const deliberationPillar = (poolRow.deliberation_pct as number) ?? null;
+  const reliabilityPillar = (poolRow.reliability_pct as number) ?? null;
+  const governanceIdentityPillar = (poolRow.governance_identity_pct as number) ?? null;
+  const poolConfidence = (poolRow.confidence as number) ?? null;
   const governanceStatement = (poolRow.governance_statement as string) ?? null;
   const alignments = toAlignments(poolRow);
 
@@ -369,9 +370,17 @@ export default async function PoolProfilePage({ params }: PageProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {poolConfidence != null && poolConfidence < 60 && (
+          <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 rounded-md px-3 py-2">
+            <span>
+              Provisional score — low confidence ({poolConfidence}%). More votes needed for full
+              tier assignment.
+            </span>
+          </div>
+        )}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Participation · 38%</span>
+            <span>Participation · 35%</span>
             <span className="font-mono tabular-nums">{participationPillar ?? '—'}%</span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -383,21 +392,21 @@ export default async function PoolProfilePage({ params }: PageProps) {
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Consistency · 24%</span>
+            <span>Deliberation Quality · 25%</span>
             <span className="font-mono tabular-nums">
-              {consistencyPillar != null ? consistencyPillar : '—'}%
+              {deliberationPillar != null ? deliberationPillar : '—'}%
             </span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full rounded-full bg-purple-500/80"
-              style={{ width: `${Math.min(100, Math.max(0, consistencyPillar ?? 0))}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, deliberationPillar ?? 0))}%` }}
             />
           </div>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Reliability · 23%</span>
+            <span>Reliability · 25%</span>
             <span className="font-mono tabular-nums">
               {reliabilityPillar != null ? reliabilityPillar : '—'}%
             </span>

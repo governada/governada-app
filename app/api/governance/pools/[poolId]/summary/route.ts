@@ -19,7 +19,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   const { data: pool } = await supabase
     .from('pools')
     .select(
-      'pool_id, ticker, pool_name, governance_score, vote_count, participation_pct, consistency_pct, reliability_pct, delegator_count, live_stake_lovelace, claimed_by, score_momentum, current_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+      'pool_id, ticker, pool_name, governance_score, vote_count, participation_pct, consistency_pct, reliability_pct, deliberation_pct, governance_identity_pct, confidence, delegator_count, live_stake_lovelace, claimed_by, score_momentum, current_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
     )
     .eq('pool_id', poolId)
     .single();
@@ -56,6 +56,11 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       claimedBy: pool.claimed_by ?? null,
       voteCount: pool.vote_count ?? 0,
       participationRate: pool.participation_pct ?? 0,
+      deliberationQuality: pool.deliberation_pct ?? 0,
+      reliabilityRate: pool.reliability_pct ?? 0,
+      governanceIdentity: pool.governance_identity_pct ?? 0,
+      confidence: pool.confidence ?? null,
+      // V2 compat
       rationaleRate: pool.consistency_pct ?? 0,
       delegatorCount: pool.delegator_count ?? 0,
       liveStakeAda: pool.live_stake_lovelace

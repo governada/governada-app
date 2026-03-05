@@ -26,6 +26,7 @@ export interface CurrentScoreState {
   composite: number;
   participationPct: number;
   consistencyPct: number;
+  deliberationPct?: number;
   reliabilityPct: number;
   governanceIdentityPct: number;
   engagementQualityPct?: number;
@@ -147,9 +148,9 @@ export function simulateScoreImpact(
         delta: participationDelta,
       },
       {
-        pillar: 'Consistency',
-        currentPct: currentState.consistencyPct,
-        predictedPct: currentState.consistencyPct,
+        pillar: 'Deliberation Quality',
+        currentPct: currentState.deliberationPct ?? currentState.consistencyPct,
+        predictedPct: currentState.deliberationPct ?? currentState.consistencyPct,
         delta: 0,
       },
       {
@@ -193,7 +194,7 @@ const DREP_WEIGHTS = {
 
 const SPO_WEIGHTS = {
   participation: SPO_PILLAR_WEIGHTS.participation,
-  consistency: SPO_PILLAR_WEIGHTS.consistency,
+  deliberation: SPO_PILLAR_WEIGHTS.deliberation,
   reliability: SPO_PILLAR_WEIGHTS.reliability,
   governanceIdentity: SPO_PILLAR_WEIGHTS.governanceIdentity,
 };

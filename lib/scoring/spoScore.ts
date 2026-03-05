@@ -1,20 +1,21 @@
 /**
- * SPO Governance Score V2 — 4-pillar composite calculator.
- * Participation (38%) + Consistency (24%) + Reliability (23%) + Governance Identity (15%).
- * Percentile-normalized, with momentum and close-margin bonus (ADR-006).
+ * SPO Governance Score V3 — 4-pillar composite calculator.
+ * Participation (35%) + Deliberation Quality (25%) + Reliability (25%) + Governance Identity (15%).
+ * Confidence-weighted percentile normalization, proposal-aware reliability, 30-day momentum (ADR-006 V3).
  */
 
 import { percentileNormalize } from './percentile';
+import { percentileNormalizeWeighted } from './confidence';
 import { DECAY_LAMBDA } from './types';
 
 export const SPO_PILLAR_WEIGHTS = {
-  participation: 0.38,
-  consistency: 0.24,
-  reliability: 0.23,
+  participation: 0.35,
+  deliberation: 0.25,
+  reliability: 0.25,
   governanceIdentity: 0.15,
 } as const;
 
-export interface SpoVoteData {
+export interface SpoVoteDataV3 {
   poolId: string;
   proposalKey: string;
   vote: 'Yes' | 'No' | 'Abstain';
@@ -23,34 +24,47 @@ export interface SpoVoteData {
   proposalType: string;
   importanceWeight: number;
   proposalBlockTime: number;
+  hasRationale: boolean;
 }
+
+/** @deprecated Use SpoVoteDataV3 — kept for backward compat during migration */
+export type SpoVoteData = SpoVoteDataV3;
 
 export interface SpoScoreResult {
   composite: number;
   participationRaw: number;
   participationPercentile: number;
-  consistencyRaw: number;
-  consistencyPercentile: number;
+  deliberationRaw: number;
+  deliberationPercentile: number;
   reliabilityRaw: number;
   reliabilityPercentile: number;
   governanceIdentityRaw: number;
   governanceIdentityPercentile: number;
+  confidence: number;
   momentum: number | null;
+  /** @deprecated V2 compat — same as deliberationRaw */
+  consistencyRaw: number;
+  /** @deprecated V2 compat — same as deliberationPercentile */
+  consistencyPercentile: number;
 }
 
 /**
- * Compute SPO scores for all pools from vote data + identity scores.
- * Identity scores are computed externally via computeSpoGovernanceIdentity().
+ * Compute SPO scores for all pools from vote data + identity + deliberation scores.
+ * Proposal margin multipliers are applied globally (not per-SPO) for fair close-margin weighting.
  */
 export function computeSpoScores(
-  allVotes: SpoVoteData[],
+  allVotes: SpoVoteDataV3[],
   totalProposalPool: number,
   currentEpoch: number,
   allProposalTypes: Set<string>,
   identityScores: Map<string, number>,
+  deliberationScores: Map<string, number>,
+  confidences: Map<string, number>,
   scoreHistory: Map<string, { date: string; score: number }[]>,
+  proposalMarginMultipliers: Map<string, number>,
+  activeEpochs: Set<number>,
 ): Map<string, SpoScoreResult> {
-  const byPool = new Map<string, SpoVoteData[]>();
+  const byPool = new Map<string, SpoVoteDataV3[]>();
   for (const v of allVotes) {
     const arr = byPool.get(v.poolId) ?? [];
     arr.push(v);
@@ -58,197 +72,129 @@ export function computeSpoScores(
   }
 
   const nowSeconds = allVotes.length > 0 ? Math.max(...allVotes.map((v) => v.blockTime)) : 0;
-  const totalTypes = allProposalTypes.size || 1;
-
-  const spoMajorityByProposal = computeSpoMajorityByProposal(allVotes);
-  const spoMarginByProposal = computeSpoMarginByProposal(allVotes);
 
   const participationRaw = new Map<string, number>();
-  const consistencyRaw = new Map<string, number>();
   const reliabilityRaw = new Map<string, number>();
 
   for (const [poolId, votes] of byPool) {
     participationRaw.set(
       poolId,
-      computeParticipation(votes, totalProposalPool, nowSeconds, spoMarginByProposal),
+      computeParticipation(votes, totalProposalPool, nowSeconds, proposalMarginMultipliers),
     );
-    consistencyRaw.set(poolId, computeConsistency(votes, spoMajorityByProposal, totalTypes));
-    reliabilityRaw.set(poolId, computeReliability(votes, currentEpoch));
+    reliabilityRaw.set(poolId, computeReliability(votes, currentEpoch, activeEpochs));
   }
 
-  const participationPct = percentileNormalize(participationRaw);
-  const consistencyPct = percentileNormalize(consistencyRaw);
-  const reliabilityPct = percentileNormalize(reliabilityRaw);
+  // Use confidence-weighted percentile normalization
+  const participationPct = percentileNormalizeWeighted(participationRaw, confidences);
+  const deliberationPct = percentileNormalizeWeighted(deliberationScores, confidences);
+  const reliabilityPct = percentileNormalizeWeighted(reliabilityRaw, confidences);
   const identityPct = percentileNormalize(identityScores);
 
   const result = new Map<string, SpoScoreResult>();
-
   const allPoolIds = new Set([...byPool.keys(), ...identityScores.keys()]);
 
   for (const poolId of allPoolIds) {
     const pPct = participationPct.get(poolId) ?? 0;
-    const cPct = consistencyPct.get(poolId) ?? 0;
+    const dPct = deliberationPct.get(poolId) ?? 0;
     const rPct = reliabilityPct.get(poolId) ?? 0;
     const iPct = identityPct.get(poolId) ?? 0;
 
     const composite = Math.round(
       SPO_PILLAR_WEIGHTS.participation * pPct +
-        SPO_PILLAR_WEIGHTS.consistency * cPct +
+        SPO_PILLAR_WEIGHTS.deliberation * dPct +
         SPO_PILLAR_WEIGHTS.reliability * rPct +
         SPO_PILLAR_WEIGHTS.governanceIdentity * iPct,
     );
 
     const history = scoreHistory.get(poolId);
     const momentum = history ? computeMomentum(history) : null;
+    const confidence = confidences.get(poolId) ?? 0;
 
     result.set(poolId, {
       composite: clamp(composite),
       participationRaw: participationRaw.get(poolId) ?? 0,
       participationPercentile: pPct,
-      consistencyRaw: consistencyRaw.get(poolId) ?? 0,
-      consistencyPercentile: cPct,
+      deliberationRaw: deliberationScores.get(poolId) ?? 0,
+      deliberationPercentile: dPct,
       reliabilityRaw: reliabilityRaw.get(poolId) ?? 0,
       reliabilityPercentile: rPct,
       governanceIdentityRaw: identityScores.get(poolId) ?? 0,
       governanceIdentityPercentile: iPct,
+      confidence,
       momentum,
+      // V2 compat
+      consistencyRaw: deliberationScores.get(poolId) ?? 0,
+      consistencyPercentile: dPct,
     });
   }
   return result;
 }
 
+/**
+ * Participation: importance-weighted vote coverage with temporal decay.
+ * Close-margin bonus is now applied at the proposal level (via proposalMarginMultipliers),
+ * not per-SPO, removing the luck factor.
+ */
 function computeParticipation(
-  votes: SpoVoteData[],
+  votes: SpoVoteDataV3[],
   totalProposalPool: number,
   nowSeconds: number,
-  spoMarginByProposal: Map<string, number>,
+  proposalMarginMultipliers: Map<string, number>,
 ): number {
   if (totalProposalPool === 0) return 0;
   const seen = new Set<string>();
   let weighted = 0;
+
   for (const v of votes) {
     if (seen.has(v.proposalKey)) continue;
     seen.add(v.proposalKey);
     const ageDays = Math.max(0, (nowSeconds - v.blockTime) / 86400);
     const decay = Math.exp(-DECAY_LAMBDA * ageDays);
-
-    let weight = v.importanceWeight * decay;
-
-    const margin = spoMarginByProposal.get(v.proposalKey);
-    if (margin !== undefined && margin < 0.2) {
-      weight *= 1.5;
-    }
-
-    weighted += weight;
+    const marginMult = proposalMarginMultipliers.get(v.proposalKey) ?? 1;
+    weighted += v.importanceWeight * decay * marginMult;
   }
+
   return Math.min(100, (weighted / totalProposalPool) * 100);
 }
 
-function computeConsistency(
-  votes: SpoVoteData[],
-  spoMajorityByProposal: Map<string, 'Yes' | 'No' | 'Abstain'>,
-  totalTypes: number,
-): number {
-  if (votes.length === 0) return 0;
-
-  const yesCount = votes.filter((v) => v.vote === 'Yes').length;
-  const noCount = votes.filter((v) => v.vote === 'No').length;
-  const yesRate = yesCount / votes.length;
-  const noRate = noCount / votes.length;
-  const maxRate = Math.max(yesRate, noRate);
-  let diversityScore: number;
-  if (maxRate > 0.85) {
-    diversityScore = Math.max(0, 100 - (maxRate - 0.85) * 500);
-  } else {
-    diversityScore = 100;
-  }
-
-  const distinctTypes = new Set(votes.map((v) => v.proposalType)).size;
-  const typeBreadthScore = (distinctTypes / totalTypes) * 100;
-
-  let dissentCount = 0;
-  for (const v of votes) {
-    const majority = spoMajorityByProposal.get(v.proposalKey);
-    if (majority && v.vote !== majority) dissentCount++;
-  }
-  const dissentRate = dissentCount / votes.length;
-  let dissentScore: number;
-  if (dissentRate >= 0.15 && dissentRate <= 0.4) {
-    dissentScore = 100;
-  } else if (dissentRate < 0.15) {
-    dissentScore = (dissentRate / 0.15) * 100;
-  } else {
-    dissentScore = Math.max(0, 100 - (dissentRate - 0.4) * 250);
-  }
-
-  return (diversityScore + typeBreadthScore + dissentScore) / 3;
-}
-
-function computeSpoMajorityByProposal(
-  allVotes: SpoVoteData[],
-): Map<string, 'Yes' | 'No' | 'Abstain'> {
-  const byProposal = new Map<string, { yes: number; no: number; abstain: number }>();
-  for (const v of allVotes) {
-    const cur = byProposal.get(v.proposalKey) ?? { yes: 0, no: 0, abstain: 0 };
-    if (v.vote === 'Yes') cur.yes++;
-    else if (v.vote === 'No') cur.no++;
-    else cur.abstain++;
-    byProposal.set(v.proposalKey, cur);
-  }
-  const result = new Map<string, 'Yes' | 'No' | 'Abstain'>();
-  for (const [key, counts] of byProposal) {
-    const max = Math.max(counts.yes, counts.no, counts.abstain);
-    if (counts.yes === max) result.set(key, 'Yes');
-    else if (counts.no === max) result.set(key, 'No');
-    else result.set(key, 'Abstain');
-  }
-  return result;
-}
-
 /**
- * Compute vote margin for close-margin bonus.
- * Margin = |yesRate - noRate| among non-abstain votes.
+ * Reliability V3: proposal-aware gaps, uniform temporal decay, engagement consistency.
+ *
+ * Sub-components:
+ * - Active streak (30%): consecutive epochs with votes, only counting proposal-active epochs
+ * - Recency (25%): exponential decay from last vote
+ * - Gap penalty (15%): longest gap in proposal-active epochs only
+ * - Engagement consistency (15%): CV of votes-per-active-epoch (steady > bursty)
+ * - Tenure (15%): asymptotic curve with 20-point floor
  */
-function computeSpoMarginByProposal(allVotes: SpoVoteData[]): Map<string, number> {
-  const byProposal = new Map<string, { yes: number; no: number }>();
-  for (const v of allVotes) {
-    if (v.vote === 'Abstain') continue;
-    const cur = byProposal.get(v.proposalKey) ?? { yes: 0, no: 0 };
-    if (v.vote === 'Yes') cur.yes++;
-    else cur.no++;
-    byProposal.set(v.proposalKey, cur);
-  }
-  const result = new Map<string, number>();
-  for (const [key, counts] of byProposal) {
-    const total = counts.yes + counts.no;
-    if (total === 0) {
-      result.set(key, 1);
-      continue;
-    }
-    result.set(key, Math.abs(counts.yes / total - counts.no / total));
-  }
-  return result;
-}
+function computeReliability(
+  votes: SpoVoteDataV3[],
+  currentEpoch: number,
+  activeEpochs: Set<number>,
+): number {
+  const votedEpochs = new Set(votes.map((v) => v.epoch));
+  const sortedVotedEpochs = [...votedEpochs].sort((a, b) => a - b);
+  if (sortedVotedEpochs.length === 0) return 0;
 
-function computeReliability(votes: SpoVoteData[], currentEpoch: number): number {
-  const epochs = [...new Set(votes.map((v) => v.epoch))].sort((a, b) => a - b);
-  if (epochs.length === 0) return 0;
-
-  const firstEpoch = epochs[0];
-  const lastEpoch = epochs[epochs.length - 1];
+  const firstEpoch = sortedVotedEpochs[0];
+  const lastEpoch = sortedVotedEpochs[sortedVotedEpochs.length - 1];
   const epochsSinceFirst = currentEpoch - firstEpoch;
   const epochsSinceLastVote = currentEpoch - lastEpoch;
 
+  // Active streak: consecutive proposal-active epochs with votes (counting back from current)
   let streak = 0;
   for (let e = currentEpoch; e >= firstEpoch; e--) {
-    if (epochs.includes(e)) streak++;
+    if (!activeEpochs.has(e)) continue; // skip epochs with no proposals
+    if (votedEpochs.has(e)) streak++;
     else break;
   }
 
+  // Gap penalty: longest run of proposal-active epochs without a vote
   let longestGap = 0;
   let gap = 0;
   for (let e = firstEpoch; e <= currentEpoch; e++) {
-    if (epochs.includes(e)) {
+    if (!activeEpochs.has(e)) continue; // skip epochs with no proposals
+    if (votedEpochs.has(e)) {
       longestGap = Math.max(longestGap, gap);
       gap = 0;
     } else {
@@ -257,47 +203,77 @@ function computeReliability(votes: SpoVoteData[], currentEpoch: number): number 
   }
   longestGap = Math.max(longestGap, gap);
 
+  // Engagement consistency: coefficient of variation of votes-per-active-epoch
+  const activeEpochsInRange = [...activeEpochs].filter((e) => e >= firstEpoch && e <= currentEpoch);
+  let consistencyScore = 50; // default
+  if (activeEpochsInRange.length >= 3) {
+    const votesPerEpoch = activeEpochsInRange.map((e) => votes.filter((v) => v.epoch === e).length);
+    const mean = votesPerEpoch.reduce((a, b) => a + b, 0) / votesPerEpoch.length;
+    if (mean > 0) {
+      const variance =
+        votesPerEpoch.reduce((sum, v) => sum + (v - mean) ** 2, 0) / votesPerEpoch.length;
+      const cv = Math.sqrt(variance) / mean;
+      // Low CV = consistent = high score. CV of 0 = 100, CV of 2+ = ~20
+      consistencyScore = clamp(Math.round(100 * Math.exp(-cv)));
+    }
+  }
+
   const activeStreakScore = Math.min(streak * 15, 100);
   const recencyScore = 100 * Math.exp(-epochsSinceLastVote / 5);
   const gapScore = Math.max(0, 100 - longestGap * 15);
-
-  // Responsiveness: median days from proposal creation to vote
-  const responseDays: number[] = [];
-  for (const v of votes) {
-    if (v.proposalBlockTime > 0 && v.blockTime > v.proposalBlockTime) {
-      responseDays.push((v.blockTime - v.proposalBlockTime) / 86400);
-    }
-  }
-  let responsivenessScore = 50; // default if no data
-  if (responseDays.length > 0) {
-    responseDays.sort((a, b) => a - b);
-    const medianDays = responseDays[Math.floor(responseDays.length / 2)];
-    responsivenessScore = 100 * Math.exp(-medianDays / 14);
-  }
-
   const tenureScore = Math.min(20 + 80 * (1 - Math.exp(-epochsSinceFirst / 30)), 100);
 
   return (
     activeStreakScore * 0.3 +
     recencyScore * 0.25 +
     gapScore * 0.15 +
-    responsivenessScore * 0.15 +
+    consistencyScore * 0.15 +
     tenureScore * 0.15
   );
 }
 
 /**
- * Linear regression slope from recent score history (same as DRep momentum).
+ * Compute close-margin multipliers at the PROPOSAL level (not per-SPO).
+ * Returns a map of proposalKey -> multiplier (1.0 for normal, 1.5 for contentious).
+ * This is applied globally so all SPOs benefit equally from contentious proposals.
+ */
+export function computeProposalMarginMultipliers(allVotes: SpoVoteDataV3[]): Map<string, number> {
+  const byProposal = new Map<string, { yes: number; no: number }>();
+  for (const v of allVotes) {
+    if (v.vote === 'Abstain') continue;
+    const cur = byProposal.get(v.proposalKey) ?? { yes: 0, no: 0 };
+    if (v.vote === 'Yes') cur.yes++;
+    else cur.no++;
+    byProposal.set(v.proposalKey, cur);
+  }
+
+  const result = new Map<string, number>();
+  for (const [key, counts] of byProposal) {
+    const total = counts.yes + counts.no;
+    if (total === 0) {
+      result.set(key, 1);
+      continue;
+    }
+    const margin = Math.abs(counts.yes / total - counts.no / total);
+    result.set(key, margin < 0.2 ? 1.5 : 1);
+  }
+  return result;
+}
+
+/**
+ * Linear regression slope from recent score history.
+ * Extended to 30-day window (vs 14 in V2) for more data points.
+ * Requires minimum 3 data points (vs 2 in V2).
  */
 function computeMomentum(history: { date: string; score: number }[]): number | null {
-  if (history.length < 2) return null;
+  if (history.length < 3) return null;
 
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 14);
+  cutoff.setDate(cutoff.getDate() - 30);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
   const recent = history.filter((h) => h.date >= cutoffStr);
-  if (recent.length < 2) return null;
+  if (recent.length < 3) return null;
 
   const baseDate = new Date(recent[0].date).getTime();
   const points = recent.map((h) => ({

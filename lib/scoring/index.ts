@@ -1,6 +1,6 @@
 /**
  * Civica Scoring Engine — barrel export.
- * DRep Score V3 + SPO Score V2.
+ * DRep Score V3 + SPO Score V3.
  */
 
 export { computeEngagementQuality } from './engagementQuality';
@@ -23,14 +23,37 @@ export {
   type DRepScoreResult,
 } from './types';
 
-// SPO Score V2
+// SPO Score V3
 export {
   computeSpoScores,
+  computeProposalMarginMultipliers,
   SPO_PILLAR_WEIGHTS,
   type SpoVoteData,
+  type SpoVoteDataV3,
   type SpoScoreResult,
 } from './spoScore';
-export { computeSpoGovernanceIdentity, type SpoProfileData } from './spoGovernanceIdentity';
+export {
+  computeSpoGovernanceIdentity,
+  type SpoProfileData,
+  type DelegationRetentionData,
+} from './spoGovernanceIdentity';
+export {
+  computeSpoDeliberationQuality,
+  type SpoDeliberationVoteData,
+} from './spoDeliberationQuality';
+export {
+  computeConfidence,
+  percentileNormalizeWeighted,
+  CONFIDENCE_TIER_THRESHOLD,
+} from './confidence';
+export {
+  computeParticipationAttribution,
+  generateRecommendations,
+  type SpoAttribution,
+  type PillarAttribution,
+  type AttributionEntry,
+} from './spoAttribution';
+export { detectSybilPairs, type SybilFlag } from './sybilDetection';
 
 // Score Tiers
 export {

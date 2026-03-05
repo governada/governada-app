@@ -70,7 +70,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     const { data: pool } = await supabase
       .from('pools')
       .select(
-        'governance_score, participation_pct, consistency_pct, reliability_pct, governance_identity_pct, vote_count',
+        'governance_score, participation_pct, consistency_pct, deliberation_pct, reliability_pct, governance_identity_pct, confidence, vote_count',
       )
       .eq('pool_id', entityId)
       .single();
@@ -85,6 +85,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       composite: pool.governance_score ?? 0,
       participationPct: pool.participation_pct ?? 0,
       consistencyPct: pool.consistency_pct ?? 0,
+      deliberationPct: pool.deliberation_pct ?? 0,
       reliabilityPct: pool.reliability_pct ?? 0,
       governanceIdentityPct: pool.governance_identity_pct ?? 0,
       voteCount: pool.vote_count ?? 0,

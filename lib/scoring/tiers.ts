@@ -37,6 +37,9 @@ export interface PillarBreakdown {
   effectiveParticipation?: number | null;
   reliability?: number | null;
   governanceIdentity?: number | null;
+  // SPO V3 pillars
+  participation?: number | null;
+  deliberation?: number | null;
 }
 
 export interface TierChange {
@@ -49,8 +52,18 @@ export interface TierChange {
   direction: 'up' | 'down';
 }
 
-export function computeTier(score: number): TierName {
+/**
+ * Compute tier from score, optionally gated by confidence.
+ * If confidence < CONFIDENCE_TIER_THRESHOLD, caps tier at Emerging.
+ */
+export function computeTier(score: number, confidence?: number): TierName {
   const clamped = Math.max(0, Math.min(100, Math.round(score)));
+
+  // Confidence gate: low-confidence entities max out at Emerging
+  if (confidence !== undefined && confidence < 60) {
+    return 'Emerging';
+  }
+
   for (let i = TIERS.length - 1; i >= 0; i--) {
     if (clamped >= TIERS[i].min) return TIERS[i].name;
   }
@@ -70,14 +83,25 @@ export function getTierInfo(tierName: TierName): TierInfo {
 function deriveRecommendedAction(pillars?: PillarBreakdown): string | null {
   if (!pillars) return null;
 
-  const entries: [string, number][] = [
-    // Weight × (100 - score) gives "impact potential"
-    // Weights: EQ 35%, EP 30%, R 20%, GI 15%
-    ['engagementQuality', (pillars.engagementQuality ?? 50) * 0.35],
-    ['effectiveParticipation', (pillars.effectiveParticipation ?? 50) * 0.3],
-    ['reliability', (pillars.reliability ?? 50) * 0.2],
-    ['governanceIdentity', (pillars.governanceIdentity ?? 50) * 0.15],
-  ];
+  const entries: [string, number][] = [];
+
+  // SPO V3 pillars take precedence if present
+  if (pillars.participation !== undefined && pillars.participation !== null) {
+    entries.push(
+      ['participation', (pillars.participation ?? 50) * 0.35],
+      ['deliberation', (pillars.deliberation ?? 50) * 0.25],
+      ['reliability', (pillars.reliability ?? 50) * 0.25],
+      ['governanceIdentity', (pillars.governanceIdentity ?? 50) * 0.15],
+    );
+  } else {
+    // DRep pillars
+    entries.push(
+      ['engagementQuality', (pillars.engagementQuality ?? 50) * 0.35],
+      ['effectiveParticipation', (pillars.effectiveParticipation ?? 50) * 0.3],
+      ['reliability', (pillars.reliability ?? 50) * 0.2],
+      ['governanceIdentity', (pillars.governanceIdentity ?? 50) * 0.15],
+    );
+  }
 
   // Find the pillar with the lowest weighted score (most room to grow)
   const [weakest] = entries.sort((a, b) => a[1] - b[1]);
@@ -86,6 +110,9 @@ function deriveRecommendedAction(pillars?: PillarBreakdown): string | null {
   const actions: Record<string, string> = {
     engagementQuality: 'Submit rationales for your next votes to improve Engagement Quality',
     effectiveParticipation: 'Vote on open governance proposals to improve Effective Participation',
+    participation: 'Vote on open governance proposals to improve Participation',
+    deliberation:
+      'Provide vote rationales and diversify proposal types to improve Deliberation Quality',
     reliability: 'Maintain a consistent voting streak to improve Reliability',
     governanceIdentity:
       'Complete your governance profile and social links to improve Governance Identity',

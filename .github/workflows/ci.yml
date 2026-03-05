@@ -204,6 +204,8 @@ jobs:
         run: |
           mkdir -p .next/standalone/.next
           cp -r .next/static .next/standalone/.next/static
+          cp .next/BUILD_ID .next/standalone/.next/BUILD_ID
+          cp .next/*.json .next/standalone/.next/ 2>/dev/null || true
           cp -r public .next/standalone/public
       - name: Start server and run E2E
         run: |

@@ -124,7 +124,7 @@ export function computeLayout(inputs: LayoutInput[], nodeLimit: number): LayoutR
   for (let i = 0; i < ccInputs.length; i++) {
     const input = ccInputs[i];
     const ccAngle = (i / Math.max(ccInputs.length, 1)) * Math.PI * 2;
-    const ccRadius = 2.5;
+    const ccRadius = 4.5;
     const z = 0.4;
     const scale = MAX_VISIBLE_SCALE * CC_SCALE_FACTOR;
     const node: ConstellationNode3D = {
@@ -160,7 +160,7 @@ function computeNodePosition(input: LayoutInput): [number, number, number] {
 
   if (totalWeight < 1) {
     const hashAngle = ((hash >> 8) % 10000) / 10000;
-    const r = 0.8 + hashNorm * 1.8;
+    const r = 2.5 + hashNorm * 2.0;
     const a = hashAngle * Math.PI * 2;
     return [Math.cos(a) * r, Math.sin(a) * r, (hashAngle - 0.5) * 0.6];
   }
@@ -170,7 +170,7 @@ function computeNodePosition(input: LayoutInput): [number, number, number] {
 
   // H4: Arm-tip clustering — push nodes toward outer 60-80% of arm
   const clustered = Math.pow(specialization, 0.7);
-  const dist = MAX_RADIUS * (0.1 + clustered * 0.85);
+  const dist = MAX_RADIUS * (0.25 + clustered * 0.7);
 
   const fanOffset = (hashNorm - 0.5) * ARM_FAN_ARC;
   const finalAngle = dirAngle + fanOffset;
@@ -291,7 +291,7 @@ function rebalanceAngular(nodes: ConstellationNode3D[]): void {
 
 function repulse(nodes: ConstellationNode3D[]): void {
   const realNodes = nodes.filter((n) => !n.isAnchor && n.nodeType === 'drep');
-  const MIN_DIST = 0.8;
+  const MIN_DIST = 1.2;
   const STRENGTH = 0.4;
 
   for (let iter = 0; iter < 3; iter++) {

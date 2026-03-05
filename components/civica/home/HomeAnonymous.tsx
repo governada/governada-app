@@ -68,7 +68,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white drop-shadow-lg leading-tight">
               Cardano has a government.
               <br />
-              <span className="text-primary">Know who represents you.</span>
+              <span className="text-[#fff0d4]">Know who represents you.</span>
             </h1>
             <p className="text-base sm:text-lg text-white/80 max-w-lg mx-auto leading-relaxed">
               Every ADA holder has a voice in <GovTerm term="governanceAction">governance</GovTerm>.

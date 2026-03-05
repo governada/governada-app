@@ -415,6 +415,42 @@ export function useDashboardCompetitive(drepId: string | null | undefined) {
   });
 }
 
+export function useGovernanceCalendar() {
+  return useQuery({
+    queryKey: ['governance-calendar'],
+    queryFn: () => fetchJson('/api/governance/calendar'),
+  });
+}
+
+export function useSPOSummary(poolId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['spo-summary', poolId],
+    queryFn: () => fetchJson(`/api/governance/pools/${encodeURIComponent(poolId!)}/summary`),
+    enabled: !!poolId,
+    staleTime: 60_000,
+  });
+}
+
+export function useSPOVotesHistory(poolId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['spo-votes-history', poolId],
+    queryFn: () => fetchJson(`/api/governance/pools/${encodeURIComponent(poolId!)}/votes`),
+    enabled: !!poolId,
+    staleTime: 60_000,
+  });
+}
+
+export function useSPODelegatorTrends(poolId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['spo-delegator-trends', poolId],
+    queryFn: () =>
+      fetchJson(`/api/governance/pools/${encodeURIComponent(poolId!)}/delegator-trends`),
+    enabled: !!poolId,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
 export function useSPOPoolCompetitive(poolId: string | null | undefined) {
   return useQuery({
     queryKey: ['spo-pool-competitive', poolId],

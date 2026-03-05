@@ -11,10 +11,18 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Shield,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useGovernanceSummary, useGovernancePulse, useDRepVotes } from '@/hooks/queries';
+import {
+  useSPOSummary,
+  useSPOVotesHistory,
+  useSPOPoolCompetitive,
+  useGovernancePulse,
+  useSPODelegatorTrends,
+} from '@/hooks/queries';
 import {
   tierKey,
   TIER_SCORE_COLOR,
@@ -25,13 +33,14 @@ import {
 import { computeTier } from '@/lib/scoring/tiers';
 import { generateActions } from '@/lib/actionFeed';
 import { ActionFeed } from './ActionFeed';
+import { SPOClaimHero } from './SPOClaimHero';
 
 function ScoreGauge({ score, tier }: { score: number; tier: string }) {
   const tKey = tierKey(tier);
   return (
     <div className={cn('rounded-xl border p-5 space-y-3', TIER_BORDER[tKey], TIER_BG[tKey])}>
       <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
-        Your DRep Score
+        SPO Governance Score
       </p>
       <p
         className={cn(
@@ -60,41 +69,48 @@ function ScoreGauge({ score, tier }: { score: number; tier: string }) {
   );
 }
 
-export function DRepCommandCenter({ drepId }: { drepId: string }) {
-  const { data: rawSummary, isLoading: summaryLoading } = useGovernanceSummary(drepId);
+export function SPOCommandCenter({ poolId }: { poolId: string }) {
+  const { data: rawSummary, isLoading: summaryLoading } = useSPOSummary(poolId);
+  const { data: rawVotes, isLoading: votesLoading } = useSPOVotesHistory(poolId);
+  const { data: rawCompetitive } = useSPOPoolCompetitive(poolId);
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
-  const { data: rawVotes, isLoading: votesLoading } = useDRepVotes(drepId);
+  const { data: rawDelegatorTrends } = useSPODelegatorTrends(poolId);
 
   const summary = rawSummary as any;
   const pulse = rawPulse as any;
+  const competitive = rawCompetitive as any;
+  const delegatorTrends = rawDelegatorTrends as any;
   const votes: any[] = (rawVotes as any)?.votes ?? rawVotes ?? [];
   const allVotes = Array.isArray(votes) ? votes : [];
 
-  const drepScore: number = summary?.drepScore ?? summary?.score ?? 0;
-  const drepTier: string = computeTier(drepScore) ?? 'Emerging';
-  const drepIsActive: boolean = summary?.isActive ?? summary?.active ?? true;
-  const delegatorCount: number = summary?.delegatorCount ?? 0;
-  const scoreDelta: number | undefined =
-    summary?.scoreDelta ?? summary?.weeklyDelta ?? summary?.recentTrend;
-  const rationaleRate: number = summary?.rationaleRate ?? 0;
+  const spoScore: number = summary?.spoScore ?? summary?.score ?? 0;
+  const spoTier: string = computeTier(spoScore) ?? 'Emerging';
+  const isClaimed: boolean = summary?.isClaimed ?? summary?.claimed ?? false;
+  const poolName: string = summary?.name ?? summary?.ticker ?? poolId;
+  const delegatorCount: number = summary?.delegatorCount ?? delegatorTrends?.current ?? 0;
+  const scoreDelta: number | undefined = summary?.scoreDelta ?? summary?.weeklyDelta;
   const participationRate: number = summary?.participationRate ?? 0;
+  const rationaleRate: number = summary?.rationaleRate ?? 0;
+  const voteCount: number = summary?.voteCount ?? allVotes.length;
 
   const activeProposals: number = pulse?.activeProposals ?? 0;
   const criticalProposals: number = pulse?.criticalProposals ?? 0;
-  const votesThisWeek: number = pulse?.votesThisWeek ?? 0;
 
   const recentVotes = allVotes.slice(0, 5);
-  const pendingVotesCount = activeProposals;
+
+  if (!summaryLoading && !isClaimed) {
+    return <SPOClaimHero poolId={poolId} poolName={poolName} summary={summary} />;
+  }
 
   const actions = generateActions({
-    segment: 'drep',
+    segment: 'spo',
     activeProposals,
     criticalProposals,
-    drepScore,
-    scoreDelta,
-    drepIsActive,
-    pendingVotesCount,
-    drepTier,
+    pendingVotesCount: activeProposals,
+    spoScore,
+    spoScoreDelta: scoreDelta,
+    spoVoteCount: voteCount,
+    spoIsClaimed: isClaimed,
   });
 
   const DeltaIcon =
@@ -112,19 +128,22 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
         ? 'text-emerald-400'
         : 'text-rose-400';
 
+  const rank = competitive?.rank;
+  const nearbyPools: any[] = competitive?.nearby ?? [];
+
   return (
     <div className="space-y-6">
       {/* Score hero */}
       {summaryLoading ? (
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-32" />
           <Skeleton className="h-12 w-24" />
           <Skeleton className="h-2 w-full" />
           <Skeleton className="h-5 w-16" />
         </div>
       ) : (
         <div className="relative">
-          <ScoreGauge score={drepScore} tier={drepTier} />
+          <ScoreGauge score={spoScore} tier={spoTier} />
           {scoreDelta != null && (
             <div
               className={cn(
@@ -137,10 +156,10 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
               {scoreDelta.toFixed(1)} this week
             </div>
           )}
-          {!drepIsActive && (
+          {rank != null && (
             <div className="absolute bottom-5 right-5">
-              <span className="text-xs text-rose-400 font-medium px-2 py-0.5 rounded-full border border-rose-900/40 bg-rose-950/20">
-                Inactive
+              <span className="text-xs text-muted-foreground font-medium px-2 py-0.5 rounded-full border border-border bg-card">
+                Rank #{rank}
               </span>
             </div>
           )}
@@ -152,31 +171,35 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
         {[
           {
             label: 'Delegators',
-            value: delegatorCount.toLocaleString(),
+            value: delegatorCount > 0 ? delegatorCount.toLocaleString() : '—',
             icon: Users,
             color: 'text-primary',
           },
           {
             label: 'Participation',
-            value: `${participationRate.toFixed(0)}%`,
+            value: participationRate > 0 ? `${participationRate.toFixed(0)}%` : '—',
             icon: CheckCircle2,
             color:
               participationRate >= 70
                 ? 'text-emerald-400'
                 : participationRate >= 40
                   ? 'text-amber-400'
-                  : 'text-rose-400',
+                  : participationRate > 0
+                    ? 'text-rose-400'
+                    : 'text-muted-foreground',
           },
           {
             label: 'Rationale',
-            value: `${rationaleRate.toFixed(0)}%`,
+            value: rationaleRate > 0 ? `${rationaleRate.toFixed(0)}%` : '—',
             icon: Vote,
             color:
               rationaleRate >= 60
                 ? 'text-emerald-400'
                 : rationaleRate >= 30
                   ? 'text-amber-400'
-                  : 'text-rose-400',
+                  : rationaleRate > 0
+                    ? 'text-rose-400'
+                    : 'text-muted-foreground',
           },
         ].map(({ label, value, icon: Icon, color }) => (
           <div
@@ -194,6 +217,43 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
         ))}
       </div>
 
+      {/* Inter-body context */}
+      {summary?.interBodyAlignment != null && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+            Inter-Body Alignment
+          </p>
+          <p className="text-sm">
+            You agreed with DRep consensus on{' '}
+            <span className="font-bold text-foreground">
+              {summary.interBodyAlignment.drepConsensus ?? '—'}%
+            </span>{' '}
+            of proposals
+            {summary.interBodyAlignment.ccConsensus != null && (
+              <>
+                {' '}
+                and with the Constitutional Committee on{' '}
+                <span className="font-bold text-foreground">
+                  {summary.interBodyAlignment.ccConsensus}%
+                </span>
+              </>
+            )}
+            .
+          </p>
+        </div>
+      )}
+
+      {/* Alignment radar placeholder */}
+      {voteCount === 0 && (
+        <div className="rounded-xl border border-border bg-card p-5 text-center space-y-2">
+          <Shield className="h-6 w-6 text-muted-foreground mx-auto" />
+          <p className="text-sm font-medium text-foreground">Build your governance identity</p>
+          <p className="text-xs text-muted-foreground">
+            Vote on more proposals to generate your alignment radar and inter-body context.
+          </p>
+        </div>
+      )}
+
       {/* Pending votes widget */}
       {!pulseLoading && activeProposals > 0 && (
         <Link href="/proposals" className="block group">
@@ -202,10 +262,10 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
               <Clock className="h-4 w-4 text-amber-400" />
               <div>
                 <p className="text-sm font-medium text-amber-200">
-                  {activeProposals} proposal{activeProposals > 1 ? 's' : ''} awaiting your vote
+                  {activeProposals} proposal{activeProposals > 1 ? 's' : ''} open for voting
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {votesThisWeek} votes cast network-wide this week
+                  Cast your pool&apos;s vote to build governance reputation
                 </p>
               </div>
             </div>
@@ -222,7 +282,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
               Recent Votes
             </p>
             <Link
-              href={`/drep/${drepId}`}
+              href={`/pool/${poolId}`}
               className="text-xs text-muted-foreground hover:text-primary transition-colors"
             >
               Full history
@@ -231,6 +291,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
             {recentVotes.map((vote: any, idx: number) => {
               const voteDir: string = vote.vote ?? vote.voteDirection ?? '';
+              const hasRationale = vote.hasRationale ?? vote.rationale;
               const VoteIcon =
                 voteDir === 'Yes' ? CheckCircle2 : voteDir === 'No' ? XCircle : Minus;
               const voteColor =
@@ -245,7 +306,12 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
                   <p className="text-sm truncate flex-1">
                     {vote.proposalTitle ?? vote.title ?? 'Proposal'}
                   </p>
-                  <span className={cn('text-xs font-bold shrink-0', voteColor)}>{voteDir}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {hasRationale && (
+                      <span className="text-[10px] text-emerald-400/70">✓ rationale</span>
+                    )}
+                    <span className={cn('text-xs font-bold', voteColor)}>{voteDir}</span>
+                  </div>
                 </div>
               );
             })}
@@ -253,21 +319,43 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
         </div>
       )}
 
+      {/* Competitive context */}
+      {nearbyPools.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Nearby SPOs
+          </p>
+          <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+            {nearbyPools.slice(0, 3).map((pool: any, idx: number) => (
+              <Link
+                key={pool.poolId ?? idx}
+                href={`/pool/${pool.poolId}`}
+                className="px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs font-bold text-muted-foreground tabular-nums w-6">
+                    #{pool.rank}
+                  </span>
+                  <span className="text-sm truncate">
+                    {pool.name ?? pool.ticker ?? pool.poolId}
+                  </span>
+                </div>
+                <span className="text-sm font-bold tabular-nums shrink-0">
+                  {pool.score?.toFixed(1) ?? '—'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Action feed */}
-      {actions.length > 0 ? (
+      {actions.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Recommended Actions
           </p>
           <ActionFeed actions={actions} />
-        </div>
-      ) : (
-        <div className="rounded-xl border border-emerald-900/30 bg-emerald-950/10 px-5 py-4 text-center space-y-1">
-          <p className="text-sm font-medium text-emerald-300">All caught up</p>
-          <p className="text-xs text-muted-foreground">
-            No proposals need your vote right now. Use this time to write a governance statement or
-            review your rationale quality.
-          </p>
         </div>
       )}
     </div>

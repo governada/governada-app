@@ -48,6 +48,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/governance/calendar',
+        destination: '/pulse',
+        permanent: true,
+      },
+    ];
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
   },

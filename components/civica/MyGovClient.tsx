@@ -1,12 +1,11 @@
 'use client';
 
-import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { CitizenCommandCenter } from './mygov/CitizenCommandCenter';
 import { DRepCommandCenter } from './mygov/DRepCommandCenter';
+import { SPOCommandCenter } from './mygov/SPOCommandCenter';
 
 function ConnectPrompt() {
   return (
@@ -18,26 +17,6 @@ function ConnectPrompt() {
       <p className="text-xs text-muted-foreground">
         View delegation health, track open proposals, and get personalised action recommendations.
       </p>
-    </div>
-  );
-}
-
-function SPOStub({ poolId }: { poolId: string | null | undefined }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-3">
-      <p className="text-sm font-semibold">SPO Command Center</p>
-      <p className="text-xs text-muted-foreground">
-        {poolId ? `Pool: ${poolId}` : 'Pool detected'}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        Full SPO command center coming in the next phase.
-      </p>
-      <Link
-        href={poolId ? `/pool/${poolId}` : '/discover'}
-        className="inline-flex items-center gap-1 text-sm text-primary font-medium hover:underline"
-      >
-        View pool profile <ChevronRight className="h-3.5 w-3.5" />
-      </Link>
     </div>
   );
 }
@@ -77,8 +56,8 @@ export function MyGovClient() {
         <ConnectPrompt />
       ) : segment === 'drep' && drepId ? (
         <DRepCommandCenter drepId={drepId} />
-      ) : segment === 'spo' ? (
-        <SPOStub poolId={poolId} />
+      ) : segment === 'spo' && poolId ? (
+        <SPOCommandCenter poolId={poolId} />
       ) : (
         <CitizenCommandCenter delegatedDrep={delegatedDrep} />
       )}

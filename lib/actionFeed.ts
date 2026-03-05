@@ -27,6 +27,10 @@ export interface ActionFeedInput {
   delegatedDrepIsActive?: boolean;
   pendingVotesCount?: number;
   drepTier?: string;
+  spoScore?: number;
+  spoScoreDelta?: number;
+  spoVoteCount?: number;
+  spoIsClaimed?: boolean;
 }
 
 const TIER_THRESHOLDS: Record<string, number> = {
@@ -175,6 +179,69 @@ export function generateActions(input: ActionFeedInput): Action[] {
         href: '/proposals',
         priority: 3,
         cta: 'See Proposals',
+      });
+    }
+  }
+
+  if (segment === 'spo') {
+    if (pendingVotesCount && pendingVotesCount > 0) {
+      actions.push({
+        id: 'spo_vote_required',
+        type: 'vote_required',
+        title: `${pendingVotesCount} proposal${pendingVotesCount > 1 ? 's' : ''} await your pool\u2019s vote`,
+        description: 'Voting on governance proposals builds your governance reputation.',
+        href: '/proposals',
+        priority: 1,
+        cta: 'View Proposals',
+      });
+    }
+
+    if (input.spoScoreDelta !== undefined && input.spoScoreDelta < -2) {
+      actions.push({
+        id: 'spo_score_dropped',
+        type: 'score_dropped',
+        title: `Pool score dropped ${Math.abs(input.spoScoreDelta).toFixed(1)} pts`,
+        description: 'Review your voting participation and rationale to recover.',
+        href: '/my-gov',
+        priority: 1,
+        cta: 'See Breakdown',
+      });
+    }
+
+    if (input.spoIsClaimed === false) {
+      actions.push({
+        id: 'spo_claim_pool',
+        type: 'delegation_stale',
+        title: 'Claim your pool',
+        description:
+          'Verify ownership to unlock your governance dashboard and build your reputation.',
+        href: '/my-gov',
+        priority: 1,
+        cta: 'Claim Now',
+      });
+    }
+
+    if (input.spoVoteCount === 0) {
+      actions.push({
+        id: 'spo_first_vote',
+        type: 'vote_required',
+        title: 'Cast your first governance vote',
+        description: 'Start building your governance score by voting on an open proposal.',
+        href: '/proposals',
+        priority: 2,
+        cta: 'View Proposals',
+      });
+    }
+
+    if (criticalProposals && criticalProposals > 0) {
+      actions.push({
+        id: 'spo_critical_proposal',
+        type: 'proposal_expiring',
+        title: `${criticalProposals} critical proposal${criticalProposals > 1 ? 's' : ''} active`,
+        description: 'High-importance proposals may expire soon.',
+        href: '/proposals',
+        priority: 2,
+        cta: 'View Now',
       });
     }
   }

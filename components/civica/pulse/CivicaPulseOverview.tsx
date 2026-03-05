@@ -22,14 +22,19 @@ import { useGovernanceLeaderboard } from '@/hooks/queries';
 import { CivicaEpochReport } from './CivicaEpochReport';
 import { CivicaTreasury } from './CivicaTreasury';
 import { CivicaGovernanceTrends } from './CivicaGovernanceTrends';
+import { CivicaObservatory } from './CivicaObservatory';
+import { CivicaGovernanceCalendar } from './CivicaGovernanceCalendar';
+import { StateOfGovernance } from './StateOfGovernance';
 
-type PulseTab = 'overview' | 'epoch' | 'treasury' | 'trends';
+type PulseTab = 'overview' | 'epoch' | 'treasury' | 'trends' | 'observatory' | 'calendar';
 
 const TABS: { id: PulseTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'epoch', label: 'Epoch' },
   { id: 'treasury', label: 'Treasury' },
   { id: 'trends', label: 'Trends' },
+  { id: 'observatory', label: 'Observatory' },
+  { id: 'calendar', label: 'Calendar' },
 ];
 
 function StatCard({
@@ -138,10 +143,15 @@ export function CivicaPulseOverview() {
       {activeTab === 'epoch' && <CivicaEpochReport />}
       {activeTab === 'treasury' && <CivicaTreasury />}
       {activeTab === 'trends' && <CivicaGovernanceTrends />}
+      {activeTab === 'observatory' && <CivicaObservatory />}
+      {activeTab === 'calendar' && <CivicaGovernanceCalendar />}
 
       {/* ── Overview tab ────────────────────────────────────── */}
       {activeTab === 'overview' && (
         <>
+          {/* ── State of Governance narrative ───────────────────── */}
+          <StateOfGovernance />
+
           {/* ── Header ──────────────────────────────────────────── */}
           <div className="flex items-start justify-between">
             <div>

@@ -1,9 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import {
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+  useState,
+  useMemo,
+  useCallback,
+} from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGovernanceConstellation } from '@/hooks/queries';
-import { Instances, Instance, CameraControls } from '@react-three/drei';
+import { CameraControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { computeLayout } from '@/lib/constellation/layout';
@@ -41,7 +49,7 @@ interface SceneState {
   animating: boolean;
 }
 
-const INITIAL_CAMERA: [number, number, number] = [0, 0, 22];
+const INITIAL_CAMERA: [number, number, number] = [0, -10, 18];
 const INITIAL_TARGET: [number, number, number] = [0, 0, 0];
 
 export const GovernanceConstellation = forwardRef<ConstellationRef, ConstellationProps>(
@@ -184,7 +192,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
         {ready && (
           <Canvas
             dpr={dpr}
-            camera={{ position: INITIAL_CAMERA, fov: 60 }}
+            camera={{ position: INITIAL_CAMERA, fov: 65 }}
             gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
             style={{
               position: 'absolute',
@@ -216,10 +224,10 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
               <EffectComposer>
                 <Bloom
                   mipmapBlur
-                  intensity={1.4}
+                  intensity={1.6}
                   luminanceThreshold={0.15}
                   luminanceSmoothing={0.9}
-                  radius={0.85}
+                  radius={0.95}
                 />
               </EffectComposer>
             )}
@@ -239,7 +247,50 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
   },
 );
 
+// --- Point sprite shaders (always circular, camera-facing) ---
+
+const POINT_SCALE = 3.0;
+
+const NODE_VERT = /* glsl */ `
+attribute float aSize;
+attribute float aDimmed;
+attribute vec3 aNodeColor;
+varying vec3 vColor;
+varying float vAlpha;
+
+void main() {
+  vColor = aNodeColor;
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  gl_PointSize = aSize * 600.0 / -mvPosition.z;
+  gl_PointSize = clamp(gl_PointSize, 1.0, 128.0);
+  vAlpha = aDimmed < 0.5 ? 1.0 : 0.15;
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const NODE_FRAG = /* glsl */ `
+varying vec3 vColor;
+varying float vAlpha;
+
+void main() {
+  float dist = length(gl_PointCoord - vec2(0.5));
+  if (dist > 0.5) discard;
+  float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+  float core = 1.0 - smoothstep(0.0, 0.15, dist);
+  vec3 col = vColor * (1.0 + core * 1.5);
+  gl_FragColor = vec4(col, glow * vAlpha);
+}
+`;
+
 // --- Scene sub-components ---
+
+function RaycastConfig() {
+  const raycaster = useThree((s) => s.raycaster);
+  useEffect(() => {
+    raycaster.params.Points = { threshold: 0.35 };
+  }, [raycaster]);
+  return null;
+}
 
 function ConstellationNodes({
   nodes,
@@ -263,122 +314,182 @@ function ConstellationNodes({
     return () => cancelAnimationFrame(id);
   }, []);
 
+  const groups = useMemo(() => {
+    const drep: ConstellationNode3D[] = [];
+    const spo: ConstellationNode3D[] = [];
+    const cc: ConstellationNode3D[] = [];
+    const anchor: ConstellationNode3D[] = [];
+    for (const n of nodes) {
+      if (n.isAnchor) anchor.push(n);
+      else if (n.nodeType === 'spo') spo.push(n);
+      else if (n.nodeType === 'cc') cc.push(n);
+      else drep.push(n);
+    }
+    return { drep, spo, cc, anchor };
+  }, [nodes]);
+
+  const getDrepColor = useCallback(
+    (n: ConstellationNode3D) => getIdentityColor(n.dominant).hex,
+    [],
+  );
+  const getSpoColor = useCallback(() => '#06b6d4', []);
+  const getCcColor = useCallback(() => '#f59e0b', []);
+
   if (nodes.length === 0 || !frameReady) return null;
-
-  const drepNodes = nodes.filter((n) => !n.isAnchor && n.nodeType !== 'spo' && n.nodeType !== 'cc');
-  const spoNodes = nodes.filter((n) => n.nodeType === 'spo');
-  const ccNodes = nodes.filter((n) => n.nodeType === 'cc');
-  const anchorNodes = nodes.filter((n) => n.isAnchor);
-
-  const handlePointerEnter = interactive
-    ? () => {
-        document.body.style.cursor = 'pointer';
-      }
-    : undefined;
-  const handlePointerLeave = interactive
-    ? () => {
-        document.body.style.cursor = '';
-      }
-    : undefined;
 
   return (
     <>
-      {/* DRep nodes */}
-      <Instances limit={drepNodes.length + 10} frustumCulled={false}>
-        <sphereGeometry args={[1, 10, 10]} />
-        <meshStandardMaterial
-          emissive="white"
-          emissiveIntensity={2}
-          toneMapped={false}
-          transparent
+      {interactive && <RaycastConfig />}
+      <NodePoints
+        nodes={groups.drep}
+        highlightId={highlightId}
+        dimmed={dimmed}
+        pulseId={pulseId}
+        interactive={interactive}
+        onNodeClick={onNodeClick}
+        getColor={getDrepColor}
+        emissive={2.0}
+      />
+      {groups.spo.length > 0 && (
+        <NodePoints
+          nodes={groups.spo}
+          highlightId={highlightId}
+          dimmed={dimmed}
+          pulseId={pulseId}
+          interactive={interactive}
+          onNodeClick={onNodeClick}
+          getColor={getSpoColor}
+          emissive={1.5}
         />
-        {drepNodes.map((node) => {
-          const color = getIdentityColor(node.dominant);
-          const isHighlighted = highlightId === node.id;
-          const isPulsing = pulseId === node.id;
-          const s = isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale;
-
-          return (
-            <Instance
-              key={node.id}
-              position={node.position}
-              scale={s}
-              color={color.hex}
-              onPointerDown={interactive ? () => onNodeClick?.(node) : undefined}
-              onPointerEnter={handlePointerEnter}
-              onPointerLeave={handlePointerLeave}
-            />
-          );
-        })}
-      </Instances>
-
-      {/* SPO nodes — cyan outer halo */}
-      {spoNodes.length > 0 && (
-        <Instances limit={spoNodes.length + 2} frustumCulled={false}>
-          <sphereGeometry args={[1, 8, 8]} />
-          <meshStandardMaterial
-            emissive="#06b6d4"
-            emissiveIntensity={1.5}
-            color="#06b6d4"
-            toneMapped={false}
-            transparent
-          />
-          {spoNodes.map((node) => (
-            <Instance
-              key={node.id}
-              position={node.position}
-              scale={node.scale}
-              color="#06b6d4"
-              onPointerDown={interactive ? () => onNodeClick?.(node) : undefined}
-              onPointerEnter={handlePointerEnter}
-              onPointerLeave={handlePointerLeave}
-            />
-          ))}
-        </Instances>
       )}
-
-      {/* CC nodes — gold/amber cluster */}
-      {ccNodes.length > 0 && (
-        <Instances limit={ccNodes.length + 2} frustumCulled={false}>
-          <sphereGeometry args={[1, 12, 12]} />
-          <meshStandardMaterial
-            emissive="#f59e0b"
-            emissiveIntensity={3.0}
-            color="#f59e0b"
-            toneMapped={false}
-            transparent
-          />
-          {ccNodes.map((node) => (
-            <Instance
-              key={node.id}
-              position={node.position}
-              scale={node.scale}
-              color="#f59e0b"
-              onPointerDown={interactive ? () => onNodeClick?.(node) : undefined}
-              onPointerEnter={handlePointerEnter}
-              onPointerLeave={handlePointerLeave}
-            />
-          ))}
-        </Instances>
-      )}
-
-      {/* Anchor nodes */}
-      <Instances limit={anchorNodes.length + 2} frustumCulled={false}>
-        <sphereGeometry args={[1, 12, 12]} />
-        <meshStandardMaterial
-          emissive="white"
-          emissiveIntensity={3.5}
-          toneMapped={false}
-          transparent
+      {groups.cc.length > 0 && (
+        <NodePoints
+          nodes={groups.cc}
+          highlightId={highlightId}
+          dimmed={dimmed}
+          pulseId={pulseId}
+          interactive={interactive}
+          onNodeClick={onNodeClick}
+          getColor={getCcColor}
+          emissive={3.0}
         />
-        {anchorNodes.map((node) => {
-          const color = getIdentityColor(node.dominant);
-          return (
-            <Instance key={node.id} position={node.position} scale={node.scale} color={color.hex} />
-          );
-        })}
-      </Instances>
+      )}
+      <NodePoints
+        nodes={groups.anchor}
+        highlightId={null}
+        dimmed={false}
+        pulseId={null}
+        interactive={false}
+        getColor={getDrepColor}
+        emissive={3.5}
+      />
     </>
+  );
+}
+
+function NodePoints({
+  nodes,
+  highlightId,
+  dimmed,
+  pulseId,
+  interactive,
+  onNodeClick,
+  getColor,
+  emissive,
+}: {
+  nodes: ConstellationNode3D[];
+  highlightId: string | null;
+  dimmed: boolean;
+  pulseId: string | null;
+  interactive?: boolean;
+  onNodeClick?: (node: ConstellationNode3D) => void;
+  getColor: (node: ConstellationNode3D) => string;
+  emissive: number;
+}) {
+  const tmpColor = useMemo(() => new THREE.Color(), []);
+
+  const buffers = useMemo(() => {
+    const count = nodes.length;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const dimmedArr = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+      const node = nodes[i];
+      positions[i * 3] = node.position[0];
+      positions[i * 3 + 1] = node.position[1];
+      positions[i * 3 + 2] = node.position[2];
+
+      tmpColor.set(getColor(node));
+      colors[i * 3] = tmpColor.r * emissive;
+      colors[i * 3 + 1] = tmpColor.g * emissive;
+      colors[i * 3 + 2] = tmpColor.b * emissive;
+
+      const isHighlighted = highlightId === node.id;
+      const isPulsing = pulseId === node.id;
+      sizes[i] =
+        (isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale) *
+        POINT_SCALE;
+      dimmedArr[i] = dimmed && !isHighlighted && !isPulsing ? 1.0 : 0.0;
+    }
+
+    return { positions, colors, sizes, dimmedArr };
+  }, [nodes, highlightId, dimmed, pulseId, getColor, emissive, tmpColor]);
+
+  const geoRef = useRef<THREE.BufferGeometry>(null);
+
+  useEffect(() => {
+    const geo = geoRef.current;
+    if (!geo) return;
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
+    geo.setAttribute('aNodeColor', new THREE.Float32BufferAttribute(buffers.colors, 3));
+    geo.setAttribute('aSize', new THREE.Float32BufferAttribute(buffers.sizes, 1));
+    geo.setAttribute('aDimmed', new THREE.Float32BufferAttribute(buffers.dimmedArr, 1));
+    geo.computeBoundingSphere();
+  }, [buffers]);
+
+  if (nodes.length === 0) return null;
+
+  return (
+    <points
+      frustumCulled={false}
+      onPointerDown={
+        interactive
+          ? (e: any) => {
+              e.stopPropagation();
+              const idx = e.index as number | undefined;
+              if (idx !== undefined && idx < nodes.length) {
+                onNodeClick?.(nodes[idx]);
+              }
+            }
+          : undefined
+      }
+      onPointerEnter={
+        interactive
+          ? () => {
+              document.body.style.cursor = 'pointer';
+            }
+          : undefined
+      }
+      onPointerLeave={
+        interactive
+          ? () => {
+              document.body.style.cursor = '';
+            }
+          : undefined
+      }
+    >
+      <bufferGeometry ref={geoRef} />
+      <shaderMaterial
+        vertexShader={NODE_VERT}
+        fragmentShader={NODE_FRAG}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+      />
+    </points>
   );
 }
 
@@ -442,7 +553,7 @@ function AmbientStarfield({ count }: { count: number }) {
       const phi = Math.acos(2 * rand() - 1);
       positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
       positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[i * 3 + 2] = r * Math.cos(phi);
+      positions[i * 3 + 2] = r * Math.cos(phi) * 0.3; // Flatten to ecliptic disc
     }
     return positions;
   }, [count]);

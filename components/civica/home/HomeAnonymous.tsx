@@ -54,13 +54,13 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
   return (
     <div className="relative min-h-screen flex flex-col">
       {/* ── Constellation hero (75vh) ────────────────────────────────── */}
-      <section className="relative h-[75vh] min-h-[480px] overflow-hidden" aria-hidden="true">
+      <section className="relative h-[60vh] min-h-[480px] overflow-hidden" aria-hidden="true">
         <div className="absolute inset-0">
           <GovernanceConstellation className="w-full h-full" interactive={false} />
         </div>
 
         {/* Gradient fade at bottom */}
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
         {/* Value prop overlay */}
         <div className="absolute inset-0 flex items-center justify-center px-4">

@@ -251,7 +251,7 @@ export function ConstellationHero({
 
   return (
     <div
-      className={`relative w-full transition-all duration-700 -mt-16 ${contracted ? 'min-h-[calc(40vh+4rem)]' : 'min-h-[calc(85vh+4rem)]'}`}
+      className={`relative w-full transition-all duration-700 -mt-16 ${contracted ? 'min-h-[calc(35vh+4rem)]' : 'min-h-[calc(65vh+4rem)]'}`}
       onMouseEnter={handleConstellationHover}
     >
       <GovernanceConstellation
@@ -260,7 +260,7 @@ export function ConstellationHero({
         onReady={handleConstellationReady}
         onContracted={handleConstellationContracted}
         onNodeSelect={isInteractive ? handleNodeSelect : undefined}
-        className={contracted ? 'h-[40vh]' : 'h-[85vh]'}
+        className={contracted ? 'h-[35vh]' : 'h-[65vh]'}
       />
 
       {/* SSR gradient fallback */}

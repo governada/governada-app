@@ -26,7 +26,7 @@ const ARM_ANGLES: Record<AlignmentDimension, number> = (() => {
   return map as Record<AlignmentDimension, number>;
 })();
 
-const ARM_PITCH = [0.26, -0.26, 0.26, -0.26, 0.26, -0.26]; // ~15° alternating tilt
+const ARM_PITCH = [0.06, -0.06, 0.06, -0.06, 0.06, -0.06]; // ~3.5° tilt — flattened ecliptic disc
 const ARM_FAN_ARC = Math.PI / 3;
 const MAX_RADIUS = 12;
 const ANCHOR_RADIUS = MAX_RADIUS * 0.3;
@@ -107,7 +107,7 @@ export function computeLayout(inputs: LayoutInput[], nodeLimit: number): LayoutR
     const hash = simpleHash(input.id);
     const spoAngle = (i / spoInputs.length) * Math.PI * 2;
     const spoRadius = MAX_RADIUS * 1.3 + ((hash % 100) / 100) * 2;
-    const z = (((hash % 200) - 100) / 100) * 4;
+    const z = (((hash % 200) - 100) / 100) * 1;
     const scale =
       (MIN_VISIBLE_SCALE + input.power * (MAX_VISIBLE_SCALE - MIN_VISIBLE_SCALE)) *
       SPO_SCALE_FACTOR;
@@ -125,7 +125,7 @@ export function computeLayout(inputs: LayoutInput[], nodeLimit: number): LayoutR
     const input = ccInputs[i];
     const ccAngle = (i / Math.max(ccInputs.length, 1)) * Math.PI * 2;
     const ccRadius = 2.5;
-    const z = 1.5;
+    const z = 0.4;
     const scale = MAX_VISIBLE_SCALE * CC_SCALE_FACTOR;
     const node: ConstellationNode3D = {
       ...input,
@@ -162,7 +162,7 @@ function computeNodePosition(input: LayoutInput): [number, number, number] {
     const hashAngle = ((hash >> 8) % 10000) / 10000;
     const r = 0.8 + hashNorm * 1.8;
     const a = hashAngle * Math.PI * 2;
-    return [Math.cos(a) * r, Math.sin(a) * r, (hashAngle - 0.5) * 2.5];
+    return [Math.cos(a) * r, Math.sin(a) * r, (hashAngle - 0.5) * 0.6];
   }
 
   const dirAngle = Math.atan2(wy, wx);
@@ -180,10 +180,10 @@ function computeNodePosition(input: LayoutInput): [number, number, number] {
   const x = Math.cos(finalAngle) * (dist + radialJitter);
   const y = Math.sin(finalAngle) * (dist + radialJitter);
 
-  // H1: Widened z-spread + arm pitch for real 3D depth
+  // Flattened ecliptic — thin disc with subtle depth
   const armIndex = DIMS.indexOf(input.dominant);
   const pitch = ARM_PITCH[armIndex >= 0 ? armIndex : 0];
-  const z = Math.sin(pitch) * dist + (input.score / 100 - 0.5) * 6 + (hashNorm - 0.5) * 3;
+  const z = Math.sin(pitch) * dist + (input.score / 100 - 0.5) * 1.5 + (hashNorm - 0.5) * 0.8;
 
   return [x, y, z];
 }

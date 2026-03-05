@@ -54,6 +54,7 @@ interface SceneState {
 
 const INITIAL_CAMERA: [number, number, number] = [0, -18, 10];
 const INITIAL_TARGET: [number, number, number] = [0, 0, 0];
+const ROTATION_SPEED = 0.05; // radians/s, ~2 min per revolution
 
 export const GovernanceConstellation = forwardRef<ConstellationRef, ConstellationProps>(
   function GovernanceConstellation(
@@ -61,6 +62,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
     ref,
   ) {
     const cameraControlsRef = useRef<CameraControls>(null);
+    const rotationAngleRef = useRef(0);
     const [ready, setReady] = useState(false);
     const [sceneState, setSceneState] = useState<SceneState>({
       nodes: [],
@@ -87,7 +89,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
 
       setSceneState((prev) => ({ ...prev, animating: true, highlightId: node.id, dimmed: true }));
 
-      const [x, y, z] = node.position;
+      const [x, y, z] = rotateAroundZ(node.position, rotationAngleRef.current);
       await controls.setLookAt(x, y, z + 5, x, y, z, true);
 
       onNodeSelectRef.current?.(node);
@@ -122,7 +124,12 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
               },
             ],
           }));
-          const mid: [number, number, number] = [5, -2.5, 1];
+          const rotatedEdge = rotateAroundZ(edgePos, rotationAngleRef.current);
+          const mid: [number, number, number] = [
+            rotatedEdge[0] * 0.5,
+            rotatedEdge[1] * 0.5,
+            rotatedEdge[2] * 0.5 + 0.5,
+          ];
           await controls.setLookAt(mid[0], mid[1], 16, mid[0], mid[1], 0, true);
           await sleep(2000);
           setSceneState((prev) => ({ ...prev, animating: false }));
@@ -146,7 +153,7 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
 
         setSceneState((prev) => ({ ...prev, highlightId: drepId, dimmed: true }));
 
-        const [x, y, z] = node.position;
+        const [x, y, z] = rotateAroundZ(node.position, rotationAngleRef.current);
         await controls.setLookAt(x, y, z + 5, x, y, z, true);
         await sleep(2000);
 
@@ -211,16 +218,18 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
             <ambientLight intensity={0.05} />
 
             <AmbientStarfield count={quality === 'low' ? 200 : 400} />
-            <GovernanceCore />
-            <ConstellationNodes
-              nodes={sceneState.nodes}
-              highlightId={sceneState.highlightId}
-              dimmed={sceneState.dimmed}
-              pulseId={sceneState.pulseId}
-              interactive={interactive}
-              onNodeClick={interactive ? (node) => flyToNodeImpl(node.id) : undefined}
-            />
-            <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            <RotatingGroup enabled={!sceneState.animating} rotationRef={rotationAngleRef}>
+              <GovernanceCore />
+              <ConstellationNodes
+                nodes={sceneState.nodes}
+                highlightId={sceneState.highlightId}
+                dimmed={sceneState.dimmed}
+                pulseId={sceneState.pulseId}
+                interactive={interactive}
+                onNodeClick={interactive ? (node) => flyToNodeImpl(node.id) : undefined}
+              />
+              <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            </RotatingGroup>
             <ShootingStars />
 
             {quality !== 'low' && (
@@ -242,7 +251,6 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
               mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}
               touches={{ one: 0, two: 0, three: 0 }}
             />
-            <AutoRotate controlsRef={cameraControlsRef} enabled={!sceneState.animating} />
           </Canvas>
         )}
       </div>
@@ -713,19 +721,31 @@ function ShootingStars() {
   );
 }
 
-function AutoRotate({
-  controlsRef,
+function RotatingGroup({
   enabled,
+  rotationRef,
+  children,
 }: {
-  controlsRef: { current: { azimuthAngle: number } | null };
   enabled: boolean;
+  rotationRef: React.MutableRefObject<number>;
+  children: React.ReactNode;
 }) {
+  const groupRef = useRef<THREE.Group>(null);
   useFrame((_, delta) => {
-    if (controlsRef.current && enabled) {
-      controlsRef.current.azimuthAngle += delta * 0.05;
+    if (groupRef.current) {
+      if (enabled) {
+        rotationRef.current += delta * ROTATION_SPEED;
+      }
+      groupRef.current.rotation.z = rotationRef.current;
     }
   });
-  return null;
+  return <group ref={groupRef}>{children}</group>;
+}
+
+function rotateAroundZ(pos: [number, number, number], angle: number): [number, number, number] {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return [pos[0] * c - pos[1] * s, pos[0] * s + pos[1] * c, pos[2]];
 }
 
 // --- Helpers ---

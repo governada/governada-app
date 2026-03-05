@@ -215,8 +215,8 @@ export function DRepDashboard({ drep, scoreHistory, isSimulated }: DRepDashboard
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              These votes lack on-chain rationale. Add an explanation so delegators
-              understand your reasoning.
+              These votes lack on-chain rationale. Add an explanation so delegators understand your
+              reasoning.
             </p>
             <div className="border rounded-lg overflow-hidden">
               <Table>

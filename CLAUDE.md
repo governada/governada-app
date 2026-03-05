@@ -18,7 +18,7 @@ These override all other guidance when in conflict. Every rule has been violated
    7. Hit new/changed endpoints on `drepscore.io` to verify 200 responses
    8. `npm run posthog:check <event>` if new analytics events were added
    9. Clean up worktree
-   Never say "PR created — merge when ready." Never present a deployment checklist. Just do it.
+      Never say "PR created — merge when ready." Never present a deployment checklist. Just do it.
 
 3. **Railway is the deploy target.** Use `BASE_URL` from `lib/constants.ts` for server-side URLs. No other hosting platform is part of the stack.
 
@@ -75,25 +75,26 @@ All frontend reads go through Supabase via `lib/data.ts`. Direct Koios calls onl
 
 ## Key Files
 
-| Purpose | File(s) |
-|---|---|
-| Base URL for server-side fetches | `lib/constants.ts` (`BASE_URL`) |
-| Supabase reads (primary data source) | `lib/data.ts` |
-| Koios API helpers (used by sync) | `utils/koios.ts` |
-| Scoring V3 (pillar computation) | `lib/scoring/` |
-| Supabase client | `lib/supabase.ts` |
-| Sync logic (durable, callable) | `lib/sync/dreps.ts`, `lib/sync/votes.ts`, `lib/sync/secondary.ts`, `lib/sync/slow.ts` |
-| Sync HTTP routes (thin wrappers) | `app/api/sync/dreps/`, `app/api/sync/votes/`, `app/api/sync/proposals/`, `app/api/sync/secondary/`, `app/api/sync/slow/`, `app/api/sync/treasury/` |
-| Proposals sync (inline in Inngest) | `inngest/functions/sync-proposals.ts` |
-| DRep types | `types/drep.ts`, `types/koios.ts` |
-| Alignment scoring (PCA) | `lib/alignment/` |
-| Matching engine (quiz + confidence) | `lib/matching/` |
-| GHI v2 (6 components + EDI) | `lib/ghi/` |
-| Feature flags | `lib/featureFlags.ts`, `components/FeatureGate.tsx` |
+| Purpose                              | File(s)                                                                                                                                            |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base URL for server-side fetches     | `lib/constants.ts` (`BASE_URL`)                                                                                                                    |
+| Supabase reads (primary data source) | `lib/data.ts`                                                                                                                                      |
+| Koios API helpers (used by sync)     | `utils/koios.ts`                                                                                                                                   |
+| Scoring V3 (pillar computation)      | `lib/scoring/`                                                                                                                                     |
+| Supabase client                      | `lib/supabase.ts`                                                                                                                                  |
+| Sync logic (durable, callable)       | `lib/sync/dreps.ts`, `lib/sync/votes.ts`, `lib/sync/secondary.ts`, `lib/sync/slow.ts`                                                              |
+| Sync HTTP routes (thin wrappers)     | `app/api/sync/dreps/`, `app/api/sync/votes/`, `app/api/sync/proposals/`, `app/api/sync/secondary/`, `app/api/sync/slow/`, `app/api/sync/treasury/` |
+| Proposals sync (inline in Inngest)   | `inngest/functions/sync-proposals.ts`                                                                                                              |
+| DRep types                           | `types/drep.ts`, `types/koios.ts`                                                                                                                  |
+| Alignment scoring (PCA)              | `lib/alignment/`                                                                                                                                   |
+| Matching engine (quiz + confidence)  | `lib/matching/`                                                                                                                                    |
+| GHI v2 (6 components + EDI)          | `lib/ghi/`                                                                                                                                         |
+| Feature flags                        | `lib/featureFlags.ts`, `components/FeatureGate.tsx`                                                                                                |
 
 ## Scoring Models
 
 ### DRep Score V3
+
 ```
 DRep Score (0-100, percentile-normalized) =
   Engagement Quality (35%) +
@@ -101,15 +102,18 @@ DRep Score (0-100, percentile-normalized) =
   Reliability (25%) +
   Governance Identity (15%)
 ```
+
 Each pillar: raw score → percentile-normalized → weighted sum. Implementation: `lib/scoring/`.
 
 ### SPO Governance Score
+
 ```
 SPO Score (0-100, percentile-normalized) =
   Participation (45%) + Consistency (30%) + Reliability (25%)
 ```
 
 ### Score Tiers (Phase A — not yet shipped)
+
 Emerging (0-39), Bronze (40-54), Silver (55-69), Gold (70-84), Diamond (85-94), Legendary (95-100).
 
 ## Server Component Constraints
@@ -119,19 +123,23 @@ Emerging (0-39), Bronze (40-54), Silver (55-69), Gold (70-84), Diamond (85-94), 
 - Next.js 16 enforces strict named exports from route files. Only HTTP handlers + config fields allowed. Helper functions must live in `lib/sync/<name>.ts`.
 
 ### `dreps` Table Schema Convention
+
 The `dreps` table uses `id` as its primary key (the full `drep1...` bech32 string). Display metadata (`name`, `ticker`, `handle`, etc.) is inside the `info` JSONB column, not top-level columns. Use `lib/data.ts` `mapRow()` to unpack.
 
 ### File Extension Rule for JSX
+
 Any API route using JSX (e.g., `ImageResponse`) must use `.tsx`, not `.ts`.
 
 ## Workflow
 
 ### Session Start
+
 1. Read `.cursor/tasks/lessons.md` for patterns from prior sessions
 2. `git branch --show-current` + `git status` — orient to current state
 3. For multi-step tasks, echo-back which critical rules apply before starting
 
 ### Build Phase
+
 - **Branch check (step 0)**: On `main` and not a hotfix → STOP and branch first
 - **Preflight after each batch**: `npm run preflight` (format:check + lint + type-check + test)
 - **Format before commit**: Run `npx prettier --write <files>` + `npx tsc --noEmit` before `git add`
@@ -141,7 +149,9 @@ Any API route using JSX (e.g., `ImageResponse`) must use `.tsx`, not `.ts`.
 - **E2E tests**: For UI-touching changes, add or update Playwright tests in `e2e/`
 
 ### Ship It (MANDATORY after every feature)
+
 After code compiles clean, execute IMMEDIATELY without asking:
+
 1. `npm run preflight` — fix ALL failures
 2. `git add` relevant files → commit
 3. `git push -u origin HEAD`
@@ -154,6 +164,7 @@ After code compiles clean, execute IMMEDIATELY without asking:
 10. Clean up worktree, update lessons
 
 ### Post-Execution Review (MANDATORY after plan completion)
+
 After completing any plan or named batch: scan for opportunities, bugs, dead code, open questions, and vision alignment. Ask user which recommendations to execute before shipping.
 
 ## Git Worktree Workflow
@@ -165,16 +176,19 @@ C:\Users\dalto\drepscore\
 ```
 
 ### Starting a Feature
+
 1. Verify plan exists in `.cursor/plans/<feature>.plan.md`, committed to `main`
 2. `git worktree add ../drepscore-<name> -b feature/<name>`
 3. Copy `.env.local` to new worktree, run `npm install`
 
 ### Branch Safety
+
 - **Never switch branches** in a worktree. If on wrong branch, stop and tell user.
 - **Never merge to main from a worktree** — merges only via PR.
 - From worktrees, use `gh api repos/drepscore/drepscore-app/pulls/<N>/merge -X PUT -f merge_method=squash` since `gh pr merge` fails (tries to checkout main which is locked).
 
 ### Worktree Decision
+
 - **Direct on main**: Single-commit fixes, docs, config, plan file creation
 - **Worktree required**: 2+ phase plans, new features, migrations + code, 10+ file refactors
 
@@ -195,6 +209,7 @@ Execution model: Core syncs export `execute*Sync()` from `lib/sync/<name>.ts`. I
 All Koios responses validated via Zod schemas (`utils/koios-schemas.ts`). Invalid records skipped, not the entire batch.
 
 ### Adding a New Sync
+
 1. Create Inngest function in `inngest/functions/sync-<name>.ts`
 2. Register in `app/api/inngest/route.ts`
 3. Add sync type to `SyncType` union in `lib/sync-utils.ts`
@@ -218,14 +233,17 @@ Full instrumentation map in `.cursor/rules/analytics-reference.md`.
 - **Post-deploy autonomous sequence**: Poll Railway → verify HTTP 200 → apply migrations → PUT Inngest → verify functions → smoke test endpoints
 
 ### Key Env Vars (in Railway dashboard)
+
 `KOIOS_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SESSION_SECRET`, `ADMIN_WALLETS`, `ANTHROPIC_API_KEY`, `POSTHOG_PERSONAL_API_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`, `NEXT_PUBLIC_SITE_URL=https://drepscore.io`
 
 ### CI/CD
+
 - CI skips for docs-only changes. Code changes: install → lint/format/type-check/test (parallel) → build
 - E2E is post-merge only (not in PR critical path)
 - Railway watchPaths ensures docs-only commits don't trigger deploys
 
 ### Release Gating
+
 - **Direct to main (hotfix)**: Single-commit bug fixes, docs, config, dependency patches
 - **PR required**: Migrations, API contract changes, auth/security, scoring model, new features, 10+ files, Inngest schedule changes
 
@@ -234,6 +252,7 @@ Full instrumentation map in `.cursor/rules/analytics-reference.md`.
 See `docs/strategy/ultimate-vision.md` for the full north star.
 
 ### Design Principles
+
 1. Citizens first — every screen answers "what does a citizen need here?"
 2. Action over information — command center is action feed, not data wall
 3. Scores must have consequences (tiers, celebrations, competitive pressure)
@@ -243,6 +262,7 @@ See `docs/strategy/ultimate-vision.md` for the full north star.
 7. Loading skeletons, <3s target page loads
 
 ### Personas (citizen-first order)
+
 1. Citizens (ADA holders), 2. DReps, 3. SPOs, 4. Constitutional Committee, 5. Treasury Proposal Teams, 6. Governance Researchers, 7. Cross-Chain Observers
 
 ## Known Gotchas
@@ -261,15 +281,15 @@ See `docs/strategy/ultimate-vision.md` for the full north star.
 
 ## Scripts Reference
 
-| Script | When to use |
-|---|---|
-| `gen:types` | After every Supabase migration |
-| `inngest:status` | After deploy — verify function registration |
-| `posthog:check [event]` | After deploying features with new events |
-| `smoke-test` | After deploy — HTTP health checks |
-| `test` | Vitest unit/integration tests |
-| `test:e2e` | Playwright E2E tests |
-| `format` | Format all files with Prettier |
-| `format:check` | Check formatting (CI) |
-| `preflight` | Parallel format:check + lint + type-check + test |
-| `analyze` | Bundle analysis (set ANALYZE=true) |
+| Script                  | When to use                                      |
+| ----------------------- | ------------------------------------------------ |
+| `gen:types`             | After every Supabase migration                   |
+| `inngest:status`        | After deploy — verify function registration      |
+| `posthog:check [event]` | After deploying features with new events         |
+| `smoke-test`            | After deploy — HTTP health checks                |
+| `test`                  | Vitest unit/integration tests                    |
+| `test:e2e`              | Playwright E2E tests                             |
+| `format`                | Format all files with Prettier                   |
+| `format:check`          | Check formatting (CI)                            |
+| `preflight`             | Parallel format:check + lint + type-check + test |
+| `analyze`               | Bundle analysis (set ANALYZE=true)               |

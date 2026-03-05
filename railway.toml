@@ -1,6 +1,23 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+watchPaths = [
+  "app/**",
+  "components/**",
+  "lib/**",
+  "hooks/**",
+  "utils/**",
+  "styles/**",
+  "public/**",
+  "scripts/**",
+  "Dockerfile",
+  "package.json",
+  "package-lock.json",
+  "next.config.*",
+  "tailwind.config.*",
+  "tsconfig.json",
+  "postcss.config.*",
+]
 
 [deploy]
 healthcheckPath = "/api/health/deep"

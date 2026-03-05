@@ -9,6 +9,7 @@ on:
       - '.cursor/**'
       - '*.md'
       - 'LICENSE'
+      - '.github/workflows/**'
   push:
     branches: [main]
     paths-ignore:
@@ -17,6 +18,7 @@ on:
       - '.cursor/**'
       - '*.md'
       - 'LICENSE'
+      - '.github/workflows/**'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -145,6 +147,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npx tsx scripts/report-bundle-size.ts
       - name: Upload build artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: nextjs-build
@@ -159,54 +162,6 @@ jobs:
             .next/server
             public
           retention-days: 1
-
-  e2e:
-    needs: build
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
-      NEXT_PUBLIC_KOIOS_BASE_URL: https://api.koios.rest/api/v1
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
-      SUPABASE_SECRET_KEY: placeholder-secret-key-for-ci
-      SESSION_SECRET: ci-placeholder-session-secret-at-least-32-chars
-      CRON_SECRET: ci-placeholder-cron-secret
-      UPSTASH_REDIS_REST_URL: https://placeholder-redis.upstash.io
-      UPSTASH_REDIS_REST_TOKEN: placeholder-redis-token
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-      - uses: actions/cache/restore@v5
-        with:
-          path: node_modules
-          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Install Playwright system deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: nextjs-build
-      - name: Start server and run E2E
-        run: |
-          npx next start &
-          npx wait-on http://localhost:3000 --timeout 30000
-          npx playwright test --project=chromium
-        env:
-          PORT: 3000
-          PLAYWRIGHT_BASE_URL: http://localhost:3000
 
   sentry-release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'

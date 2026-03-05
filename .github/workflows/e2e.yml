@@ -1,0 +1,65 @@
+name: E2E
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  e2e:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+      NEXT_PUBLIC_KOIOS_BASE_URL: https://api.koios.rest/api/v1
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      SUPABASE_SECRET_KEY: placeholder-secret-key-for-ci
+      SESSION_SECRET: ci-placeholder-session-secret-at-least-32-chars
+      CRON_SECRET: ci-placeholder-cron-secret
+      UPSTASH_REDIS_REST_URL: https://placeholder-redis.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: placeholder-redis-token
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Start server and run E2E
+        run: |
+          npx next start &
+          npx wait-on http://localhost:3000 --timeout 30000
+          npx playwright test --project=chromium
+        env:
+          PORT: 3000
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.event.workflow_run.head_sha }}
+          path: playwright-report/
+          retention-days: 7

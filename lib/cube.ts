@@ -1,5 +1,5 @@
 /**
- * Cube.js Client Configuration
+ * Cube.js Client Configuration for Civica Analytics
  *
  * Provides the Cube API client for querying the semantic layer.
  * Used by both server components (via direct API calls) and

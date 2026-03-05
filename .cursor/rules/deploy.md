@@ -38,11 +38,13 @@ For agents: run preflight after each batch of changes during multi-batch plans, 
 
 ## Incremental Build Pipeline
 
-CI skips entirely for docs-only changes (`docs/**`, `tasks/**`, `.cursor/**`, `*.md`, `LICENSE`). Code changes trigger the full pipeline.
+CI skips entirely for docs-only changes (`docs/**`, `tasks/**`, `.cursor/**`, `*.md`, `LICENSE`, `.github/workflows/**`). Code changes trigger the full pipeline.
 
 `.next/cache` is persisted in CI via `actions/cache` — incremental Next.js builds are 30-50% faster on code-only changes. Railway relies on its default Docker layer caching (deps layer is cached when only source changes).
 
-E2E reuses the build artifact from the `build` job (no double build). It runs after `build` completes and remains `continue-on-error: true`.
+**E2E is post-merge only** (`e2e.yml`, triggered by `workflow_run` on CI success for `main`). It is NOT in the PR critical path. `ci.yml` covers only: install → lint/format/type-check/test (parallel) → build. PR target: ~5 min gate. Do not re-add E2E to `ci.yml`.
+
+**Railway watchPaths** (`railway.toml`) ensures that CI/docs-only commits do NOT trigger Railway deploys. Only changes under `app/**`, `components/**`, `lib/**`, `hooks/**`, `utils/**`, `styles/**`, `public/**`, `Dockerfile`, `package*.json`, `next.config.*`, `tailwind.config.*`, `tsconfig.json` trigger a deploy.
 
 ## Railway Build Parity
 
@@ -59,12 +61,14 @@ Any `app/` file importing `@/lib/supabase` (directly or via `@/lib/data`) that i
 - **Railway CLI**: Installed globally (`railway`). Use `railway logs` for build/deploy logs, `railway status` for current state. Linked to the Civica (formerly drepscore) project
 - **Inngest**: PUT `https://drepscore.io/api/inngest` after every deploy to sync functions. 22 durable functions total (see `architecture.md`). Verify with `npm run inngest:status`
 - **Post-deploy autonomous**: After any deploy, autonomously:
-  1. Apply pending migrations via Supabase MCP `apply_migration`
-  2. PUT Inngest to sync functions
-  3. `npm run inngest:status` — verify functions registered + recent runs healthy
-  4. `npm run posthog:check <event>` — verify new instrumentation is firing (when deploying features with new events)
-  5. Trigger new compute functions if they need initial data
-  6. Hit new/changed endpoints on `drepscore.io` to verify 200 responses
+  1. Poll `railway deployment list` until latest shows `SUCCESS` — do not skip this step
+  2. `Invoke-WebRequest -Uri "https://drepscore.io" -Method GET` — verify HTTP 200
+  3. Apply pending migrations via Supabase MCP `apply_migration`
+  4. PUT Inngest to sync functions
+  5. `npm run inngest:status` — verify functions registered + recent runs healthy
+  6. `npm run posthog:check <event>` — verify new instrumentation is firing (when deploying features with new events)
+  7. Trigger new compute functions if they need initial data
+  8. Hit new/changed endpoints on `drepscore.io` to verify 200 responses
      Do not ask the user for permission on these steps
 - **INNGEST_SERVE_HOST**: `https://drepscore.io`
 

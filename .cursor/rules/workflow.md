@@ -34,6 +34,7 @@ First-principles checklist:
 
 - **Branch check (step 0)**: `git branch --show-current`. On `main` and not a hotfix → STOP and branch first
 - **Preflight after each batch**: Run `npm run preflight` after completing each batch in multi-batch plans. Catch formatting, lint, type, and test issues incrementally — not at the end
+- **Agent format before commit**: Husky hooks do NOT run in agent shell sessions. Always explicitly run `npx prettier --write <files>` + `npx tsc --noEmit` before `git add`. Never assume hooks will catch it.
 - **Research before build**: New library/API → research summary before implementation
 - **Analytics inline**: Every new user interaction gets a PostHog event in the same diff (see `analytics.mdc`)
 - **No orphaned components**: Every component created must be imported and rendered in the same commit

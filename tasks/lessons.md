@@ -69,6 +69,18 @@ When routes are wrapped with `withRouteHandler`, unhandled exceptions now return
 
 Use `next/dynamic` with `ssr: false` for components importing heavy libs (Three.js, d3, canvas-confetti, fuse.js). For page-level wrappers like `template.tsx`, use `React.lazy` + `Suspense` with a fallback that renders children directly to avoid blocking initial paint.
 
+## Agent Formatting Protocol
+
+**Pattern**: Husky hooks (`pre-commit` lint-staged, `pre-push` preflight) do NOT fire in agent shell sessions. Agent writes files via tool, then `git add` directly — Husky never runs. Always run `npx prettier --write <files>` followed by `npx tsc --noEmit` explicitly before `git add` in every agent commit workflow. Never rely on hooks catching it.
+
+## Multi-Phase Branch Strategy
+
+**Pattern**: When a phase branch (`civica-phase-2a`) is based on a previous phase branch that was squash-merged into `main`, rebasing will produce `add/add` conflicts because the squash commit has different SHAs. **Never rebase in this situation.** Instead: (1) create new branch from latest `main`, (2) `git log` the old branch to identify phase-specific commits, (3) cherry-pick only those commits onto the new branch, (4) force-push the new branch to update the existing PR. This keeps history clean and avoids conflict hell.
+
+## Railway Deployment Monitoring
+
+**Pattern**: After every merge to `main`, immediately poll `railway deployment list` until the latest entry shows `SUCCESS`. Railway sometimes queues deploys and the new deploy may not start for 30-60s after the merge. Do not declare "deployed" based on CI passing alone — CI and Railway are independent systems. A Railway `BUILDING` status is not `SUCCESS`.
+
 ## Session Correction Log
 
 | Session | Date       | Corrections | Notes                                                                                                                |
@@ -79,6 +91,7 @@ Use `next/dynamic` with `ssr: false` for components importing heavy libs (Three.
 | S21     | 2026-03-04 | 1           | React version mismatch (react vs react-dom) blocks jsdom render — keep versions pinned together                      |
 | S22     | 2026-03-04 | 1           | @testing-library/react needs explicit cleanup() in vitest jsdom env when tests share test-ids                        |
 | S23     | 2026-03-04 | 1           | Dashboard config (Sentry alerts, PostHog funnels) can't be automated via code — document reproducible setup in docs/ |
+| S24     | 2026-03-05 | 3           | Husky hooks don't run in agent shell; prettier --write must be explicit. Railway monitoring must be active after merge. Multi-phase cherry-pick over rebase. |
 
-_Last updated: 2026-03-04_
+_Last updated: 2026-03-05_
 _Review at session start. Archive promoted entries immediately._

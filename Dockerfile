@@ -5,14 +5,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,id=npm,target=/root/.npm npm ci
+RUN npm ci
 
 # ── Build ──
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN --mount=type=cache,id=nextjs,target=/app/.next/cache npm run build
+RUN npm run build
 
 # ── Runtime ──
 FROM base AS runner

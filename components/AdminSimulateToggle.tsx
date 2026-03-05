@@ -1,18 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
+import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
+
+const SEGMENTS: { value: UserSegment | null; label: string }[] = [
+  { value: null, label: 'Real' },
+  { value: 'anonymous', label: 'Anonymous' },
+  { value: 'citizen', label: 'Citizen' },
+  { value: 'drep', label: 'DRep' },
+  { value: 'spo', label: 'SPO' },
+];
 
 export function AdminSimulateToggle() {
   const { isAuthenticated } = useWallet();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
+  const { realSegment, segment, setOverride } = useSegment();
   const [isAdmin, setIsAdmin] = useState(false);
-
-  const isSimulating = searchParams.get('simulate') === 'true';
 
   useEffect(() => {
     const token = getStoredSession();
@@ -35,40 +39,35 @@ export function AdminSimulateToggle() {
 
   if (!isAdmin) return null;
 
-  const toggle = (simulate: boolean) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (simulate) {
-      params.set('simulate', 'true');
-    } else {
-      params.delete('simulate');
-    }
-    const qs = params.toString();
-    router.push(`${pathname}${qs ? `?${qs}` : ''}`);
-  };
+  // Current override: null means "real" (no override active)
+  const activeOverride = segment === realSegment ? null : segment;
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="flex items-center rounded-full border bg-background/90 backdrop-blur-md shadow-lg p-1 gap-0">
-        <button
-          onClick={() => toggle(false)}
-          className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all ${
-            !isSimulating
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          ADA Holders
-        </button>
-        <button
-          onClick={() => toggle(true)}
-          className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all ${
-            isSimulating
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          DReps
-        </button>
+      <div className="flex flex-col items-center gap-1.5">
+        {activeOverride !== null && (
+          <span className="text-[10px] text-muted-foreground bg-background/90 backdrop-blur-md rounded-full px-2 py-0.5 border">
+            Actual: {realSegment}
+          </span>
+        )}
+        <div className="flex items-center rounded-full border bg-background/90 backdrop-blur-md shadow-lg p-1 gap-0">
+          {SEGMENTS.map(({ value, label }) => {
+            const isActive = value === activeOverride;
+            return (
+              <button
+                key={label}
+                onClick={() => setOverride(value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

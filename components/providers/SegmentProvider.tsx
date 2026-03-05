@@ -7,7 +7,36 @@ export type UserSegment = 'anonymous' | 'citizen' | 'spo' | 'drep';
 
 export interface SegmentState {
   segment: UserSegment;
+  realSegment: UserSegment;
   isLoading: boolean;
+  stakeAddress: string | null;
+  drepId: string | null;
+  poolId: string | null;
+  delegatedDrep: string | null;
+  delegatedPool: string | null;
+  setOverride: (segment: UserSegment | null) => void;
+}
+
+const STORAGE_KEY = 'civica_segment';
+
+const noop = () => {};
+
+const DEFAULT_STATE: SegmentState = {
+  segment: 'anonymous',
+  realSegment: 'anonymous',
+  isLoading: false,
+  stakeAddress: null,
+  drepId: null,
+  poolId: null,
+  delegatedDrep: null,
+  delegatedPool: null,
+  setOverride: noop,
+};
+
+const SegmentContext = createContext<SegmentState>(DEFAULT_STATE);
+
+interface CachedSegment {
+  segment: UserSegment;
   stakeAddress: string | null;
   drepId: string | null;
   poolId: string | null;
@@ -15,25 +44,11 @@ export interface SegmentState {
   delegatedPool: string | null;
 }
 
-const STORAGE_KEY = 'civica_segment';
-
-const DEFAULT_STATE: SegmentState = {
-  segment: 'anonymous',
-  isLoading: false,
-  stakeAddress: null,
-  drepId: null,
-  poolId: null,
-  delegatedDrep: null,
-  delegatedPool: null,
-};
-
-const SegmentContext = createContext<SegmentState>(DEFAULT_STATE);
-
-function loadCached(stakeAddress: string): SegmentState | null {
+function loadCached(stakeAddress: string): CachedSegment | null {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const cached = JSON.parse(raw) as SegmentState & { _addr: string };
+    const cached = JSON.parse(raw) as CachedSegment & { _addr: string };
     if (cached._addr === stakeAddress) return cached;
   } catch {
     // Ignore parse errors
@@ -41,7 +56,7 @@ function loadCached(stakeAddress: string): SegmentState | null {
   return null;
 }
 
-function saveCache(state: SegmentState, stakeAddress: string) {
+function saveCache(state: CachedSegment, stakeAddress: string) {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, _addr: stakeAddress }));
   } catch {
@@ -51,24 +66,44 @@ function saveCache(state: SegmentState, stakeAddress: string) {
 
 export function SegmentProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, address } = useWallet();
-  const [state, setState] = useState<SegmentState>(DEFAULT_STATE);
+  const [detected, setDetected] = useState<
+    Omit<SegmentState, 'segment' | 'realSegment' | 'setOverride'>
+  >({
+    isLoading: false,
+    stakeAddress: null,
+    drepId: null,
+    poolId: null,
+    delegatedDrep: null,
+    delegatedPool: null,
+  });
+  const [detectedSegment, setDetectedSegment] = useState<UserSegment>('anonymous');
+  const [override, setOverride] = useState<UserSegment | null>(null);
 
   const detect = useCallback(async (stakeAddress: string) => {
     const cached = loadCached(stakeAddress);
     if (cached) {
-      setState(cached);
+      setDetectedSegment(cached.segment);
+      setDetected({
+        isLoading: false,
+        stakeAddress: cached.stakeAddress,
+        drepId: cached.drepId,
+        poolId: cached.poolId,
+        delegatedDrep: cached.delegatedDrep,
+        delegatedPool: cached.delegatedPool,
+      });
       return;
     }
 
-    setState((s) => ({ ...s, isLoading: true }));
+    setDetected((s) => ({ ...s, isLoading: true }));
 
     try {
       const res = await fetch(`/api/user/detect-segment?stakeAddress=${stakeAddress}`);
       if (!res.ok) throw new Error('detect-segment failed');
 
       const data = await res.json();
-      const next: SegmentState = {
-        segment: data.segment ?? 'citizen',
+      const seg: UserSegment = data.segment ?? 'citizen';
+      setDetectedSegment(seg);
+      const next = {
         isLoading: false,
         stakeAddress,
         drepId: data.drepId ?? null,
@@ -76,22 +111,39 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
         delegatedDrep: data.delegatedDrep ?? null,
         delegatedPool: data.delegatedPool ?? null,
       };
-      setState(next);
-      saveCache(next, stakeAddress);
+      setDetected(next);
+      saveCache({ ...next, segment: seg }, stakeAddress);
     } catch {
-      setState((s) => ({ ...s, isLoading: false, segment: 'citizen' }));
+      setDetected((s) => ({ ...s, isLoading: false }));
+      setDetectedSegment('citizen');
     }
   }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !address) {
-      setState(DEFAULT_STATE);
+      setDetected({
+        isLoading: false,
+        stakeAddress: null,
+        drepId: null,
+        poolId: null,
+        delegatedDrep: null,
+        delegatedPool: null,
+      });
+      setDetectedSegment('anonymous');
+      setOverride(null);
       return;
     }
     detect(address);
   }, [isAuthenticated, address, detect]);
 
-  return <SegmentContext.Provider value={state}>{children}</SegmentContext.Provider>;
+  const value: SegmentState = {
+    ...detected,
+    segment: override ?? detectedSegment,
+    realSegment: detectedSegment,
+    setOverride,
+  };
+
+  return <SegmentContext.Provider value={value}>{children}</SegmentContext.Provider>;
 }
 
 export function useSegment(): SegmentState {

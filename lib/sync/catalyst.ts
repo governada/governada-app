@@ -18,7 +18,6 @@ import {
   fetchCatalystFunds,
   fetchAllCatalystProposals,
   type CatalystProposal,
-  type CatalystFund,
   type CatalystCampaign,
   type CatalystTeamMember,
 } from '@/utils/catalyst';

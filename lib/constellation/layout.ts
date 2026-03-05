@@ -28,7 +28,7 @@ const ARM_ANGLES: Record<AlignmentDimension, number> = (() => {
 
 const ARM_PITCH = [0.06, -0.06, 0.06, -0.06, 0.06, -0.06]; // ~3.5° tilt — flattened ecliptic disc
 const ARM_FAN_ARC = Math.PI / 3;
-const MAX_RADIUS = 12;
+const MAX_RADIUS = 15;
 const ANCHOR_RADIUS = MAX_RADIUS * 0.3;
 const MIN_VISIBLE_SCALE = 0.06;
 const MAX_VISIBLE_SCALE = 0.25;

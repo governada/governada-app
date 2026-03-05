@@ -9,8 +9,16 @@ import { PoolProfileClient } from '@/components/PoolProfileClient';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 import { ArrowLeft, TrendingUp, BarChart3 } from 'lucide-react';
 import type { AlignmentScores } from '@/lib/drepIdentity';
-import { getFeatureFlag } from '@/lib/featureFlags';
+import nextDynamic from 'next/dynamic';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
+
+const TierCelebrationManager = nextDynamic(
+  () =>
+    import('@/components/civica/shared/TierCelebrationManager').then(
+      (m) => m.TierCelebrationManager,
+    ),
+  { ssr: false },
+);
 import { SpoProfileTabsV1 } from '@/components/civica/profiles/SpoProfileTabsV1';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';
 import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/civica/cards/tierStyles';
@@ -176,8 +184,6 @@ function toAlignments(row: Record<string, unknown> | null): AlignmentScores {
 export default async function PoolProfilePage({ params }: PageProps) {
   const { poolId } = await params;
   const supabase = createClient();
-
-  const civicaEnabled = await getFeatureFlag('civica_frontend');
 
   const { data: votes } = await supabase
     .from('spo_votes')
@@ -518,9 +524,17 @@ export default async function PoolProfilePage({ params }: PageProps) {
   );
 
   return (
-    <TierThemeProvider score={civicaEnabled ? governanceScore : null}>
+    <TierThemeProvider score={governanceScore}>
       <div className="container mx-auto px-4 py-8 space-y-8">
         <PageViewTracker event="pool_profile_viewed" properties={{ pool_id: poolId }} />
+        <TierCelebrationManager
+          entityType="spo"
+          entityId={poolId}
+          entityName={displayName}
+          enabled
+          ogImageUrl={`/api/og/staking/${encodeURIComponent(poolId)}`}
+          shareUrl={`https://drepscore.io/pool/${encodeURIComponent(poolId)}`}
+        />
 
         <Link href="/discover">
           <Button variant="ghost" className="gap-2 -ml-2">
@@ -529,150 +543,125 @@ export default async function PoolProfilePage({ params }: PageProps) {
           </Button>
         </Link>
 
-        {civicaEnabled ? (
-          /* VP1 Civica Hero */
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight">
-                  {displayName.length > 40 ? displayName.slice(0, 40) + '…' : displayName}
-                </h1>
-                {ticker && (
-                  <Badge variant="outline" className="text-cyan-500 border-cyan-500/40 font-mono">
-                    {ticker.toUpperCase()}
-                  </Badge>
-                )}
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${TIER_BADGE_BG[tk]}`}
-                >
-                  {tier}
-                </span>
-              </div>
+        {/* VP1 Hero */}
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">
+                {displayName.length > 40 ? displayName.slice(0, 40) + '…' : displayName}
+              </h1>
+              {ticker && (
+                <Badge variant="outline" className="text-cyan-500 border-cyan-500/40 font-mono">
+                  {ticker.toUpperCase()}
+                </Badge>
+              )}
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${TIER_BADGE_BG[tk]}`}
+              >
+                {tier}
+              </span>
+            </div>
 
-              <div className="flex items-baseline gap-2">
-                <span className={`text-4xl font-bold tabular-nums ${TIER_SCORE_COLOR[tk]}`}>
-                  {governanceScore}
+            <div className="flex items-baseline gap-2">
+              <span className={`text-4xl font-bold tabular-nums ${TIER_SCORE_COLOR[tk]}`}>
+                {governanceScore}
+              </span>
+              <span className="text-muted-foreground text-sm">governance score</span>
+              {scoreRank != null && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  Top {100 - scoreRank}% of governance-active SPOs
                 </span>
-                <span className="text-muted-foreground text-sm">governance score</span>
-                {scoreRank != null && (
-                  <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                    Top {100 - scoreRank}% of governance-active SPOs
-                  </span>
-                )}
-              </div>
-
-              {governanceStatement && (
-                <p className="text-sm text-muted-foreground italic max-w-2xl">
-                  &ldquo;
-                  {governanceStatement.length > 150
-                    ? governanceStatement.slice(0, 150) + '…'
-                    : governanceStatement}
-                  &rdquo;
-                </p>
               )}
             </div>
 
-            {/* Key fact chips */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-4 border-y border-border">
-              <div className="flex flex-col items-center text-center min-w-[80px]">
-                <span className="text-xs text-muted-foreground">Votes Cast</span>
-                <span className="text-sm font-semibold font-mono tabular-nums">{voteCount}</span>
-              </div>
-              <div className="flex flex-col items-center text-center min-w-[80px]">
-                <span className="text-xs text-muted-foreground">Participation</span>
-                <span className="text-sm font-semibold font-mono tabular-nums">
-                  {participationRate}%
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center min-w-[80px]">
-                <span className="text-xs text-muted-foreground">Delegators</span>
-                <span className="text-sm font-semibold font-mono tabular-nums">
-                  {delegatorCount.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center min-w-[80px]">
-                <span className="text-xs text-muted-foreground">Live Stake</span>
-                <span className="text-sm font-semibold font-mono tabular-nums">
-                  {formatAda(liveStake)} ₳
-                </span>
-              </div>
-              {interBody.drepPct != null && (
-                <div className="flex flex-col items-center text-center min-w-[100px]">
-                  <span className="text-xs text-muted-foreground">Agrees w/ DReps</span>
-                  <span className="text-sm font-semibold font-mono tabular-nums text-cyan-400">
-                    {interBody.drepPct}%
-                  </span>
-                </div>
-              )}
-              {interBody.ccPct != null && (
-                <div className="flex flex-col items-center text-center min-w-[100px]">
-                  <span className="text-xs text-muted-foreground">Agrees w/ CC</span>
-                  <span className="text-sm font-semibold font-mono tabular-nums text-violet-400">
-                    {interBody.ccPct}%
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Governance Radar */}
-            {hasAnyAlignment && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Alignment Radar</CardTitle>
-                </CardHeader>
-                <CardContent className="flex justify-center">
-                  <GovernanceRadar alignments={alignments} size="full" />
-                </CardContent>
-              </Card>
+            {governanceStatement && (
+              <p className="text-sm text-muted-foreground italic max-w-2xl">
+                &ldquo;
+                {governanceStatement.length > 150
+                  ? governanceStatement.slice(0, 150) + '…'
+                  : governanceStatement}
+                &rdquo;
+              </p>
             )}
           </div>
-        ) : (
-          /* Legacy VP0 header */
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  {displayName.length > 32 ? displayName.slice(0, 32) + '…' : displayName}
-                </h1>
-                <div className="flex items-center gap-2 mt-1">
-                  {ticker && (
-                    <Badge variant="outline" className="text-cyan-500 border-cyan-500/40">
-                      {ticker.toUpperCase()}
-                    </Badge>
-                  )}
-                  <span className="text-3xl font-bold tabular-nums">{governanceScore}</span>
-                  <span className="text-muted-foreground text-sm">governance score</span>
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                  <span>{delegatorCount.toLocaleString()} delegators</span>
-                  <span>{formatAda(liveStake)} ADA live stake</span>
-                  {pledge != null && <span>{formatPledge(pledge)} ADA pledge</span>}
-                </div>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 border-y border-border">
-              <div className="flex flex-col items-center text-center min-w-[80px]">
-                <span className="text-xs text-muted-foreground">Votes</span>
-                <span className="text-sm font-semibold font-mono tabular-nums">{voteCount}</span>
-              </div>
-              <div className="flex flex-col items-center text-center min-w-[80px]">
-                <span className="text-xs text-muted-foreground">Participation</span>
-                <span className="text-sm font-semibold font-mono tabular-nums">
-                  {participationRate}%
+          {/* Key fact chips */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-4 border-y border-border">
+            <div className="flex flex-col items-center text-center min-w-[80px]">
+              <span className="text-xs text-muted-foreground">Votes Cast</span>
+              <span className="text-sm font-semibold font-mono tabular-nums">{voteCount}</span>
+            </div>
+            <div className="flex flex-col items-center text-center min-w-[80px]">
+              <span className="text-xs text-muted-foreground">Participation</span>
+              <span className="text-sm font-semibold font-mono tabular-nums">
+                {participationRate}%
+              </span>
+            </div>
+            <div className="flex flex-col items-center text-center min-w-[80px]">
+              <span className="text-xs text-muted-foreground">Delegators</span>
+              <span className="text-sm font-semibold font-mono tabular-nums">
+                {delegatorCount.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex flex-col items-center text-center min-w-[80px]">
+              <span className="text-xs text-muted-foreground">Live Stake</span>
+              <span className="text-sm font-semibold font-mono tabular-nums">
+                {formatAda(liveStake)} ₳
+              </span>
+            </div>
+            {interBody.drepPct != null && (
+              <div className="flex flex-col items-center text-center min-w-[100px]">
+                <span className="text-xs text-muted-foreground">Agrees w/ DReps</span>
+                <span className="text-sm font-semibold font-mono tabular-nums text-cyan-400">
+                  {interBody.drepPct}%
                 </span>
               </div>
-              {scoreRank != null && (
-                <div className="flex flex-col items-center text-center min-w-[80px]">
-                  <span className="text-xs text-muted-foreground">Score Rank</span>
-                  <span className="text-sm font-semibold font-mono tabular-nums">
-                    Top {100 - scoreRank}%
-                  </span>
-                </div>
-              )}
-            </div>
+            )}
+            {interBody.ccPct != null && (
+              <div className="flex flex-col items-center text-center min-w-[100px]">
+                <span className="text-xs text-muted-foreground">Agrees w/ CC</span>
+                <span className="text-sm font-semibold font-mono tabular-nums text-violet-400">
+                  {interBody.ccPct}%
+                </span>
+              </div>
+            )}
+          </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+          {/* Governance Radar */}
+          {hasAnyAlignment && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Alignment Radar</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-center">
+                <GovernanceRadar alignments={alignments} size="full" />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* VP2 Section */}
+        <SpoProfileTabsV1
+          poolId={poolId}
+          votingRecordContent={<PoolProfileClient votes={safeVotes} proposals={proposals} />}
+          scoreAnalysisContent={scoreAnalysisCard}
+          trajectoryContent={
+            <div className="space-y-6">
+              {scoreHistoryCard ?? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground">No score history yet.</p>
+                  </CardContent>
+                </Card>
+              )}
+              <p className="text-xs text-muted-foreground px-1">
+                Delegator trend data coming soon via /api/spo/{poolId}/trends.
+              </p>
+            </div>
+          }
+          interBodyContent={
+            <div className="space-y-6">
+              {interBodyCard}
               {hasAnyAlignment && (
                 <Card>
                   <CardHeader>
@@ -683,54 +672,9 @@ export default async function PoolProfilePage({ params }: PageProps) {
                   </CardContent>
                 </Card>
               )}
-              {interBodyCard}
             </div>
-          </div>
-        )}
-
-        {/* VP2 Section */}
-        {civicaEnabled ? (
-          <SpoProfileTabsV1
-            poolId={poolId}
-            votingRecordContent={<PoolProfileClient votes={safeVotes} proposals={proposals} />}
-            scoreAnalysisContent={scoreAnalysisCard}
-            trajectoryContent={
-              <div className="space-y-6">
-                {scoreHistoryCard ?? (
-                  <Card>
-                    <CardContent className="py-8 text-center">
-                      <p className="text-sm text-muted-foreground">No score history yet.</p>
-                    </CardContent>
-                  </Card>
-                )}
-                <p className="text-xs text-muted-foreground px-1">
-                  Delegator trend data coming soon via /api/spo/{poolId}/trends.
-                </p>
-              </div>
-            }
-            interBodyContent={
-              <div className="space-y-6">
-                {interBodyCard}
-                {hasAnyAlignment && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Alignment Radar</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex justify-center">
-                      <GovernanceRadar alignments={alignments} size="full" />
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            }
-          />
-        ) : (
-          <div className="space-y-6 pt-4 border-t">
-            {scoreAnalysisCard}
-            {scoreHistoryCard}
-            <PoolProfileClient votes={safeVotes} proposals={proposals} />
-          </div>
-        )}
+          }
+        />
       </div>
     </TierThemeProvider>
   );

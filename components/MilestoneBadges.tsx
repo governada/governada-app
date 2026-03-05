@@ -179,7 +179,7 @@ export function MilestoneBadges({ drepId, compact = false }: MilestoneBadgesProp
               </div>
               <ShareActions
                 url={buildDRepUrl(drepId)}
-                text={`Achievement Unlocked on @drepscore: ${celebratingMilestone.label}! ${celebratingMilestone.description}.`}
+                text={`Achievement Unlocked on @CivicaGov: ${celebratingMilestone.label}! ${celebratingMilestone.description}.`}
                 imageUrl={`/api/og/moment/milestone/${encodeURIComponent(drepId)}/${celebratingMilestone.key}`}
                 imageFilename={`milestone-${celebratingMilestone.key}.png`}
                 surface="milestone_celebration"

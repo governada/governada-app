@@ -119,12 +119,24 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
           const cs = snapCs.data ?? {};
           const stats = snapStats.data ?? {};
 
+          const csTotalProposals = cs.total_proposals ?? 0;
+          const csCanonicalPct =
+            csTotalProposals > 0 ? ((cs.with_canonical_summary ?? 0) / csTotalProposals) * 100 : 0;
+          const aiTotalProposals = ai.total_proposals ?? 0;
+          const aiProposalPct =
+            aiTotalProposals > 0 ? ((ai.proposals_with_summary ?? 0) / aiTotalProposals) * 100 : 0;
+          const aiTotalRationales = ai.rationales_with_text ?? 0;
+          const aiRationalePct =
+            aiTotalRationales > 0
+              ? ((ai.rationales_with_summary ?? 0) / aiTotalRationales) * 100
+              : 0;
+
           const row = {
             snapshot_date: new Date().toISOString().slice(0, 10),
             vote_power_coverage_pct: vpc.coverage_pct ?? 0,
-            canonical_summary_pct: cs.coverage_pct ?? 0,
-            ai_proposal_pct: ai.proposal_pct ?? 0,
-            ai_rationale_pct: ai.rationale_pct ?? 0,
+            canonical_summary_pct: Math.round(csCanonicalPct * 100) / 100,
+            ai_proposal_pct: Math.round(aiProposalPct * 100) / 100,
+            ai_rationale_pct: Math.round(aiRationalePct * 100) / 100,
             hash_mismatch_rate_pct: hv.mismatch_rate_pct ?? 0,
             total_dreps: stats.total_dreps ?? 0,
             total_votes: stats.total_votes ?? 0,

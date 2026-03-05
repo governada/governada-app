@@ -55,7 +55,7 @@ export function MilestoneCelebration({
   if (!milestone) return null;
 
   const shareUrl = `https://drepscore.io/drep/${encodeURIComponent(drepId)}`;
-  const shareText = `${drepName} just unlocked "${milestone.label}" on @drepscore! ${milestone.description}`;
+  const shareText = `${drepName} just unlocked "${milestone.label}" on @CivicaGov! ${milestone.description}`;
   const imageUrl = `/api/og/moment/milestone/${encodeURIComponent(drepId)}/${encodeURIComponent(milestoneKey)}`;
 
   return (

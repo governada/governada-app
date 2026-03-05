@@ -65,6 +65,55 @@ const checks: Check[] = [
       return null;
     },
   },
+  // Data integrity checks
+  {
+    name: 'DRep data completeness',
+    path: '/api/v1/dreps?limit=20',
+    expectedStatus: 200,
+    validate: (b) => {
+      if (!b.data?.length) return 'No DRep data returned';
+      const withScore = b.data.filter((d: any) => d.score != null && d.score > 0);
+      if (withScore.length === 0) return 'No DReps have scores — scoring may be broken';
+      const scorePct = (withScore.length / b.data.length) * 100;
+      if (scorePct < 50) return `Only ${scorePct.toFixed(0)}% of DReps have scores (expected >50%)`;
+      return null;
+    },
+  },
+  {
+    name: 'Governance health - data counts',
+    path: '/api/v1/governance/health',
+    expectedStatus: 200,
+    validate: (b) => {
+      const d = b.data;
+      if (!d) return 'Missing data';
+      if (d.total_registered_dreps < 100)
+        return `DRep count suspiciously low: ${d.total_registered_dreps}`;
+      if (d.total_votes < 1000) return `Vote count suspiciously low: ${d.total_votes}`;
+      if (d.total_proposals < 10) return `Proposal count suspiciously low: ${d.total_proposals}`;
+      return null;
+    },
+  },
+  {
+    name: 'Sync freshness',
+    path: '/api/health',
+    expectedStatus: 200,
+    validate: (b) => {
+      if (!b.sync) return null; // sync info not in health endpoint, skip
+      const staleThresholds: Record<string, number> = {
+        proposals: 90,
+        dreps: 720,
+        votes: 720,
+        scoring: 480,
+      };
+      for (const [type, maxMins] of Object.entries(staleThresholds)) {
+        const syncInfo = b.sync?.[type];
+        if (syncInfo?.stale_mins && syncInfo.stale_mins > maxMins) {
+          return `${type} sync is ${syncInfo.stale_mins}min stale (threshold: ${maxMins}min)`;
+        }
+      }
+      return null;
+    },
+  },
 ];
 
 async function runCheck(check: Check): Promise<{ pass: boolean; name: string; detail: string }> {

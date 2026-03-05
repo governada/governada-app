@@ -207,6 +207,196 @@ export const GET = withRouteHandler(async (request) => {
     }
   }
 
+  // ── Orphan vote check (votes referencing DReps not in dreps table) ──
+
+  const [{ count: totalVotes }, { count: totalDreps }] = await Promise.all([
+    supabase.from('drep_votes').select('*', { count: 'exact', head: true }),
+    supabase.from('dreps').select('*', { count: 'exact', head: true }),
+  ]);
+
+  if (totalVotes && totalDreps) {
+    // Sample-based orphan check: get distinct voter IDs vs DRep IDs
+    const [{ data: voterSample }, { data: drepIds }] = await Promise.all([
+      supabase.from('drep_votes').select('drep_id').limit(5000),
+      supabase.from('dreps').select('id').limit(99999),
+    ]);
+
+    if (voterSample && drepIds) {
+      const drepSet = new Set(drepIds.map((d: { id: string }) => d.id));
+      const orphanVoters = new Set(
+        voterSample
+          .filter((v: { drep_id: string }) => !drepSet.has(v.drep_id))
+          .map((v: { drep_id: string }) => v.drep_id),
+      );
+      const orphanPct =
+        voterSample.length > 0
+          ? (voterSample.filter((v: { drep_id: string }) => !drepSet.has(v.drep_id)).length /
+              voterSample.length) *
+            100
+          : 0;
+
+      if (orphanPct > 15) {
+        alerts.push({
+          level: 'warning',
+          metric: `Orphan Votes — ${orphanPct.toFixed(1)}% of votes reference missing DReps`,
+          value: `${orphanVoters.size} unique DRep IDs in votes but not in dreps table`,
+          threshold: '<15% orphan rate',
+          action:
+            'Review deregistered DReps. Consider retaining them with a deregistered flag or excluding orphan votes from scoring.',
+        });
+      }
+    }
+  }
+
+  // ── Table count day-over-day drop detection ──
+
+  const { data: recentSnapshots } = await supabase
+    .from('integrity_snapshots')
+    .select('snapshot_date, total_dreps, total_votes, total_proposals, total_rationales')
+    .order('snapshot_date', { ascending: false })
+    .limit(2);
+
+  if (recentSnapshots && recentSnapshots.length === 2) {
+    const [today, yesterday] = recentSnapshots;
+    const countChecks: { label: string; current: number; previous: number }[] = [
+      { label: 'DReps', current: today.total_dreps, previous: yesterday.total_dreps },
+      { label: 'Votes', current: today.total_votes, previous: yesterday.total_votes },
+      { label: 'Proposals', current: today.total_proposals, previous: yesterday.total_proposals },
+      {
+        label: 'Rationales',
+        current: today.total_rationales,
+        previous: yesterday.total_rationales,
+      },
+    ];
+
+    for (const check of countChecks) {
+      if (check.previous > 0) {
+        const dropPct = ((check.previous - check.current) / check.previous) * 100;
+        if (dropPct > 10) {
+          alerts.push({
+            level: 'critical',
+            metric: `${check.label} Count Drop — ${dropPct.toFixed(1)}% decrease`,
+            value: `${check.previous} → ${check.current} (lost ${check.previous - check.current} records)`,
+            threshold: '<10% day-over-day drop',
+            action: `Investigate ${check.label.toLowerCase()} sync. Check Koios responses for truncated data. Review sync_log for recent failures.`,
+          });
+        }
+      }
+    }
+  }
+
+  // ── Epoch gap detection for snapshot tables ──
+
+  const { data: govStats } = await supabase
+    .from('governance_stats')
+    .select('current_epoch')
+    .eq('id', 1)
+    .single();
+  const currentEpoch = govStats?.current_epoch ?? 0;
+
+  if (currentEpoch > 0) {
+    const snapshotChecks: {
+      table: string;
+      label: string;
+      epochCol: string;
+      minCoverage: number;
+    }[] = [
+      { table: 'ghi_snapshots', label: 'GHI', epochCol: 'epoch_no', minCoverage: 1 },
+      { table: 'treasury_snapshots', label: 'Treasury', epochCol: 'epoch_no', minCoverage: 1 },
+      {
+        table: 'drep_score_history',
+        label: 'Score History',
+        epochCol: 'epoch_no',
+        minCoverage: 50,
+      },
+    ];
+
+    for (const check of snapshotChecks) {
+      const { count } = await supabase
+        .from(check.table)
+        .select('*', { count: 'exact', head: true })
+        .eq(check.epochCol, currentEpoch);
+
+      if ((count ?? 0) < check.minCoverage) {
+        alerts.push({
+          level: 'warning',
+          metric: `${check.label} — Missing epoch ${currentEpoch} data`,
+          value: `${count ?? 0} records for current epoch (expected >= ${check.minCoverage})`,
+          threshold: `>= ${check.minCoverage} per epoch`,
+          action: `Check if the ${check.label.toLowerCase()} sync ran this epoch. Trigger manually if needed.`,
+        });
+      }
+    }
+  }
+
+  // ── Vote-proposal reconciliation ──
+
+  {
+    const { data: voteTxSample } = await supabase
+      .from('drep_votes')
+      .select('proposal_tx_hash')
+      .limit(5000);
+    const { data: proposalTxes } = await supabase.from('proposals').select('tx_hash');
+
+    if (voteTxSample && proposalTxes) {
+      const proposalSet = new Set(proposalTxes.map((p: { tx_hash: string }) => p.tx_hash));
+      const orphanProposalVotes = voteTxSample.filter(
+        (v: { proposal_tx_hash: string }) => !proposalSet.has(v.proposal_tx_hash),
+      );
+      const orphanPct =
+        voteTxSample.length > 0 ? (orphanProposalVotes.length / voteTxSample.length) * 100 : 0;
+
+      if (orphanPct > 5) {
+        alerts.push({
+          level: 'warning',
+          metric: `Vote-Proposal Mismatch — ${orphanPct.toFixed(1)}% of votes reference unknown proposals`,
+          value: `${orphanProposalVotes.length} votes in sample point to proposals not in our table`,
+          threshold: '<5% orphan rate',
+          action:
+            'Proposals may have been dropped during sync. Trigger proposals sync and check for expired/deleted proposals.',
+        });
+      }
+    }
+  }
+
+  // ── Score distribution shift detection ──
+
+  {
+    const { data: scoreDist } = await supabase
+      .from('dreps')
+      .select('drep_score')
+      .not('drep_score', 'is', null);
+
+    if (scoreDist && scoreDist.length > 10) {
+      const scores = scoreDist.map((d: { drep_score: number }) => d.drep_score);
+      const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
+      const zeroCount = scores.filter((s: number) => s === 0).length;
+      const zeroPct = (zeroCount / scores.length) * 100;
+
+      if (zeroPct > 50) {
+        alerts.push({
+          level: 'critical',
+          metric: `Score Distribution Anomaly — ${zeroPct.toFixed(0)}% of DReps have score 0`,
+          value: `${zeroCount}/${scores.length} DReps scored zero (avg: ${avg.toFixed(1)})`,
+          threshold: '<50% zero scores',
+          action:
+            'Scoring sync may have failed or reset scores. Check sync-drep-scores in Inngest dashboard. Verify scoring model inputs.',
+        });
+      }
+
+      if (avg < 10 || avg > 90) {
+        alerts.push({
+          level: 'warning',
+          metric: `Score Distribution Skew — avg score: ${avg.toFixed(1)}`,
+          value: `Average score outside normal range (expected 20-80)`,
+          threshold: '10 < avg < 90',
+          action:
+            'Score distribution is heavily skewed. Review percentile normalization in scoring model. Check input data quality.',
+        });
+      }
+    }
+  }
+
   // ── Treasury snapshot staleness check ──
 
   const { data: latestTreasury } = await supabase

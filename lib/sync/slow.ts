@@ -545,9 +545,9 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
     .from('dreps')
     .select('id')
     .is('metadata_hash_verified', null)
-    .limit(30);
+    .limit(200);
 
-  if (!unchecked?.length) return { verified: 0, failed: 0 };
+  if (!unchecked?.length) return { verified: 0, failed: 0, noAnchor: 0 };
 
   const drepIds = unchecked.map((r: { id: string }) => r.id);
   const infoList = await fetchDRepInfo(drepIds);
@@ -562,9 +562,14 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
   let failed = 0;
 
   const metaHashUpdates: { id: string; metadata_hash_verified: boolean }[] = [];
+
+  // Mark DReps without anchor data so they don't block the queue
   for (const id of drepIds) {
     const anchor = anchorMap.get(id);
-    if (!anchor) continue;
+    if (!anchor) {
+      metaHashUpdates.push({ id, metadata_hash_verified: false });
+      continue;
+    }
     try {
       let fetchUrl = anchor.url;
       if (fetchUrl.startsWith('ipfs://')) fetchUrl = `https://ipfs.io/ipfs/${fetchUrl.slice(7)}`;
@@ -572,7 +577,11 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
       const timeout = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(fetchUrl, { signal: controller.signal });
       clearTimeout(timeout);
-      if (!res.ok) continue;
+      if (!res.ok) {
+        metaHashUpdates.push({ id, metadata_hash_verified: false });
+        failed++;
+        continue;
+      }
       const rawBytes = new Uint8Array(await res.arrayBuffer());
       const computedHash = blake2bHex(rawBytes, undefined, 32);
       const matches = computedHash === anchor.hash;
@@ -580,17 +589,23 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
       if (matches) verified++;
       else failed++;
     } catch {
-      /* skip */
+      metaHashUpdates.push({ id, metadata_hash_verified: false });
+      failed++;
     }
   }
   if (metaHashUpdates.length > 0) {
     await batchUpsert(supabase, 'dreps', metaHashUpdates, 'id', 'DRep metadata hash');
   }
 
-  if (verified + failed > 0) {
-    log.info('[SlowSync] DRep metadata hash verification', { verified, mismatch: failed });
+  const noAnchor = metaHashUpdates.length - verified - failed;
+  if (verified + failed + noAnchor > 0) {
+    log.info('[SlowSync] DRep metadata hash verification', {
+      verified,
+      mismatch: failed,
+      noAnchor,
+    });
   }
-  return { verified, failed };
+  return { verified, failed, noAnchor };
 }
 
 // ── Operation 7: Push notifications ─────────────────────────────────────────

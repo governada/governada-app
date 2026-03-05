@@ -55,11 +55,17 @@ const AlignmentTrajectory = nextDynamic(
   () => import('@/components/AlignmentTrajectory').then((m) => m.AlignmentTrajectory),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
+const TierCelebrationManager = nextDynamic(
+  () =>
+    import('@/components/civica/shared/TierCelebrationManager').then(
+      (m) => m.TierCelebrationManager,
+    ),
+  { ssr: false },
+);
 import {
   extractAlignments,
   getIdentityColor,
   getDominantDimension,
-  getPersonalityLabel,
   getPersonalityLabelWithHysteresis,
 } from '@/lib/drepIdentity';
 import { computeTierProgress } from '@/lib/scoring/tiers';
@@ -318,23 +324,15 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
   const matchScore = match ? parseInt(match, 10) : null;
 
-  const [
-    scoreHistory,
-    percentile,
-    linkChecks,
-    isClaimed,
-    spoAlignPct,
-    civicaEnabled,
-    drepCommunicationEnabled,
-  ] = await Promise.all([
-    getScoreHistory(drep.drepId),
-    getDRepPercentile(drep.drepScore),
-    getSocialLinkChecks(drep.drepId),
-    isDRepClaimed(drep.drepId),
-    getSpoAlignment(drep.votes),
-    getFeatureFlag('civica_frontend', false),
-    getFeatureFlag('drep_communication', false),
-  ]);
+  const [scoreHistory, percentile, linkChecks, isClaimed, spoAlignPct, drepCommunicationEnabled] =
+    await Promise.all([
+      getScoreHistory(drep.drepId),
+      getDRepPercentile(drep.drepScore),
+      getSocialLinkChecks(drep.drepId),
+      isDRepClaimed(drep.drepId),
+      getSpoAlignment(drep.votes),
+      getFeatureFlag('drep_communication', false),
+    ]);
 
   const brokenLinks = new Set(linkChecks.filter((c) => c.status === 'broken').map((c) => c.uri));
 
@@ -387,9 +385,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   // Use hysteresis-aware label when civica is enabled (last_personality_label is null for
   // all DReps currently — hysteresis kicks in once the sync pipeline starts persisting labels)
   const lastPersonalityLabel = (drep as any).lastPersonalityLabel ?? null;
-  const identityLabel = civicaEnabled
-    ? getPersonalityLabelWithHysteresis(alignments, lastPersonalityLabel)
-    : getPersonalityLabel(alignments);
+  const identityLabel = getPersonalityLabelWithHysteresis(alignments, lastPersonalityLabel);
 
   // Tier progress with recommended action (for Civica score analysis)
   const tierProgress = computeTierProgress(drep.drepScore, {
@@ -413,6 +409,14 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     <div className="container mx-auto px-4 py-8 space-y-6">
       <ProfileViewTracker drepId={drep.drepId} />
       <PageViewTracker event="drep_profile_viewed" properties={{ drep_id: drep.drepId }} />
+      <TierCelebrationManager
+        entityType="drep"
+        entityId={drep.drepId}
+        entityName={drepName}
+        enabled
+        ogImageUrl={`/api/og/wrapped/drep/${encodeURIComponent(drep.drepId)}`}
+        shareUrl={`https://drepscore.io/drep/${encodeURIComponent(drep.drepId)}`}
+      />
 
       <Link href="/">
         <Button variant="ghost" className="gap-2 -ml-2">
@@ -553,7 +557,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         }
         scoreAnalysisContent={
           <div className="space-y-6">
-            {civicaEnabled && tierProgress.recommendedAction && (
+            {tierProgress.recommendedAction && (
               <div className="rounded-xl border border-primary/20 bg-primary/5 px-5 py-4 flex items-start gap-3">
                 <div className="flex-1">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
@@ -648,9 +652,5 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     </div>
   );
 
-  return civicaEnabled ? (
-    <TierThemeProvider score={drep.drepScore}>{profileContent}</TierThemeProvider>
-  ) : (
-    profileContent
-  );
+  return <TierThemeProvider score={drep.drepScore}>{profileContent}</TierThemeProvider>;
 }

@@ -1021,3 +1021,182 @@ export async function fetchAccountInfo(stakeAddress: string): Promise<KoiosAccou
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Data Moat Collection Endpoints
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch full delegator list for a DRep (stake addresses + amounts).
+ * Paginated to handle DReps with many delegators.
+ */
+export async function fetchDRepDelegatorsFull(
+  drepId: string,
+): Promise<Array<{ stake_address: string; amount: string }>> {
+  const all: Array<{ stake_address: string; amount: string }> = [];
+  let offset = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const data = await koiosFetch<
+      Array<{ stake_address: string; amount: string; epoch_no?: number }>
+    >(`/drep_delegators?_drep_id=${encodeURIComponent(drepId)}&limit=${pageSize}&offset=${offset}`);
+
+    const pageData = data || [];
+    for (const row of pageData) {
+      all.push({ stake_address: row.stake_address, amount: row.amount || '0' });
+    }
+
+    if (pageData.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return all;
+}
+
+/**
+ * Fetch DRep registration/update/deregistration history from /drep_updates.
+ */
+export async function fetchDRepUpdates(drepIds: string[]): Promise<
+  Array<{
+    drep_id: string;
+    hex: string;
+    has_script: boolean;
+    update_tx_hash: string;
+    block_time: number;
+    action_type: 'registration' | 'update' | 'deregistration';
+    deposit: string | null;
+    meta_url: string | null;
+    meta_hash: string | null;
+    epoch_no?: number;
+  }>
+> {
+  if (drepIds.length === 0) return [];
+  const data = await koiosFetch<
+    Array<{
+      drep_id: string;
+      hex: string;
+      has_script: boolean;
+      update_tx_hash: string;
+      block_time: number;
+      action_type: 'registration' | 'update' | 'deregistration';
+      deposit: string | null;
+      meta_url: string | null;
+      meta_hash: string | null;
+      epoch_no?: number;
+    }>
+  >('/drep_updates', {
+    method: 'POST',
+    body: JSON.stringify({ _drep_ids: drepIds }),
+  });
+  return data || [];
+}
+
+/**
+ * Fetch DRep epoch summary (aggregate DRep count + voting power per epoch).
+ */
+export async function fetchDRepEpochSummary(epochNo?: number): Promise<
+  Array<{
+    epoch_no: number;
+    drep_count: number;
+    active_drep_count: number;
+    total_active_voting_power: string;
+  }>
+> {
+  const filter = epochNo !== undefined ? `&_epoch_no=${epochNo}` : '';
+  const data = await koiosFetch<
+    Array<{
+      epoch_no: number;
+      drep_count: number;
+      active_drep_count: number;
+      total_active_voting_power: string;
+    }>
+  >(`/drep_epoch_summary?limit=100&order=epoch_no.desc${filter}`);
+  return data || [];
+}
+
+/**
+ * Fetch epoch info (block count, tx count, fees, active stake).
+ */
+export async function fetchEpochInfo(epochNo?: number): Promise<
+  Array<{
+    epoch_no: number;
+    blk_count: number;
+    tx_count: number;
+    fees: string;
+    active_stake: string;
+    start_time: number;
+    end_time: number;
+  }>
+> {
+  const filter = epochNo !== undefined ? `&_epoch_no=${epochNo}` : '&limit=5&order=epoch_no.desc';
+  const data = await koiosFetch<
+    Array<{
+      epoch_no: number;
+      blk_count: number;
+      tx_count: number;
+      fees: string;
+      active_stake: string;
+      start_time: number;
+      end_time: number;
+    }>
+  >(`/epoch_info?include_next_epoch=false${filter}`);
+  return data || [];
+}
+
+/**
+ * Fetch Constitutional Committee info (members, terms, expiration).
+ */
+export async function fetchCommitteeInfo(): Promise<{
+  members: Array<{
+    cc_hot_id: string;
+    cc_cold_id: string;
+    status: string;
+    start_epoch: number | null;
+    expiration_epoch: number | null;
+  }>;
+} | null> {
+  try {
+    const data = await koiosFetch<
+      Array<{
+        proposal_tx_hash: string;
+        proposal_index: number;
+        cc_members: Array<{
+          cc_hot_id: string;
+          cc_cold_id: string;
+          status: string;
+          start_epoch: number | null;
+          expiration_epoch: number | null;
+        }>;
+      }>
+    >('/committee_info');
+
+    if (!data || data.length === 0) return null;
+
+    // Flatten and deduplicate by cc_hot_id
+    const memberMap = new Map<
+      string,
+      {
+        cc_hot_id: string;
+        cc_cold_id: string;
+        status: string;
+        start_epoch: number | null;
+        expiration_epoch: number | null;
+      }
+    >();
+
+    for (const entry of data) {
+      if (!entry.cc_members) continue;
+      for (const member of entry.cc_members) {
+        if (member.cc_hot_id) {
+          memberMap.set(member.cc_hot_id, member);
+        }
+      }
+    }
+
+    return { members: [...memberMap.values()] };
+  } catch (err) {
+    console.error('[Koios] Error fetching committee info:', err);
+    return null;
+  }
+}

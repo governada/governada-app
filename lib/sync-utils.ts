@@ -24,7 +24,13 @@ export type SyncType =
   | 'epoch_recaps'
   | 'snapshot_backfill'
   | 'spo_scores'
-  | 'governance_epoch_stats';
+  | 'governance_epoch_stats'
+  | 'data_moat'
+  | 'delegator_snapshots'
+  | 'drep_lifecycle'
+  | 'epoch_summaries'
+  | 'committee_sync'
+  | 'metadata_archive';
 
 const BATCH_SIZE = 100;
 const MAX_UPSERT_RETRIES = 3;

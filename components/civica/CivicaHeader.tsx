@@ -60,7 +60,7 @@ export function CivicaHeader() {
                   key={href}
                   href={href}
                   className={cn(
-                    'relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                    'relative flex items-center gap-2 px-3 py-2 min-h-[44px] text-sm font-medium rounded-md transition-colors',
                     'hover:bg-accent hover:text-accent-foreground',
                     active ? 'text-foreground' : 'text-muted-foreground',
                   )}

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { Vote, AlertCircle, TrendingDown, Clock, Star, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Action, ActionType } from '@/lib/actionFeed';
@@ -37,7 +38,7 @@ function ActionCard({ action, featured = false }: { action: Action; featured?: b
   const inner = (
     <div
       className={cn(
-        'flex items-start gap-3 rounded-xl border transition-colors',
+        'flex items-start gap-3 rounded-xl border transition-colors min-h-[44px]',
         featured ? 'p-5' : 'p-4',
         colorClass,
         action.href && 'cursor-pointer hover:brightness-110',
@@ -59,12 +60,21 @@ function ActionCard({ action, featured = false }: { action: Action; featured?: b
     </div>
   );
 
+  const card = (
+    <motion.div
+      whileHover={{ scale: 1.01 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+    >
+      {inner}
+    </motion.div>
+  );
+
   return action.href ? (
     <Link href={action.href} className="block group">
-      {inner}
+      {card}
     </Link>
   ) : (
-    <div>{inner}</div>
+    card
   );
 }
 

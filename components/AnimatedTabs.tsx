@@ -37,6 +37,7 @@ export function AnimatedTabs({
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || '');
   const prevIndexRef = useRef(tabs.findIndex((t) => t.id === activeTab));
   const [direction, setDirection] = useState(0);
+  const [dragStart, setDragStart] = useState(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -83,28 +84,40 @@ export function AnimatedTabs({
         ))}
       </TabsList>
 
-      {tabs.map((tab) => (
-        <TabsContent
-          key={tab.id}
-          value={tab.id}
-          className={cn('mt-0 pt-6', activeTab !== tab.id && 'hidden')}
-          forceMount
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            {activeTab === tab.id && (
-              <motion.div
-                key={tab.id}
-                initial={{ opacity: 0, x: direction * SLIDE_DISTANCE }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: direction * -SLIDE_DISTANCE }}
-                transition={spring.smooth}
-              >
-                {tab.content}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </TabsContent>
-      ))}
+      <div
+        onPointerDown={(e) => setDragStart(e.clientX)}
+        onPointerUp={(e) => {
+          const delta = e.clientX - dragStart;
+          if (Math.abs(delta) > 50) {
+            const activeIndex = tabs.findIndex((t) => t.id === activeTab);
+            if (delta < 0 && activeIndex < tabs.length - 1) handleTabChange(tabs[activeIndex + 1].id);
+            if (delta > 0 && activeIndex > 0) handleTabChange(tabs[activeIndex - 1].id);
+          }
+        }}
+      >
+        {tabs.map((tab) => (
+          <TabsContent
+            key={tab.id}
+            value={tab.id}
+            className={cn('mt-0 pt-6', activeTab !== tab.id && 'hidden')}
+            forceMount
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {activeTab === tab.id && (
+                <motion.div
+                  key={tab.id}
+                  initial={{ opacity: 0, x: direction * SLIDE_DISTANCE }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: direction * -SLIDE_DISTANCE }}
+                  transition={spring.smooth}
+                >
+                  {tab.content}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </TabsContent>
+        ))}
+      </div>
     </Tabs>
   );
 }

@@ -33,7 +33,7 @@ export function CivicaBottomNav() {
               key={href}
               href={href}
               className={cn(
-                'relative flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] px-2 transition-colors',
+                'relative flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] px-2 transition-colors [touch-action:manipulation]',
                 active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
               )}
               aria-current={active ? 'page' : undefined}

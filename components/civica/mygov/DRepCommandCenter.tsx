@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
   Vote,
   Users,
@@ -11,7 +13,9 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Share2,
 } from 'lucide-react';
+import { ShareModal } from '@/components/civica/shared/ShareModal';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDRepReportCard, useGovernancePulse, useDRepVotes } from '@/hooks/queries';
@@ -42,9 +46,11 @@ function ScoreGauge({ score, tier }: { score: number; tier: string }) {
         {score.toFixed(1)}
       </p>
       <div className="w-full h-2 bg-border rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all bg-current"
-          style={{ width: `${Math.min(100, score)}%` }}
+        <motion.div
+          className="h-full rounded-full bg-current"
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(100, score)}%` }}
+          transition={{ type: 'spring', stiffness: 60, damping: 20, delay: 0.3 }}
         />
       </div>
       <span
@@ -61,6 +67,7 @@ function ScoreGauge({ score, tier }: { score: number; tier: string }) {
 }
 
 export function DRepCommandCenter({ drepId }: { drepId: string }) {
+  const [shareOpen, setShareOpen] = useState(false);
   const { data: rawCard, isLoading: summaryLoading } = useDRepReportCard(drepId);
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
   const { data: rawVotes, isLoading: votesLoading } = useDRepVotes(drepId);
@@ -269,6 +276,26 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
           </p>
         </div>
       )}
+
+      {/* Share profile CTA */}
+      <div className="pt-4 border-t border-border">
+        <button
+          onClick={() => setShareOpen(true)}
+          className="w-full flex items-center gap-2 rounded-lg border border-border p-3 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+        >
+          <Share2 className="h-4 w-4" />
+          Share your profile
+        </button>
+      </div>
+
+      <ShareModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        ogImageUrl={`/api/og/wrapped/drep/${encodeURIComponent(drepId)}`}
+        shareText={`My governance score on @DRepScore — check it out!`}
+        shareUrl={`${typeof window !== 'undefined' ? window.location.origin : 'https://drepscore.app'}/drep/${encodeURIComponent(drepId)}`}
+        title="Share your profile"
+      />
     </div>
   );
 }

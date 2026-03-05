@@ -37,10 +37,7 @@ export function DRepProfileTabsV2({
   const votingLabel = wrappedAvailablePeriod ? (
     <span className="flex items-center gap-1.5">
       Voting Record
-      <Link
-        href={`/my-gov/wrapped/${wrappedAvailablePeriod}`}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <Link href={`/my-gov/wrapped/${wrappedAvailablePeriod}`} onClick={(e) => e.stopPropagation()}>
         <Badge
           variant="outline"
           className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-400 bg-amber-950/20 hover:bg-amber-950/40 transition-colors"

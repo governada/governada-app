@@ -5,10 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const SCORE_THRESHOLDS = [50, 60, 70, 80, 90];
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ drepId: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ drepId: string }> }) {
   const { drepId } = await params;
   const url = new URL(request.url);
   const since = url.searchParams.get('since');

@@ -230,7 +230,15 @@ export async function GET(
               <div style={{ display: 'flex', fontSize: '28px' }}>🗳️</div>
               <div style={{ display: 'flex', fontSize: '22px', color: OG.text }}>
                 Your DRep voted on{' '}
-                <span style={{ display: 'flex', fontWeight: 700, color, marginLeft: '8px', marginRight: '8px' }}>
+                <span
+                  style={{
+                    display: 'flex',
+                    fontWeight: 700,
+                    color,
+                    marginLeft: '8px',
+                    marginRight: '8px',
+                  }}
+                >
                   {votesCast}
                 </span>{' '}
                 proposals
@@ -251,7 +259,15 @@ export async function GET(
               <div style={{ display: 'flex', fontSize: '28px' }}>📝</div>
               <div style={{ display: 'flex', fontSize: '22px', color: OG.text }}>
                 Providing rationales for{' '}
-                <span style={{ display: 'flex', fontWeight: 700, color, marginLeft: '8px', marginRight: '8px' }}>
+                <span
+                  style={{
+                    display: 'flex',
+                    fontWeight: 700,
+                    color,
+                    marginLeft: '8px',
+                    marginRight: '8px',
+                  }}
+                >
                   {rationalesWritten}
                 </span>{' '}
                 of them
@@ -272,7 +288,15 @@ export async function GET(
               <div style={{ display: 'flex', fontSize: '28px' }}>⏱️</div>
               <div style={{ display: 'flex', fontSize: '22px', color: OG.text }}>
                 Delegating since{' '}
-                <span style={{ display: 'flex', fontWeight: 700, color, marginLeft: '8px', marginRight: '8px' }}>
+                <span
+                  style={{
+                    display: 'flex',
+                    fontWeight: 700,
+                    color,
+                    marginLeft: '8px',
+                    marginRight: '8px',
+                  }}
+                >
                   {delegationEpochs}
                 </span>{' '}
                 epochs ago

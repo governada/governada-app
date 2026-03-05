@@ -1,6 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -11,7 +17,12 @@ interface SPOStatementComposerProps {
   onSuccess?: () => void;
 }
 
-export function SPOStatementComposer({ open, onClose, poolId, onSuccess }: SPOStatementComposerProps) {
+export function SPOStatementComposer({
+  open,
+  onClose,
+  poolId,
+  onSuccess,
+}: SPOStatementComposerProps) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const MAX_CHARS = 1000;
@@ -40,7 +51,12 @@ export function SPOStatementComposer({ open, onClose, poolId, onSuccess }: SPOSt
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Share your position</DialogTitle>

@@ -67,11 +67,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function PublicWrappedPage({
-  params,
-}: {
-  params: Promise<PageParams>;
-}) {
+export default async function PublicWrappedPage({ params }: { params: Promise<PageParams> }) {
   const { entityType, entityId, period } = await params;
   const supabase = createClient();
 
@@ -92,9 +88,7 @@ export default async function PublicWrappedPage({
       <main className="min-h-screen flex items-center justify-center px-6">
         <div className="max-w-sm text-center space-y-4">
           <p className="text-4xl">⏳</p>
-          <p className="text-lg font-semibold text-foreground">
-            Wrapped not yet available
-          </p>
+          <p className="text-lg font-semibold text-foreground">Wrapped not yet available</p>
           <p className="text-sm text-muted-foreground">
             The Governance Wrapped for this entity and period has not been generated yet.
           </p>
@@ -197,8 +191,7 @@ export default async function PublicWrappedPage({
 
         {/* Share link */}
         <p className="text-center text-xs text-muted-foreground">
-          Share:{' '}
-          <span className="font-mono text-foreground/70 break-all">{publicUrl}</span>
+          Share: <span className="font-mono text-foreground/70 break-all">{publicUrl}</span>
         </p>
       </div>
     </main>

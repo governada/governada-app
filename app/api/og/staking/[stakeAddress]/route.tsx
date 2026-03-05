@@ -51,12 +51,11 @@ export async function GET(
     const delegatorCount = Number(pool.delegator_count ?? 0);
     const participationRate = 0; // pools table may not have this; omit if absent
 
-    const displayName =
-      ticker
-        ? `[${ticker}] ${poolName.length > 18 ? poolName.slice(0, 16) + '\u2026' : poolName}`
-        : poolName.length > 24
-          ? poolName.slice(0, 22) + '\u2026'
-          : poolName;
+    const displayName = ticker
+      ? `[${ticker}] ${poolName.length > 18 ? poolName.slice(0, 16) + '\u2026' : poolName}`
+      : poolName.length > 24
+        ? poolName.slice(0, 22) + '\u2026'
+        : poolName;
 
     // Suppress unused param lint — stakeAddress reserved for future personalisation
     void stakeAddress;
@@ -140,9 +139,7 @@ export async function GET(
                   minWidth: '180px',
                 }}
               >
-                <div
-                  style={{ display: 'flex', fontSize: '28px', fontWeight: 700, color: OG.text }}
-                >
+                <div style={{ display: 'flex', fontSize: '28px', fontWeight: 700, color: OG.text }}>
                   {s.value}
                 </div>
                 <div

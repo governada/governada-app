@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ period: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ period: string }> }) {
   const { period } = await params;
   const url = new URL(request.url);
   const entityType = url.searchParams.get('entityType') ?? 'drep';

@@ -128,11 +128,9 @@ export const generateGovernanceWrapped = inngest.createFunction(
 
       let upserted = 0;
       for (let i = 0; i < records.length; i += 50) {
-        await supabase
-          .from('governance_wrapped')
-          .upsert(records.slice(i, i + 50), {
-            onConflict: 'entity_type,entity_id,period_type,period_id',
-          });
+        await supabase.from('governance_wrapped').upsert(records.slice(i, i + 50), {
+          onConflict: 'entity_type,entity_id,period_type,period_id',
+        });
         upserted += 50;
       }
       return { count: upserted };

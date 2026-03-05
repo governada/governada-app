@@ -83,7 +83,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ pool
     const stats = [
       {
         label: period ? 'Voted' : 'Votes Cast',
-        value: period && periodData ? `${periodData.votes_cast ?? voteCount ?? 0}` : `${voteCount ?? 0}`,
+        value:
+          period && periodData ? `${periodData.votes_cast ?? voteCount ?? 0}` : `${voteCount ?? 0}`,
       },
       { label: 'Live Stake', value: formatAdaCompact(pool.live_stake ?? 0) },
       { label: 'Delegators', value: `${pool.delegator_count ?? 0}` },

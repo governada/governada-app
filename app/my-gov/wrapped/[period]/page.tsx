@@ -150,13 +150,7 @@ function buildCitizenSlides(data: CitizenWrappedData, entityId: string, period: 
 
 // ── Slide card component ───────────────────────────────────────────────────────
 
-function SlideCard({
-  slide,
-  onShare,
-}: {
-  slide: Slide;
-  onShare: () => void;
-}) {
+function SlideCard({ slide, onShare }: { slide: Slide; onShare: () => void }) {
   const isPositive = slide.subLabel?.startsWith('+');
   const isNegative = slide.subLabel?.startsWith('-');
 
@@ -267,8 +261,10 @@ export default function WrappedPage() {
   // Build slides
   const slides: Slide[] = (() => {
     if (!wrappedData || !resolvedEntityId) return [];
-    if (entityType === 'spo') return buildSPOSlides(wrappedData as SPOWrappedData, resolvedEntityId, period);
-    if (entityType === 'citizen') return buildCitizenSlides(wrappedData as CitizenWrappedData, resolvedEntityId, period);
+    if (entityType === 'spo')
+      return buildSPOSlides(wrappedData as SPOWrappedData, resolvedEntityId, period);
+    if (entityType === 'citizen')
+      return buildCitizenSlides(wrappedData as CitizenWrappedData, resolvedEntityId, period);
     return buildDRepSlides(wrappedData as DRepWrappedData, resolvedEntityId, period);
   })();
 

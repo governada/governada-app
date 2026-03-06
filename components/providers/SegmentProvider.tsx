@@ -5,6 +5,12 @@ import { useWallet } from '@/utils/wallet-context';
 
 export type UserSegment = 'anonymous' | 'citizen' | 'spo' | 'drep';
 
+export interface SegmentOverride {
+  segment: UserSegment;
+  drepId?: string;
+  poolId?: string;
+}
+
 export interface SegmentState {
   segment: UserSegment;
   realSegment: UserSegment;
@@ -14,7 +20,7 @@ export interface SegmentState {
   poolId: string | null;
   delegatedDrep: string | null;
   delegatedPool: string | null;
-  setOverride: (segment: UserSegment | null) => void;
+  setOverride: (override: SegmentOverride | null) => void;
 }
 
 const STORAGE_KEY = 'civica_segment';
@@ -77,7 +83,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     delegatedPool: null,
   });
   const [detectedSegment, setDetectedSegment] = useState<UserSegment>('anonymous');
-  const [override, setOverride] = useState<UserSegment | null>(null);
+  const [override, setOverride] = useState<SegmentOverride | null>(null);
 
   const detect = useCallback(async (stakeAddress: string) => {
     const cached = loadCached(stakeAddress);
@@ -138,8 +144,10 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
 
   const value: SegmentState = {
     ...detected,
-    segment: override ?? detectedSegment,
+    segment: override?.segment ?? detectedSegment,
     realSegment: detectedSegment,
+    drepId: override?.drepId ?? detected.drepId,
+    poolId: override?.poolId ?? detected.poolId,
     setOverride,
   };
 

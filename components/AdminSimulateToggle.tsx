@@ -5,12 +5,14 @@ import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 
-const SEGMENTS: { value: UserSegment | null; label: string }[] = [
+import type { SegmentOverride } from '@/components/providers/SegmentProvider';
+
+const SEGMENTS: { value: SegmentOverride | null; label: string }[] = [
   { value: null, label: 'Real' },
-  { value: 'anonymous', label: 'Anonymous' },
-  { value: 'citizen', label: 'Citizen' },
-  { value: 'drep', label: 'DRep' },
-  { value: 'spo', label: 'SPO' },
+  { value: { segment: 'anonymous' }, label: 'Anonymous' },
+  { value: { segment: 'citizen' }, label: 'Citizen' },
+  { value: { segment: 'drep' }, label: 'DRep' },
+  { value: { segment: 'spo' }, label: 'SPO' },
 ];
 
 export function AdminSimulateToggle() {
@@ -52,7 +54,7 @@ export function AdminSimulateToggle() {
         )}
         <div className="flex items-center rounded-full border bg-background/90 backdrop-blur-md shadow-lg p-1 gap-0">
           {SEGMENTS.map(({ value, label }) => {
-            const isActive = value === activeOverride;
+            const isActive = value?.segment === activeOverride;
             return (
               <button
                 key={label}

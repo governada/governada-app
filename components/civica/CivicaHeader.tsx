@@ -181,16 +181,45 @@ export function CivicaHeader() {
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
                           Simulate segment
                         </DropdownMenuLabel>
-                        {(['citizen', 'drep', 'spo'] as const).map((seg) => (
-                          <DropdownMenuItem
-                            key={seg}
-                            onClick={() => setOverride(seg === realSegment ? null : seg)}
-                          >
-                            {SEGMENT_LABELS[seg]}
-                            {seg === realSegment && ' (yours)'}
-                            {segment === seg && hasOverride && ' ✓'}
-                          </DropdownMenuItem>
-                        ))}
+                        <DropdownMenuItem
+                          onClick={() =>
+                            setOverride(realSegment === 'citizen' ? null : { segment: 'citizen' })
+                          }
+                        >
+                          Citizen
+                          {realSegment === 'citizen' && ' (yours)'}
+                          {segment === 'citizen' && hasOverride && ' ✓'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const id = window.prompt(
+                              'Enter DRep ID (drep1...):',
+                              realSegment === 'drep' ? '' : 'drep1...',
+                            );
+                            if (id?.trim()) {
+                              setOverride({ segment: 'drep', drepId: id.trim() });
+                            }
+                          }}
+                        >
+                          DRep
+                          {realSegment === 'drep' && ' (yours)'}
+                          {segment === 'drep' && hasOverride && ' ✓'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const id = window.prompt(
+                              'Enter Pool ID (pool1...):',
+                              realSegment === 'spo' ? '' : 'pool1...',
+                            );
+                            if (id?.trim()) {
+                              setOverride({ segment: 'spo', poolId: id.trim() });
+                            }
+                          }}
+                        >
+                          SPO
+                          {realSegment === 'spo' && ' (yours)'}
+                          {segment === 'spo' && hasOverride && ' ✓'}
+                        </DropdownMenuItem>
                         {hasOverride && (
                           <>
                             <DropdownMenuSeparator />

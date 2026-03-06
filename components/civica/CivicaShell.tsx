@@ -41,7 +41,6 @@ function DeepLinkHandler() {
 
 /**
  * Civica layout shell — wraps children with 4-tab nav + providers.
- * Rendered by root layout when civica_frontend flag is on.
  */
 export function CivicaShell({ children }: { children: React.ReactNode }) {
   return (

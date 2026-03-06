@@ -13,7 +13,6 @@
  * ---------------------------------------------------------------------------
  * ACTIVE FLAGS (in feature_flags table, toggleable via /admin/flags)
  * ---------------------------------------------------------------------------
- * civica_frontend          — Civica redesign master switch (shell, routes, home)
  * drep_communication       — DRep position statements / Phase B communication features
  * score_tiers              — Tier computation + change detection in sync pipeline
  * alignment_drift          — Citizen-DRep alignment drift detection

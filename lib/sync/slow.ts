@@ -545,7 +545,7 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
     .from('dreps')
     .select('id')
     .is('metadata_hash_verified', null)
-    .limit(200);
+    .limit(50);
 
   if (!unchecked?.length) return { verified: 0, failed: 0, noAnchor: 0 };
 

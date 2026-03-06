@@ -1076,24 +1076,36 @@ export async function fetchDRepUpdates(drepIds: string[]): Promise<
   }>
 > {
   if (drepIds.length === 0) return [];
-  const data = await koiosFetch<
-    Array<{
-      drep_id: string;
-      hex: string;
-      has_script: boolean;
-      update_tx_hash: string;
-      block_time: number;
-      action_type: 'registration' | 'update' | 'deregistration';
-      deposit: string | null;
-      meta_url: string | null;
-      meta_hash: string | null;
-      epoch_no?: number;
-    }>
-  >('/drep_updates', {
-    method: 'POST',
-    body: JSON.stringify({ _drep_ids: drepIds }),
-  });
-  return data || [];
+  try {
+    const data = await koiosFetch<
+      Array<{
+        drep_id: string;
+        hex: string;
+        has_script: boolean;
+        update_tx_hash: string;
+        block_time: number;
+        action_type: 'registration' | 'update' | 'deregistration';
+        deposit: string | null;
+        meta_url: string | null;
+        meta_hash: string | null;
+        epoch_no?: number;
+      }>
+    >('/drep_updates', {
+      method: 'POST',
+      body: JSON.stringify({ _drep_ids: drepIds }),
+    });
+    return data || [];
+  } catch (err) {
+    // drep_updates endpoint removed from Koios v1 — return empty gracefully
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('404')) {
+      logger.warn('[Koios] drep_updates endpoint unavailable (404), returning empty', {
+        drepCount: drepIds.length,
+      });
+      return [];
+    }
+    throw err;
+  }
 }
 
 /**
@@ -1108,15 +1120,23 @@ export async function fetchDRepEpochSummary(epochNo?: number): Promise<
   }>
 > {
   const filter = epochNo !== undefined ? `&_epoch_no=${epochNo}` : '';
-  const data = await koiosFetch<
+  const rawData = await koiosFetch<
     Array<{
       epoch_no: number;
-      drep_count: number;
-      active_drep_count: number;
-      total_active_voting_power: string;
+      dreps?: number;
+      drep_count?: number;
+      active_drep_count?: number;
+      amount?: string;
+      total_active_voting_power?: string;
     }>
   >(`/drep_epoch_summary?limit=100&order=epoch_no.desc${filter}`);
-  return data || [];
+  // Normalize: Koios v1 changed field names (dreps→drep_count, amount→total_active_voting_power)
+  return (rawData || []).map((r) => ({
+    epoch_no: r.epoch_no,
+    drep_count: r.drep_count ?? r.dreps ?? 0,
+    active_drep_count: r.active_drep_count ?? r.dreps ?? 0,
+    total_active_voting_power: r.total_active_voting_power ?? r.amount ?? '0',
+  }));
 }
 
 /**
@@ -1144,7 +1164,7 @@ export async function fetchEpochInfo(epochNo?: number): Promise<
       start_time: number;
       end_time: number;
     }>
-  >(`/epoch_info?include_next_epoch=false${filter}`);
+  >(`/epoch_info?_include_next_epoch=false${filter}`);
   return data || [];
 }
 

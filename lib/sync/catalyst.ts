@@ -123,8 +123,8 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
         }
       }
 
-      // Batch-upsert campaigns we've seen so far (every 5 pages to avoid FK issues)
-      if (pageCount % 5 === 0 || proposals.length < 60) {
+      // Flush campaigns before proposals to satisfy FK constraint
+      if (seenCampaigns.size > 0) {
         const campaignResult = await flushCampaigns(supabase, seenCampaigns);
         campaignsStored += campaignResult;
         seenCampaigns.clear();
@@ -179,7 +179,9 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
       if (linkResult.errors > 0) errors.push(`${linkResult.errors} team link errors`);
     }
 
-    await syncLog.finalize(errors.length === 0, errors.join('; ') || null, {
+    // Mark as success if we stored any proposals — partial errors are tolerable
+    const isSuccess = proposalsStored > 0 && errors.length < pageCount;
+    await syncLog.finalize(isSuccess, errors.length > 0 ? errors.join('; ') : null, {
       proposals_stored: proposalsStored,
       campaigns_stored: campaignsStored,
       team_members_stored: teamMembersStored,

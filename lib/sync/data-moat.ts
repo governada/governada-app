@@ -32,114 +32,153 @@ const DREP_UPDATE_BATCH = 50;
 // 1. DRep Delegator Snapshots
 // ---------------------------------------------------------------------------
 
-export async function syncDelegatorSnapshots(): Promise<{
-  drepsProcessed: number;
-  delegatorsSnapshotted: number;
-  errors: string[];
-}> {
+/**
+ * Prepare delegator snapshot: check coverage and return DRep IDs that still need processing.
+ * Returns null if coverage is already sufficient (>= 95%).
+ */
+export async function prepareDelegatorSnapshot(): Promise<{
+  epoch: number;
+  drepIds: string[];
+} | null> {
   const supabase = getSupabaseAdmin();
-  const syncLog = new SyncLogger(supabase, 'delegator_snapshots');
-  await syncLog.start();
+  const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
+  // Get active DReps
+  const { data: dreps } = await supabase
+    .from('dreps')
+    .select('id')
+    .filter('info->>isActive', 'eq', 'true');
+
+  if (!dreps?.length) return null;
+
+  // Check coverage: how many DReps already have snapshots this epoch?
+  const { count: snappedDreps } = await supabase
+    .from('drep_delegator_snapshots')
+    .select('drep_id', { count: 'exact', head: true })
+    .eq('epoch_no', currentEpoch);
+
+  const coverage = (snappedDreps ?? 0) / dreps.length;
+  if (coverage >= 0.95) {
+    logger.info('[data-moat] Delegator snapshots already at sufficient coverage', {
+      epoch: currentEpoch,
+      snappedDreps,
+      totalDreps: dreps.length,
+      coverage: `${(coverage * 100).toFixed(1)}%`,
+    });
+    return null;
+  }
+
+  // If partially done, only return DReps not yet snapshotted
+  let drepIds = dreps.map((d) => d.id);
+  if ((snappedDreps ?? 0) > 0) {
+    const { data: existing } = await supabase
+      .from('drep_delegator_snapshots')
+      .select('drep_id')
+      .eq('epoch_no', currentEpoch);
+    const done = new Set((existing ?? []).map((r: any) => r.drep_id));
+    drepIds = drepIds.filter((id) => !done.has(id));
+  }
+
+  return { epoch: currentEpoch, drepIds };
+}
+
+/**
+ * Process a chunk of DReps for delegator snapshots.
+ * Designed to run within a single Inngest step (< 60s).
+ */
+export async function syncDelegatorSnapshotChunk(
+  drepIds: string[],
+  epoch: number,
+): Promise<{ drepsProcessed: number; delegatorsSnapshotted: number; errors: string[] }> {
+  const supabase = getSupabaseAdmin();
   const errors: string[] = [];
   let drepsProcessed = 0;
   let delegatorsSnapshotted = 0;
 
-  try {
-    const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+  for (let i = 0; i < drepIds.length; i += DELEGATOR_CONCURRENCY) {
+    const chunk = drepIds.slice(i, i + DELEGATOR_CONCURRENCY);
 
-    // Check if we already have snapshots for this epoch
-    const { count: existingCount } = await supabase
-      .from('drep_delegator_snapshots')
-      .select('id', { count: 'exact', head: true })
-      .eq('epoch_no', currentEpoch);
+    const results = await Promise.allSettled(
+      chunk.map(async (drepId) => {
+        try {
+          const delegators = await fetchDRepDelegatorsFull(drepId);
+          if (delegators.length === 0) return 0;
 
-    if ((existingCount ?? 0) > 100) {
-      logger.info('[data-moat] Delegator snapshots already exist for this epoch', {
-        epoch: currentEpoch,
-        existing: existingCount,
-      });
-      await syncLog.finalize(true, null, {
-        skipped: true,
-        epoch: currentEpoch,
-        existingRecords: existingCount,
-      });
-      return { drepsProcessed: 0, delegatorsSnapshotted: 0, errors: [] };
-    }
+          const rows = delegators.map((d) => ({
+            drep_id: drepId,
+            epoch_no: epoch,
+            stake_address: d.stake_address,
+            amount_lovelace: parseInt(d.amount || '0', 10),
+          }));
 
-    // Get active DReps with significant voting power (skip dust DReps)
-    const { data: dreps } = await supabase
-      .from('dreps')
-      .select('id, info')
-      .filter('info->>isActive', 'eq', 'true');
-
-    if (!dreps?.length) {
-      await syncLog.finalize(true, null, { drepsProcessed: 0 });
-      return { drepsProcessed: 0, delegatorsSnapshotted: 0, errors: [] };
-    }
-
-    // Process DReps in parallel chunks
-    for (let i = 0; i < dreps.length; i += DELEGATOR_CONCURRENCY) {
-      const chunk = dreps.slice(i, i + DELEGATOR_CONCURRENCY);
-
-      const results = await Promise.allSettled(
-        chunk.map(async (drep) => {
-          try {
-            const delegators = await fetchDRepDelegatorsFull(drep.id);
-            if (delegators.length === 0) return 0;
-
-            const rows = delegators.map((d) => ({
-              drep_id: drep.id,
-              epoch_no: currentEpoch,
-              stake_address: d.stake_address,
-              amount_lovelace: parseInt(d.amount || '0', 10),
-            }));
-
-            const result = await batchUpsert(
-              supabase,
-              'drep_delegator_snapshots',
-              rows,
-              'drep_id,epoch_no,stake_address',
-              `delegator-snap-${drep.id.slice(0, 12)}`,
-            );
-            return result.success;
-          } catch (err) {
-            errors.push(`${drep.id.slice(0, 16)}: ${errMsg(err)}`);
-            return 0;
-          }
-        }),
-      );
-
-      for (const r of results) {
-        if (r.status === 'fulfilled') {
-          delegatorsSnapshotted += r.value;
-          drepsProcessed++;
+          const result = await batchUpsert(
+            supabase,
+            'drep_delegator_snapshots',
+            rows,
+            'drep_id,epoch_no,stake_address',
+            `delegator-snap-${drepId.slice(0, 12)}`,
+          );
+          return result.success;
+        } catch (err) {
+          errors.push(`${drepId.slice(0, 16)}: ${errMsg(err)}`);
+          return 0;
         }
-      }
-    }
-
-    // Snapshot completeness tracking
-    await supabase.from('snapshot_completeness_log').upsert(
-      {
-        snapshot_type: 'delegator_snapshots',
-        epoch_no: currentEpoch,
-        snapshot_date: new Date().toISOString().slice(0, 10),
-        record_count: delegatorsSnapshotted,
-        expected_count: dreps.length,
-        coverage_pct:
-          dreps.length > 0 ? Math.round((drepsProcessed / dreps.length) * 10000) / 100 : 100,
-      },
-      { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
+      }),
     );
 
-    const metrics = { drepsProcessed, delegatorsSnapshotted, epoch: currentEpoch };
-    await syncLog.finalize(errors.length === 0, errors.length ? errors.join('; ') : null, metrics);
-    return { drepsProcessed, delegatorsSnapshotted, errors };
-  } catch (err) {
-    const msg = errMsg(err);
-    await syncLog.finalize(false, msg, { drepsProcessed, delegatorsSnapshotted });
-    throw err;
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        delegatorsSnapshotted += r.value;
+        drepsProcessed++;
+      }
+    }
   }
+
+  return { drepsProcessed, delegatorsSnapshotted, errors };
+}
+
+/**
+ * Finalize delegator snapshot: write completeness log and sync_log.
+ */
+export async function finalizeDelegatorSnapshot(
+  epoch: number,
+  totalProcessed: number,
+  totalSnapshotted: number,
+  allErrors: string[],
+): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const syncLog = new SyncLogger(supabase, 'delegator_snapshots');
+  await syncLog.start();
+
+  const { data: dreps } = await supabase
+    .from('dreps')
+    .select('id', { count: 'exact', head: true })
+    .filter('info->>isActive', 'eq', 'true');
+
+  const totalDreps = dreps?.length ?? totalProcessed;
+
+  await supabase.from('snapshot_completeness_log').upsert(
+    {
+      snapshot_type: 'delegator_snapshots',
+      epoch_no: epoch,
+      snapshot_date: new Date().toISOString().slice(0, 10),
+      record_count: totalSnapshotted,
+      expected_count: totalDreps,
+      coverage_pct: totalDreps > 0 ? Math.round((totalProcessed / totalDreps) * 10000) / 100 : 100,
+    },
+    { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
+  );
+
+  const metrics = {
+    drepsProcessed: totalProcessed,
+    delegatorsSnapshotted: totalSnapshotted,
+    epoch,
+  };
+  await syncLog.finalize(
+    allErrors.length === 0,
+    allErrors.length ? allErrors.join('; ') : null,
+    metrics,
+  );
 }
 
 // ---------------------------------------------------------------------------

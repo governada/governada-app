@@ -249,45 +249,27 @@ async function subsquareFetch(path: string): Promise<unknown> {
 }
 
 export async function fetchPolkadotBenchmark(): Promise<ChainBenchmark | null> {
-  const [summaryData, referendaData] = await Promise.all([
-    withRetrySafe(() => subsquareFetch('/summary'), 'crossChain/subsquare/summary'),
-    withRetrySafe(
-      () => subsquareFetch('/gov2/referendums?page=1&page_size=20'),
-      'crossChain/subsquare/referenda',
-    ),
-  ]);
+  // SubSquare deprecated /gov2/referendums — use /summary only
+  const summaryData = await withRetrySafe(
+    () => subsquareFetch('/summary'),
+    'crossChain/subsquare/summary',
+  );
 
   const summary = summaryData as {
     gov2Referenda?: { all?: number; active?: number };
+    gov2ReferendaTracks?: { id: number; name: string; activeCount: number }[];
     fellowshipReferenda?: { all?: number };
   } | null;
 
-  const referenda = referendaData as {
-    items?: { state?: { name: string }; tally?: { ayes: string; nays: string } }[];
-    total?: number;
-  } | null;
+  if (!summary?.gov2Referenda) return null;
 
-  if (!summary && !referenda) return null;
+  const totalReferenda = summary.gov2Referenda.all ?? 0;
+  const activeReferenda = summary.gov2Referenda.active ?? 0;
+  const activeTracks = summary.gov2ReferendaTracks?.filter((t) => t.activeCount > 0).length ?? null;
 
-  const totalReferenda = summary?.gov2Referenda?.all ?? referenda?.total ?? 0;
-  const activeReferenda = summary?.gov2Referenda?.active ?? 0;
-
-  let proposalThroughput: number | null = null;
-  let participationRate: number | null = null;
-
-  if (referenda?.items?.length) {
-    const withVotes = referenda.items.filter((r) => {
-      const ayes = parseInt(r.tally?.ayes || '0', 10);
-      const nays = parseInt(r.tally?.nays || '0', 10);
-      return ayes + nays > 0;
-    });
-    proposalThroughput = Math.round((withVotes.length / referenda.items.length) * 100);
-
-    participationRate =
-      activeReferenda > 0
-        ? Math.min(100, Math.round((activeReferenda / Math.max(totalReferenda, 1)) * 100))
-        : null;
-  }
+  // Participation rate: active referenda as % of total (approximate engagement metric)
+  const participationRate =
+    totalReferenda > 0 ? Math.min(100, Math.round((activeReferenda / totalReferenda) * 100)) : null;
 
   const now = new Date();
   const periodLabel = `${now.getFullYear()}-W${String(getISOWeek(now)).padStart(2, '0')}`;
@@ -298,9 +280,9 @@ export async function fetchPolkadotBenchmark(): Promise<ChainBenchmark | null> {
     participationRate,
     delegateCount: null,
     proposalCount: totalReferenda,
-    proposalThroughput,
+    proposalThroughput: null,
     avgRationaleRate: null,
-    rawData: { summary, recentReferendaCount: referenda?.items?.length ?? 0 },
+    rawData: { summary, activeTracks },
     fetchedAt: now.toISOString(),
   };
 }

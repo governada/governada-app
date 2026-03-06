@@ -3,7 +3,7 @@
  * that compounds over time and becomes impossible for competitors to replicate.
  *
  * Streams (each as a separate Inngest step for durability):
- * 1. Delegator Snapshots (per-epoch delegation distribution)
+ * 1. Delegator Snapshots (per-epoch delegation distribution) — chunked to avoid timeout
  * 2. DRep Lifecycle Events (registration, updates, retirements)
  * 3. Epoch Governance Summaries (aggregate per-epoch stats)
  * 4. Committee Members (CC membership and terms)
@@ -15,12 +15,16 @@ import { logger } from '@/lib/logger';
 import { alertCritical, emitPostHog, errMsg } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import {
-  syncDelegatorSnapshots,
+  prepareDelegatorSnapshot,
+  syncDelegatorSnapshotChunk,
+  finalizeDelegatorSnapshot,
   syncDRepLifecycleEvents,
   syncEpochGovernanceSummaries,
   syncCommitteeMembers,
   syncMetadataArchive,
 } from '@/lib/sync/data-moat';
+
+const DELEGATOR_CHUNK_SIZE = 100;
 
 export const syncDataMoat = inngest.createFunction(
   {
@@ -32,15 +36,57 @@ export const syncDataMoat = inngest.createFunction(
   async ({ step }) => {
     const checkInId = cronCheckIn('sync-data-moat', '15 3 * * *');
     try {
-      // Step 1: Delegator snapshots — highest value, most data
-      const delegatorResult = await step.run('snapshot-delegators', async () => {
+      // Step 1: Prepare delegator snapshot — check coverage, get remaining DRep IDs
+      const prep = await step.run('prepare-delegator-snapshot', async () => {
         try {
-          return await syncDelegatorSnapshots();
+          return await prepareDelegatorSnapshot();
         } catch (err) {
-          logger.error('[data-moat] Delegator snapshots failed', { error: err });
-          return { drepsProcessed: 0, delegatorsSnapshotted: 0, errors: [errMsg(err)] };
+          logger.error('[data-moat] Delegator snapshot prep failed', { error: err });
+          return null;
         }
       });
+
+      // Step 1b: Process delegators in chunks (each step < 60s)
+      let totalProcessed = 0;
+      let totalSnapshotted = 0;
+      const delegatorErrors: string[] = [];
+
+      if (prep) {
+        const chunks: string[][] = [];
+        for (let i = 0; i < prep.drepIds.length; i += DELEGATOR_CHUNK_SIZE) {
+          chunks.push(prep.drepIds.slice(i, i + DELEGATOR_CHUNK_SIZE));
+        }
+
+        for (let ci = 0; ci < chunks.length; ci++) {
+          const chunkResult = await step.run(`snapshot-delegators-${ci}`, async () => {
+            try {
+              return await syncDelegatorSnapshotChunk(chunks[ci], prep.epoch);
+            } catch (err) {
+              logger.error(`[data-moat] Delegator chunk ${ci} failed`, { error: err });
+              return { drepsProcessed: 0, delegatorsSnapshotted: 0, errors: [errMsg(err)] };
+            }
+          });
+          totalProcessed += chunkResult.drepsProcessed;
+          totalSnapshotted += chunkResult.delegatorsSnapshotted;
+          delegatorErrors.push(...chunkResult.errors);
+        }
+
+        // Step 1c: Finalize — write sync_log and completeness
+        await step.run('finalize-delegator-snapshot', async () => {
+          await finalizeDelegatorSnapshot(
+            prep.epoch,
+            totalProcessed,
+            totalSnapshotted,
+            delegatorErrors,
+          );
+        });
+      }
+
+      const delegatorResult = {
+        drepsProcessed: totalProcessed,
+        delegatorsSnapshotted: totalSnapshotted,
+        errors: delegatorErrors,
+      };
 
       // Step 2: DRep lifecycle events — incremental, only new events
       const lifecycleResult = await step.run('sync-lifecycle-events', async () => {

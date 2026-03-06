@@ -159,7 +159,6 @@ jobs:
             .next/prerender-manifest.json
             .next/routes-manifest.json
             .next/required-server-files.json
-            .next/server
             public
           retention-days: 1
 

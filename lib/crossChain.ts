@@ -227,7 +227,7 @@ async function subsquareFetch(path: string): Promise<unknown> {
 
   try {
     const res = await fetch(`${SUBSQUARE_BASE}${path}`, {
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', Referer: 'https://polkadot.subsquare.io/' },
       signal: controller.signal,
       cache: 'no-store',
     });
@@ -249,11 +249,13 @@ async function subsquareFetch(path: string): Promise<unknown> {
 }
 
 export async function fetchPolkadotBenchmark(): Promise<ChainBenchmark | null> {
-  // SubSquare deprecated /gov2/referendums — use /summary only
-  const summaryData = await withRetrySafe(
-    () => subsquareFetch('/summary'),
-    'crossChain/subsquare/summary',
-  );
+  const [summaryData, referendaData] = await Promise.all([
+    withRetrySafe(() => subsquareFetch('/summary'), 'crossChain/subsquare/summary'),
+    withRetrySafe(
+      () => subsquareFetch('/gov2/referendums?page=1&page_size=20'),
+      'crossChain/subsquare/referenda',
+    ),
+  ]);
 
   const summary = summaryData as {
     gov2Referenda?: { all?: number; active?: number };
@@ -261,14 +263,35 @@ export async function fetchPolkadotBenchmark(): Promise<ChainBenchmark | null> {
     fellowshipReferenda?: { all?: number };
   } | null;
 
-  if (!summary?.gov2Referenda) return null;
+  const referenda = referendaData as {
+    items?: {
+      state?: { name: string };
+      onchainData?: { tally?: { ayes: string; nays: string } };
+    }[];
+    total?: number;
+  } | null;
 
-  const totalReferenda = summary.gov2Referenda.all ?? 0;
-  const activeReferenda = summary.gov2Referenda.active ?? 0;
-  const activeTracks = summary.gov2ReferendaTracks?.filter((t) => t.activeCount > 0).length ?? null;
+  if (!summary && !referenda) return null;
+
+  const totalReferenda = summary?.gov2Referenda?.all ?? referenda?.total ?? 0;
+  const activeReferenda = summary?.gov2Referenda?.active ?? 0;
+  const activeTracks =
+    summary?.gov2ReferendaTracks?.filter((t) => t.activeCount > 0).length ?? null;
+
+  let proposalThroughput: number | null = null;
+  let participationRate: number | null = null;
+
+  if (referenda?.items?.length) {
+    const withVotes = referenda.items.filter((r) => {
+      const ayes = parseInt(r.onchainData?.tally?.ayes || '0', 10);
+      const nays = parseInt(r.onchainData?.tally?.nays || '0', 10);
+      return ayes + nays > 0;
+    });
+    proposalThroughput = Math.round((withVotes.length / referenda.items.length) * 100);
+  }
 
   // Participation rate: active referenda as % of total (approximate engagement metric)
-  const participationRate =
+  participationRate =
     totalReferenda > 0 ? Math.min(100, Math.round((activeReferenda / totalReferenda) * 100)) : null;
 
   const now = new Date();
@@ -280,9 +303,9 @@ export async function fetchPolkadotBenchmark(): Promise<ChainBenchmark | null> {
     participationRate,
     delegateCount: null,
     proposalCount: totalReferenda,
-    proposalThroughput: null,
+    proposalThroughput,
     avgRationaleRate: null,
-    rawData: { summary, activeTracks },
+    rawData: { summary, activeTracks, recentReferendaCount: referenda?.items?.length ?? 0 },
     fetchedAt: now.toISOString(),
   };
 }

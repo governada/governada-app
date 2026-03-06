@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   install:
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -41,7 +41,7 @@ jobs:
 
   type-check:
     needs: install
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -55,7 +55,7 @@ jobs:
 
   format:
     needs: install
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -69,7 +69,7 @@ jobs:
 
   lint:
     needs: install
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -83,7 +83,7 @@ jobs:
 
   test:
     needs: install
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -119,7 +119,7 @@ jobs:
 
   build:
     needs: [type-check, format, lint, test]
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
@@ -166,7 +166,7 @@ jobs:
   sentry-release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -185,7 +185,7 @@ jobs:
   notify:
     if: failure()
     needs: [type-check, format, lint, test, build]
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - name: Discord notification
         if: vars.DISCORD_WEBHOOK_URL != ''

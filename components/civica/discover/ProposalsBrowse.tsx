@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Clock, Landmark, Users, Shield, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
@@ -52,12 +52,63 @@ const VOTE_PILL: Record<string, { label: string; color: string }> = {
   Abstain: { label: 'Abstain', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' },
 };
 
+function formatAdaShort(ada: number): string {
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${(ada / 1_000).toFixed(0)}K`;
+  return ada.toLocaleString();
+}
+
+function formatPct(pct: number): string {
+  if (pct < 0.01) return '<0.01%';
+  if (pct < 1) return `${pct.toFixed(2)}%`;
+  return `${pct.toFixed(1)}%`;
+}
+
+function TriBodyMini({
+  triBody,
+}: {
+  triBody: {
+    drep: { yes: number; no: number; abstain: number };
+    spo: { yes: number; no: number; abstain: number };
+    cc: { yes: number; no: number; abstain: number };
+  };
+}) {
+  const bodies = [
+    { label: 'DRep', data: triBody.drep, icon: Users },
+    { label: 'SPO', data: triBody.spo, icon: Shield },
+    { label: 'CC', data: triBody.cc, icon: Scale },
+  ] as const;
+
+  return (
+    <div className="flex items-center gap-2">
+      {bodies.map(({ label, data, icon: Icon }) => {
+        const total = data.yes + data.no + data.abstain;
+        if (total === 0) return null;
+        const yesPct = Math.round((data.yes / total) * 100);
+        const color =
+          yesPct >= 60 ? 'text-green-500' : yesPct >= 40 ? 'text-amber-500' : 'text-red-500';
+        return (
+          <span
+            key={label}
+            className="flex items-center gap-0.5 text-[10px]"
+            title={`${label}: ${data.yes}Y / ${data.no}N / ${data.abstain}A`}
+          >
+            <Icon className="h-2.5 w-2.5 text-muted-foreground" />
+            <span className={cn('font-semibold tabular-nums', color)}>{yesPct}%</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 const PAGE_SIZE = 25;
 
 export function ProposalsBrowse() {
   const { data: rawData, isLoading } = useProposals(200);
   const data = rawData as any;
   const proposals: any[] = useMemo(() => data?.proposals ?? [], [data]);
+  const currentEpoch: number | null = data?.currentEpoch ?? null;
   const { delegatedDrepId } = useWallet();
   const { data: drepVotesRaw } = useDRepVotes(delegatedDrepId);
 
@@ -195,45 +246,79 @@ export function ProposalsBrowse() {
             const status = p.status ?? 'Open';
             const drepVote = drepVoteMap.get(`${p.txHash}:${p.index}`);
             const pill = drepVote ? VOTE_PILL[drepVote] : null;
+            const epochsLeft =
+              status === 'active' && currentEpoch && p.expirationEpoch
+                ? p.expirationEpoch - currentEpoch
+                : null;
+            const hasTreasury = p.type === 'TreasuryWithdrawals' && p.withdrawalAmount;
             return (
               <Link
                 key={`${p.txHash}-${p.index}`}
                 href={`/proposal/${p.txHash}/${p.index}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors group"
+                className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30 transition-colors group"
               >
-                {p.type && (
-                  <span
-                    className={cn(
-                      'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0',
-                      TYPE_COLORS[p.type] ?? 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {typeLabel(p.type)}
-                  </span>
-                )}
-                <span className="flex-1 text-sm text-foreground truncate min-w-0">
-                  {p.title || `${p.txHash?.slice(0, 16)}…`}
-                </span>
-                {pill && (
-                  <span
-                    className={cn(
-                      'text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 hidden sm:inline',
-                      pill.color,
-                    )}
-                    title={`Your DRep voted ${pill.label}`}
-                  >
-                    DRep: {pill.label}
-                  </span>
-                )}
-                <span
-                  className={cn(
-                    'text-xs font-medium shrink-0',
-                    STATUS_COLORS[status] ?? 'text-muted-foreground',
+                {/* Row 1: Type + Title + Status */}
+                <div className="flex items-center gap-3">
+                  {p.type && (
+                    <span
+                      className={cn(
+                        'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0',
+                        TYPE_COLORS[p.type] ?? 'bg-muted text-muted-foreground',
+                      )}
+                    >
+                      {typeLabel(p.type)}
+                    </span>
                   )}
-                >
-                  {status}
-                </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/70 shrink-0 group-hover:text-muted-foreground transition-colors" />
+                  <span className="flex-1 text-sm text-foreground truncate min-w-0">
+                    {p.title || `${p.txHash?.slice(0, 16)}…`}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-xs font-medium shrink-0',
+                      STATUS_COLORS[status] ?? 'text-muted-foreground',
+                    )}
+                  >
+                    {status}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/70 shrink-0 group-hover:text-muted-foreground transition-colors" />
+                </div>
+
+                {/* Row 2: Metadata chips */}
+                <div className="flex items-center gap-3 pl-0 sm:pl-[calc(1.5rem+0.75rem)]">
+                  {hasTreasury && (
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-500">
+                      <Landmark className="h-2.5 w-2.5" />
+                      <span className="font-semibold tabular-nums">
+                        {formatAdaShort(p.withdrawalAmount)} ADA
+                      </span>
+                      {p.treasuryPct != null && (
+                        <span className="text-muted-foreground">
+                          ({formatPct(p.treasuryPct * 100)})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {p.triBody && <TriBodyMini triBody={p.triBody} />}
+                  {pill && (
+                    <span
+                      className={cn(
+                        'text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0',
+                        pill.color,
+                      )}
+                      title={`Your DRep voted ${pill.label}`}
+                    >
+                      DRep: {pill.label}
+                    </span>
+                  )}
+                  {epochsLeft != null && epochsLeft > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Clock className="h-2.5 w-2.5" />
+                      <span className="tabular-nums">
+                        {epochsLeft === 1 ? '1 epoch left' : `${epochsLeft} epochs left`}
+                      </span>
+                    </span>
+                  )}
+                </div>
               </Link>
             );
           })}

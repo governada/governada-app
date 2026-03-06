@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 import { RadarOverlay } from '@/components/matching/RadarOverlay';
 import { cn } from '@/lib/utils';
+import { DelegateButton } from '@/components/DelegateButton';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -540,11 +541,19 @@ function QuickMatchResultCard({
               </p>
             )}
 
-            <Link href={`/drep/${encodeURIComponent(match.drepId)}`}>
-              <Button variant="outline" size="sm" className="text-xs gap-1 h-7 mt-1">
-                View Profile <ChevronRight className="h-3 w-3" />
-              </Button>
-            </Link>
+            <div className="flex gap-2 mt-1">
+              <DelegateButton
+                drepId={match.drepId}
+                drepName={displayName}
+                size="sm"
+                className="text-xs h-7"
+              />
+              <Link href={`/drep/${encodeURIComponent(match.drepId)}`}>
+                <Button variant="outline" size="sm" className="text-xs gap-1 h-7">
+                  View Profile <ChevronRight className="h-3 w-3" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </CardContent>

@@ -94,7 +94,7 @@ export async function validateSessionToken(token: string): Promise<SessionPayloa
       jti: (payload.jti as string) || undefined,
     };
 
-    if (!sessionPayload.userId || !sessionPayload.walletAddress) return null;
+    if (!sessionPayload.walletAddress) return null;
     if (sessionPayload.expiresAt < Date.now()) return null;
 
     if (sessionPayload.jti) {
@@ -163,7 +163,7 @@ export async function clearSessionCookie(): Promise<void> {
  */
 export async function requireAuth(
   request: NextRequest,
-): Promise<{ userId: string; wallet: string } | NextResponse> {
+): Promise<{ userId: string | undefined; wallet: string } | NextResponse> {
   const auth = request.headers.get('authorization');
   if (!auth?.startsWith('Bearer ')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

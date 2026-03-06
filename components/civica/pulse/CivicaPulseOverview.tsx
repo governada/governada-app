@@ -439,52 +439,67 @@ export function CivicaPulseOverview() {
           )}
 
           {/* ── Treasury Health Components ─────────────────────── */}
-          {treasury?.healthComponents && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Treasury Health Breakdown
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {(treasury.healthComponents as any[]).map((c: any) => (
-                  <div
-                    key={c.name ?? c.label}
-                    className="rounded-xl border border-border bg-card px-4 py-3 space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium truncate">
-                        {c.name ?? c.label}
-                      </p>
-                      <span
-                        className={cn(
-                          'text-sm font-bold tabular-nums',
-                          (c.score ?? c.value ?? 0) >= 70
-                            ? 'text-emerald-400'
-                            : (c.score ?? c.value ?? 0) >= 40
-                              ? 'text-amber-400'
-                              : 'text-rose-400',
-                        )}
-                      >
-                        {Math.round(c.score ?? c.value ?? 0)}
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+          {treasury?.healthComponents &&
+            typeof treasury.healthComponents === 'object' &&
+            (() => {
+              const components = Array.isArray(treasury.healthComponents)
+                ? (treasury.healthComponents as any[])
+                : Object.entries(treasury.healthComponents as Record<string, number>).map(
+                    ([key, value]) => ({
+                      name: key
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, (s: string) => s.toUpperCase()),
+                      score: value,
+                    }),
+                  );
+              if (components.length === 0) return null;
+              return (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Treasury Health Breakdown
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {components.map((c: any) => (
                       <div
-                        className={cn(
-                          'h-full rounded-full',
-                          (c.score ?? c.value ?? 0) >= 70
-                            ? 'bg-emerald-500'
-                            : (c.score ?? c.value ?? 0) >= 40
-                              ? 'bg-amber-500'
-                              : 'bg-rose-500',
-                        )}
-                        style={{ width: `${Math.min(100, c.score ?? c.value ?? 0)}%` }}
-                      />
-                    </div>
+                        key={c.name ?? c.label}
+                        className="rounded-xl border border-border bg-card px-4 py-3 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium truncate">
+                            {c.name ?? c.label}
+                          </p>
+                          <span
+                            className={cn(
+                              'text-sm font-bold tabular-nums',
+                              (c.score ?? c.value ?? 0) >= 70
+                                ? 'text-emerald-400'
+                                : (c.score ?? c.value ?? 0) >= 40
+                                  ? 'text-amber-400'
+                                  : 'text-rose-400',
+                            )}
+                          >
+                            {Math.round(c.score ?? c.value ?? 0)}
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              'h-full rounded-full',
+                              (c.score ?? c.value ?? 0) >= 70
+                                ? 'bg-emerald-500'
+                                : (c.score ?? c.value ?? 0) >= 40
+                                  ? 'bg-amber-500'
+                                  : 'bg-rose-500',
+                            )}
+                            style={{ width: `${Math.min(100, c.score ?? c.value ?? 0)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              );
+            })()}
 
           {/* ── ADA governed ────────────────────────────────────── */}
           {pulse?.totalAdaGoverned && (

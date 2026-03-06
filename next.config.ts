@@ -55,7 +55,7 @@ const nextConfig: NextConfig = {
       { source: '/dashboard/spo', destination: '/my-gov', permanent: true },
       { source: '/dashboard/inbox', destination: '/my-gov/inbox', permanent: true },
       { source: '/profile', destination: '/my-gov/profile', permanent: true },
-      { source: '/methodology', destination: '/discover', permanent: true },
+      // /methodology now has its own page — no redirect needed
       { source: '/treasury', destination: '/pulse', permanent: true },
       { source: '/decentralization', destination: '/pulse', permanent: true },
       {

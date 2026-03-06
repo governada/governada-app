@@ -117,6 +117,14 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       reliability: drep.reliability_v3,
       governanceIdentity: drep.governance_identity,
     },
+    alignment: {
+      treasuryConservative: drep.alignment_treasury_conservative ?? null,
+      treasuryGrowth: drep.alignment_treasury_growth ?? null,
+      decentralization: drep.alignment_decentralization ?? null,
+      security: drep.alignment_security ?? null,
+      innovation: drep.alignment_innovation ?? null,
+      transparency: drep.alignment_transparency ?? null,
+    },
     votingRecord: {
       totalVotes: voteCount ?? 0,
       rationalesProvided: rationaleCount ?? 0,

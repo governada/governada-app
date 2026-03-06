@@ -9,6 +9,7 @@ import { CivicaSPOBrowse } from './CivicaSPOBrowse';
 import { CivicaLeaderboard } from './CivicaLeaderboard';
 import { CommitteeDiscovery } from '@/components/CommitteeDiscovery';
 import { ProposalsBrowse } from './ProposalsBrowse';
+import { DiscoverHero } from './DiscoverHero';
 import type { EnrichedDRep } from '@/lib/koios';
 
 type TabId = 'dreps' | 'spos' | 'proposals' | 'committee' | 'rankings';
@@ -77,6 +78,9 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
 
   return (
     <div className="space-y-0">
+      <div className="mb-4">
+        <DiscoverHero totalDreps={totalAvailable} proposalCount={proposalCount} />
+      </div>
       {/* ── Tab bar ──────────────────────────────────────────── */}
       <div className="border-b border-border sticky top-14 z-30 bg-background/90 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6">
         <div className="flex gap-0 overflow-x-auto scrollbar-none max-w-4xl">

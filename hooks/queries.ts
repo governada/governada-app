@@ -366,6 +366,15 @@ export function useGovernanceEpochRecap() {
   });
 }
 
+export function useSimilarDReps(drepId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['similar-dreps', drepId],
+    queryFn: () => fetchJson(`/api/dreps/${encodeURIComponent(drepId!)}/similar`),
+    enabled: !!drepId,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 export function useGovernanceDrepFeed() {
   return useQuery({
     queryKey: ['governance-drep-feed'],

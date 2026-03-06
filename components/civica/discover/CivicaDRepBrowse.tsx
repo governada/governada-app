@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, LayoutGrid, TableProperties, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { CivicaDRepCard } from '@/components/civica/cards/CivicaDRepCard';
 import { computeTier } from '@/lib/scoring/tiers';
+import { TIER_SCORE_COLOR, TIER_BADGE_BG, tierKey } from '@/components/civica/cards/tierStyles';
 import type { EnrichedDRep } from '@/lib/koios';
 import { ScoreDistribution } from '@/components/civica/charts/ScoreDistribution';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
@@ -31,7 +34,20 @@ const ALIGNMENT_FIELD_MAP: Record<string, keyof EnrichedDRep> = {
   transparency: 'alignmentTransparency',
 };
 
-const PAGE_SIZE = 24;
+type ViewMode = 'cards' | 'table';
+const VIEW_MODE_KEY = 'civica_drep_view';
+
+function getInitialViewMode(): ViewMode {
+  if (typeof window === 'undefined') return 'cards';
+  try {
+    const stored = localStorage.getItem(VIEW_MODE_KEY);
+    if (stored === 'table' || stored === 'cards') return stored;
+  } catch {}
+  return window.innerWidth >= 768 ? 'cards' : 'cards';
+}
+
+const CARD_PAGE_SIZE = 24;
+const TABLE_PAGE_SIZE = 50;
 
 interface FilterState {
   search: string;
@@ -52,9 +68,54 @@ interface CivicaDRepBrowseProps {
   totalAvailable?: number;
 }
 
+function DRepTableRow({ drep, rank }: { drep: EnrichedDRep; rank: number }) {
+  const score = drep.drepScore ?? 0;
+  const tier = tierKey(computeTier(score));
+  const displayName = drep.name || drep.ticker || drep.handle || `${drep.drepId.slice(0, 16)}…`;
+
+  return (
+    <Link
+      href={`/drep/${drep.drepId}`}
+      className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors group"
+    >
+      <span className="text-[10px] text-muted-foreground/60 font-medium tabular-nums w-6 text-right shrink-0">
+        #{rank}
+      </span>
+      <span className="flex-1 text-sm font-medium truncate min-w-0">{displayName}</span>
+      <span
+        className={cn(
+          'text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0',
+          TIER_BADGE_BG[tier],
+          TIER_SCORE_COLOR[tier],
+        )}
+      >
+        {score}
+      </span>
+      <span className="text-[10px] text-muted-foreground tabular-nums w-14 text-right shrink-0">
+        {Math.round(drep.effectiveParticipation ?? 0)}% part.
+      </span>
+      <span className="text-[10px] text-muted-foreground tabular-nums w-12 text-right shrink-0">
+        {drep.delegatorCount.toLocaleString()}
+      </span>
+      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 group-hover:text-primary transition-colors" />
+    </Link>
+  );
+}
+
 export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
+  const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode);
+
+  const pageSize = viewMode === 'table' ? TABLE_PAGE_SIZE : CARD_PAGE_SIZE;
+
+  const toggleViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    setPage(0);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {}
+  };
 
   const isDefaultFilters =
     filters.search === '' &&
@@ -117,8 +178,8 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
 
   const allScores = useMemo(() => dreps.map((d) => d.drepScore ?? 0), [dreps]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const pageItems = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const pageItems = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
   return (
     <div className="space-y-4 pt-4">
@@ -165,7 +226,35 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
         pageInfo={totalPages > 1 ? `Page ${page + 1} / ${totalPages}` : undefined}
       />
 
-      {/* Card grid */}
+      {/* View mode toggle */}
+      <div className="flex items-center justify-end gap-1">
+        <button
+          onClick={() => toggleViewMode('cards')}
+          className={cn(
+            'p-1.5 rounded transition-colors',
+            viewMode === 'cards'
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          title="Card view"
+        >
+          <LayoutGrid className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => toggleViewMode('table')}
+          className={cn(
+            'p-1.5 rounded transition-colors',
+            viewMode === 'table'
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          title="Table view"
+        >
+          <TableProperties className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Content */}
       {pageItems.length === 0 ? (
         <div className="py-16 text-center space-y-2">
           <p className="text-muted-foreground text-sm">No DReps match your filters.</p>
@@ -174,10 +263,25 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
             Clear filters
           </Button>
         </div>
-      ) : (
+      ) : viewMode === 'cards' ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {pageItems.map((drep, i) => (
-            <CivicaDRepCard key={drep.drepId} drep={drep} rank={page * PAGE_SIZE + i + 1} />
+            <CivicaDRepCard key={drep.drepId} drep={drep} rank={page * pageSize + i + 1} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden">
+          {/* Table header */}
+          <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <span className="w-6 text-right shrink-0">#</span>
+            <span className="flex-1">Name</span>
+            <span className="shrink-0">Score</span>
+            <span className="w-14 text-right shrink-0">Particip.</span>
+            <span className="w-12 text-right shrink-0">Deleg.</span>
+            <span className="w-3.5 shrink-0" />
+          </div>
+          {pageItems.map((drep, i) => (
+            <DRepTableRow key={drep.drepId} drep={drep} rank={page * pageSize + i + 1} />
           ))}
         </div>
       )}

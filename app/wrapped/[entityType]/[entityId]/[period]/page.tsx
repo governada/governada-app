@@ -65,6 +65,58 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function ScoreProgression({
+  scoreStart,
+  scoreEnd,
+  scoreDelta,
+}: {
+  scoreStart: number;
+  scoreEnd: number;
+  scoreDelta: number;
+}) {
+  const improved = scoreDelta > 0;
+  const deltaColor = improved
+    ? 'text-emerald-400'
+    : scoreDelta < 0
+      ? 'text-rose-400'
+      : 'text-muted-foreground';
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+      <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium text-center">
+        Score Progression
+      </p>
+      <div className="flex items-center justify-center gap-4">
+        <div className="text-center">
+          <p className="text-2xl font-bold tabular-nums text-muted-foreground">
+            {Math.round(scoreStart)}
+          </p>
+          <p className="text-[10px] text-muted-foreground">Start</p>
+        </div>
+        <div className="text-center">
+          <span className={`text-lg font-bold ${deltaColor}`}>
+            {scoreDelta > 0 ? '+' : ''}
+            {scoreDelta.toFixed(1)}
+          </span>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold tabular-nums text-foreground">{Math.round(scoreEnd)}</p>
+          <p className="text-[10px] text-muted-foreground">End</p>
+        </div>
+      </div>
+      <div className="relative w-full h-2 bg-border rounded-full overflow-hidden">
+        <div
+          className="absolute h-full rounded-full bg-muted-foreground/30"
+          style={{ width: `${Math.min(100, scoreStart)}%` }}
+        />
+        <div
+          className={`absolute h-full rounded-full ${improved ? 'bg-emerald-500' : scoreDelta < 0 ? 'bg-rose-500' : 'bg-primary'}`}
+          style={{ width: `${Math.min(100, scoreEnd)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function PublicWrappedPage({ params }: { params: Promise<PageParams> }) {
@@ -102,6 +154,13 @@ export default async function PublicWrappedPage({ params }: { params: Promise<Pa
 
   const data = (wrapped.data ?? {}) as Record<string, unknown>;
 
+  // Score progression
+  const scoreStart = data.score_start as number | undefined;
+  const scoreEnd = data.score_end as number | undefined;
+  const scoreDelta = data.score_delta as number | undefined;
+  const hasProgression =
+    scoreStart !== undefined && scoreEnd !== undefined && scoreDelta !== undefined;
+
   // Build stats based on entity type
   const stats: Array<{ label: string; value: string | number }> = [];
 
@@ -112,6 +171,10 @@ export default async function PublicWrappedPage({ params }: { params: Promise<Pa
       stats.push({ label: 'Proposals Voted', value: data.votes_cast as number });
     if (data.rationales_written !== undefined)
       stats.push({ label: 'Rationales Written', value: data.rationales_written as number });
+    if (data.rationale_rate !== undefined)
+      stats.push({ label: 'Rationale Rate', value: `${data.rationale_rate}%` });
+    if (data.participation_rate !== undefined)
+      stats.push({ label: 'Participation Rate', value: `${data.participation_rate}%` });
     if (data.delegators_end !== undefined)
       stats.push({ label: 'Delegators', value: data.delegators_end as number });
   } else if (entityType === 'spo') {
@@ -126,6 +189,16 @@ export default async function PublicWrappedPage({ params }: { params: Promise<Pa
       });
     if (data.delegators_end !== undefined)
       stats.push({ label: 'Delegators', value: data.delegators_end as number });
+    if (data.live_stake_end !== undefined) {
+      const stakeAda = Number(data.live_stake_end) / 1_000_000;
+      const formatted =
+        stakeAda >= 1_000_000_000
+          ? `${(stakeAda / 1_000_000_000).toFixed(1)}B`
+          : stakeAda >= 1_000_000
+            ? `${(stakeAda / 1_000_000).toFixed(1)}M`
+            : `${Math.round(stakeAda / 1_000)}K`;
+      stats.push({ label: 'Live Stake', value: `₳${formatted}` });
+    }
   } else {
     // citizen
     if (data.drep_votes_cast !== undefined)
@@ -163,6 +236,15 @@ export default async function PublicWrappedPage({ params }: { params: Promise<Pa
             />
           </CardContent>
         </Card>
+
+        {/* Score progression */}
+        {hasProgression && (
+          <ScoreProgression
+            scoreStart={scoreStart!}
+            scoreEnd={scoreEnd!}
+            scoreDelta={scoreDelta!}
+          />
+        )}
 
         {/* Stats grid */}
         {stats.length > 0 && (

@@ -44,6 +44,144 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
+// ── Score Sparkline ──────────────────────────────────────────────────────────
+function ScoreSparkline({ history }: { history: Array<{ epoch_no: number; score: number }> }) {
+  if (history.length < 2) return null;
+  const scores = history.map((h) => h.score);
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const range = max - min || 1;
+  const w = 160;
+  const h = 32;
+  const pad = 2;
+  const points = history
+    .map((pt, i) => {
+      const x = pad + (i / (history.length - 1)) * (w - pad * 2);
+      const y = h - pad - ((pt.score - min) / range) * (h - pad * 2);
+      return `${x},${y}`;
+    })
+    .join(' ');
+  const trending = scores[scores.length - 1] >= scores[0];
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+        Score History ({history.length} epochs)
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-8" preserveAspectRatio="none">
+        <polyline
+          points={points}
+          fill="none"
+          stroke={trending ? '#34d399' : '#fb7185'}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
+        <span>E{history[0].epoch_no}</span>
+        <span>E{history[history.length - 1].epoch_no}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Alignment Bars ───────────────────────────────────────────────────────────
+const ALIGNMENT_DIMS: Array<{ key: string; label: string; color: string }> = [
+  { key: 'treasuryConservative', label: 'Treasury Conservative', color: 'bg-amber-500' },
+  { key: 'treasuryGrowth', label: 'Treasury Growth', color: 'bg-emerald-500' },
+  { key: 'decentralization', label: 'Decentralization', color: 'bg-blue-500' },
+  { key: 'security', label: 'Security', color: 'bg-rose-500' },
+  { key: 'innovation', label: 'Innovation', color: 'bg-violet-500' },
+  { key: 'transparency', label: 'Transparency', color: 'bg-cyan-500' },
+];
+
+function AlignmentBars({ alignment }: { alignment: Record<string, number | null> }) {
+  const hasAny = ALIGNMENT_DIMS.some((d) => alignment[d.key] != null);
+  if (!hasAny) return null;
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+        DRep Governance Alignment
+      </p>
+      <div className="space-y-2">
+        {ALIGNMENT_DIMS.map((dim) => {
+          const val = alignment[dim.key];
+          if (val == null) return null;
+          const offset = val - 50; // deviation from neutral
+          return (
+            <div key={dim.key} className="space-y-0.5">
+              <div className="flex justify-between text-[10px]">
+                <span className="text-muted-foreground">{dim.label}</span>
+                <span className="tabular-nums text-foreground/70">{Math.round(val)}</span>
+              </div>
+              <div className="relative h-1.5 bg-border rounded-full overflow-hidden">
+                {/* Center line marker */}
+                <div className="absolute left-1/2 top-0 h-full w-px bg-muted-foreground/30" />
+                {/* Value bar from center */}
+                <div
+                  className={cn('absolute h-full rounded-full', dim.color)}
+                  style={{
+                    left: offset >= 0 ? '50%' : `${50 + offset}%`,
+                    width: `${Math.abs(offset)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Tier Progress ────────────────────────────────────────────────────────────
+function TierProgressBar({
+  tierProgress,
+}: {
+  tierProgress: {
+    currentTier: string;
+    percentWithinTier: number;
+    pointsToNext: number | null;
+    nextTier: string | null;
+  };
+}) {
+  const tk = tierKey(tierProgress.currentTier);
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+          Tier Progress
+        </p>
+        <span
+          className={cn(
+            'text-[11px] font-bold px-2 py-0.5 rounded-full',
+            TIER_BADGE_BG[tk],
+            TIER_SCORE_COLOR[tk],
+          )}
+        >
+          {tierProgress.currentTier}
+        </span>
+      </div>
+      <div className="w-full h-2 bg-border rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full bg-primary transition-all"
+          style={{ width: `${tierProgress.percentWithinTier}%` }}
+        />
+      </div>
+      {tierProgress.nextTier && tierProgress.pointsToNext != null && (
+        <p className="text-[10px] text-muted-foreground">
+          <span className="tabular-nums font-medium text-foreground/70">
+            {tierProgress.pointsToNext}
+          </span>{' '}
+          points to {tierProgress.nextTier}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────────────
+
 export function CitizenCommandCenter({
   delegatedDrep,
 }: {
@@ -65,6 +203,18 @@ export function CitizenCommandCenter({
   const drepIsActive: boolean = card?.isActive ?? true;
   const drepTier = tierKey(computeTier(drepScore));
   const scoreDelta: number | undefined = card?.momentum;
+
+  // New data from report card API (previously unused)
+  const scoreHistory: Array<{ epoch_no: number; score: number }> = card?.scoreHistory ?? [];
+  const alignment: Record<string, number | null> = card?.alignment ?? {};
+  const tierProgress = card?.tierProgress as
+    | {
+        currentTier: string;
+        percentWithinTier: number;
+        pointsToNext: number | null;
+        nextTier: string | null;
+      }
+    | undefined;
 
   const activeProposals: number = pulse?.activeProposals ?? 0;
   const criticalProposals: number = pulse?.criticalProposals ?? 0;
@@ -224,6 +374,15 @@ export function CitizenCommandCenter({
             </Link>
           </p>
         </div>
+      )}
+
+      {/* DRep intelligence section — score sparkline, alignment, tier progress */}
+      {delegatedDrep && !drepLoading && (
+        <>
+          {scoreHistory.length >= 2 && <ScoreSparkline history={scoreHistory} />}
+          <AlignmentBars alignment={alignment} />
+          {tierProgress && <TierProgressBar tierProgress={tierProgress} />}
+        </>
       )}
 
       {/* Epoch context */}

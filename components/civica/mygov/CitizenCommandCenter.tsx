@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   XCircle,
   Calendar,
+  Gift,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -348,6 +349,24 @@ export function CitizenCommandCenter({
           </p>
         </div>
       ) : null}
+
+      {/* Wrapped CTA */}
+      {delegatedDrep && (
+        <Link href="/my-gov/wrapped/latest" className="block group">
+          <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between hover:border-primary/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <Gift className="h-4 w-4 text-violet-400" />
+              <div>
+                <p className="text-sm font-medium">Your Governance Wrapped</p>
+                <p className="text-xs text-muted-foreground">
+                  See your governance journey — and share it
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+        </Link>
+      )}
     </div>
   );
 }

@@ -288,7 +288,55 @@ export function AlignmentTrajectory({ drepId }: AlignmentTrajectoryProps) {
             </div>
           ))}
         </div>
+
+        {/* Narrative summary */}
+        <TrajectoryNarrative snapshots={snapshots} />
       </CardContent>
     </Card>
+  );
+}
+
+function TrajectoryNarrative({ snapshots }: { snapshots: Snapshot[] }) {
+  if (snapshots.length < 3) return null;
+
+  const first = snapshots[0];
+  const last = snapshots[snapshots.length - 1];
+
+  interface Delta {
+    label: string;
+    delta: number;
+    end: number;
+  }
+
+  const deltas: Delta[] = [];
+  for (const { key, label } of DIMENSIONS) {
+    const start = first[key];
+    const end = last[key];
+    if (start != null && end != null) {
+      deltas.push({ label, delta: end - start, end });
+    }
+  }
+
+  if (deltas.length === 0) return null;
+
+  const biggest = deltas.reduce((a, b) => (Math.abs(b.delta) > Math.abs(a.delta) ? b : a));
+  const dominant = deltas.reduce((a, b) => (b.end > a.end ? b : a));
+  const stable = deltas.every((d) => Math.abs(d.delta) < 5);
+
+  let narrative: string;
+  if (stable) {
+    narrative = `Consistent ${dominant.label.toLowerCase()} alignment (${Math.round(dominant.end)}%) across ${snapshots.length} epochs — this DRep has a stable governance philosophy.`;
+  } else if (biggest.delta > 10) {
+    narrative = `${biggest.label} alignment rose ${Math.round(biggest.delta)} points over ${snapshots.length} epochs, now at ${Math.round(biggest.end)}%. Dominant dimension: ${dominant.label} (${Math.round(dominant.end)}%).`;
+  } else if (biggest.delta < -10) {
+    narrative = `${biggest.label} alignment dropped ${Math.round(Math.abs(biggest.delta))} points over ${snapshots.length} epochs. Current dominant dimension: ${dominant.label} (${Math.round(dominant.end)}%).`;
+  } else {
+    narrative = `Moderate shifts over ${snapshots.length} epochs. Strongest signal: ${dominant.label} at ${Math.round(dominant.end)}%.`;
+  }
+
+  return (
+    <p className="text-xs text-muted-foreground mt-3 leading-relaxed border-t border-border pt-3">
+      {narrative}
+    </p>
   );
 }

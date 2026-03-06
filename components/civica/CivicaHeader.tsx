@@ -9,6 +9,7 @@ import {
   Compass,
   Activity,
   Landmark,
+  BookOpen,
   Search,
   User,
   LogOut,
@@ -45,6 +46,7 @@ const NAV_ITEMS = [
   { href: '/discover', label: 'Discover', icon: Compass },
   { href: '/pulse', label: 'Pulse', icon: Activity },
   { href: '/my-gov', label: 'My Gov', icon: Landmark },
+  { href: '/learn', label: 'Learn', icon: BookOpen },
 ] as const;
 
 const SEGMENT_LABELS: Record<UserSegment, string> = {

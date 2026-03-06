@@ -17,6 +17,7 @@ import {
   Moon,
   Eye,
 } from 'lucide-react';
+import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useWallet } from '@/utils/wallet-context';
@@ -59,13 +60,14 @@ const SEGMENT_LABELS: Record<UserSegment, string> = {
 export function CivicaHeader() {
   const pathname = usePathname();
   const { connected, disconnect } = useWallet();
-  const { segment, realSegment, stakeAddress, setOverride } = useSegment();
+  const { segment, realSegment, stakeAddress, delegatedDrep, setOverride } = useSegment();
   const { data: adminData } = useAdminCheck(connected);
   const isAdmin = adminData?.isAdmin === true;
   const hasOverride = segment !== realSegment;
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
   const { resolvedTheme, setTheme } = useTheme();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'drep' | 'spo' | 'citizen-delegation' | null>(null);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -143,7 +145,8 @@ export function CivicaHeader() {
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+            aria-label="Toggle theme"
+            suppressHydrationWarning
           >
             <Sun className="h-4 w-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
@@ -183,41 +186,33 @@ export function CivicaHeader() {
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
                           Simulate segment
                         </DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            setOverride(realSegment === 'citizen' ? null : { segment: 'citizen' })
-                          }
-                        >
-                          Citizen
-                          {realSegment === 'citizen' && ' (yours)'}
-                          {segment === 'citizen' && hasOverride && ' ✓'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const id = window.prompt(
-                              'Enter DRep ID (drep1...):',
-                              realSegment === 'drep' ? '' : 'drep1...',
-                            );
-                            if (id?.trim()) {
-                              setOverride({ segment: 'drep', drepId: id.trim() });
-                            }
-                          }}
-                        >
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            Citizen
+                            {realSegment === 'citizen' && ' (yours)'}
+                            {segment === 'citizen' && hasOverride && ' ✓'}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setOverride({ segment: 'citizen', delegatedDrep: null })
+                              }
+                            >
+                              Undelegated
+                              {segment === 'citizen' && !delegatedDrep && hasOverride && ' ✓'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPickerMode('citizen-delegation')}>
+                              Delegated to...
+                              {segment === 'citizen' && delegatedDrep && hasOverride && ' ✓'}
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuItem onClick={() => setPickerMode('drep')}>
                           DRep
                           {realSegment === 'drep' && ' (yours)'}
                           {segment === 'drep' && hasOverride && ' ✓'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const id = window.prompt(
-                              'Enter Pool ID (pool1...):',
-                              realSegment === 'spo' ? '' : 'pool1...',
-                            );
-                            if (id?.trim()) {
-                              setOverride({ segment: 'spo', poolId: id.trim() });
-                            }
-                          }}
-                        >
+                        <DropdownMenuItem onClick={() => setPickerMode('spo')}>
                           SPO
                           {realSegment === 'spo' && ' (yours)'}
                           {segment === 'spo' && hasOverride && ' ✓'}
@@ -257,6 +252,28 @@ export function CivicaHeader() {
           )}
         </div>
       </div>
+      {isAdmin && pickerMode && (
+        <AdminViewAsPicker
+          mode={pickerMode === 'citizen-delegation' ? 'drep' : pickerMode}
+          open={!!pickerMode}
+          onOpenChange={(open) => {
+            if (!open) setPickerMode(null);
+          }}
+          onSelect={(id) => {
+            if (pickerMode === 'citizen-delegation') {
+              setOverride({ segment: 'citizen', delegatedDrep: id });
+            } else if (pickerMode === 'drep') {
+              setOverride({ segment: 'drep', drepId: id });
+            } else {
+              setOverride({ segment: 'spo', poolId: id });
+            }
+          }}
+          {...(pickerMode === 'citizen-delegation' && {
+            titleOverride: 'Delegate to a DRep',
+            descriptionOverride: 'View the app as a citizen delegated to this DRep.',
+          })}
+        />
+      )}
     </header>
   );
 }

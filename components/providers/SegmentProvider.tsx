@@ -9,6 +9,8 @@ export interface SegmentOverride {
   segment: UserSegment;
   drepId?: string;
   poolId?: string;
+  delegatedDrep?: string | null;
+  delegatedPool?: string | null;
 }
 
 export interface SegmentState {
@@ -148,6 +150,14 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     realSegment: detectedSegment,
     drepId: override?.drepId ?? detected.drepId,
     poolId: override?.poolId ?? detected.poolId,
+    delegatedDrep:
+      override && 'delegatedDrep' in override
+        ? (override.delegatedDrep ?? null)
+        : detected.delegatedDrep,
+    delegatedPool:
+      override && 'delegatedPool' in override
+        ? (override.delegatedPool ?? null)
+        : detected.delegatedPool,
     setOverride,
   };
 

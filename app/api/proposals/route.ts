@@ -15,7 +15,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     supabase
       .from('proposals')
       .select(
-        'tx_hash, proposal_index, title, proposal_type, expired_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expiration_epoch, proposed_epoch, withdrawal_amount, treasury_tier, block_time',
+        'tx_hash, proposal_index, title, proposal_type, expired_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expiration_epoch, proposed_epoch, withdrawal_amount, treasury_tier, block_time, relevant_prefs',
       )
       .order('proposed_epoch', { ascending: false })
       .limit(limit),
@@ -99,6 +99,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       treasuryPct: withdrawalAmount && treasuryBalance ? withdrawalAmount / treasuryBalance : null,
       expirationEpoch: p.expiration_epoch ?? null,
       proposedEpoch: p.proposed_epoch ?? null,
+      relevantPrefs: p.relevant_prefs ?? [],
       triBody,
     };
   });

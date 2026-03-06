@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { computeTier } from '@/lib/scoring/tiers';
 import {
   TIER_SCORE_COLOR,
@@ -15,26 +13,26 @@ import {
   tierKey,
 } from './tierStyles';
 import type { EnrichedDRep } from '@/lib/koios';
+import { getDRepTraitTags } from '@/lib/alignment';
+import {
+  extractAlignments,
+  getPersonalityLabel,
+  getDominantDimension,
+  getIdentityColor,
+} from '@/lib/drepIdentity';
 
-const ALIGNMENT_LABELS: [
-  keyof Pick<
-    EnrichedDRep,
-    | 'alignmentTreasuryConservative'
-    | 'alignmentTreasuryGrowth'
-    | 'alignmentDecentralization'
-    | 'alignmentSecurity'
-    | 'alignmentInnovation'
-    | 'alignmentTransparency'
-  >,
-  string,
-][] = [
-  ['alignmentTreasuryConservative', 'Fiscal'],
-  ['alignmentTreasuryGrowth', 'Growth'],
-  ['alignmentDecentralization', 'Decent.'],
-  ['alignmentSecurity', 'Security'],
-  ['alignmentInnovation', 'Innov.'],
-  ['alignmentTransparency', 'Transp.'],
-];
+function formatRecency(lastVoteTime: number | null): string | null {
+  if (!lastVoteTime) return null;
+  const now = Date.now() / 1000;
+  const diff = now - lastVoteTime;
+  if (diff < 0) return null;
+  const days = Math.floor(diff / 86400);
+  if (days === 0) return 'today';
+  if (days === 1) return '1d ago';
+  if (days < 30) return `${days}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
 
 interface CivicaDRepCardProps {
   drep: EnrichedDRep;
@@ -43,17 +41,20 @@ interface CivicaDRepCardProps {
 }
 
 export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) {
-  const [hovered, setHovered] = useState(false);
-
   const score = drep.drepScore ?? 0;
   const tier = tierKey(computeTier(score));
   const momentum = drep.scoreMomentum ?? null;
   const displayName = drep.name || drep.ticker || drep.handle || `${drep.drepId.slice(0, 12)}…`;
-  const hasAlignmentData = drep.alignmentDecentralization !== null;
 
-  const allAlignmentNull = ALIGNMENT_LABELS.every(
-    ([key]) => (drep as any)[key] === null || (drep as any)[key] === undefined,
-  );
+  const alignments = extractAlignments(drep);
+  const hasAlignment = drep.alignmentDecentralization !== null;
+  const personalityLabel = hasAlignment ? getPersonalityLabel(alignments) : null;
+  const dominantDim = hasAlignment ? getDominantDimension(alignments) : null;
+  const identityColor = dominantDim ? getIdentityColor(dominantDim) : null;
+  const traitTags = getDRepTraitTags(drep);
+
+  const recency = formatRecency(drep.lastVoteTime);
+  const rationaleRate = Math.round(drep.rationaleRate ?? 0);
 
   return (
     <Link
@@ -65,11 +66,9 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
         TIER_BORDER[tier],
         TIER_GLOW[tier],
       )}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       {/* ── Header row ─────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
           {rank && (
             <span className="text-[10px] text-muted-foreground/60 font-medium tabular-nums mb-0.5 block">
@@ -79,7 +78,7 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
           <h3 className="font-semibold text-sm text-foreground truncate leading-tight">
             {displayName}
           </h3>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {drep.isActive ? (
               <span className="flex items-center gap-0.5 text-[10px] text-emerald-400 font-medium">
                 <CheckCircle2 className="h-3 w-3" /> Active
@@ -93,6 +92,9 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
               <span className="text-[10px] text-muted-foreground">
                 · {drep.delegatorCount.toLocaleString()} delegators
               </span>
+            )}
+            {recency && (
+              <span className="text-[10px] text-muted-foreground">· Voted {recency}</span>
             )}
           </div>
         </div>
@@ -132,62 +134,72 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
         </div>
       </div>
 
-      {/* ── Alignment mini-bars ─────────────────────────────── */}
-      {!allAlignmentNull && (
-        <div className="grid grid-cols-3 gap-x-3 gap-y-1.5 mb-3">
-          {ALIGNMENT_LABELS.map(([key, label]) => {
-            const v = (drep as any)[key] as number | null;
-            if (v === null || v === undefined) return null;
-            const pct = Math.round(v);
-            return (
-              <div key={key} className="space-y-0.5">
-                <div className="flex justify-between text-[9px] text-muted-foreground/70">
-                  <span>{label}</span>
-                  <span className="tabular-nums">{pct}</span>
-                </div>
-                <div className="h-0.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-primary/50" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            );
-          })}
+      {/* ── Governance identity ───────────────────────────────── */}
+      {(personalityLabel || traitTags.length > 0) && (
+        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+          {personalityLabel && identityColor && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border"
+              style={{
+                borderColor: `${identityColor.hex}40`,
+                backgroundColor: `${identityColor.hex}10`,
+                color: identityColor.hex,
+              }}
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: identityColor.hex }}
+              />
+              {personalityLabel}
+            </span>
+          )}
+          {traitTags.slice(0, 2).map((tag) => (
+            <span
+              key={tag}
+              className="text-[9px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
       )}
 
-      {/* ── Hover expansion: rationale + momentum ──────────── */}
-      <div
-        className={cn(
-          'overflow-hidden transition-all duration-200',
-          hovered ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0',
-        )}
-      >
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40 mb-3">
-          <span>
-            Rationale rate:{' '}
-            <span className="font-medium text-foreground">
-              {Math.round(drep.rationaleRate ?? 0)}%
-            </span>
-          </span>
-          <span className="flex items-center gap-1">
-            Trend:{' '}
-            {momentum !== null && momentum > 0.5 ? (
-              <TrendingUp className="h-3 w-3 text-emerald-400" />
-            ) : momentum !== null && momentum < -0.5 ? (
-              <TrendingDown className="h-3 w-3 text-rose-400" />
-            ) : (
-              <Minus className="h-3 w-3 text-muted-foreground" />
+      {/* ── Key stats (always visible) ────────────────────────── */}
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/30 pt-2 mb-2">
+        <span>
+          Rationale{' '}
+          <span
+            className={cn(
+              'font-medium tabular-nums',
+              rationaleRate >= 70
+                ? 'text-emerald-400'
+                : rationaleRate >= 40
+                  ? 'text-foreground'
+                  : 'text-muted-foreground',
             )}
+          >
+            {rationaleRate}%
           </span>
-        </div>
+        </span>
+        <span>
+          Participation{' '}
+          <span className="font-medium text-foreground tabular-nums">
+            {drep.effectiveParticipation ? `${Math.round(drep.effectiveParticipation)}%` : '—'}
+          </span>
+        </span>
+        <span className="flex items-center gap-0.5">
+          {momentum !== null && momentum > 0.5 ? (
+            <TrendingUp className="h-3 w-3 text-emerald-400" />
+          ) : momentum !== null && momentum < -0.5 ? (
+            <TrendingDown className="h-3 w-3 text-rose-400" />
+          ) : (
+            <Minus className="h-3 w-3 text-muted-foreground" />
+          )}
+        </span>
       </div>
 
       {/* ── CTA ────────────────────────────────────────────── */}
-      <div className="mt-auto pt-2 flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground/70">
-          {drep.effectiveParticipation
-            ? `${Math.round(drep.effectiveParticipation)}% participation`
-            : 'No participation data'}
-        </span>
+      <div className="mt-auto flex items-center justify-end">
         <span
           className={cn(
             'flex items-center gap-0.5 text-xs font-medium transition-colors',

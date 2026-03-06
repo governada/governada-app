@@ -117,7 +117,7 @@ function UndelegatedHome({ pulseData }: { pulseData: PulseData }) {
               Find the <GovTerm term="drep">DRep</GovTerm> who thinks like you
             </h2>
             <p className="text-sm text-muted-foreground">
-              Answer 5 quick questions and we&apos;ll match you to DReps who share your governance
+              Answer 3 quick questions and we&apos;ll match you to DReps who share your governance
               priorities — or browse and compare them yourself.
             </p>
           </div>
@@ -125,7 +125,7 @@ function UndelegatedHome({ pulseData }: { pulseData: PulseData }) {
             <Button asChild size="lg" className="flex-1">
               <Link href="/match">
                 <Zap className="mr-2 h-4 w-4" />
-                Find My DRep
+                Find My DRep — 60 Seconds
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

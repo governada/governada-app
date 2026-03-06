@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Clock, Landmark, Users, Shield, Scale } from 'lucide-react';
+import { ChevronRight, Clock, Landmark, Users, Shield, Scale, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
@@ -63,6 +63,15 @@ function formatPct(pct: number): string {
   if (pct < 1) return `${pct.toFixed(2)}%`;
   return `${pct.toFixed(1)}%`;
 }
+
+const PREF_LABELS: Record<string, { label: string; color: string }> = {
+  'treasury-conservative': { label: 'Treasury', color: 'text-red-400 bg-red-500/10' },
+  'smart-treasury-growth': { label: 'Growth', color: 'text-emerald-400 bg-emerald-500/10' },
+  'strong-decentralization': { label: 'Decentral', color: 'text-purple-400 bg-purple-500/10' },
+  'protocol-security-first': { label: 'Security', color: 'text-blue-400 bg-blue-500/10' },
+  'innovation-defi-growth': { label: 'Innovation', color: 'text-cyan-400 bg-cyan-500/10' },
+  'responsible-governance': { label: 'Transparency', color: 'text-amber-400 bg-amber-500/10' },
+};
 
 function TriBodyMini({
   triBody,
@@ -284,7 +293,7 @@ export function ProposalsBrowse() {
                 </div>
 
                 {/* Row 2: Metadata chips */}
-                <div className="flex items-center gap-3 pl-0 sm:pl-[calc(1.5rem+0.75rem)]">
+                <div className="flex items-center gap-3 pl-0 sm:pl-[calc(1.5rem+0.75rem)] flex-wrap">
                   {hasTreasury && (
                     <span className="flex items-center gap-1 text-[10px] text-emerald-500">
                       <Landmark className="h-2.5 w-2.5" />
@@ -311,13 +320,35 @@ export function ProposalsBrowse() {
                     </span>
                   )}
                   {epochsLeft != null && epochsLeft > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Clock className="h-2.5 w-2.5" />
+                    <span
+                      className={cn(
+                        'flex items-center gap-1 text-[10px]',
+                        epochsLeft <= 2 ? 'text-amber-400 font-semibold' : 'text-muted-foreground',
+                      )}
+                    >
+                      {epochsLeft <= 2 && <AlertTriangle className="h-2.5 w-2.5" />}
+                      {epochsLeft > 2 && <Clock className="h-2.5 w-2.5" />}
                       <span className="tabular-nums">
                         {epochsLeft === 1 ? '1 epoch left' : `${epochsLeft} epochs left`}
                       </span>
                     </span>
                   )}
+                  {p.relevantPrefs?.length > 0 &&
+                    p.relevantPrefs.slice(0, 2).map((pref: string) => {
+                      const info = PREF_LABELS[pref];
+                      if (!info) return null;
+                      return (
+                        <span
+                          key={pref}
+                          className={cn(
+                            'text-[10px] font-medium px-1.5 py-0.5 rounded',
+                            info.color,
+                          )}
+                        >
+                          {info.label}
+                        </span>
+                      );
+                    })}
                 </div>
               </Link>
             );

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { ShieldCheck, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { computeTier } from '@/lib/scoring/tiers';
 import {
@@ -22,9 +22,13 @@ export interface CivicaSPOData {
   participationPct: number | null;
   consistencyPct?: number | null;
   reliabilityPct?: number | null;
+  deliberationPct?: number | null;
+  governanceIdentityPct?: number | null;
+  confidence?: number | null;
   delegatorCount: number;
   liveStakeAda: number;
   claimedBy?: string | null;
+  governanceStatement?: string | null;
 }
 
 function formatAda(ada: number): string {
@@ -44,12 +48,20 @@ export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
   const tier = tierKey(computeTier(score));
   const displayName = pool.ticker || pool.poolName || pool.poolId.slice(0, 12);
   const isClaimed = !!pool.claimedBy;
+  const isProvisional = pool.confidence != null && pool.confidence < 60;
 
-  const pillars: { label: string; value: number | null | undefined }[] = [
-    { label: 'Participation', value: pool.participationPct },
-    { label: 'Consistency', value: pool.consistencyPct },
-    { label: 'Reliability', value: pool.reliabilityPct },
+  const pillars: { label: string; value: number | null | undefined; weight: string }[] = [
+    { label: 'Participation', value: pool.participationPct, weight: '35%' },
+    { label: 'Deliberation', value: pool.deliberationPct, weight: '25%' },
+    { label: 'Reliability', value: pool.reliabilityPct, weight: '25%' },
+    { label: 'Identity', value: pool.governanceIdentityPct, weight: '15%' },
   ];
+
+  const statementPreview = pool.governanceStatement
+    ? pool.governanceStatement.length > 80
+      ? `${pool.governanceStatement.slice(0, 80)}…`
+      : pool.governanceStatement
+    : null;
 
   return (
     <Link
@@ -63,7 +75,7 @@ export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
       )}
     >
       {/* ── Header ──────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
           {rank && (
             <span className="text-[10px] text-muted-foreground/60 font-medium tabular-nums mb-0.5 block">
@@ -114,27 +126,43 @@ export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
           >
             {score}
           </div>
-          <span
-            className={cn(
-              'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full mt-1 inline-block',
-              TIER_BADGE_BG[tier],
+          <div className="flex items-center justify-end gap-1 mt-1">
+            <span
+              className={cn(
+                'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full inline-block',
+                TIER_BADGE_BG[tier],
+              )}
+            >
+              {tier}
+            </span>
+            {isProvisional && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] text-amber-500 font-medium">
+                <AlertTriangle className="h-2.5 w-2.5" />
+              </span>
             )}
-          >
-            {tier}
-          </span>
+          </div>
         </div>
       </div>
 
-      {/* ── Pillar bars ──────────────────────────────────────── */}
+      {/* ── Governance statement preview ────────────────────── */}
+      {statementPreview && (
+        <p className="text-[10px] text-muted-foreground/80 italic leading-relaxed mb-2 line-clamp-2">
+          &ldquo;{statementPreview}&rdquo;
+        </p>
+      )}
+
+      {/* ── 4-Pillar bars ──────────────────────────────────────── */}
       {pillars.some((p) => p.value != null) && (
-        <div className="space-y-1.5 mb-3">
-          {pillars.map(({ label, value }) => {
+        <div className="space-y-1.5 mb-2">
+          {pillars.map(({ label, value, weight }) => {
             if (value == null) return null;
             const pct = Math.round(value);
             return (
               <div key={label} className="space-y-0.5">
                 <div className="flex justify-between text-[10px] text-muted-foreground/70">
-                  <span>{label}</span>
+                  <span>
+                    {label} <span className="opacity-50">({weight})</span>
+                  </span>
                   <span className="tabular-nums">{pct}%</span>
                 </div>
                 <div className="h-0.5 rounded-full bg-muted overflow-hidden">
@@ -156,6 +184,7 @@ export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
       <div className="mt-auto pt-2 flex items-center justify-between">
         <span className="text-[10px] text-muted-foreground/70 tabular-nums">
           {pool.voteCount} governance votes
+          {isProvisional && <span className="text-amber-500/80 ml-1">· Provisional</span>}
         </span>
         <span
           className={cn(

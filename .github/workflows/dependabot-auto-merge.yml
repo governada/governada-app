@@ -35,7 +35,9 @@ jobs:
 
       - name: Label major updates for manual review
         if: steps.metadata.outputs.update-type == 'version-update:semver-major'
-        run: gh pr edit "$PR_URL" --add-label "major-update"
+        run: |
+          gh label create "major-update" --description "Dependabot major bump" --color "D93F0B" 2>/dev/null || true
+          gh pr edit "$PR_URL" --add-label "major-update"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -318,7 +318,16 @@ export function useAdminCheck() {
   return useQuery({
     queryKey: ['admin-check'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/check', { method: 'POST' });
+      const { getStoredSession } = await import('@/lib/supabaseAuth');
+      const token = getStoredSession();
+      if (!token) return { isAdmin: false };
+      const res = await fetch('/api/admin/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!res.ok) return { isAdmin: false };
       return res.json();
     },

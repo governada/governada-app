@@ -4,18 +4,34 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Home, Compass, Activity, Landmark, Search, User, LogOut, Sun, Moon } from 'lucide-react';
+import {
+  Home,
+  Compass,
+  Activity,
+  Landmark,
+  Search,
+  User,
+  LogOut,
+  Sun,
+  Moon,
+  Eye,
+} from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useWallet } from '@/utils/wallet-context';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
+import { useAdminCheck } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -41,7 +57,10 @@ const SEGMENT_LABELS: Record<UserSegment, string> = {
 export function CivicaHeader() {
   const pathname = usePathname();
   const { connected, disconnect } = useWallet();
-  const { segment, stakeAddress } = useSegment();
+  const { segment, realSegment, stakeAddress, setOverride } = useSegment();
+  const { data: adminData } = useAdminCheck();
+  const isAdmin = adminData?.isAdmin === true;
+  const hasOverride = segment !== realSegment;
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
   const { resolvedTheme, setTheme } = useTheme();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -131,8 +150,15 @@ export function CivicaHeader() {
           {connected ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1.5 rounded-full hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer">
-                  <User className="h-3.5 w-3.5" />
+                <button
+                  className={cn(
+                    'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full transition-colors cursor-pointer',
+                    hasOverride
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25'
+                      : 'text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground',
+                  )}
+                >
+                  {hasOverride ? <Eye className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                   {segment !== 'anonymous' && SEGMENT_LABELS[segment]}
                 </button>
               </DropdownMenuTrigger>
@@ -143,6 +169,40 @@ export function CivicaHeader() {
                     Profile & Settings
                   </Link>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Eye className="h-4 w-4" />
+                        View as{hasOverride ? ` (${SEGMENT_LABELS[segment]})` : ''}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          Simulate segment
+                        </DropdownMenuLabel>
+                        {(['citizen', 'drep', 'spo'] as const).map((seg) => (
+                          <DropdownMenuItem
+                            key={seg}
+                            onClick={() => setOverride(seg === realSegment ? null : seg)}
+                          >
+                            {SEGMENT_LABELS[seg]}
+                            {seg === realSegment && ' (yours)'}
+                            {segment === seg && hasOverride && ' ✓'}
+                          </DropdownMenuItem>
+                        ))}
+                        {hasOverride && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setOverride(null)}>
+                              Reset to {SEGMENT_LABELS[realSegment]}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"

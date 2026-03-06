@@ -26,6 +26,14 @@ const GovernanceConstellation = dynamic(
   { ssr: false },
 );
 
+const GlobeConstellation = dynamic(
+  () =>
+    import('@/components/GlobeConstellation').then((m) => ({
+      default: m.GlobeConstellation,
+    })),
+  { ssr: false },
+);
+
 interface PersonalCardData {
   segment: UserSegment;
   [key: string]: any;
@@ -63,6 +71,8 @@ export function ConstellationHero({
 
   const interactiveFlag = useFeatureFlag('interactive_constellation');
   const isInteractive = interactiveFlag === true;
+  const globeFlag = useFeatureFlag('globe_constellation');
+  const useGlobe = globeFlag === true;
   const [selectedNode, setSelectedNode] = useState<ConstellationNode3D | null>(null);
 
   useEffect(() => {
@@ -254,14 +264,25 @@ export function ConstellationHero({
       className={`relative w-full transition-all duration-700 -mt-16 ${contracted ? 'min-h-[calc(35vh+4rem)]' : 'min-h-[calc(65vh+4rem)]'}`}
       onMouseEnter={handleConstellationHover}
     >
-      <GovernanceConstellation
-        ref={constellationRef}
-        interactive={isInteractive}
-        onReady={handleConstellationReady}
-        onContracted={handleConstellationContracted}
-        onNodeSelect={isInteractive ? handleNodeSelect : undefined}
-        className={contracted ? 'h-[35vh]' : 'h-[65vh]'}
-      />
+      {useGlobe ? (
+        <GlobeConstellation
+          ref={constellationRef}
+          interactive={isInteractive}
+          onReady={handleConstellationReady}
+          onContracted={handleConstellationContracted}
+          onNodeSelect={isInteractive ? handleNodeSelect : undefined}
+          className={contracted ? 'h-[35vh]' : 'h-[65vh]'}
+        />
+      ) : (
+        <GovernanceConstellation
+          ref={constellationRef}
+          interactive={isInteractive}
+          onReady={handleConstellationReady}
+          onContracted={handleConstellationContracted}
+          onNodeSelect={isInteractive ? handleNodeSelect : undefined}
+          className={contracted ? 'h-[35vh]' : 'h-[65vh]'}
+        />
+      )}
 
       {/* SSR gradient fallback */}
       <div

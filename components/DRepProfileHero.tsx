@@ -139,6 +139,9 @@ export function DRepProfileHero({
             <div className="hidden sm:block">
               <HexScore score={score} alignments={alignments} size="hero" />
             </div>
+            <div className="block sm:hidden">
+              <HexScore score={score} alignments={alignments} size="card" />
+            </div>
           </motion.div>
         </motion.div>
       </div>

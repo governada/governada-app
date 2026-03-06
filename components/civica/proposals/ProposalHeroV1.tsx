@@ -139,6 +139,31 @@ export function ProposalHeroV1({
         <DeadlineBadge expirationEpoch={expirationEpoch} currentEpoch={currentEpoch} />
       </div>
 
+      {/* Urgency callout for proposals close to expiring */}
+      {expirationEpoch != null &&
+        !ratifiedEpoch &&
+        !enactedEpoch &&
+        !droppedEpoch &&
+        !expiredEpoch &&
+        (() => {
+          const remaining = Math.max(0, expirationEpoch - currentEpoch);
+          if (remaining > 2 || remaining === 0) return null;
+          const daysApprox = remaining * 5;
+          return (
+            <div
+              className={`rounded-lg px-4 py-2.5 text-sm font-medium ${
+                remaining <= 1
+                  ? 'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/30'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+              }`}
+            >
+              {remaining <= 1
+                ? `Voting closes this epoch — roughly ${daysApprox} days remaining`
+                : `Voting closes in ${remaining} epochs (~${daysApprox} days)`}
+            </div>
+          );
+        })()}
+
       {/* Title */}
       <h1 className="text-2xl sm:text-3xl font-bold leading-tight">{title}</h1>
 

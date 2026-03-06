@@ -304,14 +304,108 @@ async function getSpoAlignment(votes: VoteRecord[]): Promise<number | null> {
   }
 }
 
-/* ─── Key Facts Strip ─── */
-function KeyFact({ label, value, subtext }: { label: string; value: string; subtext?: string }) {
+/* ─── Delegation Verdict ─── */
+function DelegationVerdict({
+  score,
+  rank,
+  participationRate,
+  rationaleRate,
+  totalVotes,
+  isActive,
+  delegatorCount,
+  scoreMomentum,
+}: {
+  score: number;
+  rank: number | null;
+  participationRate: number;
+  rationaleRate: number;
+  totalVotes: number;
+  isActive: boolean;
+  delegatorCount: number;
+  scoreMomentum: number | null;
+}) {
+  if (totalVotes === 0) {
+    return (
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-5 py-4">
+        <p className="text-sm font-medium">This DRep hasn&apos;t voted on any proposals yet.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Check back after they participate in governance to see their track record.
+        </p>
+      </div>
+    );
+  }
+
+  const headline = !isActive
+    ? 'This DRep is currently inactive and not accepting new delegations.'
+    : score >= 80
+      ? 'A highly active and transparent representative with a strong governance track record.'
+      : score >= 60
+        ? 'A solid representative who participates regularly in governance.'
+        : score >= 40
+          ? 'A developing representative — participating but with room to improve.'
+          : 'An early-stage representative. Limited activity so far.';
+
+  const details: string[] = [];
+  if (participationRate >= 80) details.push('votes on most proposals');
+  else if (participationRate >= 50) details.push('votes on about half of proposals');
+  else details.push('votes selectively');
+
+  if (rationaleRate >= 80) details.push('almost always explains their reasoning');
+  else if (rationaleRate >= 50) details.push('explains their reasoning about half the time');
+  else if (rationaleRate > 0) details.push('rarely explains their reasoning');
+  else details.push("hasn't provided vote rationales yet");
+
+  if (scoreMomentum != null && scoreMomentum > 0.5) details.push('trending upward');
+  else if (scoreMomentum != null && scoreMomentum < -0.5) details.push('score declining recently');
+
+  const borderColor =
+    score >= 70
+      ? 'border-emerald-500/20 bg-emerald-500/5'
+      : score >= 40
+        ? 'border-primary/20 bg-primary/5'
+        : 'border-amber-500/20 bg-amber-500/5';
+
   return (
+    <div className={`rounded-xl border ${borderColor} px-5 py-4`}>
+      <p className="text-sm font-medium">{headline}</p>
+      <p className="text-xs text-muted-foreground mt-1 capitalize">{details.join(' · ')}</p>
+    </div>
+  );
+}
+
+/* ─── Key Facts Strip ─── */
+function KeyFact({
+  label,
+  value,
+  subtext,
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  subtext?: string;
+  tooltip?: string;
+}) {
+  const content = (
     <div className="flex flex-col items-center text-center min-w-[80px]">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-semibold font-mono tabular-nums">{value}</span>
       {subtext && <span className="text-[10px] text-muted-foreground">{subtext}</span>}
     </div>
+  );
+
+  if (!tooltip) return content;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="cursor-help">{content}</div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs max-w-[200px]">{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -506,22 +600,52 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </div>
       )}
 
+      {/* 3b. Delegation Verdict */}
+      <DelegationVerdict
+        score={drep.drepScore}
+        rank={rank}
+        participationRate={drep.effectiveParticipation}
+        rationaleRate={drep.rationaleRate}
+        totalVotes={drep.totalVotes}
+        isActive={drep.isActive}
+        delegatorCount={drep.delegatorCount}
+        scoreMomentum={drep.scoreMomentum}
+      />
+
       {/* 4. Key Facts Strip */}
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 border-y border-border">
         <KeyFact
-          label="Score"
+          label="Governance Score"
           value={`${drep.drepScore}/100`}
           subtext={percentile > 0 ? `Top ${100 - percentile}%` : undefined}
+          tooltip="Overall quality score based on participation, rationale, reliability, and profile completeness"
         />
-        <KeyFact label="Participation" value={`${drep.effectiveParticipation}%`} />
-        <KeyFact label="Rationale" value={`${drep.rationaleRate}%`} />
-        <KeyFact label="Alignment" value={identityLabel} />
+        <KeyFact
+          label="Votes Cast"
+          value={`${drep.effectiveParticipation}%`}
+          tooltip="How often this DRep votes on proposals, adjusted for voting pattern diversity"
+        />
+        <KeyFact
+          label="Explains Votes"
+          value={`${drep.rationaleRate}%`}
+          tooltip="How often this DRep provides written reasoning for their votes"
+        />
+        <KeyFact
+          label="Governance Style"
+          value={identityLabel}
+          tooltip="Dominant governance philosophy based on voting patterns across 6 dimensions"
+        />
         {spoAlignPct !== null && (
-          <KeyFact label="SPO Alignment" value={`${spoAlignPct}%`} subtext="of the time" />
+          <KeyFact
+            label="Agrees with SPOs"
+            value={`${spoAlignPct}%`}
+            subtext="of the time"
+            tooltip="How often this DRep votes the same way as the SPO majority"
+          />
         )}
         {drep.totalVotes > 0 && (
           <div className="flex flex-col items-center text-center min-w-[100px]">
-            <span className="text-xs text-muted-foreground">Vote Split</span>
+            <span className="text-xs text-muted-foreground">Voting Pattern</span>
             <div className="flex items-center gap-1 mt-0.5">
               <div className="flex h-1.5 w-16 rounded-full overflow-hidden bg-border">
                 {drep.yesVotes > 0 && (
@@ -650,6 +774,9 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       {/* 7. Activity feed */}
       <ActivitySideWidget drepId={drep.drepId} limit={5} />
 
+      {/* 8. Similar DReps */}
+      <SimilarDReps drepId={drep.drepId} />
+
       {/* ════════════════════════════════════════════
           VP2 — "The Record" (below fold, tabbed)
           ════════════════════════════════════════════ */}
@@ -750,8 +877,6 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           </div>
         }
       />
-
-      <SimilarDReps drepId={drep.drepId} />
     </div>
   );
 

@@ -50,7 +50,9 @@ describe('DRepProfileHero', () => {
   it('renders with valid props', () => {
     const { container } = render(<DRepProfileHero {...defaultProps} />);
     expect(container.textContent).toContain('TestDRep');
-    expect(screen.getByTestId('hex-score').textContent).toBe('85');
+    const hexScores = screen.getAllByTestId('hex-score');
+    expect(hexScores.length).toBe(2);
+    expect(hexScores[0].textContent).toBe('85');
   });
 
   it('renders with match score', () => {

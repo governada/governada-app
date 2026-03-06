@@ -32,7 +32,6 @@ import {
   Wallet,
   Info,
   Compass,
-  ScrollText,
   AlertTriangle,
   FileText,
   Vote,
@@ -208,10 +207,6 @@ export function Header() {
           <Link href="/discover" className={navLinkClass('/discover')}>
             <Compass className="h-4 w-4" />
             <span>Discover</span>
-          </Link>
-          <Link href="/discover" className={navLinkClass('/discover')}>
-            <ScrollText className="h-4 w-4" />
-            <span>Proposals</span>
           </Link>
           <Link href="/pulse" className={navLinkClass('/pulse')}>
             <Activity className="h-4 w-4" />

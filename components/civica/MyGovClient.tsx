@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, User, LayoutDashboard } from 'lucide-react';
+import { Bell, User, LayoutDashboard, ShieldCheck, Vote, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { CitizenCommandCenter } from './mygov/CitizenCommandCenter';
 import { DRepCommandCenter } from './mygov/DRepCommandCenter';
@@ -44,15 +45,51 @@ function MyGovSubNav() {
 }
 
 function ConnectPrompt() {
+  const features = [
+    {
+      icon: ShieldCheck,
+      title: 'Delegation Health',
+      desc: 'See how your DRep is performing and if they are representing you well',
+    },
+    {
+      icon: Vote,
+      title: 'Open Proposals',
+      desc: 'Track active governance proposals and how your DRep voted',
+    },
+    {
+      icon: TrendingUp,
+      title: 'Action Recommendations',
+      desc: 'Get personalized suggestions to strengthen your governance participation',
+    },
+  ];
+
   return (
-    <div className="rounded-xl border border-border bg-card p-8 text-center space-y-4">
-      <p className="text-lg font-bold">Connect Your Wallet</p>
-      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-        Connect your Cardano wallet to access your personal governance command center.
-      </p>
-      <p className="text-xs text-muted-foreground">
-        View delegation health, track open proposals, and get personalised action recommendations.
-      </p>
+    <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-8 text-center space-y-4">
+        <p className="text-lg font-bold">Your Civic Command Center</p>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+          Connect your Cardano wallet to see your personalized governance dashboard — delegation
+          health, voting activity, and action recommendations.
+        </p>
+        <Button
+          onClick={() => window.dispatchEvent(new CustomEvent('openWalletConnect', { detail: {} }))}
+        >
+          Connect Wallet
+        </Button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {features.map(({ icon: Icon, title, desc }) => (
+          <div
+            key={title}
+            className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-2 opacity-70"
+          >
+            <Icon className="h-5 w-5 text-primary" />
+            <p className="text-sm font-medium">{title}</p>
+            <p className="text-xs text-muted-foreground">{desc}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

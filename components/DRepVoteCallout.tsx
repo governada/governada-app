@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { useWallet } from '@/utils/wallet';
 import { useDRepVotes } from '@/hooks/queries';
 import { Card, CardContent } from '@/components/ui/card';
@@ -52,6 +53,12 @@ export function DRepVoteCallout({ txHash, proposalIndex }: DRepVoteCalloutProps)
         <CardContent className="p-3 flex items-center gap-2">
           <Icon className="h-4 w-4 shrink-0" />
           <span className="text-sm font-medium">{config.text}</span>
+          <Link
+            href={`/drep/${encodeURIComponent(delegatedDrepId)}`}
+            className="text-xs text-primary hover:underline ml-auto shrink-0"
+          >
+            View profile
+          </Link>
         </CardContent>
       </Card>
     );
@@ -64,6 +71,12 @@ export function DRepVoteCallout({ txHash, proposalIndex }: DRepVoteCalloutProps)
         <span className="text-sm text-muted-foreground">
           Your DRep has not voted on this proposal yet
         </span>
+        <Link
+          href={`/drep/${encodeURIComponent(delegatedDrepId)}`}
+          className="text-xs text-primary hover:underline ml-auto shrink-0"
+        >
+          View profile
+        </Link>
       </CardContent>
     </Card>
   );

@@ -126,9 +126,15 @@ export function CivicaSPOBrowse() {
           No pools match your filters.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div key={page} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {pageItems.map((pool: any, i: number) => (
-            <CivicaSPOCard key={pool.poolId} pool={pool} rank={page * PAGE_SIZE + i + 1} />
+            <div
+              key={pool.poolId}
+              className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
+              style={{ animationDelay: `${Math.min(i, 11) * 30}ms` }}
+            >
+              <CivicaSPOCard pool={pool} rank={page * PAGE_SIZE + i + 1} />
+            </div>
           ))}
         </div>
       )}

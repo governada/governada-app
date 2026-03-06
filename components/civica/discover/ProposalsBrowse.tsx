@@ -111,6 +111,27 @@ function TriBodyMini({
   );
 }
 
+function getConsensusLabel(triBody: {
+  drep: { yes: number; no: number; abstain: number };
+  spo: { yes: number; no: number; abstain: number };
+  cc: { yes: number; no: number; abstain: number };
+}): { label: string; color: string } | null {
+  const bodies = [triBody.drep, triBody.spo, triBody.cc];
+  const activeBodies = bodies.filter((b) => b.yes + b.no + b.abstain > 0);
+  if (activeBodies.length < 2) return null;
+  const yesPcts = activeBodies.map((b) => {
+    const total = b.yes + b.no + b.abstain;
+    return total > 0 ? b.yes / total : 0;
+  });
+  const allHigh = yesPcts.every((p) => p >= 0.6);
+  const allLow = yesPcts.every((p) => p < 0.4);
+  const mixed = yesPcts.some((p) => p >= 0.6) && yesPcts.some((p) => p < 0.4);
+  if (allHigh) return { label: 'Consensus', color: 'text-emerald-400' };
+  if (allLow) return { label: 'Opposed', color: 'text-rose-400' };
+  if (mixed) return { label: 'Contested', color: 'text-amber-400' };
+  return null;
+}
+
 const PAGE_SIZE = 25;
 
 export function ProposalsBrowse() {
@@ -250,8 +271,11 @@ export function ProposalsBrowse() {
           No proposals match your search.
         </div>
       ) : (
-        <div className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden">
-          {pageItems.map((p: any) => {
+        <div
+          key={page}
+          className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden"
+        >
+          {pageItems.map((p: any, i: number) => {
             const status = p.status ?? 'Open';
             const drepVote = drepVoteMap.get(`${p.txHash}:${p.index}`);
             const pill = drepVote ? VOTE_PILL[drepVote] : null;
@@ -264,7 +288,8 @@ export function ProposalsBrowse() {
               <Link
                 key={`${p.txHash}-${p.index}`}
                 href={`/proposal/${p.txHash}/${p.index}`}
-                className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30 transition-colors group"
+                className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30 transition-colors group animate-in fade-in duration-200 fill-mode-backwards"
+                style={{ animationDelay: `${Math.min(i, 14) * 20}ms` }}
               >
                 {/* Row 1: Type + Title + Status */}
                 <div className="flex items-center gap-3">
@@ -308,6 +333,16 @@ export function ProposalsBrowse() {
                     </span>
                   )}
                   {p.triBody && <TriBodyMini triBody={p.triBody} />}
+                  {p.triBody &&
+                    (() => {
+                      const consensus = getConsensusLabel(p.triBody);
+                      if (!consensus) return null;
+                      return (
+                        <span className={cn('text-[10px] font-semibold', consensus.color)}>
+                          {consensus.label}
+                        </span>
+                      );
+                    })()}
                   {pill && (
                     <span
                       className={cn(

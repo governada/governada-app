@@ -180,6 +180,106 @@ function TierProgressBar({
   );
 }
 
+// ── Intelligence Headline ────────────────────────────────────────────────────
+function IntelligenceHeadline({
+  delegatedDrep,
+  drepName,
+  drepScore,
+  drepIsActive,
+  scoreDelta,
+  activeProposals,
+  criticalProposals,
+  healthStatus,
+  loading,
+}: {
+  delegatedDrep: string | null | undefined;
+  drepName: string;
+  drepScore: number;
+  drepIsActive: boolean;
+  scoreDelta: number | undefined;
+  activeProposals: number;
+  criticalProposals: number;
+  healthStatus: 'green' | 'yellow' | 'red';
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-1.5">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    );
+  }
+
+  let headline: string;
+  let subline: string;
+  let accent: 'emerald' | 'amber' | 'rose' | 'cyan' = 'cyan';
+
+  if (!delegatedDrep) {
+    headline =
+      activeProposals > 0
+        ? `${activeProposals} governance proposal${activeProposals > 1 ? 's' : ''} ${activeProposals > 1 ? 'are' : 'is'} live right now.`
+        : 'Cardano governance is active and evolving.';
+    subline = 'Connect your wallet to see how proposals affect your stake.';
+    accent = 'cyan';
+  } else if (healthStatus === 'red') {
+    headline = !drepIsActive
+      ? `${drepName} is currently inactive.`
+      : `${drepName} scored ${drepScore} — your delegation needs attention.`;
+    subline = 'Consider reviewing alternatives to protect your governance voice.';
+    accent = 'rose';
+  } else if (criticalProposals > 0) {
+    headline = `${criticalProposals} critical proposal${criticalProposals > 1 ? 's' : ''} ${criticalProposals > 1 ? 'need' : 'needs'} attention.`;
+    subline = `${drepName} is representing your vote — check their stance.`;
+    accent = 'amber';
+  } else if (scoreDelta != null && scoreDelta < -3) {
+    headline = `${drepName}'s score dropped ${Math.abs(scoreDelta).toFixed(1)} points this epoch.`;
+    subline = 'Review their recent voting activity to understand why.';
+    accent = 'amber';
+  } else if (scoreDelta != null && scoreDelta > 3) {
+    headline = `${drepName} is rising — up ${scoreDelta.toFixed(1)} points this epoch.`;
+    subline = 'Your governance position is strengthening.';
+    accent = 'emerald';
+  } else if (healthStatus === 'green') {
+    headline =
+      activeProposals > 0
+        ? `${drepName} is actively voting across ${activeProposals} open proposal${activeProposals > 1 ? 's' : ''}.`
+        : `${drepName} is up to date on all governance matters.`;
+    subline = 'Your delegation is healthy. No action required.';
+    accent = 'emerald';
+  } else {
+    headline = `${drepName} has a moderate governance score of ${drepScore}.`;
+    subline = 'Monitor their activity and compare with higher-scoring DReps.';
+    accent = 'amber';
+  }
+
+  const borderMap = {
+    emerald: 'border-emerald-800/30',
+    amber: 'border-amber-800/30',
+    rose: 'border-rose-800/30',
+    cyan: 'border-cyan-800/30',
+  };
+  const bgMap = {
+    emerald: 'bg-emerald-950/10',
+    amber: 'bg-amber-950/10',
+    rose: 'bg-rose-950/10',
+    cyan: 'bg-cyan-950/10',
+  };
+  const textMap = {
+    emerald: 'text-emerald-300',
+    amber: 'text-amber-300',
+    rose: 'text-rose-300',
+    cyan: 'text-cyan-300',
+  };
+
+  return (
+    <div className={cn('rounded-xl border px-5 py-4 space-y-1', borderMap[accent], bgMap[accent])}>
+      <p className={cn('text-sm font-semibold', textMap[accent])}>{headline}</p>
+      <p className="text-xs text-muted-foreground">{subline}</p>
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function CitizenCommandCenter({
@@ -271,6 +371,19 @@ export function CitizenCommandCenter({
 
   return (
     <div className="space-y-6">
+      {/* Intelligence headline */}
+      <IntelligenceHeadline
+        delegatedDrep={delegatedDrep}
+        drepName={drepName}
+        drepScore={drepScore}
+        drepIsActive={drepIsActive}
+        scoreDelta={scoreDelta}
+        activeProposals={activeProposals}
+        criticalProposals={criticalProposals}
+        healthStatus={healthStatus}
+        loading={drepLoading || pulseLoading}
+      />
+
       {/* Delegation health card */}
       {delegatedDrep ? (
         <Link href={`/drep/${delegatedDrep}`} className="block group">

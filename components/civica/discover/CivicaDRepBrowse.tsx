@@ -334,7 +334,7 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
           </Button>
         </div>
       ) : viewMode === 'cards' ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div key={page} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {pageItems.map((drep, i) => {
             let ms: number | null = null;
             if (sortMode === 'match' && matchProfile) {
@@ -349,12 +349,17 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
               ms = distanceToMatchScore(alignmentDistance(matchProfile.userAlignments, dAlign));
             }
             return (
-              <CivicaDRepCard
+              <div
                 key={drep.drepId}
-                drep={drep}
-                rank={sortMode === 'match' ? undefined : page * pageSize + i + 1}
-                matchScore={ms}
-              />
+                className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
+                style={{ animationDelay: `${Math.min(i, 11) * 30}ms` }}
+              >
+                <CivicaDRepCard
+                  drep={drep}
+                  rank={sortMode === 'match' ? undefined : page * pageSize + i + 1}
+                  matchScore={ms}
+                />
+              </div>
             );
           })}
         </div>

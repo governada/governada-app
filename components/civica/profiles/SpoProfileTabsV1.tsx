@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatedTabs, type TabDefinition } from '@/components/AnimatedTabs';
-import { Vote, BarChart3, TrendingUp, Network } from 'lucide-react';
+import { Vote, BarChart3, TrendingUp, Network, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface SpoProfileTabsV1Props {
@@ -10,6 +10,7 @@ interface SpoProfileTabsV1Props {
   scoreAnalysisContent: ReactNode;
   trajectoryContent: ReactNode;
   interBodyContent: ReactNode;
+  communityContent?: ReactNode;
 }
 
 export function SpoProfileTabsV1({
@@ -18,6 +19,7 @@ export function SpoProfileTabsV1({
   scoreAnalysisContent,
   trajectoryContent,
   interBodyContent,
+  communityContent,
 }: SpoProfileTabsV1Props) {
   const tabs: TabDefinition[] = [
     { id: 'voting', label: 'Voting Record', icon: Vote, content: votingRecordContent },
@@ -25,6 +27,10 @@ export function SpoProfileTabsV1({
     { id: 'trajectory', label: 'Trajectory', icon: TrendingUp, content: trajectoryContent },
     { id: 'inter-body', label: 'Inter-Body', icon: Network, content: interBodyContent },
   ];
+
+  if (communityContent) {
+    tabs.push({ id: 'community', label: 'Community', icon: Users, content: communityContent });
+  }
 
   return (
     <AnimatedTabs

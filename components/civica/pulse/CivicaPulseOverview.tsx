@@ -20,29 +20,36 @@ import { useGovernancePulse } from '@/hooks/queries';
 import { useTreasuryCurrent } from '@/hooks/queries';
 import { useGovernanceLeaderboard } from '@/hooks/queries';
 import { CivicaEpochReport } from './CivicaEpochReport';
-import { CivicaTreasury } from './CivicaTreasury';
 import { CivicaGovernanceTrends } from './CivicaGovernanceTrends';
 import { CivicaObservatory } from './CivicaObservatory';
 import { CivicaGovernanceCalendar } from './CivicaGovernanceCalendar';
 import { StateOfGovernance } from './StateOfGovernance';
 
-type PulseTab = 'overview' | 'epoch' | 'treasury' | 'trends' | 'observatory' | 'calendar';
+type PulseTab = 'now' | 'history' | 'observatory';
 
 const TABS: { id: PulseTab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'epoch', label: 'Epoch' },
-  { id: 'treasury', label: 'Treasury' },
-  { id: 'trends', label: 'Trends' },
+  { id: 'now', label: 'Now' },
+  { id: 'history', label: 'History' },
   { id: 'observatory', label: 'Observatory' },
-  { id: 'calendar', label: 'Calendar' },
 ];
 
 const VALID_PULSE_TABS = new Set<PulseTab>(TABS.map((t) => t.id));
 
+// Legacy tab aliases for backwards compatibility with bookmarked URLs
+const TAB_ALIASES: Record<string, PulseTab> = {
+  overview: 'now',
+  epoch: 'history',
+  treasury: 'now',
+  trends: 'history',
+  calendar: 'history',
+};
+
 function resolvePulseTab(param: string | null): PulseTab {
-  if (!param) return 'overview';
-  const lower = param.toLowerCase() as PulseTab;
-  return VALID_PULSE_TABS.has(lower) ? lower : 'overview';
+  if (!param) return 'now';
+  const lower = param.toLowerCase();
+  if (VALID_PULSE_TABS.has(lower as PulseTab)) return lower as PulseTab;
+  if (lower in TAB_ALIASES) return TAB_ALIASES[lower];
+  return 'now';
 }
 
 function StatCard({
@@ -121,7 +128,7 @@ export function CivicaPulseOverview() {
   const setActiveTab = useCallback(
     (tab: PulseTab) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (tab === 'overview') {
+      if (tab === 'now') {
         params.delete('tab');
       } else {
         params.set('tab', tab);
@@ -167,14 +174,19 @@ export function CivicaPulseOverview() {
         ))}
       </div>
 
-      {activeTab === 'epoch' && <CivicaEpochReport />}
-      {activeTab === 'treasury' && <CivicaTreasury />}
-      {activeTab === 'trends' && <CivicaGovernanceTrends />}
       {activeTab === 'observatory' && <CivicaObservatory />}
-      {activeTab === 'calendar' && <CivicaGovernanceCalendar />}
 
-      {/* ── Overview tab ────────────────────────────────────── */}
-      {activeTab === 'overview' && (
+      {/* ── History tab: epoch report + trends + calendar ───── */}
+      {activeTab === 'history' && (
+        <div className="space-y-8">
+          <CivicaEpochReport />
+          <CivicaGovernanceTrends />
+          <CivicaGovernanceCalendar />
+        </div>
+      )}
+
+      {/* ── Now tab ─────────────────────────────────────────── */}
+      {activeTab === 'now' && (
         <>
           {/* ── State of Governance narrative ───────────────────── */}
           <StateOfGovernance />

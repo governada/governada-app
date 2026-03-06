@@ -7,14 +7,17 @@ import { Button } from '@/components/ui/button';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { PoolProfileClient } from '@/components/PoolProfileClient';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
-import { ArrowLeft, TrendingUp, BarChart3 } from 'lucide-react';
+import { ArrowLeft, BarChart3, MessageSquare, ExternalLink } from 'lucide-react';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import nextDynamic from 'next/dynamic';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
+import { generateSpoNarrative } from '@/lib/narratives';
+import { cn } from '@/lib/utils';
 
 const TierCelebrationManager = nextDynamic(() =>
   import('@/components/civica/shared/TierCelebrationManager').then((m) => m.TierCelebrationManager),
 );
+import { SpoProfileHero } from '@/components/civica/profiles/SpoProfileHero';
 import { SpoProfileTabsV1 } from '@/components/civica/profiles/SpoProfileTabsV1';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';
 import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/civica/cards/tierStyles';
@@ -26,18 +29,14 @@ interface PageProps {
 }
 
 function formatAda(lovelace: number | string | null | undefined): string {
-  if (lovelace == null) return '—';
+  if (lovelace == null) return '\u2014';
   const n = typeof lovelace === 'string' ? parseInt(lovelace, 10) : lovelace;
-  if (isNaN(n)) return '—';
+  if (isNaN(n)) return '\u2014';
   const ada = n / 1_000_000;
   if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(2)}B`;
   if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
   if (ada >= 1_000) return `${Math.round(ada / 1_000)}K`;
   return ada.toFixed(0);
-}
-
-function formatPledge(lovelace: number | string | null | undefined): string {
-  return formatAda(lovelace);
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -46,17 +45,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!poolRow) {
     const short = poolId.slice(0, 12);
     return {
-      title: `SPO ${short}… Governance Profile — Civica`,
-      description: `Governance participation and voting record for stake pool ${short}… on Cardano.`,
+      title: `SPO ${short}\u2026 Governance Profile \u2014 Civica`,
+      description: `Governance participation and voting record for stake pool ${short}\u2026 on Cardano.`,
     };
   }
-  const name = (poolRow.pool_name as string) || poolId.slice(0, 12) + '…';
+  const name = (poolRow.pool_name as string) || poolId.slice(0, 12) + '\u2026';
   const score = poolRow.governance_score as number | null;
   const tier = score != null ? computeTier(score) : null;
   const title =
     score != null && tier
-      ? `${name} — SPO Governance Score: ${score} (${tier}) — Civica`
-      : `${name} — SPO Governance Profile — Civica`;
+      ? `${name} \u2014 SPO Governance Score: ${score} (${tier}) \u2014 Civica`
+      : `${name} \u2014 SPO Governance Profile \u2014 Civica`;
   return {
     title,
     description: `SPO governance score, voting record, and alignment data for ${name} on Cardano.`,
@@ -69,7 +68,7 @@ async function getPoolRow(poolId: string) {
     const { data, error } = await supabase
       .from('pools')
       .select(
-        'pool_id, ticker, pool_name, pledge_lovelace, governance_score, participation_pct, deliberation_pct, consistency_pct, reliability_pct, governance_identity_pct, confidence, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake_lovelace, vote_count, governance_statement, current_tier, score_momentum',
+        'pool_id, ticker, pool_name, pledge_lovelace, governance_score, participation_pct, deliberation_pct, consistency_pct, reliability_pct, governance_identity_pct, confidence, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake_lovelace, vote_count, governance_statement, current_tier, score_momentum, homepage_url',
       )
       .eq('pool_id', poolId)
       .single();
@@ -156,6 +155,40 @@ async function getInterBodyAlignment(
   }
 }
 
+async function getSimilarPools(
+  poolId: string,
+  alignments: AlignmentScores,
+  score: number,
+): Promise<
+  Array<{
+    pool_id: string;
+    pool_name: string | null;
+    ticker: string | null;
+    governance_score: number;
+  }>
+> {
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('pools')
+      .select('pool_id, pool_name, ticker, governance_score')
+      .not('governance_score', 'is', null)
+      .neq('pool_id', poolId)
+      .gte('governance_score', Math.max(0, score - 15))
+      .lte('governance_score', Math.min(100, score + 15))
+      .order('governance_score', { ascending: false })
+      .limit(3);
+    return (data ?? []) as Array<{
+      pool_id: string;
+      pool_name: string | null;
+      ticker: string | null;
+      governance_score: number;
+    }>;
+  } catch {
+    return [];
+  }
+}
+
 function toAlignments(row: Record<string, unknown> | null): AlignmentScores {
   if (!row) {
     return {
@@ -175,6 +208,19 @@ function toAlignments(row: Record<string, unknown> | null): AlignmentScores {
     innovation: (row.alignment_innovation as number) ?? null,
     transparency: (row.alignment_transparency as number) ?? null,
   };
+}
+
+function getLastVotedText(votes: Array<{ block_time: number }>): string | null {
+  if (votes.length === 0) return null;
+  const latest = votes[0].block_time;
+  const now = Date.now() / 1000;
+  const diffDays = Math.floor((now - latest) / 86400);
+  if (diffDays === 0) return 'Voted today';
+  if (diffDays === 1) return 'Voted yesterday';
+  if (diffDays < 7) return `Voted ${diffDays} days ago`;
+  if (diffDays < 30) return `Voted ${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 365) return `Voted ${Math.floor(diffDays / 30)} months ago`;
+  return `Last voted ${Math.floor(diffDays / 365)}y ago`;
 }
 
 export default async function PoolProfilePage({ params }: PageProps) {
@@ -204,9 +250,6 @@ export default async function PoolProfilePage({ params }: PageProps) {
     proposals = data ?? [];
   }
 
-  const yesCount = safeVotes.filter((v) => v.vote === 'Yes').length;
-  const noCount = safeVotes.filter((v) => v.vote === 'No').length;
-  const abstainCount = safeVotes.filter((v) => v.vote === 'Abstain').length;
   const totalVotes = safeVotes.length;
 
   const { count: totalProposals } = await supabase
@@ -226,7 +269,7 @@ export default async function PoolProfilePage({ params }: PageProps) {
           .select('epoch_no, governance_score, participation_rate')
           .eq('pool_id', poolId)
           .order('epoch_no', { ascending: false })
-          .limit(10)
+          .limit(20)
       : Promise.resolve({
           data: [] as Array<{
             epoch_no: number;
@@ -243,6 +286,7 @@ export default async function PoolProfilePage({ params }: PageProps) {
   const scoreSnapshots = scoreHistoryRes.data ?? [];
   const sortedSnapshots = [...scoreSnapshots].reverse();
 
+  // Unscored pool fallback
   if (!hasScored) {
     return (
       <div className="container mx-auto px-4 py-8 space-y-8">
@@ -262,80 +306,29 @@ export default async function PoolProfilePage({ params }: PageProps) {
 
         {totalVotes === 0 ? (
           <Card>
-            <CardContent className="py-16 text-center">
+            <CardContent className="py-16 text-center space-y-3">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <BarChart3 className="h-6 w-6 text-muted-foreground" />
+              </div>
               <p className="text-muted-foreground text-sm">
-                This pool has no recorded governance votes yet.
+                This pool hasn&apos;t participated in governance yet.
+              </p>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                Governance scores are calculated after a pool casts its first vote on a governance
+                proposal.
               </p>
             </CardContent>
           </Card>
         ) : (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Total Votes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{totalVotes}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Participation</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{participationRate}%</p>
-                  <p className="text-xs text-muted-foreground">
-                    {totalVotes} of {totalProposals ?? '?'} proposals
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Vote Split</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-3 text-sm">
-                    <span className="text-green-500">{yesCount} Yes</span>
-                    <span className="text-red-500">{noCount} No</span>
-                    <span className="text-muted-foreground">{abstainCount} Abstain</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Most Active Epoch</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const epochCounts = new Map<number, number>();
-                    for (const v of safeVotes) {
-                      epochCounts.set(v.epoch, (epochCounts.get(v.epoch) || 0) + 1);
-                    }
-                    const top = [...epochCounts.entries()].sort((a, b) => b[1] - a[1])[0];
-                    return top ? (
-                      <p className="text-2xl font-bold">
-                        Epoch {top[0]}{' '}
-                        <span className="text-sm font-normal text-muted-foreground">
-                          ({top[1]} votes)
-                        </span>
-                      </p>
-                    ) : (
-                      <p className="text-muted-foreground">—</p>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-            </div>
-
-            <PoolProfileClient votes={safeVotes} proposals={proposals} />
-          </>
+          <PoolProfileClient votes={safeVotes} proposals={proposals} />
         )}
       </div>
     );
   }
 
-  const displayName = (poolRow.pool_name as string) || poolId.slice(0, 16) + '…';
+  // ── Scored pool: full profile ──────────────────────────────────────────────
+
+  const displayName = (poolRow.pool_name as string) || poolId.slice(0, 16) + '\u2026';
   const ticker = (poolRow.ticker as string) || null;
   const governanceScore = (poolRow.governance_score as number) ?? 0;
   const delegatorCount = (poolRow.delegator_count as number) ?? 0;
@@ -348,21 +341,58 @@ export default async function PoolProfilePage({ params }: PageProps) {
   const governanceIdentityPillar = (poolRow.governance_identity_pct as number) ?? null;
   const poolConfidence = (poolRow.confidence as number) ?? null;
   const governanceStatement = (poolRow.governance_statement as string) ?? null;
+  const homepage = (poolRow.homepage_url as string) ?? null;
   const alignments = toAlignments(poolRow);
-
-  const hasAnyAlignment =
-    alignments.treasuryConservative != null ||
-    alignments.treasuryGrowth != null ||
-    alignments.decentralization != null ||
-    alignments.security != null ||
-    alignments.innovation != null ||
-    alignments.transparency != null;
+  const scoreMomentum = (poolRow.score_momentum as number) ?? null;
 
   const tier = computeTier(governanceScore);
   const tk = tierKey(tier);
   const tierProgress = computeTierProgress(governanceScore);
+  const lastVotedText = getLastVotedText(safeVotes);
 
-  // Score Analysis card (shared between civica and legacy paths)
+  // Generate narrative
+  const liveStakeAda =
+    liveStake != null
+      ? (typeof liveStake === 'string' ? parseInt(liveStake, 10) : (liveStake as number)) /
+        1_000_000
+      : 0;
+
+  const narrative = generateSpoNarrative({
+    poolName: displayName,
+    ticker,
+    governanceScore,
+    participationRate,
+    voteCount,
+    delegatorCount,
+    liveStakeAda,
+    alignments,
+    isClaimed: false,
+    governanceStatement,
+    scoreMomentum,
+  });
+
+  // Similar pools
+  const similarPools = await getSimilarPools(poolId, alignments, governanceScore);
+
+  // ── Score Analysis card ────────────────────────────────────────────────────
+
+  const PILLARS = [
+    { label: 'Participation', weight: '35%', value: participationPillar, color: 'bg-cyan-500/80' },
+    {
+      label: 'Deliberation Quality',
+      weight: '25%',
+      value: deliberationPillar,
+      color: 'bg-purple-500/80',
+    },
+    { label: 'Reliability', weight: '25%', value: reliabilityPillar, color: 'bg-amber-500/80' },
+    {
+      label: 'Governance Identity',
+      weight: '15%',
+      value: governanceIdentityPillar,
+      color: 'bg-emerald-500/80',
+    },
+  ];
+
   const scoreAnalysisCard = (
     <Card>
       <CardHeader>
@@ -375,148 +405,336 @@ export default async function PoolProfilePage({ params }: PageProps) {
         {poolConfidence != null && poolConfidence < 60 && (
           <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 rounded-md px-3 py-2">
             <span>
-              Provisional score — low confidence ({poolConfidence}%). More votes needed for full
-              tier assignment.
+              Provisional score \u2014 low confidence ({poolConfidence}%). More votes needed for
+              full tier assignment.
             </span>
           </div>
         )}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Participation · 35%</span>
-            <span className="font-mono tabular-nums">{participationPillar ?? '—'}%</span>
+        {PILLARS.map((p) => (
+          <div key={p.label} className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>
+                {p.label} \u00B7 {p.weight}
+              </span>
+              <span className="font-mono tabular-nums">
+                {p.value != null ? `${p.value}%` : '\u2014'}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className={cn('h-full rounded-full', p.color)}
+                style={{ width: `${Math.min(100, Math.max(0, p.value ?? 0))}%` }}
+              />
+            </div>
           </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-cyan-500/80"
-              style={{ width: `${Math.min(100, Math.max(0, participationPillar ?? 0))}%` }}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Deliberation Quality · 25%</span>
-            <span className="font-mono tabular-nums">
-              {deliberationPillar != null ? deliberationPillar : '—'}%
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-purple-500/80"
-              style={{ width: `${Math.min(100, Math.max(0, deliberationPillar ?? 0))}%` }}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Reliability · 25%</span>
-            <span className="font-mono tabular-nums">
-              {reliabilityPillar != null ? reliabilityPillar : '—'}%
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-amber-500/80"
-              style={{ width: `${Math.min(100, Math.max(0, reliabilityPillar ?? 0))}%` }}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Governance Identity · 15%</span>
-            <span className="font-mono tabular-nums">
-              {governanceIdentityPillar != null ? `${governanceIdentityPillar}%` : '—'}
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-emerald-500/80"
-              style={{
-                width: `${Math.min(100, Math.max(0, governanceIdentityPillar ?? 0))}%`,
-              }}
-            />
-          </div>
-          {governanceIdentityPillar == null && (
-            <p className="text-xs text-muted-foreground">
-              Governance identity scoring coming soon.
-            </p>
-          )}
-        </div>
+        ))}
         {tierProgress.recommendedAction && (
           <p className="text-xs text-muted-foreground border-t pt-3 mt-3">
-            💡 {tierProgress.recommendedAction}
+            {tierProgress.recommendedAction}
           </p>
         )}
       </CardContent>
     </Card>
   );
 
-  // Score History card
-  const scoreHistoryCard =
-    sortedSnapshots.length > 0 ? (
+  // ── Score History (chart-style) ────────────────────────────────────────────
+
+  const trajectoryContent = (
+    <div className="space-y-6">
+      {sortedSnapshots.length >= 2 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Score Trajectory</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* SVG sparkline chart */}
+              <div className="h-32">
+                <svg
+                  viewBox={`0 0 ${Math.max(200, sortedSnapshots.length * 30)} 100`}
+                  className="w-full h-full"
+                  preserveAspectRatio="none"
+                >
+                  {(() => {
+                    const scores = sortedSnapshots.map((s) => s.governance_score ?? 0);
+                    const min = Math.min(...scores) - 5;
+                    const max = Math.max(...scores) + 5;
+                    const range = max - min || 1;
+                    const w = Math.max(200, sortedSnapshots.length * 30);
+                    const points = sortedSnapshots
+                      .map((s, i) => {
+                        const x = 10 + (i / Math.max(1, sortedSnapshots.length - 1)) * (w - 20);
+                        const y = 90 - (((s.governance_score ?? 0) - min) / range) * 80;
+                        return `${x},${y}`;
+                      })
+                      .join(' ');
+                    const trending = scores.length >= 2 && scores[scores.length - 1] >= scores[0];
+                    return (
+                      <polyline
+                        points={points}
+                        fill="none"
+                        stroke={trending ? '#34d399' : '#fb7185'}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    );
+                  })()}
+                </svg>
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums px-2">
+                <span>Epoch {sortedSnapshots[0]?.epoch_no}</span>
+                <span>Epoch {sortedSnapshots[sortedSnapshots.length - 1]?.epoch_no}</span>
+              </div>
+              {/* Table below chart */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 pr-4">Epoch</th>
+                      <th className="pb-2 pr-4">Score</th>
+                      <th className="pb-2 pr-4">Participation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...sortedSnapshots]
+                      .reverse()
+                      .slice(0, 10)
+                      .map((s) => (
+                        <tr key={s.epoch_no} className="border-b border-border/50">
+                          <td className="py-2 pr-4 font-mono">{s.epoch_no}</td>
+                          <td className="py-2 pr-4 font-mono tabular-nums">
+                            {s.governance_score ?? '\u2014'}
+                          </td>
+                          <td className="py-2 pr-4 font-mono tabular-nums">
+                            {s.participation_rate != null ? `${s.participation_rate}%` : '\u2014'}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Score history builds over time. Check back after the next scoring epoch.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // ── Inter-body alignment content ───────────────────────────────────────────
+
+  const interBodyContent = (
+    <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Score History
-          </CardTitle>
+          <CardTitle>Inter-Body Alignment</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Epoch</th>
-                  <th className="pb-2 pr-4">Score</th>
-                  <th className="pb-2 pr-4">Participation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSnapshots.map((s) => (
-                  <tr key={s.epoch_no} className="border-b border-border/50">
-                    <td className="py-2 pr-4 font-mono">{s.epoch_no}</td>
-                    <td className="py-2 pr-4 font-mono tabular-nums">
-                      {s.governance_score ?? '—'}
-                    </td>
-                    <td className="py-2 pr-4 font-mono tabular-nums">
-                      {s.participation_rate != null ? `${s.participation_rate}%` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    ) : null;
-
-  // Inter-body card
-  const interBodyCard = (
-    <Card>
-      <CardHeader>
-        <CardTitle>Inter-Body Alignment</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+        <CardContent className="space-y-4">
           {interBody.drepPct != null && (
-            <div>
-              <span className="text-sm text-muted-foreground">Agrees with DRep majority</span>
-              <p className="text-xl font-bold tabular-nums">{interBody.drepPct}%</p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Agrees with DRep majority</span>
+                <span className="font-mono tabular-nums font-bold text-cyan-400">
+                  {interBody.drepPct}%
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-cyan-500/80"
+                  style={{ width: `${interBody.drepPct}%` }}
+                />
+              </div>
             </div>
           )}
           {interBody.ccPct != null && (
-            <div>
-              <span className="text-sm text-muted-foreground">Agrees with CC majority</span>
-              <p className="text-xl font-bold tabular-nums">{interBody.ccPct}%</p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Agrees with CC majority</span>
+                <span className="font-mono tabular-nums font-bold text-violet-400">
+                  {interBody.ccPct}%
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-violet-500/80"
+                  style={{ width: `${interBody.ccPct}%` }}
+                />
+              </div>
             </div>
           )}
           {interBody.drepPct == null && interBody.ccPct == null && (
             <p className="text-sm text-muted-foreground">
-              No inter-body alignment data for proposals this pool voted on.
+              Inter-body alignment data requires overlapping votes with DReps and CC members.
             </p>
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Alignment Radar in inter-body context */}
+      {(alignments.treasuryConservative != null || alignments.decentralization != null) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Governance Alignment</CardTitle>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <GovernanceRadar alignments={alignments} size="full" />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // ── Community content ──────────────────────────────────────────────────────
+
+  const communityContent = (
+    <div className="space-y-6">
+      {/* Governance Statement */}
+      {governanceStatement && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Governance Statement
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {governanceStatement}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pool info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pool Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {pledge != null && (
+              <div>
+                <p className="text-xs text-muted-foreground">Pledge</p>
+                <p className="text-sm font-mono tabular-nums font-medium">
+                  {formatAda(pledge)} \u20B3
+                </p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-muted-foreground">Live Stake</p>
+              <p className="text-sm font-mono tabular-nums font-medium">
+                {formatAda(liveStake)} \u20B3
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Delegators</p>
+              <p className="text-sm font-mono tabular-nums font-medium">
+                {delegatorCount.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Governance Votes</p>
+              <p className="text-sm font-mono tabular-nums font-medium">{voteCount}</p>
+            </div>
+          </div>
+          {homepage && (
+            <a
+              href={homepage}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Pool homepage
+            </a>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Similar SPOs */}
+      {similarPools.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Similar SPOs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {similarPools.map((p) => {
+                const pTier = computeTier(p.governance_score);
+                const pTk = tierKey(pTier);
+                return (
+                  <Link
+                    key={p.pool_id}
+                    href={`/pool/${p.pool_id}`}
+                    className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-muted/30 transition-colors group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-medium truncate">
+                        {p.pool_name || p.ticker || p.pool_id.slice(0, 12) + '\u2026'}
+                      </span>
+                      {p.ticker && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] text-cyan-500 border-cyan-500/30 shrink-0"
+                        >
+                          {p.ticker.toUpperCase()}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span
+                        className={cn(
+                          'text-xs font-bold px-1.5 py-0.5 rounded-full',
+                          TIER_BADGE_BG[pTk],
+                        )}
+                      >
+                        {pTier}
+                      </span>
+                      <span
+                        className={cn(
+                          'font-mono tabular-nums text-sm font-bold',
+                          TIER_SCORE_COLOR[pTk],
+                        )}
+                      >
+                        {p.governance_score}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // ── Tier progress bar (below hero) ─────────────────────────────────────────
+
+  const tierProgressBar = tierProgress.pointsToNext != null && (
+    <div className="flex items-center gap-3 text-sm">
+      <span>
+        {tierProgress.pointsToNext} pts to{' '}
+        <span className="text-primary font-bold">{tierProgress.nextTier}</span>
+      </span>
+      <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full bg-primary"
+          style={{ width: `${tierProgress.percentWithinTier}%` }}
+        />
+      </div>
+      <span className="text-xs text-muted-foreground">
+        {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
+      </span>
+    </div>
   );
 
   return (
@@ -539,200 +757,33 @@ export default async function PoolProfilePage({ params }: PageProps) {
           </Button>
         </Link>
 
-        {/* VP1 Hero */}
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">
-                {displayName.length > 40 ? displayName.slice(0, 40) + '…' : displayName}
-              </h1>
-              {ticker && (
-                <Badge variant="outline" className="text-cyan-500 border-cyan-500/40 font-mono">
-                  {ticker.toUpperCase()}
-                </Badge>
-              )}
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${TIER_BADGE_BG[tk]}`}
-              >
-                {tier}
-              </span>
-            </div>
+        {/* VP1: The Story */}
+        <SpoProfileHero
+          name={displayName}
+          ticker={ticker}
+          score={governanceScore}
+          tier={tier}
+          rank={scoreRank}
+          delegatorCount={delegatorCount}
+          liveStakeFormatted={formatAda(liveStake)}
+          voteCount={voteCount}
+          participationRate={participationRate}
+          alignments={alignments}
+          narrative={narrative}
+          scoreMomentum={scoreMomentum}
+          lastVotedText={lastVotedText}
+        />
 
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className={`text-4xl font-bold tabular-nums ${TIER_SCORE_COLOR[tk]}`}>
-                {governanceScore}
-              </span>
-              <span className="text-muted-foreground text-sm">governance score</span>
-              {scoreRank != null && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                  Top {100 - scoreRank}% of governance-active SPOs
-                </span>
-              )}
-              {poolRow.score_momentum != null && (poolRow.score_momentum as number) !== 0 && (
-                <span
-                  className={`text-xs font-medium tabular-nums ${(poolRow.score_momentum as number) > 0 ? 'text-emerald-400' : 'text-rose-400'}`}
-                >
-                  {(poolRow.score_momentum as number) > 0 ? '+' : ''}
-                  {(poolRow.score_momentum as number).toFixed(1)} pts/day
-                </span>
-              )}
-            </div>
+        {tierProgressBar}
 
-            {governanceStatement && (
-              <p className="text-sm text-muted-foreground italic max-w-2xl">
-                &ldquo;
-                {governanceStatement.length > 150
-                  ? governanceStatement.slice(0, 150) + '…'
-                  : governanceStatement}
-                &rdquo;
-              </p>
-            )}
-          </div>
-
-          {/* Tier progress */}
-          {tierProgress.pointsToNext != null && (
-            <div className="flex items-center gap-3 text-sm">
-              <span>
-                {tierProgress.pointsToNext} pts to{' '}
-                <span className="text-primary font-bold">{tierProgress.nextTier}</span>
-              </span>
-              <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${tierProgress.percentWithinTier}%` }}
-                />
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
-              </span>
-            </div>
-          )}
-
-          {/* Key fact chips */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-4 border-y border-border">
-            <div className="flex flex-col items-center text-center min-w-[80px]">
-              <span className="text-xs text-muted-foreground">Votes Cast</span>
-              <span className="text-sm font-semibold font-mono tabular-nums">{voteCount}</span>
-            </div>
-            <div className="flex flex-col items-center text-center min-w-[80px]">
-              <span className="text-xs text-muted-foreground">Participation</span>
-              <span className="text-sm font-semibold font-mono tabular-nums">
-                {participationRate}%
-              </span>
-            </div>
-            <div className="flex flex-col items-center text-center min-w-[80px]">
-              <span className="text-xs text-muted-foreground">Delegators</span>
-              <span className="text-sm font-semibold font-mono tabular-nums">
-                {delegatorCount.toLocaleString()}
-              </span>
-            </div>
-            <div className="flex flex-col items-center text-center min-w-[80px]">
-              <span className="text-xs text-muted-foreground">Live Stake</span>
-              <span className="text-sm font-semibold font-mono tabular-nums">
-                {formatAda(liveStake)} ₳
-              </span>
-            </div>
-            {interBody.drepPct != null && (
-              <div className="flex flex-col items-center text-center min-w-[100px]">
-                <span className="text-xs text-muted-foreground">Agrees w/ DReps</span>
-                <span className="text-sm font-semibold font-mono tabular-nums text-cyan-400">
-                  {interBody.drepPct}%
-                </span>
-              </div>
-            )}
-            {interBody.ccPct != null && (
-              <div className="flex flex-col items-center text-center min-w-[100px]">
-                <span className="text-xs text-muted-foreground">Agrees w/ CC</span>
-                <span className="text-sm font-semibold font-mono tabular-nums text-violet-400">
-                  {interBody.ccPct}%
-                </span>
-              </div>
-            )}
-            {pledge != null && (
-              <div className="flex flex-col items-center text-center min-w-[80px]">
-                <span className="text-xs text-muted-foreground">Pledge</span>
-                <span className="text-sm font-semibold font-mono tabular-nums">
-                  {formatPledge(pledge)} ₳
-                </span>
-              </div>
-            )}
-            {totalVotes > 0 && (
-              <div className="flex flex-col items-center text-center min-w-[100px]">
-                <span className="text-xs text-muted-foreground">Vote Split</span>
-                <div className="flex h-1.5 w-16 rounded-full overflow-hidden bg-border mt-0.5">
-                  {yesCount > 0 && (
-                    <div
-                      className="h-full bg-emerald-500"
-                      style={{ width: `${(yesCount / totalVotes) * 100}%` }}
-                    />
-                  )}
-                  {noCount > 0 && (
-                    <div
-                      className="h-full bg-rose-500"
-                      style={{ width: `${(noCount / totalVotes) * 100}%` }}
-                    />
-                  )}
-                  {abstainCount > 0 && (
-                    <div
-                      className="h-full bg-muted-foreground/40"
-                      style={{ width: `${(abstainCount / totalVotes) * 100}%` }}
-                    />
-                  )}
-                </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {yesCount}Y {noCount}N {abstainCount}A
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Governance Radar */}
-          {hasAnyAlignment && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Alignment Radar</CardTitle>
-              </CardHeader>
-              <CardContent className="flex justify-center">
-                <GovernanceRadar alignments={alignments} size="full" />
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* VP2 Section */}
+        {/* VP2: The Record */}
         <SpoProfileTabsV1
           poolId={poolId}
           votingRecordContent={<PoolProfileClient votes={safeVotes} proposals={proposals} />}
           scoreAnalysisContent={scoreAnalysisCard}
-          trajectoryContent={
-            <div className="space-y-6">
-              {scoreHistoryCard ?? (
-                <Card>
-                  <CardContent className="py-8 text-center">
-                    <p className="text-sm text-muted-foreground">No score history yet.</p>
-                  </CardContent>
-                </Card>
-              )}
-              <p className="text-xs text-muted-foreground px-1">
-                Delegator trend data coming soon via /api/spo/{poolId}/trends.
-              </p>
-            </div>
-          }
-          interBodyContent={
-            <div className="space-y-6">
-              {interBodyCard}
-              {hasAnyAlignment && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Alignment Radar</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex justify-center">
-                    <GovernanceRadar alignments={alignments} size="full" />
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          }
+          trajectoryContent={trajectoryContent}
+          interBodyContent={interBodyContent}
+          communityContent={communityContent}
         />
       </div>
     </TierThemeProvider>

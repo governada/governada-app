@@ -48,6 +48,10 @@ const MilestoneBadges = nextDynamic(
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
+const SimilarDReps = nextDynamic(
+  () => import('@/components/civica/profiles/SimilarDReps').then((m) => m.SimilarDReps),
+  { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
+);
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
@@ -638,13 +642,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         }
       />
 
-      {/* Similar DReps — placeholder for future PCA-based nearest neighbor query */}
-      <section className="border-t pt-8 mt-8">
-        <h3 className="text-lg font-semibold mb-4">Similar DReps</h3>
-        <p className="text-sm text-muted-foreground">
-          Coming soon — DReps with similar governance alignment profiles.
-        </p>
-      </section>
+      <SimilarDReps drepId={drep.drepId} />
     </div>
   );
 

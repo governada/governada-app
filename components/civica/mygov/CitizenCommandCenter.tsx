@@ -12,10 +12,16 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDRepReportCard, useGovernancePulse, useDRepVotes } from '@/hooks/queries';
+import {
+  useDRepReportCard,
+  useGovernancePulse,
+  useDRepVotes,
+  useGovernanceEpochRecap,
+} from '@/hooks/queries';
 import {
   tierKey,
   TIER_SCORE_COLOR,
@@ -45,11 +51,13 @@ export function CitizenCommandCenter({
   const { data: rawCard, isLoading: drepLoading } = useDRepReportCard(delegatedDrep);
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
   const { data: rawVotes, isLoading: votesLoading } = useDRepVotes(delegatedDrep);
+  const { data: rawRecap } = useGovernanceEpochRecap();
 
   const card = rawCard as any;
   const pulse = rawPulse as any;
   const votes: any[] = (rawVotes as any)?.votes ?? rawVotes ?? [];
   const recentVotes = Array.isArray(votes) ? votes.slice(0, 3) : [];
+  const recap = rawRecap as any;
 
   const drepScore: number = card?.score ?? 0;
   const drepName: string = card?.name ?? delegatedDrep ?? '—';
@@ -214,6 +222,53 @@ export function CitizenCommandCenter({
               browse all DReps
             </Link>
           </p>
+        </div>
+      )}
+
+      {/* Epoch context */}
+      {recap?.epoch && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Epoch {recap.epoch}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {recap.proposals_submitted != null && (
+              <div>
+                <p className="text-lg font-bold tabular-nums">{recap.proposals_submitted}</p>
+                <p className="text-[10px] text-muted-foreground">Submitted</p>
+              </div>
+            )}
+            {recap.proposals_ratified != null && (
+              <div>
+                <p className="text-lg font-bold tabular-nums text-sky-400">
+                  {recap.proposals_ratified}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Ratified</p>
+              </div>
+            )}
+            {recap.drep_participation_pct != null && (
+              <div>
+                <p className="text-lg font-bold tabular-nums">
+                  {Math.round(recap.drep_participation_pct)}%
+                </p>
+                <p className="text-[10px] text-muted-foreground">DRep Participation</p>
+              </div>
+            )}
+            {recap.treasury_withdrawn_ada != null && recap.treasury_withdrawn_ada > 0 && (
+              <div>
+                <p className="text-lg font-bold tabular-nums text-emerald-400">
+                  {(recap.treasury_withdrawn_ada / 1_000_000).toFixed(1)}M
+                </p>
+                <p className="text-[10px] text-muted-foreground">Treasury (ADA)</p>
+              </div>
+            )}
+          </div>
+          {recap.ai_narrative && (
+            <p className="text-xs text-muted-foreground leading-relaxed">{recap.ai_narrative}</p>
+          )}
         </div>
       )}
 

@@ -77,19 +77,22 @@ function UndelegatedHome({ pulseData }: { pulseData: PulseData }) {
 
   return (
     <div className="relative flex flex-col">
-      {/* ── Constellation hero (~30vh) ─────────────────────────────── */}
-      <section className="relative h-[30vh] min-h-[200px] overflow-hidden">
+      {/* ── Constellation hero (~35vh) ─────────────────────────────── */}
+      <section className="relative h-[35vh] min-h-[280px] sm:-mt-14 overflow-hidden">
         <div className="absolute inset-0">
           <GovernanceConstellation className="w-full h-full" interactive={false} />
         </div>
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
-        <div className="absolute inset-0 flex items-center justify-center px-4">
-          <div className="text-center max-w-xl space-y-2">
-            <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-white drop-shadow-lg leading-tight">
+        <div className="absolute inset-0 flex items-center justify-center px-4 sm:pt-14">
+          <div className="text-center max-w-xl space-y-3">
+            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white drop-shadow-lg leading-tight hero-text-shadow">
               Your ADA is <span className="text-primary">unrepresented</span>.
             </h1>
-            <p className="text-sm sm:text-base text-white/80 max-w-md mx-auto">
+            <p
+              className="text-sm sm:text-base text-white/80 max-w-md mx-auto leading-relaxed hero-text-shadow"
+              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}
+            >
               {pulseData.activeProposals > 0 ? (
                 <>
                   {pulseData.activeProposals} proposals are being voted on right now — and your
@@ -226,14 +229,42 @@ export function HomeCitizen({ pulseData, ssrHolderData, ssrWalletAddress }: Home
 
   return (
     <div className="relative flex flex-col">
-      {/* ── Ambient constellation header (15vh) ─────────────────────── */}
-      <section className="relative h-[15vh] min-h-[80px] overflow-hidden" aria-hidden="true">
-        <GovernanceConstellation className="w-full h-full opacity-40" interactive={false} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
+      {/* ── Constellation hero (28vh) — branded ambient with personal context ── */}
+      <section className="relative h-[28vh] min-h-[200px] sm:-mt-14 overflow-hidden">
+        <div className="absolute inset-0">
+          <GovernanceConstellation className="w-full h-full" interactive={false} />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+
+        {/* Personal welcome overlay */}
+        <div className="absolute inset-0 flex items-center justify-center px-4 sm:pt-14">
+          <div className="text-center max-w-xl space-y-2">
+            <p className="font-display text-sm sm:text-base font-medium text-[#fff0d4] tracking-wide hero-text-shadow">
+              Your governance is active
+            </p>
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white drop-shadow-lg leading-tight hero-text-shadow">
+              {isLoading && !drepName ? (
+                <span className="text-white/60">Loading…</span>
+              ) : (
+                <>
+                  Represented by <span className="text-[#fff0d4]">{drepName}</span>
+                </>
+              )}
+            </h1>
+            {openProposals > 0 && (
+              <p
+                className="text-sm text-white/70 hero-text-shadow"
+                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)' }}
+              >
+                {openProposals} proposal{openProposals !== 1 ? 's' : ''} awaiting a vote this epoch
+              </p>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* ── DRep report card headline ────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-3xl px-4 -mt-4 pb-4">
+      <section className="mx-auto w-full max-w-3xl px-4 -mt-6 pb-4 relative z-10">
         <div
           className={cn(
             'rounded-2xl border p-6 space-y-5',
@@ -289,11 +320,11 @@ export function HomeCitizen({ pulseData, ssrHolderData, ssrWalletAddress }: Home
             {reportCard?.pillars && (
               <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1.5">
                 {[
-                  { key: 'engagementQuality', label: 'Engagement', weight: '35%' },
-                  { key: 'effectiveParticipation', label: 'Participation', weight: '25%' },
-                  { key: 'reliability', label: 'Reliability', weight: '25%' },
-                  { key: 'governanceIdentity', label: 'Identity', weight: '15%' },
-                ].map(({ key, label, weight }) => {
+                  { key: 'engagementQuality', label: 'Engagement' },
+                  { key: 'effectiveParticipation', label: 'Participation' },
+                  { key: 'reliability', label: 'Reliability' },
+                  { key: 'governanceIdentity', label: 'Identity' },
+                ].map(({ key, label }) => {
                   const v = Math.round(reportCard.pillars[key] ?? 0);
                   return (
                     <div key={key} className="space-y-0.5">

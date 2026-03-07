@@ -59,6 +59,8 @@ interface BriefingResponse {
     trend: TreasuryTrend;
     withdrawnThisEpoch: number;
     pendingProposals: number;
+    drepDelegatedAda: number | null;
+    proportionalShareAda: number | null;
   };
 
   upcoming: {
@@ -96,8 +98,10 @@ function extractDRepName(info: Record<string, unknown> | null, drepId: string): 
 
 function computeVerdict(participationRate: number, rationaleRate: number): string {
   if (participationRate >= 0.8 && rationaleRate >= 0.5) return 'Representing you well';
-  if (participationRate >= 0.5) return 'Moderately active';
-  return 'Low activity \u2014 consider reviewing alternatives';
+  if (participationRate >= 0.8) return 'Active voter, could explain decisions more';
+  if (participationRate >= 0.5) return 'Moderately active this epoch';
+  if (participationRate > 0) return 'Voted on few proposals \u2014 worth keeping an eye on';
+  return 'Hasn\u2019t voted this epoch \u2014 consider reviewing alternatives';
 }
 
 function computeHealth(
@@ -107,22 +111,34 @@ function computeHealth(
   scoreMomentum: number | null,
 ): { health: HealthStatus; headline: string } {
   if (!drepId) {
-    return { health: 'yellow', headline: "You're not represented in governance yet" };
+    return {
+      health: 'yellow',
+      headline: 'Your ADA is unrepresented \u2014 delegate to have a voice',
+    };
   }
   const s = score ?? 0;
   if (s >= 70 && votedThisEpoch) {
-    return { health: 'green', headline: "Everything's fine. Your DRep is active." };
+    return {
+      health: 'green',
+      headline: 'All good. Your representative is active and scoring well.',
+    };
   }
   if (s >= 40) {
     if (!votedThisEpoch) {
-      return { health: 'yellow', headline: "Your DRep hasn't voted on proposals this epoch" };
+      return {
+        health: 'yellow',
+        headline: 'Your DRep sat this one out \u2014 no votes cast this epoch',
+      };
     }
     if ((scoreMomentum ?? 0) < 0) {
-      return { health: 'yellow', headline: "Your DRep's score is trending down" };
+      return {
+        health: 'yellow',
+        headline: 'Your DRep\u2019s score has been slipping \u2014 worth a look',
+      };
     }
-    return { health: 'yellow', headline: 'Your DRep could be more active' };
+    return { health: 'yellow', headline: 'Your DRep is active but could be doing more' };
   }
-  return { health: 'red', headline: 'Your DRep needs attention' };
+  return { health: 'red', headline: 'Your DRep is underperforming \u2014 consider your options' };
 }
 
 function buildHeadlines(
@@ -141,21 +157,25 @@ function buildHeadlines(
 
   if (recap.proposals_ratified && recap.proposals_ratified > 0) {
     headlines.push({
-      title: `${recap.proposals_ratified} proposal${recap.proposals_ratified > 1 ? 's were' : ' was'} approved this epoch`,
+      title: `Governance approved ${recap.proposals_ratified} proposal${recap.proposals_ratified > 1 ? 's' : ''}`,
       description: recap.proposals_submitted
-        ? `Out of ${recap.proposals_submitted} submitted proposals`
-        : 'Governance proposals were ratified on-chain',
+        ? `${recap.proposals_submitted} were submitted this epoch — ${recap.proposals_ratified} made it through`
+        : 'Ratified on-chain and moving to enactment',
       type: 'proposal',
     });
   }
 
   if (recap.treasury_withdrawn_ada && recap.treasury_withdrawn_ada > 0) {
-    const formattedAda = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
-      recap.treasury_withdrawn_ada,
-    );
+    const ada = recap.treasury_withdrawn_ada;
+    const formatted =
+      ada >= 1_000_000
+        ? `${(ada / 1_000_000).toFixed(1)}M`
+        : ada >= 1_000
+          ? `${Math.round(ada / 1_000)}K`
+          : new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(ada);
     headlines.push({
-      title: `${formattedAda} ADA withdrawn from treasury`,
-      description: 'Approved treasury withdrawal proposals were executed',
+      title: `Treasury paid out ${formatted} ADA`,
+      description: 'Approved withdrawal proposals were executed from the community treasury',
       type: 'treasury',
     });
   }
@@ -164,43 +184,43 @@ function buildHeadlines(
     const pct = Math.round(recap.drep_participation_pct);
     if (pct >= 70) {
       headlines.push({
-        title: `DRep participation reached ${pct}%`,
-        description: 'A strong majority of DReps voted on governance proposals',
+        title: `Strong turnout: ${pct}% of DReps voted`,
+        description: 'Well above average — your representatives are actively engaged in governance',
         type: 'governance',
       });
     } else if (pct < 50) {
       headlines.push({
-        title: `DRep participation was only ${pct}%`,
-        description: 'Less than half of DReps voted — governance engagement is low',
+        title: `Low turnout: only ${pct}% of DReps voted`,
+        description:
+          'Less than half of representatives participated — governance engagement needs attention',
         type: 'governance',
       });
     }
   }
 
-  if (recap.ai_narrative && headlines.length < 4) {
+  if (recap.proposals_expired && recap.proposals_expired > 0 && headlines.length < 4) {
     headlines.push({
-      title: 'Epoch summary',
-      description: recap.ai_narrative,
-      type: 'governance',
+      title: `${recap.proposals_expired} proposal${recap.proposals_expired > 1 ? 's ran' : ' ran'} out of time`,
+      description: 'Did not reach the required voting threshold before the deadline',
+      type: 'proposal',
     });
   }
 
-  // If we somehow have nothing, add a generic headline from expired/dropped
+  if (recap.proposals_dropped && recap.proposals_dropped > 0 && headlines.length < 4) {
+    headlines.push({
+      title: `${recap.proposals_dropped} proposal${recap.proposals_dropped > 1 ? 's' : ''} withdrawn`,
+      description: 'Removed from consideration by their authors',
+      type: 'proposal',
+    });
+  }
+
+  // Quiet epoch — nothing notable happened
   if (headlines.length === 0) {
-    if (recap.proposals_expired && recap.proposals_expired > 0) {
-      headlines.push({
-        title: `${recap.proposals_expired} proposal${recap.proposals_expired > 1 ? 's' : ''} expired`,
-        description: 'These proposals did not receive enough support before their deadline',
-        type: 'proposal',
-      });
-    }
-    if (recap.proposals_dropped && recap.proposals_dropped > 0) {
-      headlines.push({
-        title: `${recap.proposals_dropped} proposal${recap.proposals_dropped > 1 ? 's were' : ' was'} dropped`,
-        description: 'These proposals were withdrawn or removed from consideration',
-        type: 'proposal',
-      });
-    }
+    headlines.push({
+      title: 'A quiet epoch for governance',
+      description: 'No proposals were ratified, expired, or withdrawn this epoch',
+      type: 'governance',
+    });
   }
 
   return headlines;
@@ -232,11 +252,12 @@ export const GET = withRouteHandler(
     // -----------------------------------------------------------------------
     const { data: stats } = await supabase
       .from('governance_stats')
-      .select('current_epoch')
+      .select('current_epoch, circulating_supply_lovelace')
       .eq('id', 1)
       .single();
 
     const currentEpoch = stats?.current_epoch ?? 0;
+    const circulatingSupplyLovelace = stats?.circulating_supply_lovelace ?? 0;
 
     // -----------------------------------------------------------------------
     // 2. Epoch recap
@@ -365,6 +386,24 @@ export const GET = withRouteHandler(
     }
 
     // -----------------------------------------------------------------------
+    // 4b. DRep delegated stake (for proportional treasury share)
+    // -----------------------------------------------------------------------
+    let drepDelegatedAda: number | null = null;
+    if (drepId) {
+      const { data: powerSnapshot } = await supabase
+        .from('drep_power_snapshots')
+        .select('live_stake_lovelace')
+        .eq('drep_id', drepId)
+        .order('epoch_no', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (powerSnapshot?.live_stake_lovelace) {
+        drepDelegatedAda = Math.round(powerSnapshot.live_stake_lovelace / 1_000_000);
+      }
+    }
+
+    // -----------------------------------------------------------------------
     // 5. Treasury data
     // -----------------------------------------------------------------------
     const [treasuryResult, previousTreasuryResult, pendingTreasuryResult] = await Promise.all([
@@ -451,6 +490,11 @@ export const GET = withRouteHandler(
         trend,
         withdrawnThisEpoch: recap?.treasury_withdrawn_ada ?? 0,
         pendingProposals,
+        drepDelegatedAda,
+        proportionalShareAda:
+          drepDelegatedAda && circulatingSupplyLovelace > 0
+            ? Math.round(balanceAda * (drepDelegatedAda / (circulatingSupplyLovelace / 1_000_000)))
+            : null,
       },
 
       upcoming: {

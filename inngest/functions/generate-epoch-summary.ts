@@ -330,7 +330,8 @@ export const generateEpochSummary = inngest.createFunction(
         0,
       );
 
-      const narrative = [
+      // Generate a news-quality AI narrative from the epoch data
+      const fallbackNarrative = [
         `Epoch ${epoch}:`,
         submitted > 0 ? `${submitted} proposals submitted` : null,
         ratified > 0 ? `${ratified} ratified` : null,
@@ -343,6 +344,30 @@ export const generateEpochSummary = inngest.createFunction(
       ]
         .filter(Boolean)
         .join(', ');
+
+      let narrative = fallbackNarrative;
+      try {
+        const { generateText } = await import('@/lib/ai');
+        const aiNarrative = await generateText(
+          `You are the editor of a governance newsletter for the Cardano blockchain network. Write a 2-3 sentence summary of what happened this epoch. Write like a journalist — lead with the most important development, use active voice, plain English, no jargon. Do not start with "Epoch ${epoch}" or "This epoch". Do not use marketing language. Just tell the reader what happened and why it matters.
+
+DATA FOR EPOCH ${epoch}:
+- ${submitted} new governance proposals submitted
+- ${ratified} proposals ratified (approved)
+- ${expired} proposals expired (ran out of time)
+- ${dropped} proposals dropped (withdrawn)
+- DRep participation rate: ${participationPct}%
+- Treasury withdrawals: ${treasuryWithdrawn > 0 ? `${Math.round(treasuryWithdrawn / 1_000_000)}M ADA` : 'none'}
+
+Output ONLY the narrative paragraph, nothing else.`,
+          { maxTokens: 200 },
+        );
+        if (aiNarrative && aiNarrative.length > 20) {
+          narrative = aiNarrative.trim();
+        }
+      } catch {
+        logger.warn('[epoch-summary] AI narrative generation failed, using fallback');
+      }
 
       const { error: upsertErr } = await supabase.from('epoch_recaps').upsert(
         {

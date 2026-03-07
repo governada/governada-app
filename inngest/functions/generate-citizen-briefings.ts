@@ -11,6 +11,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { assembleHolderBriefContext, generateHolderBrief, storeBrief } from '@/lib/governanceBrief';
+import { checkAndAwardCitizenMilestones } from '@/lib/citizenMilestones';
 import { errMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
@@ -94,6 +95,17 @@ export const generateCitizenBriefings = inngest.createFunction(
 
             const brief = generateHolderBrief(ctx);
             await storeBrief(user.id, 'citizen', brief, epoch);
+
+            // Award any new citizen milestones alongside briefing generation
+            try {
+              await checkAndAwardCitizenMilestones(user.id, user.drepId);
+            } catch (milestoneErr) {
+              logger.warn('[citizen-briefings] Milestone check failed', {
+                userId: user.id,
+                error: errMsg(milestoneErr),
+              });
+            }
+
             batchGenerated++;
           } catch (err) {
             logger.warn('[citizen-briefings] Failed for user', {

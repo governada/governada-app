@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { notifyUser, broadcastEvent, type NotificationEvent } from '@/lib/notifications';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { checkAndAwardMilestones, MILESTONES } from '@/lib/milestones';
+import { checkAndAwardCitizenMilestones, CITIZEN_MILESTONES } from '@/lib/citizenMilestones';
 import { errMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
@@ -40,6 +41,18 @@ interface DRepScoreRow {
   score: number;
 }
 
+interface CitizenDelegator {
+  userId: string;
+  drepId: string;
+}
+
+interface CitizenDRepRow {
+  id: string;
+  score: number;
+  score_momentum: number | null;
+  participation_rate: number | null;
+}
+
 const SCORE_CHANGE_THRESHOLD = 3;
 const INACTIVITY_EPOCH_THRESHOLD = 3;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://drepscore.io';
@@ -60,6 +73,8 @@ export const checkNotifications = inngest.createFunction(
       milestone: 0,
       rank: 0,
       opportunity: 0,
+      citizenAlerts: 0,
+      citizenMilestones: 0,
     };
 
     // Step 1: Gather claimed DReps and their data
@@ -505,6 +520,161 @@ export const checkNotifications = inngest.createFunction(
             title: `You're ${gap} point${gap !== 1 ? 's' : ''} from overtaking a competitor`,
             body: `A few more governance actions could move your pool up in the rankings.`,
             url: `${BASE_URL}/pool/${current.pool_id}`,
+          });
+        }
+      }
+    });
+
+    // ── Citizen Alerts (Steps 12-14) ──────────────────────────────────────────
+    // Target delegating citizens (NOT DRep operators) with alerts about their
+    // representative's performance, inactivity, and citizen milestones.
+
+    // Step 12: Gather citizen delegators
+    const citizenContext = await step.run('gather-citizen-delegators', async () => {
+      const supabase = getSupabaseAdmin();
+
+      // Get users with active delegation who are NOT DRep operators
+      const { data: wallets } = await supabase
+        .from('user_wallets')
+        .select('user_id, drep_id')
+        .not('drep_id', 'is', null);
+
+      if (!wallets || wallets.length === 0)
+        return { citizens: [] as CitizenDelegator[], citizenDreps: [] as CitizenDRepRow[] };
+
+      // Exclude users who already have claimed_drep_id (they get operator alerts)
+      const claimedUserIds = new Set(context.users.map((u: ClaimedUserRow) => u.id));
+      const citizenWallets = wallets.filter((w) => !claimedUserIds.has(w.user_id));
+
+      if (citizenWallets.length === 0)
+        return { citizens: [] as CitizenDelegator[], citizenDreps: [] as CitizenDRepRow[] };
+
+      // Deduplicate by user_id (a user might have multiple wallets)
+      const citizenMap = new Map<string, string>();
+      for (const w of citizenWallets) {
+        if (w.drep_id && !citizenMap.has(w.user_id)) {
+          citizenMap.set(w.user_id, w.drep_id);
+        }
+      }
+
+      const citizens: CitizenDelegator[] = Array.from(citizenMap.entries()).map(
+        ([userId, drepId]) => ({ userId, drepId }),
+      );
+
+      // Fetch DRep data for these citizens' DReps
+      const drepIds = [...new Set(citizens.map((c) => c.drepId))];
+      const { data: dreps } = await supabase
+        .from('dreps')
+        .select('id, score, score_momentum, participation_rate')
+        .in('id', drepIds);
+
+      return {
+        citizens,
+        citizenDreps: (dreps || []) as CitizenDRepRow[],
+      };
+    });
+
+    // Step 13: Citizen DRep health alerts
+    await step.run('check-citizen-drep-alerts', async () => {
+      const { citizens, citizenDreps } = citizenContext;
+      if (citizens.length === 0) return;
+
+      const supabase = getSupabaseAdmin();
+      const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+
+      for (const citizen of citizens) {
+        const drep = citizenDreps.find((d: CitizenDRepRow) => d.id === citizen.drepId);
+        if (!drep) continue;
+
+        // DRep score dropped significantly
+        const { data: history } = await supabase
+          .from('drep_score_history')
+          .select('score')
+          .eq('drep_id', citizen.drepId)
+          .order('snapshot_date', { ascending: false })
+          .limit(2);
+
+        if (history && history.length >= 2) {
+          const delta = history[0].score - history[1].score;
+          if (delta < -SCORE_CHANGE_THRESHOLD) {
+            await notifyUser(citizen.userId, {
+              eventType: 'drep-score-change',
+              title: `Your DRep's score dropped ${Math.abs(delta)} points`,
+              body: `Their score is now ${history[0].score}/100. Consider reviewing their recent activity.`,
+              url: `${BASE_URL}/drep/${citizen.drepId}`,
+            });
+            stats.citizenAlerts++;
+          }
+        }
+
+        // DRep hasn't voted — check for inactivity or missed votes
+        if (context.proposals.length > 0) {
+          const { count } = await supabase
+            .from('drep_votes')
+            .select('vote_tx_hash', { count: 'exact', head: true })
+            .eq('drep_id', citizen.drepId)
+            .eq('epoch_no', currentEpoch);
+
+          if ((count ?? 0) === 0) {
+            const { data: lastVote } = await supabase
+              .from('drep_votes')
+              .select('epoch_no')
+              .eq('drep_id', citizen.drepId)
+              .order('epoch_no', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const epochsSinceVote = lastVote ? currentEpoch - (lastVote.epoch_no ?? 0) : 999;
+
+            if (epochsSinceVote >= INACTIVITY_EPOCH_THRESHOLD) {
+              await notifyUser(citizen.userId, {
+                eventType: 'drep-inactive',
+                title: `Your DRep hasn't voted in ${epochsSinceVote} epochs`,
+                body: `Your representative has been inactive. Your delegation isn't being used.`,
+                url: `${BASE_URL}/drep/${citizen.drepId}`,
+              });
+              stats.citizenAlerts++;
+            } else if (epochsSinceVote >= 1) {
+              await notifyUser(citizen.userId, {
+                eventType: 'drep-missed-vote',
+                title: `Your DRep missed voting this epoch`,
+                body: `${context.proposals.length} proposal${context.proposals.length !== 1 ? 's were' : ' was'} open but your DRep didn't vote.`,
+                url: `${BASE_URL}/drep/${citizen.drepId}`,
+              });
+              stats.citizenAlerts++;
+            }
+          }
+        }
+      }
+    });
+
+    // Step 14: Citizen milestone detection
+    await step.run('check-citizen-milestones', async () => {
+      const { citizens } = citizenContext;
+      if (citizens.length === 0) return;
+
+      for (const citizen of citizens) {
+        try {
+          const newMilestones = await checkAndAwardCitizenMilestones(
+            citizen.userId,
+            citizen.drepId,
+          );
+
+          for (const key of newMilestones) {
+            const def = CITIZEN_MILESTONES.find((m) => m.key === key);
+            if (def) {
+              await notifyUser(citizen.userId, {
+                eventType: 'citizen-level-up',
+                title: `Achievement unlocked: ${def.label}`,
+                body: def.description,
+                url: `${BASE_URL}/my-gov`,
+              });
+              stats.citizenMilestones++;
+            }
+          }
+        } catch (e) {
+          logger.warn(`[notifications] Citizen milestone check failed for ${citizen.userId}`, {
+            error: e,
           });
         }
       }

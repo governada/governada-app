@@ -8,8 +8,6 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
 import { ConstellationScene } from '@/components/ConstellationScene';
 import { EpochBriefing } from './EpochBriefing';
-import { CivicIdentityCard } from '@/components/civica/shared/CivicIdentityCard';
-import { TreasuryCitizenView } from './TreasuryCitizenView';
 
 interface PulseData {
   totalAdaGoverned: string;
@@ -171,19 +169,9 @@ export function HomeCitizen({ pulseData, ssrHolderData, ssrWalletAddress }: Home
 
   return (
     <div className="flex flex-col pb-16">
-      {/* Epoch Briefing — the citizen's primary surface */}
-      <section className="mx-auto w-full max-w-3xl px-4 pt-6">
+      {/* Epoch Briefing — the citizen's entire home experience */}
+      <section className="mx-auto w-full max-w-2xl px-4 pt-6">
         <EpochBriefing drepId={drepId} wallet={wallet} />
-      </section>
-
-      {/* Treasury — Where Your Money Goes */}
-      <section className="mx-auto w-full max-w-3xl px-4 mt-6">
-        <TreasuryCitizenView />
-      </section>
-
-      {/* Civic Identity — grows over time */}
-      <section className="mx-auto w-full max-w-3xl px-4 mt-6">
-        <CivicIdentityCard wallet={wallet} />
       </section>
     </div>
   );

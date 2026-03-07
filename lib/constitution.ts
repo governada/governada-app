@@ -2,7 +2,7 @@
  * Key articles from the Cardano Constitution relevant to governance proposal analysis.
  * Curated for AI constitutional alignment assessment.
  *
- * Source: Cardano Interim Constitution (ratified December 2024)
+ * Source: Cardano Constitution (ratified December 2024)
  * Only includes articles relevant to governance action evaluation.
  */
 

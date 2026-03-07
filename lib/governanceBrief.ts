@@ -327,7 +327,7 @@ function generateHolderBriefTemplate(ctx: HolderBriefContext): GeneratedBrief {
 
 export async function storeBrief(
   userId: string,
-  briefType: 'drep' | 'holder',
+  briefType: 'drep' | 'holder' | 'citizen',
   content: GeneratedBrief,
   epoch: number,
 ): Promise<string | null> {

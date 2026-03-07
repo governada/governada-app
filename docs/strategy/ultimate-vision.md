@@ -2,8 +2,8 @@
 
 > **Status:** Active north star -- all build decisions, monetization timing, and architecture choices should align with this document.
 > **Created:** March 2026
-> **Version:** 2.1
-> **Last updated:** 2026-03-07 (V2.1: build sequence rewritten from scratch -- compressed foundation Steps 0-3, persona-driven Steps 4-11 grounded in codebase audit of 269+ components, 145 API routes, 75+ tables, 24 Inngest functions)
+> **Version:** 2.2
+> **Last updated:** 2026-03-07 (V2.2: Step 4 infrastructure shipped -- citizen_milestones table, simplified_onboarding flag, generate-citizen-briefings Inngest function, PostHog conversion funnel wired, codebase audit corrections)
 > **Supersedes:** V1 of this document. Persona deep dives live in `docs/strategy/personas/`.
 > **Living document:** Agents should update status markers, progress annotations, and minor refinements as work proceeds. Log changes in `docs/strategy/vision-changelog.md`. Increment minor version (2.1, 2.2...) for progress updates; reserve major version (3.0) for strategic pivots.
 
@@ -404,7 +404,7 @@ The backend intelligence engine and core frontend are production-grade. This fou
 
 ### Step 4: Citizen Experience & Acquisition Funnel (MEDIUM complexity)
 
-> **Status: SHIPPED** (PR #141, 2026-03-07)
+> **Status: FOUNDATIONS SHIPPED** -- Core components (EpochBriefing, CivicIdentityCard, TreasuryCitizenView) already built in Step 3. Step 4 infrastructure complete: `citizen_milestones` table, `simplified_onboarding` flag, `generate-citizen-briefings` Inngest function, PostHog conversion funnel wired. UX refinement and A/B testing remain.
 > **Primary persona:** Citizen (ADA Holder)
 > **Secondary impact:** All personas (improved onboarding benefits everyone)
 
@@ -443,18 +443,26 @@ The on-ramp. Without a clear, unintimidating path from "I hold ADA" to "I'm a Ca
 | Notification system (`check-notifications` Inngest) | **Modify** -- add citizen alert triggers                           |
 | `detect-alignment-drift` Inngest function           | **Reuse** -- drift detection for alerts                            |
 
-**Net-new:**
+**Already built (moved from net-new):**
 
-| What                                       | Purpose                                                         |
-| ------------------------------------------ | --------------------------------------------------------------- |
-| `EpochBriefing.tsx`                        | Core citizen briefing component (AI-generated, epoch-cycle)     |
-| `CivicIdentityCard.tsx`                    | Citizen identity: since-date, streaks, milestones, footprint    |
-| `TreasuryCitizenView.tsx`                  | "Where your money goes" with proportional share calculation     |
-| `SmartAlertManager.tsx`                    | Alert routing: detect triggers → filter by preference → deliver |
-| `citizen_milestones` table                 | Track milestone achievements per user                           |
-| `citizen_briefings` table                  | Cache generated briefings per user per epoch                    |
-| `simplified_onboarding` feature flag       | A/B test simplified vs current anonymous UX                     |
-| `generate-epoch-briefing` Inngest function | Batch-generate citizen briefings at epoch boundary              |
+| What                                          | Status                                                                                                     |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `EpochBriefing.tsx`                           | **EXISTS** -- `components/civica/home/EpochBriefing.tsx`, uses `/api/briefing/citizen`                     |
+| `CivicIdentityCard.tsx`                       | **EXISTS** -- `components/civica/shared/CivicIdentityCard.tsx`, uses footprint API                         |
+| `TreasuryCitizenView.tsx`                     | **EXISTS** -- `components/civica/home/TreasuryCitizenView.tsx`                                             |
+| `citizen_milestones` table                    | **SHIPPED** -- migration 051, tracks per-user milestone achievements                                       |
+| `simplified_onboarding` feature flag          | **SHIPPED** -- migration 051, ready for A/B testing                                                        |
+| `generate-citizen-briefings` Inngest function | **SHIPPED** -- triggered by `drepscore/epoch.transition`, batch-generates per user                         |
+| PostHog conversion funnel                     | **WIRED** -- full funnel: path_clicked → match_started → completed → wallet_opened → connected → delegated |
+
+**Remaining net-new:**
+
+| What                                    | Purpose                                                          |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| `SmartAlertManager.tsx`                 | Alert routing: detect triggers → filter by preference → deliver  |
+| Citizen milestone detection logic       | Detect and award milestones (delegation streaks, vote influence) |
+| Treasury "your proportional share" calc | Personalized share framing in TreasuryCitizenView                |
+| UX copy optimization + A/B testing      | Simplified onboarding messaging variants                         |
 
 **Persona-appropriate surfaces:** After wallet connection, the citizen sees the briefing (not a dashboard). DReps see their governance inbox. SPOs see their pool identity. Each persona's "home" is designed for them.
 

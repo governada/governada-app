@@ -703,6 +703,12 @@ export const generateEpochSummary = inngest.createFunction(
       }
     });
 
+    // Trigger citizen briefing generation for the new epoch
+    await step.sendEvent('trigger-citizen-briefings', {
+      name: 'drepscore/epoch.transition',
+      data: { epoch: epochInfo.currentEpoch, previousEpoch: epoch },
+    });
+
     logger.info('[epoch-summary] Epoch summary generated', { epoch, usersProcessed });
     return {
       epoch,

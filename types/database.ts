@@ -732,6 +732,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      citizen_milestones: {
+        Row: {
+          achieved_at: string;
+          epoch: number | null;
+          id: string;
+          metadata: Json | null;
+          milestone_key: string;
+          milestone_label: string | null;
+          user_id: string;
+        };
+        Insert: {
+          achieved_at?: string;
+          epoch?: number | null;
+          id?: string;
+          metadata?: Json | null;
+          milestone_key: string;
+          milestone_label?: string | null;
+          user_id: string;
+        };
+        Update: {
+          achieved_at?: string;
+          epoch?: number | null;
+          id?: string;
+          metadata?: Json | null;
+          milestone_key?: string;
+          milestone_label?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       classification_history: {
         Row: {
           classified_at: string;

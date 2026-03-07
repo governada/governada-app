@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 import { RadarOverlay } from '@/components/matching/RadarOverlay';
 import { cn } from '@/lib/utils';
+import { usePostHog } from 'posthog-js/react';
 import { DelegateButton } from '@/components/DelegateButton';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { saveMatchProfile, loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
@@ -160,6 +161,7 @@ export function QuickMatchFlow() {
   const [matchType, setMatchType] = useState<MatchType>('drep');
   const [storedProfile, setStoredProfile] = useState<StoredMatchProfile | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const posthog = usePostHog();
 
   // Load stored match profile on mount
   useEffect(() => {
@@ -283,7 +285,10 @@ export function QuickMatchFlow() {
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         {step === 'intro' && (
           <IntroScreen
-            onStart={() => setStep(0)}
+            onStart={() => {
+              posthog?.capture('quick_match_started', { match_type: matchType });
+              setStep(0);
+            }}
             matchType={matchType}
             onMatchTypeChange={setMatchType}
             storedProfile={storedProfile}

@@ -11,6 +11,15 @@ Track incremental updates to `ultimate-vision.md` and persona docs. Agents shoul
 
 ---
 
+### v2.2 -- 2026-03-07
+
+- **Step 4 audit:** Codebase audit revealed that Step 4 "net-new" items EpochBriefing.tsx, CivicIdentityCard.tsx, and TreasuryCitizenView.tsx were already built during Step 3. Moved to "already built" section.
+- **Step 4 infrastructure:** Shipped `citizen_milestones` table (migration 051), `simplified_onboarding` feature flag, `generate-citizen-briefings` Inngest function (triggered by `drepscore/epoch.transition`).
+- **PostHog funnel:** Verified full conversion funnel is wired: citizen_path_clicked → quick_match_started → quick_match_completed → wallet_modal_opened → wallet_connected → delegation_completed.
+- **Step 1 audit:** Confirmed `match_type` parameter already exists in `/api/governance/quick-match` route — supports both DRep and SPO matching. Vision description was accurate.
+- **SPO snapshot audit:** Confirmed `sync-spo-scores` already writes to `spo_score_snapshots` and `spo_alignment_snapshots` with completeness logging. No gap existed.
+- **Step 4 status:** Updated from "NOT STARTED" to "FOUNDATIONS SHIPPED" — remaining work is UX refinement, A/B testing, SmartAlertManager, and milestone detection logic.
+
 ### v2.1 -- 2026-03-07
 
 - **Build sequence:** Complete rewrite grounded in codebase audit. Compressed completed Steps 0-3 into "Foundation" summary with existing infrastructure inventory (269+ components, 145 API routes, 75+ tables, 24 Inngest functions). Renumbered forward steps: Step 4 (Citizen Experience), Step 5 (Governance Workspace), Step 6 (Community Engagement), Step 7 (Viral Growth), Step 8 (Monetization), Step 9 (API Platform), Step 10 (Advanced Intelligence), Step 11 (New Product Lines). Each forward step now specifies: what exists to reuse/modify, what is net-new, primary/secondary personas served.

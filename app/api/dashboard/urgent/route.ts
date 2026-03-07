@@ -4,6 +4,7 @@ import { getOpenProposalsForDRep } from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalDisplayTitle } from '@/utils/display';
 import { createClient } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -84,5 +85,44 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     logger.error('Unexplained votes check failed', { context: 'dashboard/urgent', error: err });
   }
 
-  return NextResponse.json({ proposals: urgent, unexplainedVotes });
+  // Top pending proposals (unvoted, prioritized by expiry)
+  const currentEpochNow = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+  const pendingList = pendingProposals
+    .map((p: any) => {
+      const expiryEpoch = p.expirationEpoch ?? 0;
+      return {
+        txHash: p.txHash,
+        index: p.proposalIndex,
+        title: getProposalDisplayTitle(p.title, p.txHash, p.proposalIndex),
+        proposalType: p.proposalType || 'Proposal',
+        epochsRemaining: expiryEpoch > 0 ? Math.max(0, expiryEpoch - currentEpochNow) : null,
+      };
+    })
+    .sort((a: any, b: any) => (a.epochsRemaining ?? 999) - (b.epochsRemaining ?? 999))
+    .slice(0, 5);
+
+  // Unanswered questions count
+  let unansweredQuestions = 0;
+  try {
+    const admin = getSupabaseAdmin();
+    const { count } = await admin
+      .from('drep_questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('drep_id', drepId)
+      .eq('status', 'open');
+    unansweredQuestions = count ?? 0;
+  } catch (err) {
+    logger.error('Unanswered questions count failed', {
+      context: 'dashboard/urgent',
+      error: err,
+    });
+  }
+
+  return NextResponse.json({
+    proposals: urgent,
+    unexplainedVotes,
+    pendingProposals: pendingList,
+    pendingCount: pendingProposals.length,
+    unansweredQuestions,
+  });
 });

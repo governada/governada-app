@@ -141,7 +141,7 @@ export function VoteCastingPanel({
   const { phase, startVote, confirmVote, reset, isProcessing, canVote } = useVote();
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
   const [rationaleText, setRationaleText] = useState('');
-  const [showRationale, setShowRationale] = useState(false);
+  const [showRationale, setShowRationale] = useState(true);
   const [isDrafting, setIsDrafting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const voteCastingEnabled = useFeatureFlag('governance_vote_casting');
@@ -292,34 +292,36 @@ export function VoteCastingPanel({
             )}
 
             {/* Rationale section */}
-            {!showRationale ? (
-              <button
-                onClick={() => setShowRationale(true)}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <FileText className="h-3.5 w-3.5" />
-                Add rationale (optional, published on-chain)
-              </button>
-            ) : (
+            {showRationale ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-muted-foreground">
                     Vote Rationale (CIP-100)
                   </label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs gap-1"
-                    onClick={handleAiDraft}
-                    disabled={isDrafting}
-                  >
-                    {isDrafting ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3 w-3" />
-                    )}
-                    {isDrafting ? 'Drafting...' : 'AI Draft'}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs gap-1"
+                      onClick={handleAiDraft}
+                      disabled={isDrafting}
+                    >
+                      {isDrafting ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                      {isDrafting ? 'Drafting...' : 'AI Draft'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs text-muted-foreground"
+                      onClick={() => setShowRationale(false)}
+                    >
+                      Hide
+                    </Button>
+                  </div>
                 </div>
                 <textarea
                   value={rationaleText}
@@ -328,10 +330,23 @@ export function VoteCastingPanel({
                   className="w-full min-h-[120px] p-3 text-sm border rounded-lg bg-background resize-y focus:outline-none focus:ring-2 focus:ring-primary/30"
                   maxLength={10000}
                 />
-                <p className="text-xs text-muted-foreground text-right">
-                  {rationaleText.length.toLocaleString()} / 10,000
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground">
+                    DReps who explain votes score higher on Engagement (25% weight)
+                  </p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {rationaleText.length.toLocaleString()} / 10,000
+                  </p>
+                </div>
               </div>
+            ) : (
+              <button
+                onClick={() => setShowRationale(true)}
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Add rationale (optional)
+              </button>
             )}
 
             <div className="flex items-center justify-between text-sm">

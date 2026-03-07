@@ -21,6 +21,7 @@ import {
   Zap,
   Eye,
   Fingerprint,
+  HelpCircle,
 } from 'lucide-react';
 import { ShareModal } from '@/components/civica/shared/ShareModal';
 import { cn } from '@/lib/utils';
@@ -166,6 +167,9 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
 
   const urgentProposals: any[] = urgent?.proposals ?? [];
   const unexplainedVotes: any[] = urgent?.unexplainedVotes ?? [];
+  const pendingProposals: any[] = urgent?.pendingProposals ?? [];
+  const pendingCount: number = urgent?.pendingCount ?? 0;
+  const unansweredQuestions: number = urgent?.unansweredQuestions ?? 0;
 
   const rank: number | null = competitive?.rank ?? null;
   const totalActive: number = competitive?.totalActive ?? 0;
@@ -420,22 +424,78 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
         </div>
       )}
 
-      {/* Pending votes widget */}
-      {!pulseLoading && activeProposals > 0 && urgentProposals.length === 0 && (
-        <Link href="/discover" className="block group">
-          <div className="rounded-xl border border-amber-900/30 bg-amber-950/10 p-4 flex items-center justify-between hover:brightness-110 transition-all">
+      {/* Pending votes queue */}
+      {pendingProposals.length > 0 && urgentProposals.length === 0 && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between border-b border-border">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <p className="text-sm font-medium">
+                {pendingCount} proposal{pendingCount !== 1 ? 's' : ''} awaiting your vote
+              </p>
+            </div>
+            {pendingCount > 5 && (
+              <Link
+                href="/discover"
+                className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+              >
+                View all
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+          <div className="divide-y divide-border">
+            {pendingProposals.map((p: any) => (
+              <Link
+                key={`${p.txHash}-${p.index}`}
+                href={`/proposal/${p.txHash}/${p.index}`}
+                className="px-4 py-2.5 flex items-center gap-3 hover:bg-muted/20 transition-colors group"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate group-hover:text-primary transition-colors">
+                    {p.title}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {p.proposalType}
+                    {p.epochsRemaining != null && (
+                      <span
+                        className={cn('ml-1.5', p.epochsRemaining <= 2 ? 'text-amber-400' : '')}
+                      >
+                        ·{' '}
+                        {p.epochsRemaining === 0
+                          ? 'Last epoch!'
+                          : `${p.epochsRemaining} epoch${p.epochsRemaining !== 1 ? 's' : ''} left`}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <span className="text-xs text-primary font-medium shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Vote
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Unanswered questions */}
+      {unansweredQuestions > 0 && (
+        <Link href={`/drep/${drepId}?tab=community`} className="block group">
+          <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between hover:border-primary/30 transition-colors">
             <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-amber-400" />
+              <HelpCircle className="h-4 w-4 text-primary" />
               <div>
-                <p className="text-sm font-medium text-amber-200">
-                  {activeProposals} proposal{activeProposals > 1 ? 's' : ''} awaiting your vote
+                <p className="text-sm font-medium">
+                  {unansweredQuestions} unanswered question
+                  {unansweredQuestions > 1 ? 's' : ''}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {votesThisWeek} votes cast network-wide this week
+                  Citizens are waiting for your response
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
         </Link>
       )}

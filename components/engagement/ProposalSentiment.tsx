@@ -30,8 +30,13 @@ interface ProposalSentimentProps {
 }
 
 export function ProposalSentiment({ txHash, proposalIndex, isOpen }: ProposalSentimentProps) {
-  const { connected, isAuthenticated, address, delegatedDrepId, authenticate } = useWallet();
-  const { data: results, isLoading, refetch } = useSentimentResults(txHash, proposalIndex);
+  const { connected, isAuthenticated, address, delegatedDrepId, ownDRepId, authenticate } =
+    useWallet();
+  const {
+    data: results,
+    isLoading,
+    refetch,
+  } = useSentimentResults(txHash, proposalIndex, ownDRepId);
 
   const [voting, setVoting] = useState(false);
   const [changingVote, setChangingVote] = useState(false);
@@ -152,6 +157,8 @@ export function ProposalSentiment({ txHash, proposalIndex, isOpen }: ProposalSen
         {community.total > 0 && (
           <ResultsView
             community={community}
+            delegators={ownDRepId ? (results?.delegators ?? null) : null}
+            stakeWeighted={ownDRepId ? (results?.stakeWeighted ?? null) : null}
             userSentiment={hasVoted && !changingVote ? userSentiment : null}
             isOpen={isOpen}
             onChangeVote={hasVoted && isOpen ? () => setChangingVote(true) : undefined}
@@ -263,11 +270,15 @@ function SentimentButtons({
 
 function ResultsView({
   community,
+  delegators,
+  stakeWeighted,
   userSentiment,
   isOpen,
   onChangeVote,
 }: {
   community: SentimentResults['community'];
+  delegators: SentimentResults['delegators'] | null;
+  stakeWeighted: SentimentResults['stakeWeighted'] | null;
   userSentiment: SentimentChoice | null;
   isOpen: boolean;
   onChangeVote?: () => void;
@@ -294,6 +305,51 @@ function ResultsView({
         </div>
       )}
 
+      {/* DRep delegator sentiment (only shown to DReps) */}
+      {delegators && delegators.total > 0 && (
+        <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 space-y-2">
+          <p className="text-xs font-semibold text-primary">Your Delegators</p>
+          <SentimentBar
+            label="Support"
+            count={delegators.support}
+            percent={
+              delegators.total > 0 ? Math.round((delegators.support / delegators.total) * 100) : 0
+            }
+            color="bg-green-500"
+          />
+          <SentimentBar
+            label="Oppose"
+            count={delegators.oppose}
+            percent={
+              delegators.total > 0 ? Math.round((delegators.oppose / delegators.total) * 100) : 0
+            }
+            color="bg-red-500"
+          />
+          <SentimentBar
+            label="Unsure"
+            count={delegators.unsure}
+            percent={
+              delegators.total > 0 ? Math.round((delegators.unsure / delegators.total) * 100) : 0
+            }
+            color="bg-amber-500"
+          />
+          <p className="text-xs text-muted-foreground">
+            {delegators.total} of your delegator{delegators.total !== 1 ? 's' : ''} voted
+            {stakeWeighted && stakeWeighted.total > 0 && (
+              <span>
+                {' '}
+                &middot; stake-weighted:{' '}
+                {Math.round((stakeWeighted.support / stakeWeighted.total) * 100)}% support
+              </span>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Community-wide sentiment */}
+      {delegators && delegators.total > 0 && (
+        <p className="text-xs font-semibold text-muted-foreground pt-1">All Citizens</p>
+      )}
       <SentimentBar label="Support" count={community.support} percent={sp} color="bg-green-500" />
       <SentimentBar label="Oppose" count={community.oppose} percent={op} color="bg-red-500" />
       <SentimentBar label="Unsure" count={community.unsure} percent={up} color="bg-amber-500" />

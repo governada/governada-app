@@ -2,10 +2,9 @@
  * Globe-based layout engine for the governance constellation.
  *
  * Maps governance participants onto a sphere:
- *   - Core (origin) = governance engine
- *   - CC members = inner mantle shell (radius ~3.5)
  *   - DReps = surface of the globe (radius ~8), positioned by alignment dimensions → lat/lon
- *   - SPOs = infrastructure arcs connecting surface nodes
+ *   - SPOs = infrastructure nodes on the surface, real geo when available
+ *   - CC members = orbital satellites above the surface (radius ~9.5) with tether lines down
  *
  * Alignment dimensions map to 6 longitude bands (60° each).
  * Specialization strength maps to latitude spread.
@@ -32,12 +31,12 @@ const DIM_LONGITUDES: Record<string, number> = (() => {
 })();
 
 const GLOBE_RADIUS = 8;
-const CC_RADIUS = 3.5;
+const CC_RADIUS = 9.5; // orbital altitude above the surface
 const SPO_ARC_RADIUS = GLOBE_RADIUS + 0.3; // slightly above surface
 const MIN_VISIBLE_SCALE = 0.06;
 const MAX_VISIBLE_SCALE = 0.25;
 const SPO_SCALE_FACTOR = 0.6;
-const CC_SCALE_FACTOR = 1.15;
+const CC_SCALE_FACTOR = 1.5; // larger — few but important
 const SPO_LIMIT = 400;
 
 interface LayoutInput {
@@ -74,15 +73,17 @@ export function computeGlobeLayout(inputs: LayoutInput[], nodeLimit: number): La
     nodeMap.set(node.id, node);
   }
 
-  // CC members — inner mantle shell
+  // CC members — orbital satellites above the surface
+  const ccNodes: ConstellationNode3D[] = [];
   for (let i = 0; i < ccInputs.length; i++) {
     const input = ccInputs[i];
     const lon = (i / Math.max(ccInputs.length, 1)) * Math.PI * 2 - Math.PI;
-    // Slight latitude variation so they're not all on the equator
+    // Spread across latitudes for visual coverage
     const lat = ((simpleHash(input.id) % 60) - 30) * (Math.PI / 180);
     const pos = sphereToCartesian(lat, lon, CC_RADIUS);
     const scale = MAX_VISIBLE_SCALE * CC_SCALE_FACTOR;
     const node: ConstellationNode3D = { ...input, position: pos, scale };
+    ccNodes.push(node);
     nodes.push(node);
     nodeMap.set(node.id, node);
   }
@@ -123,7 +124,7 @@ export function computeGlobeLayout(inputs: LayoutInput[], nodeLimit: number): La
     nodeMap.set(node.id, node);
   }
 
-  const edges = computeGlobeEdges(nodes, spoNodes);
+  const edges = computeGlobeEdges(nodes, spoNodes, ccNodes);
   return { nodes, edges, nodeMap };
 }
 
@@ -179,6 +180,7 @@ function computeSpherePosition(input: LayoutInput): [number, number] {
 function computeGlobeEdges(
   allNodes: ConstellationNode3D[],
   spoNodes: ConstellationNode3D[],
+  ccNodes: ConstellationNode3D[],
 ): ConstellationEdge3D[] {
   const edges: ConstellationEdge3D[] = [];
   const drepNodes = allNodes.filter((n) => n.nodeType === 'drep');
@@ -234,6 +236,25 @@ function computeGlobeEdges(
         edgeType: 'lastmile',
       });
       lastMileCount++;
+    }
+  }
+
+  // Layer 4: Orbital tethers — CC members to their nearest surface DReps
+  const surfaceNodes = [...drepNodes, ...spoNodes];
+  for (const cc of ccNodes) {
+    if (surfaceNodes.length === 0) break;
+    // Connect each CC to 2-3 nearest surface nodes
+    const nearest = surfaceNodes
+      .map((n) => ({ node: n, dist: dist3D(cc.position, n.position) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+
+    for (const { node } of nearest) {
+      edges.push({
+        from: cc.position,
+        to: node.position,
+        edgeType: 'orbital',
+      });
     }
   }
 

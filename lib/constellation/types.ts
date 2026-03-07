@@ -20,7 +20,7 @@ export interface ConstellationNode3D {
   geoLon?: number;
 }
 
-export type EdgeType = 'proximity' | 'infrastructure' | 'lastmile';
+export type EdgeType = 'proximity' | 'infrastructure' | 'lastmile' | 'orbital';
 
 export interface ConstellationEdge3D {
   from: [number, number, number];

@@ -25,9 +25,8 @@ import type {
 export type { ConstellationRef } from '@/components/GovernanceConstellation';
 
 const DREP_COLOR = '#2dd4bf';
-const SPO_COLOR = '#06b6d4';
+const SPO_COLOR = '#a78bfa'; // purple — visually distinct from teal DReps
 const CC_COLOR = '#fbbf24';
-const CORE_COLOR = '#fff0d4';
 const GLOBE_LINE_COLOR = '#334488';
 
 interface GlobeConstellationProps {
@@ -50,7 +49,7 @@ interface SceneState {
 
 // Earth-like axial tilt: 23.4 degrees
 const AXIAL_TILT = 23.4 * (Math.PI / 180);
-const INITIAL_CAMERA: [number, number, number] = [0, 4, 20];
+const INITIAL_CAMERA: [number, number, number] = [0, 3, 14];
 const INITIAL_TARGET: [number, number, number] = [0, 0, 0];
 const ROTATION_SPEED = 0.012; // slow, majestic rotation (~8.7 min/revolution)
 
@@ -217,7 +216,7 @@ export const GlobeConstellation = forwardRef<
 
           <AmbientStarfield count={quality === 'low' ? 200 : 400} />
           <TiltedGlobeGroup enabled={!sceneState.animating} rotationRef={rotationAngleRef}>
-            <GovernanceCore />
+            <InnerGlow />
             <GlobeAtmosphere radius={8.1} color="#4488cc" intensity={0.8} />
             <GlobeAtmosphere radius={8.5} color="#2244aa" intensity={0.3} />
             <GlobeWireframe radius={8} opacity={0.04} />
@@ -230,6 +229,9 @@ export const GlobeConstellation = forwardRef<
               onNodeClick={interactive ? (node) => flyToNodeImpl(node.id) : undefined}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            {quality !== 'low' && (
+              <NetworkPulses edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            )}
           </TiltedGlobeGroup>
 
           {quality !== 'low' && (
@@ -429,6 +431,24 @@ void main() {
 }
 `;
 
+// Ring + core shader for CC orbital nodes (satellite halo effect)
+const CC_FRAG = /* glsl */ `
+varying vec3 vColor;
+varying float vAlpha;
+
+void main() {
+  float dist = length(gl_PointCoord - vec2(0.5));
+  if (dist > 0.5) discard;
+  // Bright core
+  float core = 1.0 - smoothstep(0.0, 0.12, dist);
+  // Ring halo around the core
+  float ring = smoothstep(0.2, 0.25, dist) * (1.0 - smoothstep(0.35, 0.5, dist));
+  float alpha = max(ring * 0.7, core);
+  vec3 col = vColor * (1.0 + core * 2.5);
+  gl_FragColor = vec4(col, alpha * vAlpha);
+}
+`;
+
 // --- Scene sub-components ---
 
 function RaycastConfig() {
@@ -502,7 +522,7 @@ function ConstellationNodes({
           interactive={interactive}
           onNodeClick={onNodeClick}
           getColor={getSpoColor}
-          emissive={1.5}
+          emissive={2.0}
           fragmentShader={SPO_FRAG}
         />
       )}
@@ -515,7 +535,8 @@ function ConstellationNodes({
           interactive={interactive}
           onNodeClick={onNodeClick}
           getColor={getCcColor}
-          emissive={3.0}
+          emissive={3.5}
+          fragmentShader={CC_FRAG}
         />
       )}
     </>
@@ -632,8 +653,9 @@ function NodePoints({
 
 const EDGE_STYLES = {
   proximity: { color: '#4488aa', opacity: 0.12, dimOpacity: 0.03 },
-  infrastructure: { color: '#06b6d4', opacity: 0.18, dimOpacity: 0.04 },
+  infrastructure: { color: '#7c6cc4', opacity: 0.15, dimOpacity: 0.04 },
   lastmile: { color: '#1a3a4a', opacity: 0.06, dimOpacity: 0.015 },
+  orbital: { color: '#fbbf24', opacity: 0.2, dimOpacity: 0.05 },
 } as const;
 
 function EdgeLayer({
@@ -677,12 +699,14 @@ function ConstellationEdges({ edges, dimmed }: { edges: ConstellationEdge3D[]; d
     const proximity: ConstellationEdge3D[] = [];
     const infrastructure: ConstellationEdge3D[] = [];
     const lastmile: ConstellationEdge3D[] = [];
+    const orbital: ConstellationEdge3D[] = [];
     for (const e of edges) {
       if (e.edgeType === 'infrastructure') infrastructure.push(e);
       else if (e.edgeType === 'lastmile') lastmile.push(e);
+      else if (e.edgeType === 'orbital') orbital.push(e);
       else proximity.push(e);
     }
-    return { proximity, infrastructure, lastmile };
+    return { proximity, infrastructure, lastmile, orbital };
   }, [edges]);
 
   if (edges.length === 0) return null;
@@ -692,6 +716,7 @@ function ConstellationEdges({ edges, dimmed }: { edges: ConstellationEdge3D[]; d
       <EdgeLayer edges={layers.proximity} dimmed={dimmed} edgeType="proximity" />
       <EdgeLayer edges={layers.infrastructure} dimmed={dimmed} edgeType="infrastructure" />
       <EdgeLayer edges={layers.lastmile} dimmed={dimmed} edgeType="lastmile" />
+      <EdgeLayer edges={layers.orbital} dimmed={dimmed} edgeType="orbital" />
     </>
   );
 }
@@ -757,43 +782,141 @@ function AmbientStarfield({ count }: { count: number }) {
   );
 }
 
-// --- Core sun (same as original) ---
+// --- Subtle inner glow (planet core visible through translucent surface) ---
 
-function GovernanceCore() {
-  const coreRef = useRef<THREE.Mesh>(null);
-
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    if (coreRef.current) {
-      const breath = 0.95 + 0.05 * Math.sin(t * 1.57);
-      coreRef.current.scale.setScalar(breath);
-    }
-  });
-
+function InnerGlow() {
   return (
     <group>
-      <mesh ref={coreRef}>
-        <sphereGeometry args={[0.7, 32, 32]} />
-        <meshStandardMaterial
-          emissive={CORE_COLOR}
-          emissiveIntensity={3}
-          color={CORE_COLOR}
-          toneMapped={false}
-        />
-      </mesh>
       <mesh>
-        <sphereGeometry args={[2.0, 16, 16]} />
+        <sphereGeometry args={[1.5, 16, 16]} />
         <meshBasicMaterial
-          color={CORE_COLOR}
+          color="#334466"
           transparent
-          opacity={0.06}
+          opacity={0.08}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
-      <pointLight color={CORE_COLOR} intensity={4} distance={12} decay={2} />
+      <pointLight color="#4466aa" intensity={1.5} distance={10} decay={2} />
     </group>
+  );
+}
+
+// --- Network pulse particles (light flowing along edges) ---
+
+const PULSE_COUNT = 40;
+const PULSE_SPEED = 0.3;
+
+const PULSE_VERT = /* glsl */ `
+attribute float aSize;
+attribute float aAlpha;
+varying float vAlpha;
+
+void main() {
+  vAlpha = aAlpha;
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  gl_PointSize = aSize * 400.0 / -mvPosition.z;
+  gl_PointSize = clamp(gl_PointSize, 1.0, 32.0);
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const PULSE_FRAG = /* glsl */ `
+varying float vAlpha;
+
+void main() {
+  float dist = length(gl_PointCoord - vec2(0.5));
+  if (dist > 0.5) discard;
+  float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+  gl_FragColor = vec4(0.6, 0.85, 1.0, glow * vAlpha);
+}
+`;
+
+function NetworkPulses({ edges, dimmed }: { edges: ConstellationEdge3D[]; dimmed: boolean }) {
+  // Pick a stable subset of edges for pulses
+  const pulseEdges = useMemo(() => {
+    if (edges.length === 0) return [];
+    // Prefer infrastructure and orbital edges for visual impact
+    const candidates = edges.filter(
+      (e) =>
+        e.edgeType === 'infrastructure' || e.edgeType === 'orbital' || e.edgeType === 'proximity',
+    );
+    if (candidates.length === 0) return edges.slice(0, PULSE_COUNT);
+    // Deterministic selection spread across edge list
+    const step = Math.max(1, Math.floor(candidates.length / PULSE_COUNT));
+    const selected: ConstellationEdge3D[] = [];
+    for (let i = 0; i < candidates.length && selected.length < PULSE_COUNT; i += step) {
+      selected.push(candidates[i]);
+    }
+    return selected;
+  }, [edges]);
+
+  const geoRef = useRef<THREE.BufferGeometry>(null);
+  const progressRef = useRef<Float32Array>(new Float32Array(PULSE_COUNT));
+
+  // Initialize with staggered progress
+  useEffect(() => {
+    for (let i = 0; i < PULSE_COUNT; i++) {
+      progressRef.current[i] = i / PULSE_COUNT;
+    }
+  }, []);
+
+  useFrame((_, delta) => {
+    const geo = geoRef.current;
+    if (!geo || pulseEdges.length === 0) return;
+
+    const positions = geo.getAttribute('position') as THREE.BufferAttribute | null;
+    const alphas = geo.getAttribute('aAlpha') as THREE.BufferAttribute | null;
+    if (!positions || !alphas) return;
+
+    for (let i = 0; i < PULSE_COUNT; i++) {
+      const edge = pulseEdges[i % pulseEdges.length];
+      progressRef.current[i] = (progressRef.current[i] + delta * PULSE_SPEED) % 1.0;
+      const t = progressRef.current[i];
+
+      // Lerp along edge
+      positions.setXYZ(
+        i,
+        edge.from[0] * (1 - t) + edge.to[0] * t,
+        edge.from[1] * (1 - t) + edge.to[1] * t,
+        edge.from[2] * (1 - t) + edge.to[2] * t,
+      );
+
+      // Fade in/out at endpoints
+      const fade = Math.sin(t * Math.PI);
+      alphas.setX(i, dimmed ? fade * 0.1 : fade * 0.6);
+    }
+
+    positions.needsUpdate = true;
+    alphas.needsUpdate = true;
+  });
+
+  const buffers = useMemo(() => {
+    const positions = new Float32Array(PULSE_COUNT * 3);
+    const sizes = new Float32Array(PULSE_COUNT).fill(0.06);
+    const alphas = new Float32Array(PULSE_COUNT).fill(0);
+    return { positions, sizes, alphas };
+  }, []);
+
+  if (pulseEdges.length === 0) return null;
+
+  return (
+    <points frustumCulled={false}>
+      <bufferGeometry ref={geoRef}>
+        <bufferAttribute attach="attributes-position" args={[buffers.positions, 3]} />
+        <bufferAttribute attach="attributes-aSize" args={[buffers.sizes, 1]} />
+        <bufferAttribute attach="attributes-aAlpha" args={[buffers.alphas, 1]} />
+      </bufferGeometry>
+      <shaderMaterial
+        vertexShader={PULSE_VERT}
+        fragmentShader={PULSE_FRAG}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+      />
+    </points>
   );
 }
 

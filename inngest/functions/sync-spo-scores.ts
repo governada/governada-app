@@ -665,8 +665,8 @@ export const syncSpoScores = inngest.createFunction(
         const poolIds = batch.map((p: { pool_id: string }) => p.pool_id);
 
         try {
-          // Fetch relay info from Koios
-          const relayRes = await fetch(`${KOIOS_BASE}/pool_relays`, {
+          // Fetch relay info from Koios via pool_info (pool_relays is GET-only, no POST RPC)
+          const relayRes = await fetch(`${KOIOS_BASE}/pool_info`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ _pool_bech32_ids: poolIds }),
@@ -674,7 +674,9 @@ export const syncSpoScores = inngest.createFunction(
           });
 
           if (!relayRes.ok) {
-            logger.warn('[sync-spo-scores] Koios pool_relays failed', { status: relayRes.status });
+            logger.warn('[sync-spo-scores] Koios pool_info (relays) failed', {
+              status: relayRes.status,
+            });
             continue;
           }
 

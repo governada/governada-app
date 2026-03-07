@@ -8,6 +8,8 @@ import {
   Loader2,
   AlertTriangle,
   ExternalLink,
+  Sparkles,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,10 @@ interface VoteCastingPanelProps {
   proposalIndex: number;
   title: string;
   isOpen: boolean;
+  /** Optional context for AI rationale drafting */
+  proposalAbstract?: string | null;
+  proposalType?: string | null;
+  aiSummary?: string | null;
 }
 
 const VOTE_OPTIONS: {
@@ -122,10 +128,22 @@ function PhaseIndicator({ phase }: { phase: VotePhase }) {
   return null;
 }
 
-export function VoteCastingPanel({ txHash, proposalIndex, title, isOpen }: VoteCastingPanelProps) {
+export function VoteCastingPanel({
+  txHash,
+  proposalIndex,
+  title,
+  isOpen,
+  proposalAbstract,
+  proposalType,
+  aiSummary,
+}: VoteCastingPanelProps) {
   const { connected, ownDRepId } = useWallet();
   const { phase, startVote, confirmVote, reset, isProcessing, canVote } = useVote();
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
+  const [rationaleText, setRationaleText] = useState('');
+  const [showRationale, setShowRationale] = useState(false);
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const voteCastingEnabled = useFeatureFlag('governance_vote_casting');
 
   // Don't show for closed proposals
@@ -151,13 +169,67 @@ export function VoteCastingPanel({ txHash, proposalIndex, title, isOpen }: VoteC
     startVote({ txHash, txIndex: proposalIndex, title }, 'drep');
   };
 
-  const handleConfirm = () => {
-    if (!selectedVote) return;
-    confirmVote(selectedVote);
+  const handleAiDraft = async () => {
+    if (!ownDRepId) return;
+    setIsDrafting(true);
+    try {
+      const res = await fetch('/api/rationale/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          drepId: ownDRepId,
+          proposalTitle: title,
+          proposalAbstract: proposalAbstract || undefined,
+          proposalType: proposalType || undefined,
+          aiSummary: aiSummary || undefined,
+        }),
+      });
+      if (res.ok) {
+        const { draft } = await res.json();
+        if (draft) setRationaleText(draft);
+      }
+    } finally {
+      setIsDrafting(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!selectedVote || !ownDRepId) return;
+
+    let anchorUrl: string | undefined;
+    let anchorHash: string | undefined;
+
+    // Publish rationale if provided
+    if (rationaleText.trim()) {
+      setIsPublishing(true);
+      try {
+        const res = await fetch('/api/rationale', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            drepId: ownDRepId,
+            proposalTxHash: txHash,
+            proposalIndex,
+            rationaleText: rationaleText.trim(),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          anchorUrl = data.anchorUrl;
+          anchorHash = data.anchorHash;
+        }
+      } finally {
+        setIsPublishing(false);
+      }
+    }
+
+    confirmVote(selectedVote, anchorUrl, anchorHash);
   };
 
   const handleReset = () => {
     setSelectedVote(null);
+    setRationaleText('');
+    setShowRationale(false);
     reset();
   };
 
@@ -182,13 +254,13 @@ export function VoteCastingPanel({ txHash, proposalIndex, title, isOpen }: VoteC
                 <button
                   key={value}
                   onClick={() => handleVoteSelect(value)}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isPublishing}
                   className={cn(
                     'flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-all',
                     isSelected
                       ? `${bgColor} ring-2 ring-offset-1 ring-offset-background`
                       : 'border-border hover:bg-muted/30',
-                    isProcessing && 'opacity-50 cursor-not-allowed',
+                    (isProcessing || isPublishing) && 'opacity-50 cursor-not-allowed',
                     isSelected && value === 'Yes' && 'ring-emerald-500/50',
                     isSelected && value === 'No' && 'ring-rose-500/50',
                     isSelected && value === 'Abstain' && 'ring-muted-foreground/50',
@@ -218,12 +290,63 @@ export function VoteCastingPanel({ txHash, proposalIndex, title, isOpen }: VoteC
                 You already voted on this proposal. This will replace your previous vote.
               </div>
             )}
+
+            {/* Rationale section */}
+            {!showRationale ? (
+              <button
+                onClick={() => setShowRationale(true)}
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Add rationale (optional, published on-chain)
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Vote Rationale (CIP-100)
+                  </label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs gap-1"
+                    onClick={handleAiDraft}
+                    disabled={isDrafting}
+                  >
+                    {isDrafting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    {isDrafting ? 'Drafting...' : 'AI Draft'}
+                  </Button>
+                </div>
+                <textarea
+                  value={rationaleText}
+                  onChange={(e) => setRationaleText(e.target.value)}
+                  placeholder="Explain your vote. This will be published as a CIP-100 document anchored to your on-chain vote."
+                  className="w-full min-h-[120px] p-3 text-sm border rounded-lg bg-background resize-y focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  maxLength={10000}
+                />
+                <p className="text-xs text-muted-foreground text-right">
+                  {rationaleText.length.toLocaleString()} / 10,000
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Estimated fee</span>
               <span className="font-medium">{phase.preflight.estimatedFee}</span>
             </div>
-            <Button onClick={handleConfirm} className="w-full" disabled={!canVote}>
-              Confirm &amp; Sign
+            <Button onClick={handleConfirm} className="w-full" disabled={!canVote || isPublishing}>
+              {isPublishing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Publishing rationale...
+                </>
+              ) : (
+                <>Confirm &amp; Sign</>
+              )}
             </Button>
           </div>
         )}

@@ -161,6 +161,9 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         proposalIndex={proposalIndex}
         title={title}
         isOpen={isOpen}
+        proposalAbstract={proposal.abstract}
+        proposalType={proposal.proposalType}
+        aiSummary={proposal.aiSummary}
       />
 
       {/* VP2 stack */}

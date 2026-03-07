@@ -14,6 +14,13 @@ export const RationaleDraftSchema = z.object({
   aiSummary: z.string().max(5000).optional(),
 });
 
+export const RationaleSubmitSchema = z.object({
+  drepId: DrepIdSchema,
+  proposalTxHash: TxHashSchema,
+  proposalIndex: ProposalIndexSchema,
+  rationaleText: z.string().min(1, 'Rationale text is required').max(10000),
+});
+
 export const PollVoteSchema = z.object({
   proposalTxHash: TxHashSchema,
   proposalIndex: ProposalIndexSchema,

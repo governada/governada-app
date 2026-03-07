@@ -1,9 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Users, ShieldCheck, Activity, Zap, Vote, HelpCircle } from 'lucide-react';
+import {
+  ArrowRight,
+  Users,
+  ShieldCheck,
+  Activity,
+  Zap,
+  Vote,
+  HelpCircle,
+  Coins,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { posthog } from '@/lib/posthog';
 import { ConstellationScene } from '@/components/ConstellationScene';
 
 interface PulseData {
@@ -42,11 +51,11 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
             <span className="tabular-nums">
               <strong className="text-white/90">{pulseData.activeDReps}</strong> DReps
             </span>
-            <span className="text-white/30">·</span>
+            <span className="text-white/30">&middot;</span>
             <span className="tabular-nums">
               <strong className="text-white/90">{pulseData.activeSpOs}</strong> SPOs
             </span>
-            <span className="text-white/30">·</span>
+            <span className="text-white/30">&middot;</span>
             <span className="tabular-nums">
               <strong className="text-white/90">{pulseData.ccMembers}</strong> CC Members
             </span>
@@ -56,14 +65,14 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
         {/* Value prop overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:pt-14">
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white drop-shadow-lg leading-tight text-center">
-            Cardano has a government.
+            Your ADA gives you a voice.
           </h1>
 
           {/* Gap where the constellation core sun shows through */}
           <div className="h-10 sm:h-16" />
 
           <p className="font-display text-xl sm:text-2xl lg:text-3xl font-semibold text-[#fff0d4] drop-shadow-lg text-center">
-            Know who represents you.
+            It takes 60 seconds to use it.
           </p>
 
           {/* Live urgency hook */}
@@ -74,55 +83,88 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
             >
               <strong className="text-white/90">{pulseData.activeProposals} proposals</strong> are
               being decided right now.{' '}
-              <strong className="text-[#fff0d4]">₳{pulseData.totalAdaGoverned}</strong> is at stake.
+              <strong className="text-[#fff0d4]">&#x20B3;{pulseData.totalAdaGoverned}</strong> is at
+              stake.
             </p>
           )}
         </div>
       </section>
 
-      {/* ── Quick Match CTA (direct link — no expand panel) ──────── */}
-      <section className="relative z-10 -mt-10 px-4 flex flex-col items-center gap-5">
-        {/* Glowing primary CTA */}
-        <div className="relative group">
-          <div
+      {/* ── Two-Path Entry ─────────────────────────────────────────── */}
+      <section className="relative z-10 -mt-10 px-4 mx-auto w-full max-w-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Path 1: Govern — Quick Match */}
+          <Link
+            href="/match"
+            onClick={() => posthog?.capture('citizen_path_clicked', { path: 'govern' })}
             className={cn(
-              'absolute -inset-1 rounded-xl bg-primary/40 blur-md',
-              'animate-pulse group-hover:bg-primary/60 transition-colors',
+              'group relative rounded-xl border border-primary/30 bg-card/80 backdrop-blur-sm p-6',
+              'hover:border-primary/60 hover:bg-card/90 transition-all',
             )}
-            aria-hidden
-          />
-          <Button
-            asChild
-            size="lg"
-            className="relative text-base px-8 py-6 rounded-xl font-semibold shadow-lg"
           >
-            <Link href="/match">
-              <Zap className="mr-2 h-5 w-5" />
-              Find My DRep — 60 Seconds
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          No wallet required · 3 questions · Matched to {pulseData.activeDReps}+ DReps
-        </p>
-
-        {/* What is a DRep? micro-explainer */}
-        <div className="max-w-md mx-auto rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
-          <div className="flex items-start gap-2.5">
-            <HelpCircle className="h-4 w-4 text-primary/60 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-medium text-foreground">What is a DRep?</p>
-              <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                A Delegated Representative (DRep) votes on governance proposals on your behalf —
-                protocol changes, treasury spending, and more. You choose who represents your ADA.
+            <div className="absolute -inset-0.5 rounded-xl bg-primary/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">Govern</h2>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Find a DRep who votes the way you would. 3 questions, 60 seconds, matched to{' '}
+                {pulseData.activeDReps}+ representatives.
               </p>
-              <Link
-                href="/learn"
-                className="text-[11px] text-primary hover:underline mt-1 inline-block"
-              >
-                Learn more about governance →
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-primary group-hover:gap-2 transition-all">
+                Find My DRep
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Path 2: Stake — Pool Discovery */}
+          <Link
+            href="/discover?tab=pools"
+            onClick={() => posthog?.capture('citizen_path_clicked', { path: 'stake' })}
+            className={cn(
+              'group relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6',
+              'hover:border-primary/40 hover:bg-card/90 transition-all',
+            )}
+          >
+            <div className="relative space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-emerald-500/10 p-2">
+                  <Coins className="h-5 w-5 text-emerald-500" />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">Stake</h2>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Find a stake pool that represents your values. Compare governance scores, voting
+                records, and community alignment.
+              </p>
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-primary group-hover:gap-2 transition-all">
+                Browse Pools
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* ── What is governance? ────────────────────────────────────── */}
+      <section className="mx-auto w-full max-w-2xl px-4 mt-8">
+        <div className="rounded-xl border border-border/50 bg-muted/20 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <HelpCircle className="h-4 w-4 text-primary/60 shrink-0 mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-foreground">Why does this matter?</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Cardano has a ratified constitution, a treasury worth billions of ADA, and elected
+                representatives. Protocol changes, treasury spending, and staking rewards are all
+                decided by governance votes. Every ADA holder has a voice &mdash; you just need to
+                use it.
+              </p>
+              <Link href="/learn" className="text-xs text-primary hover:underline inline-block">
+                Learn more about Cardano governance &rarr;
               </Link>
             </div>
           </div>
@@ -130,7 +172,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
       </section>
 
       {/* ── Live governance stats ──────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-4xl px-4 mt-10 mb-8">
+      <section className="mx-auto w-full max-w-4xl px-4 mt-8 mb-8">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             {

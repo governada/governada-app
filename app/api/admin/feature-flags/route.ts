@@ -2,17 +2,10 @@ import { NextResponse } from 'next/server';
 import { getAllFlags, setFeatureFlag, invalidateFlagCache } from '@/lib/featureFlags';
 import { requireAuth } from '@/lib/supabaseAuth';
 import { logAdminAction } from '@/lib/adminAudit';
+import { isAdminWallet } from '@/lib/adminAuth';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
-
-function isAdminWallet(address: string): boolean {
-  const adminWallets = (process.env.ADMIN_WALLETS || '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return adminWallets.includes(address.toLowerCase());
-}
 
 /**
  * GET: Returns flag boolean map for all callers.

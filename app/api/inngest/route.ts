@@ -32,6 +32,7 @@ import { syncDataMoat } from '@/inngest/functions/sync-data-moat';
 import { syncCatalyst } from '@/inngest/functions/sync-catalyst';
 import { syncCcRationales } from '@/inngest/functions/sync-cc-rationales';
 import { generateCitizenBriefings } from '@/inngest/functions/generate-citizen-briefings';
+import { generateDrepEpochUpdates } from '@/inngest/functions/generate-drep-epoch-updates';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -68,5 +69,6 @@ export const { GET, POST, PUT } = serve({
     syncCatalyst,
     syncCcRationales,
     generateCitizenBriefings,
+    generateDrepEpochUpdates,
   ],
 });

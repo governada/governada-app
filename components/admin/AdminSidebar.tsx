@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Shield,
   TrendingUp,
+  Vote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -45,6 +46,11 @@ const NAV_ITEMS = [
     label: 'Feature Flags',
     href: '/admin/flags',
     icon: Flag,
+  },
+  {
+    label: 'Assemblies',
+    href: '/admin/assemblies',
+    icon: Vote,
   },
 ] as const;
 

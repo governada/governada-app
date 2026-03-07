@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, Activity, Landmark } from 'lucide-react';
+import { Home, Compass, Activity, MessageCircle, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
@@ -10,6 +10,7 @@ import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 const NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/discover', label: 'Discover', icon: Compass },
+  { href: '/engage', label: 'Engage', icon: MessageCircle },
   { href: '/pulse', label: 'Pulse', icon: Activity },
   { href: '/my-gov', label: 'My Gov', icon: Landmark, showBadge: true },
 ] as const;

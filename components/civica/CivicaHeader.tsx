@@ -9,6 +9,7 @@ import {
   Compass,
   Activity,
   Landmark,
+  MessageCircle,
   BookOpen,
   Search,
   User,
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/discover', label: 'Discover', icon: Compass },
   { href: '/pulse', label: 'Pulse', icon: Activity },
+  { href: '/engage', label: 'Engage', icon: MessageCircle },
   { href: '/my-gov', label: 'My Gov', icon: Landmark },
   { href: '/learn', label: 'Learn', icon: BookOpen },
 ] as const;

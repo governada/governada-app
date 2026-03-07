@@ -3,6 +3,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { getStoredSession } from '@/lib/supabaseAuth';
 
+const STALE_30S = 30_000;
+const STALE_60S = 60_000;
+
 async function fetchJsonWithAuth<T>(url: string): Promise<T> {
   const headers: HeadersInit = {};
   const token = getStoredSession();
@@ -32,6 +35,7 @@ export function useSentimentResults(txHash: string, proposalIndex: number, drepI
   return useQuery<SentimentResults>({
     queryKey: ['citizen-sentiment', txHash, proposalIndex, drepId ?? null],
     queryFn: () => fetchJsonWithAuth(`/api/engagement/sentiment/results?${params}`),
+    staleTime: STALE_30S,
   });
 }
 
@@ -50,6 +54,7 @@ export function useConcernFlags(txHash: string, proposalIndex: number) {
       fetchJsonWithAuth(
         `/api/engagement/concerns/results?proposalTxHash=${txHash}&proposalIndex=${proposalIndex}`,
       ),
+    staleTime: STALE_30S,
   });
 }
 
@@ -69,6 +74,7 @@ export function useImpactTags(txHash: string, proposalIndex: number) {
       fetchJsonWithAuth(
         `/api/engagement/impact/results?proposalTxHash=${txHash}&proposalIndex=${proposalIndex}`,
       ),
+    staleTime: STALE_30S,
   });
 }
 
@@ -85,6 +91,7 @@ export function usePriorityRankings(epoch?: number) {
   return useQuery<PriorityRankings>({
     queryKey: ['priority-rankings', epoch ?? 'current'],
     queryFn: () => fetchJsonWithAuth(`/api/engagement/priorities/results${params}`),
+    staleTime: STALE_60S,
   });
 }
 
@@ -98,6 +105,7 @@ export function useUserPrioritySignal(epoch?: number) {
   return useQuery<UserPrioritySignal | null>({
     queryKey: ['user-priority-signal', epoch ?? 'current'],
     queryFn: () => fetchJsonWithAuth(`/api/engagement/priorities/user${params}`),
+    staleTime: STALE_60S,
   });
 }
 
@@ -125,6 +133,7 @@ export function useActiveAssembly() {
   return useQuery<AssemblyWithUserVote | null>({
     queryKey: ['active-assembly'],
     queryFn: () => fetchJsonWithAuth('/api/engagement/assembly/active'),
+    staleTime: STALE_60S,
   });
 }
 
@@ -132,5 +141,6 @@ export function useAssemblyHistory() {
   return useQuery<Assembly[]>({
     queryKey: ['assembly-history'],
     queryFn: () => fetchJsonWithAuth('/api/engagement/assembly/history'),
+    staleTime: STALE_60S,
   });
 }

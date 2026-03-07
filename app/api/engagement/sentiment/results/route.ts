@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { aggregateSentiment } from '@/lib/api/engagement-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +75,7 @@ export const GET = withRouteHandler(
             .eq('drep_id', drepId)
             .in('stake_address', stakeAddresses)
             .order('epoch', { ascending: false })
-            .limit(stakeAddresses.length);
+            .limit(stakeAddresses.length * 3);
 
           if (snapshots && snapshots.length > 0) {
             // Dedupe to latest snapshot per stake_address
@@ -111,19 +112,4 @@ interface SentimentResultsResponse {
   stakeWeighted?: { support: number; oppose: number; unsure: number; total: number };
   userSentiment: 'support' | 'oppose' | 'unsure' | null;
   hasVoted: boolean;
-}
-
-function aggregateSentiment(rows: { sentiment: string }[]): {
-  support: number;
-  oppose: number;
-  unsure: number;
-  total: number;
-} {
-  const counts = { support: 0, oppose: 0, unsure: 0, total: rows.length };
-  for (const row of rows) {
-    if (row.sentiment === 'support') counts.support++;
-    else if (row.sentiment === 'oppose') counts.oppose++;
-    else if (row.sentiment === 'unsure') counts.unsure++;
-  }
-  return counts;
 }

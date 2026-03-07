@@ -44,7 +44,10 @@ export function AskYourDRep({ txHash, proposalIndex, proposalTitle }: AskYourDRe
     try {
       const res = await fetch('/api/governance/questions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           sessionToken: token,
           drepId: delegatedDrepId,
@@ -82,11 +85,21 @@ export function AskYourDRep({ txHash, proposalIndex, proposalTitle }: AskYourDRe
     return (
       <Card>
         <CardContent className="py-4">
-          <div className="flex items-center gap-2 text-sm text-primary">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>
-              Your question has been sent to your DRep. They&apos;ll see it in their inbox.
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>
+                Your question has been sent to your DRep. They&apos;ll see it in their inbox.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-muted-foreground"
+              onClick={() => setSubmitted(false)}
+            >
+              Ask another
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -17,6 +17,7 @@ export function CitizenAssembly() {
 
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -64,6 +65,7 @@ export function CitizenAssembly() {
     if (!token) return;
 
     setSubmitting(true);
+    setError(null);
     try {
       const res = await fetch('/api/engagement/assembly/vote', {
         method: 'POST',
@@ -77,7 +79,7 @@ export function CitizenAssembly() {
         }),
       });
 
-      if (!res.ok && res.status !== 409) throw new Error('Failed');
+      if (!res.ok && res.status !== 409) throw new Error('Failed to cast vote');
 
       await refetch();
 
@@ -89,8 +91,8 @@ export function CitizenAssembly() {
           });
         })
         .catch(() => {});
-    } catch {
-      // Silently fail
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cast vote');
     } finally {
       setSubmitting(false);
     }
@@ -199,10 +201,13 @@ export function CitizenAssembly() {
                 </div>
 
                 {selectedOption && (
-                  <Button onClick={submit} disabled={submitting} className="w-full gap-1.5">
-                    <Vote className="h-4 w-4" />
-                    {submitting ? 'Submitting...' : 'Cast Your Vote'}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button onClick={submit} disabled={submitting} className="w-full gap-1.5">
+                      <Vote className="h-4 w-4" />
+                      {submitting ? 'Submitting...' : 'Cast Your Vote'}
+                    </Button>
+                    {error && <p className="text-xs text-destructive">{error}</p>}
+                  </div>
                 )}
               </>
             )}

@@ -34,6 +34,7 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
   const { connected, isAuthenticated, authenticate } = useWallet();
   const { data: results, isLoading, refetch } = useConcernFlags(txHash, proposalIndex);
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleFlag = async (flagType: ConcernFlagType) => {
     hapticLight();
@@ -47,6 +48,7 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
 
     const isRemoving = results?.userFlags.includes(flagType);
     setSubmitting(flagType);
+    setError(null);
 
     try {
       const res = await fetch('/api/engagement/concerns', {
@@ -63,12 +65,22 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
       });
 
       if (!res.ok && res.status !== 409) {
-        throw new Error('Failed');
+        throw new Error('Failed to update flag');
       }
 
       await refetch();
-    } catch {
-      // Silently fail -- user can retry
+
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture(isRemoving ? 'citizen_concern_removed' : 'citizen_concern_flagged', {
+            proposal_tx_hash: txHash,
+            proposal_index: proposalIndex,
+            flag_type: flagType,
+          });
+        })
+        .catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update flag');
     } finally {
       setSubmitting(null);
     }
@@ -187,6 +199,8 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
         {totalFlags === 0 && (
           <p className="text-xs text-muted-foreground">No concerns flagged yet.</p>
         )}
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
       </CardContent>
     </Card>
   );

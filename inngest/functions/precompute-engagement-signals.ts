@@ -1,8 +1,31 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { logger } from '@/lib/logger';
 import { PRIORITY_AREAS } from '@/lib/api/schemas/engagement';
+
+const BATCH_SIZE = 5000;
+
+/** Fetch all rows from a table in batches to avoid PostgREST 1000-row default limit. */
+async function fetchAllBatched<T>(
+  query: () => ReturnType<ReturnType<SupabaseClient['from']>['select']>,
+): Promise<T[]> {
+  const all: T[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await query().range(offset, offset + BATCH_SIZE - 1);
+    if (error) {
+      logger.error('Batched fetch error', { error: error.message });
+      break;
+    }
+    if (!data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < BATCH_SIZE) break;
+    offset += BATCH_SIZE;
+  }
+  return all;
+}
 
 /**
  * Precompute engagement signal aggregations.
@@ -24,11 +47,18 @@ export const precomputeEngagementSignals = inngest.createFunction(
 
     // Step 1: Aggregate sentiment per proposal
     const sentimentStats = await step.run('aggregate-sentiment', async () => {
-      const { data: sentiments } = await supabase
-        .from('citizen_sentiment')
-        .select('proposal_tx_hash, proposal_index, sentiment, delegated_drep_id');
+      const sentiments = await fetchAllBatched<{
+        proposal_tx_hash: string;
+        proposal_index: number;
+        sentiment: string;
+        delegated_drep_id: string | null;
+      }>(() =>
+        supabase
+          .from('citizen_sentiment')
+          .select('proposal_tx_hash, proposal_index, sentiment, delegated_drep_id'),
+      );
 
-      if (!sentiments || sentiments.length === 0) return { proposals: 0 };
+      if (sentiments.length === 0) return { proposals: 0 };
 
       // Group by proposal
       const byProposal = new Map<
@@ -114,11 +144,17 @@ export const precomputeEngagementSignals = inngest.createFunction(
 
     // Step 2: Aggregate concern flags per proposal
     const concernStats = await step.run('aggregate-concerns', async () => {
-      const { data: flags } = await supabase
-        .from('citizen_concern_flags')
-        .select('proposal_tx_hash, proposal_index, flag_type');
+      const flags = await fetchAllBatched<{
+        proposal_tx_hash: string;
+        proposal_index: number;
+        flag_type: string;
+      }>(() =>
+        supabase
+          .from('citizen_concern_flags')
+          .select('proposal_tx_hash, proposal_index, flag_type'),
+      );
 
-      if (!flags || flags.length === 0) return { proposals: 0 };
+      if (flags.length === 0) return { proposals: 0 };
 
       const byProposal = new Map<string, Record<string, number>>();
       for (const f of flags) {
@@ -148,11 +184,18 @@ export const precomputeEngagementSignals = inngest.createFunction(
 
     // Step 3: Aggregate impact tags per proposal
     const impactStats = await step.run('aggregate-impact', async () => {
-      const { data: tags } = await supabase
-        .from('citizen_impact_tags')
-        .select('proposal_tx_hash, proposal_index, awareness, rating');
+      const tags = await fetchAllBatched<{
+        proposal_tx_hash: string;
+        proposal_index: number;
+        awareness: string;
+        rating: string;
+      }>(() =>
+        supabase
+          .from('citizen_impact_tags')
+          .select('proposal_tx_hash, proposal_index, awareness, rating'),
+      );
 
-      if (!tags || tags.length === 0) return { proposals: 0 };
+      if (tags.length === 0) return { proposals: 0 };
 
       const byProposal = new Map<
         string,

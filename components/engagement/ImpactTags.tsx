@@ -37,6 +37,7 @@ export function ImpactTags({ txHash, proposalIndex }: ImpactTagsProps) {
   const [selectedRating, setSelectedRating] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const hasUserTag = !!results?.userTag;
 
@@ -53,6 +54,7 @@ export function ImpactTags({ txHash, proposalIndex }: ImpactTagsProps) {
     if (!token) return;
 
     setSubmitting(true);
+    setError(null);
     try {
       const res = await fetch('/api/engagement/impact', {
         method: 'POST',
@@ -68,12 +70,23 @@ export function ImpactTags({ txHash, proposalIndex }: ImpactTagsProps) {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) throw new Error('Failed to submit feedback');
 
       await refetch();
       setSubmitted(true);
-    } catch {
-      // Silently fail
+
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('citizen_impact_tagged', {
+            proposal_tx_hash: txHash,
+            proposal_index: proposalIndex,
+            awareness: selectedAwareness,
+            rating: selectedRating,
+          });
+        })
+        .catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit feedback');
     } finally {
       setSubmitting(false);
     }
@@ -244,11 +257,27 @@ export function ImpactTags({ txHash, proposalIndex }: ImpactTagsProps) {
         )}
 
         {(hasUserTag || submitted) && (
-          <div className="flex items-center gap-2 text-sm text-primary pt-1">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>Thanks for your feedback!</span>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Thanks for your feedback!</span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-muted-foreground"
+              onClick={() => {
+                setSubmitted(false);
+                setSelectedAwareness(results?.userTag?.awareness ?? null);
+                setSelectedRating(results?.userTag?.rating ?? null);
+              }}
+            >
+              Update
+            </Button>
           </div>
         )}
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
       </CardContent>
     </Card>
   );

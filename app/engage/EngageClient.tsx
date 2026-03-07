@@ -2,6 +2,7 @@
 
 import { PrioritySignals } from '@/components/engagement/PrioritySignals';
 import { CitizenAssembly } from '@/components/engagement/CitizenAssembly';
+import { AssemblyHistory } from '@/components/engagement/AssemblyHistory';
 import { PageViewTracker } from '@/components/PageViewTracker';
 
 interface EngageClientProps {
@@ -29,6 +30,11 @@ export function EngageClient({ epoch }: EngageClientProps) {
       {/* Priority Signals */}
       <section>
         <PrioritySignals epoch={epoch} />
+      </section>
+
+      {/* Past Assemblies */}
+      <section>
+        <AssemblyHistory />
       </section>
     </div>
   );

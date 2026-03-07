@@ -17,7 +17,7 @@ export const GET = withRouteHandler(
       .gte('closes_at', now)
       .order('opens_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error || !assembly) {
       return NextResponse.json(null);

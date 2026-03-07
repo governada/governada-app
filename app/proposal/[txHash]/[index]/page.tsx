@@ -29,6 +29,7 @@ import { ProposalSentiment } from '@/components/engagement/ProposalSentiment';
 import { ConcernFlags } from '@/components/engagement/ConcernFlags';
 import { ImpactTags } from '@/components/engagement/ImpactTags';
 import { AskYourDRep } from '@/components/engagement/AskYourDRep';
+import { EngagementSummary } from '@/components/engagement/EngagementSummary';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,6 +141,9 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         triBody={proposal.triBody ?? null}
         blockTime={proposal.blockTime}
       />
+
+      {/* Community engagement signals summary */}
+      <EngagementSummary txHash={txHash} proposalIndex={proposalIndex} />
 
       {/* Governance dimension tags */}
       <ProposalDimensionTags relevantPrefs={proposal.relevantPrefs} />

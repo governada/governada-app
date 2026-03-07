@@ -43,6 +43,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
   const [selected, setSelected] = useState<PriorityArea[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const hasSubmitted = !!userSignal || submitted;
 
@@ -78,6 +79,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
     if (!token) return;
 
     setSubmitting(true);
+    setError(null);
     try {
       const res = await fetch('/api/engagement/priorities', {
         method: 'POST',
@@ -91,7 +93,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) throw new Error('Failed to submit priorities');
 
       setSubmitted(true);
       await Promise.all([refetchRankings(), refetchUser()]);
@@ -104,8 +106,8 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
           });
         })
         .catch(() => {});
-    } catch {
-      // Silently fail
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit priorities');
     } finally {
       setSubmitting(false);
     }
@@ -191,7 +193,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
           <CardHeader>
             <CardTitle className="text-lg">What should governance focus on?</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Pick your top 3 priorities in order. Tap to select, then drag to rank.
+              Pick your top 3 priorities in order. Tap to select, then reorder with the arrows.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -269,9 +271,12 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                 </div>
 
                 {selected.length > 0 && (
-                  <Button onClick={submit} disabled={submitting} className="w-full gap-1.5">
-                    {submitting ? 'Submitting...' : `Submit Your Top ${selected.length}`}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button onClick={submit} disabled={submitting} className="w-full gap-1.5">
+                      {submitting ? 'Submitting...' : `Submit Your Top ${selected.length}`}
+                    </Button>
+                    {error && <p className="text-xs text-destructive">{error}</p>}
+                  </div>
                 )}
               </>
             )}

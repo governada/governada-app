@@ -18,6 +18,7 @@ import {
   classifyProposalsAI,
   type ProposalClassification,
 } from '@/lib/alignment/classifyProposals';
+import { analyzeConstitutionalAlignment } from '@/lib/alignment/constitutionalAnalysis';
 import { buildVoteMatrix, type VoteMatrixInput } from '@/lib/alignment/voteMatrix';
 import {
   computeDimensionScores,
@@ -156,6 +157,16 @@ export const syncAlignment = inngest.createFunction(
       const proposals = dbRows.map(mapDBProposal);
       const classifications = await classifyProposalsAI(proposals);
       return { classified: classifications.length, skipped: false };
+    });
+
+    // Step 1b: constitutional alignment analysis (AI, cached)
+    const constitutionalResult = await step.run('analyze-constitutional-alignment', async () => {
+      const sb = getSupabaseAdmin();
+      const { data: dbRows } = await sb.from('proposals').select(DB_PROPOSAL_COLUMNS);
+      if (!dbRows?.length) return { analyzed: 0 };
+      const proposals = dbRows.map(mapDBProposal);
+      const results = await analyzeConstitutionalAlignment(proposals);
+      return { analyzed: results.size };
     });
 
     if (classifyResult.skipped) {
@@ -547,6 +558,7 @@ export const syncAlignment = inngest.createFunction(
             ...finalResult,
             rationalesScored: rationaleResult.scored,
             proposalsClassified: classifyResult.classified,
+            constitutionalAnalyzed: constitutionalResult.analyzed,
           },
         })
         .eq('id', logId);

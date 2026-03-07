@@ -12,29 +12,37 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   }
 
   const supabase = createClient();
-  const [explanationsRes, positionsRes, philosophyRes, drepRes] = await Promise.all([
-    supabase
-      .from('vote_explanations')
-      .select('drep_id, proposal_tx_hash, proposal_index, explanation_text, created_at')
-      .eq('drep_id', drepId)
-      .order('created_at', { ascending: false })
-      .limit(10),
+  const [explanationsRes, positionsRes, philosophyRes, drepRes, epochUpdatesRes] =
+    await Promise.all([
+      supabase
+        .from('vote_explanations')
+        .select('drep_id, proposal_tx_hash, proposal_index, explanation_text, created_at')
+        .eq('drep_id', drepId)
+        .order('created_at', { ascending: false })
+        .limit(10),
 
-    supabase
-      .from('position_statements')
-      .select('drep_id, proposal_tx_hash, proposal_index, statement_text, created_at')
-      .eq('drep_id', drepId)
-      .order('created_at', { ascending: false })
-      .limit(5),
+      supabase
+        .from('position_statements')
+        .select('drep_id, proposal_tx_hash, proposal_index, statement_text, created_at')
+        .eq('drep_id', drepId)
+        .order('created_at', { ascending: false })
+        .limit(5),
 
-    supabase
-      .from('governance_philosophy')
-      .select('philosophy_text, updated_at')
-      .eq('drep_id', drepId)
-      .maybeSingle(),
+      supabase
+        .from('governance_philosophy')
+        .select('philosophy_text, updated_at')
+        .eq('drep_id', drepId)
+        .maybeSingle(),
 
-    supabase.from('dreps').select('info').eq('id', drepId).single(),
-  ]);
+      supabase.from('dreps').select('info').eq('id', drepId).single(),
+
+      supabase
+        .from('drep_epoch_updates')
+        .select('epoch, update_text, vote_count, rationale_count, generated_at')
+        .eq('drep_id', drepId)
+        .order('epoch', { ascending: false })
+        .limit(5),
+    ]);
 
   const explanations = explanationsRes.data || [];
   const positions = positionsRes.data || [];
@@ -46,8 +54,8 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     ]),
   ];
 
-  let proposalMap: Record<string, string> = {};
-  let voteMap: Record<string, string> = {};
+  const proposalMap: Record<string, string> = {};
+  const voteMap: Record<string, string> = {};
 
   if (txHashes.length > 0) {
     const [proposalsRes, votesRes] = await Promise.all([
@@ -101,5 +109,12 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     }),
     philosophy: philosophyRes.data?.philosophy_text || null,
     drepName,
+    epochUpdates: (epochUpdatesRes.data || []).map((u) => ({
+      epoch: u.epoch,
+      updateText: u.update_text,
+      voteCount: u.vote_count,
+      rationaleCount: u.rationale_count,
+      generatedAt: u.generated_at,
+    })),
   });
 });

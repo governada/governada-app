@@ -24,6 +24,7 @@ import { ProposalLifecycleTimeline } from '@/components/civica/proposals/Proposa
 import { ParamChangesCard } from '@/components/civica/proposals/ParamChangesCard';
 import { AlignmentCohortBreakdown } from '@/components/civica/proposals/AlignmentCohortBreakdown';
 import { VoteCastingPanel } from '@/components/civica/proposals/VoteCastingPanel';
+import { ConstitutionalAlignmentCard } from '@/components/ConstitutionalAlignmentCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -170,6 +171,9 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
       {/* 1. AI Summary */}
       <ProposalAiSummary summary={proposal.aiSummary} />
+
+      {/* 1b. Constitutional Alignment */}
+      <ConstitutionalAlignmentCard txHash={txHash} proposalIndex={proposalIndex} />
 
       {/* 2. Full Description */}
       <ProposalDescription aiSummary={null} abstract={proposal.abstract} />

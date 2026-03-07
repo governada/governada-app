@@ -939,6 +939,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      drep_epoch_updates: {
+        Row: {
+          drep_id: string;
+          epoch: number;
+          generated_at: string;
+          proposals_voted: Json | null;
+          rationale_count: number;
+          update_text: string;
+          vote_count: number;
+        };
+        Insert: {
+          drep_id: string;
+          epoch: number;
+          generated_at?: string;
+          proposals_voted?: Json | null;
+          rationale_count?: number;
+          update_text: string;
+          vote_count?: number;
+        };
+        Update: {
+          drep_id?: string;
+          epoch?: number;
+          generated_at?: string;
+          proposals_voted?: Json | null;
+          rationale_count?: number;
+          update_text?: string;
+          vote_count?: number;
+        };
+        Relationships: [];
+      };
       drep_lifecycle_events: {
         Row: {
           action: string;
@@ -2386,6 +2416,7 @@ export type Database = {
         Row: {
           ai_summary: string | null;
           classified_at: string | null;
+          constitutional_analysis: Json | null;
           dim_decentralization: number | null;
           dim_innovation: number | null;
           dim_security: number | null;
@@ -2398,6 +2429,7 @@ export type Database = {
         Insert: {
           ai_summary?: string | null;
           classified_at?: string | null;
+          constitutional_analysis?: Json | null;
           dim_decentralization?: number | null;
           dim_innovation?: number | null;
           dim_security?: number | null;
@@ -2410,6 +2442,7 @@ export type Database = {
         Update: {
           ai_summary?: string | null;
           classified_at?: string | null;
+          constitutional_analysis?: Json | null;
           dim_decentralization?: number | null;
           dim_innovation?: number | null;
           dim_security?: number | null;

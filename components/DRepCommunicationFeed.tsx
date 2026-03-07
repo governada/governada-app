@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { posthog } from '@/lib/posthog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MessageSquare, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { MessageSquare, ChevronDown, ChevronUp, HelpCircle, CalendarDays } from 'lucide-react';
 import { QuestionForm } from '@/components/QuestionForm';
 
 interface DRepCommunicationFeedProps {
@@ -29,11 +29,20 @@ interface Position {
   createdAt: string;
 }
 
+interface EpochUpdate {
+  epoch: number;
+  updateText: string;
+  voteCount: number;
+  rationaleCount: number;
+  generatedAt: string;
+}
+
 interface FeedData {
   explanations: Explanation[];
   positions: Position[];
   philosophy: string | null;
   drepName: string | null;
+  epochUpdates: EpochUpdate[];
 }
 
 interface QAItem {
@@ -47,7 +56,8 @@ interface QAItem {
 
 type FeedItem =
   | { type: 'explanation'; date: string; content: Explanation }
-  | { type: 'position'; date: string; content: Position };
+  | { type: 'position'; date: string; content: Position }
+  | { type: 'epoch_update'; date: string; content: EpochUpdate };
 
 type TabKey = 'feed' | 'qa';
 
@@ -113,7 +123,11 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
     );
   }
 
-  const hasContent = data && (data.explanations.length > 0 || data.positions.length > 0);
+  const hasContent =
+    data &&
+    (data.explanations.length > 0 ||
+      data.positions.length > 0 ||
+      (data.epochUpdates || []).length > 0);
   const drepName = data?.drepName || `${drepId.slice(0, 16)}...`;
 
   const feedItems: FeedItem[] = [];
@@ -123,6 +137,9 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
     }
     for (const p of data.positions) {
       feedItems.push({ type: 'position', date: p.createdAt, content: p });
+    }
+    for (const u of data.epochUpdates || []) {
+      feedItems.push({ type: 'epoch_update', date: u.generatedAt, content: u });
     }
   }
   feedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -220,7 +237,32 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
                     );
                   }
 
-                  const p = item.content;
+                  if (item.type === 'epoch_update') {
+                    const u = item.content;
+                    return (
+                      <div key={`u-${i}`} className="border-l-2 border-blue-400/30 pl-3 py-1">
+                        <p className="text-sm flex items-center gap-1.5">
+                          <CalendarDays className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                          <span className="font-medium">Epoch {u.epoch} Update</span>
+                          <span className="text-xs text-muted-foreground">
+                            {u.voteCount} vote{u.voteCount !== 1 ? 's' : ''}
+                            {u.rationaleCount > 0 &&
+                              `, ${u.rationaleCount} rationale${u.rationaleCount !== 1 ? 's' : ''}`}
+                          </span>
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">{u.updateText}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(u.generatedAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  const p = item.content as Position;
                   const proposalLabel = p.proposalTitle || `${p.proposalTxHash.slice(0, 12)}...`;
                   return (
                     <div key={`p-${i}`} className="border-l-2 border-violet-400/30 pl-3 py-1">

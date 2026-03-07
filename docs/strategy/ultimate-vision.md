@@ -404,7 +404,7 @@ The backend intelligence engine and core frontend are production-grade. This fou
 
 ### Step 4: Citizen Experience & Acquisition Funnel (MEDIUM complexity)
 
-> **Status: NOT STARTED**
+> **Status: SHIPPED** (PR #141, 2026-03-07)
 > **Primary persona:** Citizen (ADA Holder)
 > **Secondary impact:** All personas (improved onboarding benefits everyone)
 
@@ -462,7 +462,7 @@ The on-ramp. Without a clear, unintimidating path from "I hold ADA" to "I'm a Ca
 
 ### Step 5: Governance Workspace (MEDIUM-HIGH complexity)
 
-> **Status: NOT STARTED**
+> **Status: IN PROGRESS** -- 5a Vote Casting (PR #143), 5b Rationale Submission (PR #145), 5c Governance Statement shipped. 5d/5e pending.
 > **Primary persona:** DRep, SPO
 > **Secondary impact:** Citizen (more rationales = better transparency), Researcher (richer data)
 

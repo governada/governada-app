@@ -1698,16 +1698,19 @@ export type Database = {
       };
       governance_philosophy: {
         Row: {
+          anchor_hash: string | null;
           drep_id: string;
           philosophy_text: string;
           updated_at: string | null;
         };
         Insert: {
+          anchor_hash?: string | null;
           drep_id: string;
           philosophy_text: string;
           updated_at?: string | null;
         };
         Update: {
+          anchor_hash?: string | null;
           drep_id?: string;
           philosophy_text?: string;
           updated_at?: string | null;

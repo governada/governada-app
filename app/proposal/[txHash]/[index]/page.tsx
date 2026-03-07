@@ -23,6 +23,7 @@ import { ProposalTopRationales } from '@/components/civica/proposals/ProposalTop
 import { ProposalLifecycleTimeline } from '@/components/civica/proposals/ProposalLifecycleTimeline';
 import { ParamChangesCard } from '@/components/civica/proposals/ParamChangesCard';
 import { AlignmentCohortBreakdown } from '@/components/civica/proposals/AlignmentCohortBreakdown';
+import { VoteCastingPanel } from '@/components/civica/proposals/VoteCastingPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -153,6 +154,14 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       {proposal.proposalType === 'ParameterChange' && proposal.paramChanges && (
         <ParamChangesCard paramChanges={proposal.paramChanges} />
       )}
+
+      {/* Vote Casting (DReps only, open proposals only) */}
+      <VoteCastingPanel
+        txHash={txHash}
+        proposalIndex={proposalIndex}
+        title={title}
+        isOpen={isOpen}
+      />
 
       {/* VP2 stack */}
 

@@ -1,6 +1,6 @@
 /**
  * Governance glossary — plain-English definitions for Cardano governance terms.
- * Used by the GovTerm component to show inline tooltips.
+ * Used by the GovTerm tooltip component for contextual education.
  * Keep definitions to 1-2 sentences, no jargon in the definition itself.
  */
 

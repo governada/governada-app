@@ -334,9 +334,7 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
 
   const narrativeSection = data.recap?.narrative ? (
     <div className="py-5 border-b border-border">
-      <p className="text-base sm:text-lg leading-relaxed text-foreground">
-        {data.recap.narrative}
-      </p>
+      <p className="text-base sm:text-lg leading-relaxed text-foreground">{data.recap.narrative}</p>
     </div>
   ) : null;
 
@@ -399,22 +397,21 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
           >
             {data.drepPerformance.score}
           </p>
-          {data.drepPerformance.scoreChange != null &&
-            data.drepPerformance.scoreChange !== 0 && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-0.5 text-xs font-medium',
-                  data.drepPerformance.scoreChange > 0 ? 'text-emerald-500' : 'text-rose-500',
-                )}
-              >
-                {data.drepPerformance.scoreChange > 0 ? (
-                  <ArrowUp className="h-3 w-3" />
-                ) : (
-                  <ArrowDown className="h-3 w-3" />
-                )}
-                {Math.abs(data.drepPerformance.scoreChange)}
-              </span>
-            )}
+          {data.drepPerformance.scoreChange != null && data.drepPerformance.scoreChange !== 0 && (
+            <span
+              className={cn(
+                'inline-flex items-center gap-0.5 text-xs font-medium',
+                data.drepPerformance.scoreChange > 0 ? 'text-emerald-500' : 'text-rose-500',
+              )}
+            >
+              {data.drepPerformance.scoreChange > 0 ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              )}
+              {Math.abs(data.drepPerformance.scoreChange)}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -575,11 +572,7 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
         {statusBanner}
 
         <div className="py-3">
-          <SectionTabs
-            sections={sections}
-            activeIndex={activeSection}
-            onSelect={navigateSection}
-          />
+          <SectionTabs sections={sections} activeIndex={activeSection} onSelect={navigateSection} />
         </div>
 
         <div className="overflow-hidden" {...swipeHandlers}>

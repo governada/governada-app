@@ -276,7 +276,6 @@ export async function computeAllProposalOutcomes(): Promise<{
   return { evaluated: enacted.length, updated };
 }
 
- 
 async function computeOutcomeForProposal(
   supabase: ReturnType<typeof getSupabaseAdmin>,
   txHash: string,

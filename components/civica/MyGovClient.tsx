@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, User, LayoutDashboard, ShieldCheck, Vote, TrendingUp } from 'lucide-react';
+import { Bell, User, LayoutDashboard, Shield, ShieldCheck, Vote, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { SPOCommandCenter } from './mygov/SPOCommandCenter';
 
 const MY_GOV_SUBNAV = [
   { href: '/my-gov', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { href: '/my-gov/identity', label: 'Identity', icon: Shield, exact: false },
   { href: '/my-gov/inbox', label: 'Inbox', icon: Bell, exact: false },
   { href: '/my-gov/profile', label: 'Profile', icon: User, exact: false },
 ] as const;

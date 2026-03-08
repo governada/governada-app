@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Flame, Vote, Coins, Share2, User } from 'lucide-react';
+import { Calendar, Flame, Vote, Coins, Share2, User, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -125,10 +126,17 @@ export function CivicIdentityCard({ wallet, className }: CivicIdentityCardProps)
               />
             </div>
 
-            <div className="flex justify-center">
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-default">
+            <div className="flex items-center justify-between">
+              <Link
+                href="/my-gov/identity"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                View full identity
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Share2 className="h-3.5 w-3.5" />
-                Share your civic identity
+                Share
               </span>
             </div>
           </>

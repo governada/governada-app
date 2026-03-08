@@ -19,6 +19,7 @@ import {
   Coins,
   ExternalLink,
   Megaphone,
+  Trophy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -633,32 +634,47 @@ function EpochBriefingContent({
     ) : null;
 
   const civicIdentityStrip = identity ? (
-    <div className="pt-5 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-      {identity.citizenSinceEpoch != null && (
-        <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-          Citizen since Epoch {identity.citizenSinceEpoch}
-        </span>
+    <Link
+      href="/my-gov/identity"
+      className="group block pt-5 hover:bg-muted/30 -mx-4 px-4 rounded-lg transition-colors"
+    >
+      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+        {identity.citizenSinceEpoch != null && (
+          <span className="inline-flex items-center gap-1.5 min-h-[36px]">
+            <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
+            Citizen since Epoch {identity.citizenSinceEpoch}
+          </span>
+        )}
+        {identity.delegationStreak != null && identity.delegationStreak > 0 && (
+          <span className="inline-flex items-center gap-1.5 min-h-[36px]">
+            <Flame className="h-3.5 w-3.5 text-amber-500 animate-pulse" aria-hidden="true" />
+            {identity.delegationStreak} epoch streak
+          </span>
+        )}
+        {identity.proposalsInfluenced != null && identity.proposalsInfluenced > 0 && (
+          <span className="inline-flex items-center gap-1.5 min-h-[36px]">
+            <Vote className="h-3.5 w-3.5" aria-hidden="true" />
+            {identity.proposalsInfluenced} proposals influenced
+          </span>
+        )}
+        {identity.adaGoverned != null && (
+          <span className="inline-flex items-center gap-1.5 min-h-[36px]">
+            <Coins className="h-3.5 w-3.5" aria-hidden="true" />
+            {formatAdaCompact(identity.adaGoverned)} ADA governed
+          </span>
+        )}
+      </div>
+      {identity.recentMilestone && (
+        <div className="mt-2 flex items-center gap-2 text-xs">
+          <Trophy className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+          <span className="font-medium text-foreground">{identity.recentMilestone}</span>
+        </div>
       )}
-      {identity.delegationStreak != null && identity.delegationStreak > 0 && (
-        <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Flame className="h-3.5 w-3.5" aria-hidden="true" />
-          {identity.delegationStreak} epoch streak
-        </span>
-      )}
-      {identity.proposalsInfluenced != null && identity.proposalsInfluenced > 0 && (
-        <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Vote className="h-3.5 w-3.5" aria-hidden="true" />
-          {identity.proposalsInfluenced} proposals influenced
-        </span>
-      )}
-      {identity.adaGoverned != null && (
-        <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Coins className="h-3.5 w-3.5" aria-hidden="true" />
-          {formatAdaCompact(identity.adaGoverned)} ADA governed
-        </span>
-      )}
-    </div>
+      <div className="mt-2 flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+        View your civic identity
+        <ArrowRight className="h-3 w-3" />
+      </div>
+    </Link>
   ) : null;
 
   /* ── Mobile: swipeable section carousel ─────────────────────── */

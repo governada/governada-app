@@ -23,6 +23,7 @@
  * governance_footprint     — Wallet governance footprint feature
  * cc_page                  — Constitutional Committee transparency page
  * spo_profiles             — SPO governance profile pages
+ * governance_font          — Custom display font (Space Grotesk) for headings
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (deleted in migration 039 — code checks removed or hardcoded)

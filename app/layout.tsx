@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
@@ -11,6 +11,7 @@ import { ShortcutsHelpOverlay } from '@/components/ShortcutsHelpOverlay';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { CivicaShell } from '@/components/civica/CivicaShell';
+import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -20,6 +21,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: '--font-space-grotesk',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -68,7 +75,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
@@ -81,6 +88,7 @@ export default function RootLayout({
               >
                 Skip to main content
               </a>
+              <GovernanceFontProvider />
               <CivicaShell>{children}</CivicaShell>
               <CommandPalette />
               <KeyboardShortcuts />

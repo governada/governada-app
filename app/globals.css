@@ -243,6 +243,12 @@
   --font-civica-body: var(--font-geist-sans);
 }
 
+/* Governance font — feature-flagged via data-font attribute on body.
+   Toggle via /admin/flags → governance_font or FF_GOVERNANCE_FONT env var. */
+body[data-font='governance'] {
+  --font-civica-display: var(--font-space-grotesk), var(--font-geist-sans);
+}
+
 /* ============================================================
    Base layer
    ============================================================ */

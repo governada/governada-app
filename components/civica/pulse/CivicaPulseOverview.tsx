@@ -24,6 +24,7 @@ import { CivicaGovernanceTrends } from './CivicaGovernanceTrends';
 import { CivicaObservatory } from './CivicaObservatory';
 import { CivicaGovernanceCalendar } from './CivicaGovernanceCalendar';
 import { StateOfGovernance } from './StateOfGovernance';
+import { GovernanceImpactCard } from './GovernanceImpactCard';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
 import type {
   TreasuryData,
@@ -244,6 +245,14 @@ export function CivicaPulseOverview() {
         <div role="tabpanel" id="pulse-tabpanel-now" aria-label="Now">
           {/* ── State of Governance narrative ───────────────────── */}
           <StateOfGovernance />
+
+          {/* ── Personalized governance impact card ────────────── */}
+          <GovernanceImpactCard
+            totalAdaGovernedLovelace={
+              (pulse as PulseDataLocal & { totalAdaGovernedRaw?: number })?.totalAdaGovernedRaw ?? 0
+            }
+            treasuryBalanceAda={treasury?.balance ?? treasury?.balanceAda ?? 0}
+          />
 
           {/* ── Header ──────────────────────────────────────────── */}
           <div className="flex items-start justify-between">

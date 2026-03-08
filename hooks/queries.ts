@@ -513,3 +513,19 @@ export function useDRepOutcomeSummary(drepId: string | null | undefined) {
     staleTime: 5 * 60_000,
   });
 }
+
+export function useAccountInfo(stakeAddress: string | null | undefined) {
+  return useQuery({
+    queryKey: ['account-info', stakeAddress],
+    queryFn: () =>
+      fetchJson<{
+        stakeAddress: string;
+        totalBalanceAda: number;
+        rewardsAda: number;
+        delegatedDrep: string | null;
+        delegatedPool: string | null;
+      }>(`/api/user/account-info?stakeAddress=${encodeURIComponent(stakeAddress!)}`),
+    enabled: !!stakeAddress,
+    staleTime: 120_000,
+  });
+}

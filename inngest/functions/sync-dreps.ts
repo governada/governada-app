@@ -1,14 +1,16 @@
 /**
  * DReps sync — runs every 6 hours, fetches all DReps from Koios and syncs to Supabase.
  *
- * Split into granular Inngest steps to stay under Cloudflare's 100s timeout:
+ * Steps are structured to avoid serializing large data (rawVotesMap, classifiedProposals)
+ * across Inngest step boundaries — those objects can exceed the 4MB step output limit.
+ *
  *   0. init-sync — create sync_log entry, reset Koios metrics
  *   1. fetch-proposals — fetch + classify governance proposals (non-fatal)
- *   2. fetch-dreps — fetch enriched DReps from Koios, resolve handles, read delegator counts
- *   3. upsert-dreps — batch upsert DRep rows to Supabase
- *   4. post-sync — alignment scores, delegation snapshots, score history
- *   5. finalize — write sync_log, emit analytics
- *   6. heartbeat + follow-on events
+ *      (returns only lightweight proposalContextEntries; classifiedProposals stay in memory)
+ *   2. core-sync — fetch DReps, upsert, post-sync (alignment, snapshots, history)
+ *      (rawVotesMap never leaves this step)
+ *   3. finalize — write sync_log, emit analytics
+ *   4. heartbeat + follow-on events
  */
 
 import { inngest } from '@/lib/inngest';
@@ -19,6 +21,8 @@ import {
   phaseUpsertDReps,
   phasePostSync,
   phaseFinalize,
+  type UpsertDRepsResult,
+  type PostSyncResult,
 } from '@/lib/sync/dreps';
 import { pingHeartbeat, errMsg, capMsg } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
@@ -66,6 +70,7 @@ export const syncDreps = inngest.createFunction(
       });
 
       // Step 1: Fetch + classify proposals (non-fatal)
+      // Only serializes lightweight proposalContextEntries across step boundary
       const proposalResult = await step.run('fetch-proposals', async () => {
         try {
           return await phaseFetchProposals();
@@ -80,50 +85,65 @@ export const syncDreps = inngest.createFunction(
         }
       });
 
-      // Step 2: Fetch enriched DReps + resolve handles + read delegator counts
-      const drepData = await step.run('fetch-dreps', async () => {
-        return await phaseFetchDReps(proposalResult.proposalContextEntries);
-      });
+      // Step 2: Core sync — fetch DReps, upsert to DB, run post-sync (alignment, snapshots, history)
+      // Combined into a single step so rawVotesMap + classifiedProposals stay in memory
+      // and never cross an Inngest step boundary (they can exceed the 4MB output limit).
+      const coreSyncResult = await step.run('core-sync', async () => {
+        const drepData = await phaseFetchDReps(proposalResult.proposalContextEntries);
 
-      // Step 3: Upsert DRep rows to Supabase
-      const upsertResult = await step.run('upsert-dreps', async () => {
-        return await phaseUpsertDReps(drepData.dreps, drepData.delegatorCounts);
-      });
+        const upsertResult = await phaseUpsertDReps(drepData.dreps, drepData.delegatorCounts);
 
-      // Step 4: Alignment scores, delegation snapshots, score history
-      const postSyncResult = await step.run('post-sync', async () => {
-        return await phasePostSync(
+        const postSyncResult = await phasePostSync(
           drepData.dreps,
           drepData.rawVotesMap,
           proposalResult.classifiedProposals,
           drepData.delegatorCounts,
         );
+
+        // Return only the lightweight summary — not the raw data
+        return {
+          upsertResult,
+          postSyncResult: {
+            alignmentComputed: postSyncResult.alignmentComputed,
+            delegationSnapshotsInserted: postSyncResult.delegationSnapshotsInserted,
+            scoreHistoryInserted: postSyncResult.scoreHistoryInserted,
+            errors: postSyncResult.errors,
+            durationMs: postSyncResult.durationMs,
+          } satisfies PostSyncResult,
+          handlesResolved: drepData.handlesResolved,
+          fetchErrors: drepData.errors,
+          fetchDurationMs: drepData.durationMs,
+        };
       });
 
-      // Step 5: Finalize sync_log, emit analytics
-      const allErrors = [...proposalResult.errors, ...drepData.errors, ...postSyncResult.errors];
+      // Step 3: Finalize sync_log, emit analytics
+      const allErrors = [
+        ...proposalResult.errors,
+        ...coreSyncResult.fetchErrors,
+        ...coreSyncResult.postSyncResult.errors,
+      ];
       const phaseTiming: Record<string, number> = {
         step1_proposals_ms: proposalResult.durationMs,
-        step2_enrich_ms: drepData.durationMs,
-        step4_upsert_ms: upsertResult.durationMs,
-        step56_parallel_ms: postSyncResult.durationMs,
+        step2_enrich_ms: coreSyncResult.fetchDurationMs,
+        step4_upsert_ms: coreSyncResult.upsertResult.durationMs,
+        step56_parallel_ms: coreSyncResult.postSyncResult.durationMs,
       };
 
       const result = await step.run('finalize', async () => {
         return await phaseFinalize(
           syncLogId,
           startTime,
-          upsertResult,
-          drepData.handlesResolved,
+          coreSyncResult.upsertResult as UpsertDRepsResult,
+          coreSyncResult.handlesResolved,
           allErrors,
           phaseTiming,
         );
       });
 
-      // Step 6: Heartbeat
+      // Step 4: Heartbeat
       await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_BATCH'));
 
-      // Step 7: Trigger follow-on syncs (alignment + scoring)
+      // Step 5: Trigger follow-on syncs (alignment + scoring)
       await step.sendEvent('trigger-follow-on-syncs', [
         {
           name: 'drepscore/sync.alignment',

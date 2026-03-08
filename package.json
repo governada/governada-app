@@ -24,7 +24,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preflight": "run-p format:check lint type-check test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:scoring": "vitest run __tests__/scoring/ __tests__/alignment/ __tests__/ghi/ __tests__/matching/"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [

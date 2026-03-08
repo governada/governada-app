@@ -11,27 +11,31 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
 
   const supabase = getSupabaseAdmin();
 
-  const [proposalsResult, votingSummaryResult, treasuryResult, epochResult] = await Promise.all([
-    supabase
-      .from('proposals')
-      .select(
-        'tx_hash, proposal_index, title, proposal_type, expired_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expiration_epoch, proposed_epoch, withdrawal_amount, treasury_tier, block_time, relevant_prefs',
-      )
-      .order('proposed_epoch', { ascending: false })
-      .limit(limit),
-    supabase
-      .from('proposal_voting_summary')
-      .select(
-        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
-      ),
-    supabase
-      .from('treasury_balance')
-      .select('balance_ada')
-      .order('fetched_at', { ascending: false })
-      .limit(1)
-      .single(),
-    supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
-  ]);
+  const [proposalsResult, votingSummaryResult, treasuryResult, epochResult, outcomesResult] =
+    await Promise.all([
+      supabase
+        .from('proposals')
+        .select(
+          'tx_hash, proposal_index, title, proposal_type, expired_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expiration_epoch, proposed_epoch, withdrawal_amount, treasury_tier, block_time, relevant_prefs',
+        )
+        .order('proposed_epoch', { ascending: false })
+        .limit(limit),
+      supabase
+        .from('proposal_voting_summary')
+        .select(
+          'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+        ),
+      supabase
+        .from('treasury_balance')
+        .select('balance_ada')
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .single(),
+      supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
+      supabase
+        .from('proposal_outcomes')
+        .select('proposal_tx_hash, proposal_index, delivery_status, delivery_score'),
+    ]);
 
   const { data, error } = proposalsResult;
 
@@ -77,6 +81,17 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
 
   const treasuryBalance = treasuryResult.data?.balance_ada ?? null;
 
+  // Build outcome lookup for delivery status badges
+  const outcomeMap = new Map<string, { deliveryStatus: string; deliveryScore: number | null }>();
+  if (outcomesResult.data) {
+    for (const o of outcomesResult.data) {
+      outcomeMap.set(`${o.proposal_tx_hash}-${o.proposal_index}`, {
+        deliveryStatus: o.delivery_status,
+        deliveryScore: o.delivery_score,
+      });
+    }
+  }
+
   const proposals = (data || []).map((p) => {
     let status = 'active';
     if (p.enacted_epoch) status = 'enacted';
@@ -87,6 +102,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     const key = `${p.tx_hash}-${p.proposal_index}`;
     const triBody = triBodyMap.get(key) ?? null;
     const withdrawalAmount = p.withdrawal_amount != null ? Number(p.withdrawal_amount) : null;
+    const outcome = outcomeMap.get(key);
 
     return {
       txHash: p.tx_hash,
@@ -101,6 +117,8 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       proposedEpoch: p.proposed_epoch ?? null,
       relevantPrefs: p.relevant_prefs ?? [],
       triBody,
+      deliveryStatus: outcome?.deliveryStatus ?? null,
+      deliveryScore: outcome?.deliveryScore ?? null,
     };
   });
 

@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet-context';
 import { ProposalStatusFunnel } from '@/components/civica/charts/ProposalStatusFunnel';
+import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
+import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 
@@ -331,6 +333,13 @@ export function ProposalsBrowse() {
                         </span>
                       )}
                     </span>
+                  )}
+                  {p.deliveryStatus && p.deliveryStatus !== 'unknown' && (
+                    <ProposalDeliveryBadge
+                      status={p.deliveryStatus as DeliveryStatus}
+                      score={p.deliveryScore}
+                      compact
+                    />
                   )}
                   {p.triBody && <TriBodyMini triBody={p.triBody} />}
                   {p.triBody &&

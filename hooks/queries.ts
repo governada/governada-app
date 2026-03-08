@@ -486,3 +486,22 @@ export function useSPOUrgent(poolId: string | null | undefined) {
     enabled: !!poolId,
   });
 }
+
+export function useProposalOutcome(txHash: string | null | undefined, index: number | undefined) {
+  return useQuery({
+    queryKey: ['proposal-outcome', txHash, index],
+    queryFn: () =>
+      fetchJson(`/api/governance/outcomes?txHash=${encodeURIComponent(txHash!)}&index=${index}`),
+    enabled: !!txHash && index !== undefined,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useDRepOutcomeSummary(drepId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['drep-outcome-summary', drepId],
+    queryFn: () => fetchJson(`/api/governance/outcomes?drepId=${encodeURIComponent(drepId!)}`),
+    enabled: !!drepId,
+    staleTime: 5 * 60_000,
+  });
+}

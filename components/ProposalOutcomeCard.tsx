@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShareActions } from '@/components/ShareActions';
 import { posthog } from '@/lib/posthog';
+import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
+import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 
 type Outcome = 'ratified' | 'enacted' | 'dropped' | 'expired';
 
@@ -19,6 +21,8 @@ interface ProposalOutcomeCardProps {
   };
   drepVote?: string | null;
   isWinner?: boolean;
+  deliveryStatus?: DeliveryStatus | null;
+  deliveryScore?: number | null;
 }
 
 const OUTCOME_CONFIG: Record<Outcome, { label: string; className: string }> = {
@@ -40,7 +44,13 @@ const OUTCOME_CONFIG: Record<Outcome, { label: string; className: string }> = {
   },
 };
 
-export function ProposalOutcomeCard({ proposal, drepVote, isWinner }: ProposalOutcomeCardProps) {
+export function ProposalOutcomeCard({
+  proposal,
+  drepVote,
+  isWinner,
+  deliveryStatus,
+  deliveryScore,
+}: ProposalOutcomeCardProps) {
   const config = OUTCOME_CONFIG[proposal.outcome];
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/proposals/${proposal.txHash}/${proposal.proposalIndex}`;
 
@@ -57,14 +67,17 @@ export function ProposalOutcomeCard({ proposal, drepVote, isWinner }: ProposalOu
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-6 space-y-4">
-        {/* Outcome badge */}
-        <div className="flex items-center gap-3">
+        {/* Outcome badge + delivery status */}
+        <div className="flex items-center gap-3 flex-wrap">
           <Badge
             variant="outline"
             className={`text-lg px-4 py-1.5 font-bold tracking-wide ${config.className}`}
           >
             {config.label}
           </Badge>
+          {deliveryStatus && deliveryStatus !== 'unknown' && (
+            <ProposalDeliveryBadge status={deliveryStatus} score={deliveryScore} />
+          )}
         </div>
 
         {/* Title */}

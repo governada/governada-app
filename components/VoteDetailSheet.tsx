@@ -25,6 +25,7 @@ import {
 import { useState } from 'react';
 import Link from 'next/link';
 import { MarkdownContent } from '@/components/MarkdownContent';
+import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
 
 interface VoteDetailSheetProps {
   vote: VoteRecord | null;
@@ -129,6 +130,12 @@ export function VoteDetailSheet({
               })}
             </span>
             <AlignmentBadge alignment={alignment} />
+            {vote.proposalOutcome && vote.proposalOutcome.deliveryStatus !== 'unknown' && (
+              <ProposalDeliveryBadge
+                status={vote.proposalOutcome.deliveryStatus}
+                score={vote.proposalOutcome.deliveryScore}
+              />
+            )}
           </div>
           <SheetTitle className="text-lg leading-snug pt-1">{vote.title}</SheetTitle>
           <SheetDescription className="sr-only">Vote details for {vote.title}</SheetDescription>

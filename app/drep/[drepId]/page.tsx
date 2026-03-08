@@ -79,6 +79,8 @@ import { NarrativeSummary } from '@/components/NarrativeSummary';
 import { ActivitySideWidget } from '@/components/ActivitySideWidget';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
+import { DRepOutcomeSummary } from '@/components/civica/profiles/DRepOutcomeSummary';
+import { getProposalOutcomesBatch } from '@/lib/proposalOutcomes';
 import {
   getDRepById,
   getVotesByDRepId,
@@ -160,11 +162,16 @@ async function getDRepData(drepId: string) {
       console.log(`[DRepProfile] Found ${votes.length} votes for DRep ${decodedId}`);
     }
 
-    const [cachedProposals, cachedRationales] = await Promise.all([
-      getProposalsByIds(
-        votes.map((v) => ({ txHash: v.proposal_tx_hash, index: v.proposal_index })),
-      ),
+    const proposalKeys = votes.map((v) => ({
+      txHash: v.proposal_tx_hash,
+      index: v.proposal_index,
+    }));
+    const [cachedProposals, cachedRationales, outcomeMap] = await Promise.all([
+      getProposalsByIds(proposalKeys),
       getRationalesByVoteTxHashes(votes.map((v) => v.vote_tx_hash)),
+      getProposalOutcomesBatch(
+        proposalKeys.map((k) => ({ txHash: k.txHash, proposalIndex: k.index })),
+      ),
     ]);
 
     const voteRecords: VoteRecord[] = votes.map((vote, index) => {
@@ -175,6 +182,9 @@ async function getDRepData(drepId: string) {
       const rationaleRecord = cachedRationales.get(vote.vote_tx_hash) ?? null;
       const rationaleText = rationaleRecord?.rationaleText || null;
       const rationaleAiSummary = rationaleRecord?.rationaleAiSummary || null;
+
+      const outcomeKey = `${vote.proposal_tx_hash}-${vote.proposal_index}`;
+      const outcome = outcomeMap.get(outcomeKey);
 
       return {
         id: `${vote.vote_tx_hash}-${index}`,
@@ -195,6 +205,9 @@ async function getDRepData(drepId: string) {
         treasuryTier: cachedProposal?.treasuryTier || null,
         withdrawalAmount: cachedProposal?.withdrawalAmount || null,
         relevantPrefs: cachedProposal?.relevantPrefs || [],
+        proposalOutcome: outcome
+          ? { deliveryStatus: outcome.deliveryStatus, deliveryScore: outcome.deliveryScore }
+          : undefined,
       };
     });
 
@@ -790,6 +803,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         statementsContent={statementsContent}
         votingRecordContent={
           <div className="space-y-6">
+            <DRepOutcomeSummary drepId={drep.drepId} />
             <Suspense fallback={<DetailPageSkeleton />}>
               <VotingHistoryWithPrefs votes={drep.votes} />
             </Suspense>

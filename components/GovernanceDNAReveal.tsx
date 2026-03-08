@@ -11,8 +11,10 @@ import { ShareActions } from '@/components/ShareActions';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 import { MatchCard } from '@/components/matching/MatchCard';
 import { ConfidenceBar } from '@/components/matching/ConfidenceBar';
+import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
 import { posthog } from '@/lib/posthog';
 import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
+import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
 
 export interface QuizMatchDRep {
   drepId: string;
@@ -34,6 +36,7 @@ export interface QuizResult {
   matchMethod?: string;
   userAlignments?: AlignmentScores | null;
   personalityLabel?: string | null;
+  confidenceBreakdown?: ConfidenceBreakdown | null;
 }
 
 interface GovernanceDNARevealProps {
@@ -174,31 +177,35 @@ export function GovernanceDNAReveal({ result, onRetake }: GovernanceDNARevealPro
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.4 }}
       >
-        <Card className="border-muted">
-          <CardContent className="p-6 space-y-4">
-            <h4 className="font-semibold text-sm">Improve Your Matches</h4>
+        {result.confidenceBreakdown ? (
+          <MatchConfidenceCTA breakdown={result.confidenceBreakdown} variant="full" />
+        ) : (
+          <Card className="border-muted">
+            <CardContent className="p-6 space-y-4">
+              <h4 className="font-semibold text-sm">Improve Your Matches</h4>
 
-            <ConfidenceBar votesUsed={result.votesCount} />
+              <ConfidenceBar votesUsed={result.votesCount} />
 
-            <p className="text-xs text-muted-foreground">
-              Vote on more proposals to sharpen your results. Each vote improves your governance
-              profile and match accuracy.
-            </p>
+              <p className="text-xs text-muted-foreground">
+                Vote on more proposals to sharpen your results. Each vote improves your governance
+                profile and match accuracy.
+              </p>
 
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={onRetake} className="gap-1.5">
-                <RefreshCw className="h-3.5 w-3.5" />
-                Retake Quiz
-              </Button>
-              <Link href="/discover">
-                <Button variant="ghost" size="sm" className="gap-1.5">
-                  <Vote className="h-3.5 w-3.5" />
-                  Vote on Proposals
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={onRetake} className="gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Retake Quiz
                 </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+                <Link href="/discover">
+                  <Button variant="ghost" size="sm" className="gap-1.5">
+                    <Vote className="h-3.5 w-3.5" />
+                    Vote on Proposals
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </motion.div>
 
       {/* Share */}

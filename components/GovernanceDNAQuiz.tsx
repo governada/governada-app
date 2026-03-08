@@ -149,6 +149,7 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
                 overallConfidence: data.overallConfidence,
                 matchMethod: data.matchMethod,
                 userAlignments: data.userAlignments ?? null,
+                confidenceBreakdown: data.confidenceBreakdown ?? null,
               });
               onQuizComplete?.(matchMap);
               import('@/lib/posthog')

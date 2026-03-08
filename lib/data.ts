@@ -975,6 +975,105 @@ export async function getCcVotesByProposal(
 }
 
 // ============================================================================
+// CC TRANSPARENCY INDEX
+// ============================================================================
+
+export interface CCTransparencySnapshot {
+  epochNo: number;
+  transparencyIndex: number;
+  participationScore: number;
+  rationaleQualityScore: number;
+  responsivenessScore: number;
+  independenceScore: number;
+  communityEngagementScore: number;
+  votesCast: number;
+  eligibleProposals: number;
+}
+
+export async function getCCTransparencyHistory(ccHotId: string): Promise<CCTransparencySnapshot[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('cc_transparency_snapshots')
+      .select('*')
+      .eq('cc_hot_id', ccHotId)
+      .order('epoch_no', { ascending: true });
+
+    if (error || !data) return [];
+    return data.map((s) => ({
+      epochNo: s.epoch_no,
+      transparencyIndex: s.transparency_index ?? 0,
+      participationScore: s.participation_score ?? 0,
+      rationaleQualityScore: s.rationale_quality_score ?? 0,
+      responsivenessScore: s.responsiveness_score ?? 0,
+      independenceScore: s.independence_score ?? 0,
+      communityEngagementScore: s.community_engagement_score ?? 0,
+      votesCast: s.votes_cast ?? 0,
+      eligibleProposals: s.eligible_proposals ?? 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export interface CCMemberTransparency {
+  ccHotId: string;
+  authorName: string | null;
+  status: string | null;
+  expirationEpoch: number | null;
+  transparencyIndex: number | null;
+  transparencyGrade: string | null;
+  participationScore: number | null;
+  rationaleQualityScore: number | null;
+  responsivenessScore: number | null;
+  independenceScore: number | null;
+  communityEngagementScore: number | null;
+  fidelityScore: number | null;
+  rationaleProvisionRate: number | null;
+  avgArticleCoverage: number | null;
+  avgReasoningQuality: number | null;
+  consistencyScore: number | null;
+  votesCast: number | null;
+  eligibleProposals: number | null;
+}
+
+export async function getCCMembersTransparency(): Promise<CCMemberTransparency[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('cc_members')
+      .select(
+        'cc_hot_id, author_name, status, expiration_epoch, transparency_index, transparency_grade, participation_score, rationale_quality_score, independence_score, community_engagement_score, responsiveness_score, fidelity_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, consistency_score, votes_cast, eligible_proposals',
+      )
+      .order('transparency_index', { ascending: false, nullsFirst: false });
+
+    if (error || !data) return [];
+    return data.map((m) => ({
+      ccHotId: m.cc_hot_id,
+      authorName: m.author_name,
+      status: m.status,
+      expirationEpoch: m.expiration_epoch,
+      transparencyIndex: m.transparency_index,
+      transparencyGrade: m.transparency_grade,
+      participationScore: m.participation_score,
+      rationaleQualityScore: m.rationale_quality_score,
+      responsivenessScore: m.responsiveness_score,
+      independenceScore: m.independence_score,
+      communityEngagementScore: m.community_engagement_score,
+      fidelityScore: m.fidelity_score,
+      rationaleProvisionRate: m.rationale_provision_rate,
+      avgArticleCoverage: m.avg_article_coverage,
+      avgReasoningQuality: m.avg_reasoning_quality,
+      consistencyScore: m.consistency_score,
+      votesCast: m.votes_cast,
+      eligibleProposals: m.eligible_proposals,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ============================================================================
 // GOVERNANCE INBOX
 // ============================================================================
 

@@ -23,7 +23,7 @@ import { ProposalTopRationales } from '@/components/civica/proposals/ProposalTop
 import { ProposalLifecycleTimeline } from '@/components/civica/proposals/ProposalLifecycleTimeline';
 import { ParamChangesCard } from '@/components/civica/proposals/ParamChangesCard';
 import { AlignmentCohortBreakdown } from '@/components/civica/proposals/AlignmentCohortBreakdown';
-import { VoteCastingPanel } from '@/components/civica/proposals/VoteCastingPanel';
+import { VoteRationaleFlow } from '@/components/civica/proposals/VoteRationaleFlow';
 import { ConstitutionalAlignmentCard } from '@/components/ConstitutionalAlignmentCard';
 import { ProposalSentiment } from '@/components/engagement/ProposalSentiment';
 import { ConcernFlags } from '@/components/engagement/ConcernFlags';
@@ -164,8 +164,8 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         <ParamChangesCard paramChanges={proposal.paramChanges} />
       )}
 
-      {/* Vote Casting (DReps and SPOs, open proposals only) */}
-      <VoteCastingPanel
+      {/* Vote + Rationale Flow (DReps, SPOs, CC — open proposals only) */}
+      <VoteRationaleFlow
         txHash={txHash}
         proposalIndex={proposalIndex}
         title={title}

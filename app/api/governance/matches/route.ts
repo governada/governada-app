@@ -8,11 +8,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { projectUserVector, cosineSimilarity } from '@/lib/representationMatch';
 import { loadActivePCA } from '@/lib/alignment/pca';
-import { calculateMatchConfidence } from '@/lib/matching/confidence';
+import {
+  calculateMatchConfidence,
+  calculateProgressiveConfidence,
+  type ConfidenceBreakdown,
+  type ConfidenceInputs,
+} from '@/lib/matching/confidence';
 import { computeDimensionAgreement, deriveUserAlignments } from '@/lib/matching/dimensionAgreement';
 import { extractAlignments } from '@/lib/drepIdentity';
 import type { AlignmentDimension, AlignmentScores } from '@/lib/drepIdentity';
-import { createClient } from '@/lib/supabase';
+import { createClient, getSupabaseAdmin } from '@/lib/supabase';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 
@@ -182,6 +187,13 @@ export const GET = withRouteHandler(
 
     const overallConfidence = calculateMatchConfidence(pollVotes.length);
 
+    // Compute progressive confidence breakdown
+    const confidenceBreakdown = await computeProgressiveConfidenceForUser(
+      userId!,
+      pollVotes.length,
+      userProposalTxHashes,
+    );
+
     const matches = filteredIds.map((drepId) => {
       const info = drepInfoMap.get(drepId);
       const overlap = overlapMap.get(drepId) || { agreed: 0, total: 0 };
@@ -235,9 +247,10 @@ export const GET = withRouteHandler(
     return NextResponse.json({
       matches,
       currentDRepMatch,
-      overallConfidence,
+      overallConfidence: confidenceBreakdown?.overall ?? overallConfidence,
       matchMethod,
       userAlignments,
+      confidenceBreakdown: confidenceBreakdown ?? null,
     });
   },
   { auth: 'required' },
@@ -248,4 +261,73 @@ function rankByOverlap(overlapMap: Map<string, { agreed: number; total: number }
     .filter(([, m]) => m.total >= 1)
     .sort((a, b) => b[1].agreed / b[1].total - a[1].agreed / a[1].total)
     .map(([id]) => id);
+}
+
+async function computeProgressiveConfidenceForUser(
+  userId: string,
+  pollVoteCount: number,
+  proposalTxHashes: string[],
+): Promise<ConfidenceBreakdown | null> {
+  try {
+    const admin = getSupabaseAdmin();
+
+    // Gather inputs in parallel
+    const [profileResult, engagementResult, delegationResult, diversityResult] = await Promise.all([
+      admin
+        .from('user_governance_profiles')
+        .select('has_quick_match')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      // Count engagement actions across tables
+      Promise.all([
+        admin
+          .from('citizen_sentiment')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        admin
+          .from('citizen_concern_flags')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        admin
+          .from('citizen_impact_tags')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        admin
+          .from('citizen_priority_signals')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+      ]),
+      admin
+        .from('user_wallets')
+        .select('drep_id')
+        .eq('user_id', userId)
+        .not('drep_id', 'is', null)
+        .limit(1),
+      proposalTxHashes.length > 0
+        ? admin.from('proposals').select('proposal_type').in('tx_hash', proposalTxHashes)
+        : Promise.resolve({ data: [] as { proposal_type: string }[] }),
+    ]);
+
+    const engagementCount =
+      (engagementResult[0].count ?? 0) +
+      (engagementResult[1].count ?? 0) +
+      (engagementResult[2].count ?? 0) +
+      (engagementResult[3].count ?? 0);
+
+    const uniqueTypes = new Set(
+      (diversityResult.data ?? []).map((p: { proposal_type: string }) => p.proposal_type),
+    );
+
+    const inputs: ConfidenceInputs = {
+      quizAnswerCount: profileResult.data?.has_quick_match ? 3 : 0,
+      pollVoteCount,
+      proposalTypesVoted: uniqueTypes.size,
+      engagementActionCount: engagementCount,
+      hasDelegation: (delegationResult.data?.length ?? 0) > 0,
+    };
+
+    return calculateProgressiveConfidence(inputs);
+  } catch {
+    return null;
+  }
 }

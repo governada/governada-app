@@ -2,10 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
+import { getCCTransparencyHistory, getCCMembersTransparency } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { CCTransparencyTrend } from '@/components/cc/CCTransparencyTrend';
 import {
   ArrowLeft,
   Scale,
@@ -13,7 +15,9 @@ import {
   Sparkles,
   Clock,
   ShieldCheck,
-  ExternalLink,
+  Users,
+  Vote,
+  MessageCircle,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -33,12 +37,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const name = member?.author_name ?? `CC Member ${ccHotId.slice(0, 12)}...`;
   return {
-    title: `${name} — Constitutional Committee — Civica`,
-    description: `Constitutional Committee member voting record, fidelity score, and rationale analysis.`,
+    title: `${name} — CC Transparency Index — Civica`,
+    description: `Constitutional Committee member transparency score, voting record, and accountability metrics.`,
   };
 }
 
-function fidelityGrade(score: number): { label: string; color: string; bg: string } {
+function gradeStyle(score: number): { label: string; color: string; bg: string } {
   if (score >= 85)
     return { label: 'A', color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/30' };
   if (score >= 70)
@@ -55,25 +59,35 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   const decodedId = decodeURIComponent(ccHotId);
   const supabase = createClient();
 
-  // Fetch member data, votes, and rationales in parallel
-  const [{ data: member }, { data: votes }, { data: rationales }, { data: alignmentRows }] =
-    await Promise.all([
-      supabase.from('cc_members').select('*').eq('cc_hot_id', decodedId).maybeSingle(),
-      supabase
-        .from('cc_votes')
-        .select('proposal_tx_hash, proposal_index, vote, block_time, epoch, meta_url')
-        .eq('cc_hot_id', decodedId)
-        .order('block_time', { ascending: false }),
-      supabase
-        .from('cc_rationales')
-        .select(
-          'proposal_tx_hash, proposal_index, summary, cited_articles, author_name, internal_vote',
-        )
-        .eq('cc_hot_id', decodedId),
-      supabase
-        .from('inter_body_alignment')
-        .select('proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct'),
-    ]);
+  // Fetch member data, votes, rationales, alignment, history, and peer data in parallel
+  const [
+    { data: member },
+    { data: votes },
+    { data: rationales },
+    { data: alignmentRows },
+    transparencyHistory,
+    allMembers,
+  ] = await Promise.all([
+    supabase.from('cc_members').select('*').eq('cc_hot_id', decodedId).maybeSingle(),
+    supabase
+      .from('cc_votes')
+      .select('proposal_tx_hash, proposal_index, vote, block_time, epoch, meta_url')
+      .eq('cc_hot_id', decodedId)
+      .order('block_time', { ascending: false }),
+    supabase
+      .from('cc_rationales')
+      .select(
+        'proposal_tx_hash, proposal_index, summary, cited_articles, author_name, internal_vote',
+      )
+      .eq('cc_hot_id', decodedId),
+    supabase
+      .from('inter_body_alignment')
+      .select(
+        'proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct, spo_yes_pct, spo_no_pct',
+      ),
+    getCCTransparencyHistory(decodedId),
+    getCCMembersTransparency(),
+  ]);
 
   const safeVotes = votes ?? [];
   if (safeVotes.length === 0) notFound();
@@ -97,7 +111,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   // Build rationale lookup
   const rationaleMap = new Map<
     string,
-    { summary: string | null; citedArticles: string[]; internalVote: any }
+    { summary: string | null; citedArticles: string[]; internalVote: unknown }
   >();
   for (const r of rationales ?? []) {
     rationaleMap.set(`${r.proposal_tx_hash}:${r.proposal_index}`, {
@@ -108,17 +122,23 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   }
 
   // Build alignment lookup
-  const drepMajorityMap = new Map<string, string>();
+  const alignmentLookup = new Map<string, { drepMajority: string; spoMajority: string }>();
   for (const row of alignmentRows ?? []) {
     const key = `${row.proposal_tx_hash}:${row.proposal_index}`;
-    drepMajorityMap.set(
-      key,
-      row.drep_yes_pct > row.drep_no_pct
-        ? 'Yes'
-        : row.drep_no_pct > row.drep_yes_pct
-          ? 'No'
-          : 'Abstain',
-    );
+    alignmentLookup.set(key, {
+      drepMajority:
+        row.drep_yes_pct > row.drep_no_pct
+          ? 'Yes'
+          : row.drep_no_pct > row.drep_yes_pct
+            ? 'No'
+            : 'Abstain',
+      spoMajority:
+        (row.spo_yes_pct ?? 0) > (row.spo_no_pct ?? 0)
+          ? 'Yes'
+          : (row.spo_no_pct ?? 0) > (row.spo_yes_pct ?? 0)
+            ? 'No'
+            : 'Abstain',
+    });
   }
 
   // Stats
@@ -132,14 +152,23 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   // DRep alignment
   let drepAgree = 0;
   let drepCompare = 0;
+  let spoAgree = 0;
+  let spoCompare = 0;
   for (const v of safeVotes) {
-    const majority = drepMajorityMap.get(`${v.proposal_tx_hash}:${v.proposal_index}`);
-    if (majority && majority !== 'Abstain') {
-      drepCompare++;
-      if (v.vote === majority) drepAgree++;
+    const a = alignmentLookup.get(`${v.proposal_tx_hash}:${v.proposal_index}`);
+    if (a) {
+      if (a.drepMajority !== 'Abstain') {
+        drepCompare++;
+        if (v.vote === a.drepMajority) drepAgree++;
+      }
+      if (a.spoMajority !== 'Abstain') {
+        spoCompare++;
+        if (v.vote === a.spoMajority) spoAgree++;
+      }
     }
   }
   const drepAlignmentPct = drepCompare > 0 ? Math.round((drepAgree / drepCompare) * 100) : null;
+  const spoAlignmentPct = spoCompare > 0 ? Math.round((spoAgree / spoCompare) * 100) : null;
 
   // Proposal type breakdown
   const typeBreakdown = new Map<string, { yes: number; no: number; abstain: number }>();
@@ -154,8 +183,15 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   }
 
   const authorName = member?.author_name ?? rationales?.[0]?.author_name ?? null;
-  const fidelityScore = member?.fidelity_score ?? null;
-  const grade = fidelityScore != null ? fidelityGrade(fidelityScore) : null;
+
+  // Transparency Index (headline metric)
+  const transparencyIndex = member?.transparency_index ?? null;
+  const transparencyGrade = transparencyIndex != null ? gradeStyle(transparencyIndex) : null;
+
+  // Peer rank
+  const scoredMembers = allMembers.filter((m) => m.transparencyIndex != null);
+  const rank = scoredMembers.findIndex((m) => m.ccHotId === decodedId) + 1;
+  const totalScored = scoredMembers.length;
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
@@ -202,16 +238,25 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
                   Expires epoch {member.expiration_epoch}
                 </Badge>
               )}
+              {rank > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  Rank {rank}/{totalScored}
+                </Badge>
+              )}
             </div>
           </div>
 
-          {/* Fidelity score card */}
-          {fidelityScore != null && grade && (
-            <Card className={`shrink-0 w-48 border ${grade.bg}`}>
+          {/* Transparency Index hero card */}
+          {transparencyIndex != null && transparencyGrade && (
+            <Card className={`shrink-0 w-48 border ${transparencyGrade.bg}`}>
               <CardContent className="py-4 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Constitutional Fidelity</p>
-                <p className={`text-4xl font-bold ${grade.color}`}>{fidelityScore}</p>
-                <p className={`text-lg font-bold ${grade.color}`}>Grade {grade.label}</p>
+                <p className="text-xs text-muted-foreground mb-1">Transparency Index</p>
+                <p className={`text-4xl font-bold ${transparencyGrade.color}`}>
+                  {transparencyIndex}
+                </p>
+                <p className={`text-lg font-bold ${transparencyGrade.color}`}>
+                  Grade {transparencyGrade.label}
+                </p>
               </CardContent>
             </Card>
           )}
@@ -222,8 +267,15 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardContent className="py-3 px-4">
-            <p className="text-xs text-muted-foreground">Votes Cast</p>
-            <p className="text-xl font-bold">{totalVotes}</p>
+            <p className="text-xs text-muted-foreground">Participation</p>
+            <p className="text-xl font-bold">
+              {member?.votes_cast ?? totalVotes}/{member?.eligible_proposals ?? '?'}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {member?.eligible_proposals
+                ? `${Math.round(((member.votes_cast ?? totalVotes) / member.eligible_proposals) * 100)}% vote rate`
+                : 'proposals voted on'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -257,48 +309,109 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
         </Card>
         <Card>
           <CardContent className="py-3 px-4">
-            <p className="text-xs text-muted-foreground">Proposal Types</p>
-            <p className="text-xl font-bold">{typeBreakdown.size}</p>
-            <p className="text-[10px] text-muted-foreground">types voted on</p>
+            <p className="text-xs text-muted-foreground">SPO Alignment</p>
+            <p className="text-xl font-bold">{spoAlignmentPct ?? '—'}%</p>
+            <p className="text-[10px] text-muted-foreground">
+              {spoCompare > 0 ? `${spoAgree}/${spoCompare} matched` : 'No data'}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Fidelity pillar breakdown */}
-      {member && member.fidelity_score != null && (
+      {/* Transparency Index 5-pillar breakdown */}
+      {member && transparencyIndex != null && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Scale className="h-4 w-4" />
-              Fidelity Score Breakdown
+              Transparency Index Breakdown
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <PillarBar
+                icon={<Vote className="h-3.5 w-3.5" />}
+                label="Participation"
+                weight="35%"
+                score={member.participation_score}
+              />
               <PillarBar
                 icon={<BookOpen className="h-3.5 w-3.5" />}
-                label="Rationale Provision"
-                weight="20%"
-                score={member.rationale_provision_rate}
-              />
-              <PillarBar
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-                label="Article Coverage"
+                label="Rationale Quality"
                 weight="30%"
-                score={member.avg_article_coverage}
-              />
-              <PillarBar
-                icon={<Scale className="h-3.5 w-3.5" />}
-                label="Reasoning Quality"
-                weight="30%"
-                score={member.avg_reasoning_quality}
+                score={member.rationale_quality_score}
               />
               <PillarBar
                 icon={<Clock className="h-3.5 w-3.5" />}
-                label="Consistency"
-                weight="20%"
-                score={member.consistency_score}
+                label="Responsiveness"
+                weight="15%"
+                score={member.responsiveness_score}
               />
+              <PillarBar
+                icon={<Sparkles className="h-3.5 w-3.5" />}
+                label="Independence"
+                weight="10%"
+                score={member.independence_score}
+              />
+              <PillarBar
+                icon={<MessageCircle className="h-3.5 w-3.5" />}
+                label="Engagement"
+                weight="10%"
+                score={member.community_engagement_score}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Transparency Trend */}
+      <CCTransparencyTrend history={transparencyHistory} />
+
+      {/* Inter-body alignment */}
+      {(drepAlignmentPct != null || spoAlignmentPct != null) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Inter-Body Alignment
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {drepAlignmentPct != null && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">DRep Consensus</span>
+                    <span className="text-sm font-mono tabular-nums">{drepAlignmentPct}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-cyan-500/80"
+                      style={{ width: `${drepAlignmentPct}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Aligned with DRep majority on {drepAgree} of {drepCompare} proposals
+                  </p>
+                </div>
+              )}
+              {spoAlignmentPct != null && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">SPO Consensus</span>
+                    <span className="text-sm font-mono tabular-nums">{spoAlignmentPct}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-violet-500/80"
+                      style={{ width: `${spoAlignmentPct}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Aligned with SPO majority on {spoAgree} of {spoCompare} proposals
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -383,7 +496,8 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
                   const pKey = `${v.proposal_tx_hash}:${v.proposal_index}`;
                   const proposal = proposalMap.get(pKey);
                   const rationale = rationaleMap.get(pKey);
-                  const drepMajority = drepMajorityMap.get(pKey);
+                  const alignment = alignmentLookup.get(pKey);
+                  const drepMajority = alignment?.drepMajority;
                   const isAligned = drepMajority ? v.vote === drepMajority : null;
 
                   return (

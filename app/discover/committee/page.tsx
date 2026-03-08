@@ -1,39 +1,33 @@
 import { Metadata } from 'next';
 import { createClient } from '@/lib/supabase';
+import { getCCMembersTransparency } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import Link from 'next/link';
-import { ArrowLeft, Users, ShieldCheck, Activity, Scale, BookOpen, Info } from 'lucide-react';
+import {
+  ArrowLeft,
+  Users,
+  ShieldCheck,
+  Activity,
+  Scale,
+  BookOpen,
+  Info,
+  Vote,
+  Clock,
+  Sparkles,
+  MessageCircle,
+} from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Constitutional Committee — Civica',
+  title: 'CC Transparency Index — Civica',
   description:
-    'Explore Constitutional Committee members, fidelity scores, and governance voting records on Cardano.',
+    'Constitutional Committee Transparency Index: accountability scores, voting records, and rationale analysis for Cardano governance.',
 };
 
 export const dynamic = 'force-dynamic';
 
-interface MemberRow {
-  cc_hot_id: string;
-  author_name: string | null;
-  status: string | null;
-  fidelity_score: number | null;
-  rationale_provision_rate: number | null;
-  avg_article_coverage: number | null;
-  avg_reasoning_quality: number | null;
-  consistency_score: number | null;
-}
-
-interface AlignmentTensionProposal {
-  txHash: string;
-  proposalIndex: number;
-  title: string | null;
-  drepMajority: string;
-  ccVote: string;
-}
-
-function fidelityColor(score: number | null): string {
+function transparencyColor(score: number | null): string {
   if (score == null) return 'text-muted-foreground';
   if (score >= 85) return 'text-emerald-500';
   if (score >= 70) return 'text-cyan-500';
@@ -42,7 +36,7 @@ function fidelityColor(score: number | null): string {
   return 'text-rose-500';
 }
 
-function fidelityBarColor(score: number | null): string {
+function transparencyBarColor(score: number | null): string {
   if (score == null) return 'bg-muted';
   if (score >= 85) return 'bg-emerald-500/80';
   if (score >= 70) return 'bg-cyan-500/80';
@@ -51,16 +45,20 @@ function fidelityBarColor(score: number | null): string {
   return 'bg-rose-500/80';
 }
 
-export default async function CommitteeFidelityPage() {
+function gradeLabel(score: number): string {
+  if (score >= 85) return 'A';
+  if (score >= 70) return 'B';
+  if (score >= 55) return 'C';
+  if (score >= 40) return 'D';
+  return 'F';
+}
+
+export default async function CommitteeTransparencyPage() {
   const supabase = createClient();
 
-  const [{ data: members }, { data: votes }, { data: alignmentRows }, { data: proposals }] =
+  const [members, { data: votes }, { data: alignmentRows }, { data: proposals }] =
     await Promise.all([
-      supabase
-        .from('cc_members')
-        .select(
-          'cc_hot_id, author_name, status, fidelity_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, consistency_score',
-        ),
+      getCCMembersTransparency(),
       supabase.from('cc_votes').select('cc_hot_id, proposal_tx_hash, proposal_index, vote'),
       supabase
         .from('inter_body_alignment')
@@ -68,7 +66,6 @@ export default async function CommitteeFidelityPage() {
       supabase.from('proposals').select('tx_hash, index, title'),
     ]);
 
-  const safeMembers: MemberRow[] = (members ?? []) as MemberRow[];
   const safeVotes = votes ?? [];
 
   // Build alignment map
@@ -90,36 +87,44 @@ export default async function CommitteeFidelityPage() {
     proposalTitleMap.set(`${p.tx_hash}-${p.index}`, p.title ?? '');
   }
 
-  // Build vote counts from cc_votes for members without cc_members entries
+  // Build vote counts
   const memberVoteCounts = new Map<string, number>();
   for (const v of safeVotes) {
     memberVoteCounts.set(v.cc_hot_id, (memberVoteCounts.get(v.cc_hot_id) ?? 0) + 1);
   }
 
-  // Merge: prefer cc_members data, fill gaps from cc_votes
+  // Merge member IDs from both sources
   const memberIds = new Set([
-    ...safeMembers.map((m) => m.cc_hot_id),
+    ...members.map((m) => m.ccHotId),
     ...Array.from(memberVoteCounts.keys()),
   ]);
-
-  const memberLookup = new Map(safeMembers.map((m) => [m.cc_hot_id, m]));
+  const memberLookup = new Map(members.map((m) => [m.ccHotId, m]));
 
   const sortedMembers = Array.from(memberIds)
     .map((id) => {
       const m = memberLookup.get(id);
       return {
         ccHotId: id,
-        authorName: m?.author_name ?? null,
+        authorName: m?.authorName ?? null,
         status: m?.status ?? null,
-        fidelityScore: m?.fidelity_score ?? null,
-        rationaleProvision: m?.rationale_provision_rate ?? null,
-        articleCoverage: m?.avg_article_coverage ?? null,
-        reasoningQuality: m?.avg_reasoning_quality ?? null,
-        consistency: m?.consistency_score ?? null,
-        voteCount: memberVoteCounts.get(id) ?? 0,
+        transparencyIndex: m?.transparencyIndex ?? null,
+        transparencyGrade: m?.transparencyGrade ?? null,
+        participationScore: m?.participationScore ?? null,
+        rationaleQualityScore: m?.rationaleQualityScore ?? null,
+        responsivenessScore: m?.responsivenessScore ?? null,
+        independenceScore: m?.independenceScore ?? null,
+        communityEngagementScore: m?.communityEngagementScore ?? null,
+        fidelityScore: m?.fidelityScore ?? null,
+        rationaleProvision: m?.rationaleProvisionRate ?? null,
+        voteCount: m?.votesCast ?? memberVoteCounts.get(id) ?? 0,
+        eligibleProposals: m?.eligibleProposals ?? null,
       };
     })
-    .sort((a, b) => (b.fidelityScore ?? -1) - (a.fidelityScore ?? -1));
+    .sort(
+      (a, b) =>
+        (b.transparencyIndex ?? b.fidelityScore ?? -1) -
+        (a.transparencyIndex ?? a.fidelityScore ?? -1),
+    );
 
   const totalMembers = sortedMembers.length;
   const totalVotes = safeVotes.length;
@@ -134,7 +139,14 @@ export default async function CommitteeFidelityPage() {
   }
 
   let unanimousCount = 0;
-  const tensionProposals: AlignmentTensionProposal[] = [];
+  interface TensionProposal {
+    txHash: string;
+    proposalIndex: number;
+    title: string | null;
+    drepMajority: string;
+    ccVote: string;
+  }
+  const tensionProposals: TensionProposal[] = [];
 
   for (const [proposalKey, voteMap] of proposalVoteCounts) {
     const allVotes = Array.from(voteMap.values());
@@ -165,12 +177,13 @@ export default async function CommitteeFidelityPage() {
   const unanimousRate =
     proposalVoteCounts.size > 0 ? Math.round((unanimousCount / proposalVoteCounts.size) * 100) : 0;
 
-  // Average fidelity
-  const scoredMembers = sortedMembers.filter((m) => m.fidelityScore != null);
-  const avgFidelity =
+  // Average transparency index
+  const scoredMembers = sortedMembers.filter((m) => m.transparencyIndex != null);
+  const avgTransparency =
     scoredMembers.length > 0
       ? Math.round(
-          scoredMembers.reduce((sum, m) => sum + (m.fidelityScore ?? 0), 0) / scoredMembers.length,
+          scoredMembers.reduce((sum, m) => sum + (m.transparencyIndex ?? 0), 0) /
+            scoredMembers.length,
         )
       : null;
 
@@ -187,11 +200,11 @@ export default async function CommitteeFidelityPage() {
       </Link>
 
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Constitutional Committee</h1>
+        <h1 className="text-2xl font-bold tracking-tight">CC Transparency Index</h1>
         <p className="text-sm text-muted-foreground max-w-xl">
           The Constitutional Committee ensures governance proposals align with the Cardano
-          Constitution. Fidelity scores measure rationale quality, article citations, reasoning
-          depth, and consistency.
+          Constitution. The Transparency Index measures participation, rationale quality,
+          responsiveness, independence, and community engagement.
         </p>
       </div>
 
@@ -247,12 +260,12 @@ export default async function CommitteeFidelityPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
                   <Scale className="h-4 w-4" />
-                  Avg Fidelity
+                  Avg Transparency
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className={`text-2xl font-bold ${fidelityColor(avgFidelity)}`}>
-                  {avgFidelity ?? '—'}
+                <p className={`text-2xl font-bold ${transparencyColor(avgTransparency)}`}>
+                  {avgTransparency ?? '—'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {scoredMembers.length} of {totalMembers} scored
@@ -261,12 +274,12 @@ export default async function CommitteeFidelityPage() {
             </Card>
           </div>
 
-          {/* Members table */}
+          {/* Members table — Transparency Index leaderboard */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                Member Constitutional Fidelity
+                Member Transparency Rankings
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -274,77 +287,99 @@ export default async function CommitteeFidelityPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-muted-foreground text-xs">
+                      <th className="text-center px-3 py-3 font-medium w-10">#</th>
                       <th className="text-left px-4 py-3 font-medium">Member</th>
-                      <th className="text-right px-4 py-3 font-medium">Votes</th>
-                      <th className="text-right px-4 py-3 font-medium hidden sm:table-cell">
+                      <th className="text-right px-3 py-3 font-medium hidden sm:table-cell">
+                        Votes
+                      </th>
+                      <th className="text-right px-3 py-3 font-medium hidden md:table-cell">
+                        Participation
+                      </th>
+                      <th className="text-right px-3 py-3 font-medium hidden lg:table-cell">
                         Rationale
                       </th>
-                      <th className="text-right px-4 py-3 font-medium hidden md:table-cell">
-                        Articles
+                      <th className="text-right px-3 py-3 font-medium hidden lg:table-cell">
+                        Response
                       </th>
-                      <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">
-                        Reasoning
-                      </th>
-                      <th className="px-4 py-3 font-medium w-44">Fidelity</th>
+                      <th className="px-4 py-3 font-medium w-48">Transparency</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedMembers.map((m) => (
-                      <tr
-                        key={m.ccHotId}
-                        className="border-b last:border-0 hover:bg-muted/40 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`/committee/${encodeURIComponent(m.ccHotId)}`}
-                            className="hover:text-primary transition-colors"
-                          >
-                            {m.authorName ? (
-                              <span className="text-sm font-medium">{m.authorName}</span>
-                            ) : (
-                              <span className="font-mono text-xs text-foreground/80">
-                                {m.ccHotId.slice(0, 12)}...{m.ccHotId.slice(-6)}
-                              </span>
+                    {sortedMembers.map((m, idx) => {
+                      const score = m.transparencyIndex ?? m.fidelityScore;
+                      return (
+                        <tr
+                          key={m.ccHotId}
+                          className="border-b last:border-0 hover:bg-muted/40 transition-colors"
+                        >
+                          <td className="px-3 py-3 text-center text-muted-foreground tabular-nums">
+                            {idx + 1}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Link
+                              href={`/committee/${encodeURIComponent(m.ccHotId)}`}
+                              className="hover:text-primary transition-colors"
+                            >
+                              {m.authorName ? (
+                                <span className="text-sm font-medium">{m.authorName}</span>
+                              ) : (
+                                <span className="font-mono text-xs text-foreground/80">
+                                  {m.ccHotId.slice(0, 12)}...{m.ccHotId.slice(-6)}
+                                </span>
+                              )}
+                            </Link>
+                            {m.status && (
+                              <Badge
+                                variant="outline"
+                                className={`ml-2 text-[10px] ${m.status === 'authorized' ? 'text-emerald-500 border-emerald-500/40' : 'text-muted-foreground'}`}
+                              >
+                                {m.status}
+                              </Badge>
                             )}
-                          </Link>
-                          {m.status && (
-                            <Badge
-                              variant="outline"
-                              className={`ml-2 text-[10px] ${m.status === 'authorized' ? 'text-emerald-500 border-emerald-500/40' : 'text-muted-foreground'}`}
-                            >
-                              {m.status}
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums">{m.voteCount}</td>
-                        <td className="px-4 py-3 text-right hidden sm:table-cell tabular-nums">
-                          {m.rationaleProvision != null
-                            ? `${Math.round(m.rationaleProvision)}%`
-                            : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-right hidden md:table-cell tabular-nums">
-                          {m.articleCoverage != null ? `${Math.round(m.articleCoverage)}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell tabular-nums">
-                          {m.reasoningQuality != null ? `${Math.round(m.reasoningQuality)}` : '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${fidelityBarColor(m.fidelityScore)}`}
-                                style={{ width: `${m.fidelityScore ?? 0}%` }}
-                              />
+                          </td>
+                          <td className="px-3 py-3 text-right hidden sm:table-cell tabular-nums">
+                            {m.voteCount}
+                          </td>
+                          <td className="px-3 py-3 text-right hidden md:table-cell tabular-nums">
+                            {m.participationScore != null
+                              ? `${Math.round(m.participationScore)}%`
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-right hidden lg:table-cell tabular-nums">
+                            {m.rationaleQualityScore != null
+                              ? Math.round(m.rationaleQualityScore)
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-right hidden lg:table-cell tabular-nums">
+                            {m.responsivenessScore != null
+                              ? Math.round(m.responsivenessScore)
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${transparencyBarColor(score)}`}
+                                  style={{ width: `${score ?? 0}%` }}
+                                />
+                              </div>
+                              <span
+                                className={`text-sm font-mono tabular-nums w-8 text-right ${transparencyColor(score)}`}
+                              >
+                                {score ?? '—'}
+                              </span>
+                              {score != null && (
+                                <span
+                                  className={`text-[10px] font-bold w-4 ${transparencyColor(score)}`}
+                                >
+                                  {gradeLabel(score)}
+                                </span>
+                              )}
                             </div>
-                            <span
-                              className={`text-sm font-mono tabular-nums w-8 text-right ${fidelityColor(m.fidelityScore)}`}
-                            >
-                              {m.fidelityScore ?? '—'}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -438,34 +473,59 @@ export default async function CommitteeFidelityPage() {
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
                 <Info className="h-3.5 w-3.5" />
-                Scoring Methodology
+                Transparency Index Methodology
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs text-muted-foreground">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-xs text-muted-foreground">
                 <div>
-                  <p className="font-medium text-foreground">Rationale Provision (20%)</p>
-                  <p>Percentage of votes accompanied by a CIP-136 rationale document.</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Article Coverage (30%)</p>
+                  <p className="font-medium text-foreground flex items-center gap-1">
+                    <Vote className="h-3 w-3" />
+                    Participation (35%)
+                  </p>
                   <p>
-                    How well cited constitutional articles match the expected articles for each
-                    proposal type.
+                    What percentage of governance actions did they vote on? Non-participation is the
+                    most basic accountability failure.
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">Reasoning Quality (30%)</p>
+                  <p className="font-medium text-foreground flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" />
+                    Rationale Quality (30%)
+                  </p>
                   <p>
-                    Depth of analysis: summary, rationale statement, precedent discussion, and
-                    counterarguments.
+                    Do they explain their votes? Do they cite constitutional provisions? Is the
+                    reasoning substantive?
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">Consistency (20%)</p>
+                  <p className="font-medium text-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Responsiveness (15%)
+                  </p>
                   <p>
-                    Independent judgment (bell curve peaking at moderate DRep alignment) plus vote
-                    responsiveness.
+                    How quickly do they vote relative to proposal deadlines? Early engagement scores
+                    higher.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Independence (10%)
+                  </p>
+                  <p>
+                    Do they exercise independent judgment, or vote identically with the CC on every
+                    proposal?
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground flex items-center gap-1">
+                    <MessageCircle className="h-3 w-3" />
+                    Engagement (10%)
+                  </p>
+                  <p>
+                    Do they respond to citizen questions? Do they publish explanations beyond
+                    minimal rationales?
                   </p>
                 </div>
               </div>

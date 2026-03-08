@@ -15,6 +15,7 @@ import {
 } from '@/lib/drepIdentity';
 import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
 import { computeDimensionAgreement } from '@/lib/matching/dimensionAgreement';
+import { calculateProgressiveConfidence } from '@/lib/matching/confidence';
 import { captureServerEvent } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
@@ -151,6 +152,15 @@ export const POST = withRouteHandler(async (request, { requestId }) => {
     const dominant = getDominantDimension(userAlignments);
     const identityColor = getIdentityColor(dominant);
 
+    // Baseline confidence from 3 quiz answers
+    const spoConfidenceBreakdown = calculateProgressiveConfidence({
+      quizAnswerCount: 3,
+      pollVoteCount: 0,
+      proposalTypesVoted: 0,
+      engagementActionCount: 0,
+      hasDelegation: false,
+    });
+
     captureServerEvent('quick_match_completed', {
       treasury,
       protocol,
@@ -177,6 +187,7 @@ export const POST = withRouteHandler(async (request, { requestId }) => {
       personalityLabel,
       identityColor: identityColor.hex,
       matchType: 'spo',
+      confidenceBreakdown: spoConfidenceBreakdown,
     });
   }
 
@@ -220,6 +231,15 @@ export const POST = withRouteHandler(async (request, { requestId }) => {
   const dominant = getDominantDimension(userAlignments);
   const identityColor = getIdentityColor(dominant);
 
+  // Baseline confidence from 3 quiz answers (no other data yet for anonymous users)
+  const confidenceBreakdown = calculateProgressiveConfidence({
+    quizAnswerCount: 3,
+    pollVoteCount: 0,
+    proposalTypesVoted: 0,
+    engagementActionCount: 0,
+    hasDelegation: false,
+  });
+
   captureServerEvent('quick_match_completed', {
     treasury,
     protocol,
@@ -246,5 +266,6 @@ export const POST = withRouteHandler(async (request, { requestId }) => {
     personalityLabel,
     identityColor: identityColor.hex,
     matchType: 'drep',
+    confidenceBreakdown,
   });
 });

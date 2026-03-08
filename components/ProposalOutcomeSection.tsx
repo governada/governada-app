@@ -2,6 +2,9 @@
 
 import { useWallet } from '@/utils/wallet';
 import { ProposalOutcomeCard } from '@/components/ProposalOutcomeCard';
+import { ProposalOutcomeTracker } from '@/components/civica/proposals/ProposalOutcomeTracker';
+import { useProposalOutcome } from '@/hooks/queries';
+import type { ProposalOutcome } from '@/lib/proposalOutcomes';
 
 type Outcome = 'ratified' | 'enacted' | 'dropped' | 'expired';
 
@@ -20,6 +23,9 @@ interface Props {
 
 export function ProposalOutcomeSection({ proposal, votes, majorityVote }: Props) {
   const { delegatedDrepId } = useWallet();
+  const { data: outcomeData } = useProposalOutcome(proposal.txHash, proposal.proposalIndex);
+
+  const outcome = outcomeData as ProposalOutcome | undefined;
 
   const drepVote = delegatedDrepId
     ? (votes.find((v) => v.drepId === delegatedDrepId)?.vote ?? null)
@@ -27,5 +33,21 @@ export function ProposalOutcomeSection({ proposal, votes, majorityVote }: Props)
 
   const isWinner = drepVote && majorityVote ? drepVote === majorityVote : undefined;
 
-  return <ProposalOutcomeCard proposal={proposal} drepVote={drepVote} isWinner={isWinner} />;
+  return (
+    <div className="space-y-4">
+      <ProposalOutcomeCard
+        proposal={proposal}
+        drepVote={drepVote}
+        isWinner={isWinner}
+        deliveryStatus={outcome?.deliveryStatus}
+        deliveryScore={outcome?.deliveryScore}
+      />
+      {/* Show detailed outcome tracker for enacted treasury proposals */}
+      {outcome &&
+        proposal.outcome === 'enacted' &&
+        proposal.proposalType === 'TreasuryWithdrawals' && (
+          <ProposalOutcomeTracker outcome={outcome} />
+        )}
+    </div>
+  );
 }

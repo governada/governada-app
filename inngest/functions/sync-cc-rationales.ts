@@ -16,6 +16,8 @@ import {
   computeAvgReasoningQuality,
   computeConsistencyIndependence,
 } from '@/lib/cc/fidelityScore';
+import { computeFullTransparencyIndex } from '@/lib/scoring/ccTransparency';
+import type { CCMemberVoteData } from '@/lib/scoring/ccTransparency';
 import { logger } from '@/lib/logger';
 import { errMsg } from '@/lib/sync-utils';
 
@@ -373,10 +375,172 @@ export const syncCcRationales = inngest.createFunction(
       return { scored };
     });
 
+    // Step 4: Compute Transparency Index + persist snapshots
+    const transparencyResult = await step.run('compute-transparency-index', async () => {
+      const supabase = getSupabaseAdmin();
+
+      // Get current epoch
+      const { data: stats } = await supabase
+        .from('governance_stats')
+        .select('current_epoch')
+        .eq('id', 1)
+        .single();
+      const currentEpoch = stats?.current_epoch ?? 0;
+
+      // Get all CC votes
+      const { data: votes } = await supabase
+        .from('cc_votes')
+        .select('cc_hot_id, proposal_tx_hash, proposal_index, vote, block_time, meta_url');
+
+      // Get proposals for eligible count and type lookups
+      const { data: proposals } = await supabase
+        .from('proposals')
+        .select('tx_hash, index, proposal_type, block_time');
+
+      // Get rationales
+      const { data: rationales } = await supabase
+        .from('cc_rationales')
+        .select(
+          'cc_hot_id, proposal_tx_hash, proposal_index, cited_articles, reasoning_quality_score',
+        );
+
+      if (!votes?.length || !proposals?.length) return { scored: 0 };
+
+      // Build lookups
+      const proposalMap = new Map<string, { type: string; blockTime: number }>();
+      for (const p of proposals) {
+        proposalMap.set(`${p.tx_hash}:${p.index}`, {
+          type: p.proposal_type,
+          blockTime: p.block_time,
+        });
+      }
+
+      const rationaleMap = new Map<
+        string,
+        { citedArticles: string[]; reasoningScore: number | null }
+      >();
+      for (const r of rationales ?? []) {
+        rationaleMap.set(`${r.cc_hot_id}:${r.proposal_tx_hash}:${r.proposal_index}`, {
+          citedArticles: (r.cited_articles as string[]) ?? [],
+          reasoningScore: r.reasoning_quality_score,
+        });
+      }
+
+      // DRep alignment
+      const { data: alignmentRows } = await supabase
+        .from('inter_body_alignment')
+        .select('proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct');
+
+      const drepMajorityMap = new Map<string, string>();
+      for (const row of alignmentRows ?? []) {
+        const key = `${row.proposal_tx_hash}:${row.proposal_index}`;
+        drepMajorityMap.set(
+          key,
+          row.drep_yes_pct > row.drep_no_pct
+            ? 'Yes'
+            : row.drep_no_pct > row.drep_yes_pct
+              ? 'No'
+              : 'Abstain',
+        );
+      }
+
+      // CC majority per proposal (for independence scoring)
+      const proposalCcVotes = new Map<string, Map<string, string>>();
+      for (const v of votes) {
+        const key = `${v.proposal_tx_hash}:${v.proposal_index}`;
+        const voteMap = proposalCcVotes.get(key) ?? new Map<string, string>();
+        voteMap.set(v.cc_hot_id, v.vote);
+        proposalCcVotes.set(key, voteMap);
+      }
+
+      const ccMajorityMap = new Map<string, string>();
+      for (const [key, voteMap] of proposalCcVotes) {
+        const counts: Record<string, number> = {};
+        for (const vote of voteMap.values()) {
+          counts[vote] = (counts[vote] ?? 0) + 1;
+        }
+        const majority = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        if (majority) ccMajorityMap.set(key, majority[0]);
+      }
+
+      // Total eligible proposals (all proposals in the system)
+      const totalEligibleProposals = new Set(proposals.map((p) => `${p.tx_hash}:${p.index}`)).size;
+
+      // Group votes by member
+      const memberVotes = new Map<string, CCMemberVoteData[]>();
+      for (const v of votes) {
+        const list = memberVotes.get(v.cc_hot_id) ?? [];
+        list.push({
+          proposalTxHash: v.proposal_tx_hash,
+          proposalIndex: v.proposal_index,
+          vote: v.vote,
+          blockTime: v.block_time,
+          hasRationale: !!v.meta_url,
+        });
+        memberVotes.set(v.cc_hot_id, list);
+      }
+
+      let scored = 0;
+      for (const [ccHotId, mvotes] of memberVotes) {
+        const result = computeFullTransparencyIndex({
+          ccHotId,
+          votes: mvotes,
+          proposalMap,
+          rationaleMap,
+          drepMajorityMap,
+          ccMajorityMap,
+          totalEligibleProposals,
+          questionsAnswered: 0, // Not yet tracked
+          endorsementCount: 0, // Not yet tracked
+        });
+
+        // Update cc_members with transparency index
+        const { error } = await supabase.from('cc_members').upsert(
+          {
+            cc_hot_id: ccHotId,
+            transparency_index: result.index,
+            transparency_grade: result.grade,
+            participation_score: result.pillars.participation,
+            rationale_quality_score: result.pillars.rationaleQuality,
+            independence_score: result.pillars.independence,
+            community_engagement_score: result.pillars.communityEngagement,
+            votes_cast: result.votesCast,
+            eligible_proposals: result.eligibleProposals,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'cc_hot_id' },
+        );
+
+        // Persist snapshot
+        if (!error && currentEpoch > 0) {
+          await supabase.from('cc_transparency_snapshots').upsert(
+            {
+              cc_hot_id: ccHotId,
+              epoch_no: currentEpoch,
+              transparency_index: result.index,
+              participation_score: result.pillars.participation,
+              rationale_quality_score: result.pillars.rationaleQuality,
+              responsiveness_score: result.pillars.responsiveness,
+              independence_score: result.pillars.independence,
+              community_engagement_score: result.pillars.communityEngagement,
+              votes_cast: result.votesCast,
+              eligible_proposals: result.eligibleProposals,
+            },
+            { onConflict: 'cc_hot_id,epoch_no' },
+          );
+        }
+
+        if (!error) scored++;
+      }
+
+      return { scored, epoch: currentEpoch };
+    });
+
     return {
       rationales: fetchResult,
       members: memberResult,
       scores: scoreResult,
+      transparency: transparencyResult,
     };
   },
 );

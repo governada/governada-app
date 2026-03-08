@@ -191,11 +191,14 @@ export function useVote() {
     phase.status === 'signing' ||
     phase.status === 'submitting';
 
+  const canVote = connected && !isProcessing;
+
   return {
     phase,
     startVote,
     confirmVote,
     reset,
     isProcessing,
+    canVote,
   };
 }

@@ -74,6 +74,11 @@ export interface VoteRecord {
   treasuryTier: string | null;
   withdrawalAmount: number | null;
   relevantPrefs: string[];
+  /** WP-12: Proposal outcome tracking */
+  proposalOutcome?: {
+    deliveryStatus: 'in_progress' | 'delivered' | 'partial' | 'not_delivered' | 'unknown';
+    deliveryScore: number | null;
+  };
   interBodyAlignment?: {
     drep: {
       yes: number;

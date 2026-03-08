@@ -29,7 +29,10 @@ import { RadarOverlay } from '@/components/matching/RadarOverlay';
 import { cn } from '@/lib/utils';
 import { usePostHog } from 'posthog-js/react';
 import { DelegateButton } from '@/components/DelegateButton';
+import { getStoredSession } from '@/lib/supabaseAuth';
 import type { AlignmentScores } from '@/lib/drepIdentity';
+import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
+import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
 import { saveMatchProfile, loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -51,6 +54,7 @@ interface QuickMatchResponse {
   userAlignments: AlignmentScores;
   personalityLabel: string;
   identityColor: string;
+  confidenceBreakdown?: ConfidenceBreakdown;
 }
 
 /* ─── Question definitions ──────────────────────────────── */
@@ -191,6 +195,15 @@ export function QuickMatchFlow() {
         const data: QuickMatchResponse = await res.json();
         setResults(data);
         setStep('results');
+
+        // Mark quick match as completed for authenticated users
+        const token = getStoredSession();
+        if (token) {
+          fetch('/api/governance/quick-match/mark-completed', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => {});
+        }
 
         // Persist match profile
         saveMatchProfile({
@@ -545,6 +558,11 @@ function ResultsScreen({
           ))}
         </div>
       </div>
+
+      {/* Confidence breakdown + improvement CTAs */}
+      {results.confidenceBreakdown && (
+        <MatchConfidenceCTA breakdown={results.confidenceBreakdown} variant="full" />
+      )}
 
       {/* CTAs */}
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2 pb-8">

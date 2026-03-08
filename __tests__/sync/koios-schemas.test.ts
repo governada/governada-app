@@ -79,7 +79,7 @@ describe('Koios Schema Validation', () => {
   describe('KoiosVoteListSchema', () => {
     const validVote = {
       vote_tx_hash: 'vtx1',
-      voter_id: 'drep1',
+      drep_id: 'drep1',
       proposal_tx_hash: 'tx1',
       proposal_index: 0,
       epoch_no: 100,

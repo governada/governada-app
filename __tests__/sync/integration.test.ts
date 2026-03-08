@@ -75,7 +75,7 @@ const REALISTIC_VOTE = {
 
 const REALISTIC_VOTE_LIST = {
   ...REALISTIC_VOTE,
-  voter_id: 'drep1qg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5z',
+  drep_id: 'drep1qg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5z',
   epoch_no: 520,
 };
 

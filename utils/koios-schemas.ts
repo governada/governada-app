@@ -45,10 +45,10 @@ export const KoiosVoteSchema = z
 export const KoiosVoteListSchema = z
   .object({
     vote_tx_hash: z.string(),
-    voter_id: z.string(),
+    drep_id: z.string(),
     proposal_tx_hash: z.string(),
     proposal_index: z.number(),
-    epoch_no: z.number(),
+    epoch_no: z.number().nullable(),
     block_time: z.number(),
     vote: z.enum(['Yes', 'No', 'Abstain']),
     meta_url: z.string().nullable(),

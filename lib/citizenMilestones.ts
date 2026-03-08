@@ -17,6 +17,7 @@ export interface CitizenMilestoneDefinition {
   description: string;
   icon: string;
   category: 'delegation' | 'influence' | 'engagement' | 'identity';
+  shareText: string;
 }
 
 export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
@@ -27,6 +28,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Delegated to your first DRep',
     icon: 'HandHeart',
     category: 'delegation',
+    shareText: 'I just delegated to my first DRep on Cardano!',
   },
   {
     key: 'delegation-streak-10',
@@ -34,6 +36,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Delegated for 10 consecutive epochs',
     icon: 'Flame',
     category: 'delegation',
+    shareText: "I've been delegated for 10 consecutive epochs on Cardano!",
   },
   {
     key: 'delegation-streak-25',
@@ -41,6 +44,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Delegated for 25 consecutive epochs',
     icon: 'Flame',
     category: 'delegation',
+    shareText: "25-epoch delegation streak and counting! That's commitment to Cardano governance.",
   },
   {
     key: 'delegation-streak-50',
@@ -48,6 +52,8 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Delegated for 50 consecutive epochs',
     icon: 'Flame',
     category: 'delegation',
+    shareText:
+      '50-epoch delegation streak! Half a year of continuous governance participation on Cardano.',
   },
   {
     key: 'delegation-streak-100',
@@ -55,6 +61,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Delegated for 100 consecutive epochs',
     icon: 'Flame',
     category: 'delegation',
+    shareText: "100-epoch delegation streak! I'm a Cardano governance veteran.",
   },
 
   // Proposals influenced
@@ -64,6 +71,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Your delegation influenced 10 governance votes',
     icon: 'Vote',
     category: 'influence',
+    shareText: 'My delegation has influenced 10 governance proposals on Cardano!',
   },
   {
     key: 'influenced-50',
@@ -71,6 +79,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Your delegation influenced 50 governance votes',
     icon: 'Vote',
     category: 'influence',
+    shareText: '50 governance proposals influenced through my Cardano delegation!',
   },
   {
     key: 'influenced-100',
@@ -78,6 +87,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Your delegation influenced 100 governance votes',
     icon: 'Vote',
     category: 'influence',
+    shareText: "100 proposals influenced! I'm making a real impact on Cardano governance.",
   },
 
   // Engagement
@@ -87,6 +97,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Cast your first sentiment vote, priority signal, or concern flag',
     icon: 'Megaphone',
     category: 'engagement',
+    shareText: 'Just took my first civic action on Cardano governance!',
   },
   {
     key: 'engagement-10',
@@ -94,6 +105,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Participated in 10 civic engagement actions',
     icon: 'Megaphone',
     category: 'engagement',
+    shareText: "10 civic actions and counting! I'm actively shaping Cardano governance.",
   },
 
   // ADA governed
@@ -103,6 +115,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Your governance footprint represents 100,000+ ADA',
     icon: 'Coins',
     category: 'identity',
+    shareText: 'My governance footprint represents 100K+ ADA on Cardano!',
   },
   {
     key: 'ada-governed-1m',
@@ -110,6 +123,7 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     description: 'Your governance footprint represents 1,000,000+ ADA',
     icon: 'Coins',
     category: 'identity',
+    shareText: '1M+ ADA governance footprint! Major voice in the Cardano ecosystem.',
   },
 ];
 

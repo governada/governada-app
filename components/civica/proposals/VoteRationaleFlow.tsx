@@ -22,9 +22,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWallet } from '@/utils/wallet';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { useVote, type VotePhase } from '@/hooks/useVote';
 import { useFeatureFlag } from '@/components/FeatureGate';
-import type { VoteChoice } from '@/lib/voting';
+import type { VoteChoice, VoterRole } from '@/lib/voting';
 
 interface VoteRationaleFlowProps {
   txHash: string;
@@ -220,6 +221,7 @@ export function VoteRationaleFlow({
   aiSummary,
 }: VoteRationaleFlowProps) {
   const { connected, ownDRepId } = useWallet();
+  const { segment, poolId } = useSegment();
   const { phase, startVote, confirmVote, reset, isProcessing, canVote } = useVote();
   const voteCastingEnabled = useFeatureFlag('governance_vote_casting');
 
@@ -230,6 +232,11 @@ export function VoteRationaleFlow({
   const [submitSubPhase, setSubmitSubPhase] = useState<SubmitSubPhase>('building');
   const [showContext, setShowContext] = useState(false);
 
+  // Determine voter role and credential based on segment
+  const voterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
+  const voterId = segment === 'spo' ? poolId : ownDRepId;
+  const roleLabel = voterRole === 'spo' ? 'SPO' : 'DRep';
+
   // Detect success — transition flow step when vote succeeds
   useEffect(() => {
     if (phase.status === 'success' && flowStep === 'submitting') {
@@ -237,9 +244,40 @@ export function VoteRationaleFlow({
     }
   }, [phase.status, flowStep]);
 
-  // Don't show for closed proposals, non-DReps, or disabled flag
-  if (!isOpen || !connected || !ownDRepId) return null;
+  // Gated behind feature flag
   if (voteCastingEnabled === null || !voteCastingEnabled) return null;
+
+  // Proposal is closed — show informational message
+  if (!isOpen) {
+    return (
+      <Card className="border-border/50">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            Voting on this proposal has closed.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Wallet not connected — show connect CTA
+  if (!connected) {
+    return (
+      <Card className="border-primary/20">
+        <CardContent className="pt-6 space-y-3">
+          <p className="text-sm font-semibold text-foreground">Cast Your Vote</p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Shield className="h-4 w-4" />
+            Connect your wallet to vote on this proposal as a DRep or SPO.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Connected but not a DRep or SPO
+  if (!voterId) return null;
 
   const handleVoteSelect = (vote: VoteChoice) => {
     if (isProcessing) return;
@@ -248,7 +286,7 @@ export function VoteRationaleFlow({
     if (phase.status === 'error') reset();
 
     // Run preflight in background
-    startVote({ txHash, txIndex: proposalIndex, title }, 'drep');
+    startVote({ txHash, txIndex: proposalIndex, title }, voterRole, voterId);
   };
 
   const handleContinueToRationale = () => {
@@ -276,14 +314,15 @@ export function VoteRationaleFlow({
   };
 
   const handleAiDraft = async () => {
-    if (!ownDRepId) return;
+    if (!voterId) return;
     setIsDrafting(true);
     try {
       const res = await fetch('/api/rationale/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          drepId: ownDRepId,
+          drepId: voterId,
+          voterRole,
           proposalTitle: title,
           proposalAbstract: proposalAbstract || undefined,
           proposalType: proposalType || undefined,
@@ -300,7 +339,7 @@ export function VoteRationaleFlow({
   };
 
   const handleSubmit = async () => {
-    if (!selectedVote || !ownDRepId) return;
+    if (!selectedVote || !voterId) return;
 
     setFlowStep('submitting');
 
@@ -315,7 +354,7 @@ export function VoteRationaleFlow({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            drepId: ownDRepId,
+            drepId: voterId,
             proposalTxHash: txHash,
             proposalIndex,
             rationaleText: rationaleText.trim(),
@@ -372,7 +411,7 @@ export function VoteRationaleFlow({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <p className="text-sm font-semibold text-foreground">
-              {flowStep === 'success' ? 'Vote Submitted' : 'Cast Your Vote'}
+              {flowStep === 'success' ? 'Vote Submitted' : `Cast Your ${roleLabel} Vote`}
             </p>
             {flowStep !== 'select' && flowStep !== 'success' && (
               <StepIndicator currentStep={flowStep} />
@@ -470,7 +509,9 @@ export function VoteRationaleFlow({
                 </div>
 
                 <p className="text-[10px] text-muted-foreground text-center">
-                  DReps who explain votes score higher on Engagement (25% weight)
+                  {voterRole === 'spo'
+                    ? 'SPOs who explain votes score higher on Deliberation Quality (25% weight)'
+                    : 'DReps who explain votes score higher on Engagement (25% weight)'}
                 </p>
               </div>
             )}
@@ -717,6 +758,7 @@ function PostVoteRationale({
   aiSummary?: string | null;
 }) {
   const { connected, ownDRepId } = useWallet();
+  const { segment, poolId } = useSegment();
   const { phase, startVote, confirmVote, canVote } = useVote();
 
   const [expanded, setExpanded] = useState(false);
@@ -724,6 +766,10 @@ function PostVoteRationale({
   const [isDrafting, setIsDrafting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Determine voter role and credential based on segment
+  const postVoterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
+  const postVoterId = segment === 'spo' ? poolId : ownDRepId;
 
   // Pending anchor data: when set, we auto-confirm after preflight completes
   const pendingAnchorRef = useRef<{ url: string; hash: string } | null>(null);
@@ -745,7 +791,7 @@ function PostVoteRationale({
     }
   }, [phase.status, vote, confirmVote, isSubmitting]);
 
-  if (!connected || !ownDRepId) return null;
+  if (!connected || !postVoterId) return null;
   if (submitted) {
     return (
       <div className="flex items-center gap-2 text-xs text-emerald-500 mt-2 justify-center">
@@ -762,7 +808,8 @@ function PostVoteRationale({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          drepId: ownDRepId,
+          drepId: postVoterId,
+          voterRole: postVoterRole,
           proposalTitle: title,
           proposalAbstract: proposalAbstract || undefined,
           proposalType: proposalType || undefined,
@@ -779,7 +826,7 @@ function PostVoteRationale({
   };
 
   const handleSubmitRationale = async () => {
-    if (!rationaleText.trim() || !ownDRepId) return;
+    if (!rationaleText.trim() || !postVoterId) return;
 
     setIsSubmitting(true);
     try {
@@ -788,7 +835,7 @@ function PostVoteRationale({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          drepId: ownDRepId,
+          drepId: postVoterId,
           proposalTxHash: txHash,
           proposalIndex,
           rationaleText: rationaleText.trim(),
@@ -807,7 +854,7 @@ function PostVoteRationale({
       //    CIP-1694 allows re-voting, so this replaces the previous vote
       //    with the same choice but now including the metadata anchor.
       pendingAnchorRef.current = { url: anchorUrl, hash: anchorHash };
-      startVote({ txHash, txIndex: proposalIndex, title }, 'drep');
+      startVote({ txHash, txIndex: proposalIndex, title }, postVoterRole, postVoterId);
     } catch {
       setIsSubmitting(false);
     }

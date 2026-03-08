@@ -9,6 +9,7 @@
 ## Direct Competitors (Cardano Governance)
 
 ### GovTool (Intersect)
+
 - **URL:** https://gov.tools
 - **Last checked:** —
 - **What they do:** Official Cardano governance tool. Vote casting, DRep registration, proposal submission.
@@ -17,6 +18,7 @@
 - **Our advantage:** Everything beyond raw voting mechanics
 
 ### DRep.tools
+
 - **URL:** https://drep.tools
 - **Last checked:** —
 - **What they do:** Basic DRep listing and delegation
@@ -25,6 +27,7 @@
 - **Our advantage:** Full intelligence engine, multi-persona, community engagement
 
 ### Cardano Forum / Governance channels
+
 - **Last checked:** —
 - **What they do:** Unstructured governance discussion
 - **Our advantage:** Structured signal over open discourse (Principle #7)
@@ -34,6 +37,7 @@
 ## Adjacent Competitors (Cross-Chain Governance)
 
 ### Tally (Ethereum)
+
 - **URL:** https://tally.xyz
 - **Last checked:** —
 - **What they do:** Proposal voting, delegate profiles, on-chain governance
@@ -43,6 +47,7 @@
 - **Our advantage:** Multi-body analysis, intelligence engine, community engagement, scoring
 
 ### Snapshot
+
 - **URL:** https://snapshot.box
 - **Last checked:** —
 - **What they do:** Off-chain voting, space management
@@ -51,6 +56,7 @@
 - **Our advantage:** On-chain accountability, scoring, matching, intelligence
 
 ### SubSquare (Polkadot)
+
 - **URL:** https://subsquare.io
 - **Last checked:** —
 - **What they do:** Referendum tracking, basic analytics for Polkadot/Kusama
@@ -63,24 +69,28 @@
 ## Benchmark Products (UX & Data)
 
 ### Linear (Workspace UX)
+
 - **URL:** https://linear.app
 - **Last checked:** —
 - **Relevant patterns:** Dark mode excellence, keyboard-first, real-time updates, minimal chrome, beautiful transitions
 - **What to adopt:** [Update during audit]
 
 ### Vercel Dashboard (Dashboard UX)
+
 - **URL:** https://vercel.com/dashboard
 - **Last checked:** —
 - **Relevant patterns:** Information density, deployment status visualization, log streaming
 - **What to adopt:** [Update during audit]
 
 ### Stripe Dashboard (Data Presentation)
+
 - **URL:** https://dashboard.stripe.com
 - **Last checked:** —
 - **Relevant patterns:** Financial data clarity, chart design, status indicators
 - **What to adopt:** [Update during audit]
 
 ### Robinhood (Finance Simplification)
+
 - **Last checked:** —
 - **Relevant patterns:** Complex financial data made accessible, portfolio summary, push notifications
 - **What to adopt:** [Update during audit]
@@ -90,12 +100,14 @@
 ## Data Platforms
 
 ### Dune Analytics
+
 - **URL:** https://dune.com
 - **Last checked:** —
 - **Relevant patterns:** API quality, query flexibility, data freshness, community dashboards
 - **Our differentiation:** Opinionated intelligence vs. raw query platform
 
 ### DefiLlama
+
 - **URL:** https://defillama.com
 - **Last checked:** —
 - **Relevant patterns:** Comprehensive data, fast updates, clean charts, API access
@@ -106,12 +118,14 @@
 ## Civic Tech (Engagement Mechanisms)
 
 ### Pol.is
+
 - **URL:** https://pol.is
 - **Last checked:** —
 - **Relevant patterns:** Structured deliberation, opinion clustering, visualization of consensus
 - **Applicable to:** Citizen engagement mechanisms, priority signals, assembly design
 
 ### Decidim
+
 - **URL:** https://decidim.org
 - **Last checked:** —
 - **Relevant patterns:** Participatory budgeting, structured proposals, citizen participation
@@ -132,6 +146,7 @@ _Updated during audits. Format: [DATE] — insight._
 ## Update Protocol
 
 When running `/audit`, agents should:
+
 1. WebSearch each competitor's current state
 2. Update "Last checked" dates
 3. Note any new features, design changes, or competitive moves

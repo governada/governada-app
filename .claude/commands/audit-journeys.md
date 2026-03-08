@@ -9,6 +9,7 @@ This audit answers: **Can every persona accomplish what they came here to do, an
 ## Scope
 
 Argument: `$ARGUMENTS`
+
 - If empty: Full journey audit (all personas, all critical tasks)
 - If a persona (e.g., "citizen", "drep", "spo", "cc", "treasury", "researcher"): All tasks for that persona
 - If a specific task (e.g., "delegation", "voting", "match", "briefing"): Deep dive on that task across relevant personas
@@ -35,6 +36,7 @@ The anchor persona (80%+ of users). Source spec: `docs/strategy/personas/citizen
 **Task:** An anonymous visitor arrives at drepscore.io. Within 60 seconds, they understand what Cardano governance is, why it matters to them, and what they can do about it.
 
 Walk the actual flow:
+
 1. Land on `/` — Is the value proposition immediately clear? Is it an invitation, not a dashboard?
 2. Are the two paths visible? **Stake** (find a pool) and **Govern** (find a DRep)
 3. Is there free intelligence visible without wallet? (DRep browse, SPO browse, proposals, GHI)
@@ -43,6 +45,7 @@ Walk the actual flow:
 6. Is jargon explained in context or absent entirely?
 
 **Friction check:**
+
 - Seconds until value proposition is understood (target: <15s)
 - Clicks to reach first meaningful content without wallet (target: ≤2)
 - Jargon terms visible before explanation (target: 0)
@@ -54,6 +57,7 @@ Walk the actual flow:
 **Task:** A new visitor completes Quick Match and delegates to a DRep, all in one session.
 
 Walk the actual flow:
+
 1. Find the Match entry point from homepage — how many clicks?
 2. Start the questionnaire — is it clear what's being asked?
 3. Answer all questions — how many? How long per question? Any confusing wording?
@@ -64,12 +68,14 @@ Walk the actual flow:
 8. Confirmation — do they know it worked? Is there a celebration?
 
 **Friction check:**
+
 - Total clicks, anonymous → delegation complete (target: <12)
 - Total time (target: <3 minutes)
 - Decision points where the user might abandon (identify each one)
 - Error recovery if wallet connection fails mid-flow
 
 **Edge cases:**
+
 - User has no wallet extension installed → what happens?
 - User's wallet has insufficient ADA for the transaction → error message quality?
 - User is already delegated → does the flow acknowledge this?
@@ -82,6 +88,7 @@ Walk the actual flow:
 **Task:** A returning authenticated citizen opens Civica at an epoch boundary and leaves feeling informed about governance within 30 seconds.
 
 Walk the actual flow:
+
 1. Open `/` while authenticated — what do they see? Is it a briefing or a dashboard?
 2. Personal status — delegation health visible? (green/yellow/red) Staking rewards?
 3. What happened — are there 2-4 headline cards summarizing this epoch?
@@ -91,11 +98,13 @@ Walk the actual flow:
 7. Exit feeling — is the citizen confident they know "what's happening with my ADA in governance"?
 
 **Friction check:**
+
 - Time to feel informed (target: <30s)
 - Scroll depth required to get the full picture (target: single screen or short scroll)
 - Number of clicks needed for full briefing (target: 0 — it should be the landing experience)
 
 **Edge cases:**
+
 - Citizen has no delegation → does the briefing guide them to Quick Match?
 - No notable governance activity this epoch → does it say "everything's fine" (calm is a feature)?
 - Citizen's DRep was deregistered → clear alert with action path?
@@ -108,6 +117,7 @@ Walk the actual flow:
 **Task:** A citizen wants to understand where treasury money goes and whether it affects them.
 
 Walk the actual flow:
+
 1. Navigate to treasury/pulse surface — is it discoverable from the briefing?
 2. Treasury balance and trend — is it clear whether treasury is growing or shrinking?
 3. What got funded — are descriptions plain-English? Is delivery status shown?
@@ -116,11 +126,13 @@ Walk the actual flow:
 6. Historical trends — is spending trajectory visible?
 
 **Friction check:**
+
 - Clicks from home to "I understand treasury" (target: ≤2)
 - Jargon in treasury explanation (target: 0 — "ADA" and "treasury" only)
 - Connection to personal holdings made (target: yes, personalized)
 
 **Edge cases:**
+
 - No wallet connected → can they still see aggregate treasury data?
 - Treasury had no activity this epoch → appropriate empty state?
 - Large controversial withdrawal → is it highlighted appropriately?
@@ -130,6 +142,7 @@ Walk the actual flow:
 **Task:** A citizen wants to express an opinion on an active proposal without becoming a governance expert.
 
 Walk the actual flow:
+
 1. Find an active proposal — from briefing? from `/engage`? from `/discover`?
 2. Understand the proposal — is there a plain-English summary?
 3. Express sentiment — is the mechanism clear? (Yes / No / Not sure)
@@ -138,11 +151,13 @@ Walk the actual flow:
 6. Confirmation — do they know their voice was counted?
 
 **Friction check:**
+
 - Clicks from home to "I expressed my opinion" (target: ≤4)
 - Governance knowledge required (target: none — the summary provides context)
 - Time to complete (target: <60s for basic sentiment)
 
 **Edge cases:**
+
 - No active proposals → empty state guides them?
 - User already voted on this proposal → acknowledged gracefully?
 - Citizen not connected → can they see engagement results? Prompted to connect to participate?
@@ -152,6 +167,7 @@ Walk the actual flow:
 **Task:** A citizen checks their civic identity and feels a sense of belonging and growth.
 
 Walk the actual flow:
+
 1. Navigate to `/my-gov/identity` — discoverable from home/briefing?
 2. "Citizen since" — is their history shown? Does it feel meaningful?
 3. Delegation streak — visible and celebrated?
@@ -160,10 +176,12 @@ Walk the actual flow:
 6. Shareability — can they share their civic identity externally?
 
 **Friction check:**
+
 - Clicks from home to identity (target: ≤2)
 - Emotional response (target: pride, not confusion)
 
 **Edge cases:**
+
 - Brand new citizen with no history → encouraging empty state, not depressing?
 - Citizen broke their streak → handled gracefully?
 - Very long-tenured citizen → impressive display that rewards loyalty?
@@ -173,6 +191,7 @@ Walk the actual flow:
 **Task:** A citizen suspects their DRep isn't performing well and wants to evaluate and potentially switch.
 
 Walk the actual flow:
+
 1. Trigger — from briefing ("your DRep missed 3 votes") or alert or curiosity?
 2. View DRep profile `/drep/[id]` — is performance clearly communicated?
 3. Score breakdown — does it tell the story? (not just 4 numbers)
@@ -182,6 +201,7 @@ Walk the actual flow:
 7. Confirmation — clear success, new delegation acknowledged
 
 **Friction check:**
+
 - Clicks from "I'm concerned" to "I've redelegated" (target: <8)
 - Information sufficiency to make a confident switch (target: yes, without external research)
 
@@ -196,6 +216,7 @@ Source spec: `docs/strategy/personas/drep.md`
 **Task:** A DRep opens Civica and within 5 seconds knows what needs their attention, prioritized by urgency and impact.
 
 Walk the actual flow:
+
 1. Open `/my-gov/inbox` — is it the default DRep landing?
 2. Urgent votes — proposals expiring soon, clearly marked?
 3. New proposals — recently submitted, awaiting review?
@@ -205,10 +226,12 @@ Walk the actual flow:
 7. Each item → direct action path (click → do the thing)
 
 **Friction check:**
+
 - Time to answer "what should I do right now?" (target: <5s)
 - Items that are informational-only with no action path (target: 0)
 
 **Edge cases:**
+
 - Inbox empty (no pending items) → celebratory or informative, not "nothing to see"?
 - Many items (>10) → prioritized, not overwhelming?
 - DRep not yet registered on-chain → guides them to register?
@@ -218,6 +241,7 @@ Walk the actual flow:
 **Task:** A DRep reviews a proposal, casts a vote, writes a rationale, and submits both on-chain in under 2 minutes.
 
 Walk the actual flow:
+
 1. Open proposal from inbox → proposal workspace `/proposal/[tx]/[i]`
 2. Read AI summary — is it accurate and sufficient for a vote decision?
 3. Review context — treasury impact, similar proposals, citizen sentiment, constitutional analysis
@@ -227,11 +251,13 @@ Walk the actual flow:
 7. Confirmation — on-chain verification, rationale visible on profile
 
 **Friction check:**
+
 - Total time, open proposal → submitted (target: <2 minutes with AI draft)
 - Steps between "I've decided" and "it's submitted" (target: ≤3 clicks)
 - AI draft quality — useful starting point or generic filler?
 
 **Edge cases:**
+
 - Wallet not connected → smooth connection mid-flow?
 - Transaction fails → clear error, easy retry?
 - DRep wants to vote without rationale → allowed but score impact noted?
@@ -243,6 +269,7 @@ Walk the actual flow:
 **Task:** A DRep wants to understand their governance reputation, identify weaknesses, and know how to improve.
 
 Walk the actual flow:
+
 1. View profile `/drep/[id]` — score prominent and clear?
 2. Pillar breakdown — Engagement, Participation, Reliability, Identity — each explained?
 3. Score trend — trajectory over time, momentum visible?
@@ -251,10 +278,12 @@ Walk the actual flow:
 6. Peer comparison — rank among active DReps, competitive context
 
 **Friction check:**
+
 - Time to identify their biggest improvement opportunity (target: <30s)
 - Actionability of insights (target: every weakness links to what to do about it)
 
 **Edge cases:**
+
 - New DRep with minimal history → encouraging, not demoralizing?
 - DRep at score ceiling → still useful insights?
 - Score dropped significantly → clear explanation of why?
@@ -264,6 +293,7 @@ Walk the actual flow:
 **Task:** A DRep wants to communicate with their delegators about their governance activity this epoch.
 
 Walk the actual flow:
+
 1. Navigate to communication tools — from inbox or profile?
 2. View citizen questions — aggregated questions about specific votes?
 3. Respond to questions — one response per cluster, publicly visible?
@@ -271,10 +301,12 @@ Walk the actual flow:
 5. Publish — update visible on profile and in delegator briefings?
 
 **Friction check:**
+
 - Time to respond to top citizen question (target: <2 minutes)
 - Time to publish epoch update with AI assist (target: <5 minutes)
 
 **Edge cases:**
+
 - No citizen questions this epoch → empty state handles it?
 - DRep has zero delegators → communication tools still useful for public profile?
 
@@ -289,6 +321,7 @@ Source spec: `docs/strategy/personas/spo.md`
 **Task:** An SPO reviews proposals relevant to their governance authority, casts votes, and maintains their governance statement.
 
 Walk the actual flow:
+
 1. Open governance inbox — filtered to SPO-relevant proposals?
 2. Review proposal with SPO-specific context — protocol parameter impact, inter-body context?
 3. Vote + rationale — same integrated flow as DReps?
@@ -296,10 +329,12 @@ Walk the actual flow:
 5. Statement visible on pool profile?
 
 **Friction check:**
+
 - Total governance time per epoch (target: <10 minutes)
 - Steps to set up initial governance statement (target: <5 minutes with guided flow)
 
 **Edge cases:**
+
 - No proposals requiring SPO votes this epoch → clear indication?
 - SPO has never voted → onboarding into governance?
 - SPO is also a DRep → segment fluidity handles dual identity?
@@ -309,6 +344,7 @@ Walk the actual flow:
 **Task:** An SPO builds a rich pool profile that tells their story and differentiates them from 3,000 other pools.
 
 Walk the actual flow:
+
 1. Navigate to pool profile `/pool/[id]` — is it rich or bare?
 2. Identity: team, mission, story — editable? Guided setup?
 3. Governance reputation — score, voting record, philosophy
@@ -317,10 +353,12 @@ Walk the actual flow:
 6. Shareability — can they link to this as their "home page"?
 
 **Friction check:**
+
 - Time to go from empty profile to share-worthy (target: <15 minutes with guided flow)
 - Profile vs PoolTool differentiation clear?
 
 **Edge cases:**
+
 - Small pool with minimal delegation → profile still feels valuable?
 - Pool with no governance activity → profile guides them to start?
 
@@ -329,6 +367,7 @@ Walk the actual flow:
 **Task:** An SPO wants to understand how governance participation helps them attract delegators.
 
 Walk the actual flow:
+
 1. View delegation analytics — trend, recent changes, sources?
 2. Governance-growth connection — data showing correlation?
 3. Competitive position — vs pools of similar size?
@@ -336,6 +375,7 @@ Walk the actual flow:
 5. Growth coaching — AI suggestions for improvement?
 
 **Edge cases:**
+
 - Pool losing delegation → empathetic insights, not just declining numbers?
 - Pool not visible in discovery → guidance on why and how to improve?
 
@@ -382,6 +422,7 @@ Patterns that should work identically across all journeys.
 ### 5.1 Shared Component Behavior
 
 Test each pattern across at least 3 different pages:
+
 - **Score displays** — does ScoreRing/HexScore/ScoreCard behave the same on DRep profile, discover cards, and pool profile?
 - **Loading states** — are loading skeletons consistent in timing, layout, and animation?
 - **Empty states** — do they follow the same guide + educate + motivate pattern everywhere?
@@ -391,6 +432,7 @@ Test each pattern across at least 3 different pages:
 ### 5.2 Segment Fluidity
 
 Test that overlapping personas work correctly:
+
 - A DRep sees citizen experience + DRep workspace → both functional?
 - An SPO who is also a DRep → both layers present?
 - A CC member → citizen + CC accountability surface?
@@ -399,6 +441,7 @@ Test that overlapping personas work correctly:
 ### 5.3 Cross-Page Data Consistency
 
 Verify that the same data appears consistently:
+
 - A DRep's score on their profile matches their score in discover cards
 - A proposal's status on the proposal page matches its status in the DRep inbox
 - Treasury figures on pulse match what's shown in the citizen briefing
@@ -407,6 +450,7 @@ Verify that the same data appears consistently:
 ### 5.4 Navigation & Wayfinding
 
 Test navigation patterns:
+
 - Can the user always tell where they are? (breadcrumbs, active nav, page titles)
 - Can they get to any major surface within 3 clicks from any other?
 - Is the back button behavior predictable? (no unexpected state loss)
@@ -421,42 +465,42 @@ Systematic testing of unusual states across all journeys.
 
 ### 6.1 User State Edge Cases
 
-| State | Test |
-|---|---|
-| No wallet extension | All surfaces graceful, clear path to install |
-| Wallet connected, zero ADA | Can browse, can't transact, clear messaging |
-| Wallet connected, not staked | Guided to staking, not blocked from governance |
-| Wallet connected, staked, no DRep delegation | Guided to Quick Match |
-| Wallet connected, delegated to deregistered DRep | Clear alert with action |
-| Wallet connected, multiple wallets | Segment detection works |
-| DRep with zero votes | Encouraging, not empty |
-| DRep with zero delegators | Still useful workspace |
-| SPO with retired pool | Graceful handling, not error |
-| SPO with zero governance activity | Guided to first vote |
+| State                                            | Test                                           |
+| ------------------------------------------------ | ---------------------------------------------- |
+| No wallet extension                              | All surfaces graceful, clear path to install   |
+| Wallet connected, zero ADA                       | Can browse, can't transact, clear messaging    |
+| Wallet connected, not staked                     | Guided to staking, not blocked from governance |
+| Wallet connected, staked, no DRep delegation     | Guided to Quick Match                          |
+| Wallet connected, delegated to deregistered DRep | Clear alert with action                        |
+| Wallet connected, multiple wallets               | Segment detection works                        |
+| DRep with zero votes                             | Encouraging, not empty                         |
+| DRep with zero delegators                        | Still useful workspace                         |
+| SPO with retired pool                            | Graceful handling, not error                   |
+| SPO with zero governance activity                | Guided to first vote                           |
 
 ### 6.2 Data State Edge Cases
 
-| State | Test |
-|---|---|
-| Epoch boundary (data refreshing) | Loading state, not stale data shown as current |
-| Sync failure (stale data) | Staleness indicator visible, not hidden |
-| New DRep (just registered, no scores) | Progressive display as data populates |
-| DRep with perfect score (100) | Handled correctly, not treated as error |
-| DRep with zero score | Displayed correctly, not hidden |
-| Proposal with zero votes | Shown correctly |
-| Proposal expired | Clear status, past-tense messaging |
-| Treasury with negative epoch change | Displayed as spending, not error |
+| State                                 | Test                                           |
+| ------------------------------------- | ---------------------------------------------- |
+| Epoch boundary (data refreshing)      | Loading state, not stale data shown as current |
+| Sync failure (stale data)             | Staleness indicator visible, not hidden        |
+| New DRep (just registered, no scores) | Progressive display as data populates          |
+| DRep with perfect score (100)         | Handled correctly, not treated as error        |
+| DRep with zero score                  | Displayed correctly, not hidden                |
+| Proposal with zero votes              | Shown correctly                                |
+| Proposal expired                      | Clear status, past-tense messaging             |
+| Treasury with negative epoch change   | Displayed as spending, not error               |
 
 ### 6.3 Device & Browser Edge Cases
 
-| State | Test |
-|---|---|
-| Mobile Safari (iOS) | Wallet connection flow, viewport, touch targets |
-| Android Chrome | Same checks as iOS |
-| Desktop with 125% scaling | Layout doesn't break |
-| Slow connection (3G) | Progressive loading, not white screen |
-| JavaScript disabled | Meaningful server-rendered content |
-| Browser back/forward | State preserved correctly |
+| State                     | Test                                            |
+| ------------------------- | ----------------------------------------------- |
+| Mobile Safari (iOS)       | Wallet connection flow, viewport, touch targets |
+| Android Chrome            | Same checks as iOS                              |
+| Desktop with 125% scaling | Layout doesn't break                            |
+| Slow connection (3G)      | Progressive loading, not white screen           |
+| JavaScript disabled       | Meaningful server-rendered content              |
+| Browser back/forward      | State preserved correctly                       |
 
 ---
 
@@ -469,6 +513,7 @@ This section creates a measurable baseline that can be re-run to catch regressio
 A fast-pass checklist for post-deploy verification. Each item is pass/fail:
 
 **Citizen paths:**
+
 - [ ] Homepage loads with meaningful content (anonymous)
 - [ ] Quick Match questionnaire starts and completes
 - [ ] DRep discovery page loads with sorted, scored results
@@ -480,16 +525,19 @@ A fast-pass checklist for post-deploy verification. Each item is pass/fail:
 - [ ] Civic identity page loads for authenticated user
 
 **DRep paths:**
+
 - [ ] DRep inbox shows pending items (or appropriate empty state)
 - [ ] Proposal workspace shows analysis + action layer
 - [ ] Vote casting flow initiates (wallet prompt)
 - [ ] DRep profile shows own score and breakdown
 
 **SPO paths:**
+
 - [ ] Pool profile shows governance score and voting record
 - [ ] SPO governance inbox shows relevant proposals
 
 **Cross-cutting:**
+
 - [ ] Dark mode renders correctly on all key pages
 - [ ] Mobile responsive layout works on all key pages
 - [ ] Navigation works (can reach any major surface from any other)
@@ -500,62 +548,67 @@ A fast-pass checklist for post-deploy verification. Each item is pass/fail:
 
 Record current values. Compare in future audits to catch regression:
 
-| Task | Metric | Current | Target |
-|---|---|---|---|
-| Homepage → understand value | Seconds | _measure_ | <15s |
-| Quick Match → delegation | Total clicks | _measure_ | <12 |
-| Quick Match → delegation | Total time | _measure_ | <3min |
-| Authenticated home → informed | Seconds | _measure_ | <30s |
-| Citizen → express opinion | Clicks | _measure_ | ≤4 |
-| DRep → "what do I do?" | Seconds | _measure_ | <5s |
-| DRep → vote + rationale submitted | Total time | _measure_ | <2min |
-| DRep → identify improvement area | Seconds | _measure_ | <30s |
-| SPO → complete governance for epoch | Total time | _measure_ | <10min |
-| SPO → share-worthy profile from empty | Total time | _measure_ | <15min |
+| Task                                  | Metric       | Current   | Target |
+| ------------------------------------- | ------------ | --------- | ------ |
+| Homepage → understand value           | Seconds      | _measure_ | <15s   |
+| Quick Match → delegation              | Total clicks | _measure_ | <12    |
+| Quick Match → delegation              | Total time   | _measure_ | <3min  |
+| Authenticated home → informed         | Seconds      | _measure_ | <30s   |
+| Citizen → express opinion             | Clicks       | _measure_ | ≤4     |
+| DRep → "what do I do?"                | Seconds      | _measure_ | <5s    |
+| DRep → vote + rationale submitted     | Total time   | _measure_ | <2min  |
+| DRep → identify improvement area      | Seconds      | _measure_ | <30s   |
+| SPO → complete governance for epoch   | Total time   | _measure_ | <10min |
+| SPO → share-worthy profile from empty | Total time   | _measure_ | <15min |
 
 ---
 
 ## Phase 8: Scoring (5 dimensions, 10 pts each = 50 total)
 
 ### J1: Task Completion (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Critical tasks cannot be completed end-to-end, broken flows, dead ends |
-| 4-6 | Primary persona (citizen) tasks mostly completable, DRep/SPO flows partial, some dead ends |
-| 7-8 | All citizen, DRep, and SPO critical tasks completable end-to-end, each task has clear start → action → confirmation arc, secondary personas have at least stub paths |
-| 9-10 | Every task for every persona completes flawlessly, zero dead ends, task arcs feel natural and satisfying, secondary personas have full functional paths |
+
+| Score | Anchor                                                                                                                                                               |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-3   | Critical tasks cannot be completed end-to-end, broken flows, dead ends                                                                                               |
+| 4-6   | Primary persona (citizen) tasks mostly completable, DRep/SPO flows partial, some dead ends                                                                           |
+| 7-8   | All citizen, DRep, and SPO critical tasks completable end-to-end, each task has clear start → action → confirmation arc, secondary personas have at least stub paths |
+| 9-10  | Every task for every persona completes flawlessly, zero dead ends, task arcs feel natural and satisfying, secondary personas have full functional paths              |
 
 ### J2: Friction & Efficiency (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Tasks require excessive clicks/time, unclear next steps, frequent abandonment points |
-| 4-6 | Key tasks meet targets (Quick Match <3min, briefing <30s), but some flows have unnecessary steps or confusion |
-| 7-8 | All friction metrics at or below targets, abandonment points identified and mitigated, AI assistance reduces DRep rationale time measurably, zero unnecessary clicks in critical paths |
-| 9-10 | Friction metrics significantly beat targets, flows feel effortless, AI assistance is genuinely useful (not gimmicky), user testing confirms "this was easy" |
+
+| Score | Anchor                                                                                                                                                                                 |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-3   | Tasks require excessive clicks/time, unclear next steps, frequent abandonment points                                                                                                   |
+| 4-6   | Key tasks meet targets (Quick Match <3min, briefing <30s), but some flows have unnecessary steps or confusion                                                                          |
+| 7-8   | All friction metrics at or below targets, abandonment points identified and mitigated, AI assistance reduces DRep rationale time measurably, zero unnecessary clicks in critical paths |
+| 9-10  | Friction metrics significantly beat targets, flows feel effortless, AI assistance is genuinely useful (not gimmicky), user testing confirms "this was easy"                            |
 
 ### J3: Edge Case Resilience (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Edge cases cause crashes, blank pages, or confusing states |
-| 4-6 | Common edge cases handled (no wallet, empty data), but some unusual states produce poor experiences |
-| 7-8 | All user state and data state edge cases handled gracefully, empty states guide toward resolution, error states offer recovery, device edge cases work |
-| 9-10 | Every edge case in the matrix produces a thoughtful, persona-appropriate response, edge cases are tested automatically in CI, zero user-reportable broken states |
+
+| Score | Anchor                                                                                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-3   | Edge cases cause crashes, blank pages, or confusing states                                                                                                       |
+| 4-6   | Common edge cases handled (no wallet, empty data), but some unusual states produce poor experiences                                                              |
+| 7-8   | All user state and data state edge cases handled gracefully, empty states guide toward resolution, error states offer recovery, device edge cases work           |
+| 9-10  | Every edge case in the matrix produces a thoughtful, persona-appropriate response, edge cases are tested automatically in CI, zero user-reportable broken states |
 
 ### J4: Cross-Journey Consistency (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Components behave differently on different pages, data inconsistencies, navigation confusion |
-| 4-6 | Core components consistent, some data display differences between pages, navigation mostly predictable |
-| 7-8 | All shared components behave identically, segment fluidity works correctly, data is consistent cross-page, navigation is predictable with working deep links, command palette covers key surfaces |
-| 9-10 | Perfect consistency across all surfaces, segment fluidity tested for all role combinations, automated consistency checks in CI, navigation patterns documented in design system |
+
+| Score | Anchor                                                                                                                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-3   | Components behave differently on different pages, data inconsistencies, navigation confusion                                                                                                      |
+| 4-6   | Core components consistent, some data display differences between pages, navigation mostly predictable                                                                                            |
+| 7-8   | All shared components behave identically, segment fluidity works correctly, data is consistent cross-page, navigation is predictable with working deep links, command palette covers key surfaces |
+| 9-10  | Perfect consistency across all surfaces, segment fluidity tested for all role combinations, automated consistency checks in CI, navigation patterns documented in design system                   |
 
 ### J5: Progressive Disclosure & Depth (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | One-depth-fits-all — either too simple or too complex for every persona |
-| 4-6 | Citizen surfaces are simplified, some drill-down paths exist, but depth is inconsistent |
-| 7-8 | Every summary has a path to more detail, depth matches persona expectations (citizens: conclusions first, DReps: analysis available, researchers: raw data accessible), progressive disclosure tested for each persona |
-| 9-10 | Depth transitions are seamless (never jarring), each depth level is independently useful, users at every expertise level report "this is designed for me" |
+
+| Score | Anchor                                                                                                                                                                                                                 |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-3   | One-depth-fits-all — either too simple or too complex for every persona                                                                                                                                                |
+| 4-6   | Citizen surfaces are simplified, some drill-down paths exist, but depth is inconsistent                                                                                                                                |
+| 7-8   | Every summary has a path to more detail, depth matches persona expectations (citizens: conclusions first, DReps: analysis available, researchers: raw data accessible), progressive disclosure tested for each persona |
+| 9-10  | Depth transitions are seamless (never jarring), each depth level is independently useful, users at every expertise level report "this is designed for me"                                                              |
 
 ---
 
@@ -564,6 +617,7 @@ Record current values. Compare in future audits to catch regression:
 For each journey gap, propose fixes following `docs/strategy/context/work-plan-template.md`.
 
 Categorize each issue:
+
 - **broken** — task cannot be completed (P0)
 - **friction** — task completable but too slow/confusing (P1)
 - **edge-case** — unusual state produces poor experience (P2)
@@ -572,6 +626,7 @@ Categorize each issue:
 - **missing** — journey not built yet (prioritize by persona importance)
 
 **Key decision prompts for the user:**
+
 - Which broken journeys block the most users? (fix those first)
 - Are friction targets realistic given current build stage?
 - Which edge cases are most likely to be encountered by real users?

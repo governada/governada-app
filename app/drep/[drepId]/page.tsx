@@ -56,6 +56,10 @@ import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepCitizenSignals } from '@/components/DRepCitizenSignals';
+const CitizenEndorsements = nextDynamic(
+  () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
+  { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
+);
 const AlignmentTrajectory = nextDynamic(
   () => import('@/components/AlignmentTrajectory').then((m) => m.AlignmentTrajectory),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
@@ -628,6 +632,9 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
       {/* 3c. Citizen Sentiment Signal */}
       <DRepCitizenSignals drepId={drep.drepId} />
+
+      {/* 3d. Citizen Endorsements (social proof alongside algorithmic score) */}
+      <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
 
       {/* 4. Key Facts Strip */}
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 border-y border-border">

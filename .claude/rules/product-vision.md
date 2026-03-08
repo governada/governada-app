@@ -1,8 +1,8 @@
 ---
 paths:
-  - "components/**"
-  - "app/**/page.tsx"
-  - "app/**/layout.tsx"
+  - 'components/**'
+  - 'app/**/page.tsx'
+  - 'app/**/layout.tsx'
 ---
 
 # Product Vision & UX Execution Standards

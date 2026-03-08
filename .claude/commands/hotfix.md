@@ -15,4 +15,5 @@ Work directly on `main` (no branch/PR needed for single-commit hotfixes).
 **CRITICAL: Do NOT send a summary until post-deploy validation passes. Pushing to main is step 3 of 7.**
 
 ## When NOT to use hotfix path
+
 If the change touches auth/security, scoring model, or database schema, push back and recommend the PR path.

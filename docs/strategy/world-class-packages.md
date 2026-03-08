@@ -9,21 +9,21 @@
 
 ## Status Overview
 
-| QP   | Name                                     | Category      | Status  | PR Group | PR   |
-| ---- | ---------------------------------------- | ------------- | ------- | -------- | ---- |
-| QP-1 | Accessibility foundation                 | Accessibility | PENDING | A        |      |
-| QP-2 | Accessibility interactive components     | Accessibility | PENDING | A        |      |
-| QP-3 | Core algorithm test suite                | Validation    | PENDING | B        |      |
-| QP-4 | Error recovery + resilience              | UX Quality    | PENDING | C        |      |
-| QP-5 | Scoring calibration validation           | Algorithmic   | PENDING | D        |      |
-| QP-6 | PCA / dimension reconciliation           | Algorithmic   | PENDING | D        |      |
-| QP-7 | Animation system + micro-interactions    | UX Polish     | PENDING | E        |      |
-| QP-8 | Onboarding education layer               | UX Quality    | PENDING | E        |      |
-| QP-9 | Civic identity elevation                 | UX + Product  | PENDING | F        |      |
-| QP-10 | Engagement feedback loop                | Product       | PENDING | G        |      |
-| QP-11 | Engagement integrity (anti-spam + quorum)| Product      | PENDING | G        |      |
-| QP-12 | Citizen endorsements (7th mechanism)    | Product       | PENDING | H        |      |
-| QP-13 | Load testing + performance validation   | Infrastructure| PENDING | I        |      |
+| QP    | Name                                      | Category       | Status  | PR Group | PR  |
+| ----- | ----------------------------------------- | -------------- | ------- | -------- | --- |
+| QP-1  | Accessibility foundation                  | Accessibility  | PENDING | A        |     |
+| QP-2  | Accessibility interactive components      | Accessibility  | PENDING | A        |     |
+| QP-3  | Core algorithm test suite                 | Validation     | PENDING | B        |     |
+| QP-4  | Error recovery + resilience               | UX Quality     | PENDING | C        |     |
+| QP-5  | Scoring calibration validation            | Algorithmic    | PENDING | D        |     |
+| QP-6  | PCA / dimension reconciliation            | Algorithmic    | PENDING | D        |     |
+| QP-7  | Animation system + micro-interactions     | UX Polish      | PENDING | E        |     |
+| QP-8  | Onboarding education layer                | UX Quality     | PENDING | E        |     |
+| QP-9  | Civic identity elevation                  | UX + Product   | PENDING | F        |     |
+| QP-10 | Engagement feedback loop                  | Product        | PENDING | G        |     |
+| QP-11 | Engagement integrity (anti-spam + quorum) | Product        | PENDING | G        |     |
+| QP-12 | Citizen endorsements (7th mechanism)      | Product        | PENDING | H        |     |
+| QP-13 | Load testing + performance validation     | Infrastructure | PENDING | I        |     |
 
 ---
 
@@ -42,6 +42,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
 ```
 
 **Parallelization opportunities:**
+
 - PR Groups A, B, C can all run simultaneously (3 agents)
 - PR Groups D and E can run simultaneously once their deps are met
 - PR Group G can start as soon as Group C finishes (or in parallel with D/E)
@@ -81,6 +82,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
    - Chart visualizations: add `role="img"` with `aria-label` describing the data pattern (e.g., "Score trend chart showing improvement from 62 to 78 over 10 epochs")
 
 **Key files to audit:**
+
 - `app/layout.tsx`, `app/(main)/layout.tsx` -- landmarks, skip-to-content
 - `components/ui/` -- all shadcn primitives (verify Radix a11y defaults are preserved)
 - `components/civica/shared/` -- shared components used everywhere
@@ -130,6 +132,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
    - Framer Motion: wrap animated components with `useReducedMotion()` hook
 
 **Key files to modify:**
+
 - `components/civica/match/QuickMatchFlow.tsx` -- step indicator, results loading
 - `components/civica/proposals/VoteCastingPanel.tsx` or `VoteRationaleFlow.tsx` -- form roles
 - `components/engagement/ProposalSentiment.tsx` -- radiogroup
@@ -216,6 +219,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
    - Test user profile projection into PCA space
 
 **Key test infrastructure:**
+
 - Use Vitest fixtures for realistic test data (DRep voting records, proposal sets)
 - Create `__tests__/fixtures/` with reusable mock data generators
 - Add `npm run test:scoring` script for targeted test runs
@@ -290,6 +294,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
      - Queue failed actions for retry (or at minimum, clear feedback that it didn't save)
 
 **Key files to modify:**
+
 - `components/Providers.tsx` -- TanStack Query defaults
 - `components/civica/home/EpochBriefing.tsx` -- primary error handling target
 - `components/civica/match/QuickMatchFlow.tsx` -- conversion funnel resilience
@@ -354,6 +359,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
      - Existing tests (QP-3) should validate config values produce expected results
 
 **Key files to modify:**
+
 - `lib/scoring/drepScoreV3.ts` -- extract thresholds to config
 - `lib/scoring/spoScoreV3.ts` -- extract thresholds to config
 - `lib/ghi/calibration.ts` -- validate and document thresholds
@@ -368,6 +374,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
 ### QP-6: PCA / Dimension Reconciliation
 
 **Problem:** Two alignment systems exist independently:
+
 1. PCA coordinates from SVD on the vote matrix (used for matching)
 2. Six manual dimension scores computed per DRep (used for radar display)
 
@@ -406,6 +413,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
    - Display explained variance in admin dashboard for monitoring
 
 **Key files to modify:**
+
 - `lib/alignment/pca.ts` -- core computation
 - `lib/alignment/dimensions.ts` -- manual computation
 - `lib/alignment/normalize.ts` -- dimension normalization
@@ -475,6 +483,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
    - Card hover: gentle lift (translateY -2px + shadow increase) on all clickable cards
 
 **Key files to modify:**
+
 - New: `lib/motion.ts` -- animation system tokens and variants
 - New: `components/ui/AnimatedList.tsx` -- stagger wrapper
 - `components/civica/home/EpochBriefing.tsx` -- entrance sequence
@@ -542,6 +551,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
    - Similarly for CC Transparency Index
 
 **Key files to modify:**
+
 - New: `lib/glossary.ts`
 - New or enhanced: `components/ui/GovTerm.tsx`
 - New: `hooks/useFirstVisit.ts`
@@ -599,6 +609,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
    - Social preview that looks good on Twitter/X, Discord, Telegram
 
 **Key files to modify:**
+
 - New: `app/(main)/my-gov/identity/page.tsx` -- identity page
 - New: `components/civica/identity/CivicIdentityProfile.tsx` -- full profile component
 - New: `components/civica/identity/MilestoneGallery.tsx` -- milestone display
@@ -662,6 +673,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
    - Low frequency: only on proposal resolution, not on every vote
 
 **Key files to modify:**
+
 - `components/civica/home/EpochBriefing.tsx` -- "your voice" section
 - `app/api/briefing/citizen/route.ts` -- fetch citizen engagement + outcomes
 - `components/DRepCitizenSignals.tsx` -- divergence detail
@@ -724,6 +736,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
      - Explain how to increase weight: "Connect your wallet, maintain delegation, participate regularly"
 
 **Key files to modify:**
+
 - New: `lib/citizenCredibility.ts`
 - `inngest/functions/precompute-engagement-signals.ts` -- weighted aggregation
 - `app/api/engagement/*/route.ts` -- rate limiting per user per epoch
@@ -786,6 +799,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
      - "You endorsed 2 DReps this epoch"
 
 **Key files to modify:**
+
 - Verify or create migration for `citizen_endorsements` table
 - New: `components/engagement/CitizenEndorsements.tsx`
 - New: `app/api/engagement/endorsements/route.ts`
@@ -860,6 +874,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
      - Supabase connection pool limits
 
 **Key files:**
+
 - New: `tests/load/scenarios/*.js` -- k6 load test scripts
 - New: `tests/load/config.js` -- shared configuration
 - New: `docs/operations/performance-baseline.md`
@@ -871,19 +886,20 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
 
 ## Summary: Path from 84 to 95+
 
-| PR Group | QPs | Theme | Score Impact | Effort | Parallel? |
-|----------|-----|-------|-------------|--------|-----------|
-| A | QP-1, QP-2 | Accessibility | +4 pts | Large (2-3 sprints) | Yes (start immediately) |
-| B | QP-3 | Algorithm tests | +2 pts | Medium (1 sprint) | Yes (start immediately) |
-| C | QP-4 | Error resilience | +2 pts | Medium (1 sprint) | Yes (start immediately) |
-| D | QP-5, QP-6 | Algorithm validation | +2 pts | Medium (1 sprint) | After B |
-| E | QP-7, QP-8 | UX polish + education | +2 pts | Medium (1 sprint) | After A |
-| F | QP-9 | Civic identity | +1 pt | Small-Medium | After A, E |
-| G | QP-10, QP-11 | Engagement maturity | +2 pts | Medium (1 sprint) | After C (benefits from error patterns) |
-| H | QP-12 | Endorsements | +1 pt | Small-Medium | After G |
-| I | QP-13 | Performance validation | +1 pt | Small | After all others |
+| PR Group | QPs          | Theme                  | Score Impact | Effort              | Parallel?                              |
+| -------- | ------------ | ---------------------- | ------------ | ------------------- | -------------------------------------- |
+| A        | QP-1, QP-2   | Accessibility          | +4 pts       | Large (2-3 sprints) | Yes (start immediately)                |
+| B        | QP-3         | Algorithm tests        | +2 pts       | Medium (1 sprint)   | Yes (start immediately)                |
+| C        | QP-4         | Error resilience       | +2 pts       | Medium (1 sprint)   | Yes (start immediately)                |
+| D        | QP-5, QP-6   | Algorithm validation   | +2 pts       | Medium (1 sprint)   | After B                                |
+| E        | QP-7, QP-8   | UX polish + education  | +2 pts       | Medium (1 sprint)   | After A                                |
+| F        | QP-9         | Civic identity         | +1 pt        | Small-Medium        | After A, E                             |
+| G        | QP-10, QP-11 | Engagement maturity    | +2 pts       | Medium (1 sprint)   | After C (benefits from error patterns) |
+| H        | QP-12        | Endorsements           | +1 pt        | Small-Medium        | After G                                |
+| I        | QP-13        | Performance validation | +1 pt        | Small               | After all others                       |
 
 **Optimal execution with 3 parallel agents:**
+
 ```
 Week 1-2:  Agent 1: PR Group A (accessibility)
            Agent 2: PR Group B (tests)

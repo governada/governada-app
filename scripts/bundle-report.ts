@@ -44,7 +44,7 @@ function parseBuildOutput(input: string): PageEntry[] {
     // ├ ○ /discover   4.2 kB   180 kB
     // ├ ƒ /drep/[drepId]   12 kB   220 kB
     const match = line.match(
-      /[├└]\s*([○●ƒλ])\s+(\/\S+)\s+([\d.]+\s*(?:kB|B|MB))\s+([\d.]+\s*(?:kB|B|MB))/
+      /[├└]\s*([○●ƒλ])\s+(\/\S+)\s+([\d.]+\s*(?:kB|B|MB))\s+([\d.]+\s*(?:kB|B|MB))/,
     );
     if (match) {
       const [, typeChar, route, size, firstLoad] = match;
@@ -54,7 +54,8 @@ function parseBuildOutput(input: string): PageEntry[] {
         firstLoad,
         sizeKB: parseSize(size),
         firstLoadKB: parseSize(firstLoad),
-        type: typeChar === 'ƒ' || typeChar === 'λ' ? 'dynamic' : typeChar === '●' ? 'ssr' : 'static',
+        type:
+          typeChar === 'ƒ' || typeChar === 'λ' ? 'dynamic' : typeChar === '●' ? 'ssr' : 'static',
       });
     }
   }
@@ -64,7 +65,9 @@ function parseBuildOutput(input: string): PageEntry[] {
 
 function generateReport(entries: PageEntry[]): void {
   if (entries.length === 0) {
-    console.log('No build output found. Run: npm run build 2>&1 | npx tsx scripts/bundle-report.ts');
+    console.log(
+      'No build output found. Run: npm run build 2>&1 | npx tsx scripts/bundle-report.ts',
+    );
     return;
   }
 
@@ -92,7 +95,7 @@ function generateReport(entries: PageEntry[]): void {
     for (const entry of flagged.sort((a, b) => b.firstLoadKB - a.firstLoadKB)) {
       const overBy = (entry.firstLoadKB - THRESHOLD_FIRST_LOAD_KB).toFixed(1);
       console.log(
-        `  ${entry.type === 'dynamic' ? 'ƒ' : '○'} ${entry.route.padEnd(40)} ${entry.firstLoad.padStart(10)} (+${overBy}kB over)`
+        `  ${entry.type === 'dynamic' ? 'ƒ' : '○'} ${entry.route.padEnd(40)} ${entry.firstLoad.padStart(10)} (+${overBy}kB over)`,
       );
     }
   }
@@ -112,7 +115,7 @@ function generateReport(entries: PageEntry[]): void {
   for (const entry of entries.sort((a, b) => b.firstLoadKB - a.firstLoadKB).slice(0, 20)) {
     const indicator = entry.firstLoadKB > THRESHOLD_FIRST_LOAD_KB ? '⚠️ ' : '   ';
     console.log(
-      `${indicator}${entry.route.padEnd(40)} ${entry.size.padStart(10)} / ${entry.firstLoad.padStart(10)}`
+      `${indicator}${entry.route.padEnd(40)} ${entry.size.padStart(10)} / ${entry.firstLoad.padStart(10)}`,
     );
   }
   if (entries.length > 20) {
@@ -126,7 +129,9 @@ function generateReport(entries: PageEntry[]): void {
   } else if (flagged.length <= 3) {
     console.log('  Performance: 6-7/10 (a few pages over threshold, optimize the flagged routes)');
   } else {
-    console.log('  Performance: 4-5/10 (multiple pages over threshold, bundle optimization needed)');
+    console.log(
+      '  Performance: 4-5/10 (multiple pages over threshold, bundle optimization needed)',
+    );
   }
 
   console.log('\n' + '='.repeat(80));

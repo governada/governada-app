@@ -1,10 +1,10 @@
 ---
 paths:
-  - "lib/sync/**"
-  - "inngest/**"
-  - "app/api/sync/**"
-  - "app/api/inngest/**"
-  - "utils/koios*.ts"
+  - 'lib/sync/**'
+  - 'inngest/**'
+  - 'app/api/sync/**'
+  - 'app/api/inngest/**'
+  - 'utils/koios*.ts'
 ---
 
 # Sync Pipeline Rules

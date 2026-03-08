@@ -1,6 +1,6 @@
 ---
 paths:
-  - "**"
+  - '**'
 ---
 
 # Agent Hygiene Rules

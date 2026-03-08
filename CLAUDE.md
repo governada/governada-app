@@ -97,27 +97,27 @@ C:\Users\dalto\drepscore\
 
 ## Context Files (Agent-Optimized)
 
-| Need | File | Lines |
-|------|------|-------|
-| Build status / audit checklist | `docs/strategy/context/build-manifest.md` | ~170 |
-| Persona quick reference | `docs/strategy/context/persona-quick-ref.md` | ~60 |
-| Audit scoring rubric & benchmarks | `docs/strategy/context/audit-rubric.md` | ~180 |
-| Work plan template (parallel agents) | `docs/strategy/context/work-plan-template.md` | ~80 |
-| Competitive landscape (updated by audits) | `docs/strategy/context/competitive-landscape.md` | ~150 |
-| Full vision (strategic audits only) | `docs/strategy/ultimate-vision.md` | ~950 |
+| Need                                      | File                                             | Lines |
+| ----------------------------------------- | ------------------------------------------------ | ----- |
+| Build status / audit checklist            | `docs/strategy/context/build-manifest.md`        | ~170  |
+| Persona quick reference                   | `docs/strategy/context/persona-quick-ref.md`     | ~60   |
+| Audit scoring rubric & benchmarks         | `docs/strategy/context/audit-rubric.md`          | ~180  |
+| Work plan template (parallel agents)      | `docs/strategy/context/work-plan-template.md`    | ~80   |
+| Competitive landscape (updated by audits) | `docs/strategy/context/competitive-landscape.md` | ~150  |
+| Full vision (strategic audits only)       | `docs/strategy/ultimate-vision.md`               | ~950  |
 
 ## Audit Commands
 
-| Command | Purpose | Cadence |
-|---------|---------|---------|
-| `/audit [full\|step:N\|area]` | Product audit against vision (10 dimensions) | Quarterly full, monthly focused |
-| `/verify-audit` | Confirm previous audit gaps were closed | After each build cycle |
-| `/audit-sync [type]` | Sync pipeline health, performance, self-healing | Monthly, quarterly full |
-| `/audit-data [domain]` | Data integrity, completeness, consistency | Monthly |
-| `/audit-scoring [system]` | Scoring methodology, calibration, gaming resistance | Quarterly |
-| `/audit-ux [persona\|surface]` | UX quality, intelligence surfacing, persona journeys, retention | Monthly persona, quarterly full |
-| `/audit-journeys [persona\|task]` | End-to-end task flows, friction measurement, edge cases, regression | Monthly persona, quarterly full |
-| `/audit-security [area]` | Auth, RLS, API security, data protection, infra hardening, anti-gaming | Pre-launch full, quarterly, after auth changes |
+| Command                           | Purpose                                                                | Cadence                                        |
+| --------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| `/audit [full\|step:N\|area]`     | Product audit against vision (10 dimensions)                           | Quarterly full, monthly focused                |
+| `/verify-audit`                   | Confirm previous audit gaps were closed                                | After each build cycle                         |
+| `/audit-sync [type]`              | Sync pipeline health, performance, self-healing                        | Monthly, quarterly full                        |
+| `/audit-data [domain]`            | Data integrity, completeness, consistency                              | Monthly                                        |
+| `/audit-scoring [system]`         | Scoring methodology, calibration, gaming resistance                    | Quarterly                                      |
+| `/audit-ux [persona\|surface]`    | UX quality, intelligence surfacing, persona journeys, retention        | Monthly persona, quarterly full                |
+| `/audit-journeys [persona\|task]` | End-to-end task flows, friction measurement, edge cases, regression    | Monthly persona, quarterly full                |
+| `/audit-security [area]`          | Auth, RLS, API security, data protection, infra hardening, anti-gaming | Pre-launch full, quarterly, after auth changes |
 
 ## Path-Scoped Rules
 

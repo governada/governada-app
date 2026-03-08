@@ -7,6 +7,7 @@ Evaluate the health and resilience of the Koios → Supabase sync pipeline. This
 ## Scope
 
 Argument: `$ARGUMENTS`
+
 - If empty: Full sync audit (all sync types, freshness, error handling, self-healing)
 - If a sync type (e.g., "proposals", "dreps", "scoring", "alignment"): Focused audit on that pipeline
 
@@ -15,6 +16,7 @@ Argument: `$ARGUMENTS`
 ### 1.1 Sync Health (Live Data)
 
 Query production data via API or Supabase MCP:
+
 - `v_sync_health` view: last run, last success, error counts per sync type
 - `sync_log` recent failures: last 50 entries with `success = false`
 - `sync_log` duration trends: avg/p95/max duration per sync type (last 7 days)
@@ -30,6 +32,7 @@ Query production data via API or Supabase MCP:
 ### 1.3 Error Handling Patterns
 
 For each sync function in `inngest/functions/sync-*.ts`:
+
 - Does it have `onFailure` handler? (required for sync_log cleanup)
 - Does it use `withRetry()` for transient errors?
 - Does it use `validateArray()` for data validation?
@@ -53,48 +56,54 @@ For each sync function in `inngest/functions/sync-*.ts`:
 ## Phase 2: Scoring (5 dimensions, 10 pts each = 50 total)
 
 ### S1: Reliability (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Frequent silent failures, no self-healing, missing onFailure handlers |
-| 4-6 | Most syncs succeed, basic error handling, some gaps in monitoring |
-| 7-8 | All syncs have retry/onFailure/alerting, freshness guard covers all types, <5% failure rate |
-| 9-10 | Zero silent failures, self-healing covers all failure modes, anomaly detection catches degradation |
+
+| Score | Anchor                                                                                             |
+| ----- | -------------------------------------------------------------------------------------------------- |
+| 1-3   | Frequent silent failures, no self-healing, missing onFailure handlers                              |
+| 4-6   | Most syncs succeed, basic error handling, some gaps in monitoring                                  |
+| 7-8   | All syncs have retry/onFailure/alerting, freshness guard covers all types, <5% failure rate        |
+| 9-10  | Zero silent failures, self-healing covers all failure modes, anomaly detection catches degradation |
 
 ### S2: Data Validation (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Raw data inserted without validation |
-| 4-6 | Zod validation on some pipelines, batch continues on invalid records |
-| 7-8 | All pipelines validate, invalid records logged/alerted, data provenance tracked |
-| 9-10 | Schema versioning, rollback on high invalid %, cross-pipeline consistency checks |
+
+| Score | Anchor                                                                           |
+| ----- | -------------------------------------------------------------------------------- |
+| 1-3   | Raw data inserted without validation                                             |
+| 4-6   | Zod validation on some pipelines, batch continues on invalid records             |
+| 7-8   | All pipelines validate, invalid records logged/alerted, data provenance tracked  |
+| 9-10  | Schema versioning, rollback on high invalid %, cross-pipeline consistency checks |
 
 ### S3: Performance (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Syncs frequently timeout, no batching, sequential where parallel possible |
-| 4-6 | Batching in place, most syncs under 60s per step, some bottlenecks |
-| 7-8 | All steps <60s, optimal batch sizes, concurrency limits prevent stampede, duration anomaly detection |
-| 9-10 | P95 <30s for all steps, adaptive batch sizes, real-time sync status dashboard |
+
+| Score | Anchor                                                                                               |
+| ----- | ---------------------------------------------------------------------------------------------------- |
+| 1-3   | Syncs frequently timeout, no batching, sequential where parallel possible                            |
+| 4-6   | Batching in place, most syncs under 60s per step, some bottlenecks                                   |
+| 7-8   | All steps <60s, optimal batch sizes, concurrency limits prevent stampede, duration anomaly detection |
+| 9-10  | P95 <30s for all steps, adaptive batch sizes, real-time sync status dashboard                        |
 
 ### S4: Self-Healing (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | No automatic recovery, manual intervention required |
-| 4-6 | Freshness guard retriggers stale syncs, basic rate limiting on retries |
-| 7-8 | Graduated response (retry → alert → escalate), covers all sync types, rate-limited to prevent loops |
-| 9-10 | Root cause classification (transient vs permanent), automatic remediation for known failure modes, incident timeline tracking |
+
+| Score | Anchor                                                                                                                        |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1-3   | No automatic recovery, manual intervention required                                                                           |
+| 4-6   | Freshness guard retriggers stale syncs, basic rate limiting on retries                                                        |
+| 7-8   | Graduated response (retry → alert → escalate), covers all sync types, rate-limited to prevent loops                           |
+| 9-10  | Root cause classification (transient vs permanent), automatic remediation for known failure modes, incident timeline tracking |
 
 ### S5: Observability (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Console.log only, no structured monitoring |
-| 4-6 | sync_log table, basic PostHog events, Discord alerts |
-| 7-8 | Structured sync_log with metrics, PostHog anomaly events, Discord + email escalation, admin dashboard |
-| 9-10 | Distributed tracing, sync dependency graph visualization, automated incident reports, SLA tracking |
+
+| Score | Anchor                                                                                                |
+| ----- | ----------------------------------------------------------------------------------------------------- |
+| 1-3   | Console.log only, no structured monitoring                                                            |
+| 4-6   | sync_log table, basic PostHog events, Discord alerts                                                  |
+| 7-8   | Structured sync_log with metrics, PostHog anomaly events, Discord + email escalation, admin dashboard |
+| 9-10  | Distributed tracing, sync dependency graph visualization, automated incident reports, SLA tracking    |
 
 ## Phase 3: Gap Analysis & Work Plan
 
 For each gap found:
+
 1. Classify: correctness (data could be wrong), reliability (sync could fail), performance (sync is slow), observability (failures go unnoticed)
 2. Estimate blast radius: how many surfaces/personas are affected?
 3. Propose fix with specific file references

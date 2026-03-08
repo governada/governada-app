@@ -11,6 +11,7 @@ You are updating documentation after code changes.
 **CRITICAL**: DO NOT trust existing documentation. Read the actual code.
 
 For each changed file:
+
 - Read the current implementation
 - Understand actual behavior (not documented behavior)
 - Note any discrepancies with existing docs

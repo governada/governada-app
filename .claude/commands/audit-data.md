@@ -7,6 +7,7 @@ Verify that the data in Supabase is accurate, complete, and consistent. The inte
 ## Scope
 
 Argument: `$ARGUMENTS`
+
 - If empty: Full data integrity audit
 - If a domain (e.g., "scores", "alignment", "treasury", "engagement", "snapshots"): Focused audit
 
@@ -31,6 +32,7 @@ ORDER BY days_stale DESC LIMIT 20;
 ```
 
 For each snapshot table:
+
 - How many entities are missing snapshots for the current epoch?
 - What's the longest gap in the snapshot history?
 - Are there any NaN/Infinity/null values in numeric columns?
@@ -131,15 +133,18 @@ GROUP BY 1 ORDER BY 1;
 ## Phase 2: Consistency Validation
 
 ### 2.1 Temporal Consistency
+
 - Are score snapshots monotonically timestamped (no gaps, no duplicates per entity per day)?
 - Does GHI trend match aggregate DRep behavior? (GHI up when avg scores up)
 - Do alignment trajectories show realistic drift rates? (not jumps >30% in one epoch)
 
 ### 2.2 Cross-Body Consistency
+
 - Inter-body alignment records: do they cover all proposals with multi-body votes?
 - Are CC votes linked to the same proposals as DRep/SPO votes?
 
 ### 2.3 User Data Consistency
+
 - `user_governance_profiles`: are all fields populated for users who completed Quick Match?
 - `citizen_milestones`: are milestones being awarded for qualifying actions?
 - `citizen_briefings`: are briefings generated for all active users each epoch?
@@ -147,44 +152,49 @@ GROUP BY 1 ORDER BY 1;
 ## Phase 3: Scoring (5 dimensions, 10 pts each = 50 total)
 
 ### D1: Snapshot Completeness (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Major gaps in snapshot history, many entities missing |
-| 4-6 | Most entities covered, some gaps, no NaN/Infinity checks |
-| 7-8 | >95% entity coverage, <2 day gaps, validity checks in place |
-| 9-10 | 100% coverage, zero gaps, automated validity checks, historical backfill verified |
+
+| Score | Anchor                                                                            |
+| ----- | --------------------------------------------------------------------------------- |
+| 1-3   | Major gaps in snapshot history, many entities missing                             |
+| 4-6   | Most entities covered, some gaps, no NaN/Infinity checks                          |
+| 7-8   | >95% entity coverage, <2 day gaps, validity checks in place                       |
+| 9-10  | 100% coverage, zero gaps, automated validity checks, historical backfill verified |
 
 ### D2: Referential Integrity (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | >5% orphan records across tables |
-| 4-6 | <2% orphan records, some unlinked data |
-| 7-8 | <0.5% orphan records, cross-table references validated in integrity checks |
-| 9-10 | Zero orphan records, FK constraints or integrity checks cover all relationships |
+
+| Score | Anchor                                                                          |
+| ----- | ------------------------------------------------------------------------------- |
+| 1-3   | >5% orphan records across tables                                                |
+| 4-6   | <2% orphan records, some unlinked data                                          |
+| 7-8   | <0.5% orphan records, cross-table references validated in integrity checks      |
+| 9-10  | Zero orphan records, FK constraints or integrity checks cover all relationships |
 
 ### D3: Score Distribution Quality (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Scores cluster in narrow band, poor differentiation |
-| 4-6 | Reasonable spread but some clustering, a few zero-score anomalies |
-| 7-8 | Full 0-100 spread, clear tier boundaries, distribution matches expected governance behavior |
-| 9-10 | Distribution validated against governance outcomes, calibration documented with evidence |
+
+| Score | Anchor                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------- |
+| 1-3   | Scores cluster in narrow band, poor differentiation                                         |
+| 4-6   | Reasonable spread but some clustering, a few zero-score anomalies                           |
+| 7-8   | Full 0-100 spread, clear tier boundaries, distribution matches expected governance behavior |
+| 9-10  | Distribution validated against governance outcomes, calibration documented with evidence    |
 
 ### D4: Engagement Data Quality (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Engagement tables empty or stale, no credibility scoring |
-| 4-6 | Some engagement data flowing, basic anti-spam, credibility distribution skewed |
-| 7-8 | All 6 mechanisms collecting data, credibility scores normally distributed, quorum thresholds met |
-| 9-10 | Engagement data demonstrably improving intelligence surfaces, citizen participation rates measured |
+
+| Score | Anchor                                                                                             |
+| ----- | -------------------------------------------------------------------------------------------------- |
+| 1-3   | Engagement tables empty or stale, no credibility scoring                                           |
+| 4-6   | Some engagement data flowing, basic anti-spam, credibility distribution skewed                     |
+| 7-8   | All 6 mechanisms collecting data, credibility scores normally distributed, quorum thresholds met   |
+| 9-10  | Engagement data demonstrably improving intelligence surfaces, citizen participation rates measured |
 
 ### D5: Metadata Integrity (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | No hash verification, metadata frequently stale |
-| 4-6 | Basic hash verification, <10% mismatch rate |
-| 7-8 | <2% hash mismatch, CIP-100 compliance verified, rationale anchors validated |
-| 9-10 | Zero hash mismatches, automated re-verification on change detection, provenance tracked |
+
+| Score | Anchor                                                                                  |
+| ----- | --------------------------------------------------------------------------------------- |
+| 1-3   | No hash verification, metadata frequently stale                                         |
+| 4-6   | Basic hash verification, <10% mismatch rate                                             |
+| 7-8   | <2% hash mismatch, CIP-100 compliance verified, rationale anchors validated             |
+| 9-10  | Zero hash mismatches, automated re-verification on change detection, provenance tracked |
 
 ## Phase 3: Work Plan
 

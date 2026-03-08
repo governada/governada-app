@@ -3,6 +3,7 @@ Audit scoring methodology, calibration quality, and real-world impact.
 ## Purpose
 
 Evaluate whether Civica's scoring systems (DRep Score V3, SPO Score V3, GHI, CC Transparency Index, PCA alignment, matching engine) are achieving their intended goals:
+
 1. **Differentiation**: Do scores meaningfully separate good governance behavior from bad?
 2. **Defensibility**: Can the methodology withstand public scrutiny from the Cardano community?
 3. **Gaming resistance**: Can a DRep/SPO artificially inflate their score?
@@ -12,6 +13,7 @@ Evaluate whether Civica's scoring systems (DRep Score V3, SPO Score V3, GHI, CC 
 ## Scope
 
 Argument: `$ARGUMENTS`
+
 - If empty: Full scoring audit (all scoring systems + alignment + matching)
 - If "drep": DRep Score V3 deep dive
 - If "spo": SPO Score V3 deep dive
@@ -24,6 +26,7 @@ Argument: `$ARGUMENTS`
 ### 1.1 Pillar Architecture
 
 Read the scoring model files and evaluate:
+
 - `lib/scoring/drepScore.ts` — composite calculation, momentum
 - `lib/scoring/engagementQuality.ts` — 3-layer pillar (provision, quality, deliberation)
 - `lib/scoring/effectiveParticipation.ts` — importance weighting, treasury scaling
@@ -33,6 +36,7 @@ Read the scoring model files and evaluate:
 - `lib/scoring/calibration.ts` — ALL threshold values
 
 For each pillar, answer:
+
 - Does the weighting (35/25/25/15) still make sense given current governance patterns?
 - Are there new governance behaviors (post-Chang era) not captured by the model?
 - Are there perverse incentives? (e.g., does the dissent sweet spot encourage strategic dissent?)
@@ -90,6 +94,7 @@ ORDER BY d.hex_score DESC;
 ### 2.2 Gaming Scenario Analysis
 
 Test these scenarios against the model mentally or via calculation:
+
 1. **Rubber-stamper**: Votes Yes on everything, no rationales. Expected: low Engagement Quality, decent Participation → mid-range score.
 2. **Strategic dissenter**: Votes No on exactly 20% of proposals (hits dissent sweet spot), provides generic rationales. Expected: should NOT score significantly higher than genuine voter.
 3. **Inactive DRep with great profile**: Rich governance statement, many social links, registered 20 epochs ago, 2 votes total. Expected: low score despite high Identity pillar.
@@ -118,6 +123,7 @@ ORDER BY range DESC LIMIT 20;
 ### 2.4 Calibration Value Audit
 
 Read `lib/scoring/calibration.ts` and for each threshold:
+
 - Is the value documented with rationale?
 - Has it been validated against actual Cardano voting data?
 - When was it last reviewed?
@@ -132,6 +138,7 @@ Read `lib/scoring/calibration.ts` and for each threshold:
 ## Phase 3: State of the Art Assessment
 
 Research (via WebSearch if full audit) whether:
+
 - Any governance scoring system (Tally, Snapshot, SubSquare) has published a peer-reviewed methodology
 - Academic governance measurement frameworks exist that we should reference
 - Any new on-chain data sources could improve scoring (e.g., metadata updates, governance script interactions)
@@ -140,44 +147,49 @@ Research (via WebSearch if full audit) whether:
 ## Phase 4: Scoring (5 dimensions, 10 pts each = 50 total)
 
 ### M1: Differentiation Quality (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Scores cluster, poor separation between active and inactive DReps |
-| 4-6 | Some differentiation, but gaming scenarios produce high scores |
-| 7-8 | Clear separation, gaming scenarios score appropriately low, tier boundaries meaningful |
-| 9-10 | Scores predict governance outcomes, validated against community perception, published methodology |
+
+| Score | Anchor                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------- |
+| 1-3   | Scores cluster, poor separation between active and inactive DReps                                 |
+| 4-6   | Some differentiation, but gaming scenarios produce high scores                                    |
+| 7-8   | Clear separation, gaming scenarios score appropriately low, tier boundaries meaningful            |
+| 9-10  | Scores predict governance outcomes, validated against community perception, published methodology |
 
 ### M2: Calibration Rigor (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Magic numbers with no documentation, never validated |
-| 4-6 | Centralized config, some documentation, not validated against data |
-| 7-8 | All values in calibration.ts with rationale, validated against 1+ epoch of real data, review cadence defined |
-| 9-10 | Every value validated against Cardano voting data, sensitivity analysis published, A/B tested alternatives |
+
+| Score | Anchor                                                                                                       |
+| ----- | ------------------------------------------------------------------------------------------------------------ |
+| 1-3   | Magic numbers with no documentation, never validated                                                         |
+| 4-6   | Centralized config, some documentation, not validated against data                                           |
+| 7-8   | All values in calibration.ts with rationale, validated against 1+ epoch of real data, review cadence defined |
+| 9-10  | Every value validated against Cardano voting data, sensitivity analysis published, A/B tested alternatives   |
 
 ### M3: Gaming Resistance (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Simple strategies (vote everything, copy top rationales) produce high scores |
-| 4-6 | Basic gaming mitigated (rubber-stamp penalty), but sophisticated strategies work |
-| 7-8 | Multi-pillar model prevents single-strategy gaming, adversarial tests documented |
-| 9-10 | Red-team tested, gaming strategies enumerated and mitigated, community bounty for gaming exploits |
+
+| Score | Anchor                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------- |
+| 1-3   | Simple strategies (vote everything, copy top rationales) produce high scores                      |
+| 4-6   | Basic gaming mitigated (rubber-stamp penalty), but sophisticated strategies work                  |
+| 7-8   | Multi-pillar model prevents single-strategy gaming, adversarial tests documented                  |
+| 9-10  | Red-team tested, gaming strategies enumerated and mitigated, community bounty for gaming exploits |
 
 ### M4: Alignment & Matching Quality (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | PCA components don't separate meaningful voting blocs |
-| 4-6 | Components explain >60% variance, dimension labels mostly stable |
-| 7-8 | Clear voting bloc separation, confidence-weighted matching, progressive profile updates |
-| 9-10 | Validated against manual expert matching, citizen satisfaction measured, delegation follows matches |
+
+| Score | Anchor                                                                                              |
+| ----- | --------------------------------------------------------------------------------------------------- |
+| 1-3   | PCA components don't separate meaningful voting blocs                                               |
+| 4-6   | Components explain >60% variance, dimension labels mostly stable                                    |
+| 7-8   | Clear voting bloc separation, confidence-weighted matching, progressive profile updates             |
+| 9-10  | Validated against manual expert matching, citizen satisfaction measured, delegation follows matches |
 
 ### M5: Methodology Transparency (10 pts)
-| Score | Anchor |
-|-------|--------|
-| 1-3 | Scoring methodology is opaque, no public documentation |
-| 4-6 | Basic methodology page exists, calibration values not public |
-| 7-8 | Full methodology published, ADRs for decisions, calibration rationale documented |
-| 9-10 | Peer-reviewed methodology, open-source scoring engine, community governance of calibration changes |
+
+| Score | Anchor                                                                                             |
+| ----- | -------------------------------------------------------------------------------------------------- |
+| 1-3   | Scoring methodology is opaque, no public documentation                                             |
+| 4-6   | Basic methodology page exists, calibration values not public                                       |
+| 7-8   | Full methodology published, ADRs for decisions, calibration rationale documented                   |
+| 9-10  | Peer-reviewed methodology, open-source scoring engine, community governance of calibration changes |
 
 ## Phase 5: Work Plan
 
@@ -185,6 +197,7 @@ For each gap, propose improvements following `docs/strategy/context/work-plan-te
 Categorize: methodology (model change), calibration (threshold tuning), validation (testing), transparency (documentation).
 
 **Key decision prompts for the user:**
+
 - Should calibration values be adjusted based on findings? (requires careful rollout)
 - Should a DRep confidence system be added (paralleling SPO confidence)?
 - Should engagement signals feed directly into scores, or remain separate?

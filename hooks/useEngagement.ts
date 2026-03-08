@@ -187,6 +187,28 @@ export function useCitizenVoice(wallet?: string | null) {
   });
 }
 
+// -- Endorsements --
+
+export interface EndorsementResults {
+  entityType: string;
+  entityId: string;
+  total: number;
+  byType: Record<string, number>;
+  userEndorsements: string[];
+}
+
+export function useEndorsements(entityType: string, entityId: string) {
+  return useQuery<EndorsementResults>({
+    queryKey: ['endorsements', entityType, entityId],
+    queryFn: () =>
+      fetchJsonWithAuth(
+        `/api/engagement/endorsements?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
+      ),
+    staleTime: STALE_60S,
+    enabled: !!entityId,
+  });
+}
+
 // -- Citizen Credibility --
 
 export type { CredibilityResult as CitizenCredibility } from '@/lib/citizenCredibility';

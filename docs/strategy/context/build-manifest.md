@@ -158,17 +158,17 @@
 
 Tracked in `docs/strategy/world-class-packages.md`. 13 QPs targeting 84->95+ score.
 
-| QP | Name | Status |
-|----|------|--------|
-| QP-1/2 | Accessibility (WCAG 2.1 AA) | SHIPPED (PR #164) |
-| QP-3 | Core algorithm tests | SHIPPED (PR #165) |
-| QP-4 | Error recovery + resilience | SHIPPED (PR #166) |
-| QP-5/6 | Scoring calibration + PCA | SHIPPED (PR #167) |
-| QP-7/8 | Animation + onboarding education | SHIPPED (PR #168) |
-| QP-9 | Civic identity elevation | SHIPPED (PR #170) |
-| QP-10/11 | Engagement feedback + integrity | SHIPPED (PR #169) |
-| QP-12 | Citizen endorsements | NOT STARTED |
-| QP-13 | Load testing + performance | NOT STARTED |
+| QP       | Name                             | Status            |
+| -------- | -------------------------------- | ----------------- |
+| QP-1/2   | Accessibility (WCAG 2.1 AA)      | SHIPPED (PR #164) |
+| QP-3     | Core algorithm tests             | SHIPPED (PR #165) |
+| QP-4     | Error recovery + resilience      | SHIPPED (PR #166) |
+| QP-5/6   | Scoring calibration + PCA        | SHIPPED (PR #167) |
+| QP-7/8   | Animation + onboarding education | SHIPPED (PR #168) |
+| QP-9     | Civic identity elevation         | SHIPPED (PR #170) |
+| QP-10/11 | Engagement feedback + integrity  | SHIPPED (PR #169) |
+| QP-12    | Citizen endorsements             | NOT STARTED       |
+| QP-13    | Load testing + performance       | NOT STARTED       |
 
 ---
 
@@ -177,6 +177,6 @@ Tracked in `docs/strategy/world-class-packages.md`. 13 QPs targeting 84->95+ sco
 > Updated by `/audit` and `/verify-audit` commands. Tracks score trends across sessions.
 > Rubric: `docs/strategy/context/audit-rubric.md` (10 dimensions, 10 pts each = 100 total)
 
-| Date | Engine | Citizen | Workspace | Engagement | Data | UX | Perf | Testing | API | Completeness | Total |
-|------|--------|---------|-----------|------------|------|----|------|---------|-----|--------------|-------|
-| _Run `/audit` to populate_ | — | — | — | — | — | — | — | — | — | — | —/100 |
+| Date                       | Engine | Citizen | Workspace | Engagement | Data | UX  | Perf | Testing | API | Completeness | Total |
+| -------------------------- | ------ | ------- | --------- | ---------- | ---- | --- | ---- | ------- | --- | ------------ | ----- |
+| _Run `/audit` to populate_ | —      | —       | —         | —          | —    | —   | —    | —       | —   | —            | —/100 |

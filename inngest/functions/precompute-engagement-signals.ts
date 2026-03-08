@@ -480,7 +480,89 @@ export const precomputeEngagementSignals = inngest.createFunction(
       return { flagged: totalFlagged };
     });
 
-    // Step 7: Log sync
+    // Step 7: Aggregate endorsements per entity (raw + weighted)
+    const endorsementStats = await step.run('aggregate-endorsements', async () => {
+      const endorsements = await fetchAllBatched<{
+        entity_type: string;
+        entity_id: string;
+        endorsement_type: string;
+        user_id: string;
+      }>(() =>
+        supabase
+          .from('citizen_endorsements')
+          .select('entity_type, entity_id, endorsement_type, user_id'),
+      );
+
+      if (endorsements.length === 0) return { entities: 0 };
+
+      // Compute credibility weights for endorsers
+      const userIds = [...new Set(endorsements.map((e) => e.user_id))];
+      const credWeights = await computeCredibilityBatch(userIds);
+
+      // Group by entity
+      const byEntity = new Map<
+        string,
+        {
+          entityType: string;
+          entityId: string;
+          raw: Record<string, number>;
+          weighted: Record<string, number>;
+          total: number;
+          weightedTotal: number;
+        }
+      >();
+
+      for (const e of endorsements) {
+        const key = `${e.entity_type}:${e.entity_id}`;
+        if (!byEntity.has(key)) {
+          byEntity.set(key, {
+            entityType: e.entity_type,
+            entityId: e.entity_id,
+            raw: {},
+            weighted: {},
+            total: 0,
+            weightedTotal: 0,
+          });
+        }
+        const agg = byEntity.get(key)!;
+        const weight = credWeights.get(e.user_id) ?? 0.1;
+
+        agg.total++;
+        agg.weightedTotal += weight;
+        agg.raw[e.endorsement_type] = (agg.raw[e.endorsement_type] || 0) + 1;
+        agg.weighted[e.endorsement_type] =
+          Math.round(((agg.weighted[e.endorsement_type] || 0) + weight) * 100) / 100;
+      }
+
+      const rows = [...byEntity.values()].map((agg) => ({
+        entity_type: agg.entityType,
+        entity_id: agg.entityId,
+        signal_type: 'endorsements' as const,
+        data: {
+          ...agg.raw,
+          total: agg.total,
+          weighted: { ...agg.weighted, total: Math.round(agg.weightedTotal * 100) / 100 },
+        },
+        epoch: currentEpoch,
+        computed_at: new Date().toISOString(),
+      }));
+
+      if (rows.length > 0) {
+        const { error: upsertError } = await supabase
+          .from('engagement_signal_aggregations')
+          .upsert(rows, { onConflict: 'entity_type,entity_id,signal_type,epoch' });
+
+        if (upsertError) {
+          logger.error('Failed to upsert endorsement aggregations', {
+            error: upsertError.message,
+          });
+        }
+      }
+
+      return { entities: byEntity.size };
+    });
+
+    // Step 8: Log sync
     await step.run('log-sync', async () => {
       await supabase.from('sync_log').insert({
         sync_type: 'engagement_signals',
@@ -492,6 +574,7 @@ export const precomputeEngagementSignals = inngest.createFunction(
           priorities: priorityStats,
           assemblies: assemblyStats,
           anomalies: anomalyStats,
+          endorsements: endorsementStats,
         },
       });
     });
@@ -503,6 +586,7 @@ export const precomputeEngagementSignals = inngest.createFunction(
       priorityStats,
       assemblyStats,
       anomalyStats,
+      endorsementStats,
     };
   },
 );

@@ -1,8 +1,8 @@
 ---
 paths:
-  - "lib/scoring/**"
-  - "lib/ghi/**"
-  - "lib/alignment/**"
+  - 'lib/scoring/**'
+  - 'lib/ghi/**'
+  - 'lib/alignment/**'
 ---
 
 # Scoring & Analytics Engine Rules

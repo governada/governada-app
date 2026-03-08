@@ -8,23 +8,23 @@
 
 ## Status Overview
 
-| WP    | Name                                      | Step | Status      | PR   |
-| ----- | ----------------------------------------- | ---- | ----------- | ---- |
-| WP-1  | Briefing-first citizen home               | 4    | SHIPPED     | #159 |
-| WP-2  | Simplified anonymous onboarding           | 4    | SHIPPED     | #159 |
-| WP-3  | Citizen notification steps                | 4    | SHIPPED     | #159 |
-| WP-4  | Citizen milestone detection               | 4    | SHIPPED     | #159 |
-| WP-5  | Proportional treasury share in briefing   | 4    | SHIPPED     | #159 |
-| WP-6  | DRep delegator sentiment view             | 5+6  | SHIPPED     | #160 |
-| WP-7  | Engagement signals -> score feedback loop | 6->1 | SHIPPED     | #161 |
-| WP-8  | Inter-body dynamics narrative             | 2+5  | SHIPPED     | #161 |
-| WP-9  | SPO Command Center parity                 | 2.5  | SHIPPED     | #162 |
-| WP-10 | SPO vote casting                          | 5    | SHIPPED     | #162 |
-| WP-11 | Progressive match confidence              | 1    | SHIPPED     |      |
-| WP-12 | Proposal outcome tracking                 | 2+4  | SHIPPED     |      |
-| WP-13 | CC Member Transparency Index              | 2.5  | SHIPPED     |      |
-| WP-14 | Mobile briefing optimization              | 4    | SHIPPED     |      |
-| WP-15 | Vote + rationale flow timing              | 5    | SHIPPED     |      |
+| WP    | Name                                      | Step | Status  | PR   |
+| ----- | ----------------------------------------- | ---- | ------- | ---- |
+| WP-1  | Briefing-first citizen home               | 4    | SHIPPED | #159 |
+| WP-2  | Simplified anonymous onboarding           | 4    | SHIPPED | #159 |
+| WP-3  | Citizen notification steps                | 4    | SHIPPED | #159 |
+| WP-4  | Citizen milestone detection               | 4    | SHIPPED | #159 |
+| WP-5  | Proportional treasury share in briefing   | 4    | SHIPPED | #159 |
+| WP-6  | DRep delegator sentiment view             | 5+6  | SHIPPED | #160 |
+| WP-7  | Engagement signals -> score feedback loop | 6->1 | SHIPPED | #161 |
+| WP-8  | Inter-body dynamics narrative             | 2+5  | SHIPPED | #161 |
+| WP-9  | SPO Command Center parity                 | 2.5  | SHIPPED | #162 |
+| WP-10 | SPO vote casting                          | 5    | SHIPPED | #162 |
+| WP-11 | Progressive match confidence              | 1    | SHIPPED |      |
+| WP-12 | Proposal outcome tracking                 | 2+4  | SHIPPED |      |
+| WP-13 | CC Member Transparency Index              | 2.5  | SHIPPED |      |
+| WP-14 | Mobile briefing optimization              | 4    | SHIPPED |      |
+| WP-15 | Vote + rationale flow timing              | 5    | SHIPPED |      |
 
 ---
 

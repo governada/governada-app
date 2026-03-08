@@ -29,7 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTreasuryCurrent, useTreasuryPending } from '@/hooks/queries';
 import { briefingContainer, briefingItem } from '@/lib/animations';
 import { GovTerm } from '@/components/ui/GovTerm';
-import { useCitizenVoice, type CitizenVoiceProposal } from '@/hooks/useEngagement';
+import { useCitizenVoice, useEndorsements, type CitizenVoiceProposal } from '@/hooks/useEngagement';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -263,6 +263,7 @@ function EpochBriefingContent({
   const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState(0);
   const [direction, setDirection] = useState(0);
+  const { data: drepEndorsements } = useEndorsements('drep', data?.drepPerformance?.id ?? '');
 
   const sections = useMemo<BriefingSection[]>(() => {
     if (!data) return [];
@@ -413,6 +414,15 @@ function EpochBriefingContent({
             {data.drepPerformance.participationRate != null &&
               ` \u00B7 ${data.drepPerformance.participationRate}% participation`}
           </p>
+          {drepEndorsements && drepEndorsements.total > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {drepEndorsements.total} citizen endorsement
+              {drepEndorsements.total !== 1 ? 's' : ''}
+              {drepEndorsements.userEndorsements.length > 0 && (
+                <span className="text-primary"> (including yours)</span>
+              )}
+            </p>
+          )}
         </div>
         <div className="text-right shrink-0">
           <p

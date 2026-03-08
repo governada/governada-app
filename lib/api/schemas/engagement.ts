@@ -86,3 +86,22 @@ export const AssemblyVoteSchema = z.object({
   selectedOption: z.string().min(1),
   stakeAddress: z.string().optional(),
 });
+
+// -- Endorsements --
+
+export const ENDORSEMENT_TYPES = [
+  'general',
+  'treasury_oversight',
+  'technical_expertise',
+  'communication',
+  'community_leadership',
+] as const;
+
+export type EndorsementType = (typeof ENDORSEMENT_TYPES)[number];
+
+export const EndorsementToggleSchema = z.object({
+  entityType: z.enum(['drep', 'spo']),
+  entityId: z.string().min(1),
+  endorsementType: z.enum(ENDORSEMENT_TYPES),
+  stakeAddress: z.string().optional(),
+});

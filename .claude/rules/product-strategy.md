@@ -1,13 +1,13 @@
 ---
 paths:
-  - "docs/plans/**"
-  - "docs/strategy/**"
-  - "app/**/page.tsx"
-  - "components/**"
-  - "lib/matching/**"
-  - "lib/scoring/**"
-  - "lib/ghi/**"
-  - "lib/alignment/**"
+  - 'docs/plans/**'
+  - 'docs/strategy/**'
+  - 'app/**/page.tsx'
+  - 'components/**'
+  - 'lib/matching/**'
+  - 'lib/scoring/**'
+  - 'lib/ghi/**'
+  - 'lib/alignment/**'
 ---
 
 # Product Strategy & First Principles
@@ -16,14 +16,14 @@ North star: `docs/strategy/ultimate-vision.md` (V2). All feature decisions align
 
 ## Context Efficiency -- Read the Right File
 
-| Need | Read This | Lines |
-|------|-----------|-------|
-| Build progress, what's shipped, gaps | `docs/strategy/context/build-manifest.md` | ~170 |
-| Persona requirements (compact) | `docs/strategy/context/persona-quick-ref.md` | ~60 |
-| Audit scoring criteria & benchmarks | `docs/strategy/context/audit-rubric.md` | ~180 |
-| Work plan structure for parallel agents | `docs/strategy/context/work-plan-template.md` | ~80 |
-| Full persona deep dive | `docs/strategy/personas/<persona>.md` | ~200-400 |
-| Updating vision / strategic audit | `docs/strategy/ultimate-vision.md` | ~950 |
+| Need                                    | Read This                                     | Lines    |
+| --------------------------------------- | --------------------------------------------- | -------- |
+| Build progress, what's shipped, gaps    | `docs/strategy/context/build-manifest.md`     | ~170     |
+| Persona requirements (compact)          | `docs/strategy/context/persona-quick-ref.md`  | ~60      |
+| Audit scoring criteria & benchmarks     | `docs/strategy/context/audit-rubric.md`       | ~180     |
+| Work plan structure for parallel agents | `docs/strategy/context/work-plan-template.md` | ~80      |
+| Full persona deep dive                  | `docs/strategy/personas/<persona>.md`         | ~200-400 |
+| Updating vision / strategic audit       | `docs/strategy/ultimate-vision.md`            | ~950     |
 
 **Default:** This rules file + manifest + persona-quick-ref are sufficient for 95% of feature decisions. Only read the full vision doc when doing strategic audits or updating the vision itself. Use the audit rubric when running `/audit`.
 
@@ -72,6 +72,7 @@ Steps 0-11 defined in `docs/strategy/ultimate-vision.md`. Foundation (Steps 0-3)
 ## Living Document
 
 The vision doc is a living document. When completing build steps, discovering issues, or making architectural decisions that affect the vision:
+
 1. Update status markers in `ultimate-vision.md`
 2. Update checkboxes in `docs/strategy/context/build-manifest.md` (same commit)
 3. Log the change in `docs/strategy/vision-changelog.md`

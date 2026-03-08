@@ -1,9 +1,9 @@
 ---
 paths:
-  - "supabase/**"
-  - "lib/supabase.ts"
-  - "lib/data.ts"
-  - "types/database.ts"
+  - 'supabase/**'
+  - 'lib/supabase.ts'
+  - 'lib/data.ts'
+  - 'types/database.ts'
 ---
 
 # Supabase Rules

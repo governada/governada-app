@@ -8,12 +8,13 @@
  *   - Sentiment votes: 50 per epoch
  *   - Concern flags: 20 per epoch
  *   - Priority signals: 5 per epoch
+ *   - Endorsements: 30 per epoch
  */
 
 import { logger } from '@/lib/logger';
 
 interface EpochRateLimitConfig {
-  action: 'sentiment' | 'concern' | 'priority';
+  action: 'sentiment' | 'concern' | 'priority' | 'endorsement';
   userId: string;
   epoch: number;
 }
@@ -22,6 +23,7 @@ const EPOCH_LIMITS: Record<string, number> = {
   sentiment: 50,
   concern: 20,
   priority: 5,
+  endorsement: 30,
 };
 
 /**

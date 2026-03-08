@@ -17,6 +17,10 @@ import { cn } from '@/lib/utils';
 const TierCelebrationManager = nextDynamic(() =>
   import('@/components/civica/shared/TierCelebrationManager').then((m) => m.TierCelebrationManager),
 );
+const CitizenEndorsements = nextDynamic(
+  () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
+  { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
+);
 import { SpoProfileHero } from '@/components/civica/profiles/SpoProfileHero';
 import { SpoProfileTabsV1 } from '@/components/civica/profiles/SpoProfileTabsV1';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';
@@ -775,6 +779,9 @@ export default async function PoolProfilePage({ params }: PageProps) {
         />
 
         {tierProgressBar}
+
+        {/* Citizen Endorsements */}
+        <CitizenEndorsements entityType="spo" entityId={poolId} />
 
         {/* VP2: The Record */}
         <SpoProfileTabsV1

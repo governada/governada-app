@@ -1,8 +1,8 @@
 ---
 paths:
-  - "app/api/**"
-  - "app/**/route.ts"
-  - "app/**/route.tsx"
+  - 'app/api/**'
+  - 'app/**/route.ts'
+  - 'app/**/route.tsx'
 ---
 
 # API Route Rules

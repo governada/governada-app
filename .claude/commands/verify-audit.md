@@ -7,6 +7,7 @@ Lightweight follow-up after agents execute work plan chunks. Re-scores ONLY the 
 ## Input
 
 Argument: `$ARGUMENTS`
+
 - If a file path: Read the work plan document at that path
 - If empty: Look for the most recent work plan in `docs/strategy/` or ask the user which audit to verify
 
@@ -29,19 +30,23 @@ Argument: `$ARGUMENTS`
 
 ```markdown
 ## Audit Verification — [DATE]
+
 ### Previous audit: [date/reference]
+
 ### Chunks verified: [N of M completed]
 
-| Chunk | Status | Evidence | Score Impact |
-|-------|--------|----------|-------------|
-| ... | PASS/PARTIAL/FAIL | ... | Dimension X: old→new |
+| Chunk | Status            | Evidence | Score Impact         |
+| ----- | ----------------- | -------- | -------------------- |
+| ...   | PASS/PARTIAL/FAIL | ...      | Dimension X: old→new |
 
 ### Updated Scores (affected dimensions only)
+
 | Dimension | Previous | Current | Delta |
-|-----------|----------|---------|-------|
-| ... | X/10 | Y/10 | +/-Z |
+| --------- | -------- | ------- | ----- |
+| ...       | X/10     | Y/10    | +/-Z  |
 
 ### Remaining Gaps
+
 [List any chunks that were PARTIAL or FAIL, with guidance on what's still needed]
 ```
 

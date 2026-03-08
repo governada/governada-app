@@ -1,8 +1,8 @@
 ---
 paths:
-  - "lib/posthog*.ts"
-  - "components/**"
-  - "app/**/page.tsx"
+  - 'lib/posthog*.ts'
+  - 'components/**'
+  - 'app/**/page.tsx'
 ---
 
 # Analytics Rules

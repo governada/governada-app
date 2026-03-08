@@ -3,6 +3,7 @@ Perform a structured product audit of Civica against the vision and quality stan
 ## Scope
 
 Argument: `$ARGUMENTS`
+
 - If empty or "full": Full audit across all 10 rubric dimensions
 - If "step:N" (e.g., "step:4"): Focused audit on a specific build step
 - If area name (e.g., "performance", "ux", "engine"): Focused audit on a specific rubric dimension
@@ -34,6 +35,7 @@ Use parallel subagents for independent dimensions to maximize speed.
 ### Competitive Intelligence (Required for full audits)
 
 Use WebSearch to check the current state of competitors listed in `docs/strategy/context/competitive-landscape.md`:
+
 1. Search for each direct competitor (GovTool, DRep.tools, Tally, SubSquare, Snapshot)
 2. Note any new features, UX changes, or competitive moves since the last check
 3. Update the competitive-landscape.md file with findings and timestamps
@@ -43,6 +45,7 @@ Use WebSearch to check the current state of competitors listed in `docs/strategy
 ## Phase 3: Scoring
 
 Score each dimension 1-10 using the rubric anchors. Requirements:
+
 - Every score must cite specific files, routes, or measurements as evidence
 - Never score higher than the evidence supports — this audit exists to find gaps, not to congratulate
 - Compare against the competitive benchmark set in the rubric
@@ -59,6 +62,7 @@ Score each dimension 1-10 using the rubric anchors. Requirements:
 ## Output Format
 
 Present the complete audit following the format in `audit-rubric.md`:
+
 1. Score table (all 10 dimensions with evidence and top gap)
 2. Critical gaps list
 3. High-impact opportunities list

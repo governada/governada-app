@@ -29,18 +29,23 @@
 **PR group:** [Letter — chunks in same group ship in one PR]
 
 ### Context
+
 [Why this matters. What the audit found. What the current state is.]
 
 ### Scope
+
 [Specific files to modify/create. Specific behaviors to implement.]
 
 ### Decision Points
+
 [Questions the executing agent should ask the user before building. If none, write "None — execute directly."]
 
 ### Verification
+
 [How to confirm this chunk achieved its goal. Specific tests, measurements, or user-visible behaviors.]
 
 ### Files to Read First
+
 [List of files the executing agent should read before starting work.]
 ```
 

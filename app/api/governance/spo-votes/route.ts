@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSpoVotesByProposal } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const tx = request.nextUrl.searchParams.get('tx');
   const indexParam = request.nextUrl.searchParams.get('index');
 

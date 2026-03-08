@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
-import { blockTimeToEpoch } from '@/lib/koios';
-import { getProposalPriority } from '@/utils/proposalPriority';
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 import { extractAlignments, alignmentsToArray, getDominantDimension } from '@/lib/drepIdentity';
 import type { ConstellationApiData } from '@/lib/constellation/types';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
   const oneWeekAgo = Math.floor(Date.now() / 1000) - 604800;
 
@@ -74,8 +71,9 @@ export const GET = withRouteHandler(async (_request, { requestId }) => {
 
   // Compute total ADA governed
   const allActive = pulseResult.data || [];
-  const totalLovelace = allActive.reduce((sum: number, d: any) => {
-    const lv = parseInt(d.info?.votingPowerLovelace || '0', 10);
+  const totalLovelace = allActive.reduce((sum: number, d) => {
+    const info = d.info as Record<string, unknown> | null;
+    const lv = parseInt((info?.votingPowerLovelace as string) || '0', 10);
     return sum + (isNaN(lv) ? 0 : lv);
   }, 0);
   const totalAda = totalLovelace / 1_000_000;
@@ -87,23 +85,27 @@ export const GET = withRouteHandler(async (_request, { requestId }) => {
         : `${Math.round(totalAda).toLocaleString()}`;
 
   const openProposals = proposals.filter(
-    (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
+    (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
   );
 
   // Build nodes
   const maxPower = Math.max(
-    ...dreps.map((d: any) => parseInt(d.info?.votingPowerLovelace || '0', 10) || 0),
+    ...dreps.map((d) => {
+      const info = d.info as Record<string, unknown> | null;
+      return parseInt((info?.votingPowerLovelace as string) || '0', 10) || 0;
+    }),
     1,
   );
 
-  const drepNodes: ConstellationApiData['nodes'] = dreps.map((d: any) => {
-    const raw = parseInt(d.info?.votingPowerLovelace || '0', 10) || 0;
+  const drepNodes: ConstellationApiData['nodes'] = dreps.map((d) => {
+    const info = d.info as Record<string, unknown> | null;
+    const raw = parseInt((info?.votingPowerLovelace as string) || '0', 10) || 0;
     const alignments = extractAlignments(d);
     const arr = alignmentsToArray(alignments);
     return {
       id: (d.id as string).slice(0, 16),
       fullId: d.id as string,
-      name: d.info?.name || d.info?.ticker || d.info?.handle || null,
+      name: (info?.name as string) || (info?.ticker as string) || (info?.handle as string) || null,
       power: raw / maxPower,
       score: d.score || 0,
       dominant: getDominantDimension(alignments),
@@ -113,10 +115,10 @@ export const GET = withRouteHandler(async (_request, { requestId }) => {
   });
 
   const poolsData = spoVotesResult.data || [];
-  const ccIds = [...new Set((ccVotesResult.data || []).map((v: any) => v.cc_hot_id as string))];
+  const ccIds = [...new Set((ccVotesResult.data || []).map((v) => v.cc_hot_id as string))];
 
-  const maxPoolVotes = Math.max(...poolsData.map((p: any) => p.vote_count || 0), 1);
-  const spoNodes: ConstellationApiData['nodes'] = poolsData.map((p: any) => {
+  const maxPoolVotes = Math.max(...poolsData.map((p) => p.vote_count || 0), 1);
+  const spoNodes: ConstellationApiData['nodes'] = poolsData.map((p) => {
     const aligns = {
       treasuryConservative: p.alignment_treasury_conservative ?? 50,
       treasuryGrowth: p.alignment_treasury_growth ?? 50,
@@ -155,13 +157,11 @@ export const GET = withRouteHandler(async (_request, { requestId }) => {
   const nodes: ConstellationApiData['nodes'] = [...drepNodes, ...spoNodes, ...ccNodes];
 
   // Build recent events
-  const drepsMap = new Map(dreps.map((d: any) => [d.id, d]));
-  const proposalMap = new Map(proposals.map((p: any) => [p.tx_hash, p]));
+  const proposalMap = new Map(proposals.map((p) => [p.tx_hash, p]));
 
   const recentEvents: ConstellationApiData['recentEvents'] = [];
 
   for (const v of votes.slice(0, 15)) {
-    const drep = drepsMap.get(v.drep_id);
     const proposal = proposalMap.get(v.proposal_tx_hash);
     recentEvents.push({
       type: 'vote',

@@ -181,7 +181,9 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
       if (field) {
         result = result.filter((d) => {
           const vals = ALIGNMENT_FIELD_MAP;
-          const all = Object.values(vals).map((f) => (d as any)[f] as number | null);
+          const all = Object.values(vals).map(
+            (f) => (d as unknown as Record<string, number | null>)[f],
+          );
           const dominant = all.reduce<[string, number]>(
             (best, v, i) => {
               const dim = Object.keys(vals)[i];

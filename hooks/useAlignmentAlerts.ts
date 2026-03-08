@@ -50,7 +50,6 @@ const WATCHLIST_KEY = 'drepscore_watchlist';
 // ── Thresholds ──────────────────────────────────────────────────────────────
 
 const SHIFT_THRESHOLD = 8;
-const THIRTY_DAYS_SEC = 30 * 24 * 60 * 60;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

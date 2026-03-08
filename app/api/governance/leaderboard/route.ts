@@ -1,18 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { shortenDRepId } from '@/utils/display';
 import { captureServerEvent } from '@/lib/posthog-server';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-function displayName(row: any): string {
+function displayName(row: { id: string; info: Record<string, unknown> | null }): string {
   const info = row.info || {};
-  return info.name || info.ticker || info.handle || shortenDRepId(row.id);
+  return (
+    (info.name as string) ||
+    (info.ticker as string) ||
+    (info.handle as string) ||
+    shortenDRepId(row.id)
+  );
 }
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const tier = request.nextUrl.searchParams.get('tier') || 'all';
   const limitParam = parseInt(request.nextUrl.searchParams.get('limit') || '20');
   const limit = Math.min(50, Math.max(1, limitParam));
@@ -33,7 +37,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   const { data: topDreps, error } = await query;
   if (error) throw error;
 
-  const leaderboard = (topDreps || []).map((d: any, i: number) => ({
+  const leaderboard = (topDreps || []).map((d, i: number) => ({
     rank: i + 1,
     drepId: d.id,
     name: displayName(d),
@@ -68,7 +72,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     .order('score', { ascending: false });
 
   const movers = (currentDreps || [])
-    .map((d: any) => {
+    .map((d) => {
       const old = oldScoreMap.get(d.id);
       if (old === undefined) return null;
       return {
@@ -111,7 +115,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       .in('id', hallOfFameIds.slice(0, 20));
 
     hallOfFame = (hofDreps || [])
-      .map((d: any) => ({
+      .map((d) => ({
         drepId: d.id,
         name: displayName(d),
         score: d.score,

@@ -16,7 +16,7 @@ export default function DRepNotFound() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">DRep Not Found</h1>
           <p className="text-muted-foreground max-w-md">
-            The DRep you're looking for doesn't exist or may have been deregistered.
+            The DRep you&apos;re looking for doesn&apos;t exist or may have been deregistered.
           </p>
         </div>
         <Link href="/">

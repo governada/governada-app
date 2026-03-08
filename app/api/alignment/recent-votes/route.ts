@@ -3,7 +3,7 @@
  * Returns the last N votes for a DRep with per-vote alignment evaluation.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getVotesByDRepId, getProposalsByIds } from '@/lib/data';
 import { evaluateVoteAlignment } from '@/lib/alignment';
@@ -22,7 +22,7 @@ const VALID_PREFS: UserPrefKey[] = [
 
 const MAX_VOTES = 10;
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const { searchParams } = new URL(request.url);
   const drepId = searchParams.get('drepId');
   const prefsParam = searchParams.get('prefs');

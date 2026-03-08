@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const epochParam = request.nextUrl.searchParams.get('epoch');
   const supabase = createClient();
 
@@ -42,7 +41,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       return NextResponse.json({ error: 'Invalid before parameter' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('epoch_recaps')
       .select('*')
       .lt('epoch', before)

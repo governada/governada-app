@@ -51,7 +51,8 @@ const APPROVAL_OPTIONS = [
 export function TreasuryAccountabilityPoll({ txHash, proposalIndex, isEnacted }: Props) {
   const { address, isAuthenticated } = useWallet();
   const { data: rawPollData, isLoading } = useTreasuryAccountability(txHash, proposalIndex);
-  const polls: Poll[] = (rawPollData as any)?.polls ?? [];
+  const polls: Poll[] =
+    ((rawPollData as Record<string, unknown> | undefined)?.polls as Poll[]) ?? [];
   const [selectedRating, setSelectedRating] = useState<string>('');
   const [selectedApproval, setSelectedApproval] = useState<string>('');
   const [evidence, setEvidence] = useState('');

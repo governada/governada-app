@@ -33,6 +33,7 @@ bash scripts/notify.sh "Build complete" "/build-step 7 finished. 4/5 chunks depl
 ## Notification Content
 
 Keep messages actionable and concise:
+
 - **Title**: What happened (decision gate, deploy blocked, complete)
 - **Message**: Which command, what's needed, key numbers (chunk count, score, PR number)
 - Do NOT dump the full plan into the notification — just enough to know whether to check now or later

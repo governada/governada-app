@@ -25,6 +25,34 @@ import { CivicaObservatory } from './CivicaObservatory';
 import { CivicaGovernanceCalendar } from './CivicaGovernanceCalendar';
 import { StateOfGovernance } from './StateOfGovernance';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
+import type {
+  TreasuryData,
+  LeaderboardData,
+  LeaderboardEntry,
+  CommunityGapItem,
+  TreasuryHealthComponent,
+} from '@/types/api';
+
+interface PulseDataLocal {
+  activeProposals?: number;
+  criticalProposals?: number;
+  currentEpoch?: number;
+  activeDReps?: number;
+  totalDReps?: number;
+  votesThisWeek?: number;
+  avgParticipationRate?: number;
+  avgRationaleRate?: number;
+  totalAdaGoverned?: string;
+  communityGap?: CommunityGapItem[];
+  spotlightProposal?: {
+    txHash: string;
+    index: number;
+    title: string;
+    proposalType?: string;
+    voteCoverage?: number;
+  };
+  [key: string]: unknown;
+}
 
 type PulseTab = 'now' | 'history' | 'observatory';
 
@@ -142,16 +170,23 @@ export function CivicaPulseOverview() {
   );
 
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
-  const pulse = rawPulse as any;
+  const pulse = rawPulse as PulseDataLocal | undefined;
 
   const { data: rawTreasury, isLoading: treasuryLoading } = useTreasuryCurrent();
-  const treasury = rawTreasury as any;
+  const treasury = rawTreasury as
+    | (TreasuryData & {
+        balance?: number;
+        trend?: string;
+        runwayMonths?: number;
+        pendingCount?: number;
+      })
+    | undefined;
 
   const { data: rawLeaderboard } = useGovernanceLeaderboard();
-  const leaderboard = rawLeaderboard as any;
+  const leaderboard = rawLeaderboard as LeaderboardData | undefined;
 
-  const gainers: any[] = leaderboard?.weeklyMovers?.gainers?.slice(0, 3) ?? [];
-  const losers: any[] = leaderboard?.weeklyMovers?.losers?.slice(0, 3) ?? [];
+  const gainers: LeaderboardEntry[] = leaderboard?.weeklyMovers?.gainers?.slice(0, 3) ?? [];
+  const losers: LeaderboardEntry[] = leaderboard?.weeklyMovers?.losers?.slice(0, 3) ?? [];
 
   const loading = pulseLoading || treasuryLoading;
 
@@ -234,12 +269,12 @@ export function CivicaPulseOverview() {
                 label="Active Proposals"
                 value={pulse?.activeProposals ?? 0}
                 sub={
-                  pulse?.criticalProposals > 0
-                    ? `${pulse.criticalProposals} critical`
+                  (pulse?.criticalProposals ?? 0) > 0
+                    ? `${pulse!.criticalProposals} critical`
                     : 'No critical proposals'
                 }
                 icon={Vote}
-                accent={pulse?.criticalProposals > 0 ? 'warning' : 'success'}
+                accent={(pulse?.criticalProposals ?? 0) > 0 ? 'warning' : 'success'}
                 href="/discover"
               />
               <StatCard
@@ -255,7 +290,7 @@ export function CivicaPulseOverview() {
                 value={pulse?.votesThisWeek?.toLocaleString() ?? 0}
                 sub="On-chain DRep votes"
                 icon={BarChart3}
-                accent={pulse?.votesThisWeek > 100 ? 'success' : 'default'}
+                accent={(pulse?.votesThisWeek ?? 0) > 100 ? 'success' : 'default'}
               />
               <StatCard
                 label="Avg Participation"
@@ -263,9 +298,9 @@ export function CivicaPulseOverview() {
                 sub="Across all DReps"
                 icon={Activity}
                 accent={
-                  (pulse?.avgParticipationRate ?? 0) >= 70
+                  ((pulse?.avgParticipationRate as number | undefined) ?? 0) >= 70
                     ? 'success'
-                    : (pulse?.avgParticipationRate ?? 0) >= 40
+                    : ((pulse?.avgParticipationRate as number | undefined) ?? 0) >= 40
                       ? 'warning'
                       : 'danger'
                 }
@@ -276,9 +311,9 @@ export function CivicaPulseOverview() {
                 sub="DReps providing rationale"
                 icon={BarChart3}
                 accent={
-                  (pulse?.avgRationaleRate ?? 0) >= 60
+                  ((pulse?.avgRationaleRate as number | undefined) ?? 0) >= 60
                     ? 'success'
-                    : (pulse?.avgRationaleRate ?? 0) >= 30
+                    : ((pulse?.avgRationaleRate as number | undefined) ?? 0) >= 30
                       ? 'warning'
                       : 'danger'
                 }
@@ -287,7 +322,7 @@ export function CivicaPulseOverview() {
                 <>
                   <StatCard
                     label="Treasury Balance"
-                    value={formatAda(treasury.balance ?? 0)}
+                    value={formatAda(treasury.balance ?? treasury.balanceAda ?? 0)}
                     sub={
                       treasury.trend === 'growing'
                         ? '↑ Growing'
@@ -306,14 +341,16 @@ export function CivicaPulseOverview() {
                   />
                   <StatCard
                     label="Treasury Runway"
-                    value={treasury.runwayMonths >= 999 ? '∞' : `${treasury.runwayMonths}mo`}
+                    value={
+                      (treasury.runwayMonths ?? 0) >= 999 ? '∞' : `${treasury.runwayMonths ?? 0}mo`
+                    }
                     sub={
-                      treasury.pendingCount > 0
-                        ? `${treasury.pendingCount} withdrawal${treasury.pendingCount > 1 ? 's' : ''} pending`
+                      (treasury.pendingCount ?? 0) > 0
+                        ? `${treasury.pendingCount} withdrawal${(treasury.pendingCount ?? 0) > 1 ? 's' : ''} pending`
                         : 'No pending withdrawals'
                     }
                     icon={TrendingUp}
-                    accent={treasury.runwayMonths > 24 ? 'success' : 'warning'}
+                    accent={(treasury.runwayMonths ?? 0) > 24 ? 'success' : 'warning'}
                   />
                 </>
               )}
@@ -363,7 +400,7 @@ export function CivicaPulseOverview() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    {gainers.map((m: any) => (
+                    {gainers.map((m) => (
                       <Link
                         key={m.drepId}
                         href={`/drep/${m.drepId}`}
@@ -394,7 +431,7 @@ export function CivicaPulseOverview() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    {losers.map((m: any) => (
+                    {losers.map((m) => (
                       <Link
                         key={m.drepId}
                         href={`/drep/${m.drepId}`}
@@ -420,16 +457,16 @@ export function CivicaPulseOverview() {
           )}
 
           {/* ── Community vs DRep Sentiment Gap ─────────────────── */}
-          {pulse?.communityGap?.length > 0 && (
+          {(pulse?.communityGap?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Community vs DRep Sentiment
               </p>
               <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-                {(pulse.communityGap as any[]).slice(0, 3).map((g: any) => {
+                {(pulse!.communityGap as CommunityGapItem[]).slice(0, 3).map((g) => {
                   const pollTotal = g.pollTotal || 1;
-                  const yesPct = Math.round((g.pollYes / pollTotal) * 100);
-                  const noPct = Math.round((g.pollNo / pollTotal) * 100);
+                  const yesPct = Math.round(((g.pollYes ?? 0) / pollTotal) * 100);
+                  const noPct = Math.round(((g.pollNo ?? 0) / pollTotal) * 100);
                   return (
                     <Link
                       key={`${g.txHash}-${g.index}`}
@@ -460,7 +497,7 @@ export function CivicaPulseOverview() {
             typeof treasury.healthComponents === 'object' &&
             (() => {
               const components = Array.isArray(treasury.healthComponents)
-                ? (treasury.healthComponents as any[])
+                ? (treasury.healthComponents as TreasuryHealthComponent[])
                 : Object.entries(treasury.healthComponents as Record<string, number>).map(
                     ([key, value]) => ({
                       name: key
@@ -476,7 +513,7 @@ export function CivicaPulseOverview() {
                     Treasury Health Breakdown
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {components.map((c: any) => (
+                    {components.map((c: TreasuryHealthComponent) => (
                       <div
                         key={c.name ?? c.label}
                         className="rounded-xl border border-border bg-card px-4 py-3 space-y-1.5"
@@ -526,7 +563,7 @@ export function CivicaPulseOverview() {
                   Total ADA under DRep governance
                 </p>
                 <p className="font-display text-2xl font-bold text-foreground mt-0.5">
-                  ₳{pulse.totalAdaGoverned}
+                  ₳{String(pulse.totalAdaGoverned)}
                 </p>
               </div>
               <Link

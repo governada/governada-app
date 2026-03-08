@@ -8,7 +8,6 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { generateText } from '@/lib/ai';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { errMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 const DREP_BATCH = 10;

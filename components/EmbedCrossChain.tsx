@@ -40,10 +40,8 @@ function fmt(n: number): string {
 export function EmbedCrossChain({ theme }: EmbedCrossChainProps) {
   const isDark = theme === 'dark';
   const { data: benchmarkData, isLoading: loading } = useGovernanceBenchmarks();
-  const benchmarks = ((benchmarkData as any)?.benchmarks ?? {}) as Record<
-    string,
-    BenchmarkData | null
-  >;
+  const benchmarks = ((benchmarkData as Record<string, unknown> | undefined)?.benchmarks ??
+    {}) as Record<string, BenchmarkData | null>;
 
   const chains: Chain[] = ['cardano', 'ethereum', 'polkadot'];
 

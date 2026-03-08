@@ -75,7 +75,7 @@ export async function prepareDelegatorSnapshot(): Promise<{
       .from('drep_delegator_snapshots')
       .select('drep_id')
       .eq('epoch_no', currentEpoch);
-    const done = new Set((existing ?? []).map((r: any) => r.drep_id));
+    const done = new Set((existing ?? []).map((r) => r.drep_id));
     drepIds = drepIds.filter((id) => !done.has(id));
   }
 

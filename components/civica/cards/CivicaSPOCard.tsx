@@ -47,7 +47,6 @@ interface CivicaSPOCardProps {
 export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
   const score = pool.governanceScore ?? 0;
   const tier = tierKey(computeTier(score));
-  const displayName = pool.ticker || pool.poolName || pool.poolId.slice(0, 12);
   const isClaimed = !!pool.claimedBy;
   const isProvisional = pool.confidence != null && pool.confidence < 60;
 

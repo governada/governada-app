@@ -27,8 +27,9 @@ interface DashboardUrgentBarProps {
 
 export function DashboardUrgentBar({ drepId }: DashboardUrgentBarProps) {
   const { data: raw } = useDashboardUrgent(drepId);
-  const proposals: UrgentProposal[] = (raw as any)?.proposals ?? [];
-  const unexplained: UnexplainedVote[] = (raw as any)?.unexplainedVotes ?? [];
+  const rawData = raw as Record<string, unknown> | undefined;
+  const proposals: UrgentProposal[] = (rawData?.proposals as UrgentProposal[]) ?? [];
+  const unexplained: UnexplainedVote[] = (rawData?.unexplainedVotes as UnexplainedVote[]) ?? [];
   const [dismissedExplain, setDismissedExplain] = useState<Set<string>>(new Set());
 
   const visibleUnexplained = unexplained.filter(

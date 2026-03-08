@@ -24,7 +24,7 @@ function aggregateCounts(rows: { vote: string }[]): {
 }
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId, userId, wallet }: RouteContext) => {
+  async (request: NextRequest, { userId, wallet }: RouteContext) => {
     const walletAddress = wallet!;
     const { proposalTxHash, proposalIndex, vote, stakeAddress, delegatedDrepId } =
       PollVoteSchema.parse(await request.json());

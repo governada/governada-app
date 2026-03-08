@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { DrepExplanationSchema } from '@/lib/api/schemas/drep';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +30,7 @@ export async function GET(
 }
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const drepId = request.nextUrl.pathname.split('/')[3];
     const body = await request.json();
     const { sessionToken, proposalTxHash, proposalIndex, explanationText, aiAssisted } =

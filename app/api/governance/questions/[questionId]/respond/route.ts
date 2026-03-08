@@ -3,13 +3,13 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { QuestionRespondSchema } from '@/lib/api/schemas/governance';
 
 export const dynamic = 'force-dynamic';
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const questionId = request.nextUrl.pathname.split('/')[4];
     const body = await request.json();
     const { sessionToken, responseText } = QuestionRespondSchema.parse(body);

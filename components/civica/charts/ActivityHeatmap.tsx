@@ -45,7 +45,6 @@ export function ActivityHeatmap({
     }));
   }, [data]);
 
-  const rows = Math.ceil(cells.length / COLS);
   const gridWidth = COLS * (CELL_SIZE + CELL_GAP);
 
   const avgValue = cells.length > 0 ? cells.reduce((s, c) => s + c.value, 0) / cells.length : 0;

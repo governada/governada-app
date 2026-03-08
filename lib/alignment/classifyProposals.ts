@@ -150,7 +150,6 @@ export async function classifyProposalsAI(
   const supabase = getSupabaseAdmin();
 
   // Check which are already classified
-  const keys = proposals.map((p) => `${p.proposal_tx_hash}-${p.proposal_index}`);
   const { data: existing } = await supabase
     .from('proposal_classifications')
     .select('*')

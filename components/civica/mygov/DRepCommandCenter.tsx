@@ -45,6 +45,15 @@ import {
 import { computeTier } from '@/lib/scoring/tiers';
 import { generateActions } from '@/lib/actionFeed';
 import { ActionFeed } from './ActionFeed';
+import type {
+  DRepReportCardData,
+  PulseData,
+  VotesResponseData,
+  VoteItem,
+  CompetitiveData,
+  UrgentData,
+  CompetitiveNeighbor,
+} from '@/types/api';
 
 const PILLAR_META = [
   { key: 'engagementQuality', label: 'Engagement', icon: Zap, weight: '35%' },
@@ -140,17 +149,19 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
     isError: summaryError,
     refetch: refetchSummary,
   } = useDRepReportCard(drepId);
-  const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
+  const { data: rawPulse } = useGovernancePulse();
   const { data: rawVotes, isLoading: votesLoading } = useDRepVotes(drepId);
   const { data: rawCompetitive } = useDashboardCompetitive(drepId);
   const { data: rawUrgent } = useDashboardUrgent(drepId);
 
-  const card = rawCard as any;
-  const pulse = rawPulse as any;
-  const votes: any[] = (rawVotes as any)?.votes ?? rawVotes ?? [];
+  const card = rawCard as DRepReportCardData | undefined;
+  const pulse = rawPulse as PulseData | undefined;
+  const votesData = rawVotes as VotesResponseData | undefined;
+  const votes: VoteItem[] =
+    votesData?.votes ?? (Array.isArray(rawVotes) ? (rawVotes as VoteItem[]) : []);
   const allVotes = Array.isArray(votes) ? votes : [];
-  const competitive = rawCompetitive as any;
-  const urgent = rawUrgent as any;
+  const competitive = rawCompetitive as CompetitiveData | undefined;
+  const urgent = rawUrgent as UrgentData | undefined;
 
   const drepScore: number = card?.score ?? 0;
   const drepTier: string = card?.tier ?? computeTier(drepScore) ?? 'Emerging';
@@ -167,21 +178,20 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
 
   const activeProposals: number = pulse?.activeProposals ?? 0;
   const criticalProposals: number = pulse?.criticalProposals ?? 0;
-  const votesThisWeek: number = pulse?.votesThisWeek ?? 0;
 
   const recentVotes = allVotes.slice(0, 5);
   const pendingVotesCount = activeProposals;
 
-  const urgentProposals: any[] = urgent?.proposals ?? [];
-  const unexplainedVotes: any[] = urgent?.unexplainedVotes ?? [];
-  const pendingProposals: any[] = urgent?.pendingProposals ?? [];
+  const urgentProposals = urgent?.proposals ?? [];
+  const unexplainedVotes = urgent?.unexplainedVotes ?? [];
+  const pendingProposals = urgent?.pendingProposals ?? [];
   const pendingCount: number = urgent?.pendingCount ?? 0;
   const unansweredQuestions: number = urgent?.unansweredQuestions ?? 0;
 
   const rank: number | null = competitive?.rank ?? null;
   const totalActive: number = competitive?.totalActive ?? 0;
-  const nearbyAbove: any[] = competitive?.nearbyAbove ?? [];
-  const nearbyBelow: any[] = competitive?.nearbyBelow ?? [];
+  const nearbyAbove: CompetitiveNeighbor[] = competitive?.nearbyAbove ?? [];
+  const nearbyBelow: CompetitiveNeighbor[] = competitive?.nearbyBelow ?? [];
   const top10FocusArea = competitive?.top10FocusArea ?? null;
   const distanceToTop10: number = competitive?.distanceToTop10 ?? 0;
 
@@ -416,7 +426,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
             <AlertTriangle className="h-4 w-4 text-amber-400" />
             <p className="text-sm font-medium text-amber-200">Expiring Soon</p>
           </div>
-          {urgentProposals.slice(0, 3).map((p: any) => (
+          {urgentProposals.slice(0, 3).map((p) => (
             <Link
               key={`${p.txHash}-${p.index}`}
               href={`/proposal/${p.txHash}/${p.index}`}
@@ -469,7 +479,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
             )}
           </div>
           <div className="divide-y divide-border">
-            {pendingProposals.map((p: any) => (
+            {pendingProposals.map((p) => (
               <Link
                 key={`${p.txHash}-${p.index}`}
                 href={`/proposal/${p.txHash}/${p.index}`}
@@ -543,7 +553,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
           </div>
           {(nearbyAbove.length > 0 || nearbyBelow.length > 0) && (
             <div className="divide-y divide-border/50 rounded-lg border overflow-hidden">
-              {nearbyAbove.map((d: any) => (
+              {nearbyAbove.map((d) => (
                 <Link
                   key={d.drepId}
                   href={`/drep/${d.drepId}`}
@@ -569,7 +579,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
                   {drepScore.toFixed(1)}
                 </span>
               </div>
-              {nearbyBelow.map((d: any) => (
+              {nearbyBelow.map((d) => (
                 <Link
                   key={d.drepId}
                   href={`/drep/${d.drepId}`}
@@ -606,7 +616,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
             </Link>
           </div>
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-            {recentVotes.map((vote: any, idx: number) => {
+            {recentVotes.map((vote, idx: number) => {
               const voteDir: string = vote.vote ?? vote.voteDirection ?? '';
               const VoteIcon =
                 voteDir === 'Yes' ? CheckCircle2 : voteDir === 'No' ? XCircle : Minus;

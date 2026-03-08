@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withRouteHandler(
-  async (request: NextRequest, { userId }: RouteContext) => {
+  async (request: NextRequest) => {
     const since = request.nextUrl.searchParams.get('since');
     const drepId = request.nextUrl.searchParams.get('drepId');
 

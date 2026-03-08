@@ -5,7 +5,7 @@
  * GET /api/compare?dreps=id1,id2,id3&prefs=key1,key2
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import {
   getDRepById,
@@ -154,7 +154,7 @@ function computePairwiseOverlap(
   };
 }
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const drepsParam = request.nextUrl.searchParams.get('dreps');
   const prefsParam = request.nextUrl.searchParams.get('prefs');
 

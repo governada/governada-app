@@ -38,7 +38,10 @@ const DIMENSIONS: { key: AlignmentDimension; label: string; color: string }[] = 
 export function AlignmentTrajectory({ drepId }: AlignmentTrajectoryProps) {
   const { data: trajectoryData, isLoading } = useDRepTrajectory(drepId);
   const snapshots = useMemo<Snapshot[]>(
-    () => ((trajectoryData as any)?.snapshots || []).slice(-20),
+    () =>
+      (
+        ((trajectoryData as Record<string, unknown> | undefined)?.snapshots as Snapshot[]) || []
+      ).slice(-20),
     [trajectoryData],
   );
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);

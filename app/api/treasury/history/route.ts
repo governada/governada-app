@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getTreasuryTrend, getIncomeVsOutflow } from '@/lib/treasury';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const { searchParams } = new URL(request.url);
   const epochs = Math.min(parseInt(searchParams.get('epochs') || '90'), 500);
 

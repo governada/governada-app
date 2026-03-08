@@ -4,7 +4,7 @@
  * Returns open proposal stats and optional DRep accountability data.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -34,18 +34,18 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   }
 
   const openProposals = proposals.filter(
-    (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
+    (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
   );
 
   const openCount = openProposals.length;
   const criticalOpenCount = openProposals.filter(
-    (p: any) => getProposalPriority(p.proposal_type) === 'critical',
+    (p) => getProposalPriority(p.proposal_type) === 'critical',
   ).length;
   const importantOpenCount = openProposals.filter(
-    (p: any) => getProposalPriority(p.proposal_type) === 'important',
+    (p) => getProposalPriority(p.proposal_type) === 'important',
   ).length;
 
-  const result: Record<string, any> = {
+  const result: Record<string, unknown> = {
     openCount,
     criticalOpenCount,
     importantOpenCount,
@@ -53,7 +53,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   };
 
   if (drepId) {
-    const openKeys = new Set(openProposals.map((p: any) => `${p.tx_hash}-${p.proposal_index}`));
+    const openKeys = new Set(openProposals.map((p) => `${p.tx_hash}-${p.proposal_index}`));
 
     const { data: drepVotes } = await supabase
       .from('drep_votes')
@@ -79,7 +79,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
         seen.add(key);
 
         const prop = proposals.find(
-          (p: any) => p.tx_hash === v.proposal_tx_hash && p.proposal_index === v.proposal_index,
+          (p) => p.tx_hash === v.proposal_tx_hash && p.proposal_index === v.proposal_index,
         );
         recentVotes.push({
           title: prop?.title || `Proposal ${v.proposal_tx_hash.slice(0, 8)}...`,

@@ -50,7 +50,6 @@ export async function GET(
     const poolName = (pool.pool_name as string | null) ?? poolId;
     const ticker = (pool.ticker as string | null) ?? '';
     const delegatorCount = Number(pool.delegator_count ?? 0);
-    const participationRate = 0; // pools table may not have this; omit if absent
 
     const displayName = ticker
       ? `[${ticker}] ${poolName.length > 18 ? poolName.slice(0, 16) + '\u2026' : poolName}`

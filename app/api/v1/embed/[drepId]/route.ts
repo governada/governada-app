@@ -28,7 +28,6 @@ function getCurrentEpoch(): number {
 function renderBadgeSvg(name: string, score: number, theme: 'dark' | 'light'): string {
   const color = getTierColor(score);
   const tier = getTierLabel(score);
-  const displayName = name.length > 20 ? name.slice(0, 18) + '\u2026' : name;
   const bg = theme === 'dark' ? '#1e293b' : '#f1f5f9';
   const textColor = theme === 'dark' ? '#e2e8f0' : '#1e293b';
 
@@ -50,7 +49,12 @@ function renderBadgeSvg(name: string, score: number, theme: 'dark' | 'light'): s
 </svg>`;
 }
 
-function renderCardSvg(name: string, score: number, drep: any, theme: 'dark' | 'light'): string {
+function renderCardSvg(
+  name: string,
+  score: number,
+  drep: { effectiveParticipation: number; rationaleRate: number; reliabilityScore: number },
+  theme: 'dark' | 'light',
+): string {
   const color = getTierColor(score);
   const tier = getTierLabel(score);
   const bg = theme === 'dark' ? '#0f172a' : '#ffffff';
@@ -88,7 +92,17 @@ function renderMinimalSvg(score: number, theme: 'dark' | 'light'): string {
 </svg>`;
 }
 
-function renderHtmlCard(name: string, score: number, drep: any, theme: 'dark' | 'light'): string {
+function renderHtmlCard(
+  name: string,
+  score: number,
+  drep: {
+    drepId: string;
+    effectiveParticipation: number;
+    rationaleRate: number;
+    reliabilityScore: number;
+  },
+  theme: 'dark' | 'light',
+): string {
   const color = getTierColor(score);
   const tier = getTierLabel(score);
   const isDark = theme === 'dark';

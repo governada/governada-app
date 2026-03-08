@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TimelineSkeleton } from '@/components/ui/content-skeletons';
-import { History, ArrowDown, CheckCircle2 } from 'lucide-react';
+import { History, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { formatAda } from '@/lib/treasury';

@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { DrepClaimSchema } from '@/lib/api/schemas/drep';
 
 /**
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
  * POST: Auto-claim a DRep profile when an authenticated wallet matches the DRep ID.
  */
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const { sessionToken, drepId } = DrepClaimSchema.parse(await request.json());
 
     const parsed = await validateSessionToken(sessionToken);

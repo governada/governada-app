@@ -35,7 +35,8 @@ const outcomeConfig: Record<string, { label: string; icon: typeof CheckCircle2; 
 
 export function SimilarProposalsCard({ txHash, index }: Props) {
   const { data: raw, isLoading } = useTreasurySimilar(txHash, index);
-  const similar: SimilarProposal[] = (raw as any)?.similar ?? [];
+  const similar: SimilarProposal[] =
+    ((raw as Record<string, unknown> | undefined)?.similar as SimilarProposal[]) ?? [];
 
   useEffect(() => {
     if (similar.length > 0) {

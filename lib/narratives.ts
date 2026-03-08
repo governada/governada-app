@@ -14,7 +14,7 @@ import { logger } from '@/lib/logger';
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function pct(n: number | null | undefined): string {
+function _pct(n: number | null | undefined): string {
   return `${Math.round(n ?? 0)}%`;
 }
 

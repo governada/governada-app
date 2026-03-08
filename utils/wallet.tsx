@@ -11,7 +11,7 @@ import {
   isSessionExpired,
 } from '@/lib/supabaseAuth';
 import { deriveDRepIdFromStakeAddress, checkDRepExists } from '@/utils/drepId';
-import { WalletContext, type WalletError, type WalletErrorType } from '@/utils/wallet-context';
+import { WalletContext, type WalletError } from '@/utils/wallet-context';
 export type { WalletContextType, WalletError, WalletErrorType } from '@/utils/wallet-context';
 export { useWallet } from '@/utils/wallet-context';
 
@@ -237,7 +237,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const connect = async (name: string) => {

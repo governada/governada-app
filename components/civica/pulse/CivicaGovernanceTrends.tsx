@@ -94,10 +94,10 @@ function DualLine({ rows, height = 80 }: { rows: SparkRow[]; height?: number }) 
 
 const TIER_ORDER = ['Legendary', 'Diamond', 'Gold', 'Silver', 'Bronze', 'Emerging'] as const;
 
-function TierDistribution({ dreps }: { dreps: any[] }) {
+function TierDistribution({ dreps }: { dreps: Record<string, unknown>[] }) {
   const counts: Record<string, number> = {};
   for (const d of dreps) {
-    const score = d.drepScore ?? d.score ?? 0;
+    const score = (d.drepScore as number) ?? (d.score as number) ?? 0;
     const tier = tierKey(computeTier(score));
     counts[tier] = (counts[tier] ?? 0) + 1;
   }
@@ -137,14 +137,30 @@ export function CivicaGovernanceTrends() {
   const { data: rawGhi, isLoading: ghiLoading } = useGovernanceHealthIndex(20);
   const { data: rawLeaderboard } = useGovernanceLeaderboard();
 
-  const sparklines = rawSparklines as any;
-  const ghi = rawGhi as any;
-  const leaderboard = rawLeaderboard as any;
+  const sparklines = rawSparklines as Record<string, unknown> | undefined;
+  const ghi = rawGhi as
+    | {
+        current?: { score?: number; band?: string };
+        history?: { epoch: number; score: number; band: string }[];
+        trend?: { direction?: string; delta?: number; streakEpochs?: number };
+        [key: string]: unknown;
+      }
+    | undefined;
+  const leaderboard = rawLeaderboard as
+    | {
+        dreps?: Record<string, unknown>[];
+        rankings?: Record<string, unknown>[];
+        weeklyMovers?: { gainers?: unknown[]; losers?: unknown[] };
+        [key: string]: unknown;
+      }
+    | undefined;
 
-  const participationRows: SparkRow[] = sparklines?.participation ?? [];
+  const participationRows: SparkRow[] = (sparklines?.participation as SparkRow[]) ?? [];
   const ghiHistory: { epoch: number; score: number; band: string }[] = ghi?.history ?? [];
   const trend = ghi?.trend;
-  const dreps: any[] = leaderboard?.dreps ?? leaderboard?.rankings ?? [];
+  const dreps: Record<string, unknown>[] = (leaderboard?.dreps ??
+    leaderboard?.rankings ??
+    []) as Record<string, unknown>[];
 
   const participationValues = participationRows.map((r) => r.participation_rate);
   const rationaleValues = participationRows.map((r) => r.rationale_rate);
@@ -220,7 +236,7 @@ export function CivicaGovernanceTrends() {
               <GovernanceHealthGauge
                 score={ghi.current.score}
                 band={ghi.current.band ?? 'Unknown'}
-                delta={trend?.delta}
+                delta={trend?.delta ?? undefined}
               />
             )}
 
@@ -234,9 +250,9 @@ export function CivicaGovernanceTrends() {
                     {trend && (
                       <span className={cn('font-medium', trendColor)}>
                         <TrendIcon className="h-3 w-3 inline mr-0.5" />
-                        {trend.delta > 0 ? '+' : ''}
-                        {trend.delta}
-                        {trend.streakEpochs > 1 && ` (${trend.streakEpochs}ep)`}
+                        {(trend.delta ?? 0) > 0 ? '+' : ''}
+                        {trend.delta ?? 0}
+                        {(trend.streakEpochs ?? 0) > 1 && ` (${trend.streakEpochs}ep)`}
                       </span>
                     )}
                     <span>Ep {ghiHistory[ghiHistory.length - 1]?.epoch}</span>
@@ -291,7 +307,7 @@ export function CivicaGovernanceTrends() {
           <div className="rounded-xl border border-emerald-900/30 bg-emerald-950/10 p-4 text-center space-y-1">
             <TrendingUp className="h-5 w-5 text-emerald-400 mx-auto" />
             <p className="font-display text-2xl font-bold text-emerald-400 tabular-nums">
-              {leaderboard.weeklyMovers.gainers?.length ?? 0}
+              {(leaderboard.weeklyMovers.gainers as unknown[] | undefined)?.length ?? 0}
             </p>
             <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
               Rising DReps
@@ -300,7 +316,7 @@ export function CivicaGovernanceTrends() {
           <div className="rounded-xl border border-rose-900/30 bg-rose-950/10 p-4 text-center space-y-1">
             <TrendingDown className="h-5 w-5 text-rose-400 mx-auto" />
             <p className="font-display text-2xl font-bold text-rose-400 tabular-nums">
-              {leaderboard.weeklyMovers.losers?.length ?? 0}
+              {(leaderboard.weeklyMovers.losers as unknown[] | undefined)?.length ?? 0}
             </p>
             <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
               Falling DReps

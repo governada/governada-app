@@ -20,7 +20,7 @@ function aggregateCounts(rows: { vote: string }[]): {
 }
 
 export const GET = withRouteHandler(
-  async (request: NextRequest, { userId, wallet }: RouteContext) => {
+  async (request: NextRequest, { wallet }: RouteContext) => {
     const { searchParams } = new URL(request.url);
     const proposalTxHash = searchParams.get('proposalTxHash');
     const proposalIndexStr = searchParams.get('proposalIndex');

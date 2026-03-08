@@ -55,8 +55,8 @@ export function RationaleAssistant({
       try {
         posthog?.capture('rationale_draft_generated', { drepId, proposalType });
       } catch {}
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
     }

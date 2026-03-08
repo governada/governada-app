@@ -1,12 +1,12 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Share2, Trophy } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { X, Trophy } from 'lucide-react';
 import { ShareActions } from '@/components/ShareActions';
-import { MILESTONES, type MilestoneDefinition } from '@/lib/milestones';
+import { MILESTONES } from '@/lib/milestones';
 import { posthog } from '@/lib/posthog';
 import { playMilestoneChime } from '@/lib/sounds';
 import { spring } from '@/lib/animations';

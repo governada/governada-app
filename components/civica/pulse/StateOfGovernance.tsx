@@ -10,7 +10,41 @@ import {
 } from '@/hooks/queries';
 import { useSegment } from '@/components/providers/SegmentProvider';
 
-function buildNarrative(ghi: any, pulse: any, treasury: any): string {
+interface GHIState {
+  score?: number;
+  band?: string;
+  trend?: { direction?: string; delta?: number };
+  current?: { score?: number; band?: string };
+  [key: string]: unknown;
+}
+
+interface PulseState {
+  activeProposals?: number;
+  votesThisWeek?: number;
+  avgParticipationRate?: number;
+  [key: string]: unknown;
+}
+
+interface TreasuryState {
+  balance?: number;
+  trend?: string;
+  [key: string]: unknown;
+}
+
+interface SummaryState {
+  name?: string;
+  givenName?: string;
+  participationRate?: number;
+  drepScore?: number;
+  score?: number;
+  [key: string]: unknown;
+}
+
+function buildNarrative(
+  ghi: GHIState | undefined,
+  pulse: PulseState | undefined,
+  treasury: TreasuryState | undefined,
+): string {
   const parts: string[] = [];
 
   const score = ghi?.score ?? ghi?.current?.score;
@@ -66,11 +100,15 @@ function buildNarrative(ghi: any, pulse: any, treasury: any): string {
   return narrative.charAt(0).toUpperCase() + narrative.slice(1);
 }
 
-function buildPersonalAddendum(pulse: any, summary: any, segment: string): string | null {
+function buildPersonalAddendum(
+  _pulse: PulseState | undefined,
+  summary: SummaryState | undefined,
+  segment: string,
+): string | null {
   if (segment === 'anonymous') return null;
 
   const drepName = summary?.name ?? summary?.givenName;
-  const votedAll = summary?.participationRate >= 90;
+  const votedAll = (summary?.participationRate ?? 0) >= 90;
 
   if (segment === 'citizen' || segment === 'delegated') {
     if (drepName && votedAll) {
@@ -100,10 +138,10 @@ export function StateOfGovernance() {
   const lookupId = segment === 'drep' ? drepId : delegatedDrep;
   const { data: rawSummary } = useGovernanceSummary(lookupId);
 
-  const ghi = rawGHI as any;
-  const pulse = rawPulse as any;
-  const treasury = rawTreasury as any;
-  const summary = rawSummary as any;
+  const ghi = rawGHI as GHIState | undefined;
+  const pulse = rawPulse as PulseState | undefined;
+  const treasury = rawTreasury as TreasuryState | undefined;
+  const summary = rawSummary as SummaryState | undefined;
 
   const narrative = buildNarrative(ghi, pulse, treasury);
   const personal = buildPersonalAddendum(pulse, summary, segment);

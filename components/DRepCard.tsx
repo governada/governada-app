@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { EnrichedDRep } from '@/lib/koios';
 import { getDRepDisplayName } from '@/utils/display';
-import { formatAda, getDRepScoreBadgeClass, getSizeBadgeClass } from '@/utils/scoring';
+import { formatAda, getSizeBadgeClass } from '@/utils/scoring';
 import { getDRepTraitTags } from '@/lib/alignment';
 import { ScoreBreakdownTooltip } from './ScoreBreakdown';
 import { HexScore } from './HexScore';

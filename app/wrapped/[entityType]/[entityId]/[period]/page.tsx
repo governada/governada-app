@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

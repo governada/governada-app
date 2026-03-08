@@ -30,7 +30,10 @@ export function CompareButton({ currentDrepId, currentDrepName }: CompareButtonP
   const { delegatedDrepId, connected } = useWallet();
   const [open, setOpen] = useState(false);
   const { data: drepsData, isLoading: loading } = useDReps();
-  const allDreps = ((drepsData as any)?.dreps || []) as EnrichedDRep[];
+  const allDreps = useMemo(
+    () => ((drepsData as Record<string, unknown> | undefined)?.dreps || []) as EnrichedDRep[],
+    [drepsData],
+  );
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 

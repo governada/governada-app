@@ -408,7 +408,7 @@ Estimated fix effort: [total]
 Based on the scorecard:
 
 - **GO**: Zero blockers across all domains. Risks are documented with mitigations.
-- **CONDITIONAL GO**: Zero *technical* blockers. Business ops gaps exist but can be fixed within first week post-launch. List the conditions.
+- **CONDITIONAL GO**: Zero _technical_ blockers. Business ops gaps exist but can be fixed within first week post-launch. List the conditions.
 - **NO-GO**: One or more blockers exist. List them with fix effort estimates.
 
 ### 3.5 Pre-Launch Action Plan

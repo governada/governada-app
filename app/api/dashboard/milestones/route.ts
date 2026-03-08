@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MILESTONES, getAchievedMilestones, checkAndAwardMilestones } from '@/lib/milestones';
 import { captureServerEvent } from '@/lib/posthog-server';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 

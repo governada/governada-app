@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
   const [claimedResult, totalResult] = await Promise.all([

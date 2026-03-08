@@ -54,10 +54,11 @@ async function getGovernancePulse() {
 
   const dreps = drepsResult.data || [];
   const proposals = proposalsResult.data || [];
-  const activeDReps = dreps.filter((d: any) => d.info?.isActive);
+  const activeDReps = dreps.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
 
-  const totalLovelace = activeDReps.reduce((sum: number, d: any) => {
-    const lv = parseInt(d.info?.votingPowerLovelace || '0', 10);
+  const totalLovelace = activeDReps.reduce((sum: number, d) => {
+    const info = d.info as Record<string, unknown> | null;
+    const lv = parseInt((info?.votingPowerLovelace as string) || '0', 10);
     return sum + (isNaN(lv) ? 0 : lv);
   }, 0);
   const totalAda = totalLovelace / 1_000_000;
@@ -69,11 +70,11 @@ async function getGovernancePulse() {
         : `${Math.round(totalAda).toLocaleString()}`;
 
   const openProposals = proposals.filter(
-    (p: any) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
+    (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
   );
 
-  const spoPoolIds = new Set((spoResult.data || []).map((v: any) => v.pool_id));
-  const ccIds = new Set((ccResult.data || []).map((v: any) => v.cc_hot_id));
+  const spoPoolIds = new Set((spoResult.data || []).map((v) => v.pool_id));
+  const ccIds = new Set((ccResult.data || []).map((v) => v.cc_hot_id));
 
   return {
     totalAdaGoverned: formattedAda,
@@ -87,7 +88,10 @@ async function getGovernancePulse() {
   };
 }
 
-async function getSSRHolderData(): Promise<{ data: any; walletAddress: string } | null> {
+async function getSSRHolderData(): Promise<{
+  data: Record<string, unknown>;
+  walletAddress: string;
+} | null> {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('drepscore_session');
@@ -158,7 +162,7 @@ export default async function HomePage() {
       <PageViewTracker event="homepage_viewed" />
       <CivicaHomePage
         pulseData={pulseData}
-        ssrHolderData={ssrAuth?.data || null}
+        ssrHolderData={ssrAuth?.data || undefined}
         ssrWalletAddress={ssrAuth?.walletAddress || null}
       />
     </>

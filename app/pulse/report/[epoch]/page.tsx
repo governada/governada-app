@@ -8,7 +8,7 @@ import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi';
 import { StateOfGovernanceContent } from './report-content';
 import type { ReportData } from '@/lib/stateOfGovernance';
 import { BASE_URL } from '@/lib/constants';
-import { ArrowLeft, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowLeft, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface Props {
   params: Promise<{ epoch: string }>;

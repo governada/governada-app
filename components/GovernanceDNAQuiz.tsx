@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dna, ArrowRight, Loader2, ChevronRight } from 'lucide-react';
+import { Dna, ArrowRight, Loader2 } from 'lucide-react';
 import { GovernanceDNAReveal, type QuizResult } from '@/components/GovernanceDNAReveal';
 import { hapticLight } from '@/lib/haptics';
 import { useWallet } from '@/utils/wallet';
@@ -134,9 +134,9 @@ export function GovernanceDNAQuiz({ onQuizComplete }: GovernanceDNAQuizProps) {
               }
               setResult({
                 votesCount: newVotes.length,
-                topMatches: (data.matches || []).slice(0, 3).map((m: any) => ({
+                topMatches: (data.matches || []).slice(0, 3).map((m: Record<string, unknown>) => ({
                   drepId: m.drepId,
-                  name: m.drepName || m.drepId.slice(0, 12) + '...',
+                  name: m.drepName || (m.drepId as string).slice(0, 12) + '...',
                   matchScore: m.matchScore,
                   agreed: m.agreed,
                   total: m.overlapping,

@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { QuestionSchema } from '@/lib/api/schemas/governance';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +31,13 @@ export async function GET(request: NextRequest) {
   }
 
   const questionIds = (questions || []).map((q) => q.id);
-  let responses: any[] = [];
+  let responses: {
+    id: string;
+    question_id: string;
+    drep_id: string;
+    response_text: string;
+    created_at: string;
+  }[] = [];
   if (questionIds.length > 0) {
     const { data } = await supabase
       .from('drep_responses')
@@ -40,7 +46,7 @@ export async function GET(request: NextRequest) {
     responses = data || [];
   }
 
-  const responseMap = new Map<string, any>();
+  const responseMap = new Map<string, (typeof responses)[number]>();
   for (const r of responses) {
     responseMap.set(r.question_id, r);
   }
@@ -61,7 +67,7 @@ export async function GET(request: NextRequest) {
 }
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const body = await request.json();
     const { sessionToken, drepId, questionText, proposalTxHash, proposalIndex } =
       QuestionSchema.parse(body);

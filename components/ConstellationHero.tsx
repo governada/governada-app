@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
@@ -20,7 +21,7 @@ import type { AlignmentDimension } from '@/lib/drepIdentity';
 
 interface PersonalCardData {
   segment: UserSegment;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ConstellationHeroProps {
@@ -31,7 +32,7 @@ interface ConstellationHeroProps {
     activeSpOs: number;
     ccMembers: number;
   };
-  ssrHolderData?: any;
+  ssrHolderData?: Record<string, unknown>;
   ssrWalletAddress?: string;
   onPersonalCard?: (data: PersonalCardData | null) => void;
 }
@@ -46,7 +47,9 @@ export function ConstellationHero({
   const { isAuthenticated, delegatedDrepId, ownDRepId, address } = useWallet();
   const [constellationReady, setConstellationReady] = useState(false);
   const [showPersonalCard, setShowPersonalCard] = useState(!!ssrHolderData);
-  const [holderData, setHolderData] = useState<any>(ssrHolderData || null);
+  const [holderData, setHolderData] = useState<Record<string, unknown> | null>(
+    ssrHolderData || null,
+  );
   const [contracted, setContracted] = useState(!!ssrHolderData);
   const [hasTriggeredFindMe, setHasTriggeredFindMe] = useState(false);
   const [scrolledPastHero, setScrolledPastHero] = useState(false);
@@ -89,7 +92,7 @@ export function ConstellationHero({
   const { data: hookHolderData } = useGovernanceHolder(holderStakeAddress);
 
   useEffect(() => {
-    if (hookHolderData) setHolderData(hookHolderData as any);
+    if (hookHolderData) setHolderData(hookHolderData as Record<string, unknown>);
   }, [hookHolderData]);
 
   // Trigger find-me animation when holder data becomes available
@@ -133,12 +136,6 @@ export function ConstellationHero({
 
   const handleTickerEvent = useCallback((drepId: string) => {
     constellationRef.current?.pulseNode(drepId);
-  }, []);
-
-  const handleConnectWallet = useCallback(() => {
-    window.dispatchEvent(
-      new CustomEvent('openWalletConnect', { detail: { skipPushPrompt: true } }),
-    );
   }, []);
 
   const searchInputRef = useRef<HTMLDivElement>(null);
@@ -200,17 +197,20 @@ export function ConstellationHero({
     }
 
     if (segment === 'delegated' && holderData?.delegationHealth) {
-      const h = holderData.delegationHealth;
+      const h = holderData.delegationHealth as Record<string, unknown>;
       const epochSecondsRemaining = getEpochCountdown();
       return {
         segment: 'delegated' as const,
         delegated: {
-          drepName: h.drepName || 'Your DRep',
-          drepId: h.drepId || delegatedDrepId || '',
-          drepScore: h.drepScore || 0,
-          scoreTrend: holderData.repScoreDelta ?? null,
-          representationMatch: holderData.representationScore?.score ?? null,
-          openProposals: h.openProposalCount || 0,
+          drepName: (h.drepName as string) || 'Your DRep',
+          drepId: (h.drepId as string) || delegatedDrepId || '',
+          drepScore: (h.drepScore as number) || 0,
+          scoreTrend: (holderData.repScoreDelta as number | null) ?? null,
+          representationMatch:
+            ((holderData.representationScore as Record<string, unknown> | undefined)?.score as
+              | number
+              | null) ?? null,
+          openProposals: (h.openProposalCount as number) || 0,
           epochCountdown: epochSecondsRemaining,
           dominant: 'transparency' as AlignmentDimension,
         },
@@ -222,12 +222,14 @@ export function ConstellationHero({
         segment: 'drep' as const,
         drep: {
           drepId: ownDRepId || '',
-          drepScore: holderData?.delegationHealth?.drepScore || 0,
-          scoreTrend: holderData?.repScoreDelta ?? null,
+          drepScore:
+            ((holderData?.delegationHealth as Record<string, unknown> | undefined)
+              ?.drepScore as number) || 0,
+          scoreTrend: (holderData?.repScoreDelta as number | null) ?? null,
           rank: 0,
           totalRanked: stats.activeDReps,
           delegatorCount: 0,
-          pendingProposals: holderData?.activeProposals?.length || 0,
+          pendingProposals: (holderData?.activeProposals as unknown[] | undefined)?.length || 0,
           dominant: 'transparency' as AlignmentDimension,
         },
       };
@@ -305,12 +307,20 @@ export function ConstellationHero({
 
           {segment !== null && !showPersonalCard && (
             <PersonalizedStatsStrip
-              drepName={holderData?.delegationHealth?.drepName}
-              drepScore={holderData?.delegationHealth?.drepScore}
-              scoreTrend={holderData?.repScoreDelta}
-              openProposals={holderData?.activeProposals?.length}
-              governanceLevel={holderData?.governanceLevel}
-              visitStreak={holderData?.visitStreak}
+              drepName={
+                (holderData?.delegationHealth as Record<string, unknown> | undefined)?.drepName as
+                  | string
+                  | undefined
+              }
+              drepScore={
+                (holderData?.delegationHealth as Record<string, unknown> | undefined)?.drepScore as
+                  | number
+                  | undefined
+              }
+              scoreTrend={holderData?.repScoreDelta as number | null | undefined}
+              openProposals={(holderData?.activeProposals as unknown[] | undefined)?.length}
+              governanceLevel={holderData?.governanceLevel as string | undefined}
+              visitStreak={holderData?.visitStreak as number | undefined}
               walletAddress={ssrWalletAddress || ''}
             />
           )}

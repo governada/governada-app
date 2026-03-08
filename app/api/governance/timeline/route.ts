@@ -57,7 +57,7 @@ export const GET = withRouteHandler(
     );
 
     // Fetch proposal titles for synthesized events
-    let proposalTitleMap = new Map<string, string>();
+    const proposalTitleMap = new Map<string, string>();
     if (missingPolls.length > 0) {
       const txHashes = [...new Set(missingPolls.map((p) => p.proposal_tx_hash))];
       const { data: proposals } = await supabase

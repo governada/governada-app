@@ -5,12 +5,12 @@
 
 export const dynamic = 'force-dynamic';
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const drepId = request.nextUrl.pathname.split('/api/drep/')[1]?.split('/')[0];
 
   if (!drepId) {
@@ -30,7 +30,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     return NextResponse.json({ error: 'Failed to fetch trajectory' }, { status: 500 });
   }
 
-  const snapshots = (data || []).map((row: any) => ({
+  const snapshots = (data || []).map((row) => ({
     epoch: row.epoch,
     treasuryConservative: row.alignment_treasury_conservative,
     treasuryGrowth: row.alignment_treasury_growth,

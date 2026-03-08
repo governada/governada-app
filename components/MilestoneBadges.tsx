@@ -228,7 +228,6 @@ export function MilestoneBadges({ drepId, compact = false }: MilestoneBadgesProp
                 );
               })}
               {unachieved.slice(0, 6 - achieved.length).map((m) => {
-                const Icon = ICON_MAP[m.icon] || Award;
                 return (
                   <Tooltip key={m.key}>
                     <TooltipTrigger asChild>

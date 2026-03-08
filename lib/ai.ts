@@ -24,14 +24,28 @@ interface GenerateOptions {
   system?: string;
 }
 
-let _client: any = null;
+interface AnthropicClient {
+  messages: {
+    create: (params: {
+      model: string;
+      max_tokens: number;
+      temperature?: number;
+      system?: string;
+      messages: Array<{ role: string; content: string }>;
+    }) => Promise<{
+      content: Array<{ type: string; text?: string }>;
+    }>;
+  };
+}
 
-async function getClient() {
+let _client: AnthropicClient | null = null;
+
+async function getClient(): Promise<AnthropicClient | null> {
   if (_client) return _client;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  _client = new Anthropic({ apiKey });
+  _client = new Anthropic({ apiKey }) as unknown as AnthropicClient;
   return _client;
 }
 
@@ -58,7 +72,7 @@ export async function generateText(
 
     const block = message.content[0];
     if (block?.type === 'text') {
-      return block.text;
+      return block.text ?? null;
     }
     return null;
   } catch (err) {

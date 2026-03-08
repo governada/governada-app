@@ -41,8 +41,18 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
   const { data: rawCurrent, isLoading: currentLoading } = useTreasuryCurrent();
   const { data: rawPending, isLoading: pendingLoading } = useTreasuryPending();
 
-  const treasury = rawCurrent as any;
-  const pending = rawPending as any;
+  const treasury = rawCurrent as
+    | {
+        balance?: number;
+        trend?: string;
+        runwayMonths?: number;
+        pendingCount?: number;
+        [key: string]: unknown;
+      }
+    | undefined;
+  const pending = rawPending as
+    | { proposals?: Record<string, unknown>[]; [key: string]: unknown }
+    | undefined;
 
   if (currentLoading) return <TreasurySkeleton />;
   if (!treasury) return null;
@@ -68,8 +78,8 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
         ? 'text-rose-500'
         : 'text-muted-foreground';
 
-  const pendingProposals: any[] = Array.isArray(pending?.proposals)
-    ? pending.proposals.slice(0, 3)
+  const pendingProposals: Record<string, unknown>[] = Array.isArray(pending?.proposals)
+    ? (pending.proposals as Record<string, unknown>[]).slice(0, 3)
     : [];
 
   return (
@@ -95,7 +105,7 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
           <p className="text-xs text-muted-foreground mb-1">Cardano&apos;s shared treasury</p>
           <div className="flex items-end gap-3">
             <p className="font-display text-3xl font-bold tabular-nums text-foreground">
-              {formatAdaCitizen(treasury.balance)}
+              {formatAdaCitizen(treasury.balance ?? 0)}
             </p>
             <div className={cn('flex items-center gap-1 pb-0.5', trendColor)}>
               <TrendIcon className="h-3.5 w-3.5" />
@@ -113,10 +123,12 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
             <p
               className={cn(
                 'text-xl font-bold tabular-nums',
-                (treasury.runwayMonths ?? 0) > 24 ? 'text-emerald-500' : 'text-amber-500',
+                ((treasury.runwayMonths as number | undefined) ?? 0) > 24
+                  ? 'text-emerald-500'
+                  : 'text-amber-500',
               )}
             >
-              {treasury.runwayMonths >= 999
+              {(treasury.runwayMonths ?? 0) >= 999
                 ? '10+ years'
                 : treasury.runwayMonths != null
                   ? `${Math.round(treasury.runwayMonths / 12)} years`
@@ -131,7 +143,9 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
             <p
               className={cn(
                 'text-xl font-bold tabular-nums',
-                (treasury.pendingCount ?? 0) > 0 ? 'text-amber-500' : 'text-muted-foreground',
+                ((treasury.pendingCount as number | undefined) ?? 0) > 0
+                  ? 'text-amber-500'
+                  : 'text-muted-foreground',
               )}
             >
               {treasury.pendingCount ?? 0}
@@ -145,7 +159,7 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Awaiting decision</p>
             <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
-              {pendingProposals.map((item: any, idx: number) => (
+              {pendingProposals.map((item, idx: number) => (
                 <Link
                   key={idx}
                   href={`/proposal/${item.txHash ?? item.tx_hash}/${item.index ?? 0}`}
@@ -153,11 +167,13 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate text-foreground">
-                      {item.title ?? item.proposalType ?? 'Treasury withdrawal'}
+                      {(item.title as string) ??
+                        (item.proposalType as string) ??
+                        'Treasury withdrawal'}
                     </p>
-                    {item.withdrawalAda != null && (
+                    {(item.withdrawalAda as number | undefined) != null && (
                       <p className="text-xs text-muted-foreground">
-                        {formatAdaCitizen(item.withdrawalAda)}
+                        {formatAdaCitizen(item.withdrawalAda as number)}
                       </p>
                     )}
                   </div>

@@ -106,8 +106,11 @@ export interface GovernanceCheck {
 export function checkGovernanceSupport(walletName: string): GovernanceCheck {
   if (typeof window === 'undefined') return { supported: true };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cardanoApi = (window as any).cardano?.[walletName.toLowerCase()];
+  const cardanoWindow = window as unknown as Record<
+    string,
+    Record<string, { supportedExtensions?: Array<{ cip: number }> }>
+  >;
+  const cardanoApi = cardanoWindow.cardano?.[walletName.toLowerCase()];
   if (!cardanoApi) return { supported: false, hint: 'Wallet extension not found.' };
 
   const extensions = cardanoApi.supportedExtensions;

@@ -1,15 +1,8 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useState, useCallback } from 'react';
-import {
-  Vote,
-  FileText,
-  Users,
-  ScrollText,
-  TrendingUp,
-  CheckCircle2,
-  Activity,
-} from 'lucide-react';
+import { Vote, FileText, Users, ScrollText, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 
 interface ActivityEvent {

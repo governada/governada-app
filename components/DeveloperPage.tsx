@@ -12,7 +12,7 @@ import {
   Users,
   ChevronRight,
 } from 'lucide-react';
-import { fadeInUp, staggerContainer, spring } from '@/lib/animations';
+import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { ApiExplorer } from './ApiExplorer';

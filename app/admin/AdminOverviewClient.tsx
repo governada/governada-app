@@ -120,6 +120,9 @@ export function AdminOverviewClient() {
     );
   }
 
+  // eslint-disable-next-line react-hooks/purity -- Date.now() after early return; only used when data is available
+  const now = Date.now();
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -168,7 +171,7 @@ export function AdminOverviewClient() {
           ) : (
             <div>
               {data.sync_summary.map((sync) => (
-                <SyncStatusRow key={sync.sync_type} sync={sync} now={Date.now()} />
+                <SyncStatusRow key={sync.sync_type} sync={sync} now={now} />
               ))}
             </div>
           )}

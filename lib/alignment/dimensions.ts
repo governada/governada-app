@@ -189,7 +189,6 @@ function calcSecurity(inputs: DimensionInput[], drep: DRepContext, now: number):
   // Caution rate: No/Abstain on security proposals
   let cautionCount = 0;
   let rationaleCount = 0;
-  let participationWeight = 0;
   let totalWeight = 0;
 
   for (const input of relevant) {
@@ -200,7 +199,6 @@ function calcSecurity(inputs: DimensionInput[], drep: DRepContext, now: number):
     if (input.vote === 'No' || input.vote === 'Abstain') cautionCount += weight;
     const quality = input.rationaleQuality ?? (input.hasRationale ? 50 : 0);
     rationaleCount += (quality / 100) * weight;
-    participationWeight += weight;
     totalWeight += weight;
   }
 

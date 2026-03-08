@@ -5,9 +5,8 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { computeEDI, type EDIResult } from '@/lib/ghi/ediMetrics';
 import { shortenDRepId } from '@/utils/display';
-import { logger } from '@/lib/logger';
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
   const { data: dreps } = await supabase
@@ -15,9 +14,9 @@ export const GET = withRouteHandler(async (_request, { requestId }) => {
     .select('id, info')
     .not('info->isActive', 'is', null);
 
-  const activeDreps = (dreps ?? []).filter((d: any) => d.info?.isActive);
+  const activeDreps = (dreps ?? []).filter((d) => d.info?.isActive);
   const votingPowers = activeDreps
-    .map((d: any) => parseInt(d.info?.votingPowerLovelace || '0', 10))
+    .map((d) => parseInt(d.info?.votingPowerLovelace || '0', 10))
     .filter((v: number) => v > 0);
 
   const edi: EDIResult = computeEDI(votingPowers);
@@ -32,7 +31,7 @@ export const GET = withRouteHandler(async (_request, { requestId }) => {
 
   // Top DReps by voting power for treemap visualization
   const sortedByPower = activeDreps
-    .map((d: any) => ({
+    .map((d) => ({
       drepId: d.id,
       name: d.info?.name || d.info?.ticker || d.info?.handle || shortenDRepId(d.id),
       votingPower: parseInt(d.info?.votingPowerLovelace || '0', 10),

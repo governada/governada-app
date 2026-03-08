@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { posthog } from '@/lib/posthog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Trophy, ArrowUp, ArrowDown, Target } from 'lucide-react';
 
 interface NearbyDRep {
@@ -138,7 +137,7 @@ export function CompetitiveContext({ drepId }: { drepId: string }) {
             <p className="text-[10px] text-muted-foreground">
               Focus on{' '}
               <span className="font-semibold text-foreground">{data.top10FocusArea.pillar}</span> —
-              you're {data.top10FocusArea.gap} points below the top-10 average
+              you&apos;re {data.top10FocusArea.gap} points below the top-10 average
             </p>
           </div>
         )}
@@ -146,7 +145,7 @@ export function CompetitiveContext({ drepId }: { drepId: string }) {
         {data.rank <= 10 && (
           <div className="bg-green-500/10 rounded-lg p-3">
             <p className="text-xs font-medium text-green-700 dark:text-green-400">
-              You're in the top 10! Keep it up.
+              You&apos;re in the top 10! Keep it up.
             </p>
           </div>
         )}

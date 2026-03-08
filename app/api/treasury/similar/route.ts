@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { findSimilarProposals } from '@/lib/treasury';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const title = request.nextUrl.searchParams.get('title');
   const amount = request.nextUrl.searchParams.get('amount');
   const tier = request.nextUrl.searchParams.get('tier');

@@ -8,14 +8,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendPushBroadcast, buildPushPayload } from '@/lib/push';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { type NotificationPayload } from '@/lib/channelRenderers';
-import { logger } from '@/lib/logger';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { PushSendSchema } from '@/lib/api/schemas/user';
 
 export const dynamic = 'force-dynamic';
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const body = PushSendSchema.parse(await request.json());
     const { type } = body;
 
@@ -31,8 +30,7 @@ export const POST = withRouteHandler(
     }
 
     const subscribedUsers = users.filter(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (u: any) => u.push_subscriptions?.endpoint && u.push_subscriptions?.keys,
+      (u) => u.push_subscriptions?.endpoint && u.push_subscriptions?.keys,
     );
 
     let payload: NotificationPayload;
@@ -56,10 +54,8 @@ export const POST = withRouteHandler(
 
       case 'drep-pending-proposals': {
         const { pendingCount, criticalCount } = body;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetIds = subscribedUsers
-          .filter((u: any) => u.claimed_drep_id)
-          .map((u) => u.id as string);
+
+        targetIds = subscribedUsers.filter((u) => u.claimed_drep_id).map((u) => u.id as string);
         payload = {
           eventType: 'pending-proposals',
           fallback: {

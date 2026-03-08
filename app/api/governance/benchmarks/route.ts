@@ -20,7 +20,7 @@ interface BenchmarkRow {
   fetched_at: string;
 }
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
   const { data: latest, error: latestErr } = await supabase

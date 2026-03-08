@@ -10,6 +10,7 @@ import { TIER_SCORE_COLOR, TIER_BADGE_BG, tierKey } from '@/components/civica/ca
 import { useGovernanceLeaderboard } from '@/hooks/queries';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
+import type { LeaderboardData, LeaderboardEntry } from '@/types/api';
 
 const PAGE_SIZE = 25;
 
@@ -43,11 +44,14 @@ export function CivicaLeaderboard() {
   const [page, setPage] = useState(0);
 
   const { data: rawData, isLoading } = useGovernanceLeaderboard();
-  const data = rawData as any;
+  const data = rawData as LeaderboardData | undefined;
 
-  const allEntries: any[] = useMemo(() => data?.leaderboard ?? [], [data]);
-  const weeklyMovers = useMemo<{ gainers: any[]; losers: any[] }>(
-    () => data?.weeklyMovers ?? { gainers: [], losers: [] },
+  const allEntries: LeaderboardEntry[] = useMemo(() => data?.leaderboard ?? [], [data]);
+  const weeklyMovers = useMemo<{ gainers: LeaderboardEntry[]; losers: LeaderboardEntry[] }>(
+    () => ({
+      gainers: data?.weeklyMovers?.gainers ?? [],
+      losers: data?.weeklyMovers?.losers ?? [],
+    }),
     [data],
   );
 
@@ -63,18 +67,18 @@ export function CivicaLeaderboard() {
   // Build delta map from movers
   const deltaMap = useMemo(() => {
     const m = new Map<string, number>();
-    for (const g of weeklyMovers.gainers) m.set(g.drepId, g.delta);
-    for (const l of weeklyMovers.losers) m.set(l.drepId, l.delta);
+    for (const g of weeklyMovers.gainers) m.set(g.drepId ?? '', g.delta ?? 0);
+    for (const l of weeklyMovers.losers) m.set(l.drepId ?? '', l.delta ?? 0);
     return m;
   }, [weeklyMovers]);
 
   const filtered = useMemo(() => {
-    let result = allEntries.filter((e: any) => e.score >= minScore);
+    let result = allEntries.filter((e) => (e.score ?? 0) >= minScore);
 
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
-        (e: any) => e.name?.toLowerCase().includes(q) || e.drepId?.toLowerCase().includes(q),
+        (e) => e.name?.toLowerCase().includes(q) || e.drepId?.toLowerCase().includes(q),
       );
     }
 
@@ -130,10 +134,10 @@ export function CivicaLeaderboard() {
           </div>
         ) : (
           <div className="divide-y divide-border/50">
-            {pageEntries.map((entry: any, i: number) => {
+            {pageEntries.map((entry, i: number) => {
               const globalRank = page * PAGE_SIZE + i + 1;
-              const tier = tierKey(computeTier(entry.score));
-              const delta = deltaMap.get(entry.drepId);
+              const tier = tierKey(computeTier(entry.score ?? 0));
+              const delta = deltaMap.get(entry.drepId ?? '');
               const medal = RANK_MEDALS[globalRank];
 
               return (
@@ -225,7 +229,7 @@ export function CivicaLeaderboard() {
                 <p className="text-[10px] text-emerald-400 font-medium uppercase tracking-wider">
                   Rising
                 </p>
-                {weeklyMovers.gainers.slice(0, 3).map((m: any) => (
+                {weeklyMovers.gainers.slice(0, 3).map((m) => (
                   <Link
                     key={m.drepId}
                     href={`/drep/${m.drepId}`}
@@ -244,7 +248,7 @@ export function CivicaLeaderboard() {
                 <p className="text-[10px] text-rose-400 font-medium uppercase tracking-wider">
                   Falling
                 </p>
-                {weeklyMovers.losers.slice(0, 3).map((m: any) => (
+                {weeklyMovers.losers.slice(0, 3).map((m) => (
                   <Link
                     key={m.drepId}
                     href={`/drep/${m.drepId}`}

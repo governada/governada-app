@@ -6,9 +6,8 @@ import { Award, Calendar, Shield, Share2 } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { useGovernanceHolder } from '@/hooks/queries';
 import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
 import { ShareActions } from './ShareActions';
-import { fadeInUp, spring } from '@/lib/animations';
+import { fadeInUp } from '@/lib/animations';
 import { BASE_URL } from '@/lib/constants';
 
 interface GovernanceIdentity {
@@ -27,16 +26,18 @@ export function DelegatorGovernanceCard() {
   const { data: holderData, isLoading } = useGovernanceHolder(stakeAddress);
 
   const identity = useMemo<GovernanceIdentity | null>(() => {
-    const d = holderData as any;
+    const d = holderData as Record<string, unknown> | undefined;
     if (!d) return null;
+    const del = d.delegation as Record<string, unknown> | undefined;
+    const quiz = d.quizResult as Record<string, unknown> | undefined;
     return {
-      drepName: d.delegation?.drepName ?? null,
-      drepScore: d.delegation?.drepScore ?? null,
-      drepId: d.delegation?.drepId ?? delegatedDrepId ?? null,
-      delegatedSinceEpoch: d.delegation?.delegatedSinceEpoch ?? null,
-      currentEpoch: d.currentEpoch ?? null,
-      quizAlignment: d.quizResult?.topAlignment ?? null,
-      delegationStreak: d.delegation?.streak ?? 0,
+      drepName: (del?.drepName as string) ?? null,
+      drepScore: (del?.drepScore as number) ?? null,
+      drepId: (del?.drepId as string) ?? delegatedDrepId ?? null,
+      delegatedSinceEpoch: (del?.delegatedSinceEpoch as number) ?? null,
+      currentEpoch: (d.currentEpoch as number) ?? null,
+      quizAlignment: (quiz?.topAlignment as string) ?? null,
+      delegationStreak: (del?.streak as number) ?? 0,
     };
   }, [holderData, delegatedDrepId]);
 

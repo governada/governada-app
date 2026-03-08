@@ -34,7 +34,8 @@ function DeepLinkHandler() {
         router.push(`/pulse`);
         break;
     }
-  }, []); // only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once on mount for deep link handling
+  }, []);
 
   return null;
 }

@@ -8,7 +8,7 @@ export const generateGovernanceWrapped = inngest.createFunction(
     concurrency: { limit: 1, scope: 'env', key: '"governance-wrapped"' },
   },
   [{ event: 'drepscore/sync.scores' }, { cron: '0 3 * * 0' }],
-  async ({ event, step, logger }) => {
+  async ({ step, logger }) => {
     const supabase = getSupabaseAdmin();
 
     const EPOCH_START_UNIX = 1596491091;

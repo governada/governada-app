@@ -17,10 +17,11 @@ export function DRepVoteCallout({ txHash, proposalIndex }: DRepVoteCalloutProps)
   const { data: votesData, isLoading } = useDRepVotes(delegatedDrepId);
 
   const vote = useMemo(() => {
-    const votes = (votesData as any)?.votes;
+    const vData = votesData as Record<string, unknown> | undefined;
+    const votes = vData?.votes as Record<string, unknown>[] | undefined;
     if (!votes) return null;
     const match = votes.find(
-      (v: any) => v.proposalTxHash === txHash && v.proposalIndex === proposalIndex,
+      (v) => v.proposalTxHash === txHash && v.proposalIndex === proposalIndex,
     );
     return match?.vote || null;
   }, [votesData, txHash, proposalIndex]);

@@ -74,11 +74,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ drep
       }
     }
 
-    const votesCastLabel =
-      periodData?.votes_cast !== undefined
-        ? `Voted ${periodData.votes_cast} proposals`
-        : `${drep.totalVotes || 0} Votes`;
-
     const stats = [
       {
         label: period ? 'Voted' : 'Votes Cast',

@@ -1,12 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { computeGHI, type GHIResult } from '@/lib/ghi';
-import { logger } from '@/lib/logger';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const epochs = Math.min(parseInt(request.nextUrl.searchParams.get('epochs') ?? '20', 10), 50);
 
   const supabase = createClient();
@@ -24,7 +23,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     band: s.band as string,
   }));
 
-  let trend: { direction: 'up' | 'down' | 'flat'; delta: number; streakEpochs: number } = {
+  const trend: { direction: 'up' | 'down' | 'flat'; delta: number; streakEpochs: number } = {
     direction: 'flat',
     delta: 0,
     streakEpochs: 0,
@@ -48,13 +47,13 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   }
 
   // Component-level trends: compare current vs most recent snapshot
-  let componentTrends: Record<string, { direction: string; delta: number }> = {};
+  const componentTrends: Record<string, { direction: string; delta: number }> = {};
   if (snapshots?.length) {
     const lastSnapshot = snapshots[0];
-    const prevComponents = (lastSnapshot.components as any[]) ?? [];
+    const prevComponents = (lastSnapshot.components as { name: string; value: number }[]) ?? [];
 
     for (const comp of current.components) {
-      const prev = prevComponents.find((c: any) => c.name === comp.name);
+      const prev = prevComponents.find((c) => c.name === comp.name);
       if (prev) {
         const d = comp.value - prev.value;
         componentTrends[comp.name] = {

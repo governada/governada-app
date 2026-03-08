@@ -29,7 +29,6 @@ const ScoreHistoryChart = nextDynamic(
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
 import { ScoreCard } from '@/components/ScoreCard';
-import { DRepProfileTabs } from '@/components/DRepProfileTabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ShieldCheck, ShieldAlert } from 'lucide-react';
@@ -78,6 +77,7 @@ import { getFeatureFlag } from '@/lib/featureFlags';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { DRepProfileTabsV2 } from '@/components/civica/profiles/DRepProfileTabsV2';
 import { getDRepTraitTags } from '@/lib/alignment';
+import type { EnrichedDRep } from '@/lib/koios';
 import { generateDRepNarrative } from '@/lib/narratives';
 import { NarrativeSummary } from '@/components/NarrativeSummary';
 import { ActivitySideWidget } from '@/components/ActivitySideWidget';
@@ -241,7 +241,7 @@ async function getDRepData(drepId: string) {
       metadata: cachedDRep.metadata,
       metadataHashVerified: cachedDRep.metadataHashVerified ?? null,
       votes: voteRecords,
-      activeEpoch: (cachedDRep as any).activeEpoch ?? null,
+      activeEpoch: (cachedDRep as unknown as Record<string, unknown>).activeEpoch ?? null,
       alignmentTreasuryConservative: cachedDRep.alignmentTreasuryConservative ?? null,
       alignmentTreasuryGrowth: cachedDRep.alignmentTreasuryGrowth ?? null,
       alignmentDecentralization: cachedDRep.alignmentDecentralization ?? null,
@@ -279,7 +279,6 @@ async function getSpoAlignment(votes: VoteRecord[]): Promise<number | null> {
 
   try {
     const supabase = createClient();
-    const proposalKeys = votes.map((v) => `${v.proposalTxHash}-${v.proposalIndex}`);
     const txHashes = [...new Set(votes.map((v) => v.proposalTxHash))];
 
     const { data: alignmentRows } = await supabase
@@ -325,21 +324,17 @@ async function getSpoAlignment(votes: VoteRecord[]): Promise<number | null> {
 /* ─── Delegation Verdict ─── */
 function DelegationVerdict({
   score,
-  rank,
   participationRate,
   rationaleRate,
   totalVotes,
   isActive,
-  delegatorCount,
   scoreMomentum,
 }: {
   score: number;
-  rank: number | null;
   participationRate: number;
   rationaleRate: number;
   totalVotes: number;
   isActive: boolean;
-  delegatorCount: number;
   scoreMomentum: number | null;
 }) {
   if (totalVotes === 0) {
@@ -504,11 +499,12 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
   const alignments = extractAlignments(drep);
   const drepName = getDRepPrimaryName(drep);
-  const traitTags = getDRepTraitTags(drep as any);
+  const traitTags = getDRepTraitTags(drep as unknown as EnrichedDRep);
 
   // Use hysteresis-aware label when civica is enabled (last_personality_label is null for
   // all DReps currently — hysteresis kicks in once the sync pipeline starts persisting labels)
-  const lastPersonalityLabel = (drep as any).lastPersonalityLabel ?? null;
+  const lastPersonalityLabel =
+    ((drep as unknown as Record<string, unknown>).lastPersonalityLabel as string | null) ?? null;
   const identityLabel = getPersonalityLabelWithHysteresis(alignments, lastPersonalityLabel);
 
   // Tier progress with recommended action (for Civica score analysis)
@@ -621,12 +617,10 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       {/* 3b. Delegation Verdict */}
       <DelegationVerdict
         score={drep.drepScore}
-        rank={rank}
         participationRate={drep.effectiveParticipation}
         rationaleRate={drep.rationaleRate}
         totalVotes={drep.totalVotes}
         isActive={drep.isActive}
-        delegatorCount={drep.delegatorCount}
         scoreMomentum={drep.scoreMomentum}
       />
 
@@ -769,7 +763,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
             {(() => {
               const counts = delegationTrend.map((d) => d.delegatorCount);
               const maxCount = Math.max(...counts, 1);
-              return delegationTrend.map((d, i) => (
+              return delegationTrend.map((d) => (
                 <div
                   key={d.epoch}
                   className="flex-1 bg-primary/60 rounded-t-sm min-w-[3px]"

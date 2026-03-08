@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Calendar, Clock, AlertTriangle, ChevronRight, ChevronDown } from 'lucide-react';
@@ -111,16 +112,21 @@ function ProposalDeadline({ proposal }: { proposal: CalendarData['upcoming'][0] 
   );
 }
 
-function EpochRecapCard({ recap }: { recap: any }) {
+function EpochRecapCard({ recap }: { recap: Record<string, unknown> }) {
   const [expanded, setExpanded] = useState(false);
-  const ratified = recap.proposalsRatified ?? recap.proposals_ratified ?? 0;
-  const submitted = recap.proposalsSubmitted ?? recap.proposals_submitted;
-  const dropped = recap.proposalsDropped ?? recap.proposals_dropped;
-  const expired = recap.proposalsExpired ?? recap.proposals_expired;
-  const adaWithdrawn =
-    recap.adaWithdrawn ?? recap.treasury_withdrawn_ada ?? recap.treasuryWithdrawnAda;
-  const participation = recap.drepParticipationPct ?? recap.drep_participation_pct;
-  const narrative = recap.summary ?? recap.ai_narrative ?? recap.aiNarrative;
+  const ratified = (recap.proposalsRatified ?? recap.proposals_ratified ?? 0) as number;
+  const submitted = (recap.proposalsSubmitted ?? recap.proposals_submitted) as number | undefined;
+  const dropped = (recap.proposalsDropped ?? recap.proposals_dropped) as number | undefined;
+  const expired = (recap.proposalsExpired ?? recap.proposals_expired) as number | undefined;
+  const adaWithdrawn = (recap.adaWithdrawn ??
+    recap.treasury_withdrawn_ada ??
+    recap.treasuryWithdrawnAda) as number | undefined;
+  const participation = (recap.drepParticipationPct ?? recap.drep_participation_pct) as
+    | number
+    | undefined;
+  const narrative = (recap.summary ?? recap.ai_narrative ?? recap.aiNarrative) as
+    | string
+    | undefined;
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -130,7 +136,7 @@ function EpochRecapCard({ recap }: { recap: any }) {
       >
         <div className="flex items-center gap-3">
           <span className="font-display text-lg font-bold tabular-nums text-muted-foreground">
-            {recap.epoch}
+            {recap.epoch as React.ReactNode}
           </span>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -187,11 +193,15 @@ export function CivicaGovernanceCalendar() {
   const { data: rawPulse } = useGovernancePulse();
   const { data: rawRecap } = useGovernanceEpochRecap();
   const { data: rawSparklines } = useGovernanceSparklines();
-  const pulse = rawPulse as any;
-  const recap = rawRecap as any;
-  const sparklines = rawSparklines as any;
+  const pulse = rawPulse as Record<string, unknown> | undefined;
+  const recap = rawRecap as Record<string, unknown> | undefined;
+  const sparklines = rawSparklines as Record<string, unknown> | undefined;
   const participationRows: { epoch: number; participation_rate: number; rationale_rate: number }[] =
-    sparklines?.participation ?? [];
+    (sparklines?.participation as {
+      epoch: number;
+      participation_rate: number;
+      rationale_rate: number;
+    }[]) ?? [];
 
   // Initialize countdown from server data, then tick locally
   const initialSeconds = calendar?.secondsRemaining ?? null;
@@ -213,7 +223,7 @@ export function CivicaGovernanceCalendar() {
     return () => clearInterval(timer);
   }, [countdown]);
 
-  const epochRecaps: any[] = Array.isArray(recap?.recaps)
+  const epochRecaps: Record<string, unknown>[] = Array.isArray(recap?.recaps)
     ? recap.recaps
     : Array.isArray(recap)
       ? recap
@@ -292,18 +302,19 @@ export function CivicaGovernanceCalendar() {
       )}
 
       {/* Active proposals context */}
-      {pulse?.activeProposals > 0 && (
+      {((pulse?.activeProposals as number | undefined) ?? 0) > 0 && (
         <Link
           href="/discover"
           className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors group"
         >
           <div>
             <p className="text-sm font-medium">
-              {pulse.activeProposals} open proposal
-              {pulse.activeProposals > 1 ? 's' : ''} in voting
+              {pulse!.activeProposals as React.ReactNode} open proposal
+              {((pulse!.activeProposals as number | undefined) ?? 0) > 1 ? 's' : ''} in voting
             </p>
             <p className="text-xs text-muted-foreground">
-              {pulse.votesThisWeek?.toLocaleString() ?? 0} votes cast this week
+              {(pulse!.votesThisWeek as number | undefined)?.toLocaleString() ?? 0} votes cast this
+              week
             </p>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -317,8 +328,8 @@ export function CivicaGovernanceCalendar() {
             Past Epochs
           </p>
           <div className="space-y-2">
-            {epochRecaps.slice(0, 5).map((r: any) => (
-              <EpochRecapCard key={r.epoch ?? r.id} recap={r} />
+            {epochRecaps.slice(0, 5).map((r) => (
+              <EpochRecapCard key={(r.epoch as number) ?? (r.id as string)} recap={r} />
             ))}
           </div>
         </div>

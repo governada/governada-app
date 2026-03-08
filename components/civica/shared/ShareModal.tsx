@@ -62,6 +62,7 @@ export function ShareModal({
           {/* OG card preview */}
           <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border bg-muted">
             {!imgLoaded && <div className="absolute inset-0 animate-pulse bg-muted rounded-lg" />}
+            {/* eslint-disable-next-line @next/next/no-img-element -- OG image from external URL, dimensions unknown */}
             <img
               src={ogImageUrl}
               alt="Share preview"

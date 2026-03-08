@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
   const { data: votes, error } = await supabase.from('cc_votes').select('cc_hot_id, vote');

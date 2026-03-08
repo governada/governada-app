@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
@@ -205,11 +206,15 @@ function NotificationCard({
 // Supplemental system notifications (epoch health, governance activity)
 // ---------------------------------------------------------------------------
 
-function buildSystemNotifications(pulse: any): NotificationItem[] {
+function buildSystemNotifications(pulse: Record<string, unknown> | undefined): NotificationItem[] {
   const items: NotificationItem[] = [];
   if (!pulse) return items;
 
-  if (pulse.activeProposals > 0) {
+  const activeProposals = pulse.activeProposals as number | undefined;
+  const ghiScore = pulse.ghiScore as number | undefined;
+  const ghiDelta = pulse.ghiDelta as number | undefined;
+
+  if (activeProposals != null && activeProposals > 0) {
     items.push({
       id: 'sys_active_proposals',
       category: 'system',
@@ -217,7 +222,7 @@ function buildSystemNotifications(pulse: any): NotificationItem[] {
       iconColor: 'text-sky-400',
       borderColor: 'border-sky-900/30',
       bgColor: 'bg-sky-950/10',
-      title: `${pulse.activeProposals} governance proposal${pulse.activeProposals > 1 ? 's' : ''} in progress`,
+      title: `${activeProposals} governance proposal${activeProposals > 1 ? 's' : ''} in progress`,
       description: 'Cardano governance is active. Your delegation is participating.',
       href: '/discover?tab=proposals',
       cta: 'View',
@@ -225,8 +230,8 @@ function buildSystemNotifications(pulse: any): NotificationItem[] {
     });
   }
 
-  if (pulse.ghiScore != null) {
-    const ghiDir = pulse.ghiDelta > 0 ? 'up' : pulse.ghiDelta < 0 ? 'down' : 'stable';
+  if (ghiScore != null) {
+    const ghiDir = (ghiDelta ?? 0) > 0 ? 'up' : (ghiDelta ?? 0) < 0 ? 'down' : 'stable';
     items.push({
       id: 'sys_ghi',
       category: 'system',
@@ -239,7 +244,7 @@ function buildSystemNotifications(pulse: any): NotificationItem[] {
             : 'text-muted-foreground',
       borderColor: 'border-border',
       bgColor: 'bg-card',
-      title: `Governance health: ${pulse.ghiScore.toFixed(0)}${pulse.ghiDelta != null ? ` (${pulse.ghiDelta > 0 ? '+' : ''}${pulse.ghiDelta.toFixed(1)} this epoch)` : ''}`,
+      title: `Governance health: ${ghiScore.toFixed(0)}${ghiDelta != null ? ` (${ghiDelta > 0 ? '+' : ''}${ghiDelta.toFixed(1)} this epoch)` : ''}`,
       description: 'The Governance Health Index reflects current ecosystem health.',
       href: '/pulse',
       cta: 'See Pulse',
@@ -265,9 +270,35 @@ export function CivicaInbox() {
     segment === 'drep' ? drepId : null,
   );
 
-  const card = rawCard as any;
-  const pulse = rawPulse as any;
-  const inbox = rawInbox as any;
+  const card = rawCard as
+    | {
+        score?: number;
+        momentum?: number;
+        isActive?: boolean;
+        tier?: string;
+        totalVotes?: number;
+        claimed?: boolean;
+      }
+    | undefined;
+  const pulse = rawPulse as
+    | { activeProposals?: number; criticalProposals?: number; ghiScore?: number; ghiDelta?: number }
+    | undefined;
+  const inbox = rawInbox as
+    | {
+        pendingCount?: number;
+        scoreImpact?: { potentialGain?: number };
+        pendingProposals?: {
+          txHash?: string;
+          id?: string;
+          index?: number;
+          title?: string;
+          proposalTitle?: string;
+          priority?: string;
+          epochsRemaining?: number;
+          perProposalScoreImpact?: number;
+        }[];
+      }
+    | undefined;
 
   useEffect(() => {
     setReadSet(getReadSet());
@@ -289,16 +320,16 @@ export function CivicaInbox() {
     segment,
     activeProposals: pulse?.activeProposals ?? 0,
     criticalProposals: pulse?.criticalProposals ?? 0,
-    drepScore: card?.score,
-    scoreDelta: card?.momentum,
-    drepIsActive: card?.isActive,
+    drepScore: card?.score ?? undefined,
+    scoreDelta: card?.momentum ?? undefined,
+    drepIsActive: card?.isActive ?? undefined,
     delegatedDrep,
-    delegatedDrepScore: segment !== 'drep' ? card?.score : undefined,
-    delegatedDrepIsActive: segment !== 'drep' ? card?.isActive : undefined,
+    delegatedDrepScore: segment !== 'drep' ? (card?.score ?? undefined) : undefined,
+    delegatedDrepIsActive: segment !== 'drep' ? (card?.isActive ?? undefined) : undefined,
     pendingVotesCount: segment === 'drep' ? (inbox?.pendingCount ?? 0) : 0,
-    drepTier: card?.tier,
-    spoScore: segment === 'spo' ? card?.score : undefined,
-    spoScoreDelta: segment === 'spo' ? card?.momentum : undefined,
+    drepTier: card?.tier ?? undefined,
+    spoScore: segment === 'spo' ? (card?.score ?? undefined) : undefined,
+    spoScoreDelta: segment === 'spo' ? (card?.momentum ?? undefined) : undefined,
     spoVoteCount: segment === 'spo' ? (card?.totalVotes ?? 0) : undefined,
     spoIsClaimed: segment === 'spo' ? (card?.claimed ?? true) : undefined,
   });
@@ -412,22 +443,22 @@ export function CivicaInbox() {
       )}
 
       {/* DRep pending proposals detail (DRep segment only) */}
-      {segment === 'drep' && inbox?.pendingProposals?.length > 0 && (
+      {segment === 'drep' && inbox?.pendingProposals && inbox.pendingProposals.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Pending Votes ({inbox.pendingCount})
+              Pending Votes ({inbox.pendingCount ?? 0})
             </p>
-            {inbox.scoreImpact?.potentialGain > 0 && (
+            {(inbox.scoreImpact?.potentialGain ?? 0) > 0 && (
               <span className="text-xs text-emerald-400 font-medium">
-                +{inbox.scoreImpact.potentialGain.toFixed(1)} pts potential
+                +{inbox.scoreImpact!.potentialGain!.toFixed(1)} pts potential
               </span>
             )}
           </div>
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-            {inbox.pendingProposals.slice(0, 5).map((p: any) => (
+            {inbox.pendingProposals.slice(0, 5).map((p) => (
               <Link
-                key={p.txHash ?? p.id}
+                key={p.txHash ?? p.id ?? ''}
                 href={`/proposal/${p.txHash}/${p.index ?? 0}`}
                 className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors group"
               >
@@ -446,7 +477,7 @@ export function CivicaInbox() {
                         {p.epochsRemaining} epoch{p.epochsRemaining !== 1 ? 's' : ''} left
                       </span>
                     )}
-                    {p.perProposalScoreImpact > 0 && (
+                    {(p.perProposalScoreImpact ?? 0) > 0 && (
                       <span className="text-[10px] text-emerald-400">
                         +{p.perProposalScoreImpact} pts
                       </span>
@@ -462,7 +493,7 @@ export function CivicaInbox() {
               href="/discover"
               className="block text-center text-xs text-muted-foreground hover:text-primary transition-colors py-1"
             >
-              View all {inbox.pendingCount} pending proposals
+              View all {inbox.pendingCount ?? 0} pending proposals
             </Link>
           )}
         </div>

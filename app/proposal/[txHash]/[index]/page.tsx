@@ -63,6 +63,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
   if (!proposal) notFound();
 
+  // eslint-disable-next-line react-hooks/purity -- server component: Date.now() is fine during SSR
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
   const status = getProposalStatus(proposal);
   const isOpen = status === 'open';

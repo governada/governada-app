@@ -15,8 +15,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://drepscore.io';
 
 interface DRepRow {
   id: string;
-  info: Record<string, any> | null;
-  metadata: Record<string, any> | null;
+  info: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   score: number;
   anchor_url: string | null;
 }
@@ -34,7 +34,7 @@ interface OutreachRecord {
   claimLink: string;
 }
 
-function extractSocialFromMetadata(metadata: Record<string, any> | null): {
+function extractSocialFromMetadata(metadata: Record<string, unknown> | null): {
   twitter: string | null;
   github: string | null;
   website: string | null;

@@ -17,7 +17,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
-  FileText,
   CheckCircle2,
   ExternalLink,
   PenLine,

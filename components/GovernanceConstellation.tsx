@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
+/* eslint-disable react-hooks/purity -- Three.js useRef initializers with Vector3/random are intentional one-time setup */
 import {
   useEffect,
   useRef,
@@ -296,6 +298,7 @@ void main() {
 function RaycastConfig() {
   const raycaster = useThree((s) => s.raycaster);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability -- Three.js raycaster params must be mutated directly
     raycaster.params.Points = { threshold: 0.35 };
   }, [raycaster]);
   return null;
@@ -462,9 +465,9 @@ function NodePoints({
       frustumCulled={false}
       onPointerDown={
         interactive
-          ? (e: any) => {
+          ? (e: { stopPropagation: () => void; index?: number }) => {
               e.stopPropagation();
-              const idx = e.index as number | undefined;
+              const idx = e.index;
               if (idx !== undefined && idx < nodes.length) {
                 onNodeClick?.(nodes[idx]);
               }

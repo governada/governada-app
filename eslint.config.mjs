@@ -15,6 +15,16 @@ const eslintConfig = defineConfig([
     rules: {
       // Promote all jsx-a11y recommended rules (ensures error not warn)
       ...a11yRules,
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-require-imports': 'warn',
       'react/no-unescaped-entities': 'warn',

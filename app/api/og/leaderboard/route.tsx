@@ -15,9 +15,9 @@ export async function GET() {
       .order('score', { ascending: false })
       .limit(5);
 
-    const dreps = (topDreps || []).map((d: any, i: number) => ({
+    const dreps = (topDreps || []).map((d, i: number) => ({
       rank: i + 1,
-      name: getDRepPrimaryName(d),
+      name: getDRepPrimaryName({ ...d, drepId: d.drep_id }),
       score: d.score ?? 0,
     }));
 

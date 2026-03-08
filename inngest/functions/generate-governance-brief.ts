@@ -10,8 +10,6 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import {
   assembleDRepBriefContext,
   assembleHolderBriefContext,
-  generateDRepBrief,
-  generateHolderBrief,
   generateAIDRepBrief,
   generateAIHolderBrief,
   storeBrief,

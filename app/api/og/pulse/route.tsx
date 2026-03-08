@@ -20,10 +20,10 @@ export async function GET() {
     ]);
 
     const dreps = drepsRes.data || [];
-    const activeDReps = dreps.filter((d: any) => d.info?.isActive);
+    const activeDReps = dreps.filter((d) => d.info?.isActive);
     const totalAda =
       activeDReps.reduce(
-        (s: number, d: any) => s + parseInt(d.info?.votingPowerLovelace || '0', 10),
+        (s: number, d) => s + parseInt(d.info?.votingPowerLovelace || '0', 10),
         0,
       ) / 1_000_000;
 

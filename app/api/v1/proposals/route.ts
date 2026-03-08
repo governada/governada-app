@@ -7,7 +7,12 @@ import type { ApiContext } from '@/lib/api/handler';
 const VALID_STATUSES = ['active', 'ratified', 'enacted', 'expired', 'dropped', 'all'] as const;
 const VALID_SORTS = ['newest', 'most_votes', 'most_contested'] as const;
 
-function getProposalStatus(p: any): string {
+function getProposalStatus(p: {
+  enactedEpoch?: number | null;
+  ratifiedEpoch?: number | null;
+  expiredEpoch?: number | null;
+  droppedEpoch?: number | null;
+}): string {
   if (p.enactedEpoch) return 'enacted';
   if (p.ratifiedEpoch) return 'ratified';
   if (p.expiredEpoch) return 'expired';
@@ -23,7 +28,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50') || 50, 1), 100);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0);
 
-  if (!VALID_STATUSES.includes(status as any)) {
+  if (!(VALID_STATUSES as readonly string[]).includes(status)) {
     return apiError(
       'invalid_parameter',
       {
@@ -35,7 +40,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
     );
   }
 
-  if (!VALID_SORTS.includes(sort as any)) {
+  if (!(VALID_SORTS as readonly string[]).includes(sort)) {
     return apiError(
       'invalid_parameter',
       {

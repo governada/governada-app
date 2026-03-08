@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { useVote } from '@/hooks/useVote';
 import { checkGovernanceSupport } from '@/lib/delegation';
-import { BrowserWallet } from '@meshsdk/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +29,6 @@ function StatusBadge({ ok, label }: { ok: boolean | null; label: string }) {
 
 export function VoteTestClient() {
   const {
-    wallet,
     walletName,
     connected,
     connecting,

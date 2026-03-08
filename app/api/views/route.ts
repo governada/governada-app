@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { captureServerEvent } from '@/lib/posthog-server';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { ViewSchema } from '@/lib/api/schemas/governance';
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const body = await request.json();
     const { drepId, sessionToken } = ViewSchema.parse(body);
 

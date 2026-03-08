@@ -41,7 +41,7 @@ export interface DelegationGraphResponse {
   totalPowerAda: number;
 }
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
   const [epochRes, statsRes] = await Promise.all([

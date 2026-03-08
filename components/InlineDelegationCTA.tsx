@@ -1,6 +1,5 @@
 'use client';
 
-import { useWallet } from '@/utils/wallet';
 import { useDelegation } from '@/hooks/useDelegation';
 import { Button } from '@/components/ui/button';
 import { Vote, Wallet, CheckCircle, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
@@ -28,7 +27,6 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAProps) {
-  const { connected } = useWallet();
   const {
     phase,
     startDelegation,

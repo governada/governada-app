@@ -45,8 +45,8 @@ export function GovernanceCitizenSection() {
 
   const state = useMemo<CitizenState | null>(() => {
     if (!isAuthenticated || !address) return null;
-    const holder = holderData as any;
-    const timeline = timelineData as any;
+    const holder = holderData as Record<string, unknown> | undefined;
+    const timeline = timelineData as Record<string, unknown> | undefined;
 
     const init: CitizenState = {
       milestone: null,
@@ -60,36 +60,38 @@ export function GovernanceCitizenSection() {
     };
 
     if (holder) {
-      init.drepName = holder.drepName || 'Your DRep';
-      init.proposalCount = holder.proposalsVotedOn || 0;
-      init.pollCount = holder.pollCount || 0;
-      init.visitStreak = holder.visitStreak || 0;
-      init.isDelegated = !!holder.delegatedDrepId;
+      init.drepName = (holder.drepName as string) || 'Your DRep';
+      init.proposalCount = (holder.proposalsVotedOn as number) || 0;
+      init.pollCount = (holder.pollCount as number) || 0;
+      init.visitStreak = (holder.visitStreak as number) || 0;
+      init.isDelegated = !!(holder.delegatedDrepId as string | undefined);
       init.level = checkLevel(init.pollCount, init.visitStreak, init.isDelegated);
 
       if (holder.delegatedSince) {
-        const milestones = checkDelegationMilestones(new Date(holder.delegatedSince), []);
+        const milestones = checkDelegationMilestones(new Date(holder.delegatedSince as string), []);
         if (milestones.length > 0) {
           init.milestone = milestones[milestones.length - 1];
         }
       }
     }
 
-    if (timeline?.events?.length) {
-      const summaryEvent = timeline.events.find(
-        (e: { type: string }) => e.type === 'epoch_summary',
+    if ((timeline?.events as unknown[] | undefined)?.length) {
+      const summaryEvent = (timeline!.events as Record<string, unknown>[]).find(
+        (e: Record<string, unknown>) => e.type === 'epoch_summary',
       );
       if (summaryEvent?.data) {
+        const eventData = summaryEvent.data as Record<string, unknown>;
         init.epochSummary = {
-          epoch: summaryEvent.epoch || 0,
+          epoch: (summaryEvent.epoch as number) || 0,
           summary: {
-            proposalsClosed: summaryEvent.data.proposalsClosed || 0,
-            proposalsOpened: summaryEvent.data.proposalsOpened || 0,
-            drepVoteCount: summaryEvent.data.drepVoteCount || 0,
-            drepRationaleCount: summaryEvent.data.drepRationaleCount || 0,
-            representationScore: summaryEvent.data.representationScore ?? null,
-            repScoreDelta: summaryEvent.data.repScoreDelta ?? null,
-            highlightProposal: summaryEvent.data.highlightProposal ?? null,
+            proposalsClosed: (eventData.proposalsClosed as number) || 0,
+            proposalsOpened: (eventData.proposalsOpened as number) || 0,
+            drepVoteCount: (eventData.drepVoteCount as number) || 0,
+            drepRationaleCount: (eventData.drepRationaleCount as number) || 0,
+            representationScore: (eventData.representationScore as number | null) ?? null,
+            repScoreDelta: (eventData.repScoreDelta as number | null) ?? null,
+            highlightProposal:
+              (eventData.highlightProposal as { title: string; outcome: string } | null) ?? null,
           },
         };
       }

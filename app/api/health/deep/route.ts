@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { checkKoiosHealth } from '@/utils/koios';
@@ -58,7 +58,7 @@ async function probeRedis(): Promise<DepResult> {
 }
 
 export const GET = withRouteHandler(
-  async (_request: NextRequest) => {
+  async () => {
     const [supabase, koios, redis] = await Promise.all([
       probeSupabase(),
       probeKoios(),

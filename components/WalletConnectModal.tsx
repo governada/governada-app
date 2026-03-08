@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWallet, WalletError } from '@/utils/wallet';
+import { useWallet } from '@/utils/wallet';
 import { subscribeToPush } from '@/lib/pushSubscription';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import {
@@ -57,7 +57,6 @@ export function WalletConnectModal({
     connected,
     connecting,
     address,
-    isAuthenticated,
     error,
     availableWallets,
     connect,
@@ -76,6 +75,7 @@ export function WalletConnectModal({
       clearError();
       posthog.capture('wallet_modal_opened', { available_wallets: availableWallets });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- availableWallets is read for analytics only; effect should fire on open/clearError changes
   }, [open, clearError]);
 
   const handleWalletSelect = async (walletName: string) => {
@@ -252,7 +252,7 @@ export function WalletConnectModal({
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900 text-sm">
                 <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">What to expect:</p>
                 <ul className="text-blue-700 dark:text-blue-300 space-y-1 text-xs">
-                  <li>• Your wallet will show "Sign in to DRepScore"</li>
+                  <li>• Your wallet will show &quot;Sign in to DRepScore&quot;</li>
                   <li>• This is free — no ADA will be sent</li>
                   <li>• You can ignore the technical hex codes</li>
                 </ul>
@@ -330,8 +330,8 @@ export function WalletConnectModal({
               <div className="p-4 bg-muted/50 rounded-lg border text-sm">
                 <p className="font-medium mb-1">Mock Alert Preview:</p>
                 <p className="text-muted-foreground">
-                  "Your DRep voted against Treasury Conservative — see how this affects your
-                  alignment"
+                  &quot;Your DRep voted against Treasury Conservative — see how this affects your
+                  alignment&quot;
                 </p>
               </div>
 
@@ -357,7 +357,7 @@ export function WalletConnectModal({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
                 <Check className="h-5 w-5" />
-                You're a Governance Guardian!
+                You&apos;re a Governance Guardian!
               </DialogTitle>
             </DialogHeader>
 

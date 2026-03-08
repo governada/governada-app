@@ -10,7 +10,7 @@ interface DiscoverHeroProps {
   proposalCount: number;
 }
 
-export function DiscoverHero({ totalDreps, proposalCount }: DiscoverHeroProps) {
+export function DiscoverHero({ totalDreps }: DiscoverHeroProps) {
   const { segment, delegatedDrep, isLoading } = useSegment();
   const { connected } = useWallet();
 

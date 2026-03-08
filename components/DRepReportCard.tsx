@@ -27,7 +27,6 @@ export function DRepReportCard({
   participation,
   rationale,
   reliability,
-  profile,
 }: DRepReportCardProps) {
   const url = buildDRepUrl(drepId);
   const ogImageUrl = `/api/og/drep/${encodeURIComponent(drepId)}`;

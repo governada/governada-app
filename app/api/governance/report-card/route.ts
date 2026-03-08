@@ -85,7 +85,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     }
   }
 
-  const info = (drep.info as Record<string, any> | null) ?? {};
+  const info = (drep.info as Record<string, unknown> | null) ?? {};
 
   return NextResponse.json({
     drepId,

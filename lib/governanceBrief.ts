@@ -153,7 +153,7 @@ export async function assembleHolderBriefContext(
 
   let drepName: string | null = null;
   let drepScore: number | null = null;
-  let drepScoreChange: number | null = null;
+  const drepScoreChange: number | null = null;
 
   if (drepId) {
     const { data: drep } = await supabase

@@ -159,7 +159,6 @@ export function GovernanceRiskSignals({ health, activeProposals }: GovernanceRis
   }
 
   const style = LEVEL_STYLES[level];
-  const SignalIcon = style.icon;
 
   return (
     <Card className={`${style.border} ${style.bg}`}>

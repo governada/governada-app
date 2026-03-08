@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   XCircle,
   History,
-  ArrowRight,
   TrendingUp,
   TrendingDown,
   Equal,
@@ -31,7 +30,7 @@ import { GovernanceCitizenPanels } from '@/components/GovernanceCitizenPanels';
 import { DelegatorShareCard } from '@/components/DelegatorShareCard';
 
 export function GovernanceDashboard() {
-  const { connected, isAuthenticated, reconnecting, delegatedDrepId, address } = useWallet();
+  const { isAuthenticated, reconnecting, address } = useWallet();
   const stakeAddress = isAuthenticated && !reconnecting ? (address ?? undefined) : undefined;
   const { data: holderData, isLoading, isError } = useGovernanceHolder(stakeAddress);
   const data = (holderData as DashboardData) ?? null;

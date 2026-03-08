@@ -61,10 +61,10 @@ export interface DRepMetadata {
         label: string;
         uri: string;
       }>;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     authors?: string[];
-    [key: string]: any;
+    [key: string]: unknown;
   } | null;
   bytes: string | null;
   warning: string | null;
@@ -90,14 +90,14 @@ export interface DRepVote {
       comment?: string;
       rationale?: string;
       motivation?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     // Flat format fallback
     title?: string;
     abstract?: string;
     motivation?: string;
     rationale?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } | null;
   epoch_no?: number;
 }
@@ -138,14 +138,14 @@ export interface ProposalInfo {
       motivation?: string;
       rationale?: string;
       references?: Array<{ uri?: string; label?: string; '@type'?: string }>;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     // Flat fallback (older proposals)
     title?: string;
     abstract?: string;
     motivation?: string;
     rationale?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } | null;
   meta_comment: string | null;
   meta_is_valid: boolean | null;

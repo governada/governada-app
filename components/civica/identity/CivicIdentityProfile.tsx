@@ -143,6 +143,7 @@ export function CivicIdentityProfile() {
   const earned = milestonesData?.milestones ?? [];
 
   // Detect recent milestones (earned in last 10 days)
+  // eslint-disable-next-line react-hooks/purity -- Date.now() for milestone cutoff is acceptable; only affects display freshness
   const recentCutoff = Date.now() - 10 * 24 * 60 * 60 * 1000;
   const recentKeys = new Set(
     earned.filter((m) => new Date(m.earnedAt).getTime() > recentCutoff).map((m) => m.key),

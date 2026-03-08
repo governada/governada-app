@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getDRepTreasuryTrackRecord } from '@/lib/treasury';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) {
     return NextResponse.json({ error: 'drepId parameter required' }, { status: 400 });

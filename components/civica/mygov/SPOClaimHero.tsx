@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Shield, CheckCircle2, BarChart3, Users, Swords, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { SPOSummaryData } from '@/types/api';
 
 export function SPOClaimHero({
   poolId,
@@ -11,14 +12,14 @@ export function SPOClaimHero({
 }: {
   poolId: string;
   poolName: string;
-  summary: any;
+  summary: SPOSummaryData | undefined;
 }) {
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const spoScore: number = summary?.spoScore ?? summary?.score ?? 0;
-  const voteCount: number = summary?.voteCount ?? 0;
+  const spoScore: number = (summary?.spoScore as number) ?? (summary?.score as number) ?? 0;
+  const voteCount: number = (summary?.voteCount as number) ?? 0;
 
   async function handleClaim() {
     setClaiming(true);
@@ -34,8 +35,8 @@ export function SPOClaimHero({
         throw new Error(body.error ?? 'Claim failed');
       }
       setClaimed(true);
-    } catch (e: any) {
-      setError(e.message ?? 'Something went wrong');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
       setClaiming(false);
     }

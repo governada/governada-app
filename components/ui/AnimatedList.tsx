@@ -24,7 +24,6 @@ export function AnimatedList({
   children,
   className,
   container = staggerContainer,
-  item = fadeInUp,
   inView = false,
 }: AnimatedListProps) {
   const viewProps = inView

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     let drepName = 'Your DRep';
     let drepScore = '—';
     let epochsActive = '—';
-    let citizenSince = '';
+    const citizenSince = '';
 
     if (wallet) {
       const supabase = createClient();

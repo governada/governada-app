@@ -1,9 +1,10 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useState } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
-import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
+import { useSegment } from '@/components/providers/SegmentProvider';
 
 import type { SegmentOverride } from '@/components/providers/SegmentProvider';
 

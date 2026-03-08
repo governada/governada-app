@@ -426,23 +426,22 @@ function computeDeliveryScore(
 // Helpers
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapRow(row: any): ProposalOutcome {
+function mapRow(row: Record<string, unknown>): ProposalOutcome {
   return {
-    proposalTxHash: row.proposal_tx_hash,
-    proposalIndex: row.proposal_index,
+    proposalTxHash: row.proposal_tx_hash as string,
+    proposalIndex: row.proposal_index as number,
     deliveryStatus: row.delivery_status as DeliveryStatus,
-    deliveryScore: row.delivery_score,
-    totalPollResponses: row.total_poll_responses,
-    deliveredCount: row.delivered_count,
-    partialCount: row.partial_count,
-    notDeliveredCount: row.not_delivered_count,
-    tooEarlyCount: row.too_early_count,
-    wouldApproveAgainPct: row.would_approve_again_pct,
-    milestonesTotal: row.milestones_total,
-    milestonesCompleted: row.milestones_completed,
-    enactedEpoch: row.enacted_epoch,
-    lastEvaluatedEpoch: row.last_evaluated_epoch,
-    epochsSinceEnactment: row.epochs_since_enactment,
+    deliveryScore: row.delivery_score as number | null,
+    totalPollResponses: row.total_poll_responses as number,
+    deliveredCount: row.delivered_count as number,
+    partialCount: row.partial_count as number,
+    notDeliveredCount: row.not_delivered_count as number,
+    tooEarlyCount: row.too_early_count as number,
+    wouldApproveAgainPct: row.would_approve_again_pct as number | null,
+    milestonesTotal: row.milestones_total as number | null,
+    milestonesCompleted: row.milestones_completed as number | null,
+    enactedEpoch: row.enacted_epoch as number | null,
+    lastEvaluatedEpoch: row.last_evaluated_epoch as number | null,
+    epochsSinceEnactment: row.epochs_since_enactment as number | null,
   };
 }

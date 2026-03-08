@@ -16,6 +16,7 @@ Argument: `$ARGUMENTS`
 ### Option A: Use existing audit results
 
 If the user just ran an audit in this conversation, extract:
+
 - All scored dimensions with evidence
 - All P0 and P1 gaps
 - Any work plan chunks already produced
@@ -44,6 +45,7 @@ Read `docs/strategy/context/work-plan-template.md` for the chunk format.
 ### 2.1 Convert Gaps to Chunks
 
 Group related gaps into PR-sized chunks:
+
 - Gaps affecting the same files → same chunk
 - Gaps in the same audit dimension → consider grouping
 - P0 gaps → separate chunks (ship fast, small blast radius)
@@ -56,6 +58,7 @@ Group related gaps into PR-sized chunks:
 ```
 
 Rules:
+
 - All independent P0s launch simultaneously
 - P1s only start after all P0s are merged and verified
 - Infrastructure fixes (migrations, lib changes) before consumer fixes (components, pages)
@@ -83,6 +86,7 @@ Present the fix plan to the user:
 5. **Skip list**: Any P2/P3 gaps intentionally deferred — explain why
 
 Ask:
+
 - "Do you approve this fix plan?"
 - "Any gaps you want to reprioritize or skip?"
 - "Any fix approaches you want to change?"
@@ -165,6 +169,7 @@ Same pattern as `/build-step` Phase 5. Read `.claude/rules/deploy-config.md` for
 ### 6.1 Re-Run Affected Audits
 
 Launch audit subagents ONLY for the dimensions that had gaps fixed. Each should:
+
 1. Score the dimension fresh (not referencing the old score)
 2. Compare against the pre-fix baseline
 3. Report whether the gap is confirmed closed
@@ -183,6 +188,7 @@ Present a before/after table:
 ### 6.3 Remaining Gaps
 
 If any gaps weren't fully closed:
+
 - Explain why (fix was partial, deeper issue found, etc.)
 - Recommend whether to run another `/fix-audit` cycle or defer
 

@@ -15,11 +15,11 @@ import { calculateParticipationRate, applyRationaleCurve } from '@/utils/scoring
 import { getProposalPriority } from '@/utils/proposalPriority';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { getTreasuryBalance } from '@/lib/treasury';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request: NextRequest, context: RouteContext) => {
+export const GET = withRouteHandler(async (request: NextRequest) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) {
     return NextResponse.json({ error: 'Missing drepId' }, { status: 400 });

@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { motion, useInView, useSpring } from 'framer-motion';
 import {
@@ -72,6 +73,7 @@ export function HexScore({
   const polygonPoints = useMemo(() => hexVerticesToPath(vertices), [vertices]);
 
   const animatedScore = useCountUp(score, shouldAnimate);
+  // eslint-disable-next-line react-hooks/purity -- stable random ID for SVG gradient defs, only changes with size
   const uid = useMemo(() => `hex-${size}-${Math.random().toString(36).slice(2, 6)}`, [size]);
 
   const showNumber = size !== 'badge';

@@ -14,7 +14,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Share2,
   ChevronDown,
   ChevronUp,
   Copy,
@@ -85,8 +84,6 @@ export function CrossProposalInsights({
 }
 
 function InsightHighlight({ insight }: { insight: GovernanceInsight }) {
-  const Icon = CATEGORY_ICONS[insight.category] || Lightbulb;
-
   return (
     <motion.div
       variants={fadeInUp}

@@ -30,7 +30,7 @@ export const precomputeCitizenSummaries = inngest.createFunction(
         statsRow?.current_epoch ?? blockTimeToEpoch(Math.floor(Date.now() / 1000));
       const targetEpoch = currentEpoch - 1;
 
-      const { data: existing } = await supabase
+      await supabase
         .from('citizen_epoch_summaries')
         .select('user_id', { count: 'exact', head: true })
         .eq('epoch_no', targetEpoch);

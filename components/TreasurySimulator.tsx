@@ -41,7 +41,7 @@ interface Props {
   currentEpoch: number;
 }
 
-export function TreasurySimulator({ currentBalance, burnRate, currentEpoch }: Props) {
+export function TreasurySimulator({}: Props) {
   const [burnAdjust, setBurnAdjust] = useState(1);
   const { data: raw, isLoading } = useTreasurySimulate(burnAdjust);
   const data = raw as SimulationData | undefined;

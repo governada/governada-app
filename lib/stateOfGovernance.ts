@@ -111,10 +111,12 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
   }
 
   const movers = (currentScores ?? [])
-    .filter((d: any) => d.info?.isActive && d.score != null)
-    .map((d: any) => ({
+    .filter((d) => (d.info as Record<string, unknown> | null)?.isActive && d.score != null)
+    .map((d) => ({
       drepId: d.id,
-      name: d.info?.givenName || d.id.slice(0, 12) + '...',
+      name:
+        ((d.info as Record<string, unknown> | null)?.givenName as string) ||
+        d.id.slice(0, 12) + '...',
       score: d.score ?? 0,
       delta: (d.score ?? 0) - (prevScoreMap.get(d.id) ?? d.score ?? 0),
     }))
@@ -128,10 +130,17 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
     .select('vote_tx_hash', { count: 'exact', head: true })
     .eq('epoch_no', epoch);
 
-  const activeDreps = (currentScores ?? []).filter((d: any) => d.info?.isActive);
+  const activeDreps = (currentScores ?? []).filter(
+    (d) => (d.info as Record<string, unknown> | null)?.isActive,
+  );
   const totalAda =
     activeDreps.reduce(
-      (s: number, d: any) => s + parseInt(d.info?.votingPowerLovelace || '0', 10),
+      (s: number, d) =>
+        s +
+        parseInt(
+          ((d.info as Record<string, unknown> | null)?.votingPowerLovelace as string) || '0',
+          10,
+        ),
       0,
     ) / 1_000_000;
 
@@ -140,8 +149,12 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
 
   const avgParticipation =
     activeDreps.length > 0
-      ? activeDreps.reduce((s: number, d: any) => s + (d.info?.effective_participation ?? 0), 0) /
-        activeDreps.length
+      ? activeDreps.reduce(
+          (s: number, d) =>
+            s +
+            (((d.info as Record<string, unknown> | null)?.effective_participation as number) ?? 0),
+          0,
+        ) / activeDreps.length
       : 0;
 
   const treasuryBalance = govStats?.treasury_balance_lovelace

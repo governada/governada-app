@@ -15,11 +15,11 @@ import {
   getDRepPercentile,
 } from '@/lib/data';
 import { getProposalDisplayTitle } from '@/utils/display';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request: NextRequest, context: RouteContext) => {
+export const GET = withRouteHandler(async (request: NextRequest) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) {
     return NextResponse.json({ error: 'Missing drepId' }, { status: 400 });
@@ -37,7 +37,7 @@ export const GET = withRouteHandler(async (request: NextRequest, context: RouteC
     getDRepPercentile(cachedDRep.drepScore),
   ]);
 
-  const proposalIds = rawVotes.map((v: any) => ({
+  const proposalIds = rawVotes.map((v) => ({
     txHash: v.proposal_tx_hash as string,
     index: v.proposal_index as number,
   }));
@@ -51,10 +51,10 @@ export const GET = withRouteHandler(async (request: NextRequest, context: RouteC
 
   const [cachedProposals, cachedRationales] = await Promise.all([
     getProposalsByIds(uniqueProposalIds),
-    getRationalesByVoteTxHashes(rawVotes.map((v: any) => v.vote_tx_hash)),
+    getRationalesByVoteTxHashes(rawVotes.map((v) => v.vote_tx_hash)),
   ]);
 
-  const votes = rawVotes.map((vote: any, index: number) => {
+  const votes = rawVotes.map((vote, index: number) => {
     const key = `${vote.proposal_tx_hash}-${vote.proposal_index}`;
     const cachedProposal = cachedProposals.get(key);
     const title = cachedProposal?.title || null;
@@ -84,7 +84,7 @@ export const GET = withRouteHandler(async (request: NextRequest, context: RouteC
     };
   });
 
-  const brokenLinks = linkChecks.filter((c: any) => c.status === 'broken').map((c: any) => c.uri);
+  const brokenLinks = linkChecks.filter((c) => c.status === 'broken').map((c) => c.uri);
 
   return NextResponse.json({
     drep: {

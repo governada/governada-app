@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { withApiHandler } from '@/lib/api/handler';
 import { apiSuccess, apiError } from '@/lib/api/response';
 import { getAllDReps } from '@/lib/data';
+import type { EnrichedDRep } from '@/lib/koios';
 import type { ApiContext } from '@/lib/api/handler';
 
 function getScoreTier(score: number): string {
@@ -22,7 +23,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50') || 50, 1), 100);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0);
 
-  if (!VALID_SORT_FIELDS.includes(sortField as any)) {
+  if (!(VALID_SORT_FIELDS as readonly string[]).includes(sortField)) {
     return apiError(
       'invalid_parameter',
       {
@@ -34,7 +35,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
     );
   }
 
-  if (!VALID_ORDERS.includes(order as any)) {
+  if (!(VALID_ORDERS as readonly string[]).includes(order)) {
     return apiError(
       'invalid_parameter',
       {
@@ -60,7 +61,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
     );
   }
 
-  const sortKeyMap: Record<string, (d: any) => number | string> = {
+  const sortKeyMap: Record<string, (d: EnrichedDRep) => number | string> = {
     score: (d) => d.drepScore,
     name: (d) => (d.name || d.ticker || d.drepId).toLowerCase(),
     participation: (d) => d.effectiveParticipation,

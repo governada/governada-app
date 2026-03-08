@@ -16,7 +16,6 @@ import {
 import { SlidersHorizontal, Info, RotateCcw, Heart, UserCheck } from 'lucide-react';
 
 import { SizeTier } from '@/utils/scoring';
-import { cn } from '@/lib/utils';
 
 interface FilterPanelProps {
   filterWellDocumented: boolean;

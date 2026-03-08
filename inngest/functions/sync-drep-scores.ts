@@ -84,7 +84,7 @@ export const syncDrepScores = inngest.createFunction(
         const allProposalTypes = new Set<string>();
         const proposalBlockTimes = new Map<string, number>();
 
-        for (const p of (proposalRows || []) as any[]) {
+        for (const p of proposalRows || []) {
           const key = `${p.tx_hash}-${p.proposal_index}`;
           const weight = getExtendedImportanceWeight(
             p.proposal_type,
@@ -105,7 +105,7 @@ export const syncDrepScores = inngest.createFunction(
 
         // Voting summary map (for margins + majority)
         const votingSummaries = new Map<string, ProposalVotingSummary>();
-        for (const s of (summaryRows || []) as any[]) {
+        for (const s of summaryRows || []) {
           const key = `${s.proposal_tx_hash}-${s.proposal_index}`;
           votingSummaries.set(key, {
             proposalKey: key,
@@ -117,7 +117,7 @@ export const syncDrepScores = inngest.createFunction(
 
         // Active proposal epochs for reliability
         const proposalEpochs = new Map<number, number>();
-        for (const p of (proposalRows || []) as any[]) {
+        for (const p of proposalRows || []) {
           if (p.proposed_epoch == null) continue;
           const start = p.proposed_epoch;
           const endEpoch = Math.min(
@@ -137,7 +137,7 @@ export const syncDrepScores = inngest.createFunction(
         // Temp: epoch counts per DRep
         const drepEpochCounts = new Map<string, Map<number, number>>();
 
-        for (const v of voteRows as any[]) {
+        for (const v of voteRows) {
           const proposalKey = `${v.proposal_tx_hash}-${v.proposal_index}`;
           const ctx = proposalContexts.get(proposalKey);
 
@@ -178,7 +178,7 @@ export const syncDrepScores = inngest.createFunction(
         }
 
         // Ensure all DReps from the dreps table have entries (even those with 0 votes)
-        for (const row of drepRows as any[]) {
+        for (const row of drepRows) {
           if (!drepVotes.has(row.id)) drepVotes.set(row.id, []);
         }
 
@@ -186,7 +186,7 @@ export const syncDrepScores = inngest.createFunction(
         const profiles = new Map<string, DRepProfileData>();
         const allDelegatorCounts: number[] = [];
 
-        for (const row of drepRows as any[]) {
+        for (const row of drepRows) {
           const info = (row.info || {}) as Record<string, unknown>;
           const delegatorCount = (info.delegatorCount as number) || 0;
 
@@ -241,7 +241,7 @@ export const syncDrepScores = inngest.createFunction(
           .order('snapshot_date', { ascending: true });
 
         const scoreHistory = new Map<string, { date: string; score: number }[]>();
-        for (const h of (historyRows || []) as any[]) {
+        for (const h of historyRows || []) {
           if (!scoreHistory.has(h.drep_id)) scoreHistory.set(h.drep_id, []);
           scoreHistory.get(h.drep_id)!.push({ date: h.snapshot_date, score: h.score });
         }
@@ -317,7 +317,9 @@ export const syncDrepScores = inngest.createFunction(
         );
 
         // Log snapshot completeness
-        const activeDreps = drepRows?.filter((d: any) => d.info?.isActive !== false).length ?? 0;
+        const activeDreps =
+          drepRows?.filter((d) => (d.info as Record<string, unknown> | null)?.isActive !== false)
+            .length ?? 0;
         const scored = finalScores.size;
         const coveragePct =
           activeDreps > 0 ? Math.round((scored / activeDreps) * 10000) / 100 : 100;

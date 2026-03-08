@@ -58,7 +58,7 @@ export function StatementComposer({ open, onClose, drepId, onSuccess }: Statemen
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Let your delegators know how you're thinking about active governance proposals.
+            Let your delegators know how you&apos;re thinking about active governance proposals.
           </p>
           <div className="relative">
             <Textarea

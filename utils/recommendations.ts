@@ -1,5 +1,5 @@
 import { VoteRecord } from '@/types/drep';
-import { getMissingProfileFields, applyRationaleCurve, getPillarStatus } from '@/utils/scoring';
+import { getMissingProfileFields, applyRationaleCurve } from '@/utils/scoring';
 
 export interface Recommendation {
   pillar: 'participation' | 'rationale' | 'reliability' | 'profile';

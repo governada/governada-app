@@ -221,7 +221,10 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
 
       {/* ── Social proof strip ──────────────────────────────────────── */}
       <section className="mx-auto w-full max-w-4xl px-4 pb-16">
-        <div className="rounded-xl border border-border/50 bg-muted/30 px-6 py-4">
+        <div className="rounded-xl border border-border/50 bg-muted/30 px-6 py-4 space-y-2">
+          <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Citizens are already shaping Cardano&apos;s future
+          </p>
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary/60 shrink-0" />

@@ -7,6 +7,7 @@ interface GovernanceHealthGaugeProps {
   score: number;
   band: string;
   delta?: number;
+  narrative?: string;
   className?: string;
 }
 
@@ -62,6 +63,7 @@ export function GovernanceHealthGauge({
   score,
   band,
   delta,
+  narrative,
   className,
 }: GovernanceHealthGaugeProps) {
   const [animatedScore, setAnimatedScore] = useState(0);
@@ -205,29 +207,36 @@ export function GovernanceHealthGauge({
       </svg>
 
       {/* Band label below */}
-      <div className="flex items-center gap-2 -mt-2">
-        <span
-          className={cn(
-            'text-xs font-semibold px-2.5 py-0.5 rounded-full',
-            band === 'Healthy'
-              ? 'bg-emerald-900/30 text-emerald-400'
-              : band === 'Moderate'
-                ? 'bg-amber-900/30 text-amber-400'
-                : 'bg-rose-900/30 text-rose-400',
-          )}
-        >
-          {band}
-        </span>
-        {delta != null && delta !== 0 && (
+      <div className="flex flex-col items-center gap-1.5 -mt-2">
+        <div className="flex items-center gap-2">
           <span
             className={cn(
-              'text-xs font-medium tabular-nums',
-              delta > 0 ? 'text-emerald-400' : 'text-rose-400',
+              'text-xs font-semibold px-2.5 py-0.5 rounded-full',
+              band === 'Healthy'
+                ? 'bg-emerald-900/30 text-emerald-400'
+                : band === 'Moderate'
+                  ? 'bg-amber-900/30 text-amber-400'
+                  : 'bg-rose-900/30 text-rose-400',
             )}
           >
-            {delta > 0 ? '+' : ''}
-            {delta.toFixed(1)}
+            {band}
           </span>
+          {delta != null && delta !== 0 && (
+            <span
+              className={cn(
+                'text-xs font-medium tabular-nums',
+                delta > 0 ? 'text-emerald-400' : 'text-rose-400',
+              )}
+            >
+              {delta > 0 ? '+' : ''}
+              {delta.toFixed(1)}
+            </span>
+          )}
+        </div>
+        {narrative && (
+          <p className="text-[11px] text-muted-foreground text-center max-w-[200px] leading-snug">
+            {narrative}
+          </p>
         )}
       </div>
     </div>

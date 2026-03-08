@@ -112,7 +112,9 @@ export function ShareModal({
             </Button>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground">via Civica</p>
+          <p className="text-center text-xs text-muted-foreground">
+            via Civica &mdash; governance intelligence for Cardano
+          </p>
         </div>
       </DialogContent>
     </Dialog>

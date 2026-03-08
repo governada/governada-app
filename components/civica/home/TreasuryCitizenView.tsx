@@ -113,7 +113,11 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Funded by protocol reserves and transaction fees. Spent through governance votes.
+            {treasury.trend === 'growing'
+              ? 'Growing \u2014 incoming reserves and fees are outpacing withdrawals this period.'
+              : treasury.trend === 'shrinking'
+                ? 'Shrinking \u2014 active withdrawals are exceeding incoming reserves this period.'
+                : 'Funded by protocol reserves and transaction fees. Spent through governance votes.'}
           </p>
         </div>
 

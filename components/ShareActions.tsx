@@ -70,7 +70,7 @@ export function ShareActions({
   const handleDownload = useCallback(async () => {
     if (!imageUrl) return;
     try {
-      await downloadImage(imageUrl, imageFilename || 'drepscore-card.png');
+      await downloadImage(imageUrl, imageFilename || 'civica-card.png');
       trackShare(surface, 'download', metadata, 'success');
     } catch {
       trackShare(surface, 'download', metadata, 'failed');

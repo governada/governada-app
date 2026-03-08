@@ -168,6 +168,15 @@ export function CivicaGovernanceTrends() {
 
   const isLoading = sparklinesLoading || ghiLoading;
 
+  // Build a human-readable narrative for the GHI gauge
+  const ghiNarrative = (() => {
+    if (!trend?.delta || trend.delta === 0) return undefined;
+    const dir = trend.delta > 0 ? 'Improving' : 'Declining';
+    const abs = Math.abs(trend.delta).toFixed(1);
+    const streak = (trend.streakEpochs ?? 0) > 1 ? ` over ${trend.streakEpochs} epochs` : '';
+    return `${dir}: ${trend.delta > 0 ? '+' : '-'}${abs} pts${streak}`;
+  })();
+
   const TrendIcon =
     trend?.direction === 'up' ? TrendingUp : trend?.direction === 'down' ? TrendingDown : Minus;
   const trendColor =
@@ -237,6 +246,7 @@ export function CivicaGovernanceTrends() {
                 score={ghi.current.score}
                 band={ghi.current.band ?? 'Unknown'}
                 delta={trend?.delta ?? undefined}
+                narrative={ghiNarrative}
               />
             )}
 

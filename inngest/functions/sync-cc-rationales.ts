@@ -19,13 +19,27 @@ import {
 import { computeFullTransparencyIndex } from '@/lib/scoring/ccTransparency';
 import type { CCMemberVoteData } from '@/lib/scoring/ccTransparency';
 import { logger } from '@/lib/logger';
-import { errMsg } from '@/lib/sync-utils';
+import { errMsg, capMsg } from '@/lib/sync-utils';
 
 export const syncCcRationales = inngest.createFunction(
   {
     id: 'sync-cc-rationales',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"cc-rationales"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[cc-rationales] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'cc_votes')
+        .is('finished_at', null);
+    },
   },
   [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.cc-rationales' }],
   async ({ step }) => {

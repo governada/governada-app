@@ -21,7 +21,7 @@ import {
   type ProposalVotingSummary,
   type DRepProfileData,
 } from '@/lib/scoring';
-import { batchUpsert, SyncLogger, errMsg, emitPostHog } from '@/lib/sync-utils';
+import { batchUpsert, SyncLogger, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const syncDrepScores = inngest.createFunction(
@@ -29,6 +29,20 @@ export const syncDrepScores = inngest.createFunction(
     id: 'sync-drep-scores',
     retries: 3,
     concurrency: { limit: 1, scope: 'env', key: '"scoring-compute"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[scoring] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'scoring')
+        .is('finished_at', null);
+    },
   },
   [{ event: 'drepscore/sync.scores' }, { cron: '0 2 * * *' }],
   async ({ step }) => {

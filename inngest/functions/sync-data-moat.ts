@@ -11,8 +11,9 @@
  */
 
 import { inngest } from '@/lib/inngest';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
-import { alertCritical, emitPostHog, errMsg } from '@/lib/sync-utils';
+import { alertCritical, emitPostHog, errMsg, capMsg } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import {
   prepareDelegatorSnapshot,
@@ -31,6 +32,20 @@ export const syncDataMoat = inngest.createFunction(
     id: 'sync-data-moat',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"data-moat"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[data-moat] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'data_moat')
+        .is('finished_at', null);
+    },
   },
   [{ cron: '15 3 * * *' }, { event: 'drepscore/sync.data-moat' }],
   async ({ step }) => {

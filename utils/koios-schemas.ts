@@ -84,6 +84,32 @@ export const KoiosTreasurySchema = z
   })
   .passthrough();
 
+export const KoiosSPOVoteSchema = z
+  .object({
+    vote_tx_hash: z.string(),
+    voter_id: z.string(),
+    proposal_tx_hash: z.string(),
+    proposal_index: z.number(),
+    epoch_no: z.number(),
+    block_time: z.number(),
+    vote: z.enum(['Yes', 'No', 'Abstain']),
+  })
+  .passthrough();
+
+export const KoiosCCVoteSchema = z
+  .object({
+    vote_tx_hash: z.string(),
+    voter_id: z.string(),
+    proposal_tx_hash: z.string(),
+    proposal_index: z.number(),
+    epoch_no: z.number(),
+    block_time: z.number(),
+    vote: z.enum(['Yes', 'No', 'Abstain']),
+    meta_url: z.string().nullable(),
+    meta_hash: z.string().nullable(),
+  })
+  .passthrough();
+
 export const KoiosDelegatorSchema = z
   .object({
     stake_address: z.string(),

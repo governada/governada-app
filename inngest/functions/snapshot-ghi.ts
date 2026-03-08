@@ -9,7 +9,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { computeGHI } from '@/lib/ghi';
-import { SyncLogger, errMsg } from '@/lib/sync-utils';
+import { SyncLogger, errMsg, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const snapshotGhi = inngest.createFunction(
@@ -17,6 +17,20 @@ export const snapshotGhi = inngest.createFunction(
     id: 'snapshot-ghi',
     name: 'Snapshot GHI',
     retries: 3,
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[ghi] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'ghi')
+        .is('finished_at', null);
+    },
   },
   [{ cron: '30 4 * * *' }, { event: 'drepscore/sync.ghi' }],
   async ({ step }) => {

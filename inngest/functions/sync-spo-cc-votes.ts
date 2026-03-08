@@ -6,7 +6,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchAllSPOVotesBulk, fetchAllCCVotesBulk } from '@/utils/koios';
-import { SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
+import { SyncLogger, batchUpsert, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { computeAndCacheAlignment } from '@/lib/interBodyAlignment';
 
@@ -15,6 +15,32 @@ export const syncSpoAndCcVotes = inngest.createFunction(
     id: 'sync-spo-cc-votes',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"spo-cc-votes"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[spo-cc-votes] Function failed permanently', { error });
+      // Clean up ghost entries for both sync types this function manages
+      await Promise.all([
+        sb
+          .from('sync_log')
+          .update({
+            finished_at: new Date().toISOString(),
+            success: false,
+            error_message: capMsg(`onFailure: ${msg}`),
+          })
+          .eq('sync_type', 'spo_votes')
+          .is('finished_at', null),
+        sb
+          .from('sync_log')
+          .update({
+            finished_at: new Date().toISOString(),
+            success: false,
+            error_message: capMsg(`onFailure: ${msg}`),
+          })
+          .eq('sync_type', 'cc_votes')
+          .is('finished_at', null),
+      ]);
+    },
   },
   [{ cron: '45 */6 * * *' }, { event: 'drepscore/sync.spo-cc-votes' }],
   async ({ step }) => {

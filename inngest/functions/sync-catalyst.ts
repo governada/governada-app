@@ -7,8 +7,9 @@
  */
 
 import { inngest } from '@/lib/inngest';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
-import { alertCritical, emitPostHog, errMsg } from '@/lib/sync-utils';
+import { alertCritical, emitPostHog, errMsg, capMsg } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import { syncCatalystFunds, syncCatalystProposals } from '@/lib/sync/catalyst';
 
@@ -17,6 +18,20 @@ export const syncCatalyst = inngest.createFunction(
     id: 'sync-catalyst',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"catalyst"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[catalyst] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'catalyst')
+        .is('finished_at', null);
+    },
   },
   [{ cron: '30 4 * * *' }, { event: 'drepscore/sync.catalyst' }],
   async ({ step }) => {

@@ -7,7 +7,7 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchTreasuryBalance } from '@/utils/koios';
 import { calculateTreasuryHealthScore } from '@/lib/treasury';
-import { SyncLogger, emitPostHog, errMsg, pingHeartbeat } from '@/lib/sync-utils';
+import { SyncLogger, emitPostHog, errMsg, capMsg, pingHeartbeat } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const syncTreasurySnapshot = inngest.createFunction(
@@ -15,11 +15,45 @@ export const syncTreasurySnapshot = inngest.createFunction(
     id: 'sync-treasury-snapshot',
     retries: 3,
     concurrency: { limit: 1, scope: 'env', key: '"treasury-sync"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[treasury] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'treasury')
+        .is('finished_at', null);
+    },
   },
   [{ cron: '30 22 * * *' }, { event: 'drepscore/sync.treasury' }],
   async ({ step }) => {
     let snapshotEpoch = 0;
     let errorMessage: string | null = null;
+
+    // Idempotency guard: skip if another treasury sync is already in progress
+    const alreadyRunning = await step.run('check-idempotency', async () => {
+      const sb = getSupabaseAdmin();
+      const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min window
+      const { data } = await sb
+        .from('sync_log')
+        .select('id')
+        .eq('sync_type', 'treasury')
+        .eq('success', false)
+        .is('finished_at', null)
+        .gte('started_at', cutoff)
+        .limit(1);
+      return (data?.length ?? 0) > 0;
+    });
+
+    if (alreadyRunning) {
+      logger.info('[treasury] Skipping — another treasury sync is already in progress');
+      return { skipped: true, reason: 'concurrent run detected' };
+    }
 
     const logId = await step.run('init-sync-log', async () => {
       const sb = getSupabaseAdmin();

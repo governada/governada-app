@@ -10,7 +10,7 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 import { generateText } from '@/lib/ai';
-import { SyncLogger, errMsg } from '@/lib/sync-utils';
+import { SyncLogger, errMsg, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import {
   fetchEthereumBenchmark,
@@ -24,6 +24,20 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
     id: 'sync-governance-benchmarks',
     name: 'Sync Governance Benchmarks',
     retries: 3,
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[benchmarks] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'benchmarks')
+        .is('finished_at', null);
+    },
   },
   [{ cron: '0 6 * * 0' }, { event: 'drepscore/sync.benchmarks' }],
   async ({ step }) => {

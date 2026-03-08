@@ -17,6 +17,7 @@ import {
   KoiosAccountInfo,
 } from '@/types/koios';
 import { logger } from '@/lib/logger';
+import { KoiosSPOVoteSchema, KoiosCCVoteSchema, validateArray } from '@/utils/koios-schemas';
 import * as Sentry from '@sentry/nextjs';
 
 const KOIOS_BASE_URL = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
@@ -889,25 +890,23 @@ export async function fetchAllSPOVotesBulk(): Promise<SPOVote[]> {
   const allVotes: SPOVote[] = [];
   let offset = 0;
   let page = 0;
+  let totalInvalid = 0;
 
   while (true) {
     const url = `/vote_list?voter_role=eq.SPO&limit=${VOTE_LIST_PAGE_SIZE}&offset=${offset}`;
-    const data = await koiosFetch<
-      Array<{
-        vote_tx_hash: string;
-        voter_id: string;
-        proposal_tx_hash: string;
-        proposal_index: number;
-        epoch_no: number;
-        block_time: number;
-        vote: 'Yes' | 'No' | 'Abstain';
-      }>
-    >(url, { cache: 'no-store' });
+    const data = await koiosFetch<unknown[]>(url, { cache: 'no-store' });
 
     const pageData = data || [];
     page++;
 
-    for (const row of pageData) {
+    const { valid: validatedRows, invalidCount } = validateArray(
+      pageData,
+      KoiosSPOVoteSchema,
+      'SPO votes',
+    );
+    totalInvalid += invalidCount;
+
+    for (const row of validatedRows) {
       allVotes.push({
         pool_id: row.voter_id,
         proposal_tx_hash: row.proposal_tx_hash,
@@ -920,11 +919,15 @@ export async function fetchAllSPOVotesBulk(): Promise<SPOVote[]> {
     }
 
     console.log(
-      `[Koios] SPO vote_list page ${page}: ${pageData.length} votes (total: ${allVotes.length})`,
+      `[Koios] SPO vote_list page ${page}: ${pageData.length} votes (valid: ${validatedRows.length}, total: ${allVotes.length})`,
     );
 
     if (pageData.length < VOTE_LIST_PAGE_SIZE) break;
     offset += VOTE_LIST_PAGE_SIZE;
+  }
+
+  if (totalInvalid > 0) {
+    logger.warn(`[Koios] SPO votes: ${totalInvalid} total records failed validation`);
   }
 
   return allVotes;
@@ -938,27 +941,23 @@ export async function fetchAllCCVotesBulk(): Promise<CCVote[]> {
   const allVotes: CCVote[] = [];
   let offset = 0;
   let page = 0;
+  let totalInvalid = 0;
 
   while (true) {
     const url = `/vote_list?voter_role=eq.ConstitutionalCommittee&limit=${VOTE_LIST_PAGE_SIZE}&offset=${offset}`;
-    const data = await koiosFetch<
-      Array<{
-        vote_tx_hash: string;
-        voter_id: string;
-        proposal_tx_hash: string;
-        proposal_index: number;
-        epoch_no: number;
-        block_time: number;
-        vote: 'Yes' | 'No' | 'Abstain';
-        meta_url: string | null;
-        meta_hash: string | null;
-      }>
-    >(url, { cache: 'no-store' });
+    const data = await koiosFetch<unknown[]>(url, { cache: 'no-store' });
 
     const pageData = data || [];
     page++;
 
-    for (const row of pageData) {
+    const { valid: validatedRows, invalidCount } = validateArray(
+      pageData,
+      KoiosCCVoteSchema,
+      'CC votes',
+    );
+    totalInvalid += invalidCount;
+
+    for (const row of validatedRows) {
       allVotes.push({
         cc_hot_id: row.voter_id,
         proposal_tx_hash: row.proposal_tx_hash,
@@ -973,11 +972,15 @@ export async function fetchAllCCVotesBulk(): Promise<CCVote[]> {
     }
 
     console.log(
-      `[Koios] CC vote_list page ${page}: ${pageData.length} votes (total: ${allVotes.length})`,
+      `[Koios] CC vote_list page ${page}: ${pageData.length} votes (valid: ${validatedRows.length}, total: ${allVotes.length})`,
     );
 
     if (pageData.length < VOTE_LIST_PAGE_SIZE) break;
     offset += VOTE_LIST_PAGE_SIZE;
+  }
+
+  if (totalInvalid > 0) {
+    logger.warn(`[Koios] CC votes: ${totalInvalid} total records failed validation`);
   }
 
   return allVotes;

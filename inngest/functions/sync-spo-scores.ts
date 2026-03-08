@@ -1,7 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
+import { SyncLogger, batchUpsert, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
 import {
   computeSpoScores,
   computeProposalMarginMultipliers,
@@ -104,6 +104,20 @@ export const syncSpoScores = inngest.createFunction(
     id: 'sync-spo-scores',
     retries: 3,
     concurrency: { limit: 1, scope: 'env', key: '"spo-scores"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const msg = errMsg(error);
+      logger.error('[spo-scores] Function failed permanently', { error });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: capMsg(`onFailure: ${msg}`),
+        })
+        .eq('sync_type', 'spo_scores')
+        .is('finished_at', null);
+    },
   },
   [{ event: 'drepscore/sync.spo-scores' }, { cron: '0 3 * * *' }],
   async ({ step }) => {

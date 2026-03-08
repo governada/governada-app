@@ -600,48 +600,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      cc_transparency_snapshots: {
-        Row: {
-          cc_hot_id: string;
-          community_engagement_score: number | null;
-          eligible_proposals: number | null;
-          epoch_no: number;
-          independence_score: number | null;
-          participation_score: number | null;
-          rationale_quality_score: number | null;
-          responsiveness_score: number | null;
-          snapshot_at: string | null;
-          transparency_index: number | null;
-          votes_cast: number | null;
-        };
-        Insert: {
-          cc_hot_id: string;
-          community_engagement_score?: number | null;
-          eligible_proposals?: number | null;
-          epoch_no: number;
-          independence_score?: number | null;
-          participation_score?: number | null;
-          rationale_quality_score?: number | null;
-          responsiveness_score?: number | null;
-          snapshot_at?: string | null;
-          transparency_index?: number | null;
-          votes_cast?: number | null;
-        };
-        Update: {
-          cc_hot_id?: string;
-          community_engagement_score?: number | null;
-          eligible_proposals?: number | null;
-          epoch_no?: number;
-          independence_score?: number | null;
-          participation_score?: number | null;
-          rationale_quality_score?: number | null;
-          responsiveness_score?: number | null;
-          snapshot_at?: string | null;
-          transparency_index?: number | null;
-          votes_cast?: number | null;
-        };
-        Relationships: [];
-      };
       cc_rationales: {
         Row: {
           article_coverage_score: number | null;
@@ -708,6 +666,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      cc_transparency_snapshots: {
+        Row: {
+          cc_hot_id: string;
+          community_engagement_score: number | null;
+          eligible_proposals: number | null;
+          epoch_no: number;
+          independence_score: number | null;
+          participation_score: number | null;
+          rationale_quality_score: number | null;
+          responsiveness_score: number | null;
+          snapshot_at: string | null;
+          transparency_index: number | null;
+          votes_cast: number | null;
+        };
+        Insert: {
+          cc_hot_id: string;
+          community_engagement_score?: number | null;
+          eligible_proposals?: number | null;
+          epoch_no: number;
+          independence_score?: number | null;
+          participation_score?: number | null;
+          rationale_quality_score?: number | null;
+          responsiveness_score?: number | null;
+          snapshot_at?: string | null;
+          transparency_index?: number | null;
+          votes_cast?: number | null;
+        };
+        Update: {
+          cc_hot_id?: string;
+          community_engagement_score?: number | null;
+          eligible_proposals?: number | null;
+          epoch_no?: number;
+          independence_score?: number | null;
+          participation_score?: number | null;
+          rationale_quality_score?: number | null;
+          responsiveness_score?: number | null;
+          snapshot_at?: string | null;
+          transparency_index?: number | null;
+          votes_cast?: number | null;
+        };
+        Relationships: [];
+      };
       cc_votes: {
         Row: {
           block_time: number;
@@ -755,6 +755,7 @@ export type Database = {
           opens_at: string;
           options: Json;
           question: string;
+          quorum_threshold: number;
           results: Json | null;
           source: string;
           status: string;
@@ -772,6 +773,7 @@ export type Database = {
           opens_at: string;
           options: Json;
           question: string;
+          quorum_threshold?: number;
           results?: Json | null;
           source?: string;
           status?: string;
@@ -789,6 +791,7 @@ export type Database = {
           opens_at?: string;
           options?: Json;
           question?: string;
+          quorum_threshold?: number;
           results?: Json | null;
           source?: string;
           status?: string;

@@ -1,14 +1,20 @@
 /**
- * Score Confidence System for SPO Score V3.
- * Measures how reliable an SPO's score is based on available evidence.
+ * Score Confidence System for SPO Score V3 and DRep Score V3.
+ * Measures how reliable an entity's score is based on available evidence.
  *
  * Effects:
- * - Confidence < 60 caps tier at Emerging
- * - Low-confidence SPOs contribute less to percentile distribution
+ * - Confidence < threshold caps tier (graduated for DReps, binary for SPOs)
+ * - Low-confidence entities contribute less to percentile distribution
+ * - Confidence dampening pulls low-data percentile scores toward the median
  * - UI renders low-confidence scores with a "provisional" marker
  */
 
-import { SPO_CONFIDENCE } from './calibration';
+import { SPO_CONFIDENCE, DREP_CONFIDENCE } from './calibration';
+import type { TierName } from './tiers';
+
+// ---------------------------------------------------------------------------
+// SPO Confidence (original)
+// ---------------------------------------------------------------------------
 
 /**
  * Compute confidence (0-100) for a single SPO based on evidence volume.
@@ -33,6 +39,82 @@ export function computeConfidence(
       100,
   );
 }
+
+// ---------------------------------------------------------------------------
+// DRep Confidence
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute confidence (0-100) for a single DRep based on evidence volume.
+ * Mirrors the SPO confidence formula but uses DRep-specific calibration.
+ *
+ * @param voteCount Number of votes cast
+ * @param epochSpan Number of epochs between first and last vote
+ * @param typeCoverage Fraction of proposal types voted on (0-1)
+ */
+export function computeDRepConfidence(
+  voteCount: number,
+  epochSpan: number,
+  typeCoverage: number,
+): number {
+  const voteFactor = 1 - Math.exp(-voteCount / DREP_CONFIDENCE.voteDecayRate);
+  const spanFactor = 1 - Math.exp(-epochSpan / DREP_CONFIDENCE.spanDecayRate);
+  const typeFactor = Math.min(1, typeCoverage / DREP_CONFIDENCE.typeCoverageThreshold);
+
+  return Math.round(
+    (voteFactor * DREP_CONFIDENCE.weights.vote +
+      spanFactor * DREP_CONFIDENCE.weights.span +
+      typeFactor * DREP_CONFIDENCE.weights.type) *
+      100,
+  );
+}
+
+/**
+ * Get the maximum tier allowed for a DRep based on their vote count.
+ * Uses graduated thresholds from DREP_CONFIDENCE.tierCaps.
+ *
+ * Returns null if no cap applies (full confidence).
+ */
+export function getDRepTierCap(voteCount: number): TierName | null {
+  for (const cap of DREP_CONFIDENCE.tierCaps) {
+    if (voteCount < cap.maxVotes) return cap.maxTier;
+  }
+  return null; // No cap for 15+ votes
+}
+
+/**
+ * Get DRep confidence level based on vote count (graduated).
+ * This is a simpler alternative to the full computeDRepConfidence() formula
+ * that only uses vote count, for tier cap decisions.
+ */
+export function getDRepConfidenceByVotes(voteCount: number): number {
+  for (const cap of DREP_CONFIDENCE.tierCaps) {
+    if (voteCount < cap.maxVotes) return cap.confidence;
+  }
+  return DREP_CONFIDENCE.fullConfidence;
+}
+
+/**
+ * Dampen a percentile score toward the median based on confidence.
+ * Low-confidence entities are pulled toward 50 (median), preventing
+ * skewed raw score distributions from inflating percentile ranks.
+ *
+ * Formula: adjustedScore = median + (rawPercentile - median) * (confidence / 100)
+ *
+ * Examples:
+ * - 100% confidence: score unchanged
+ * - 50% confidence: score halfway between raw and 50
+ * - 0% confidence: score = 50 (median)
+ */
+export function dampenPercentile(rawPercentile: number, confidence: number): number {
+  const median = 50;
+  const normalizedConfidence = Math.max(0, Math.min(100, confidence)) / 100;
+  return Math.round(median + (rawPercentile - median) * normalizedConfidence);
+}
+
+// ---------------------------------------------------------------------------
+// Shared: Confidence-weighted percentile normalization
+// ---------------------------------------------------------------------------
 
 /**
  * Confidence-weighted percentile normalization.

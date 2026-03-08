@@ -43,6 +43,10 @@ export {
 } from './spoDeliberationQuality';
 export {
   computeConfidence,
+  computeDRepConfidence,
+  getDRepTierCap,
+  getDRepConfidenceByVotes,
+  dampenPercentile,
   percentileNormalizeWeighted,
   CONFIDENCE_TIER_THRESHOLD,
 } from './confidence';
@@ -58,6 +62,7 @@ export { detectSybilPairs, type SybilFlag } from './sybilDetection';
 // Score Tiers
 export {
   computeTier,
+  computeTierWithCap,
   computeTierProgress,
   detectTierChange,
   getTierInfo,

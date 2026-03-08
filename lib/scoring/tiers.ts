@@ -54,7 +54,8 @@ export interface TierChange {
 
 /**
  * Compute tier from score, optionally gated by confidence.
- * If confidence < CONFIDENCE_TIER_THRESHOLD, caps tier at Emerging.
+ * If confidence < CONFIDENCE_TIER_THRESHOLD, caps tier at Emerging (SPO behavior).
+ * For DReps, use computeTierWithCap() which supports graduated caps.
  */
 export function computeTier(score: number, confidence?: number): TierName {
   const clamped = Math.max(0, Math.min(100, Math.round(score)));
@@ -68,6 +69,28 @@ export function computeTier(score: number, confidence?: number): TierName {
     if (clamped >= TIERS[i].min) return TIERS[i].name;
   }
   return 'Emerging';
+}
+
+/**
+ * Compute tier with graduated cap support.
+ * Used for DReps where the tier cap depends on vote count.
+ * If maxTier is provided, the computed tier cannot exceed it.
+ *
+ * @param score Composite score (0-100)
+ * @param maxTier Maximum allowed tier (null = no cap)
+ */
+export function computeTierWithCap(score: number, maxTier: TierName | null): TierName {
+  const baseTier = computeTier(score);
+
+  if (maxTier === null) return baseTier;
+
+  const baseIdx = tierIndex(baseTier);
+  const capIdx = tierIndex(maxTier);
+
+  // If the base tier exceeds the cap, return the cap tier instead
+  if (baseIdx > capIdx) return maxTier;
+
+  return baseTier;
 }
 
 export function getTierInfo(tierName: TierName): TierInfo {

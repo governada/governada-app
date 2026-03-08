@@ -14,8 +14,10 @@ import {
   computeReliability,
   computeGovernanceIdentity,
   computeDRepScores,
-  computeTier,
+  computeTierWithCap,
   detectTierChange,
+  computeDRepConfidence,
+  getDRepTierCap,
   type VoteData,
   type ProposalScoringContext,
   type ProposalVotingSummary,
@@ -242,6 +244,24 @@ export const syncDrepScores = inngest.createFunction(
 
         timing.step3_compute_pillars_ms = Date.now() - s3;
 
+        // ── Step 3.5: Compute DRep confidence ────────────────────────
+        const s35 = Date.now();
+
+        const confidences = new Map<string, number>();
+        for (const [drepId, votes] of drepVotes) {
+          // Epoch span from pre-computed epoch data
+          const epochData = drepEpochData.get(drepId);
+          const epochSpan = epochData ? epochData.counts.length - 1 : 0;
+
+          // Type coverage
+          const types = new Set(votes.map((v) => v.proposalType));
+          const typeCoverage = allProposalTypes.size > 0 ? types.size / allProposalTypes.size : 0;
+
+          confidences.set(drepId, computeDRepConfidence(votes.length, epochSpan, typeCoverage));
+        }
+
+        timing.step35_confidence_ms = Date.now() - s35;
+
         // ── Step 4: Load score history for momentum ────────────────────
         const s4 = Date.now();
         const drepIds = [...drepVotes.keys()];
@@ -270,6 +290,7 @@ export const syncDrepScores = inngest.createFunction(
           rawReliability,
           rawIdentity,
           scoreHistory,
+          confidences,
         );
 
         timing.step5_composite_ms = Date.now() - s5;
@@ -289,21 +310,26 @@ export const syncDrepScores = inngest.createFunction(
           oldTierMap.set(d.id, { score: d.score ?? 0, tier: d.current_tier });
         }
 
-        // Build updates with tier and momentum included
-        const drepUpdates = [...finalScores.entries()].map(([drepId, s]) => ({
-          id: drepId,
-          score: s.composite,
-          engagement_quality: s.engagementQualityPercentile,
-          engagement_quality_raw: s.engagementQualityRaw,
-          effective_participation_v3: s.effectiveParticipationPercentile,
-          effective_participation_v3_raw: s.effectiveParticipationRaw,
-          reliability_v3: s.reliabilityPercentile,
-          reliability_v3_raw: s.reliabilityRaw,
-          governance_identity: s.governanceIdentityPercentile,
-          governance_identity_raw: s.governanceIdentityRaw,
-          score_momentum: s.momentum,
-          current_tier: computeTier(s.composite),
-        }));
+        // Build updates with tier (confidence-capped) and momentum included
+        const drepUpdates = [...finalScores.entries()].map(([drepId, s]) => {
+          const voteCount = drepVotes.get(drepId)?.length ?? 0;
+          const tierCap = getDRepTierCap(voteCount);
+          return {
+            id: drepId,
+            score: s.composite,
+            engagement_quality: s.engagementQualityPercentile,
+            engagement_quality_raw: s.engagementQualityRaw,
+            effective_participation_v3: s.effectiveParticipationPercentile,
+            effective_participation_v3_raw: s.effectiveParticipationRaw,
+            reliability_v3: s.reliabilityPercentile,
+            reliability_v3_raw: s.reliabilityRaw,
+            governance_identity: s.governanceIdentityPercentile,
+            governance_identity_raw: s.governanceIdentityRaw,
+            score_momentum: s.momentum,
+            confidence: s.confidence,
+            current_tier: computeTierWithCap(s.composite, tierCap),
+          };
+        });
 
         await batchUpsert(
           supabase,
@@ -375,10 +401,12 @@ export const syncDrepScores = inngest.createFunction(
         const tierChangeInserts: Record<string, unknown>[] = [];
 
         for (const [drepId, s] of finalScores) {
-          const newTier = computeTier(s.composite);
+          const voteCount = drepVotes.get(drepId)?.length ?? 0;
+          const tierCap = getDRepTierCap(voteCount);
+          const newTier = computeTierWithCap(s.composite, tierCap);
           const prior = oldTierMap.get(drepId);
           const oldScore = prior?.score ?? 0;
-          const oldTier = prior?.tier ?? computeTier(oldScore);
+          const oldTier = prior?.tier ?? computeTierWithCap(oldScore, tierCap);
 
           if (oldTier !== newTier) {
             const change = detectTierChange('drep', drepId, oldScore, s.composite);

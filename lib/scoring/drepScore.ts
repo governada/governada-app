@@ -1,21 +1,26 @@
 /**
- * DRep Score V3 — Composite calculator + momentum.
+ * DRep Score V3 — Composite calculator + momentum + confidence.
  * Combines 4 percentile-normalized pillars with configurable weights.
+ * Confidence-weighted percentile normalization prevents low-data DReps
+ * from inflating rankings. Percentile dampening pulls low-confidence
+ * scores toward the median.
  * Momentum is computed from score history via simple linear regression.
  */
 
 import { PILLAR_WEIGHTS, type DRepScoreResult } from './types';
-import { percentileNormalize } from './percentile';
+import { percentileNormalizeWeighted, dampenPercentile } from './confidence';
 
 /**
  * Compute final DRep Scores for all DReps from raw pillar scores.
- * Percentile-normalizes each pillar, computes weighted composite, and momentum.
+ * Percentile-normalizes each pillar (confidence-weighted), applies
+ * confidence dampening, computes weighted composite, and momentum.
  *
  * @param rawEngagement Map<drepId, raw 0-100>
  * @param rawParticipation Map<drepId, raw 0-100>
  * @param rawReliability Map<drepId, raw 0-100>
  * @param rawIdentity Map<drepId, raw 0-100>
  * @param scoreHistory Map<drepId, recent daily scores> (for momentum)
+ * @param confidences Map<drepId, confidence 0-100> (optional — defaults to 100 for backward compat)
  */
 export function computeDRepScores(
   rawEngagement: Map<string, number>,
@@ -23,16 +28,11 @@ export function computeDRepScores(
   rawReliability: Map<string, number>,
   rawIdentity: Map<string, number>,
   scoreHistory: Map<string, { date: string; score: number }[]>,
+  confidences?: Map<string, number>,
 ): Map<string, DRepScoreResult> {
-  // Percentile-normalize each pillar
-  const pctEngagement = percentileNormalize(rawEngagement);
-  const pctParticipation = percentileNormalize(rawParticipation);
-  const pctReliability = percentileNormalize(rawReliability);
-  const pctIdentity = percentileNormalize(rawIdentity);
-
-  const results = new Map<string, DRepScoreResult>();
-
-  // Collect all DRep IDs from any pillar
+  // Use confidence-weighted percentile normalization when confidences provided,
+  // otherwise fall back to equal-weight (all confidence = 100)
+  const defaultConfidences = new Map<string, number>();
   const allDrepIds = new Set<string>([
     ...rawEngagement.keys(),
     ...rawParticipation.keys(),
@@ -40,11 +40,30 @@ export function computeDRepScores(
     ...rawIdentity.keys(),
   ]);
 
+  // Build default confidences if not provided
+  const effectiveConfidences = confidences ?? defaultConfidences;
+  if (!confidences) {
+    for (const id of allDrepIds) {
+      defaultConfidences.set(id, 100);
+    }
+  }
+
+  // Confidence-weighted percentile normalization for each pillar
+  const pctEngagement = percentileNormalizeWeighted(rawEngagement, effectiveConfidences);
+  const pctParticipation = percentileNormalizeWeighted(rawParticipation, effectiveConfidences);
+  const pctReliability = percentileNormalizeWeighted(rawReliability, effectiveConfidences);
+  const pctIdentity = percentileNormalizeWeighted(rawIdentity, effectiveConfidences);
+
+  const results = new Map<string, DRepScoreResult>();
+
   for (const drepId of allDrepIds) {
-    const eqPct = pctEngagement.get(drepId) ?? 0;
-    const epPct = pctParticipation.get(drepId) ?? 0;
-    const rlPct = pctReliability.get(drepId) ?? 0;
-    const giPct = pctIdentity.get(drepId) ?? 0;
+    const confidence = effectiveConfidences.get(drepId) ?? 100;
+
+    // Dampen percentile scores toward median for low-confidence DReps
+    const eqPct = dampenPercentile(pctEngagement.get(drepId) ?? 0, confidence);
+    const epPct = dampenPercentile(pctParticipation.get(drepId) ?? 0, confidence);
+    const rlPct = dampenPercentile(pctReliability.get(drepId) ?? 0, confidence);
+    const giPct = dampenPercentile(pctIdentity.get(drepId) ?? 0, confidence);
 
     const composite = Math.round(
       eqPct * PILLAR_WEIGHTS.engagementQuality +
@@ -66,6 +85,7 @@ export function computeDRepScores(
       reliabilityPercentile: rlPct,
       governanceIdentityRaw: rawIdentity.get(drepId) ?? 0,
       governanceIdentityPercentile: giPct,
+      confidence,
       momentum,
     });
   }

@@ -213,6 +213,50 @@ export const SPO_PILLAR_WEIGHTS = {
   governanceIdentity: 0.15,
 } as const;
 
+// ---------------------------------------------------------------------------
+// DRep Confidence System
+// ---------------------------------------------------------------------------
+
+/**
+ * DRep Confidence computation parameters.
+ *
+ * Uses graduated thresholds: DReps with very few votes have their tier
+ * capped to prevent low-data entities from ranking in Gold/Diamond.
+ * The confidence value also dampens percentile scores toward the median,
+ * so 0-vote DReps score ~50th percentile instead of being inflated by
+ * skewed raw score distributions.
+ *
+ * Graduated tier caps:
+ * - 0-4 votes: 50% confidence, capped at Emerging
+ * - 5-9 votes: 75% confidence, capped at Bronze
+ * - 10-14 votes: 90% confidence, capped at Silver
+ * - 15+ votes: 100% confidence, no cap
+ */
+export const DREP_CONFIDENCE = {
+  /** Vote count decay: 80% at ~15 votes (same as SPO). */
+  voteDecayRate: 12,
+  /** Epoch span decay: 80% at ~20 epochs. */
+  spanDecayRate: 20,
+  /** Type coverage threshold: 100% at 60% coverage. */
+  typeCoverageThreshold: 0.6,
+  /** Factor weights (must sum to 1.0). */
+  weights: { vote: 0.5, span: 0.3, type: 0.2 },
+  /**
+   * Graduated tier caps based on vote count.
+   * Each entry: [maxVotes (exclusive), confidence, maxTierName].
+   * The last entry (15+) has no cap.
+   */
+  tierCaps: [
+    { maxVotes: 5, confidence: 50, maxTier: 'Emerging' as const },
+    { maxVotes: 10, confidence: 75, maxTier: 'Bronze' as const },
+    { maxVotes: 15, confidence: 90, maxTier: 'Silver' as const },
+  ],
+  /** Votes required for full confidence (no cap). */
+  fullConfidenceVotes: 15,
+  /** Full confidence value. */
+  fullConfidence: 100,
+} as const;
+
 /**
  * SPO Confidence computation parameters.
  */

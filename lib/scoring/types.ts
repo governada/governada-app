@@ -55,5 +55,6 @@ export interface DRepScoreResult {
   reliabilityPercentile: number;
   governanceIdentityRaw: number;
   governanceIdentityPercentile: number;
+  confidence: number;
   momentum: number | null;
 }

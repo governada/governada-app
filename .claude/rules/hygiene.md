@@ -24,6 +24,39 @@ paths:
   - Only read `docs/strategy/ultimate-vision.md` (952 lines) when updating the vision itself or doing a deep strategic audit
 - **Rules files are self-sufficient.** The `.claude/rules/product-strategy.md` contains all principles needed for most feature decisions. Don't read the full vision doc "just in case."
 
+## PR Impact Summary
+
+Every PR must include an impact summary -- both in the GitHub description and in the Claude Code conversation.
+
+### In the PR description (`gh pr create --body`)
+
+Include an **## Impact** section after the standard summary:
+
+```
+## Impact
+- **What changed**: 1-2 sentences on the functional change
+- **User-facing**: Yes/No + brief description of what users will see differently
+- **Risk**: Low/Medium/High + rationale (e.g., "Low -- styling only, no data changes")
+- **Scope**: Files/modules touched, migrations, env vars, Inngest functions added/changed
+```
+
+### In Claude Code (conversation output)
+
+After creating the PR, print a boxed recap:
+
+```
+--- PR Impact Recap ---
+PR: #<number> <title>
+What changed: <1-2 sentences>
+User-facing: <Yes/No + detail>
+Risk: <Low/Medium/High + rationale>
+Scope: <files/modules touched>
+URL: <PR URL>
+-----------------------
+```
+
+This lets the founder quickly assess whether to review now or later, and creates a searchable record in PR history.
+
 ## Commit Hygiene
 
 - **Don't leave uncommitted changes.** Before ending a session, either commit work-in-progress or explicitly note what's uncommitted and why.

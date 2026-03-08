@@ -16,8 +16,8 @@
 | WP-4  | Citizen milestone detection               | 4    | SHIPPED     | #159 |
 | WP-5  | Proportional treasury share in briefing   | 4    | SHIPPED     | #159 |
 | WP-6  | DRep delegator sentiment view             | 5+6  | SHIPPED     | #160 |
-| WP-7  | Engagement signals -> score feedback loop | 6->1 | IN PROGRESS |      |
-| WP-8  | Inter-body dynamics narrative             | 2+5  | IN PROGRESS |      |
+| WP-7  | Engagement signals -> score feedback loop | 6->1 | SHIPPED     | #161 |
+| WP-8  | Inter-body dynamics narrative             | 2+5  | SHIPPED     | #161 |
 | WP-9  | SPO Command Center parity                 | 2.5  | PENDING     |      |
 | WP-10 | SPO vote casting                          | 5    | PENDING     |      |
 | WP-11 | Progressive match confidence              | 1    | PENDING     |      |

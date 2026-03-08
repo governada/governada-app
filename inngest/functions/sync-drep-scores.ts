@@ -21,7 +21,6 @@ import {
   type ProposalVotingSummary,
   type DRepProfileData,
 } from '@/lib/scoring';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { batchUpsert, SyncLogger, errMsg, emitPostHog } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
@@ -261,9 +260,22 @@ export const syncDrepScores = inngest.createFunction(
 
         timing.step5_composite_ms = Date.now() - s5;
 
-        // ── Step 6: Persist to DB ──────────────────────────────────────
+        // ── Step 6: Load old tiers for change detection, then persist ──
         const s6 = Date.now();
 
+        // Load existing tiers BEFORE writing new scores so we can detect changes
+        const drepIdList = [...finalScores.keys()];
+        const { data: priorDreps } = await supabase
+          .from('dreps')
+          .select('id, score, current_tier')
+          .in('id', drepIdList);
+
+        const oldTierMap = new Map<string, { score: number; tier: string | null }>();
+        for (const d of priorDreps || []) {
+          oldTierMap.set(d.id, { score: d.score ?? 0, tier: d.current_tier });
+        }
+
+        // Build updates with tier and momentum included
         const drepUpdates = [...finalScores.entries()].map(([drepId, s]) => ({
           id: drepId,
           score: s.composite,
@@ -276,6 +288,7 @@ export const syncDrepScores = inngest.createFunction(
           governance_identity: s.governanceIdentityPercentile,
           governance_identity_raw: s.governanceIdentityRaw,
           score_momentum: s.momentum,
+          current_tier: computeTier(s.composite),
         }));
 
         await batchUpsert(
@@ -342,53 +355,39 @@ export const syncDrepScores = inngest.createFunction(
 
         timing.step6_persist_ms = Date.now() - s6;
 
-        // ── Step 7: Tier assignment ──────────────────────────────────────
-        const tiersEnabled = await getFeatureFlag('score_tiers', false);
+        // ── Step 7: Tier change detection ────────────────────────────────
+        const s7 = Date.now();
         let tierChangesDetected = 0;
+        const tierChangeInserts: Record<string, unknown>[] = [];
 
-        if (tiersEnabled) {
-          const s7 = Date.now();
+        for (const [drepId, s] of finalScores) {
+          const newTier = computeTier(s.composite);
+          const prior = oldTierMap.get(drepId);
+          const oldScore = prior?.score ?? 0;
+          const oldTier = prior?.tier ?? computeTier(oldScore);
 
-          const { data: currentDreps } = await supabase
-            .from('dreps')
-            .select('id, score, current_tier')
-            .in('id', [...finalScores.keys()]);
-
-          const tierChangeInserts: Record<string, unknown>[] = [];
-
-          for (const drep of currentDreps || []) {
-            const newScore = finalScores.get(drep.id)?.composite ?? drep.score ?? 0;
-            const newTier = computeTier(newScore);
-            const oldScore = drep.score ?? 0;
-            const oldTier = drep.current_tier ?? computeTier(oldScore);
-
-            if (oldTier !== newTier) {
-              const change = detectTierChange('drep', drep.id, oldScore, newScore);
-              if (change) {
-                tierChangeInserts.push({
-                  entity_type: 'drep',
-                  entity_id: drep.id,
-                  old_tier: change.oldTier,
-                  new_tier: change.newTier,
-                  old_score: change.oldScore,
-                  new_score: change.newScore,
-                  epoch_no: currentEpoch,
-                });
-              }
+          if (oldTier !== newTier) {
+            const change = detectTierChange('drep', drepId, oldScore, s.composite);
+            if (change) {
+              tierChangeInserts.push({
+                entity_type: 'drep',
+                entity_id: drepId,
+                old_tier: change.oldTier,
+                new_tier: change.newTier,
+                old_score: change.oldScore,
+                new_score: change.newScore,
+                epoch_no: currentEpoch,
+              });
             }
-
-            await supabase.from('dreps').update({ current_tier: newTier }).eq('id', drep.id);
           }
-
-          if (tierChangeInserts.length > 0) {
-            await batchUpsert(supabase, 'tier_changes', tierChangeInserts, 'id', 'tier_changes');
-            tierChangesDetected = tierChangeInserts.length;
-          }
-
-          timing.step7_tiers_ms = Date.now() - s7;
         }
 
-        timing.step6_persist_ms = Date.now() - s6;
+        if (tierChangeInserts.length > 0) {
+          await batchUpsert(supabase, 'tier_changes', tierChangeInserts, 'id', 'tier_changes');
+          tierChangesDetected = tierChangeInserts.length;
+        }
+
+        timing.step7_tiers_ms = Date.now() - s7;
 
         const summary = {
           success: true,

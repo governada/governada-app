@@ -76,6 +76,10 @@ import { computeTierProgress } from '@/lib/scoring/tiers';
 import { getFeatureFlag } from '@/lib/featureFlags';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { DRepProfileTabsV2 } from '@/components/civica/profiles/DRepProfileTabsV2';
+const DRepStatementsTab = nextDynamic(
+  () => import('@/components/civica/profiles/DRepStatementsTab').then((m) => m.DRepStatementsTab),
+  { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
+);
 import { getDRepTraitTags } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
 import { generateDRepNarrative } from '@/lib/narratives';
@@ -450,7 +454,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     getSocialLinkChecks(drep.drepId),
     isDRepClaimed(drep.drepId),
     getSpoAlignment(drep.votes),
-    getFeatureFlag('drep_communication', false),
+    getFeatureFlag('drep_communication', true),
   ]);
 
   const brokenLinks = new Set(linkChecks.filter((c) => c.status === 'broken').map((c) => c.uri));
@@ -515,14 +519,10 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     governanceIdentity: drep.governanceIdentity,
   });
 
-  // Phase B: Statements tab placeholder (scaffold for when drep_communication flag is on)
+  // Phase B: Statements tab — shows vote explanations, positions, epoch updates, and Q&A
+  // For DRep owners, also shows a "Write Statement" button
   const statementsContent = drepCommunicationEnabled ? (
-    <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
-      <p className="text-sm font-medium text-foreground">Statements coming soon</p>
-      <p className="text-xs text-muted-foreground">
-        Position statements and governance philosophy from this DRep will appear here.
-      </p>
-    </div>
+    <DRepStatementsTab drepId={drep.drepId} />
   ) : undefined;
 
   const profileContent = (

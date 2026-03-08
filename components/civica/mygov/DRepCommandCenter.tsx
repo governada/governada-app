@@ -22,7 +22,6 @@ import {
   Zap,
   Eye,
   Fingerprint,
-  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareModal } from '@/components/civica/shared/ShareModal';
@@ -45,6 +44,7 @@ import {
 import { computeTier } from '@/lib/scoring/tiers';
 import { generateActions } from '@/lib/actionFeed';
 import { ActionFeed } from './ActionFeed';
+import { DRepQuestionsInbox } from '@/components/DRepQuestionsInbox';
 import type {
   DRepReportCardData,
   PulseData,
@@ -186,7 +186,6 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
   const unexplainedVotes = urgent?.unexplainedVotes ?? [];
   const pendingProposals = urgent?.pendingProposals ?? [];
   const pendingCount: number = urgent?.pendingCount ?? 0;
-  const unansweredQuestions: number = urgent?.unansweredQuestions ?? 0;
 
   const rank: number | null = competitive?.rank ?? null;
   const totalActive: number = competitive?.totalActive ?? 0;
@@ -513,26 +512,8 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
         </div>
       )}
 
-      {/* Unanswered questions */}
-      {unansweredQuestions > 0 && (
-        <Link href={`/drep/${drepId}?tab=community`} className="block group">
-          <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <HelpCircle className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-sm font-medium">
-                  {unansweredQuestions} unanswered question
-                  {unansweredQuestions > 1 ? 's' : ''}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Citizens are waiting for your response
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-          </div>
-        </Link>
-      )}
+      {/* Delegator questions inbox */}
+      <DRepQuestionsInbox drepId={drepId} />
 
       {/* Competitive context */}
       {rank != null && (

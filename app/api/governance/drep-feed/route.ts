@@ -11,37 +11,53 @@ export const GET = withRouteHandler(async (request) => {
   }
 
   const supabase = createClient();
-  const [explanationsRes, positionsRes, philosophyRes, drepRes, epochUpdatesRes] =
-    await Promise.all([
-      supabase
-        .from('vote_explanations')
-        .select('drep_id, proposal_tx_hash, proposal_index, explanation_text, created_at')
-        .eq('drep_id', drepId)
-        .order('created_at', { ascending: false })
-        .limit(10),
+  const [
+    explanationsRes,
+    positionsRes,
+    generalStatementsRes,
+    philosophyRes,
+    drepRes,
+    epochUpdatesRes,
+  ] = await Promise.all([
+    supabase
+      .from('vote_explanations')
+      .select('drep_id, proposal_tx_hash, proposal_index, explanation_text, created_at')
+      .eq('drep_id', drepId)
+      .order('created_at', { ascending: false })
+      .limit(10),
 
-      supabase
-        .from('position_statements')
-        .select('drep_id, proposal_tx_hash, proposal_index, statement_text, created_at')
-        .eq('drep_id', drepId)
-        .order('created_at', { ascending: false })
-        .limit(5),
+    supabase
+      .from('position_statements')
+      .select('drep_id, proposal_tx_hash, proposal_index, statement_text, created_at')
+      .eq('drep_id', drepId)
+      .neq('proposal_tx_hash', 'general')
+      .order('created_at', { ascending: false })
+      .limit(5),
 
-      supabase
-        .from('governance_philosophy')
-        .select('philosophy_text, updated_at')
-        .eq('drep_id', drepId)
-        .maybeSingle(),
+    // General (non-proposal-specific) statements
+    supabase
+      .from('position_statements')
+      .select('drep_id, statement_text, created_at')
+      .eq('drep_id', drepId)
+      .eq('proposal_tx_hash', 'general')
+      .order('created_at', { ascending: false })
+      .limit(10),
 
-      supabase.from('dreps').select('info').eq('id', drepId).single(),
+    supabase
+      .from('governance_philosophy')
+      .select('philosophy_text, updated_at')
+      .eq('drep_id', drepId)
+      .maybeSingle(),
 
-      supabase
-        .from('drep_epoch_updates')
-        .select('epoch, update_text, vote_count, rationale_count, generated_at')
-        .eq('drep_id', drepId)
-        .order('epoch', { ascending: false })
-        .limit(5),
-    ]);
+    supabase.from('dreps').select('info').eq('id', drepId).single(),
+
+    supabase
+      .from('drep_epoch_updates')
+      .select('epoch, update_text, vote_count, rationale_count, generated_at')
+      .eq('drep_id', drepId)
+      .order('epoch', { ascending: false })
+      .limit(5),
+  ]);
 
   const explanations = explanationsRes.data || [];
   const positions = positionsRes.data || [];
@@ -84,6 +100,8 @@ export const GET = withRouteHandler(async (request) => {
 
   const drepName = ((drepRes.data?.info as Record<string, unknown>)?.name as string | null) ?? null;
 
+  const generalStatements = generalStatementsRes.data || [];
+
   return NextResponse.json({
     explanations: explanations.map((e) => {
       const key = `${e.proposal_tx_hash}:${e.proposal_index}`;
@@ -106,6 +124,10 @@ export const GET = withRouteHandler(async (request) => {
         createdAt: p.created_at,
       };
     }),
+    generalStatements: generalStatements.map((s) => ({
+      statementText: s.statement_text,
+      createdAt: s.created_at,
+    })),
     philosophy: philosophyRes.data?.philosophy_text || null,
     drepName,
     epochUpdates: (epochUpdatesRes.data || []).map((u) => ({

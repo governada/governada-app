@@ -14,18 +14,24 @@ import {
   ChevronRight,
   BarChart2,
   Activity,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { useDRepReportCard, useGovernancePulse, useDashboardInbox } from '@/hooks/queries';
+import {
+  useDRepReportCard,
+  useGovernancePulse,
+  useDashboardInbox,
+  useDashboardUrgent,
+} from '@/hooks/queries';
 import { generateActions } from '@/lib/actionFeed';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type NotificationCategory = 'proposal' | 'score' | 'alignment' | 'system';
+type NotificationCategory = 'proposal' | 'score' | 'alignment' | 'communication' | 'system';
 type FilterTab = 'all' | NotificationCategory;
 
 interface NotificationItem {
@@ -73,6 +79,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'proposal', label: 'Proposals' },
   { key: 'score', label: 'Score' },
   { key: 'alignment', label: 'Alignment' },
+  { key: 'communication', label: 'Communication' },
   { key: 'system', label: 'System' },
 ];
 
@@ -269,6 +276,7 @@ export function CivicaInbox() {
   const { data: rawInbox, isLoading: inboxLoading } = useDashboardInbox(
     segment === 'drep' ? drepId : null,
   );
+  const { data: rawUrgent } = useDashboardUrgent(segment === 'drep' ? drepId : null);
 
   const card = rawCard as
     | {
@@ -335,8 +343,28 @@ export function CivicaInbox() {
   });
 
   const systemNotes = buildSystemNotifications(pulse);
+  const urgent = rawUrgent as { unansweredQuestions?: number } | undefined;
+  const communicationNotes: NotificationItem[] = [];
+  if (segment === 'drep' && (urgent?.unansweredQuestions ?? 0) > 0) {
+    const count = urgent!.unansweredQuestions!;
+    communicationNotes.push({
+      id: `comm_unanswered_${count}`,
+      category: 'communication',
+      icon: MessageSquare,
+      iconColor: 'text-primary',
+      borderColor: 'border-primary/20',
+      bgColor: 'bg-primary/5',
+      title: `${count} unanswered question${count > 1 ? 's' : ''} from delegators`,
+      description: 'Responding to questions builds trust and improves engagement.',
+      href: '/my-gov',
+      cta: 'Respond',
+      priority: 2,
+    });
+  }
+
   const allNotifications: NotificationItem[] = [
     ...actions.map(actionToNotification),
+    ...communicationNotes,
     ...systemNotes,
   ];
 

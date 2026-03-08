@@ -30,6 +30,11 @@ interface Position {
   createdAt: string;
 }
 
+interface GeneralStatement {
+  statementText: string;
+  createdAt: string;
+}
+
 interface EpochUpdate {
   epoch: number;
   updateText: string;
@@ -41,6 +46,7 @@ interface EpochUpdate {
 interface FeedData {
   explanations: Explanation[];
   positions: Position[];
+  generalStatements: GeneralStatement[];
   philosophy: string | null;
   drepName: string | null;
   epochUpdates: EpochUpdate[];
@@ -58,6 +64,7 @@ interface QAItem {
 type FeedItem =
   | { type: 'explanation'; date: string; content: Explanation }
   | { type: 'position'; date: string; content: Position }
+  | { type: 'general_statement'; date: string; content: GeneralStatement }
   | { type: 'epoch_update'; date: string; content: EpochUpdate };
 
 type TabKey = 'feed' | 'qa';
@@ -128,6 +135,7 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
     data &&
     (data.explanations.length > 0 ||
       data.positions.length > 0 ||
+      (data.generalStatements || []).length > 0 ||
       (data.epochUpdates || []).length > 0);
   const drepName = data?.drepName || `${drepId.slice(0, 16)}...`;
 
@@ -138,6 +146,9 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
     }
     for (const p of data.positions) {
       feedItems.push({ type: 'position', date: p.createdAt, content: p });
+    }
+    for (const s of data.generalStatements || []) {
+      feedItems.push({ type: 'general_statement', date: s.createdAt, content: s });
     }
     for (const u of data.epochUpdates || []) {
       feedItems.push({ type: 'epoch_update', date: u.generatedAt, content: u });
@@ -254,6 +265,28 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
                         <p className="text-sm text-muted-foreground mt-1">{u.updateText}</p>
                         <p className="text-[10px] text-muted-foreground mt-1">
                           {new Date(u.generatedAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  if (item.type === 'general_statement') {
+                    const s = item.content as GeneralStatement;
+                    return (
+                      <div key={`gs-${i}`} className="border-l-2 border-emerald-400/30 pl-3 py-1">
+                        <p className="text-sm">
+                          <span className="font-medium">{drepName}</span> shared a governance
+                          statement
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
+                          &ldquo;{s.statementText}&rdquo;
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(s.createdAt).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',

@@ -37,7 +37,7 @@ export async function createNonce(): Promise<{
 /**
  * Mark a nonce JTI as consumed in Redis so it cannot be replayed.
  * Returns true if the nonce was freshly consumed, false if already used.
- * Falls back to allowing the request if Redis is unavailable (fail-open to avoid locking out users).
+ * Fails closed (returns false) if Redis is unavailable to prevent replay attacks.
  */
 async function consumeNonce(jti: string): Promise<boolean> {
   try {
@@ -48,8 +48,9 @@ async function consumeNonce(jti: string): Promise<boolean> {
     const wasSet = await redis.set(key, '1', { ex: NONCE_TTL_SECONDS, nx: true });
     return wasSet !== null;
   } catch {
-    // Redis unavailable — fail open so users can still authenticate
-    return true;
+    // Redis unavailable — fail closed to prevent nonce replay attacks.
+    // Matches fail-closed pattern used by session revocation and rate limiters.
+    return false;
   }
 }
 

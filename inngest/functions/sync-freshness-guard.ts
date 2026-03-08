@@ -31,6 +31,8 @@ const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {
 
 const RECENT_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const GHOST_THRESHOLD_MS = 30 * 60 * 1000;
+/** Entries older than 24h with finished_at IS NULL are definitely abandoned */
+const HISTORICAL_GHOST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 const SELF_HEAL_MAX_TRIGGERS = 3;
 const SELF_HEAL_WINDOW_MS = 2 * 60 * 60 * 1000;
 
@@ -67,6 +69,38 @@ export const syncFreshnessGuard = inngest.createFunction(
           .eq('id', ghost.id);
       }
       logger.info('[FreshnessGuard] Cleaned up ghost sync_log entries', { count: ghosts.length });
+      return ghosts.length;
+    });
+
+    // Clean historical ghosts: entries older than 24h with finished_at IS NULL.
+    // These are pre-existing abandoned entries from before the freshness guard
+    // was deployed, or from rare edge cases where the process never completed.
+    await step.run('cleanup-historical-ghosts', async () => {
+      const supabase = getSupabaseAdmin();
+      const cutoff = new Date(Date.now() - HISTORICAL_GHOST_THRESHOLD_MS).toISOString();
+      const { data: ghosts } = await supabase
+        .from('sync_log')
+        .select('id, sync_type, started_at')
+        .is('finished_at', null)
+        .lt('started_at', cutoff);
+
+      if (!ghosts || ghosts.length === 0) return 0;
+
+      for (const ghost of ghosts) {
+        await supabase
+          .from('sync_log')
+          .update({
+            finished_at: new Date().toISOString(),
+            success: false,
+            error_message: 'Historical ghost: process never completed (cleaned by freshness guard)',
+            duration_ms: 0,
+          })
+          .eq('id', ghost.id);
+      }
+      logger.info('[FreshnessGuard] Cleaned up historical ghost entries', {
+        count: ghosts.length,
+        ids: ghosts.map((g) => g.id),
+      });
       return ghosts.length;
     });
 

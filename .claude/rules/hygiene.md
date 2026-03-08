@@ -29,6 +29,14 @@ paths:
 - **Don't leave uncommitted changes.** Before ending a session, either commit work-in-progress or explicitly note what's uncommitted and why.
 - **Update tracking docs.** When shipping a step/WP/QP, update status in the relevant tracking doc (work-packages.md, world-class-packages.md, build-manifest.md) in the same PR.
 
+## Documentation Formatting
+
+- **Sequential numbering.** Ordered lists must use correct sequential numbers (1, 2, 3...). Never duplicate a number. After inserting or appending items, verify the full sequence.
+- **Use Edit tool for markdown files, never sed.** `sed` on markdown causes numbering errors, encoding issues, and orphaned formatting. Always use the Edit tool or Write tool for documentation changes.
+- **Validate tables.** Markdown tables must have matching column counts across header, separator, and all rows. Verify pipe alignment after edits.
+- **Preserve heading hierarchy.** Don't skip heading levels (e.g., `##` to `####`). Maintain consistent nesting.
+- **No trailing whitespace or orphaned markers.** After editing a list or section, verify there are no empty list items, dangling bullets, or stray formatting characters.
+
 ## Workspace Cleanup
 
 - **Run `bash scripts/cleanup.sh` at the start of major sessions** to detect stale worktrees, orphaned directories, and uncommitted changes.

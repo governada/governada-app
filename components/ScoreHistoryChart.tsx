@@ -184,9 +184,15 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div ref={containerRef} className="w-full" style={{ height: 250 }}>
+        <div
+          ref={containerRef}
+          className="w-full"
+          style={{ height: 250 }}
+          role="img"
+          aria-label="Score history over time"
+        >
           {width > 0 && (
-            <svg width={width} height={250}>
+            <svg width={width} height={250} aria-hidden="true">
               <defs>
                 <GlowFilter id="score-glow" stdDeviation={3} />
                 <AreaGradient

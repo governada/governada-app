@@ -54,7 +54,7 @@ export function ActivityHeatmap({
   const trend = recentAvg - avgValue;
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-3', className)} role="img" aria-label="Governance activity heatmap">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {/* Legend gradient */}

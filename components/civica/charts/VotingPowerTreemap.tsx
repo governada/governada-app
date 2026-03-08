@@ -170,7 +170,11 @@ export function VotingPowerTreemap({ dreps, className }: VotingPowerTreemapProps
   }, [dreps, dimensions.width, dimensions.height]);
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div
+      className={cn('space-y-3', className)}
+      role="img"
+      aria-label="Voting power distribution treemap"
+    >
       <div
         ref={containerRef}
         className="relative rounded-xl border border-border overflow-hidden"

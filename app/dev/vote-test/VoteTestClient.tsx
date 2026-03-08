@@ -179,8 +179,11 @@ export function VoteTestClient() {
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-muted-foreground">Gov Action Tx Hash</label>
+              <label htmlFor="vote-tx-hash" className="text-xs text-muted-foreground">
+                Gov Action Tx Hash
+              </label>
               <input
+                id="vote-tx-hash"
                 type="text"
                 value={txHashInput}
                 onChange={(e) => setTxHashInput(e.target.value)}
@@ -189,8 +192,11 @@ export function VoteTestClient() {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Index</label>
+              <label htmlFor="vote-tx-index" className="text-xs text-muted-foreground">
+                Index
+              </label>
               <input
+                id="vote-tx-index"
                 type="number"
                 value={txIndexInput}
                 onChange={(e) => setTxIndexInput(e.target.value)}

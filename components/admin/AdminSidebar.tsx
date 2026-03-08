@@ -75,7 +75,7 @@ export function AdminSidebar() {
           <span className="text-sm font-semibold tracking-tight">Ops Dashboard</span>
         </div>
       </div>
-      <nav className="px-2 pb-4 space-y-0.5">
+      <nav aria-label="Admin navigation" className="px-2 pb-4 space-y-0.5">
         {(NAV_ITEMS as readonly NavItem[]).map((item, i) => {
           if ('type' in item) {
             return <div key={i} className="my-2 border-t border-border/40" />;

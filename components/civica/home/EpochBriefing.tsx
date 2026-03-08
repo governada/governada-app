@@ -304,7 +304,7 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
       )}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <StatusIcon className={cn('h-5 w-5 shrink-0', config.iconColor)} />
+        <StatusIcon className={cn('h-5 w-5 shrink-0', config.iconColor)} aria-hidden="true" />
         <p className="text-sm font-semibold text-foreground">
           {data.status?.headline ?? 'Governance is active'}
         </p>
@@ -403,11 +403,12 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
                 'inline-flex items-center gap-0.5 text-xs font-medium',
                 data.drepPerformance.scoreChange > 0 ? 'text-emerald-500' : 'text-rose-500',
               )}
+              aria-label={`Score ${data.drepPerformance.scoreChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(data.drepPerformance.scoreChange)}`}
             >
               {data.drepPerformance.scoreChange > 0 ? (
-                <ArrowUp className="h-3 w-3" />
+                <ArrowUp className="h-3 w-3" aria-hidden="true" />
               ) : (
-                <ArrowDown className="h-3 w-3" />
+                <ArrowDown className="h-3 w-3" aria-hidden="true" />
               )}
               {Math.abs(data.drepPerformance.scoreChange)}
             </span>
@@ -489,7 +490,7 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
       <div className="py-5 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-foreground flex-1 min-w-0">
-            <Vote className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Vote className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <span>
               <span className="font-semibold">{data.upcoming.activeProposals}</span> proposal
               {data.upcoming.activeProposals !== 1 ? 's' : ''} open
@@ -515,25 +516,25 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
     <div className="pt-5 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
       {identity.citizenSinceEpoch != null && (
         <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Calendar className="h-3.5 w-3.5" />
+          <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
           Citizen since Epoch {identity.citizenSinceEpoch}
         </span>
       )}
       {identity.delegationStreak != null && identity.delegationStreak > 0 && (
         <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Flame className="h-3.5 w-3.5" />
+          <Flame className="h-3.5 w-3.5" aria-hidden="true" />
           {identity.delegationStreak} epoch streak
         </span>
       )}
       {identity.proposalsInfluenced != null && identity.proposalsInfluenced > 0 && (
         <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Vote className="h-3.5 w-3.5" />
+          <Vote className="h-3.5 w-3.5" aria-hidden="true" />
           {identity.proposalsInfluenced} proposals influenced
         </span>
       )}
       {identity.adaGoverned != null && (
         <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-          <Coins className="h-3.5 w-3.5" />
+          <Coins className="h-3.5 w-3.5" aria-hidden="true" />
           {formatAdaCompact(identity.adaGoverned)} ADA governed
         </span>
       )}

@@ -213,7 +213,11 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
               <>
                 {/* Selected priorities with ranking */}
                 {selected.length > 0 && (
-                  <div className="space-y-2">
+                  <div
+                    className="space-y-2"
+                    role="list"
+                    aria-label="Your selected priorities in order"
+                  >
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Your ranking
                     </p>
@@ -223,21 +227,26 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                         <div
                           key={area}
                           className="flex items-center gap-2 p-2 rounded-lg border border-primary/30 bg-primary/5"
+                          role="listitem"
                         >
-                          <Badge className="w-6 h-6 p-0 justify-center text-xs">{i + 1}</Badge>
-                          <span>{info.icon}</span>
+                          <Badge className="w-6 h-6 p-0 justify-center text-xs" aria-hidden="true">
+                            {i + 1}
+                          </Badge>
+                          <span aria-hidden="true">{info.icon}</span>
                           <span className="text-sm flex-1">{info.label}</span>
                           {i > 0 && (
                             <button
                               onClick={() => moveUp(i)}
                               className="p-1 rounded hover:bg-primary/10 transition-colors"
+                              aria-label={`Move ${info.label} up in ranking`}
                             >
-                              <ArrowUp className="h-3.5 w-3.5" />
+                              <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
                             </button>
                           )}
                           <button
                             onClick={() => togglePriority(area)}
                             className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                            aria-label={`Remove ${info.label} from your selection`}
                           >
                             Remove
                           </button>
@@ -248,7 +257,11 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                 )}
 
                 {/* Available priorities */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div
+                  className="grid grid-cols-2 md:grid-cols-3 gap-2"
+                  role="group"
+                  aria-label="Select your top 3 governance priorities"
+                >
                   {(PRIORITY_AREAS as readonly PriorityArea[])
                     .filter((area) => !selected.includes(area))
                     .map((area) => {
@@ -259,11 +272,14 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                           key={area}
                           onClick={() => togglePriority(area)}
                           disabled={disabled}
+                          aria-label={info.label}
                           className={`flex items-center gap-2 p-3 rounded-lg border text-sm text-left transition-all
-                            ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-primary/50 hover:bg-primary/5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]'}
+                            ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-primary/50 hover:bg-primary/5 cursor-pointer motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]'}
                             border-border/50`}
                         >
-                          <span className="text-lg">{info.icon}</span>
+                          <span className="text-lg" aria-hidden="true">
+                            {info.icon}
+                          </span>
                           <span>{info.label}</span>
                         </button>
                       );
@@ -275,7 +291,9 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                     <Button onClick={submit} disabled={submitting} className="w-full gap-1.5">
                       {submitting ? 'Submitting...' : `Submit Your Top ${selected.length}`}
                     </Button>
-                    {error && <p className="text-xs text-destructive">{error}</p>}
+                    <div aria-live="polite" role="status">
+                      {error && <p className="text-xs text-destructive">{error}</p>}
+                    </div>
                   </div>
                 )}
               </>

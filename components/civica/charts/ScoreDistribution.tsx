@@ -71,9 +71,20 @@ export function ScoreDistribution({ scores, highlightScore, className }: ScoreDi
 
   return (
     <div className={cn('w-full', className)}>
-      <div ref={containerRef} className="w-full" style={{ height: 200 }}>
+      <div
+        ref={containerRef}
+        className="w-full"
+        style={{ height: 200 }}
+        role="img"
+        aria-label="DRep score distribution chart"
+      >
         {dimensions.width > 0 && (
-          <svg width={dimensions.width} height={dimensions.height} className="select-none">
+          <svg
+            width={dimensions.width}
+            height={dimensions.height}
+            className="select-none"
+            aria-hidden="true"
+          >
             <defs>
               {bins.map((b, i) => {
                 const mid = ((b.x0 ?? 0) + (b.x1 ?? 0)) / 2;

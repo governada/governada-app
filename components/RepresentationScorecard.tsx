@@ -108,6 +108,18 @@ export function RepresentationScorecard({ drepId }: { drepId: string }) {
                     });
                   } catch {}
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    try {
+                      posthog?.capture('representation_divergence_clicked', {
+                        drepId,
+                        proposal: p.key,
+                      });
+                    } catch {}
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {p.aligned ? (

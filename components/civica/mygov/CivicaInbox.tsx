@@ -167,6 +167,11 @@ function NotificationCard({
         item.href && 'hover:brightness-110 cursor-pointer',
       )}
       onClick={() => onRead(item.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onRead(item.id);
+      }}
+      role="button"
+      tabIndex={0}
     >
       {!isRead && (
         <span className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary shrink-0" />

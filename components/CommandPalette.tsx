@@ -96,7 +96,11 @@ export function CommandPalette() {
       shouldFilter={false}
     >
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
 
       {/* Dialog */}
       <div className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-xl px-4">

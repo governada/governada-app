@@ -29,7 +29,11 @@ export function ShortcutsHelpOverlay() {
 
   return (
     <div className="fixed inset-0 z-[100]">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
       <div className="fixed top-[15%] left-1/2 -translate-x-1/2 w-full max-w-md px-4">
         <div className="rounded-xl border border-border/50 bg-popover/95 backdrop-blur-xl shadow-2xl overflow-hidden ring-1 ring-white/5">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border/50">

@@ -95,8 +95,15 @@ export function GovernanceHealthGauge({
   const needle = polarToCartesian(valueAngle);
 
   return (
-    <div className={cn('flex flex-col items-center', className)}>
-      <svg viewBox="0 0 200 140" className="w-full max-w-[220px]">
+    <div
+      className={cn('flex flex-col items-center', className)}
+      role="meter"
+      aria-valuenow={Math.round(score)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`Governance Health Index: ${Math.round(score)} out of 100, ${band}`}
+    >
+      <svg viewBox="0 0 200 140" className="w-full max-w-[220px]" aria-hidden="true">
         <defs>
           <filter id="gauge-glow">
             <feGaussianBlur in="SourceGraphic" stdDeviation="3" />

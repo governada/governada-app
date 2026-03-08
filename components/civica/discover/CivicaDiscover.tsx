@@ -83,11 +83,20 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
       </div>
       {/* ── Tab bar ──────────────────────────────────────────── */}
       <div className="border-b border-border sticky top-14 z-30 bg-background/90 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6">
-        <div className="flex gap-0 overflow-x-auto scrollbar-none max-w-4xl">
+        <div
+          className="flex gap-0 overflow-x-auto scrollbar-none max-w-4xl"
+          role="tablist"
+          aria-label="Discover governance entities"
+        >
           {tabs.map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
+              role="tab"
+              aria-selected={activeTab === id}
+              aria-controls={`tabpanel-${id}`}
+              id={`tab-${id}`}
+              aria-label={count != null && count > 0 ? `${label} (${count})` : label}
               className={cn(
                 'relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap',
                 'transition-colors shrink-0',
@@ -96,10 +105,11 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
                   : 'text-muted-foreground hover:text-foreground/80',
               )}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               {label}
               {count != null && count > 0 && (
                 <span
+                  aria-hidden="true"
                   className={cn(
                     'text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full',
                     activeTab === id
@@ -111,7 +121,10 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
                 </span>
               )}
               {activeTab === id && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary" />
+                <span
+                  className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary"
+                  aria-hidden="true"
+                />
               )}
             </button>
           ))}
@@ -119,7 +132,12 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
       </div>
 
       {/* ── Tab content ──────────────────────────────────────── */}
-      <div className="pt-1">
+      <div
+        className="pt-1"
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
         {activeTab === 'dreps' && (
           <CivicaDRepBrowse dreps={dreps} totalAvailable={totalAvailable} />
         )}

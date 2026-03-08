@@ -79,8 +79,13 @@ function VoteDonut({ segments, total }: { segments: DonutSegment[]; total: numbe
 
   return (
     <div className="flex items-center gap-6">
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="transform -rotate-90">
+      <div
+        className="relative"
+        style={{ width: size, height: size }}
+        role="img"
+        aria-label="Vote distribution by category"
+      >
+        <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
           <circle
             cx={center}
             cy={center}
@@ -241,9 +246,15 @@ function StackedAreaChart({
   const ticks = yScale.ticks(4);
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ height: 200 }}>
+    <div
+      ref={containerRef}
+      className="relative w-full"
+      style={{ height: 200 }}
+      role="img"
+      aria-label="Voting history over time"
+    >
       {width > 0 && (
-        <svg width={width} height={200}>
+        <svg width={width} height={200} aria-hidden="true">
           <defs>
             {(['Yes', 'No', 'Abstain'] as const).map((key) => (
               <AreaGradient

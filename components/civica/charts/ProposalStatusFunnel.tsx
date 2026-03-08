@@ -43,12 +43,18 @@ export function ProposalStatusFunnel({ statuses, className }: ProposalStatusFunn
 
   return (
     <div className={cn('w-full', className)}>
-      <div ref={containerRef} className="w-full">
+      <div
+        ref={containerRef}
+        className="w-full"
+        role="img"
+        aria-label="Proposal status funnel chart"
+      >
         <svg
           width={dimensions.width || '100%'}
           height={totalHeight}
           viewBox={`0 0 ${dimensions.width || 400} ${totalHeight}`}
           className="overflow-visible"
+          aria-hidden="true"
         >
           <defs>
             <GlowFilter id="funnel-glow" stdDeviation={3} />

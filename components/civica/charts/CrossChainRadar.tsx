@@ -53,8 +53,12 @@ export function CrossChainRadar({ chains, axes, className }: CrossChainRadarProp
   );
 
   return (
-    <div className={cn('flex flex-col items-center', className)}>
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-[280px]">
+    <div
+      className={cn('flex flex-col items-center', className)}
+      role="img"
+      aria-label="Cross-chain governance comparison radar chart"
+    >
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-[280px]" aria-hidden="true">
         <defs>
           {chains.map((chain) => (
             <linearGradient

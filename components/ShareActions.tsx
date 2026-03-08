@@ -130,7 +130,7 @@ export function ShareActions({
           size="icon"
           className="h-8 w-8"
           onClick={handleShareX}
-          title="Share on X"
+          aria-label="Share on X"
         >
           <XIcon className="h-3.5 w-3.5" />
         </Button>
@@ -139,7 +139,7 @@ export function ShareActions({
           size="icon"
           className="h-8 w-8"
           onClick={handleCopyLink}
-          title="Copy link"
+          aria-label={copiedLink ? 'Link copied' : 'Copy link'}
         >
           {copiedLink ? (
             <Check className="h-3.5 w-3.5 text-green-500" />
@@ -153,7 +153,7 @@ export function ShareActions({
             size="icon"
             className="h-8 w-8"
             onClick={handleDownload}
-            title="Download image"
+            aria-label="Download image"
           >
             <Download className="h-3.5 w-3.5" />
           </Button>

@@ -83,9 +83,15 @@ function BalanceChart({ data }: { data: HistoryData['snapshots'] }) {
   const xTicks = xScale.ticks(6).map(Math.round);
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ height: 280 }}>
+    <div
+      ref={containerRef}
+      className="relative w-full"
+      style={{ height: 280 }}
+      role="img"
+      aria-label="Treasury balance over time"
+    >
       {width > 0 && (
-        <svg width={width} height={280}>
+        <svg width={width} height={280} aria-hidden="true">
           <defs>
             <GlowFilter id="balance-glow" stdDeviation={3} />
             <AreaGradient id="balance-fill" color="oklch(0.72 0.14 200)" topOpacity={0.2} />
@@ -237,9 +243,15 @@ function IncomeOutflowChart({ data }: { data: HistoryData['incomeVsOutflow'] }) 
   const xTicks = xScale.ticks(6).map(Math.round);
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ height: 280 }}>
+    <div
+      ref={containerRef}
+      className="relative w-full"
+      style={{ height: 280 }}
+      role="img"
+      aria-label="Treasury spending over time"
+    >
       {width > 0 && (
-        <svg width={width} height={280}>
+        <svg width={width} height={280} aria-hidden="true">
           <g transform={`translate(${margin.left},${margin.top})`}>
             {ticks.map((t) => (
               <g key={t}>

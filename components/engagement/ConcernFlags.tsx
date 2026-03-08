@@ -162,7 +162,11 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Flag concerns about this proposal"
+        >
           {sortedFlags.map((flagType) => {
             const count = flags[flagType] || 0;
             const isUserFlag = userFlags.includes(flagType);
@@ -174,6 +178,8 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
                 key={flagType}
                 onClick={() => isOpen && connected && toggleFlag(flagType)}
                 disabled={!isOpen || !connected || isSubmittingThis}
+                aria-pressed={isUserFlag}
+                aria-label={`${label}${count > 0 ? `, ${count} flag${count !== 1 ? 's' : ''}` : ''}`}
                 className={`
                   inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
                   transition-all duration-150 border
@@ -184,13 +190,17 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
                         ? 'bg-muted/50 border-border text-foreground hover:bg-muted'
                         : 'bg-transparent border-border/50 text-muted-foreground hover:border-border hover:bg-muted/30'
                   }
-                  ${isOpen && connected ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'}
+                  ${isOpen && connected ? 'cursor-pointer motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]' : 'cursor-default'}
                   ${isSubmittingThis ? 'opacity-50' : ''}
                 `}
               >
-                <span>{emoji}</span>
+                <span aria-hidden="true">{emoji}</span>
                 <span>{label}</span>
-                {count > 0 && <span className="ml-0.5 tabular-nums opacity-70">{count}</span>}
+                {count > 0 && (
+                  <span className="ml-0.5 tabular-nums opacity-70" aria-hidden="true">
+                    {count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -200,7 +210,9 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
           <p className="text-xs text-muted-foreground">No concerns flagged yet.</p>
         )}
 
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        <div aria-live="polite" role="status">
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
       </CardContent>
     </Card>
   );

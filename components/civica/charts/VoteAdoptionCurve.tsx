@@ -158,8 +158,13 @@ export function VoteAdoptionCurve({ votes, className }: VoteAdoptionCurveProps) 
   }
 
   return (
-    <div ref={containerRef} className={cn('w-full', className)}>
-      <svg width={dimensions.width} height={220} className="overflow-visible">
+    <div
+      ref={containerRef}
+      className={cn('w-full', className)}
+      role="img"
+      aria-label="Vote adoption over time"
+    >
+      <svg width={dimensions.width} height={220} className="overflow-visible" aria-hidden="true">
         <defs>
           <AreaGradient
             id="vote-area-grad-yes"

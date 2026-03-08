@@ -170,6 +170,7 @@ export function AdminViewAsPicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
         </div>

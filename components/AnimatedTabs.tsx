@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { spring } from '@/lib/animations';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,7 @@ export function AnimatedTabs({
   const prevIndexRef = useRef(tabs.findIndex((t) => t.id === activeTab));
   const [direction, setDirection] = useState(0);
   const [dragStart, setDragStart] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -78,7 +79,7 @@ export function AnimatedTabs({
             value={id}
             className="min-h-[44px] gap-1.5 px-4 snap-start data-[state=active]:text-foreground data-[state=active]:after:bg-primary"
           >
-            {Icon && <Icon className="h-4 w-4" />}
+            {Icon && <Icon className="h-4 w-4" aria-hidden="true" />}
             {label}
           </TabsTrigger>
         ))}
@@ -107,10 +108,18 @@ export function AnimatedTabs({
               {activeTab === tab.id && (
                 <motion.div
                   key={tab.id}
-                  initial={{ opacity: 0, x: direction * SLIDE_DISTANCE }}
+                  initial={
+                    prefersReducedMotion
+                      ? { opacity: 1 }
+                      : { opacity: 0, x: direction * SLIDE_DISTANCE }
+                  }
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: direction * -SLIDE_DISTANCE }}
-                  transition={spring.smooth}
+                  exit={
+                    prefersReducedMotion
+                      ? { opacity: 1 }
+                      : { opacity: 0, x: direction * -SLIDE_DISTANCE }
+                  }
+                  transition={prefersReducedMotion ? { duration: 0 } : spring.smooth}
                 >
                   {tab.content}
                 </motion.div>

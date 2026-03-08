@@ -260,7 +260,11 @@ export function VoteCastingPanel({
 
         {/* Vote buttons */}
         {!isDone && (
-          <div className="grid grid-cols-3 gap-2">
+          <div
+            className="grid grid-cols-3 gap-2"
+            role="radiogroup"
+            aria-label={`Cast your ${roleLabel} vote`}
+          >
             {VOTE_OPTIONS.map(({ value, label, icon: Icon, color, bgColor }) => {
               const isSelected = selectedVote === value;
               return (
@@ -268,6 +272,8 @@ export function VoteCastingPanel({
                   key={value}
                   onClick={() => handleVoteSelect(value)}
                   disabled={isProcessing || isPublishing}
+                  role="radio"
+                  aria-checked={isSelected}
                   className={cn(
                     'flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-all',
                     isSelected
@@ -279,7 +285,10 @@ export function VoteCastingPanel({
                     isSelected && value === 'Abstain' && 'ring-muted-foreground/50',
                   )}
                 >
-                  <Icon className={cn('h-5 w-5', isSelected ? color : 'text-muted-foreground')} />
+                  <Icon
+                    className={cn('h-5 w-5', isSelected ? color : 'text-muted-foreground')}
+                    aria-hidden="true"
+                  />
                   <span
                     className={cn(
                       'text-sm font-medium',
@@ -308,7 +317,10 @@ export function VoteCastingPanel({
             {showRationale ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="vote-rationale"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
                     Vote Rationale (CIP-100)
                   </label>
                   <div className="flex items-center gap-1">
@@ -337,15 +349,23 @@ export function VoteCastingPanel({
                   </div>
                 </div>
                 <textarea
+                  id="vote-rationale"
                   value={rationaleText}
                   onChange={(e) => setRationaleText(e.target.value)}
                   placeholder="Explain your vote. This will be published as a CIP-100 document anchored to your on-chain vote."
                   className="w-full min-h-[120px] p-3 text-sm border rounded-lg bg-background resize-y focus:outline-none focus:ring-2 focus:ring-primary/30"
                   maxLength={10000}
+                  aria-describedby="rationale-hint rationale-count"
                 />
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-muted-foreground">{scoringHint}</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
+                  <p id="rationale-hint" className="text-[10px] text-muted-foreground">
+                    {scoringHint}
+                  </p>
+                  <p
+                    id="rationale-count"
+                    className="text-xs text-muted-foreground tabular-nums"
+                    aria-live="polite"
+                  >
                     {rationaleText.length.toLocaleString()} / 10,000
                   </p>
                 </div>
@@ -378,7 +398,9 @@ export function VoteCastingPanel({
         )}
 
         {/* Phase indicator */}
-        <PhaseIndicator phase={phase} />
+        <div aria-live="assertive" role="status">
+          <PhaseIndicator phase={phase} />
+        </div>
       </CardContent>
     </Card>
   );

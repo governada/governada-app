@@ -182,9 +182,15 @@ export function DelegatorTrendChart({ drepId }: DelegatorTrendChartProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div ref={containerRef} className="relative w-full" style={{ height: 180 }}>
+        <div
+          ref={containerRef}
+          className="relative w-full"
+          style={{ height: 180 }}
+          role="img"
+          aria-label="Delegator count trend"
+        >
           {width > 0 && (
-            <svg width={width} height={180}>
+            <svg width={width} height={180} aria-hidden="true">
               <defs>
                 <GlowFilter id="delegator-glow" stdDeviation={3} />
                 <AreaGradient id="delegator-fill" color="oklch(0.68 0.16 160)" topOpacity={0.2} />

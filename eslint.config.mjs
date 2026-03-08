@@ -42,6 +42,7 @@ const eslintConfig = defineConfig([
     'next-env.d.ts',
     'scripts/**',
     '__tests__/**',
+    'tests/**',
     'analytics/**',
   ]),
 ]);

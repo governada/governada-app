@@ -27,7 +27,11 @@
     "prepare": "husky",
     "test:scoring": "vitest run __tests__/scoring/ __tests__/alignment/ __tests__/ghi/ __tests__/matching/",
     "test:visual": "playwright test e2e/visual-regression.spec.ts",
-    "bundle-report": "tsx scripts/bundle-report.ts"
+    "bundle-report": "tsx scripts/bundle-report.ts",
+    "test:load": "k6 run tests/load/scenarios/citizen-journey.js",
+    "test:load:api": "k6 run tests/load/scenarios/api-v1.js",
+    "test:load:burst": "k6 run tests/load/scenarios/engagement-burst.js",
+    "test:load:drep": "k6 run tests/load/scenarios/drep-workspace.js"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [

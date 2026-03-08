@@ -28,11 +28,15 @@ async function sendMessage(chatId: number, text: string, parseMode = 'HTML') {
  * Set webhook via: https://api.telegram.org/bot{TOKEN}/setWebhook?url={SITE_URL}/api/telegram/webhook&secret_token={SECRET}
  */
 export async function POST(request: NextRequest) {
-  if (WEBHOOK_SECRET) {
-    const secret = request.headers.get('x-telegram-bot-api-secret-token');
-    if (secret !== WEBHOOK_SECRET) {
-      return NextResponse.json({ ok: false }, { status: 403 });
-    }
+  // Fail closed: require webhook secret to be configured
+  if (!WEBHOOK_SECRET) {
+    logger.warn('TELEGRAM_WEBHOOK_SECRET not configured — rejecting webhook');
+    return NextResponse.json({ error: 'Not configured' }, { status: 503 });
+  }
+
+  const secret = request.headers.get('x-telegram-bot-api-secret-token');
+  if (secret !== WEBHOOK_SECRET) {
+    return NextResponse.json({ ok: false }, { status: 403 });
   }
 
   try {
@@ -181,7 +185,7 @@ export async function POST(request: NextRequest) {
 }
 
 function generateConnectToken(chatId: number): string {
-  const payload = `${chatId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  const payload = `${chatId}:${Date.now()}:${crypto.randomUUID()}`;
   return Buffer.from(payload).toString('base64url');
 }
 

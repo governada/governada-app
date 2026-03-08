@@ -56,11 +56,11 @@ export async function checkEpochRateLimit(
       limit,
     };
   } catch (error) {
-    // Redis unavailable — allow the action (fail open for epoch limits)
-    logger.warn('Epoch rate limit check failed — allowing', {
+    // Redis unavailable — deny the action (fail closed)
+    logger.warn('Epoch rate limit check failed — denying (fail-closed)', {
       action: config.action,
       error,
     });
-    return { allowed: true, remaining: limit, limit };
+    return { allowed: false, remaining: 0, limit };
   }
 }

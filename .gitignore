@@ -31,8 +31,11 @@ response.json
 # local IDE / agent settings
 .vscode/
 .cursor/
-.claude/
 .mcp.json
+
+# Claude Code - track commands, rules, agents, hooks, skills; ignore local settings
+.claude/settings.json
+.claude/settings.local.json
 
 # debug
 npm-debug.log*

@@ -3,6 +3,7 @@
 > **Purpose:** Machine-readable audit checklist. Agents verify `[x]` items exist, report `[ ]` items as gaps.
 > **Last synced with vision:** 2026-03-08
 > **Usage:** `Phase 1 audit` = read this file, verify files/routes/tables. `Phase 2 audit` = read ultimate-vision.md for qualitative alignment.
+> **Scoring:** After each `/audit`, record dimension scores in the Audit Score History section at the bottom.
 
 ---
 
@@ -168,3 +169,14 @@ Tracked in `docs/strategy/world-class-packages.md`. 13 QPs targeting 84->95+ sco
 | QP-10/11 | Engagement feedback + integrity | SHIPPED (PR #169) |
 | QP-12 | Citizen endorsements | NOT STARTED |
 | QP-13 | Load testing + performance | NOT STARTED |
+
+---
+
+## Audit Score History
+
+> Updated by `/audit` and `/verify-audit` commands. Tracks score trends across sessions.
+> Rubric: `docs/strategy/context/audit-rubric.md` (10 dimensions, 10 pts each = 100 total)
+
+| Date | Engine | Citizen | Workspace | Engagement | Data | UX | Perf | Testing | API | Completeness | Total |
+|------|--------|---------|-----------|------------|------|----|------|---------|-----|--------------|-------|
+| _Run `/audit` to populate_ | — | — | — | — | — | — | — | — | — | — | —/100 |

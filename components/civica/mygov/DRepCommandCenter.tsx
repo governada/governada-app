@@ -17,12 +17,14 @@ import {
   Target,
   AlertTriangle,
   FileText,
+  RotateCcw,
   Shield,
   Zap,
   Eye,
   Fingerprint,
   HelpCircle,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ShareModal } from '@/components/civica/shared/ShareModal';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -132,7 +134,12 @@ function ScoreSparkline({ history }: { history: { snapshot_date: string; score: 
 
 export function DRepCommandCenter({ drepId }: { drepId: string }) {
   const [shareOpen, setShareOpen] = useState(false);
-  const { data: rawCard, isLoading: summaryLoading } = useDRepReportCard(drepId);
+  const {
+    data: rawCard,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useDRepReportCard(drepId);
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
   const { data: rawVotes, isLoading: votesLoading } = useDRepVotes(drepId);
   const { data: rawCompetitive } = useDashboardCompetitive(drepId);
@@ -177,6 +184,23 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
   const nearbyBelow: any[] = competitive?.nearbyBelow ?? [];
   const top10FocusArea = competitive?.top10FocusArea ?? null;
   const distanceToTop10: number = competitive?.distanceToTop10 ?? 0;
+
+  // Show error state if primary query failed
+  if (summaryError && !summaryLoading) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12 text-center">
+        <AlertTriangle className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm font-medium">Couldn&apos;t load your dashboard</p>
+        <p className="text-xs text-muted-foreground">
+          Your delegation and votes are safe on-chain.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => refetchSummary()}>
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
 
   const actions = generateActions({
     segment: 'drep',

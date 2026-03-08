@@ -5,21 +5,15 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { verifyNonce } from '@/lib/nonce';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
-import { ZodError } from 'zod';
 import { WalletAuthSchema } from '@/lib/api/schemas/auth';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
-  try {
-    let body;
-    try {
-      body = WalletAuthSchema.parse(await request.json());
-    } catch (e) {
-      if (e instanceof ZodError)
-        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-      throw e;
-    }
+export const POST = withRouteHandler(
+  async (request: NextRequest) => {
+    const body = WalletAuthSchema.parse(await request.json());
     const { address, nonce, nonceSignature, signature, key } = body;
 
     const nonceValid = await verifyNonce(nonce, nonceSignature);
@@ -137,8 +131,6 @@ export async function POST(request: NextRequest) {
     captureServerEvent('wallet_authenticated_server', { wallet_address: address }, address);
 
     return response;
-  } catch (error) {
-    logger.error('Auth error', { context: 'auth/wallet', error: error });
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
-  }
-}
+  },
+  { auth: 'none', rateLimit: { max: 5, window: 60 } },
+);

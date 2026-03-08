@@ -52,7 +52,8 @@ import { checkSignature } from '@meshsdk/core';
 
 describe('GET /api/auth/nonce', () => {
   it('returns a nonce with signature and expiry', async () => {
-    const res = await getNonce();
+    const req = createRequest('/api/auth/nonce');
+    const res = await getNonce(req);
     const body = (await parseJson(res)) as any;
 
     expect(res.status).toBe(200);

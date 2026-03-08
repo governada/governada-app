@@ -53,7 +53,7 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
       const result = await fetchEthereumBenchmark();
       if (!result) {
         logger.error(
-          '[sync-benchmarks] Ethereum benchmark fetch returned null — check TALLY_API_KEY and Tally API availability',
+          '[sync-benchmarks] Ethereum benchmark fetch returned null - check TALLY_API_KEY and Tally API availability',
         );
       }
       return result;
@@ -63,7 +63,7 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
       const result = await fetchPolkadotBenchmark();
       if (!result) {
         logger.error(
-          '[sync-benchmarks] Polkadot benchmark fetch returned null — check SubSquare API availability',
+          '[sync-benchmarks] Polkadot benchmark fetch returned null - check SubSquare API availability',
         );
       }
       return result;

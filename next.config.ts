@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
       {
         source: '/((?!api).*)',
         headers: [
-          { key: 'Content-Security-Policy-Report-Only', value: csp },
+          { key: 'Content-Security-Policy', value: csp },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',

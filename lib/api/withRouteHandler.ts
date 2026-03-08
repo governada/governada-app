@@ -43,7 +43,20 @@ function getClientIp(request: NextRequest): string {
 
 // Simple in-process sliding window rate limiter.
 // Uses Upstash when available, falls back to in-memory.
+const MEMORY_STORE_MAX = 10_000;
+const MEMORY_STORE_EVICT = 1_000;
 const memoryStore = new Map<string, { count: number; resetAt: number }>();
+
+/** Evict the oldest entries when the map exceeds the size cap. */
+function evictOldest() {
+  if (memoryStore.size <= MEMORY_STORE_MAX) return;
+  let evicted = 0;
+  for (const key of memoryStore.keys()) {
+    if (evicted >= MEMORY_STORE_EVICT) break;
+    memoryStore.delete(key);
+    evicted++;
+  }
+}
 
 async function checkLimit(
   identifier: string,
@@ -70,6 +83,7 @@ async function checkLimit(
 
   if (!entry || now > entry.resetAt) {
     memoryStore.set(identifier, { count: 1, resetAt: now + windowMs });
+    evictOldest();
     return { allowed: true, remaining: config.max - 1 };
   }
 

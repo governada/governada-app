@@ -63,7 +63,9 @@ async function isSessionRevoked(jti: string): Promise<boolean> {
       .maybeSingle();
     return !!data;
   } catch {
-    return false;
+    // Both Redis and DB unavailable — fail closed (assume revoked)
+    logger.warn('Session revocation check failed — assuming revoked (fail-closed)', { jti });
+    return true;
   }
 }
 

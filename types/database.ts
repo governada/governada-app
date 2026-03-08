@@ -872,6 +872,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      citizen_endorsements: {
+        Row: {
+          created_at: string;
+          endorsement_type: string;
+          entity_id: string;
+          entity_type: string;
+          id: string;
+          stake_address: string | null;
+          user_id: string;
+          wallet_address: string;
+        };
+        Insert: {
+          created_at?: string;
+          endorsement_type: string;
+          entity_id: string;
+          entity_type: string;
+          id?: string;
+          stake_address?: string | null;
+          user_id: string;
+          wallet_address: string;
+        };
+        Update: {
+          created_at?: string;
+          endorsement_type?: string;
+          entity_id?: string;
+          entity_type?: string;
+          id?: string;
+          stake_address?: string | null;
+          user_id?: string;
+          wallet_address?: string;
+        };
+        Relationships: [];
+      };
       citizen_epoch_summaries: {
         Row: {
           alignment_drift_score: number | null;

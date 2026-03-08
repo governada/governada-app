@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { AsyncContent } from '@/components/ui/AsyncContent';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTreasuryCurrent, useTreasuryPending } from '@/hooks/queries';
@@ -213,10 +214,41 @@ function BriefingSkeleton() {
 /* ── Main component ─────────────────────────────────────────────── */
 
 export function EpochBriefing({ wallet }: EpochBriefingProps) {
-  const { data, isLoading, isError } = useCitizenBriefing(wallet);
+  const briefingQuery = useCitizenBriefing(wallet);
   const { data: identity } = useCivicIdentity(wallet);
   const { data: rawTreasury } = useTreasuryCurrent();
   const { data: rawPending } = useTreasuryPending();
+  return (
+    <AsyncContent
+      query={briefingQuery}
+      skeleton={<BriefingSkeleton />}
+      errorMessage="Couldn't load your briefing"
+    >
+      {(data) => (
+        <EpochBriefingContent
+          data={data}
+          identity={identity}
+          rawTreasury={rawTreasury}
+          rawPending={rawPending}
+        />
+      )}
+    </AsyncContent>
+  );
+}
+
+/* ── Content component (extracted for AsyncContent) ──────────── */
+
+function EpochBriefingContent({
+  data,
+  identity,
+  rawTreasury,
+  rawPending,
+}: {
+  data: any;
+  identity: any;
+  rawTreasury: any;
+  rawPending: any;
+}) {
   const tracked = useRef(false);
   const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState(0);
@@ -250,18 +282,6 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
       });
     }
   }, [data]);
-
-  if (isLoading) return <BriefingSkeleton />;
-
-  if (isError) {
-    return (
-      <p className="text-sm text-muted-foreground text-center py-8">
-        Unable to load your briefing right now.
-      </p>
-    );
-  }
-
-  if (!data) return null;
 
   const health: HealthLevel = data.status?.health ?? 'green';
   const config = HEALTH_CONFIG[health];

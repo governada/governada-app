@@ -17,11 +17,13 @@ import {
   Target,
   AlertTriangle,
   FileText,
+  RotateCcw,
   Share2,
   Zap,
   Fingerprint,
   ScrollText,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ShareModal } from '@/components/civica/shared/ShareModal';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -160,7 +162,12 @@ function getTierProgress(score: number, currentTier: string) {
 
 export function SPOCommandCenter({ poolId }: { poolId: string }) {
   const [shareOpen, setShareOpen] = useState(false);
-  const { data: rawSummary, isLoading: summaryLoading } = useSPOSummary(poolId);
+  const {
+    data: rawSummary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useSPOSummary(poolId);
   const { data: rawVotes, isLoading: votesLoading } = useSPOVotesHistory(poolId);
   const { data: rawCompetitive } = useSPOPoolCompetitive(poolId);
   const { data: rawPulse } = useGovernancePulse();
@@ -221,6 +228,21 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
     alignment && ALIGNMENT_META.some((a) => alignment[a.key] != null && alignment[a.key] !== 50);
 
   const tierProgress = getTierProgress(spoScore, spoTier);
+
+  // Show error state if primary query failed
+  if (summaryError && !summaryLoading) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12 text-center">
+        <AlertTriangle className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm font-medium">Couldn&apos;t load your dashboard</p>
+        <p className="text-xs text-muted-foreground">Your pool and votes are safe on-chain.</p>
+        <Button variant="outline" size="sm" onClick={() => refetchSummary()}>
+          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
 
   if (!summaryLoading && !isClaimed) {
     return <SPOClaimHero poolId={poolId} poolName={poolName} summary={summary} />;

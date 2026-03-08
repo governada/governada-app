@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Info,
   RefreshCw,
+  RotateCcw,
   Wallet,
 } from 'lucide-react';
 import { resolveRewardAddress } from '@meshsdk/core';
@@ -35,6 +36,7 @@ export function ProposalSentiment({ txHash, proposalIndex, isOpen }: ProposalSen
   const {
     data: results,
     isLoading,
+    isError: fetchError,
     refetch,
   } = useSentimentResults(txHash, proposalIndex, ownDRepId);
 
@@ -120,6 +122,20 @@ export function ProposalSentiment({ txHash, proposalIndex, isOpen }: ProposalSen
             <Skeleton className="h-11 flex-1" />
             <Skeleton className="h-11 flex-1" />
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <Card className="ring-1 ring-primary/10">
+        <CardContent className="py-6 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Couldn&apos;t load sentiment data</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            Try again
+          </Button>
         </CardContent>
       </Card>
     );

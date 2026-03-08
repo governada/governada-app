@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import {
   getTreasuryBalance,
@@ -10,7 +10,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const { searchParams } = new URL(request.url);
   const burnAdjust = parseFloat(searchParams.get('burnAdjust') || '1');
   const customPendingAda = searchParams.get('pendingAda')

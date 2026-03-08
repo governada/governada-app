@@ -3,7 +3,6 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { captureServerEvent } from '@/lib/posthog-server';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +14,7 @@ function epochStartTime(epoch: number): number {
   return SHELLEY_GENESIS_TIMESTAMP + (epoch - SHELLEY_BASE_EPOCH) * EPOCH_LENGTH_SECONDS;
 }
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const now = Math.floor(Date.now() / 1000);
   const currentEpoch = blockTimeToEpoch(now);
   const epochEnd = epochStartTime(currentEpoch + 1);

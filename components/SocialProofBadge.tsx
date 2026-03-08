@@ -26,14 +26,12 @@ const ICONS = {
 
 export function SocialProofBadge({
   drepId,
-  proposalTxHash,
-  proposalIndex,
   variant = 'views',
   className = '',
 }: SocialProofBadgeProps) {
   const { data: proofData } = useSocialProof(drepId);
   const count = (() => {
-    const d = proofData as any;
+    const d = proofData as Record<string, unknown> | undefined;
     if (!d) return null;
     if (variant === 'views') return (d.weeklyViews ?? 0) as number;
     if (variant === 'poll') return (d.pollResponses ?? 0) as number;

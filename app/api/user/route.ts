@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 
 export const GET = withRouteHandler(
-  async (request: NextRequest, { userId, wallet }: RouteContext) => {
+  async (request: NextRequest, { userId }: RouteContext) => {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.from('users').select('*').eq('id', userId!).single();
 

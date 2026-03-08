@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { captureServerEvent } from '@/lib/posthog-server';
-import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { TelegramConnectSchema } from '@/lib/api/schemas/user';
 

@@ -8,7 +8,6 @@ import { AccentProvider } from '@/components/AccentProvider';
 import { Badge } from '@/components/ui/badge';
 import {
   type AlignmentScores,
-  type AlignmentDimension,
   getDominantDimension,
   getIdentityColor,
   getIdentityGradient,

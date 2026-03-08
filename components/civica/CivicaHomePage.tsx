@@ -19,7 +19,7 @@ interface PulseData {
 
 interface CivicaHomePageProps {
   pulseData: PulseData;
-  ssrHolderData?: any;
+  ssrHolderData?: Record<string, unknown>;
   ssrWalletAddress?: string | null;
 }
 

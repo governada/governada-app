@@ -22,7 +22,7 @@ interface PulseData {
 
 interface HomeCitizenProps {
   pulseData: PulseData;
-  ssrHolderData?: any;
+  ssrHolderData?: Record<string, unknown>;
   ssrWalletAddress?: string | null;
 }
 
@@ -160,7 +160,10 @@ export function HomeCitizen({ pulseData, ssrHolderData, ssrWalletAddress }: Home
   const { delegatedDrep } = useSegment();
   const { address } = useWallet();
 
-  const drepId = ssrHolderData?.delegationHealth?.drepId ?? delegatedDrep;
+  const drepId =
+    ((ssrHolderData?.delegationHealth as Record<string, unknown> | undefined)?.drepId as
+      | string
+      | undefined) ?? delegatedDrep;
   const wallet = ssrWalletAddress ?? address;
 
   if (!drepId) {

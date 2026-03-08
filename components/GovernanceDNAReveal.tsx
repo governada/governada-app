@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dna, RefreshCw, ArrowRight, Share2, Vote } from 'lucide-react';
+import { Dna, RefreshCw, Share2, Vote } from 'lucide-react';
 import Link from 'next/link';
 import { ShareActions } from '@/components/ShareActions';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
@@ -13,7 +13,7 @@ import { MatchCard } from '@/components/matching/MatchCard';
 import { ConfidenceBar } from '@/components/matching/ConfidenceBar';
 import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
 import { posthog } from '@/lib/posthog';
-import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
+import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
 
 export interface QuizMatchDRep {

@@ -6,7 +6,7 @@
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { alertDiscord, alertCritical, errMsg, emitPostHog, type SyncType } from '@/lib/sync-utils';
+import { alertDiscord, alertCritical, emitPostHog, type SyncType } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {

@@ -135,6 +135,7 @@ After all three subagents return, synthesize their outputs into a build plan. Re
 ### 2.1 Chunk Breakdown
 
 Convert remaining features into PR-sized chunks following the work plan template. For each chunk include:
+
 - Priority, effort, audit dimensions affected
 - Files to create/modify
 - Which pattern to follow (from Codebase Scout)
@@ -144,6 +145,7 @@ Convert remaining features into PR-sized chunks following the work plan template
 ### 2.2 Decision Points
 
 Extract from the Vision Analyst's ambiguity flags and the Codebase Scout's risks. For each decision:
+
 - **The question**: What needs to be decided?
 - **Option A**: [approach] — pros, cons, audit impact
 - **Option B**: [approach] — pros, cons, audit impact
@@ -153,6 +155,7 @@ Extract from the Vision Analyst's ambiguity flags and the Codebase Scout's risks
 ### 2.3 Assumption Challenges
 
 For each implicit assumption in the plan, explicitly state it and challenge it:
+
 - **Assumption**: [what we're assuming]
 - **Challenge**: [what if this is wrong?]
 - **Mitigation**: [how the plan handles it, or why the assumption is safe]
@@ -160,6 +163,7 @@ For each implicit assumption in the plan, explicitly state it and challenge it:
 ### 2.4 World-Class Bar
 
 For each chunk, define two levels:
+
 - **Solid (scores 7/10 on relevant audits)**: [what "good enough" looks like]
 - **World-class (scores 9+/10)**: [what the extra investment buys]
 - **Recommendation**: [which level to target and why]
@@ -167,11 +171,13 @@ For each chunk, define two levels:
 ### 2.5 PR Grouping & Merge Sequence
 
 Determine the deployment order:
+
 - **Independent chunks**: Can build in parallel, merge in any order
 - **Grouped chunks**: Same PR (tightly coupled, must deploy atomically)
 - **Sequential chunks**: Must merge in order (infrastructure before consumers)
 
 Present as a merge sequence diagram:
+
 ```
 [Group A: chunks 1,2] ──merge──> [Group B: chunk 3] ──merge──> [Group C: chunks 4,5]
      (parallel build)                (depends on A)              (depends on B)
@@ -184,6 +190,7 @@ Present as a merge sequence diagram:
 **STOP HERE. Present the full plan to the user and wait for input.**
 
 Present:
+
 1. The chunk breakdown with effort estimates
 2. All decision points with your recommendations
 3. Assumption challenges
@@ -191,6 +198,7 @@ Present:
 5. The merge sequence
 
 Ask specifically:
+
 - "Do you approve the chunk breakdown, or should any be split/merged/reordered?"
 - "For each decision point, which option do you prefer? (I've noted my recommendation)"
 - "For each chunk, do you want solid (7/10) or world-class (9+/10)?"
@@ -300,6 +308,7 @@ Process PR groups in the order determined in Phase 2.5. For each group:
 ### 5.2 Cross-Group Coordination
 
 Between PR groups:
+
 - Pull latest main into the next group's branches: `git fetch origin && git rebase origin/main`
 - Re-run preflight on the rebased branch if the rebase had conflicts
 - Re-push if rebased: `git push --force-with-lease`
@@ -322,6 +331,7 @@ After all PRs are merged and deployed (or in staging mode, after all PRs pass CI
 Launch audit subagents ONLY for the dimensions identified in the Phase 1C pre-screen as "affected." Use the Agent tool — same pattern as `/audit-all` but scoped.
 
 Each audit subagent should:
+
 1. Read its audit command file
 2. Execute only the phases relevant to the new step's features
 3. Score the affected dimensions
@@ -330,6 +340,7 @@ Each audit subagent should:
 ### 6.2 Build Manifest Update
 
 Update `docs/strategy/context/build-manifest.md`:
+
 - Check off items that were built: `[ ]` → `[x]`
 - Add file references for new implementations
 - Update step status if all items are now complete

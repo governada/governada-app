@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Check, ArrowRight, Sparkles, FileText, Vote, Share2 } from 'lucide-react';
+import { Check, ArrowRight, Sparkles, FileText, Vote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 

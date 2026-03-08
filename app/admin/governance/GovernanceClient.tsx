@@ -9,6 +9,7 @@ import { chartTheme, CHART_PALETTE } from '@/lib/charts';
 import { useChartDimensions } from '@/lib/charts';
 
 interface EpochStat {
+  [key: string]: string | number | boolean | null | undefined;
   epoch_no: number;
   total_dreps: number | null;
   active_dreps: number | null;
@@ -20,12 +21,14 @@ interface EpochStat {
 }
 
 interface GHISnapshot {
+  [key: string]: string | number | boolean | null | undefined;
   epoch_no: number;
   score: number;
   band: string;
 }
 
 interface DecentralizationSnapshot {
+  [key: string]: string | number | boolean | null | undefined;
   epoch_no: number;
   composite_score: number;
   nakamoto_coefficient: number;
@@ -50,7 +53,7 @@ const TIER_COLORS: Record<string, string> = {
   Emerging: 'oklch(0.55 0.05 260)',
 };
 
-function TrendLineChart({
+function TrendLineChart<T extends Record<string, string | number | boolean | null | undefined>>({
   data,
   xKey,
   yKey,
@@ -58,8 +61,7 @@ function TrendLineChart({
   yLabel,
   formatY = (v: number) => v.toFixed(1),
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: Array<Record<string, any>>;
+  data: T[];
   xKey: string;
   yKey: string;
   color?: string;

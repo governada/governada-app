@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getVotingPowerSummary } from '@/lib/data';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const { searchParams } = request.nextUrl;
   const txHash = searchParams.get('txHash');
   const index = searchParams.get('index');

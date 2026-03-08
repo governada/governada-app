@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) return NextResponse.json({ error: 'Missing drepId' }, { status: 400 });
 
@@ -73,7 +73,15 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   const MIN_RESPONSES = 3;
   let alignedCount = 0;
   let totalCompared = 0;
-  const proposalBreakdown: any[] = [];
+  const proposalBreakdown: {
+    key: string;
+    title: string;
+    drepVote: string;
+    delegatorMajority: string;
+    delegatorMajorityPct: number;
+    totalResponses: number;
+    aligned: boolean;
+  }[] = [];
 
   for (const [key, counts] of proposalPolls.entries()) {
     const total = counts.yes + counts.no + counts.abstain;

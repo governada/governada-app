@@ -1297,7 +1297,7 @@ export async function getDRepDelegationTrend(
       .eq('drep_id', drepId)
       .order('epoch_no', { ascending: true })
       .limit(30);
-    return (data ?? []).map((s: any) => ({
+    return (data ?? []).map((s) => ({
       epoch: s.epoch_no,
       votingPowerAda: Math.round(Number(s.amount_lovelace) / 1_000_000),
       delegatorCount: s.delegator_count ?? 0,

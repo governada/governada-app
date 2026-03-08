@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { applyRationaleCurve } from '@/utils/scoring';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   const additionalVotes = parseInt(request.nextUrl.searchParams.get('votes') || '0');
   const additionalRationales = parseInt(request.nextUrl.searchParams.get('rationales') || '0');
@@ -62,7 +62,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       drep.profile_completeness * 0.15,
   );
 
-  const allScores = (allDrepsResult.data || []).map((d: any) => d.score);
+  const allScores = (allDrepsResult.data || []).map((d) => d.score);
   const currentRank = allScores.filter((s: number) => s > drep.score).length + 1;
   const simRank = allScores.filter((s: number) => s > simScore).length + 1;
 

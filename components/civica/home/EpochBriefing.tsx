@@ -29,7 +29,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTreasuryCurrent, useTreasuryPending } from '@/hooks/queries';
 import { briefingContainer, briefingItem } from '@/lib/animations';
 import { GovTerm } from '@/components/ui/GovTerm';
-import { useCitizenVoice, useEndorsements, type CitizenVoiceProposal } from '@/hooks/useEngagement';
+import {
+  useCitizenVoice,
+  useEndorsements,
+  type CitizenVoiceProposal,
+  type CitizenVoiceData,
+} from '@/hooks/useEngagement';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -233,8 +238,8 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
     >
       {(data) => (
         <EpochBriefingContent
-          data={data}
-          identity={identity}
+          data={data as EpochBriefingData}
+          identity={identity as Record<string, unknown> | null}
           rawTreasury={rawTreasury}
           rawPending={rawPending}
           voiceData={voiceData}
@@ -246,6 +251,40 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
 
 /* ── Content component (extracted for AsyncContent) ──────────── */
 
+interface EpochBriefingDRepPerformance {
+  id: string;
+  name: string;
+  verdict?: string;
+  votesCast?: number;
+  rationales?: number;
+  participationRate?: number;
+  score: number;
+  scoreChange?: number;
+}
+
+interface EpochBriefingData {
+  epoch: number;
+  status?: {
+    health?: string;
+    headline?: string;
+    delegatedTo?: { id: string; name: string } | null;
+  };
+  recap?: { narrative?: string };
+  headlines?: { type: string; title: string; description: string }[];
+  drepPerformance?: EpochBriefingDRepPerformance;
+  treasury?: {
+    balanceAda?: number;
+    proportionalShareAda?: number;
+    drepDelegatedAda?: number;
+    pendingProposals?: number;
+  };
+  upcoming?: {
+    activeProposals?: number;
+    critical?: number;
+  };
+  [key: string]: unknown;
+}
+
 function EpochBriefingContent({
   data,
   identity,
@@ -253,11 +292,11 @@ function EpochBriefingContent({
   rawPending,
   voiceData,
 }: {
-  data: any;
-  identity: any;
-  rawTreasury: any;
-  rawPending: any;
-  voiceData: any;
+  data: EpochBriefingData;
+  identity: Record<string, unknown> | null;
+  rawTreasury: unknown;
+  rawPending: unknown;
+  voiceData: CitizenVoiceData | undefined | null;
 }) {
   const tracked = useRef(false);
   const isMobile = useIsMobile();
@@ -294,7 +333,7 @@ function EpochBriefingContent({
     }
   }, [data]);
 
-  const health: HealthLevel = data.status?.health ?? 'green';
+  const health: HealthLevel = (data.status?.health as HealthLevel) ?? 'green';
   const config = HEALTH_CONFIG[health];
   const StatusIcon = config.icon;
   const treasury = rawTreasury as
@@ -609,24 +648,24 @@ function EpochBriefingContent({
       )}
       {pendingProposals.length === 0 && (data.treasury?.pendingProposals ?? 0) > 0 && (
         <p className="text-sm text-muted-foreground mt-1">
-          {data.treasury.pendingProposals} proposal
-          {data.treasury.pendingProposals !== 1 ? 's' : ''} requesting funds
+          {data.treasury!.pendingProposals} proposal
+          {data.treasury!.pendingProposals !== 1 ? 's' : ''} requesting funds
         </p>
       )}
     </div>
   );
 
   const upcomingSection =
-    data.upcoming && data.upcoming.activeProposals > 0 ? (
+    data.upcoming && (data.upcoming.activeProposals ?? 0) > 0 ? (
       <div className="py-5 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-foreground flex-1 min-w-0">
             <Vote className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <span>
               <span className="font-semibold">{data.upcoming.activeProposals}</span> proposal
-              {data.upcoming.activeProposals !== 1 ? 's' : ''} open
+              {(data.upcoming.activeProposals ?? 0) !== 1 ? 's' : ''} open
             </span>
-            {data.upcoming.critical > 0 && (
+            {(data.upcoming.critical ?? 0) > 0 && (
               <Badge className="bg-rose-500/10 text-rose-500 border-rose-500/20 shrink-0">
                 {data.upcoming.critical} critical
               </Badge>
@@ -652,32 +691,34 @@ function EpochBriefingContent({
         {identity.citizenSinceEpoch != null && (
           <span className="inline-flex items-center gap-1.5 min-h-[36px]">
             <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-            Citizen since Epoch {identity.citizenSinceEpoch}
+            Citizen since Epoch {identity.citizenSinceEpoch as React.ReactNode}
           </span>
         )}
-        {identity.delegationStreak != null && identity.delegationStreak > 0 && (
+        {identity.delegationStreak != null && (identity.delegationStreak as number) > 0 && (
           <span className="inline-flex items-center gap-1.5 min-h-[36px]">
             <Flame className="h-3.5 w-3.5 text-amber-500 animate-pulse" aria-hidden="true" />
-            {identity.delegationStreak} epoch streak
+            {identity.delegationStreak as React.ReactNode} epoch streak
           </span>
         )}
-        {identity.proposalsInfluenced != null && identity.proposalsInfluenced > 0 && (
+        {identity.proposalsInfluenced != null && (identity.proposalsInfluenced as number) > 0 && (
           <span className="inline-flex items-center gap-1.5 min-h-[36px]">
             <Vote className="h-3.5 w-3.5" aria-hidden="true" />
-            {identity.proposalsInfluenced} proposals influenced
+            {identity.proposalsInfluenced as React.ReactNode} proposals influenced
           </span>
         )}
         {identity.adaGoverned != null && (
           <span className="inline-flex items-center gap-1.5 min-h-[36px]">
             <Coins className="h-3.5 w-3.5" aria-hidden="true" />
-            {formatAdaCompact(identity.adaGoverned)} ADA governed
+            {formatAdaCompact(identity.adaGoverned as number)} ADA governed
           </span>
         )}
       </div>
-      {identity.recentMilestone && (
+      {(identity.recentMilestone as string | undefined) && (
         <div className="mt-2 flex items-center gap-2 text-xs">
           <Trophy className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-          <span className="font-medium text-foreground">{identity.recentMilestone}</span>
+          <span className="font-medium text-foreground">
+            {identity.recentMilestone as React.ReactNode}
+          </span>
         </div>
       )}
       <div className="mt-2 flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">

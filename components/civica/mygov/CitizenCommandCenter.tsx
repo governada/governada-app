@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import {
-  Users,
   ChevronRight,
   Vote,
   TrendingUp,
@@ -292,21 +291,37 @@ export function CitizenCommandCenter({
   const { data: rawVotes, isLoading: votesLoading } = useDRepVotes(delegatedDrep);
   const { data: rawRecap } = useGovernanceEpochRecap();
 
-  const card = rawCard as any;
-  const pulse = rawPulse as any;
-  const votes: any[] = (rawVotes as any)?.votes ?? rawVotes ?? [];
+  const card = rawCard as Record<string, unknown> | undefined;
+  const pulse = rawPulse as
+    | { activeProposals?: number; criticalProposals?: number; [key: string]: unknown }
+    | undefined;
+  const votesObj = rawVotes as Record<string, unknown> | undefined;
+  const votes: Record<string, unknown>[] =
+    (votesObj?.votes as Record<string, unknown>[]) ?? (rawVotes as Record<string, unknown>[]) ?? [];
   const recentVotes = Array.isArray(votes) ? votes.slice(0, 3) : [];
-  const recap = rawRecap as any;
+  const recap = rawRecap as
+    | {
+        epoch?: number;
+        proposals_submitted?: number;
+        proposals_ratified?: number;
+        drep_participation_pct?: number;
+        treasury_withdrawn_ada?: number;
+        ai_narrative?: string;
+        [key: string]: unknown;
+      }
+    | undefined;
 
-  const drepScore: number = card?.score ?? 0;
-  const drepName: string = card?.name ?? delegatedDrep ?? '—';
-  const drepIsActive: boolean = card?.isActive ?? true;
+  const drepScore: number = (card?.score as number) ?? 0;
+  const drepName: string = (card?.name as string) ?? delegatedDrep ?? '\u2014';
+  const drepIsActive: boolean = (card?.isActive as boolean) ?? true;
   const drepTier = tierKey(computeTier(drepScore));
-  const scoreDelta: number | undefined = card?.momentum;
+  const scoreDelta: number | undefined = card?.momentum as number | undefined;
 
   // New data from report card API (previously unused)
-  const scoreHistory: Array<{ epoch_no: number; score: number }> = card?.scoreHistory ?? [];
-  const alignment: Record<string, number | null> = card?.alignment ?? {};
+  const scoreHistory: Array<{ epoch_no: number; score: number }> =
+    (card?.scoreHistory as Array<{ epoch_no: number; score: number }>) ?? [];
+  const alignment: Record<string, number | null> =
+    (card?.alignment as Record<string, number | null>) ?? {};
   const tierProgress = card?.tierProgress as
     | {
         currentTier: string;
@@ -499,7 +514,7 @@ export function CitizenCommandCenter({
       )}
 
       {/* Epoch context */}
-      {recap?.epoch && (
+      {recap?.epoch != null && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -540,7 +555,9 @@ export function CitizenCommandCenter({
             )}
           </div>
           {recap.ai_narrative && (
-            <p className="text-xs text-muted-foreground leading-relaxed">{recap.ai_narrative}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {String(recap.ai_narrative)}
+            </p>
           )}
         </div>
       )}
@@ -580,10 +597,10 @@ export function CitizenCommandCenter({
             </Link>
           </div>
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-            {recentVotes.map((vote: any, idx: number) => (
+            {recentVotes.map((vote, idx: number) => (
               <div key={idx} className="px-4 py-3 flex items-center justify-between">
                 <p className="text-sm truncate max-w-[200px]">
-                  {vote.proposalTitle ?? vote.title ?? 'Proposal'}
+                  {(vote.proposalTitle as string) ?? (vote.title as string) ?? 'Proposal'}
                 </p>
                 <span
                   className={cn(
@@ -595,7 +612,7 @@ export function CitizenCommandCenter({
                         : 'text-muted-foreground',
                   )}
                 >
-                  {vote.vote ?? vote.voteDirection ?? '—'}
+                  {(vote.vote as string) ?? (vote.voteDirection as string) ?? '—'}
                 </span>
               </div>
             ))}

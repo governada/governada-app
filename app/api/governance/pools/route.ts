@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
   const { data: poolRows } = await supabase

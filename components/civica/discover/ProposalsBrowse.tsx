@@ -8,6 +8,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet-context';
 import { ProposalStatusFunnel } from '@/components/civica/charts/ProposalStatusFunnel';
+import type { VotesResponseData, VoteItem } from '@/types/api';
+
+interface BrowseProposal {
+  txHash: string;
+  index: number;
+  title?: string;
+  type?: string;
+  status?: string;
+  expirationEpoch?: number;
+  withdrawalAmount?: number;
+  treasuryPct?: number;
+  deliveryStatus?: string;
+  deliveryScore?: number;
+  triBody?: {
+    drep: { yes: number; no: number; abstain: number };
+    spo: { yes: number; no: number; abstain: number };
+    cc: { yes: number; no: number; abstain: number };
+  };
+  relevantPrefs?: string[];
+  [key: string]: unknown;
+}
 import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
 import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
@@ -138,8 +159,8 @@ const PAGE_SIZE = 25;
 
 export function ProposalsBrowse() {
   const { data: rawData, isLoading } = useProposals(200);
-  const data = rawData as any;
-  const proposals: any[] = useMemo(() => data?.proposals ?? [], [data]);
+  const data = rawData as { proposals?: BrowseProposal[]; currentEpoch?: number } | undefined;
+  const proposals: BrowseProposal[] = useMemo(() => data?.proposals ?? [], [data]);
   const currentEpoch: number | null = data?.currentEpoch ?? null;
   const { delegatedDrepId } = useWallet();
   const { data: drepVotesRaw } = useDRepVotes(delegatedDrepId);
@@ -168,11 +189,12 @@ export function ProposalsBrowse() {
   // Build a lookup: "txHash:index" -> vote
   const drepVoteMap = useMemo(() => {
     const map = new Map<string, string>();
-    const votes = (drepVotesRaw as any)?.votes ?? drepVotesRaw;
+    const votesData = drepVotesRaw as VotesResponseData | undefined;
+    const votes = votesData?.votes ?? (drepVotesRaw as VoteItem[] | undefined);
     if (Array.isArray(votes)) {
       for (const v of votes) {
-        const key = `${v.proposal_tx_hash ?? v.proposalTxHash}:${v.proposal_index ?? v.proposalIndex}`;
-        map.set(key, v.vote);
+        const key = `${v.proposalTxHash ?? ''}:${v.proposalIndex ?? ''}`;
+        map.set(key, v.vote ?? v.voteDirection ?? '');
       }
     }
     return map;
@@ -183,17 +205,17 @@ export function ProposalsBrowse() {
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(
-        (p: any) =>
+        (p) =>
           p.title?.toLowerCase().includes(q) ||
           p.txHash?.toLowerCase().includes(q) ||
           p.type?.toLowerCase().includes(q),
       );
     }
     if (statusFilter !== 'All') {
-      r = r.filter((p: any) => (p.status ?? 'Open').toLowerCase() === statusFilter.toLowerCase());
+      r = r.filter((p) => (p.status ?? 'Open').toLowerCase() === statusFilter.toLowerCase());
     }
     if (typeFilter !== 'All') {
-      r = r.filter((p: any) => p.type === typeFilter);
+      r = r.filter((p) => p.type === typeFilter);
     }
     return r;
   }, [proposals, search, statusFilter, typeFilter]);
@@ -201,7 +223,7 @@ export function ProposalsBrowse() {
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const p of proposals) {
-      const s = (p as any).status ?? 'Open';
+      const s = p.status ?? 'Open';
       counts[s] = (counts[s] || 0) + 1;
     }
     const STATUS_COLOR_MAP: Record<string, string> = {
@@ -277,7 +299,7 @@ export function ProposalsBrowse() {
           key={page}
           className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden"
         >
-          {pageItems.map((p: any, i: number) => {
+          {pageItems.map((p, i: number) => {
             const status = p.status ?? 'Open';
             const drepVote = drepVoteMap.get(`${p.txHash}:${p.index}`);
             const pill = drepVote ? VOTE_PILL[drepVote] : null;
@@ -325,7 +347,7 @@ export function ProposalsBrowse() {
                     <span className="flex items-center gap-1 text-[10px] text-emerald-500">
                       <Landmark className="h-2.5 w-2.5" />
                       <span className="font-semibold tabular-nums">
-                        {formatAdaShort(p.withdrawalAmount)} ADA
+                        {formatAdaShort(p.withdrawalAmount ?? 0)} ADA
                       </span>
                       {p.treasuryPct != null && (
                         <span className="text-muted-foreground">
@@ -377,8 +399,8 @@ export function ProposalsBrowse() {
                       </span>
                     </span>
                   )}
-                  {p.relevantPrefs?.length > 0 &&
-                    p.relevantPrefs.slice(0, 2).map((pref: string) => {
+                  {(p.relevantPrefs?.length ?? 0) > 0 &&
+                    p.relevantPrefs!.slice(0, 2).map((pref: string) => {
                       const info = PREF_LABELS[pref];
                       if (!info) return null;
                       return (

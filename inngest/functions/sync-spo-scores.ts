@@ -857,7 +857,7 @@ export const syncSpoScores = inngest.createFunction(
     });
 
     // Tier assignment for SPOs (now confidence-aware)
-    const tierResult = await step.run('assign-spo-tiers', async () => {
+    await step.run('assign-spo-tiers', async () => {
       const tiersEnabled = await getFeatureFlag('score_tiers', false);
       if (!tiersEnabled) return { tierChanges: 0 };
 

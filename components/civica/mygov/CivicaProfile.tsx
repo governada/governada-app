@@ -156,9 +156,9 @@ export function CivicaProfile() {
   const { data: rawUser, isLoading: userLoading } = useUser();
   const queryClient = useQueryClient();
 
-  const user = rawUser as any;
-  const displayName: string = user?.display_name ?? '';
-  const digestFreq: string = user?.digest_frequency ?? 'weekly';
+  const user = rawUser as Record<string, unknown> | undefined;
+  const displayName: string = (user?.display_name as string) ?? '';
+  const digestFreq: string = (user?.digest_frequency as string) ?? 'weekly';
   const [digestSaving, setDigestSaving] = useState(false);
   const [selectedDigest, setSelectedDigest] = useState(digestFreq);
   const [digestSaved, setDigestSaved] = useState(false);
@@ -186,7 +186,7 @@ export function CivicaProfile() {
   );
 
   // Tier / score from user data (if DRep or SPO)
-  const score: number = user?.drepScore ?? user?.spoScore ?? 0;
+  const score: number = (user?.drepScore as number) ?? (user?.spoScore as number) ?? 0;
   const tier = computeTier(score);
   const tKey = tierKey(tier);
 

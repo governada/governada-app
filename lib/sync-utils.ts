@@ -290,7 +290,7 @@ export async function emitPostHog(
       duration_ms: durationMs,
       ...rest,
     });
-  } catch (_e) {
+  } catch {
     /* posthog optional */
   }
 }

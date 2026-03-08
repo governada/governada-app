@@ -22,11 +22,11 @@ export function ActivityHeatmap({ drepId }: ActivityHeatmapProps) {
   const { data: rawVotes, isLoading } = useDRepVotes(drepId);
 
   const data = useMemo(() => {
-    const votes = rawVotes as any;
+    const votes = rawVotes as Record<string, unknown>[] | undefined;
     if (!Array.isArray(votes)) return [];
     const epochMap = new Map<number, { votes: number; withRationale: number }>();
     for (const v of votes) {
-      const epoch = v.epochNo || v.epoch_no;
+      const epoch = (v.epochNo as number) || (v.epoch_no as number);
       if (!epoch) continue;
       if (!epochMap.has(epoch)) epochMap.set(epoch, { votes: 0, withRationale: 0 });
       const entry = epochMap.get(epoch)!;

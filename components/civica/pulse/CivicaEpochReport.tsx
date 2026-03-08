@@ -70,7 +70,25 @@ function PipelineStep({
 
 export function CivicaEpochReport() {
   const { data: rawPulse, isLoading } = useGovernancePulse();
-  const pulse = rawPulse as any;
+  const pulse = rawPulse as
+    | {
+        currentEpoch?: number;
+        avgParticipationRate?: number;
+        avgRationaleRate?: number;
+        activeProposals?: number;
+        criticalProposals?: number;
+        activeDReps?: number;
+        totalDReps?: number;
+        votesThisWeek?: number;
+        spotlightProposal?: {
+          txHash: string;
+          index: number;
+          title: string;
+          proposalType?: string;
+          voteCoverage?: number;
+        };
+      }
+    | undefined;
 
   const currentEpoch: number | undefined = pulse?.currentEpoch;
   const progress = currentEpoch ? epochProgress(currentEpoch) : null;
@@ -93,7 +111,11 @@ export function CivicaEpochReport() {
               Current Epoch
             </p>
             <p className="font-display text-4xl font-bold mt-0.5">
-              {isLoading ? <Skeleton className="h-9 w-20 inline-block" /> : (currentEpoch ?? '—')}
+              {isLoading ? (
+                <Skeleton className="h-9 w-20 inline-block" />
+              ) : (
+                (currentEpoch ?? '\u2014')
+              )}
             </p>
           </div>
           {progress && (

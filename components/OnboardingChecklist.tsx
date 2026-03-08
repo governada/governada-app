@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 
 import { useEffect, useState, useCallback } from 'react';
 import { posthog } from '@/lib/posthog';
@@ -56,8 +57,8 @@ export function OnboardingChecklist({
 
   useEffect(() => {
     if (!raw) return;
-    const d = raw as any;
-    const cl = d.checklist || {};
+    const d = raw as Record<string, unknown>;
+    const cl = { ...((d.checklist as Record<string, boolean>) || {}) };
     if (cl._dismissed) setDismissed(true);
     if (profileCompleteness >= 80 && !cl.profile) cl.profile = true;
     setChecklist(cl);

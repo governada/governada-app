@@ -71,19 +71,35 @@ function SparkLine({ history }: { history: { governance_score: number }[] }) {
 export function HomeSPO() {
   const { poolId } = useSegment();
   const { data: competitiveRaw, isLoading } = useSPOPoolCompetitive(poolId);
-  const competitive = competitiveRaw as any;
+  const competitive = competitiveRaw as Record<string, unknown> | undefined;
 
-  const pool = competitive?.pool;
-  const rank: number = competitive?.rank ?? 0;
-  const totalPools: number = competitive?.totalPools ?? 0;
-  const percentile: number = competitive?.percentile ?? 0;
-  const neighbors: any[] = competitive?.neighbors ?? [];
-  const scoreHistory: any[] = competitive?.scoreHistory ?? [];
-  const momentum: number | null = competitive?.momentum ?? null;
+  const pool = competitive?.pool as Record<string, unknown> | undefined;
+  const rank: number = (competitive?.rank as number) ?? 0;
+  const totalPools: number = (competitive?.totalPools as number) ?? 0;
+  const percentile: number = (competitive?.percentile as number) ?? 0;
+  const neighbors: {
+    poolId: string;
+    ticker?: string;
+    poolName?: string;
+    rank?: number;
+    score?: number;
+    isTarget?: boolean;
+  }[] =
+    (competitive?.neighbors as {
+      poolId: string;
+      ticker?: string;
+      poolName?: string;
+      rank?: number;
+      score?: number;
+      isTarget?: boolean;
+    }[]) ?? [];
+  const scoreHistory: { governance_score: number }[] =
+    (competitive?.scoreHistory as { governance_score: number }[]) ?? [];
+  const momentum: number | null = (competitive?.momentum as number) ?? null;
 
-  const score: number = pool?.governance_score ?? 0;
-  const tier: string = pool?.tier ?? 'Emerging';
-  const ticker: string = pool?.ticker ?? '';
+  const score: number = (pool?.governance_score as number) ?? 0;
+  const tier: string = (pool?.tier as string) ?? 'Emerging';
+  const ticker: string = (pool?.ticker as string) ?? '';
   const isClaimed = false; // Server-side claim status deferred; always show soft claim prompt
 
   const momentumLabel =
@@ -237,9 +253,9 @@ export function HomeSPO() {
           {pool && (
             <div className="grid grid-cols-3 gap-3 pt-1">
               {[
-                { label: 'Participation', value: pool.participation_pct },
-                { label: 'Consistency', value: pool.consistency_pct },
-                { label: 'Reliability', value: pool.reliability_pct },
+                { label: 'Participation', value: pool.participation_pct as number | null },
+                { label: 'Consistency', value: pool.consistency_pct as number | null },
+                { label: 'Reliability', value: pool.reliability_pct as number | null },
               ].map(({ label, value }) => (
                 <div key={label} className="text-center space-y-0.5">
                   <p className="font-display text-xl font-bold tabular-nums text-foreground">
@@ -262,9 +278,9 @@ export function HomeSPO() {
               </p>
             </div>
             <div className="space-y-2">
-              {neighbors.map((n: any) => (
+              {neighbors.map((n) => (
                 <div
-                  key={n.poolId}
+                  key={n.poolId as string}
                   className={cn(
                     'flex items-center justify-between text-xs',
                     n.isTarget && 'font-bold text-primary',

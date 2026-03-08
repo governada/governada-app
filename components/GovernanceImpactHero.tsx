@@ -5,7 +5,7 @@ import { useWallet } from '@/utils/wallet';
 import { useGovernanceHolder } from '@/hooks/queries';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, Coins, Flame, TrendingUp } from 'lucide-react';
+import { FileText, Coins, Flame } from 'lucide-react';
 import { GovernanceLevelBadge } from '@/components/GovernanceLevelBadge';
 import type { GovernanceLevel } from '@/lib/governanceLevels';
 import { posthog } from '@/lib/posthog';
@@ -29,23 +29,25 @@ function formatAda(lovelace: number): string {
 }
 
 export function GovernanceImpactHero() {
-  const { isAuthenticated, reconnecting, delegatedDrepId, address } = useWallet();
+  const { isAuthenticated, reconnecting, address } = useWallet();
   const stakeAddress = isAuthenticated && !reconnecting ? (address ?? undefined) : undefined;
   const { data: holderData, isLoading } = useGovernanceHolder(stakeAddress);
 
   const data = useMemo<HeroData | null>(() => {
-    const json = holderData as any;
+    const json = holderData as Record<string, unknown> | undefined;
     if (!json) return null;
-    const proposalsShaped = json.representationScore?.total ?? 0;
-    const votingPower = json.delegationHealth?.votingPowerLovelace ?? 0;
+    const rep = json.representationScore as Record<string, unknown> | undefined;
+    const del = json.delegationHealth as Record<string, unknown> | undefined;
+    const proposalsShaped = (rep?.total as number) ?? 0;
+    const votingPower = (del?.votingPowerLovelace as number) ?? 0;
     const adaGoverned = proposalsShaped > 0 ? votingPower * proposalsShaped : 0;
     return {
       proposalsShaped,
       adaGoverned,
-      epochStreak: json.visitStreak ?? 0,
-      governanceLevel: json.governanceLevel ?? 'observer',
-      pollCount: json.pollCount ?? 0,
-      visitStreak: json.visitStreak ?? 0,
+      epochStreak: (json.visitStreak as number) ?? 0,
+      governanceLevel: (json.governanceLevel as GovernanceLevel) ?? 'observer',
+      pollCount: (json.pollCount as number) ?? 0,
+      visitStreak: (json.visitStreak as number) ?? 0,
       isDelegated: !!json.delegationHealth,
     };
   }, [holderData]);

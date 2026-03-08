@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -76,7 +77,7 @@ const ALERT_COLORS: Record<AlertType, string> = {
 };
 
 export function Header() {
-  const { isAuthenticated, sessionAddress, address, connected, ownDRepId, logout } = useWallet();
+  const { isAuthenticated, sessionAddress, ownDRepId, logout } = useWallet();
   const { alerts, unreadCount, dismissAlert } = useAlignmentAlerts();
   const pathname = usePathname();
   const router = useRouter();
@@ -131,7 +132,7 @@ export function Header() {
       .catch(() => setIsAdmin(false));
   }, [isAuthenticated]);
 
-  const [inboxCount, setInboxCount] = useState(0);
+  const [, setInboxCount] = useState(0);
   useEffect(() => {
     if (!ownDRepId) {
       setInboxCount(0);

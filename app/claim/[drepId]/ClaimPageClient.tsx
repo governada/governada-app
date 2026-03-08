@@ -174,14 +174,15 @@ export function ClaimPageClient({
       .then((d) => {
         if (Array.isArray(d))
           setTopDreps(
-            d.slice(0, 3).map((x: any) => ({
-              drepId: x.drepId,
-              name: x.name || x.drepId.slice(0, 16),
-              score: x.drepScore,
+            d.slice(0, 3).map((x: Record<string, unknown>) => ({
+              drepId: x.drepId as string,
+              name: (x.name as string) || (x.drepId as string).slice(0, 16),
+              score: x.drepScore as number,
             })),
           );
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once on mount; drepId/score/isClaimed are stable server props
   }, []);
 
   useEffect(() => {
@@ -217,6 +218,7 @@ export function ClaimPageClient({
       })
       .catch(() => {})
       .finally(() => setClaiming(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- score is stable server prop, not needed as dep
   }, [isAuthenticated, ownDRepId, drepId, isClaimed, claiming, showCelebration]);
 
   if (claiming || (isAuthenticated && ownDRepId === drepId && !showCelebration)) {

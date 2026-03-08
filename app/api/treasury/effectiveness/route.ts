@@ -4,7 +4,7 @@ import { getSpendingEffectiveness } from '@/lib/treasury';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const effectiveness = await getSpendingEffectiveness();
 
   return NextResponse.json(effectiveness, {

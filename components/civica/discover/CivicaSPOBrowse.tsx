@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CivicaSPOCard } from '@/components/civica/cards/CivicaSPOCard';
+import { CivicaSPOCard, type CivicaSPOData } from '@/components/civica/cards/CivicaSPOCard';
 import { computeTier } from '@/lib/scoring/tiers';
 import { useQuery } from '@tanstack/react-query';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
@@ -24,7 +24,7 @@ function usePools() {
 
 export function CivicaSPOBrowse() {
   const { data: rawPools, isLoading } = usePools();
-  const pools: any[] = useMemo(() => rawPools ?? [], [rawPools]);
+  const pools: CivicaSPOData[] = useMemo(() => (rawPools as CivicaSPOData[]) ?? [], [rawPools]);
 
   const [search, setSearch] = useState('');
   const [tier, setTier] = useState('All');
@@ -53,7 +53,7 @@ export function CivicaSPOBrowse() {
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
-        (p: any) =>
+        (p) =>
           p.ticker?.toLowerCase().includes(q) ||
           p.poolName?.toLowerCase().includes(q) ||
           p.poolId.toLowerCase().includes(q),
@@ -61,11 +61,11 @@ export function CivicaSPOBrowse() {
     }
 
     if (tier !== 'All') {
-      result = result.filter((p: any) => computeTier(p.governanceScore ?? 0) === tier);
+      result = result.filter((p) => computeTier(p.governanceScore ?? 0) === tier);
     }
 
     if (claimedOnly) {
-      result = result.filter((p: any) => !!p.claimedBy);
+      result = result.filter((p) => !!p.claimedBy);
     }
 
     return result;
@@ -127,7 +127,7 @@ export function CivicaSPOBrowse() {
         </div>
       ) : (
         <div key={page} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {pageItems.map((pool: any, i: number) => (
+          {pageItems.map((pool, i: number) => (
             <div
               key={pool.poolId}
               className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"

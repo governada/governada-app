@@ -92,10 +92,34 @@ export function HomeDRep() {
   const { data: competitiveRaw, isLoading: compLoading } = useDashboardCompetitive(drepId);
   const { data: delegatorTrendsRaw } = useDashboardDelegatorTrends(drepId);
 
-  const reportCard = reportCardRaw as any;
-  const urgentData = urgentDataRaw as any;
-  const competitive = competitiveRaw as any;
-  const delegatorTrends = delegatorTrendsRaw as any;
+  const reportCard = reportCardRaw as
+    | {
+        score?: number;
+        tier?: string;
+        momentum?: number;
+        scoreHistory?: { score: number }[];
+        pillars?: Record<string, number>;
+        [key: string]: unknown;
+      }
+    | undefined;
+  const urgentData = urgentDataRaw as
+    | {
+        urgent?: { title?: string; txHash?: string; index?: number; epochsRemaining?: number }[];
+        [key: string]: unknown;
+      }
+    | undefined;
+  const competitive = competitiveRaw as
+    | {
+        rank?: number;
+        totalActive?: number;
+        nearbyAbove?: Record<string, unknown>[];
+        nearbyBelow?: Record<string, unknown>[];
+        [key: string]: unknown;
+      }
+    | undefined;
+  const delegatorTrends = delegatorTrendsRaw as
+    | { current?: number; [key: string]: unknown }
+    | undefined;
 
   const score: number = reportCard?.score ?? 0;
   const tier = reportCard?.tier ?? (score ? computeTier(score) : 'Emerging');
@@ -242,7 +266,7 @@ export function HomeDRep() {
                 { key: 'reliability', label: 'Reliability', weight: '25%' },
                 { key: 'governanceIdentity', label: 'Identity', weight: '15%' },
               ].map(({ key, label, weight }) => {
-                const v = Math.round(reportCard.pillars[key] ?? 0);
+                const v = Math.round(reportCard.pillars![key] ?? 0);
                 return (
                   <div key={key} className="space-y-0.5">
                     <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -311,7 +335,7 @@ export function HomeDRep() {
         {urgentLoading && <Skeleton className="h-24 rounded-xl" />}
 
         {/* ── Competitive context ──────────────────────────────────── */}
-        {!compLoading && competitive?.nearbyAbove?.length > 0 && (
+        {!compLoading && (competitive?.nearbyAbove?.length ?? 0) > 0 && (
           <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -320,24 +344,28 @@ export function HomeDRep() {
               </p>
             </div>
             <div className="space-y-2">
-              {competitive.nearbyAbove.map((d: any) => (
-                <div key={d.drepId} className="flex items-center justify-between text-xs">
+              {competitive!.nearbyAbove?.map((d) => (
+                <div key={d.drepId as string} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground truncate max-w-[200px]">
-                    #{d.rank} {d.name}
+                    #{d.rank as React.ReactNode} {d.name as React.ReactNode}
                   </span>
-                  <span className="tabular-nums font-medium text-foreground">{d.score}</span>
+                  <span className="tabular-nums font-medium text-foreground">
+                    {d.score as React.ReactNode}
+                  </span>
                 </div>
               ))}
               <div className="flex items-center justify-between text-xs border-t border-border pt-2">
                 <span className="font-medium text-primary">#{rank} You</span>
                 <span className="tabular-nums font-bold text-primary">{score}</span>
               </div>
-              {competitive.nearbyBelow?.map((d: any) => (
-                <div key={d.drepId} className="flex items-center justify-between text-xs">
+              {competitive!.nearbyBelow?.map((d) => (
+                <div key={d.drepId as string} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground truncate max-w-[200px]">
-                    #{d.rank} {d.name}
+                    #{d.rank as React.ReactNode} {d.name as React.ReactNode}
                   </span>
-                  <span className="tabular-nums font-medium text-foreground">{d.score}</span>
+                  <span className="tabular-nums font-medium text-foreground">
+                    {d.score as React.ReactNode}
+                  </span>
                 </div>
               ))}
             </div>

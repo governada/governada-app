@@ -75,7 +75,13 @@ function VoteDonut({ segments, total }: { segments: DonutSegment[]; total: numbe
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
 
-  let currentOffset = 0;
+  // Pre-compute segment offsets to avoid mutating a variable during render
+  const segmentOffsets: number[] = [];
+  let runningOffset = 0;
+  for (const segment of segments) {
+    segmentOffsets.push(runningOffset);
+    runningOffset += (segment.percentage / 100) * circumference;
+  }
 
   return (
     <div className="flex items-center gap-6">
@@ -97,8 +103,7 @@ function VoteDonut({ segments, total }: { segments: DonutSegment[]; total: numbe
           />
           {segments.map((segment, i) => {
             const segmentLength = (segment.percentage / 100) * circumference;
-            const offset = currentOffset;
-            currentOffset += segmentLength;
+            const offset = segmentOffsets[i];
 
             if (segment.value === 0) return null;
 

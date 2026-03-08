@@ -4,7 +4,7 @@
  * accountability, and proposal similarity matching.
  */
 
-import { getSupabaseAdmin, createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
 
 const LOVELACE_PER_ADA = 1_000_000;
 const EPOCH_DAYS = 5;
@@ -12,8 +12,6 @@ const MONTHS_PER_EPOCH = EPOCH_DAYS / 30.44;
 const HEALTHY_RUNWAY_MONTHS = 24;
 
 // Treasury tier thresholds (ADA) — same as lib/alignment.ts
-const TIER_ROUTINE_MAX = 1_000_000;
-const TIER_SIGNIFICANT_MAX = 20_000_000;
 
 // Accountability poll gating (epochs after enacted_epoch)
 const ACCOUNTABILITY_DELAY_ROUTINE = 18; // ~3 months
@@ -450,7 +448,7 @@ export async function findSimilarProposals(
     .filter((p) => p._score >= 2)
     .sort((a, b) => b._score - a._score)
     .slice(0, 5)
-    .map(({ _score, ...rest }) => rest);
+    .map(({ ...rest }) => rest);
 }
 
 // ---------------------------------------------------------------------------

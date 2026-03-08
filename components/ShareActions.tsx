@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Share2, Copy, Check, Download, Image as ImageIcon, ChevronDown } from 'lucide-react';
+import { Copy, Check, Download, Image as ImageIcon, ChevronDown } from 'lucide-react';
 import { shareToX, copyToClipboard, copyImage, downloadImage, trackShare } from '@/lib/share';
 
 function XIcon({ className }: { className?: string }) {

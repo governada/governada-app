@@ -9,7 +9,8 @@ import { DRepCommunicationFeed } from '@/components/DRepCommunicationFeed';
 export function GovernanceCitizenPanels() {
   const { isAuthenticated, delegatedDrepId, reconnecting } = useWallet();
   const { data: userData, isLoading } = useUser();
-  const watchlist = (userData as any)?.watchlist ?? [];
+  const watchlist = ((userData as Record<string, unknown> | undefined)?.watchlist ??
+    []) as string[];
 
   if (!isAuthenticated || reconnecting || isLoading) return null;
 

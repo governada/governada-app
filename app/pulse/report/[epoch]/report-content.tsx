@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollReveal } from '@/components/ScrollReveal';
-import { MarkdownContent } from '@/components/MarkdownContent';
 import { GHI_BAND_COLORS, type GHIBand } from '@/lib/ghi';
 import {
   Lightbulb,

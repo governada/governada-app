@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Shield, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ShareActions } from '@/components/ShareActions';
@@ -43,10 +43,6 @@ export function DelegationCeremony({
   const gradient = dominant ? getIdentityGradient(dominant) : null;
   const personality = alignments ? getPersonalityLabel(alignments) : null;
 
-  const confettiColors = identityColor
-    ? [identityColor.hex, identityColor.hex + 'cc', '#ffffff', identityColor.hex + '80']
-    : ['#6366f1', '#22c55e', '#f59e0b', '#3b82f6'];
-
   useEffect(() => {
     posthog.capture('delegation_ceremony_viewed', {
       drep_id: drepId,
@@ -59,27 +55,34 @@ export function DelegationCeremony({
     if (firedRef.current) return;
     firedRef.current = true;
     playDelegationChime();
+
+    const hex = identityColor?.hex;
+    const colors = hex
+      ? [hex, hex + 'cc', '#ffffff', hex + '80']
+      : ['#6366f1', '#22c55e', '#f59e0b', '#3b82f6'];
+
     const duration = 3000;
-    const end = Date.now() + duration;
+    const end = performance.now() + duration;
     function frame() {
       confetti({
         particleCount: 5,
         angle: 60,
         spread: 55,
         origin: { x: 0, y: 0.7 },
-        colors: confettiColors,
+        colors,
       });
       confetti({
         particleCount: 5,
         angle: 120,
         spread: 55,
         origin: { x: 1, y: 0.7 },
-        colors: confettiColors,
+        colors,
       });
-      if (Date.now() < end) requestAnimationFrame(frame);
+      if (performance.now() < end) requestAnimationFrame(frame);
     }
     frame();
-  }, [confettiColors]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- confetti fires once on mount; identityColor is stable
+  }, []);
 
   const shareUrl = buildDRepUrl(drepId);
   const personalityText = personality ? ` — a ${personality} representative` : '';

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getOpenProposalsForDRep } from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) {
     return NextResponse.json({ error: 'Missing drepId' }, { status: 400 });
@@ -19,21 +19,21 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
   const urgent = pendingProposals
-    .filter((p: any) => {
-      const expiryEpoch = p.expiration ?? p.proposal_expiry_epoch ?? 0;
+    .filter((p) => {
+      const expiryEpoch = p.expirationEpoch ?? 0;
       return expiryEpoch > 0 && expiryEpoch - currentEpoch <= 2;
     })
-    .map((p: any) => {
-      const expiryEpoch = p.expiration ?? p.proposal_expiry_epoch ?? 0;
+    .map((p) => {
+      const expiryEpoch = p.expirationEpoch ?? 0;
       return {
-        txHash: p.proposal_tx_hash,
-        index: p.proposal_index,
-        title: getProposalDisplayTitle(p.title, p.proposal_tx_hash, p.proposal_index),
-        proposalType: p.proposal_type || 'Proposal',
+        txHash: p.txHash,
+        index: p.proposalIndex,
+        title: getProposalDisplayTitle(p.title, p.txHash, p.proposalIndex),
+        proposalType: p.proposalType || 'Proposal',
         epochsRemaining: Math.max(0, expiryEpoch - currentEpoch),
       };
     })
-    .sort((a: any, b: any) => a.epochsRemaining - b.epochsRemaining);
+    .sort((a, b) => a.epochsRemaining - b.epochsRemaining);
 
   let unexplainedVotes: { txHash: string; index: number; title: string }[] = [];
   try {
@@ -88,7 +88,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   // Top pending proposals (unvoted, prioritized by expiry)
   const currentEpochNow = blockTimeToEpoch(Math.floor(Date.now() / 1000));
   const pendingList = pendingProposals
-    .map((p: any) => {
+    .map((p) => {
       const expiryEpoch = p.expirationEpoch ?? 0;
       return {
         txHash: p.txHash,
@@ -98,7 +98,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
         epochsRemaining: expiryEpoch > 0 ? Math.max(0, expiryEpoch - currentEpochNow) : null,
       };
     })
-    .sort((a: any, b: any) => (a.epochsRemaining ?? 999) - (b.epochsRemaining ?? 999))
+    .sort((a, b) => (a.epochsRemaining ?? 999) - (b.epochsRemaining ?? 999))
     .slice(0, 5);
 
   // Unanswered questions count

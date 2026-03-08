@@ -8,7 +8,6 @@ import {
   Clock,
   AlertTriangle,
   XCircle,
-  HelpCircle,
   BarChart3,
   Users,
   ThumbsUp,

@@ -8,14 +8,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDRepById } from '@/lib/data';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { createClient } from '@/lib/supabase';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { RationaleDraftSchema } from '@/lib/api/schemas/governance';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const { drepId, voterRole, proposalTitle, proposalAbstract, proposalType, aiSummary } =
       RationaleDraftSchema.parse(await request.json());
 

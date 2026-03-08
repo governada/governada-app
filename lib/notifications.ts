@@ -153,7 +153,7 @@ const CHANNEL_SENDERS: Record<Channel, ChannelSender> = {
   discord: (target, payload) => sendDiscordWebhook(target.channelIdentifier, payload),
   telegram: (target, payload) => sendTelegramMessage(target.channelIdentifier, payload),
   push: (target, payload) => sendPushToUser(target.userId, payload),
-  email: async (_target, _payload) => {
+  email: async (_payload) => {
     // Wired in Phase 2 via lib/email.ts
     return false;
   },
@@ -365,7 +365,7 @@ export async function notifySegment(
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 async function logAndTrack(
-  supabase: any,
+  supabase: ReturnType<typeof getSupabaseAdmin>,
   userId: string,
   payload: NotificationPayload,
   channel: string,

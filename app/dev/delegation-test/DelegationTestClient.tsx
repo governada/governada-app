@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useState, useEffect } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { useDelegation } from '@/hooks/useDelegation';
@@ -32,11 +33,9 @@ function StatusBadge({ ok, label }: { ok: boolean | null; label: string }) {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getCardanoObject(): Record<string, any> | undefined {
+function getCardanoObject(): Record<string, Record<string, unknown>> | undefined {
   if (typeof window === 'undefined') return undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).cardano;
+  return (window as unknown as Record<string, Record<string, Record<string, unknown>>>).cardano;
 }
 
 export function DelegationTestClient() {
@@ -147,7 +146,11 @@ export function DelegationTestClient() {
         'error',
         'Preflight failed',
         err instanceof Error
-          ? { code: (err as any).code, message: err.message, hint: (err as any).hint }
+          ? {
+              code: (err as unknown as { code?: string }).code,
+              message: err.message,
+              hint: (err as unknown as { hint?: string }).hint,
+            }
           : err,
       );
     }

@@ -45,12 +45,20 @@ export function ScrollStoryReveal({
   const hasScale = 'scale' in config;
 
   const opacity = useTransform(progress, [rangeStart, rangeEnd], config.opacity);
-  const yVal = useTransform(progress, [rangeStart, rangeEnd], hasY ? (config as any).y : [0, 0]);
-  const xVal = useTransform(progress, [rangeStart, rangeEnd], hasX ? (config as any).x : [0, 0]);
+  const yVal = useTransform(
+    progress,
+    [rangeStart, rangeEnd],
+    hasY ? (config as unknown as { y: number[] }).y : [0, 0],
+  );
+  const xVal = useTransform(
+    progress,
+    [rangeStart, rangeEnd],
+    hasX ? (config as unknown as { x: number[] }).x : [0, 0],
+  );
   const scaleVal = useTransform(
     progress,
     [rangeStart, rangeEnd],
-    hasScale ? (config as any).scale : [1, 1],
+    hasScale ? (config as unknown as { scale: number[] }).scale : [1, 1],
   );
 
   const y = hasY ? yVal : undefined;

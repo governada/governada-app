@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HexScore } from '@/components/HexScore';
-import { extractAlignments } from '@/lib/drepIdentity';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TYPE_EXPLAINERS } from '@/utils/proposalPriority';
 import {

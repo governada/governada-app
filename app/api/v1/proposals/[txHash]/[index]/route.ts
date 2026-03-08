@@ -78,5 +78,5 @@ async function handler(
   });
 }
 
-export const GET = withApiHandler(handler as any);
+export const GET = withApiHandler(handler as unknown as Parameters<typeof withApiHandler>[0]);
 export const dynamic = 'force-dynamic';

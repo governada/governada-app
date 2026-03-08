@@ -1,8 +1,9 @@
+/* eslint-disable react-hooks/error-boundaries -- OG image route: JSX is for ImageResponse, not React component rendering */
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 import { getDRepById } from '@/lib/data';
 import { getDRepPrimaryName } from '@/utils/display';
-import { OGBackground, OGScoreRing, OGFooter, OGFallback, OG, tierColor } from '@/lib/og-utils';
+import { OGBackground, OGScoreRing, OGFooter, OGFallback, OG } from '@/lib/og-utils';
 
 export const runtime = 'edge';
 

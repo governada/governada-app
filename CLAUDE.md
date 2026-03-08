@@ -85,15 +85,15 @@ C:\Users\dalto\drepscore\
 
 ## Scripts
 
-| Script               | Purpose                                    |
-| -------------------- | ------------------------------------------ |
-| `preflight`          | format:check + lint + type-check + test    |
-| `gen:types`          | Supabase types after migrations            |
-| `inngest:status`     | Verify function registration               |
-| `posthog:check`      | Verify analytics events                    |
-| `smoke-test`         | Production health checks                   |
-| `pre-merge-check.sh` | Block merge if CI running or branch behind |
-| `cleanup.sh`         | Worktree/dir cleanup (dry-run or --clean)  |
+| Script               | Purpose                                              |
+| -------------------- | ---------------------------------------------------- |
+| `preflight`          | format:check + lint + type-check + test              |
+| `gen:types`          | Supabase types after migrations                      |
+| `inngest:status`     | Verify function registration                         |
+| `posthog:check`      | Verify analytics events                              |
+| `smoke-test`         | Production health checks                             |
+| `pre-merge-check.sh` | Block merge if CI running or branch behind           |
+| `cleanup.sh`         | Worktree/dir cleanup (dry-run or --clean)            |
 | `notify.sh`          | Alert founder via Discord/Telegram at decision gates |
 
 ## Context Files (Agent-Optimized)
@@ -109,27 +109,27 @@ C:\Users\dalto\drepscore\
 
 ## Audit Commands
 
-| Command                           | Purpose                                                                | Cadence                                        |
-| --------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
-| `/audit [full\|step:N\|area]`     | Product audit against vision (10 dimensions)                           | Quarterly full, monthly focused                |
-| `/verify-audit`                   | Confirm previous audit gaps were closed                                | After each build cycle                         |
-| `/audit-sync [type]`              | Sync pipeline health, performance, self-healing                        | Monthly, quarterly full                        |
-| `/audit-data [domain]`            | Data integrity, completeness, consistency                              | Monthly                                        |
-| `/audit-scoring [system]`         | Scoring methodology, calibration, gaming resistance                    | Quarterly                                      |
-| `/audit-ux [persona\|surface]`    | UX quality, intelligence surfacing, persona journeys, retention        | Monthly persona, quarterly full                |
-| `/audit-journeys [persona\|task]` | End-to-end task flows, friction measurement, edge cases, regression    | Monthly persona, quarterly full                |
-| `/audit-security [area]`          | Auth, RLS, API security, data protection, infra hardening, anti-gaming | Pre-launch full, quarterly, after auth changes |
-| `/audit-all [full\|areas\|steps\|quick]` | Orchestrator: launches all audits as parallel subagents, synthesizes unified report | Quarterly full, monthly quick |
+| Command                                  | Purpose                                                                             | Cadence                                        |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `/audit [full\|step:N\|area]`            | Product audit against vision (10 dimensions)                                        | Quarterly full, monthly focused                |
+| `/verify-audit`                          | Confirm previous audit gaps were closed                                             | After each build cycle                         |
+| `/audit-sync [type]`                     | Sync pipeline health, performance, self-healing                                     | Monthly, quarterly full                        |
+| `/audit-data [domain]`                   | Data integrity, completeness, consistency                                           | Monthly                                        |
+| `/audit-scoring [system]`                | Scoring methodology, calibration, gaming resistance                                 | Quarterly                                      |
+| `/audit-ux [persona\|surface]`           | UX quality, intelligence surfacing, persona journeys, retention                     | Monthly persona, quarterly full                |
+| `/audit-journeys [persona\|task]`        | End-to-end task flows, friction measurement, edge cases, regression                 | Monthly persona, quarterly full                |
+| `/audit-security [area]`                 | Auth, RLS, API security, data protection, infra hardening, anti-gaming              | Pre-launch full, quarterly, after auth changes |
+| `/audit-all [full\|areas\|steps\|quick]` | Orchestrator: launches all audits as parallel subagents, synthesizes unified report | Quarterly full, monthly quick                  |
 
 ## Build Commands
 
-| Command | Purpose |
-| ------- | ------- |
-| `/build-step N` | End-to-end step builder: vision research → architecture → decision gate → parallel execution → autonomous deploy → post-build audit |
-| `/fix-audit [last\|area\|all]` | Takes audit findings, plans fixes, executes in parallel, deploys, re-audits to verify scores improved |
-| `/launch-readiness [full\|technical\|business\|blocker-check]` | Pre-launch go/no-go: security blockers, journey regression, performance, brand, legal, monetization, community, SEO |
-| `/ship` | Full deploy pipeline for a single PR (preflight → CI → merge → deploy → verify) |
-| `/hotfix` | Single-commit fix directly on main |
+| Command                                                        | Purpose                                                                                                                             |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `/build-step N`                                                | End-to-end step builder: vision research → architecture → decision gate → parallel execution → autonomous deploy → post-build audit |
+| `/fix-audit [last\|area\|all]`                                 | Takes audit findings, plans fixes, executes in parallel, deploys, re-audits to verify scores improved                               |
+| `/launch-readiness [full\|technical\|business\|blocker-check]` | Pre-launch go/no-go: security blockers, journey regression, performance, brand, legal, monetization, community, SEO                 |
+| `/ship`                                                        | Full deploy pipeline for a single PR (preflight → CI → merge → deploy → verify)                                                     |
+| `/hotfix`                                                      | Single-commit fix directly on main                                                                                                  |
 
 ## Path-Scoped Rules
 

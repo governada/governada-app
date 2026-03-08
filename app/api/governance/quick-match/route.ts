@@ -4,7 +4,7 @@
  * No wallet/auth required. Supports match_type: 'drep' | 'spo'.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import {
@@ -62,7 +62,7 @@ function distanceToScore(distance: number): number {
   return Math.max(0, Math.round((1 - distance / maxDist) * 100));
 }
 
-export const POST = withRouteHandler(async (request, { requestId }) => {
+export const POST = withRouteHandler(async (request) => {
   let body: {
     treasury?: string;
     protocol?: string;

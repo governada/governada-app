@@ -7,7 +7,7 @@ interface PoolGovernanceCardProps {
   walletAddress?: string;
 }
 
-export function PoolGovernanceCard({ walletAddress }: PoolGovernanceCardProps) {
+export function PoolGovernanceCard({}: PoolGovernanceCardProps) {
   return (
     <Card className="border-cyan-500/20">
       <CardHeader className="pb-2">

@@ -350,7 +350,6 @@ export default async function PoolProfilePage({ params }: PageProps) {
   const scoreMomentum = (poolRow.score_momentum as number) ?? null;
 
   const tier = computeTier(governanceScore);
-  const tk = tierKey(tier);
   const tierProgress = computeTierProgress(governanceScore);
   const lastVotedText = getLastVotedText(safeVotes);
 

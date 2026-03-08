@@ -3,11 +3,10 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
   const oneWeekAgoBlockTime = Math.floor(Date.now() / 1000) - 604800;
@@ -109,7 +108,7 @@ export const GET = withRouteHandler(async (_request, { requestId }) => {
   }
 
   const topOpenForGap = openProposals.slice(0, 5);
-  let drepVoteCounts = new Map<string, number>();
+  const drepVoteCounts = new Map<string, number>();
   if (topOpenForGap.length > 0) {
     const txHashes = topOpenForGap.map((p) => p.tx_hash);
     const { data: drepVotesForGap } = await supabase

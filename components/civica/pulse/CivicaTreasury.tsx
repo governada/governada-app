@@ -6,6 +6,27 @@ import { scaleLinear } from 'd3-scale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useTreasuryCurrent, useTreasuryHistory, useTreasuryPending } from '@/hooks/queries';
+import type { TreasuryData } from '@/types/api';
+
+interface TreasuryHistoryData {
+  snapshots?: { epoch: number; balanceAda: number; withdrawalsAda: number }[];
+  [key: string]: unknown;
+}
+
+interface PendingData {
+  items?: PendingItem[];
+  [key: string]: unknown;
+}
+
+interface PendingItem {
+  title?: string;
+  proposalType?: string;
+  amountAda?: number;
+  txHash?: string;
+  tx_hash?: string;
+  index?: number;
+  [key: string]: unknown;
+}
 
 function formatAda(ada: number): string {
   if (ada >= 1_000_000_000) return `₳${(ada / 1_000_000_000).toFixed(2)}B`;
@@ -68,20 +89,30 @@ export function CivicaTreasury() {
   const { data: rawHistory, isLoading: historyLoading } = useTreasuryHistory(30);
   const { data: rawPending, isLoading: pendingLoading } = useTreasuryPending();
 
-  const treasury = rawCurrent as any;
-  const history = rawHistory as any;
-  const pending = rawPending as any;
+  const treasury = rawCurrent as
+    | (TreasuryData & {
+        balance?: number;
+        trend?: string;
+        runwayMonths?: number;
+        burnRatePerEpoch?: number;
+        pendingCount?: number;
+        healthScore?: number;
+      })
+    | undefined;
+  const history = rawHistory as TreasuryHistoryData | undefined;
+  const pending = rawPending as PendingData | PendingItem[] | undefined;
 
   const snapshots: { epoch: number; balanceAda: number; withdrawalsAda: number }[] = (
     history?.snapshots ?? []
   )
     .slice()
-    .sort((a: any, b: any) => a.epoch - b.epoch);
+    .sort((a, b) => a.epoch - b.epoch);
 
-  const pendingItems: any[] = Array.isArray(pending?.items)
-    ? pending.items.slice(0, 5)
+  const pendingObj = pending as PendingData | undefined;
+  const pendingItems: PendingItem[] = Array.isArray((pendingObj as PendingData | undefined)?.items)
+    ? (pendingObj as PendingData).items!.slice(0, 5)
     : Array.isArray(pending)
-      ? (pending as any[]).slice(0, 5)
+      ? (pending as PendingItem[]).slice(0, 5)
       : [];
 
   const isLoading = currentLoading || historyLoading;
@@ -113,7 +144,11 @@ export function CivicaTreasury() {
               <Skeleton className="h-10 w-36" />
             ) : (
               <p className="font-display text-4xl font-bold leading-none">
-                {treasury?.balance != null ? formatAda(treasury.balance) : '—'}
+                {treasury?.balance != null
+                  ? formatAda(treasury.balance)
+                  : treasury?.balanceAda != null
+                    ? formatAda(treasury.balanceAda)
+                    : '\u2014'}
               </p>
             )}
             {treasury && (
@@ -157,11 +192,11 @@ export function CivicaTreasury() {
                   (treasury?.runwayMonths ?? 0) > 24 ? 'text-emerald-400' : 'text-amber-400',
                 )}
               >
-                {treasury?.runwayMonths >= 999
-                  ? '∞'
+                {(treasury?.runwayMonths ?? 0) >= 999
+                  ? '\u221E'
                   : treasury?.runwayMonths != null
                     ? `${treasury.runwayMonths}mo`
-                    : '—'}
+                    : '\u2014'}
               </p>
               {treasury?.burnRatePerEpoch != null && (
                 <p className="text-xs text-muted-foreground">
@@ -184,10 +219,12 @@ export function CivicaTreasury() {
               <p
                 className={cn(
                   'font-display text-3xl font-bold tabular-nums',
-                  (treasury?.pendingCount ?? 0) > 0 ? 'text-amber-400' : 'text-muted-foreground',
+                  ((treasury?.pendingCount ?? treasury?.pendingWithdrawals ?? 0) as number) > 0
+                    ? 'text-amber-400'
+                    : 'text-muted-foreground',
                 )}
               >
-                {treasury?.pendingCount ?? 0}
+                {treasury?.pendingCount ?? treasury?.pendingWithdrawals ?? 0}
               </p>
               <p className="text-xs text-muted-foreground">pending</p>
             </>
@@ -205,23 +242,23 @@ export function CivicaTreasury() {
             <p
               className={cn(
                 'font-display text-xl font-bold tabular-nums',
-                treasury.healthScore >= 70
+                (treasury.healthScore ?? 0) >= 70
                   ? 'text-emerald-400'
-                  : treasury.healthScore >= 40
+                  : (treasury.healthScore ?? 0) >= 40
                     ? 'text-amber-400'
                     : 'text-rose-400',
               )}
             >
-              {treasury.healthScore}
+              {treasury.healthScore ?? 0}
             </p>
           </div>
           <div className="w-full h-2 bg-border rounded-full overflow-hidden">
             <div
               className={cn(
                 'h-full rounded-full',
-                treasury.healthScore >= 70
+                (treasury.healthScore ?? 0) >= 70
                   ? 'bg-emerald-500'
-                  : treasury.healthScore >= 40
+                  : (treasury.healthScore ?? 0) >= 40
                     ? 'bg-amber-500'
                     : 'bg-rose-500',
               )}
@@ -238,7 +275,7 @@ export function CivicaTreasury() {
             Pending Withdrawals
           </p>
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-            {pendingItems.map((item: any, idx: number) => (
+            {pendingItems.map((item, idx: number) => (
               <div key={idx} className="flex items-center justify-between px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">

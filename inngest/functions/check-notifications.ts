@@ -5,11 +5,10 @@
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { notifyUser, broadcastEvent, type NotificationEvent } from '@/lib/notifications';
+import { notifyUser, broadcastEvent } from '@/lib/notifications';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { checkAndAwardMilestones, MILESTONES } from '@/lib/milestones';
 import { checkAndAwardCitizenMilestones, CITIZEN_MILESTONES } from '@/lib/citizenMilestones';
-import { errMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 interface ClaimedUserRow {
@@ -264,8 +263,6 @@ export const checkNotifications = inngest.createFunction(
 
     // Step 5: Check milestones for near-milestone notifications
     await step.run('check-near-milestones', async () => {
-      const supabase = getSupabaseAdmin();
-
       for (const user of context.users) {
         const drep = context.dreps.find((d: DRepRow) => d.id === user.claimed_drep_id);
         if (!drep) continue;

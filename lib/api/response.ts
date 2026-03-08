@@ -5,7 +5,6 @@
 
 import { NextResponse } from 'next/server';
 import { getApiError } from './errors';
-import type { ApiErrorDef } from './errors';
 
 type ErrorParams = Record<string, string | number>;
 

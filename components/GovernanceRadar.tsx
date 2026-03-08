@@ -1,10 +1,9 @@
 'use client';
 
-import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
-import { motion, useInView, useSpring, useMotionValue } from 'framer-motion';
+import { useRef, useMemo, useEffect, useState } from 'react';
+import { useInView, useSpring } from 'framer-motion';
 import {
   type AlignmentScores,
-  type AlignmentDimension,
   getDominantDimension,
   getIdentityColor,
   getDimensionLabel,
@@ -92,18 +91,17 @@ function BreathingVertices({
   const [offsets, setOffsets] = useState(() => scores.map(() => 0));
   const rafRef = useRef(0);
 
-  const animate = useCallback(() => {
-    const now = Date.now();
-    setOffsets(scores.map((_, i) => Math.sin(now / 1200 + i * 1.05) * 1.8));
-    rafRef.current = requestAnimationFrame(animate);
-  }, [scores]);
-
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (mq.matches) return;
-    rafRef.current = requestAnimationFrame(animate);
+    function tick() {
+      const now = Date.now();
+      setOffsets(scores.map((_, i) => Math.sin(now / 1200 + i * 1.05) * 1.8));
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [animate]);
+  }, [scores]);
 
   return (
     <>
@@ -168,6 +166,7 @@ export function GovernanceRadar({
     return getIdentityColor(getDominantDimension(compareAlignments));
   }, [compareAlignments]);
 
+  // eslint-disable-next-line react-hooks/purity -- stable random ID for SVG gradient defs, only changes with size
   const uid = useMemo(() => `radar-${size}-${Math.random().toString(36).slice(2, 6)}`, [size]);
 
   if (size === 'mini') {

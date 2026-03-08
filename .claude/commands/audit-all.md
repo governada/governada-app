@@ -423,6 +423,7 @@ Merge ALL gaps from ALL audits into a single prioritized list:
 - **P3 — Backlog:** Nice-to-haves, polish items, deferred features acknowledged as intentional gaps.
 
 For each item in the stack, note:
+
 - Which audit(s) surfaced it
 - Which step(s) it affects
 - Whether it was reinforced by cross-cutting analysis

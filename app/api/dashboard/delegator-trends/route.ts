@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   if (!drepId) return NextResponse.json({ error: 'Missing drepId' }, { status: 400 });
 
@@ -20,7 +20,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     supabase.from('dreps').select('info').eq('id', drepId).single(),
   ]);
 
-  const snapshots = (snapshotsResult.data || []).map((s: any) => ({
+  const snapshots = (snapshotsResult.data || []).map((s) => ({
     epoch: s.epoch_no,
     votingPowerAda: Math.round(Number(s.amount_lovelace) / 1_000_000),
     delegatorCount: s.delegator_count,

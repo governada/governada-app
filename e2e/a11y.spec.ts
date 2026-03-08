@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import type { Result } from 'axe-core';
 
 /**
  * Accessibility smoke tests using axe-core.
@@ -29,8 +30,8 @@ test.describe('a11y: WCAG 2.1 AA audit', () => {
         .exclude('.recharts-wrapper') // Third-party chart internals
         .analyze();
 
-      const critical = results.violations.filter((v) => v.impact === 'critical');
-      const serious = results.violations.filter((v) => v.impact === 'serious');
+      const critical = results.violations.filter((v: Result) => v.impact === 'critical');
+      const serious = results.violations.filter((v: Result) => v.impact === 'serious');
 
       if (critical.length > 0 || serious.length > 0) {
         const summary = [...critical, ...serious]

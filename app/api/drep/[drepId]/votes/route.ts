@@ -3,7 +3,7 @@
  * Returns a DRep's vote history enriched with proposal titles, type, epoch, and rationale status.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { getProposalDisplayTitle } from '@/utils/display';
@@ -53,18 +53,18 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   ]);
 
   const proposalMap = new Map(
-    (proposalsResult.data ?? []).map((p: any) => [
+    (proposalsResult.data ?? []).map((p) => [
       `${p.tx_hash}:${p.proposal_index}`,
       { title: p.title, proposalType: p.proposal_type },
     ]),
   );
 
   const rationaleSet = new Set(
-    (rationalesResult.data ?? []).map((r: any) => `${r.proposal_tx_hash}:${r.proposal_index}`),
+    (rationalesResult.data ?? []).map((r) => `${r.proposal_tx_hash}:${r.proposal_index}`),
   );
 
   return NextResponse.json({
-    votes: allVotes.map((v: any) => {
+    votes: allVotes.map((v) => {
       const key = `${v.proposal_tx_hash}:${v.proposal_index}`;
       const proposal = proposalMap.get(key);
       return {

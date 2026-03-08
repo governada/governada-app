@@ -4,7 +4,7 @@ import { getTreasuryBalance, getPendingTreasuryProposals } from '@/lib/treasury'
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const balance = await getTreasuryBalance();
   if (!balance) {
     return NextResponse.json({ error: 'No treasury data' }, { status: 404 });

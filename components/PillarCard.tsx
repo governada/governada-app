@@ -61,7 +61,7 @@ function getTierDistance(value: number, status: PillarStatus): string | null {
   return `${50 - value} pts to Needs Work`;
 }
 
-export function PillarCard({ label, value, weight, maxPoints, status, hint }: PillarCardProps) {
+export function PillarCard({ label, value, maxPoints, status, hint }: PillarCardProps) {
   const config = STATUS_CONFIG[status];
   const Icon = config.icon;
   const tierDistance = getTierDistance(value, status);

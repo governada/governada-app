@@ -20,7 +20,7 @@ export const syncSpoAndCcVotes = inngest.createFunction(
   async ({ step }) => {
     const spoResult = await step.run('fetch-spo-votes', async () => {
       const supabase = getSupabaseAdmin();
-      const logger = new SyncLogger(supabase, 'spo_votes' as any);
+      const logger = new SyncLogger(supabase, 'spo_votes');
       await logger.start();
 
       try {
@@ -58,7 +58,7 @@ export const syncSpoAndCcVotes = inngest.createFunction(
 
     const ccResult = await step.run('fetch-cc-votes', async () => {
       const supabase = getSupabaseAdmin();
-      const logger = new SyncLogger(supabase, 'cc_votes' as any);
+      const logger = new SyncLogger(supabase, 'cc_votes');
       await logger.start();
 
       try {
@@ -194,7 +194,7 @@ export const syncSpoAndCcVotes = inngest.createFunction(
     });
 
     await step.run('emit-analytics', async () => {
-      await emitPostHog(true, 'spo_votes' as any, 0, {
+      await emitPostHog(true, 'spo_votes', 0, {
         spo_votes: spoResult.fetched,
         cc_votes: ccResult.fetched,
         alignment_cached: alignmentResult.alignmentCached,

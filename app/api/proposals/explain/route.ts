@@ -7,15 +7,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { generateText } from '@/lib/ai';
 import { captureServerEvent } from '@/lib/posthog-server';
-import { logger } from '@/lib/logger';
-import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { ProposalExplainSchema } from '@/lib/api/schemas/governance';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export const POST = withRouteHandler(
-  async (request: NextRequest, { requestId }: RouteContext) => {
+  async (request: NextRequest) => {
     const { txHash, index } = ProposalExplainSchema.parse(await request.json());
 
     const supabase = getSupabaseAdmin();

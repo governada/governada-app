@@ -11,7 +11,7 @@ import {
   useGovernanceInterBody,
 } from '@/hooks/queries';
 import { getChainMetrics, GOVERNANCE_MODELS } from '@/lib/crossChain/chainMetrics';
-import type { ChainBenchmark } from '@/lib/crossChain';
+import type { Chain, ChainBenchmark } from '@/lib/crossChain';
 import { CrossChainRadar } from '@/components/civica/charts/CrossChainRadar';
 import { VotingPowerTreemap } from '@/components/civica/charts/VotingPowerTreemap';
 
@@ -23,13 +23,45 @@ interface EDIMetric {
   trend?: 'up' | 'down' | 'stable';
 }
 
-function buildEDIMetrics(ghi: any, decentralization: any): EDIMetric[] {
-  const components: any[] = ghi?.components ?? [];
-  const powerDist = components.find((c: any) => c.name === 'Power Distribution');
-  const participation = components.find((c: any) => c.name === 'DRep Participation');
-  const deliberation = components.find((c: any) => c.name === 'Deliberation Quality');
-  const effectiveness = components.find((c: any) => c.name === 'Governance Effectiveness');
-  const stability = components.find((c: any) => c.name === 'System Stability');
+interface GHIComponent {
+  name: string;
+  value?: number;
+  [key: string]: unknown;
+}
+
+interface GHIRecord {
+  edi?: { nakamotoCoefficient?: number; giniCoefficient?: number };
+  components?: GHIComponent[];
+  current?: unknown;
+  [key: string]: unknown;
+}
+
+interface DecentralizationRecord {
+  giniCoefficient?: number;
+  uniqueProposers?: number;
+  history?: Record<string, unknown>[];
+  topDRepsByPower?: { drepId: string; name: string; votingPower: number }[];
+  [key: string]: unknown;
+}
+
+interface InterBodyRecord {
+  drepSpoAgreement?: number;
+  drepCcAgreement?: number;
+  spoCcAgreement?: number;
+  proposalCount?: number;
+  [key: string]: unknown;
+}
+
+function buildEDIMetrics(
+  ghi: GHIRecord | undefined,
+  decentralization: DecentralizationRecord | undefined,
+): EDIMetric[] {
+  const components: GHIComponent[] = ghi?.components ?? [];
+  const powerDist = components.find((c) => c.name === 'Power Distribution');
+  const participation = components.find((c) => c.name === 'DRep Participation');
+  const deliberation = components.find((c) => c.name === 'Deliberation Quality');
+  const effectiveness = components.find((c) => c.name === 'Governance Effectiveness');
+  const stability = components.find((c) => c.name === 'System Stability');
 
   const edi = ghi?.edi;
 
@@ -171,7 +203,7 @@ const DECENTRALIZATION_METRICS = [
   { key: 'hhi', label: 'HHI', color: '#fbbf24', format: (v: number) => v.toFixed(4) },
 ] as const;
 
-function DecentralizationTrends({ history }: { history: any[] }) {
+function DecentralizationTrends({ history }: { history: Record<string, unknown>[] }) {
   if (history.length < 3) return null;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -212,7 +244,7 @@ function DecentralizationTrends({ history }: { history: any[] }) {
   );
 }
 
-function InterBodySummary({ interBody }: { interBody: any }) {
+function InterBodySummary({ interBody }: { interBody: InterBodyRecord }) {
   const pairs = [
     { label: 'DRep ↔ SPO', value: interBody.drepSpoAgreement },
     { label: 'DRep ↔ CC', value: interBody.drepCcAgreement },
@@ -232,7 +264,8 @@ function InterBodySummary({ interBody }: { interBody: any }) {
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         {pairs.map((p) => {
-          const pct = Math.round(p.value);
+          const pct = Math.round(p.value!);
+
           return (
             <div key={p.label} className="rounded-xl border border-border bg-card p-4 space-y-2">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
@@ -259,10 +292,10 @@ function InterBodySummary({ interBody }: { interBody: any }) {
           );
         })}
       </div>
-      {interBody.proposalCount > 0 && (
+      {(interBody.proposalCount ?? 0) > 0 && (
         <p className="text-[10px] text-muted-foreground mt-2">
-          Based on {interBody.proposalCount} proposal{interBody.proposalCount !== 1 ? 's' : ''} with
-          multi-body votes
+          Based on {interBody.proposalCount} proposal
+          {(interBody.proposalCount ?? 0) !== 1 ? 's' : ''} with multi-body votes
         </p>
       )}
     </div>
@@ -325,26 +358,33 @@ export function CivicaObservatory() {
   const { data: rawDecentralization } = useGovernanceDecentralization();
   const { data: rawInterBody } = useGovernanceInterBody();
 
-  const ghi = (rawGHI as any)?.current ?? rawGHI;
-  const benchmarksObj = ((rawBenchmarks as any)?.benchmarks ?? {}) as Record<string, any>;
-  const benchmarks: ChainBenchmark[] = Object.values(benchmarksObj)
+  const ghiData = rawGHI as GHIRecord | undefined;
+  const ghi = (ghiData?.current ?? rawGHI) as GHIRecord | undefined;
+  const benchmarksRaw = rawBenchmarks as Record<string, unknown> | undefined;
+  const benchmarksObj = (benchmarksRaw?.benchmarks ?? {}) as Record<string, unknown>;
+  const benchmarks = Object.values(benchmarksObj)
     .filter(Boolean)
-    .map((row: any) => ({
-      chain: row.chain,
-      periodLabel: row.period_label ?? row.periodLabel ?? '',
-      participationRate: row.participation_rate ?? row.participationRate ?? null,
-      delegateCount: row.delegate_count ?? row.delegateCount ?? null,
-      proposalCount: row.proposal_count ?? row.proposalCount ?? null,
-      proposalThroughput: row.proposal_throughput ?? row.proposalThroughput ?? null,
-      avgRationaleRate: row.avg_rationale_rate ?? row.avgRationaleRate ?? null,
-      rawData: row.raw_data ?? row.rawData ?? {},
-      fetchedAt: row.fetched_at ?? row.fetchedAt ?? '',
-    }));
-  const decentralization = rawDecentralization as any;
-  const interBody = rawInterBody as any;
+    .map((row) => {
+      const r = row as Record<string, unknown>;
+      return {
+        chain: r.chain as Chain,
+        periodLabel: (r.period_label ?? r.periodLabel ?? '') as string,
+        participationRate: (r.participation_rate ?? r.participationRate ?? null) as number | null,
+        delegateCount: (r.delegate_count ?? r.delegateCount ?? null) as number | null,
+        proposalCount: (r.proposal_count ?? r.proposalCount ?? null) as number | null,
+        proposalThroughput: (r.proposal_throughput ?? r.proposalThroughput ?? null) as
+          | number
+          | null,
+        avgRationaleRate: (r.avg_rationale_rate ?? r.avgRationaleRate ?? null) as number | null,
+        rawData: (r.raw_data ?? r.rawData ?? {}) as Record<string, unknown>,
+        fetchedAt: (r.fetched_at ?? r.fetchedAt ?? '') as string,
+      } satisfies ChainBenchmark;
+    });
+  const decentralization = rawDecentralization as DecentralizationRecord | undefined;
+  const interBody = rawInterBody as InterBodyRecord | undefined;
 
   const ediMetrics = buildEDIMetrics(ghi, decentralization);
-  const decHistory: any[] = decentralization?.history ?? [];
+  const decHistory: Record<string, unknown>[] = decentralization?.history ?? [];
   const topDRepsByPower = (decentralization?.topDRepsByPower ?? []) as {
     drepId: string;
     name: string;
@@ -389,7 +429,9 @@ export function CivicaObservatory() {
       <DecentralizationTrends history={decHistory} />
 
       {/* Inter-body alignment */}
-      {interBody && interBody.proposalCount > 0 && <InterBodySummary interBody={interBody} />}
+      {interBody && (interBody.proposalCount ?? 0) > 0 && (
+        <InterBodySummary interBody={interBody} />
+      )}
 
       {/* Voting power treemap */}
       {topDRepsByPower.length > 0 && (

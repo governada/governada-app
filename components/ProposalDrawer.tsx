@@ -11,8 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { ExternalLink, TrendingUp, Clock, FileText, Users, BarChart3, Vote } from 'lucide-react';
+import { ExternalLink, TrendingUp, Clock, FileText, Users, Vote } from 'lucide-react';
 import { RationaleAssistant } from '@/components/RationaleAssistant';
 import { DelegatorPulse } from '@/components/DelegatorPulse';
 

@@ -36,7 +36,7 @@ const tierColors: Record<string, string> = {
   major: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-export function TreasuryPendingProposals({ treasuryBalanceAda, runwayMonths }: Props) {
+export function TreasuryPendingProposals({}: Props) {
   const { data: raw, isLoading: loading } = useTreasuryPending();
   const data = raw as PendingData | undefined;
 

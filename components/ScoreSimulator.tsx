@@ -16,7 +16,7 @@ export function ScoreSimulator({ drepId, pendingCount }: { drepId: string; pendi
   const [votes, setVotes] = useState(0);
   const [rationales, setRationales] = useState(0);
   const [result, setResult] = useState<SimulationResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   const maxVotes = Math.max(pendingCount, 10);
 

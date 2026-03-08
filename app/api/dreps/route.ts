@@ -4,13 +4,13 @@
  * Avoids Next.js 128KB server component prop limit
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getAllDReps, getDRepById } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const { searchParams } = new URL(request.url);
   const checkId = searchParams.get('id');
 

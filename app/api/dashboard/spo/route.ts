@@ -4,14 +4,14 @@
  * and alignment stats for the SPO dashboard.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { captureServerEvent } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const poolId = request.nextUrl.searchParams.get('poolId');
   if (!poolId) {
     return NextResponse.json({ error: 'poolId required' }, { status: 400 });

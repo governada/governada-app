@@ -36,8 +36,6 @@ export function DelegatorAnalytics({ drepId }: DelegatorAnalyticsProps) {
   const latestPower =
     data.snapshots.length > 0 ? data.snapshots[data.snapshots.length - 1].votingPowerAda : null;
 
-  const firstPower = data.snapshots.length > 1 ? data.snapshots[0].votingPowerAda : null;
-
   const top10Pct = null; // Will be populated when concentration data is available
 
   return (

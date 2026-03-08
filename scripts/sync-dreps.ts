@@ -133,7 +133,7 @@ async function syncDReps() {
     console.log('[Sync] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     process.exit(errorCount > 0 ? 1 : 0);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Sync] ✗ Fatal error:', error.message);
     console.error(error.stack);
     process.exit(1);

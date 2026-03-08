@@ -146,7 +146,7 @@ export function ProposalLifecycleTimeline({
 
         {/* Event dots + labels */}
         <div className="relative" style={{ height: '3rem' }}>
-          {events.map((event, i) => {
+          {events.map((event) => {
             const pct = ((event.epoch - minEpoch) / range) * 100;
             const Icon = event.icon;
             return (

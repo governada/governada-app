@@ -2,15 +2,7 @@ import { ImageResponse } from 'next/og';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getDRepById } from '@/lib/data';
 import { getDRepPrimaryName } from '@/utils/display';
-import {
-  OGBackground,
-  OGScoreRing,
-  OGFooter,
-  OGFallback,
-  OG,
-  tierColor,
-  tierLabel,
-} from '@/lib/og-utils';
+import { OGBackground, OGScoreRing, OGFallback, OG, tierColor, tierLabel } from '@/lib/og-utils';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';

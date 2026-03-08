@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { fadeInUp } from '@/lib/animations';
 import { Info } from 'lucide-react';
-import { CHAIN_IDENTITIES, type Chain, type ChainBenchmark } from '@/lib/crossChain';
+import { CHAIN_IDENTITIES, type ChainBenchmark } from '@/lib/crossChain';
 import {
   getChainMetrics,
   GOVERNANCE_MODELS,

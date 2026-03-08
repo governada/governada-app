@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +15,7 @@ interface ActivityEvent {
   proposalIndex?: number;
 }
 
-export const GET = withRouteHandler(async (request, { requestId }) => {
+export const GET = withRouteHandler(async (request) => {
   const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') || '30', 10), 50);
   const drepIdFilter = request.nextUrl.searchParams.get('drepId') || null;
   const supabase = createClient();
@@ -71,7 +70,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   }
 
   // Fetch proposal titles for referenced votes
-  const proposalHashes = new Set(votes.map((v: any) => v.proposal_tx_hash));
+  const proposalHashes = new Set(votes.map((v) => v.proposal_tx_hash));
   const proposalTitlesResult =
     proposalHashes.size > 0
       ? await supabase
@@ -115,7 +114,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   }
 
   const recentProposals = proposals.filter(
-    (p: any) => p.created_at && new Date(p.created_at).getTime() > Date.now() - 7 * 86400000,
+    (p) => p.created_at && new Date(p.created_at).getTime() > Date.now() - 7 * 86400000,
   );
   for (const p of recentProposals) {
     events.push({

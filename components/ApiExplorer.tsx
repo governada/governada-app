@@ -2,9 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Loader2, ChevronRight } from 'lucide-react';
+import { Play, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { CodeExample } from './CodeExample';
 import { fadeInUp, spring } from '@/lib/animations';
 
@@ -173,7 +172,7 @@ export function ApiExplorer() {
       const res = await fetch(endpoint.examplePath);
       const data = await res.json();
       setResponse(JSON.stringify(data, null, 2));
-    } catch (err) {
+    } catch {
       setResponse(
         JSON.stringify(
           { error: 'Request failed. The endpoint may require authentication.' },

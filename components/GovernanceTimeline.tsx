@@ -111,7 +111,7 @@ function getEventConfig(event: TimelineEvent) {
 
 export function GovernanceTimeline() {
   const { data: rawData, isLoading, isError } = useGovernanceTimeline();
-  const events = (rawData as { events?: TimelineEvent[] })?.events ?? [];
+  const events = useMemo(() => (rawData as { events?: TimelineEvent[] })?.events ?? [], [rawData]);
 
   const grouped = useMemo(() => {
     const map = new Map<number | 'unknown', TimelineEvent[]>();

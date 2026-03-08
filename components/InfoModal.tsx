@@ -91,7 +91,7 @@ export function ParticipationRateModal() {
         <strong>Effective Participation</strong> measures how actively and thoughtfully a DRep
         engages with governance proposals.
       </p>
-      <p>It's calculated as: (Participation Rate) × (Deliberation Modifier)</p>
+      <p>It&apos;s calculated as: (Participation Rate) × (Deliberation Modifier)</p>
       <div className="bg-muted p-4 rounded-lg space-y-2">
         <p className="font-medium">Deliberation Modifier</p>
         <p className="text-sm text-muted-foreground mb-2">
@@ -151,7 +151,7 @@ export function DRepScoreModal() {
         </div>
       </div>
       <p className="text-sm text-muted-foreground mt-2">
-        This score is purely objective and doesn't consider your personal preferences. For
+        This score is purely objective and doesn&apos;t consider your personal preferences. For
         personalized alignment, see the Match column.
       </p>
     </InfoModal>
@@ -219,7 +219,7 @@ export function DelegationRisksModal() {
           </h4>
           <p>
             A DRep who rarely votes or votes against your values may not represent you well.
-            Solution: Monitor their activity and redelegate if needed. There's no penalty for
+            Solution: Monitor their activity and redelegate if needed. There&apos;s no penalty for
             changing DReps.
           </p>
         </div>
@@ -229,7 +229,7 @@ export function DelegationRisksModal() {
             Best Practice: Stay Informed
           </h4>
           <p>
-            Regularly check your DRep's voting record and rationales. The governance landscape
+            Regularly check your DRep&apos;s voting record and rationales. The governance landscape
             evolves, and what aligned with your values yesterday may not tomorrow.
           </p>
         </div>

@@ -219,7 +219,6 @@ export const GET = withRouteHandler(
       const magB = Math.sqrt(propVec.reduce((s, v) => s + v * v, 0));
       if (magA === 0 || magB === 0) continue;
 
-      const relevanceScore = Math.round(((sim + 1) / 2) * 100);
       scored.push({
         txHash: p.tx_hash,
         proposalIndex: p.proposal_index,

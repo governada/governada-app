@@ -100,6 +100,6 @@ export function ScoreBreakdownTooltip({ drep, children }: ScoreBreakdownProps) {
   );
 }
 
-export function ScoreBreakdown({ drep }: { drep: EnrichedDRep }) {
+export function ScoreBreakdown({}: { drep: EnrichedDRep }) {
   return null;
 }

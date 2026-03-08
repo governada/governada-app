@@ -7,16 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Inbox,
-  AlertTriangle,
-  ArrowRight,
-  TrendingUp,
-  Clock,
-  Vote,
-  FileText,
-  MessageSquare,
-} from 'lucide-react';
+import { Inbox, AlertTriangle, ArrowRight, TrendingUp, Clock, Vote, FileText } from 'lucide-react';
 import { PositionStatementEditor } from '@/components/PositionStatementEditor';
 import { useDashboardInbox } from '@/hooks/queries';
 

@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,31 +101,31 @@ export function DelegatorShareCard() {
       .finally(() => setLoading(false));
   }, [isAuthenticated, delegatedDrepId, reconnecting]);
 
+  const hasData = data !== null;
   useEffect(() => {
-    if (data) {
-      posthog.capture('delegator_share_card_viewed');
+    if (!hasData) return;
+    posthog.capture('delegator_share_card_viewed');
 
-      const token = getStoredSession();
-      if (token) {
-        fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((user) => {
-            if (user) {
-              setData((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      governanceLevel: user.governance_level ?? null,
-                      pollCount: user.poll_count ?? prev.pollCount,
-                    }
-                  : prev,
-              );
-            }
-          })
-          .catch(() => {});
-      }
+    const token = getStoredSession();
+    if (token) {
+      fetch('/api/user', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((user) => {
+          if (user) {
+            setData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    governanceLevel: user.governance_level ?? null,
+                    pollCount: user.poll_count ?? prev.pollCount,
+                  }
+                : prev,
+            );
+          }
+        })
+        .catch(() => {});
     }
-  }, [data !== null]);
+  }, [hasData]);
 
   if (!isAuthenticated || !delegatedDrepId) return null;
 

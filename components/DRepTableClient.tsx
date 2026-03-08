@@ -258,10 +258,9 @@ export function DRepTableClient({
     watchlist,
   ]);
 
-  const sizeTierOrder: Record<string, number> = { Small: 1, Medium: 2, Large: 3, Whale: 4 };
-
   // Sorting Logic
   const sortedDReps = useMemo(() => {
+    const sizeTierOrder: Record<string, number> = { Small: 1, Medium: 2, Large: 3, Whale: 4 };
     return [...filteredDReps].sort((a, b) => {
       let aValue: number;
       let bValue: number;
@@ -284,7 +283,7 @@ export function DRepTableClient({
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [filteredDReps, sortConfig, matchData, sizeTierOrder]);
+  }, [filteredDReps, sortConfig, matchData]);
 
   // Pagination Logic
   const pageSize = viewMode === 'cards' ? CARD_PAGE_SIZE : PAGE_SIZE;

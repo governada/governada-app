@@ -25,7 +25,6 @@ import {
   applyRationaleCurve,
   lovelaceToAda,
   getSizeTier,
-  MIN_RATIONALE_LENGTH,
   type ProposalContext,
 } from '@/utils/scoring';
 import { isWellDocumented } from '@/utils/documentation';

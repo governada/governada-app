@@ -40,7 +40,15 @@ function DonutChart({ data }: { data: Array<{ name: string; value: number; color
   const center = size / 2;
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
-  let currentOffset = 0;
+  // Pre-compute segment offsets to avoid mutating a variable during render
+  const segmentOffsets: number[] = [];
+  let runningOffset = 0;
+  for (const segment of data) {
+    segmentOffsets.push(runningOffset);
+    if (segment.value > 0 && total > 0) {
+      runningOffset += (segment.value / total) * circumference;
+    }
+  }
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
@@ -57,8 +65,7 @@ function DonutChart({ data }: { data: Array<{ name: string; value: number; color
         if (segment.value === 0 || total === 0) return null;
         const pct = segment.value / total;
         const segmentLength = pct * circumference;
-        const offset = currentOffset;
-        currentOffset += segmentLength;
+        const offset = segmentOffsets[i];
 
         return (
           <circle
@@ -91,7 +98,7 @@ export function TreasuryAccountabilitySection() {
   const pieData = useMemo(() => {
     if (!data) return [];
     return Object.entries(data.ratingBreakdown)
-      .filter(([_, v]) => v > 0)
+      .filter(([, v]) => v > 0)
       .map(([key, value]) => ({
         name: RATING_CONFIG[key]?.label || key,
         value,

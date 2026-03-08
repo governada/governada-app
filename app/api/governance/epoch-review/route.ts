@@ -26,31 +26,25 @@ export const GET = withRouteHandler(
     const supabase = createClient();
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
-    const [
-      statsRow,
-      userRow,
-      proposalsCreatedResult,
-      drepVotesResult,
-      pollCountResult,
-      activeDRepsResult,
-    ] = await Promise.all([
-      supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
-      supabase
-        .from('users')
-        .select('delegated_drep_id, governance_level, poll_count')
-        .eq('id', userId!)
-        .single(),
-      supabase
-        .from('proposals')
-        .select('tx_hash', { count: 'exact', head: true })
-        .eq('proposed_epoch', currentEpoch),
-      supabase.from('drep_votes').select('drep_id').eq('epoch_no', currentEpoch),
-      supabase
-        .from('poll_responses')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId!),
-      supabase.from('drep_votes').select('drep_id').eq('epoch_no', currentEpoch),
-    ]);
+    const [statsRow, userRow, proposalsCreatedResult, drepVotesResult, pollCountResult, ,] =
+      await Promise.all([
+        supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
+        supabase
+          .from('users')
+          .select('delegated_drep_id, governance_level, poll_count')
+          .eq('id', userId!)
+          .single(),
+        supabase
+          .from('proposals')
+          .select('tx_hash', { count: 'exact', head: true })
+          .eq('proposed_epoch', currentEpoch),
+        supabase.from('drep_votes').select('drep_id').eq('epoch_no', currentEpoch),
+        supabase
+          .from('poll_responses')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId!),
+        supabase.from('drep_votes').select('drep_id').eq('epoch_no', currentEpoch),
+      ]);
 
     const epoch = statsRow.data?.current_epoch ?? currentEpoch;
     const user = userRow.data;

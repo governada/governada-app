@@ -46,6 +46,14 @@ import { computeTier } from '@/lib/scoring/tiers';
 import { generateActions } from '@/lib/actionFeed';
 import { ActionFeed } from './ActionFeed';
 import { SPOClaimHero } from './SPOClaimHero';
+import type {
+  SPOSummaryData,
+  PulseData,
+  CompetitiveData,
+  UrgentData,
+  VotesResponseData,
+  VoteItem,
+} from '@/types/api';
 
 const PILLAR_META = [
   { key: 'participationRate', label: 'Participation', icon: Vote, weight: '35%' },
@@ -174,19 +182,22 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
   const { data: rawDelegatorTrends } = useSPODelegatorTrends(poolId);
   const { data: rawUrgent } = useSPOUrgent(poolId);
 
-  const summary = rawSummary as any;
-  const pulse = rawPulse as any;
-  const competitive = rawCompetitive as any;
-  const delegatorTrends = rawDelegatorTrends as any;
-  const urgent = rawUrgent as any;
-  const votes: any[] = (rawVotes as any)?.votes ?? rawVotes ?? [];
+  const summary = rawSummary as SPOSummaryData | undefined;
+  const pulse = rawPulse as PulseData | undefined;
+  const competitive = rawCompetitive as CompetitiveData | undefined;
+  const delegatorTrends = rawDelegatorTrends as Record<string, unknown> | undefined;
+  const urgent = rawUrgent as UrgentData | undefined;
+  const votesData = rawVotes as VotesResponseData | undefined;
+  const votes: VoteItem[] =
+    votesData?.votes ?? (Array.isArray(rawVotes) ? (rawVotes as VoteItem[]) : []);
   const allVotes = Array.isArray(votes) ? votes : [];
 
   const spoScore: number = summary?.spoScore ?? summary?.score ?? 0;
   const spoTier: string = summary?.tier ?? computeTier(spoScore) ?? 'Emerging';
   const isClaimed: boolean = summary?.isClaimed ?? summary?.claimed ?? false;
   const poolName: string = summary?.name ?? summary?.ticker ?? poolId;
-  const delegatorCount: number = summary?.delegatorCount ?? delegatorTrends?.current ?? 0;
+  const delegatorCount: number =
+    summary?.delegatorCount ?? (delegatorTrends?.current as number) ?? 0;
   const scoreDelta: number | undefined = summary?.scoreDelta ?? summary?.weeklyDelta;
   const participationRate: number = summary?.participationRate ?? 0;
   const rationaleRate: number = summary?.rationaleRate ?? 0;
@@ -195,7 +206,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
   const governanceIdentity: number = summary?.governanceIdentity ?? 0;
   const voteCount: number = summary?.voteCount ?? allVotes.length;
   const alignment = summary?.alignment;
-  const totalVotes: number = (rawVotes as any)?.totalVotes ?? allVotes.length;
+  const totalVotes: number = votesData?.totalVotes ?? allVotes.length;
 
   const activeProposals: number = pulse?.activeProposals ?? 0;
   const criticalProposals: number = pulse?.criticalProposals ?? 0;
@@ -203,16 +214,16 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
   const recentVotes = allVotes.slice(0, 5);
 
   // Urgent data
-  const urgentProposals: any[] = urgent?.proposals ?? [];
-  const unexplainedVotes: any[] = urgent?.unexplainedVotes ?? [];
-  const pendingProposals: any[] = urgent?.pendingProposals ?? [];
+  const urgentProposals = urgent?.proposals ?? [];
+  const unexplainedVotes = urgent?.unexplainedVotes ?? [];
+  const pendingProposals = urgent?.pendingProposals ?? [];
   const pendingCount: number = urgent?.pendingCount ?? 0;
   const hasGovernanceStatement: boolean = urgent?.hasGovernanceStatement ?? true;
 
   // Competitive data
   const rank: number | null = competitive?.rank ?? null;
   const totalPools: number = competitive?.totalPools ?? 0;
-  const neighbors: any[] = competitive?.neighbors ?? [];
+  const neighbors = competitive?.neighbors ?? [];
   const scoreHistory: { epoch_no: number; governance_score: number }[] =
     competitive?.scoreHistory ?? [];
 
@@ -279,7 +290,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
         : 'text-rose-400';
 
   // Split neighbors into above/below for leaderboard display
-  const selfIdx = neighbors.findIndex((n: any) => n.isTarget);
+  const selfIdx = neighbors.findIndex((n) => n.isTarget);
   const nearbyAbove = selfIdx > 0 ? neighbors.slice(0, selfIdx) : [];
   const nearbyBelow = selfIdx >= 0 ? neighbors.slice(selfIdx + 1) : [];
 
@@ -503,7 +514,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
             <AlertTriangle className="h-4 w-4 text-amber-400" />
             <p className="text-sm font-medium text-amber-200">Expiring Soon</p>
           </div>
-          {urgentProposals.slice(0, 3).map((p: any) => (
+          {urgentProposals.slice(0, 3).map((p) => (
             <Link
               key={`${p.txHash}-${p.index}`}
               href={`/proposal/${p.txHash}/${p.index}`}
@@ -577,7 +588,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
             )}
           </div>
           <div className="divide-y divide-border">
-            {pendingProposals.map((p: any) => (
+            {pendingProposals.map((p) => (
               <Link
                 key={`${p.txHash}-${p.index}`}
                 href={`/proposal/${p.txHash}/${p.index}`}
@@ -627,7 +638,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
           </div>
           {(nearbyAbove.length > 0 || nearbyBelow.length > 0) && (
             <div className="divide-y divide-border/50 rounded-lg border overflow-hidden">
-              {nearbyAbove.map((pool: any) => (
+              {nearbyAbove.map((pool) => (
                 <Link
                   key={pool.poolId}
                   href={`/pool/${pool.poolId}`}
@@ -655,7 +666,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
                   {spoScore.toFixed(1)}
                 </span>
               </div>
-              {nearbyBelow.map((pool: any) => (
+              {nearbyBelow.map((pool) => (
                 <Link
                   key={pool.poolId}
                   href={`/pool/${pool.poolId}`}
@@ -694,7 +705,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
             </Link>
           </div>
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-            {recentVotes.map((vote: any, idx: number) => {
+            {recentVotes.map((vote, idx: number) => {
               const voteDir: string = vote.vote ?? vote.voteDirection ?? '';
               const hasRationale = vote.hasRationale ?? vote.rationale;
               const VoteIcon =

@@ -21,15 +21,6 @@ const DIMENSION_KEYS: AlignmentDimension[] = [
   'transparency',
 ];
 
-const DIM_DB_COLUMNS: Record<AlignmentDimension, string> = {
-  treasuryConservative: 'dim_treasury_conservative',
-  treasuryGrowth: 'dim_treasury_growth',
-  decentralization: 'dim_decentralization',
-  security: 'dim_security',
-  innovation: 'dim_innovation',
-  transparency: 'dim_transparency',
-};
-
 interface ScoredProposal {
   key: string;
   txHash: string;
@@ -44,7 +35,7 @@ interface ScoredProposal {
  * Select proposals where DReps are most split (30-70% Yes/No ratio)
  * with type diversity and alignment dimension coverage.
  */
-export const GET = withRouteHandler(async (_request, { requestId }) => {
+export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
   const { data: votes, error: votesError } = await supabase
@@ -252,7 +243,7 @@ function applyDimensionCoverage(selected: ScoredProposal[], allCandidates: Score
   const selectedKeys = new Set(selected.map((s) => s.key));
 
   // Compute dimension coverage
-  const coverage: Record<AlignmentDimension, number> = {} as any;
+  const coverage = {} as Record<AlignmentDimension, number>;
   for (const dim of DIMENSION_KEYS) {
     coverage[dim] = selected.reduce((sum, s) => sum + s.dimScores[dim], 0);
   }

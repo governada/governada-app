@@ -21,9 +21,7 @@ function normalizeVote(vote: string): string {
 }
 
 export const GET = withRouteHandler(
-  async (request: NextRequest, { userId, wallet }: RouteContext) => {
-    const walletAddress = wallet!;
-
+  async (request: NextRequest, { userId }: RouteContext) => {
     const delegatedDrepId = request.nextUrl.searchParams.get('drepId');
     const supabase = createClient();
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
@@ -156,7 +154,7 @@ export const GET = withRouteHandler(
     const pollProposalKeys = pollVotes.map((pv) => `${pv.proposal_tx_hash}-${pv.proposal_index}`);
     const uniqueTxHashes = [...new Set(pollVotes.map((pv) => pv.proposal_tx_hash))];
 
-    let communityVoteMap = new Map<string, { yes: number; no: number; abstain: number }>();
+    const communityVoteMap = new Map<string, { yes: number; no: number; abstain: number }>();
     if (uniqueTxHashes.length > 0) {
       const { data: communityVotes } = await supabase
         .from('poll_responses')

@@ -60,10 +60,23 @@ export function computeDRepScores(
     const confidence = effectiveConfidences.get(drepId) ?? 100;
 
     // Dampen percentile scores toward median for low-confidence DReps
-    const eqPct = dampenPercentile(pctEngagement.get(drepId) ?? 0, confidence);
-    const epPct = dampenPercentile(pctParticipation.get(drepId) ?? 0, confidence);
-    const rlPct = dampenPercentile(pctReliability.get(drepId) ?? 0, confidence);
+    let eqPct = dampenPercentile(pctEngagement.get(drepId) ?? 0, confidence);
+    let epPct = dampenPercentile(pctParticipation.get(drepId) ?? 0, confidence);
+    let rlPct = dampenPercentile(pctReliability.get(drepId) ?? 0, confidence);
     const giPct = dampenPercentile(pctIdentity.get(drepId) ?? 0, confidence);
+
+    // Zero-activity override: when ALL three activity pillars have raw score 0,
+    // the DRep has never participated in governance. Pull their activity percentiles
+    // to 0 instead of the dampened median, so composite reflects actual inactivity.
+    // GI (profile-based) is unaffected — it's legitimately earned from profile data.
+    const eqRaw = rawEngagement.get(drepId) ?? 0;
+    const epRaw = rawParticipation.get(drepId) ?? 0;
+    const rlRaw = rawReliability.get(drepId) ?? 0;
+    if (eqRaw === 0 && epRaw === 0 && rlRaw === 0) {
+      eqPct = 0;
+      epPct = 0;
+      rlPct = 0;
+    }
 
     const composite = Math.round(
       eqPct * PILLAR_WEIGHTS.engagementQuality +

@@ -157,6 +157,35 @@ export function CitizenAssembly() {
               <Users className="h-3 w-3" />
               {assembly.totalVotes} citizen{assembly.totalVotes !== 1 ? 's' : ''} voted
             </p>
+            {assembly.quorumThreshold != null && assembly.quorumThreshold > 0 && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Quorum progress</span>
+                  <span className="tabular-nums">
+                    {assembly.totalVotes} / {assembly.quorumThreshold}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      assembly.totalVotes >= assembly.quorumThreshold
+                        ? 'bg-green-500'
+                        : 'bg-amber-500'
+                    }`}
+                    style={{
+                      width: `${Math.min(100, (assembly.totalVotes / assembly.quorumThreshold) * 100)}%`,
+                    }}
+                  />
+                </div>
+                {assembly.totalVotes < assembly.quorumThreshold && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    {assembly.quorumThreshold - assembly.totalVotes} more vote
+                    {assembly.quorumThreshold - assembly.totalVotes !== 1 ? 's' : ''} needed for
+                    quorum
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

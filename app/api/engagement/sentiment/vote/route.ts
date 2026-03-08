@@ -7,6 +7,7 @@ import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler'
 import { SentimentVoteSchema } from '@/lib/api/schemas/engagement';
 import { aggregateSentiment } from '@/lib/api/engagement-utils';
 import { fetchDelegatedDRep } from '@/utils/koios';
+import { checkEpochRateLimit } from '@/lib/api/epochRateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,20 @@ export const POST = withRouteHandler(
 
     if (!resolvedDrepId && resolvedStakeAddress) {
       resolvedDrepId = await fetchDelegatedDRep(resolvedStakeAddress);
+    }
+
+    // Per-epoch rate limit (50 sentiment votes per epoch)
+    const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+    const epochRL = await checkEpochRateLimit({
+      action: 'sentiment',
+      userId: userId!,
+      epoch: currentEpoch,
+    });
+    if (!epochRL.allowed) {
+      return NextResponse.json(
+        { error: `Sentiment vote limit reached for this epoch (${epochRL.limit} max)` },
+        { status: 429 },
+      );
     }
 
     const supabase = getSupabaseAdmin();
@@ -73,7 +88,6 @@ export const POST = withRouteHandler(
     }
 
     // Fire-and-forget: governance event
-    const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
     supabase
       .from('governance_events')
       .insert({

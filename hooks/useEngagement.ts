@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getStoredSession } from '@/lib/supabaseAuth';
+import type { CredibilityResult } from '@/lib/citizenCredibility';
 
 const STALE_30S = 30_000;
 const STALE_60S = 60_000;
@@ -117,12 +118,13 @@ export interface Assembly {
   description: string | null;
   question: string;
   options: { key: string; label: string; description?: string }[];
-  status: 'draft' | 'active' | 'closed' | 'cancelled';
+  status: 'draft' | 'active' | 'closed' | 'cancelled' | 'quorum_not_met';
   epoch: number;
   opensAt: string;
   closesAt: string;
   results: { key: string; label: string; count: number; percentage: number }[] | null;
   totalVotes: number;
+  quorumThreshold?: number;
 }
 
 export interface AssemblyWithUserVote extends Assembly {
@@ -142,5 +144,57 @@ export function useAssemblyHistory() {
     queryKey: ['assembly-history'],
     queryFn: () => fetchJsonWithAuth('/api/engagement/assembly/history'),
     staleTime: STALE_60S,
+  });
+}
+
+// -- Citizen Voice (engagement feedback loop) --
+
+export interface CitizenVoiceProposal {
+  txHash: string;
+  index: number;
+  title: string | null;
+  proposalType: string | null;
+  userSentiment: string;
+  communitySupport: number;
+  communityTotal: number;
+  communityAgreement: number | null;
+  drepVote: string | null;
+  drepAligned: boolean | null;
+  outcome: string;
+}
+
+export interface CitizenVoiceSummary {
+  totalVotes: number;
+  sentimentBreakdown: { support: number; oppose: number; unsure: number };
+  avgCommunityAgreement: number | null;
+  drepAligned: number;
+  drepDiverged: number;
+  epoch: number;
+}
+
+export interface CitizenVoiceData {
+  proposals: CitizenVoiceProposal[];
+  summary: CitizenVoiceSummary | null;
+}
+
+export function useCitizenVoice(wallet?: string | null) {
+  const params = wallet ? `?wallet=${encodeURIComponent(wallet)}` : '';
+  return useQuery<CitizenVoiceData>({
+    queryKey: ['citizen-voice', wallet ?? null],
+    queryFn: () => fetchJsonWithAuth(`/api/engagement/citizen-voice${params}`),
+    staleTime: STALE_60S,
+    enabled: !!wallet,
+  });
+}
+
+// -- Citizen Credibility --
+
+export type { CredibilityResult as CitizenCredibility } from '@/lib/citizenCredibility';
+
+export function useCitizenCredibility() {
+  return useQuery<CredibilityResult>({
+    queryKey: ['citizen-credibility'],
+    queryFn: () => fetchJsonWithAuth('/api/engagement/credibility'),
+    staleTime: 5 * 60 * 1000,
   });
 }

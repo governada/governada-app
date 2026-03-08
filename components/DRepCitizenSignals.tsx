@@ -1,7 +1,18 @@
 'use client';
 
+import { useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Users, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface DivergenceExample {
+  txHash: string;
+  index: number;
+  title: string;
+  drepVote: string;
+  citizenMajority: string;
+  citizenMajorityPct: number;
+}
 
 interface EngagementData {
   proposalsWithSentiment: number;
@@ -10,9 +21,17 @@ interface EngagementData {
   alignedCount: number;
   divergedCount: number;
   noSentimentCount: number;
+  divergenceExamples?: DivergenceExample[];
 }
 
+const SENTIMENT_LABELS: Record<string, string> = {
+  support: 'Support',
+  oppose: 'Oppose',
+  unsure: 'Unsure',
+};
+
 export function DRepCitizenSignals({ drepId }: { drepId: string }) {
+  const [expanded, setExpanded] = useState(false);
   const { data, isLoading } = useQuery<EngagementData>({
     queryKey: ['drep-engagement', drepId],
     queryFn: () =>
@@ -24,6 +43,7 @@ export function DRepCitizenSignals({ drepId }: { drepId: string }) {
 
   const alignment = data.sentimentAlignment;
   const compared = data.alignedCount + data.divergedCount;
+  const hasDivergence = data.divergenceExamples && data.divergenceExamples.length > 0;
 
   const AlignIcon =
     alignment != null && alignment >= 70
@@ -90,6 +110,40 @@ export function DRepCitizenSignals({ drepId }: { drepId: string }) {
           </div>
         )}
       </div>
+
+      {/* Divergence detail toggle */}
+      {hasDivergence && (
+        <>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-xs text-primary hover:underline pt-1"
+          >
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {data.divergedCount} divergence{data.divergedCount !== 1 ? 's' : ''} from citizen
+            sentiment
+          </button>
+
+          {expanded && (
+            <div className="space-y-1.5 pt-1">
+              {data.divergenceExamples!.map((ex) => (
+                <Link
+                  key={`${ex.txHash}:${ex.index}`}
+                  href={`/proposal/${ex.txHash}/${ex.index}`}
+                  className="block rounded-lg border border-border/50 px-3 py-2 hover:bg-muted/30 transition-colors"
+                >
+                  <p className="text-xs font-medium text-foreground truncate">{ex.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    DRep voted <span className="font-medium">{ex.drepVote}</span>
+                    {' · '}
+                    {ex.citizenMajorityPct}% of citizens{' '}
+                    {SENTIMENT_LABELS[ex.citizenMajority]?.toLowerCase() ?? ex.citizenMajority}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

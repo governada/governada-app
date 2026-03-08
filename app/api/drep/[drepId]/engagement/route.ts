@@ -73,10 +73,32 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     }
   }
 
-  // 3. Compare DRep vote with citizen majority for each proposal
+  // 3. Fetch proposal titles for divergence examples
+  const uniqueTxHashes = [...new Set(votes.map((v) => v.proposal_tx_hash))];
+  const { data: proposalRows } = await supabase
+    .from('proposals')
+    .select('tx_hash, proposal_index, title')
+    .in('tx_hash', uniqueTxHashes);
+
+  const titleMap = new Map<string, string>();
+  for (const p of proposalRows || []) {
+    titleMap.set(`${p.tx_hash}:${p.proposal_index}`, p.title ?? 'Untitled');
+  }
+
+  // 4. Compare DRep vote with citizen majority for each proposal
   let aligned = 0;
   let diverged = 0;
   let totalCitizenVotes = 0;
+
+  interface DivergenceExample {
+    txHash: string;
+    index: number;
+    title: string;
+    drepVote: string;
+    citizenMajority: string;
+    citizenMajorityPct: number;
+  }
+  const divergenceExamples: DivergenceExample[] = [];
 
   for (const v of votes) {
     const key = `${v.proposal_tx_hash}:${v.proposal_index}`;
@@ -90,17 +112,28 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     const drepDirection = v.vote === 'Yes' ? 'support' : v.vote === 'No' ? 'oppose' : 'unsure';
 
     // Citizen majority
+    const maxCount = Math.max(sentiment.support, sentiment.oppose, sentiment.unsure);
     const citizenMajority =
-      sentiment.support >= sentiment.oppose && sentiment.support >= sentiment.unsure
+      sentiment.support === maxCount
         ? 'support'
-        : sentiment.oppose >= sentiment.unsure
+        : sentiment.oppose === maxCount
           ? 'oppose'
           : 'unsure';
+
+    const majorityPct = Math.round((maxCount / sentiment.total) * 100);
 
     if (drepDirection === citizenMajority) {
       aligned++;
     } else {
       diverged++;
+      divergenceExamples.push({
+        txHash: v.proposal_tx_hash,
+        index: v.proposal_index,
+        title: titleMap.get(key) ?? 'Untitled',
+        drepVote: v.vote,
+        citizenMajority,
+        citizenMajorityPct: majorityPct,
+      });
     }
   }
 
@@ -116,6 +149,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       alignedCount: aligned,
       divergedCount: diverged,
       noSentimentCount: votes.length - compared,
+      divergenceExamples: divergenceExamples.slice(0, 5),
     },
     {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },

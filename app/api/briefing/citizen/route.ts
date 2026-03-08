@@ -41,6 +41,16 @@ interface DRepPerformance {
   verdict: string;
 }
 
+interface EngagementOutcome {
+  proposalTitle: string | null;
+  proposalTxHash: string;
+  proposalIndex: number;
+  userSentiment: string;
+  communityAgreePct: number;
+  drepVote: string | null; // 'Yes' | 'No' | 'Abstain' | null
+  outcome: string | null; // 'ratified' | 'dropped' | 'expired' | null (still active)
+}
+
 interface BriefingResponse {
   epoch: number;
 
@@ -74,6 +84,9 @@ interface BriefingResponse {
     drepParticipationPct: number;
     narrative: string | null;
   } | null;
+
+  /** Citizen's engagement outcomes — "Your voice this epoch" section */
+  engagementOutcomes: EngagementOutcome[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -454,7 +467,101 @@ export const GET = withRouteHandler(
       ).length ?? 0;
 
     // -----------------------------------------------------------------------
-    // 7. Build response
+    // 7. Engagement outcomes — "Your voice this epoch" (authenticated only)
+    // -----------------------------------------------------------------------
+    let engagementOutcomes: EngagementOutcome[] | null = null;
+
+    if (ctx.userId) {
+      const { data: userSentiments } = await supabase
+        .from('citizen_sentiment')
+        .select('proposal_tx_hash, proposal_index, sentiment')
+        .eq('user_id', ctx.userId)
+        .limit(10);
+
+      if (userSentiments && userSentiments.length > 0) {
+        // Fetch proposal details + aggregated sentiment + DRep vote in parallel
+        const proposalKeys = userSentiments.map((s) => `${s.proposal_tx_hash}:${s.proposal_index}`);
+
+        const [proposalResult, aggregationResult, drepVoteResult] = await Promise.all([
+          supabase
+            .from('proposals')
+            .select('tx_hash, proposal_index, title, ratified_epoch, dropped_epoch, expired_epoch')
+            .in(
+              'tx_hash',
+              userSentiments.map((s) => s.proposal_tx_hash),
+            ),
+          supabase
+            .from('engagement_signal_aggregations')
+            .select('entity_id, data')
+            .eq('entity_type', 'proposal')
+            .eq('signal_type', 'sentiment')
+            .in('entity_id', proposalKeys),
+          drepId
+            ? supabase
+                .from('drep_votes')
+                .select('proposal_tx_hash, proposal_index, vote')
+                .eq('drep_id', drepId)
+                .in(
+                  'proposal_tx_hash',
+                  userSentiments.map((s) => s.proposal_tx_hash),
+                )
+            : Promise.resolve({ data: null }),
+        ]);
+
+        const proposals = proposalResult.data || [];
+        const aggregations = aggregationResult.data || [];
+        const drepVotes = drepVoteResult.data || [];
+
+        engagementOutcomes = userSentiments.slice(0, 5).map((s) => {
+          const proposal = proposals.find(
+            (p) => p.tx_hash === s.proposal_tx_hash && p.proposal_index === s.proposal_index,
+          );
+          const aggKey = `${s.proposal_tx_hash}:${s.proposal_index}`;
+          const agg = aggregations.find((a) => a.entity_id === aggKey);
+          const aggData = agg?.data as {
+            support?: number;
+            oppose?: number;
+            unsure?: number;
+            total?: number;
+          } | null;
+
+          // Compute community agreement with user's sentiment
+          let communityAgreePct = 0;
+          if (aggData && aggData.total && aggData.total > 0) {
+            const agreeCount =
+              s.sentiment === 'support'
+                ? (aggData.support ?? 0)
+                : s.sentiment === 'oppose'
+                  ? (aggData.oppose ?? 0)
+                  : (aggData.unsure ?? 0);
+            communityAgreePct = Math.round((agreeCount / aggData.total) * 100);
+          }
+
+          const drepVote = drepVotes.find(
+            (v) =>
+              v.proposal_tx_hash === s.proposal_tx_hash && v.proposal_index === s.proposal_index,
+          );
+
+          let outcome: string | null = null;
+          if (proposal?.ratified_epoch) outcome = 'ratified';
+          else if (proposal?.dropped_epoch) outcome = 'dropped';
+          else if (proposal?.expired_epoch) outcome = 'expired';
+
+          return {
+            proposalTitle: proposal?.title ?? null,
+            proposalTxHash: s.proposal_tx_hash,
+            proposalIndex: s.proposal_index,
+            userSentiment: s.sentiment,
+            communityAgreePct,
+            drepVote: drepVote?.vote ?? null,
+            outcome,
+          };
+        });
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. Build response
     // -----------------------------------------------------------------------
     const { health, headline } = computeHealth(
       drepId,
@@ -510,6 +617,8 @@ export const GET = withRouteHandler(
             narrative: recap.ai_narrative ?? null,
           }
         : null,
+
+      engagementOutcomes,
     };
 
     return NextResponse.json(response, {

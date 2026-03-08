@@ -30,6 +30,7 @@ import { ConcernFlags } from '@/components/engagement/ConcernFlags';
 import { ImpactTags } from '@/components/engagement/ImpactTags';
 import { AskYourDRep } from '@/components/engagement/AskYourDRep';
 import { EngagementSummary } from '@/components/engagement/EngagementSummary';
+import { ConcernFlagBanner } from '@/components/engagement/ConcernFlagBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -144,6 +145,21 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
       {/* Community engagement signals summary */}
       <EngagementSummary txHash={txHash} proposalIndex={proposalIndex} />
+
+      {/* Concern flag impact banner (shown when flags exceed threshold) */}
+      <ConcernFlagBanner
+        txHash={txHash}
+        proposalIndex={proposalIndex}
+        outcome={
+          proposal.ratifiedEpoch != null
+            ? 'ratified'
+            : proposal.droppedEpoch != null
+              ? 'dropped'
+              : proposal.expiredEpoch != null
+                ? 'expired'
+                : null
+        }
+      />
 
       {/* Governance dimension tags */}
       <ProposalDimensionTags relevantPrefs={proposal.relevantPrefs} />

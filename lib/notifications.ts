@@ -68,7 +68,8 @@ export type EventType =
   | 'alignment-drift'
   | 'delegation-milestone'
   | 'spo-inactivity'
-  | 'competitive-movement';
+  | 'competitive-movement'
+  | 'engagement-outcome';
 
 /** @deprecated Use NotificationPayload instead */
 export interface NotificationEvent {
@@ -363,7 +364,7 @@ export async function notifySegment(
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function logAndTrack(
   supabase: any,
   userId: string,

@@ -680,6 +680,72 @@ export const checkNotifications = inngest.createFunction(
       }
     });
 
+    // Step 15: Engagement outcome notifications
+    // When a proposal a citizen signaled on reaches conclusion, notify them.
+    await step.run('check-engagement-outcomes', async () => {
+      const supabase = getSupabaseAdmin();
+      const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+
+      // Find proposals that were resolved this epoch (ratified, expired, or dropped)
+      const { data: resolvedProposals } = await supabase
+        .from('proposals')
+        .select(
+          'tx_hash, proposal_index, title, proposal_type, ratified_epoch, expired_epoch, dropped_epoch',
+        )
+        .or(
+          `ratified_epoch.eq.${currentEpoch},expired_epoch.eq.${currentEpoch},dropped_epoch.eq.${currentEpoch}`,
+        );
+
+      if (!resolvedProposals || resolvedProposals.length === 0) return;
+
+      for (const proposal of resolvedProposals) {
+        const outcome =
+          proposal.ratified_epoch === currentEpoch
+            ? 'ratified'
+            : proposal.dropped_epoch === currentEpoch
+              ? 'dropped'
+              : 'expired';
+
+        // Find citizens who voted sentiment on this proposal
+        const { data: sentimentVoters } = await supabase
+          .from('citizen_sentiment')
+          .select('user_id, sentiment')
+          .eq('proposal_tx_hash', proposal.tx_hash)
+          .eq('proposal_index', proposal.proposal_index);
+
+        if (!sentimentVoters || sentimentVoters.length === 0) continue;
+
+        const proposalTitle = proposal.title || proposal.proposal_type || 'A governance proposal';
+        const proposalUrl = `${BASE_URL}/proposal/${proposal.tx_hash}/${proposal.proposal_index}`;
+
+        // Deduplicate by user_id
+        const notifiedUsers = new Set<string>();
+
+        for (const voter of sentimentVoters) {
+          if (notifiedUsers.has(voter.user_id)) continue;
+          notifiedUsers.add(voter.user_id);
+
+          const sentimentLabel =
+            voter.sentiment === 'support'
+              ? 'supported'
+              : voter.sentiment === 'oppose'
+                ? 'opposed'
+                : 'weighed in on';
+
+          const outcomeEmoji =
+            outcome === 'ratified' ? '\u2705' : outcome === 'dropped' ? '\u274C' : '\u23F3';
+
+          await notifyUser(voter.user_id, {
+            eventType: 'engagement-outcome',
+            title: `${outcomeEmoji} Proposal you ${sentimentLabel} was ${outcome}`,
+            body: proposalTitle,
+            url: proposalUrl,
+          });
+          stats.citizenAlerts++;
+        }
+      }
+    });
+
     return { stats };
   },
 );

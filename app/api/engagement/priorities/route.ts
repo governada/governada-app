@@ -5,6 +5,7 @@ import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { PrioritySignalSchema } from '@/lib/api/schemas/engagement';
+import { checkEpochRateLimit } from '@/lib/api/epochRateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,19 @@ export const POST = withRouteHandler(
     const { rankedPriorities, epoch, stakeAddress } = PrioritySignalSchema.parse(
       await request.json(),
     );
+
+    // Per-epoch rate limit (5 priority signals per epoch)
+    const epochRL = await checkEpochRateLimit({
+      action: 'priority',
+      userId: userId!,
+      epoch,
+    });
+    if (!epochRL.allowed) {
+      return NextResponse.json(
+        { error: `Priority signal limit reached for this epoch (${epochRL.limit} max)` },
+        { status: 429 },
+      );
+    }
 
     const supabase = getSupabaseAdmin();
 

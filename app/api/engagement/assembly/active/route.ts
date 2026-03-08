@@ -57,6 +57,8 @@ export const GET = withRouteHandler(
       percentage: totalVotes > 0 ? Math.round(((voteCounts[opt.key] || 0) / totalVotes) * 100) : 0,
     }));
 
+    const quorumThreshold = (assembly as { quorum_threshold?: number }).quorum_threshold ?? 0;
+
     return NextResponse.json({
       id: assembly.id,
       title: assembly.title,
@@ -70,6 +72,7 @@ export const GET = withRouteHandler(
       results,
       totalVotes,
       userVote,
+      quorumThreshold,
     });
   },
   { auth: 'optional' },

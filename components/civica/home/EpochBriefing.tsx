@@ -18,6 +18,7 @@ import {
   Flame,
   Coins,
   ExternalLink,
+  Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTreasuryCurrent, useTreasuryPending } from '@/hooks/queries';
 import { briefingContainer, briefingItem } from '@/lib/animations';
 import { GovTerm } from '@/components/ui/GovTerm';
+import { useCitizenVoice, type CitizenVoiceProposal } from '@/hooks/useEngagement';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -220,6 +222,8 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
   const { data: identity } = useCivicIdentity(wallet);
   const { data: rawTreasury } = useTreasuryCurrent();
   const { data: rawPending } = useTreasuryPending();
+  const { data: voiceData } = useCitizenVoice(wallet);
+
   return (
     <AsyncContent
       query={briefingQuery}
@@ -232,6 +236,7 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
           identity={identity}
           rawTreasury={rawTreasury}
           rawPending={rawPending}
+          voiceData={voiceData}
         />
       )}
     </AsyncContent>
@@ -245,11 +250,13 @@ function EpochBriefingContent({
   identity,
   rawTreasury,
   rawPending,
+  voiceData,
 }: {
   data: any;
   identity: any;
   rawTreasury: any;
   rawPending: any;
+  voiceData: any;
 }) {
   const tracked = useRef(false);
   const isMobile = useIsMobile();
@@ -440,6 +447,96 @@ function EpochBriefingContent({
     </div>
   ) : null;
 
+  /* ── Your Voice This Epoch ──────────────────────────────────── */
+
+  const voiceSection =
+    voiceData && voiceData.summary && voiceData.summary.totalVotes > 0 ? (
+      <div className="py-5 border-b border-border">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Your voice this epoch
+          </p>
+          <Link
+            href="/engage"
+            className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+          >
+            Engage
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <p className="text-sm text-foreground mb-3">
+          You shared your opinion on{' '}
+          <span className="font-semibold">
+            {voiceData.summary.totalVotes} proposal
+            {voiceData.summary.totalVotes !== 1 ? 's' : ''}
+          </span>
+          {voiceData.summary.avgCommunityAgreement != null && (
+            <>
+              {' \u00B7 '}
+              <span className="font-semibold">
+                {voiceData.summary.avgCommunityAgreement}%
+              </span>{' '}
+              community agreement
+            </>
+          )}
+          {(voiceData.summary.drepAligned > 0 || voiceData.summary.drepDiverged > 0) && (
+            <>
+              {' \u00B7 '}
+              DRep aligned on{' '}
+              <span className="font-semibold">
+                {voiceData.summary.drepAligned} of{' '}
+                {voiceData.summary.drepAligned + voiceData.summary.drepDiverged}
+              </span>
+            </>
+          )}
+        </p>
+        <ul className="space-y-1.5">
+          {voiceData.proposals.slice(0, 3).map((p: CitizenVoiceProposal) => (
+            <li key={`${p.txHash}:${p.index}`}>
+              <Link
+                href={`/proposal/${p.txHash}/${p.index}`}
+                className="flex items-center justify-between py-1 group text-sm"
+              >
+                <span className="text-foreground group-hover:text-primary transition-colors truncate min-w-0">
+                  <Megaphone className="h-3 w-3 inline mr-1.5 text-muted-foreground" />
+                  {p.title ?? p.proposalType ?? 'Proposal'}
+                </span>
+                <span className="shrink-0 ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {p.communityAgreement != null && <span>{p.communityAgreement}% agreed</span>}
+                  {p.drepAligned != null && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[10px] px-1.5 py-0',
+                        p.drepAligned
+                          ? 'text-emerald-500 border-emerald-500/30'
+                          : 'text-rose-500 border-rose-500/30',
+                      )}
+                    >
+                      {p.drepAligned ? 'DRep aligned' : 'DRep diverged'}
+                    </Badge>
+                  )}
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px] px-1.5 py-0',
+                      p.outcome === 'ratified'
+                        ? 'text-emerald-500 border-emerald-500/30'
+                        : p.outcome === 'dropped'
+                          ? 'text-rose-500 border-rose-500/30'
+                          : 'text-muted-foreground',
+                    )}
+                  >
+                    {p.outcome}
+                  </Badge>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
   const treasurySection = (
     <div className="py-5 border-b border-border">
       <div className="flex items-center justify-between mb-3">
@@ -583,6 +680,7 @@ function EpochBriefingContent({
         case 'treasury':
           return (
             <>
+              {voiceSection}
               {treasurySection}
               {upcomingSection}
             </>
@@ -638,6 +736,7 @@ function EpochBriefingContent({
       <motion.div variants={briefingItem}>{narrativeSection}</motion.div>
       <motion.div variants={briefingItem}>{headlinesSection}</motion.div>
       <motion.div variants={briefingItem}>{drepSection}</motion.div>
+      <motion.div variants={briefingItem}>{voiceSection}</motion.div>
       <motion.div variants={briefingItem}>{treasurySection}</motion.div>
       <motion.div variants={briefingItem}>{upcomingSection}</motion.div>
       <motion.div variants={briefingItem}>{civicIdentityStrip}</motion.div>

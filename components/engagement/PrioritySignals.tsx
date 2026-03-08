@@ -180,7 +180,14 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                           {item.firstChoiceCount} first-choice
                         </span>
                       </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-2 rounded-full bg-muted overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={pct}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${info?.label ?? item.priority}: ${pct}%`}
+                      >
                         <div
                           className="h-full rounded-full bg-primary transition-all duration-700"
                           style={{ width: `${pct}%` }}
@@ -244,7 +251,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                           {i > 0 && (
                             <button
                               onClick={() => moveUp(i)}
-                              className="p-1 rounded hover:bg-primary/10 transition-colors"
+                              className="p-1 rounded hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                               aria-label={`Move ${info.label} up in ranking`}
                             >
                               <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
@@ -252,7 +259,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                           )}
                           <button
                             onClick={() => togglePriority(area)}
-                            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                            className="text-xs text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
                             aria-label={`Remove ${info.label} from your selection`}
                           >
                             Remove
@@ -279,8 +286,9 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                           key={area}
                           onClick={() => togglePriority(area)}
                           disabled={disabled}
-                          aria-label={info.label}
+                          aria-label={`Select ${info.label} as a priority`}
                           className={`flex items-center gap-2 p-3 rounded-lg border text-sm text-left transition-all
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
                             ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:border-primary/50 hover:bg-primary/5 cursor-pointer motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]'}
                             border-border/50`}
                         >

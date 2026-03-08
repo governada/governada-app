@@ -22,8 +22,13 @@ export function ScoreImpactChip({ points, size = 'sm' }: ScoreImpactChipProps) {
           ? 'bg-green-500/10 text-green-500 border border-green-500/20'
           : 'bg-red-500/10 text-red-500 border border-red-500/20',
       )}
+      role="status"
+      aria-label={`Score impact: ${isPositive ? 'positive' : 'negative'} ${Math.abs(points)} points`}
     >
-      <Zap className={cn('shrink-0', size === 'sm' ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5')} />
+      <Zap
+        className={cn('shrink-0', size === 'sm' ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5')}
+        aria-hidden="true"
+      />
       {label}
     </span>
   );

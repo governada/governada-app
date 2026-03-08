@@ -90,7 +90,7 @@ export function CivicaHeader() {
         <div className="flex items-center gap-1">
           <Link
             href="/"
-            className="font-display text-lg font-bold tracking-tight mr-6 text-foreground"
+            className="font-display text-lg font-bold tracking-tight mr-6 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
           >
             Civica
           </Link>
@@ -105,6 +105,7 @@ export function CivicaHeader() {
                   className={cn(
                     'relative flex items-center gap-2 px-3 py-2 min-h-[44px] text-sm font-medium rounded-md transition-colors',
                     'hover:bg-accent hover:text-accent-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                     active ? 'text-foreground' : 'text-muted-foreground',
                   )}
                   aria-current={active ? 'page' : undefined}
@@ -161,10 +162,12 @@ export function CivicaHeader() {
                 <button
                   className={cn(
                     'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full transition-colors cursor-pointer',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                     hasOverride
                       ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25'
                       : 'text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground',
                   )}
+                  aria-label="User menu"
                 >
                   {hasOverride ? <Eye className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                   {segment !== 'anonymous' && SEGMENT_LABELS[segment]}

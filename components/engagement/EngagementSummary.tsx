@@ -52,11 +52,11 @@ export function EngagementSummary({ txHash, proposalIndex }: EngagementSummaryPr
   };
 
   return (
-    <Card className="bg-muted/30">
+    <Card className="bg-muted/30" aria-label="Community engagement signals summary">
       <CardContent className="py-3">
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <span className="font-medium text-muted-foreground flex items-center gap-1">
-            <BarChart3 className="h-3.5 w-3.5" />
+            <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
             Community Signals
           </span>
 

@@ -170,11 +170,11 @@ export function ProposalSentiment({ txHash, proposalIndex, isOpen }: ProposalSen
   const showButtons = isOpen && (!hasVoted || changingVote);
 
   return (
-    <Card className="ring-1 ring-primary/10">
+    <Card className="ring-1 ring-primary/10" aria-label="Citizen sentiment on this proposal">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-primary" />
+            <BarChart3 className="h-4 w-4 text-primary" aria-hidden="true" />
             Citizen Sentiment
           </CardTitle>
           <TooltipProvider>
@@ -221,23 +221,24 @@ export function ProposalSentiment({ txHash, proposalIndex, isOpen }: ProposalSen
           />
         )}
 
-        {/* CTA for unconnected users */}
+        {/* Gentle CTA for unconnected users */}
         {!connected && isOpen && !hasVoted && (
-          <div className="relative">
-            <div className="opacity-30 pointer-events-none blur-[1px]">
+          <div className="relative" role="region" aria-label="Connect wallet to vote on sentiment">
+            <div className="opacity-30 pointer-events-none blur-[1px]" aria-hidden="true">
               <SentimentButtons onVote={() => {}} voting={false} currentVote={null} />
             </div>
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <p className="text-sm font-medium">Share your opinion</p>
+              <p className="text-sm font-medium">Want to share your opinion?</p>
               <Button
                 size="sm"
-                className="gap-1.5"
+                variant="outline"
+                className="gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 onClick={() => {
                   const event = new CustomEvent('open-wallet-modal');
                   window.dispatchEvent(event);
                 }}
               >
-                <Wallet className="h-3.5 w-3.5" />
+                <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
                 Connect Wallet to Vote
               </Button>
             </div>
@@ -303,7 +304,7 @@ function SentimentButtons({
           variant="outline"
           role="radio"
           aria-checked={currentVote === vote}
-          className={`flex-1 gap-1.5 h-11 transition-all duration-150 motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98] ${
+          className={`flex-1 gap-1.5 h-11 transition-all duration-150 motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
             currentVote === vote ? activeClass : hoverClass
           }`}
           disabled={voting}
@@ -414,7 +415,7 @@ function ResultsView({
       {isOpen && userSentiment && onChangeVote && (
         <button
           onClick={onChangeVote}
-          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
         >
           Change your vote
         </button>

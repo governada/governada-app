@@ -182,10 +182,14 @@ export function CrossChainRadar({ chains, axes, className }: CrossChainRadarProp
             key={chain.chain}
             className={cn(
               'flex items-center gap-1.5 text-xs font-medium transition-opacity',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
               hoveredChain && hoveredChain !== chain.chain ? 'opacity-40' : 'opacity-100',
             )}
             onMouseEnter={() => setHoveredChain(chain.chain)}
             onMouseLeave={() => setHoveredChain(null)}
+            onFocus={() => setHoveredChain(chain.chain)}
+            onBlur={() => setHoveredChain(null)}
+            aria-label={`Highlight ${chain.chain} data`}
           >
             <span
               className="inline-block h-2 w-2 rounded-full"

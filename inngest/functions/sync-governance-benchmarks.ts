@@ -42,15 +42,31 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
   [{ cron: '0 6 * * 0' }, { event: 'drepscore/sync.benchmarks' }],
   async ({ step }) => {
     const cardano = await step.run('fetch-cardano', async () => {
-      return fetchCardanoBenchmark();
+      const result = await fetchCardanoBenchmark();
+      if (!result) {
+        logger.error('[sync-benchmarks] Cardano benchmark fetch returned null');
+      }
+      return result;
     });
 
     const ethereum = await step.run('fetch-ethereum', async () => {
-      return fetchEthereumBenchmark();
+      const result = await fetchEthereumBenchmark();
+      if (!result) {
+        logger.error(
+          '[sync-benchmarks] Ethereum benchmark fetch returned null - check TALLY_API_KEY and Tally API availability',
+        );
+      }
+      return result;
     });
 
     const polkadot = await step.run('fetch-polkadot', async () => {
-      return fetchPolkadotBenchmark();
+      const result = await fetchPolkadotBenchmark();
+      if (!result) {
+        logger.error(
+          '[sync-benchmarks] Polkadot benchmark fetch returned null - check SubSquare API availability',
+        );
+      }
+      return result;
     });
 
     const results = await step.run('store-benchmarks', async () => {
@@ -58,6 +74,19 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
       const syncLog = new SyncLogger(supabase, 'benchmarks');
       await syncLog.start();
       const stored: string[] = [];
+
+      // Log which chains failed to fetch
+      const failed: string[] = [];
+      if (!cardano) failed.push('cardano');
+      if (!ethereum) failed.push('ethereum');
+      if (!polkadot) failed.push('polkadot');
+      if (failed.length > 0) {
+        logger.error('[sync-benchmarks] Chain fetches failed', {
+          failedChains: failed,
+          successCount: 3 - failed.length,
+          totalChains: 3,
+        });
+      }
 
       try {
         const benchmarks = [cardano, ethereum, polkadot].filter(Boolean) as ChainBenchmark[];
@@ -95,12 +124,12 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
             record_count: stored.length,
             expected_count: 3,
             coverage_pct: Math.round((stored.length / 3) * 10000) / 100,
-            metadata: { chains: stored },
+            metadata: { chains: stored, failed },
           },
           { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
         );
 
-        const summary = { stored, total: benchmarks.length };
+        const summary = { stored, failed, total: benchmarks.length };
         await syncLog.finalize(true, null, summary as unknown as Record<string, unknown>);
         return summary;
       } catch (err) {
@@ -111,8 +140,10 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
 
     logger.info('[sync-benchmarks] Benchmarks stored', {
       stored: results.stored.length,
+      failed: results.failed.length,
       total: results.total,
       chains: results.stored,
+      failedChains: results.failed,
     });
 
     let aiInsight: string | null = null;

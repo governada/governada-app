@@ -59,7 +59,7 @@ export const snapshotGhi = inngest.createFunction(
       await syncLog.start();
 
       try {
-        await supabase.from('ghi_snapshots').upsert(
+        const { error: ghiError } = await supabase.from('ghi_snapshots').upsert(
           {
             epoch_no: epoch,
             score: result.score,
@@ -68,8 +68,15 @@ export const snapshotGhi = inngest.createFunction(
           },
           { onConflict: 'epoch_no' },
         );
+        if (ghiError) {
+          logger.error('[snapshot-ghi] Failed to upsert ghi_snapshots', {
+            error: ghiError.message,
+            epoch,
+          });
+          throw new Error(`ghi_snapshots upsert failed: ${ghiError.message}`);
+        }
 
-        await supabase.from('snapshot_completeness_log').upsert(
+        const { error: compError } = await supabase.from('snapshot_completeness_log').upsert(
           {
             snapshot_type: 'ghi',
             epoch_no: epoch,
@@ -81,6 +88,12 @@ export const snapshotGhi = inngest.createFunction(
           },
           { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
         );
+        if (compError) {
+          logger.error('[snapshot-ghi] Failed to upsert completeness log', {
+            error: compError.message,
+            epoch,
+          });
+        }
 
         await syncLog.finalize(true, null, { epoch, score: result.score, band: result.band });
       } catch (err) {
@@ -94,7 +107,7 @@ export const snapshotGhi = inngest.createFunction(
         const supabase = getSupabaseAdmin();
         const { breakdown } = result.edi!;
 
-        await supabase.from('decentralization_snapshots').upsert(
+        const { error: ediError } = await supabase.from('decentralization_snapshots').upsert(
           {
             epoch_no: epoch,
             composite_score: result.edi!.compositeScore,
@@ -109,8 +122,14 @@ export const snapshotGhi = inngest.createFunction(
           },
           { onConflict: 'epoch_no' },
         );
+        if (ediError) {
+          logger.error('[snapshot-ghi] Failed to upsert decentralization_snapshots', {
+            error: ediError.message,
+            epoch,
+          });
+        }
 
-        await supabase.from('snapshot_completeness_log').upsert(
+        const { error: ediCompError } = await supabase.from('snapshot_completeness_log').upsert(
           {
             snapshot_type: 'edi',
             epoch_no: epoch,
@@ -122,6 +141,12 @@ export const snapshotGhi = inngest.createFunction(
           },
           { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
         );
+        if (ediCompError) {
+          logger.error('[snapshot-ghi] Failed to upsert EDI completeness log', {
+            error: ediCompError.message,
+            epoch,
+          });
+        }
       });
     }
 

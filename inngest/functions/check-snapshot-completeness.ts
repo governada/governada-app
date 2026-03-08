@@ -293,6 +293,23 @@ export const checkSnapshotCompleteness = inngest.createFunction(
           detail: `${ccMemberCount ?? 0} members tracked`,
         });
 
+        // 20. CC Transparency snapshots for current epoch
+        const { count: ccTransCount } = await supabase
+          .from('cc_transparency_snapshots')
+          .select('cc_hot_id', { count: 'exact', head: true })
+          .eq('epoch_no', epoch);
+        const ccTransExpected = ccMemberCount ?? 0;
+        const ccTransCoverage =
+          ccTransExpected > 0
+            ? ((ccTransCount ?? 0) / ccTransExpected) * 100
+            : (ccTransCount ?? 0) > 0
+              ? 100
+              : 0;
+        results.push({
+          name: 'cc_transparency_snapshots',
+          passed: ccTransCoverage >= 50 || ccTransExpected === 0,
+          detail: `${ccTransCount ?? 0}/${ccTransExpected} members (${ccTransCoverage.toFixed(1)}%)`,
+        });
         return results;
       });
 

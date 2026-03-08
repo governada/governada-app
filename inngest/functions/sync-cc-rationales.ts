@@ -525,9 +525,9 @@ export const syncCcRationales = inngest.createFunction(
           { onConflict: 'cc_hot_id' },
         );
 
-        // Persist snapshot
+        // Persist snapshot with explicit error logging
         if (!error && currentEpoch > 0) {
-          await supabase.from('cc_transparency_snapshots').upsert(
+          const { error: snapError } = await supabase.from('cc_transparency_snapshots').upsert(
             {
               cc_hot_id: ccHotId,
               epoch_no: currentEpoch,
@@ -542,9 +542,49 @@ export const syncCcRationales = inngest.createFunction(
             },
             { onConflict: 'cc_hot_id,epoch_no' },
           );
+          if (snapError) {
+            logger.error('[sync-cc-rationales] Transparency snapshot upsert failed', {
+              ccHotId,
+              epoch: currentEpoch,
+              error: snapError.message,
+            });
+          }
         }
 
         if (!error) scored++;
+      }
+
+      // Log snapshot completeness for cc_transparency
+      if (currentEpoch > 0) {
+        const { count: snapshotCount } = await supabase
+          .from('cc_transparency_snapshots')
+          .select('cc_hot_id', { count: 'exact', head: true })
+          .eq('epoch_no', currentEpoch);
+
+        const expectedCount = memberVotes.size;
+        const actualCount = snapshotCount ?? 0;
+        const coveragePct =
+          expectedCount > 0 ? Math.round((actualCount / expectedCount) * 10000) / 100 : 100;
+
+        await supabase.from('snapshot_completeness_log').upsert(
+          {
+            snapshot_type: 'cc_transparency',
+            epoch_no: currentEpoch,
+            snapshot_date: new Date().toISOString().slice(0, 10),
+            record_count: actualCount,
+            expected_count: expectedCount,
+            coverage_pct: coveragePct,
+            metadata: { scored, epoch: currentEpoch },
+          },
+          { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
+        );
+
+        logger.info('[sync-cc-rationales] Transparency snapshots stored', {
+          scored,
+          snapshotCount: actualCount,
+          expected: expectedCount,
+          epoch: currentEpoch,
+        });
       }
 
       return { scored, epoch: currentEpoch };

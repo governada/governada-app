@@ -315,6 +315,62 @@ describe('computeDRepScores', () => {
     expect(results.get('d2')!.confidence).toBe(100);
   });
 
+  // ── Zero-activity override ──
+
+  it('caps zero-activity DReps to GI-only composite (~15% of GI percentile)', () => {
+    // DRep with zero activity on all 3 activity pillars but high GI
+    // should NOT score 50+ from dampened-to-median activity percentiles.
+    // Instead, activity percentiles should be forced to 0.
+    const { rawEngagement, rawParticipation, rawReliability, rawIdentity } = makePillarMaps({
+      active1: { eq: 80, ep: 70, rl: 60, gi: 50 },
+      active2: { eq: 40, ep: 50, rl: 60, gi: 70 },
+      inactive: { eq: 0, ep: 0, rl: 0, gi: 90 },
+    });
+
+    const results = computeDRepScores(
+      rawEngagement,
+      rawParticipation,
+      rawReliability,
+      rawIdentity,
+      new Map(),
+    );
+
+    const inactive = results.get('inactive')!;
+    // All activity percentiles should be 0
+    expect(inactive.engagementQualityPercentile).toBe(0);
+    expect(inactive.effectiveParticipationPercentile).toBe(0);
+    expect(inactive.reliabilityPercentile).toBe(0);
+    // GI percentile should NOT be 0 (profile is real data)
+    expect(inactive.governanceIdentityPercentile).toBeGreaterThan(0);
+    // Composite should be at most GI weight (15%) * 100 = 15
+    expect(inactive.composite).toBeLessThanOrEqual(15);
+    // Active DReps should still score normally (much higher than inactive)
+    const active1 = results.get('active1')!;
+    expect(active1.composite).toBeGreaterThan(inactive.composite);
+  });
+
+  it('does NOT apply zero-activity override when only some activity pillars are zero', () => {
+    // A DRep with EQ=0 but EP>0 should NOT be overridden
+    const { rawEngagement, rawParticipation, rawReliability, rawIdentity } = makePillarMaps({
+      partial: { eq: 0, ep: 30, rl: 0, gi: 50 },
+      full: { eq: 60, ep: 60, rl: 60, gi: 60 },
+    });
+
+    const results = computeDRepScores(
+      rawEngagement,
+      rawParticipation,
+      rawReliability,
+      rawIdentity,
+      new Map(),
+    );
+
+    const partial = results.get('partial')!;
+    // With EP>0, zero-activity override should NOT apply
+    // EQ and RL percentiles should be dampened to median (not forced to 0)
+    // since the DRep has SOME activity (EP=30)
+    expect(partial.engagementQualityPercentile).toBeGreaterThan(0);
+  });
+
   // ── Confidence dampening ──
 
   it('dampens low-confidence DRep percentiles toward median', () => {

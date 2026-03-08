@@ -148,6 +148,7 @@ export const syncSpoAndCcVotes = inngest.createFunction(
         if (!cached?.length) return { snapshotted: 0 };
 
         let inserted = 0;
+        let alreadyExisted = 0;
         for (const row of cached) {
           const { data: existing } = await supabase
             .from('inter_body_alignment_snapshots')
@@ -156,7 +157,10 @@ export const syncSpoAndCcVotes = inngest.createFunction(
             .eq('proposal_tx_hash', row.proposal_tx_hash)
             .eq('proposal_index', row.proposal_index)
             .maybeSingle();
-          if (existing) continue;
+          if (existing) {
+            alreadyExisted++;
+            continue;
+          }
 
           const [drepCount, spoCount, ccCount] = await Promise.all([
             supabase
@@ -194,25 +198,29 @@ export const syncSpoAndCcVotes = inngest.createFunction(
           if (!error) inserted++;
         }
 
+        // Coverage = total snapshots for this epoch (existing + newly inserted)
+        const totalCovered = alreadyExisted + inserted;
         await supabase.from('snapshot_completeness_log').upsert(
           {
             snapshot_type: 'inter_body_alignment',
             epoch_no: epoch,
             snapshot_date: new Date().toISOString().slice(0, 10),
-            record_count: inserted,
+            record_count: totalCovered,
             expected_count: cached.length,
             coverage_pct:
-              cached.length > 0 ? Math.round((inserted / cached.length) * 10000) / 100 : 100,
+              cached.length > 0 ? Math.round((totalCovered / cached.length) * 10000) / 100 : 100,
           },
           { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
         );
 
         logger.info('[sync-spo-cc-votes] Alignment snapshots stored', {
           inserted,
+          alreadyExisted,
+          totalCovered,
           total: cached.length,
           epoch,
         });
-        return { snapshotted: inserted, epoch };
+        return { snapshotted: inserted, alreadyExisted, epoch };
       } catch (err) {
         logger.error('[sync-spo-cc-votes] Alignment snapshot failed', { error: err });
         return { snapshotted: 0, error: errMsg(err) };

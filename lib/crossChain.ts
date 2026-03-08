@@ -46,7 +46,10 @@ async function withRetrySafe<T>(fn: () => Promise<T>, label: string): Promise<T 
       baseDelayMs: 2000,
       label,
     });
-  } catch {
+  } catch (err) {
+    logger.error(`[crossChain] ${label} failed after all retries`, {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }

@@ -28,6 +28,10 @@ const ScoreHistoryChart = nextDynamic(
   () => import('@/components/ScoreHistoryChart').then((m) => m.ScoreHistoryChart),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
+const ScoreSimulator = nextDynamic(
+  () => import('@/components/ScoreSimulator').then((m) => m.ScoreSimulator),
+  { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
+);
 import { ScoreCard } from '@/components/ScoreCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -73,6 +77,12 @@ import {
   getPersonalityLabelWithHysteresis,
 } from '@/lib/drepIdentity';
 import { computeTierProgress } from '@/lib/scoring/tiers';
+import {
+  getScoreNarrative,
+  getParticipationNarrative,
+  getRationaleNarrative,
+  getGovernanceStyleNarrative,
+} from '@/lib/scoring/scoreNarratives';
 import { getFeatureFlag } from '@/lib/featureFlags';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { DRepProfileTabsV2 } from '@/components/civica/profiles/DRepProfileTabsV2';
@@ -100,6 +110,7 @@ import {
   getDRepDelegationTrend,
   getSocialLinkChecks,
   isDRepClaimed,
+  getOpenProposalsForDRep,
 } from '@/lib/data';
 import { createClient } from '@/lib/supabase';
 import { BASE_URL } from '@/lib/constants';
@@ -396,17 +407,24 @@ function KeyFact({
   value,
   subtext,
   tooltip,
+  narrative,
 }: {
   label: string;
   value: string;
   subtext?: string;
   tooltip?: string;
+  narrative?: string;
 }) {
   const content = (
     <div className="flex flex-col items-center text-center min-w-[80px]">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-semibold font-mono tabular-nums">{value}</span>
       {subtext && <span className="text-[10px] text-muted-foreground">{subtext}</span>}
+      {narrative && (
+        <span className="text-[10px] text-muted-foreground/80 italic max-w-[140px] leading-tight">
+          {narrative}
+        </span>
+      )}
     </div>
   );
 
@@ -446,6 +464,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     isClaimed,
     spoAlignPct,
     drepCommunicationEnabled,
+    openProposals,
   ] = await Promise.all([
     getScoreHistory(drep.drepId),
     getDRepPercentile(drep.drepScore),
@@ -455,7 +474,10 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     isDRepClaimed(drep.drepId),
     getSpoAlignment(drep.votes),
     getFeatureFlag('drep_communication', true),
+    getOpenProposalsForDRep(drep.drepId),
   ]);
+
+  const pendingProposalCount = openProposals.length;
 
   const brokenLinks = new Set(linkChecks.filter((c) => c.status === 'broken').map((c) => c.uri));
 
@@ -637,21 +659,25 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           value={`${drep.drepScore}/100`}
           subtext={percentile > 0 ? `Top ${100 - percentile}%` : undefined}
           tooltip="Overall quality score based on participation, rationale, reliability, and profile completeness"
+          narrative={getScoreNarrative({ score: drep.drepScore, percentile })}
         />
         <KeyFact
           label="Votes Cast"
           value={`${drep.effectiveParticipation}%`}
           tooltip="How often this DRep votes on proposals, adjusted for voting pattern diversity"
+          narrative={getParticipationNarrative(drep.effectiveParticipation)}
         />
         <KeyFact
           label="Explains Votes"
           value={`${drep.rationaleRate}%`}
           tooltip="How often this DRep provides written reasoning for their votes"
+          narrative={getRationaleNarrative(drep.rationaleRate)}
         />
         <KeyFact
           label="Governance Style"
           value={identityLabel}
           tooltip="Dominant governance philosophy based on voting patterns across 6 dimensions"
+          narrative={getGovernanceStyleNarrative(identityLabel)}
         />
         {spoAlignPct !== null && (
           <KeyFact
@@ -832,6 +858,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
                 )}
               </div>
             )}
+            <ScoreSimulator drepId={drep.drepId} pendingCount={pendingProposalCount} />
             <ScoreDeepDive
               score={drep.drepScore}
               engagementQuality={drep.engagementQuality}

@@ -45,6 +45,7 @@ import { computeTier } from '@/lib/scoring/tiers';
 import { generateActions } from '@/lib/actionFeed';
 import { ActionFeed } from './ActionFeed';
 import { DRepQuestionsInbox } from '@/components/DRepQuestionsInbox';
+import { ScoreSimulator } from '@/components/ScoreSimulator';
 import type {
   DRepReportCardData,
   PulseData,
@@ -387,6 +388,9 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
           )}
         </div>
       )}
+
+      {/* Score Simulator */}
+      {!summaryLoading && <ScoreSimulator drepId={drepId} pendingCount={pendingCount} />}
 
       {/* 6D Alignment */}
       {!summaryLoading && hasAlignment && (

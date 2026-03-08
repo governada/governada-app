@@ -58,6 +58,7 @@ interface BriefingResponse {
     health: HealthStatus;
     headline: string;
     delegatedTo: { name: string; id: string; score: number; tier: string } | null;
+    drepDeregistered?: boolean;
   };
 
   headlines: Headline[];
@@ -122,11 +123,18 @@ function computeHealth(
   score: number | null,
   votedThisEpoch: boolean,
   scoreMomentum: number | null,
+  drepDeregistered: boolean,
 ): { health: HealthStatus; headline: string } {
   if (!drepId) {
     return {
       health: 'yellow',
       headline: 'Your ADA is unrepresented \u2014 delegate to have a voice',
+    };
+  }
+  if (drepDeregistered) {
+    return {
+      health: 'red',
+      headline: 'Your DRep has deregistered \u2014 your delegation is no longer active',
     };
   }
   const s = score ?? 0;
@@ -399,6 +407,26 @@ export const GET = withRouteHandler(
     }
 
     // -----------------------------------------------------------------------
+    // 4a. DRep deregistration check
+    // -----------------------------------------------------------------------
+    let drepDeregistered = false;
+
+    if (drepId) {
+      const { data: latestLifecycle } = await supabase
+        .from('drep_lifecycle_events')
+        .select('action')
+        .eq('drep_id', drepId)
+        .order('epoch_no', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestLifecycle?.action === 'deregistration') {
+        drepDeregistered = true;
+      }
+    }
+
+    // -----------------------------------------------------------------------
     // 4b. DRep delegated stake (for proportional treasury share)
     // -----------------------------------------------------------------------
     let drepDelegatedAda: number | null = null;
@@ -568,6 +596,7 @@ export const GET = withRouteHandler(
       drepScore,
       votedThisEpoch,
       drepScoreMomentum,
+      drepDeregistered,
     );
 
     const delegatedTo = drepPerformance
@@ -586,6 +615,7 @@ export const GET = withRouteHandler(
         health,
         headline,
         delegatedTo,
+        drepDeregistered: drepDeregistered || undefined,
       },
 
       headlines: buildHeadlines(recap),

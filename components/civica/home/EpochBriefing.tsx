@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
+  ShieldAlert,
   Vote,
   ArrowUp,
   ArrowDown,
@@ -268,6 +269,7 @@ interface EpochBriefingData {
     health?: string;
     headline?: string;
     delegatedTo?: { id: string; name: string } | null;
+    drepDeregistered?: boolean;
   };
   recap?: { narrative?: string };
   headlines?: { type: string; title: string; description: string }[];
@@ -329,6 +331,7 @@ function EpochBriefingContent({
         epoch: data.epoch,
         health: data.status?.health,
         has_drep: !!data.drepPerformance,
+        drep_deregistered: !!data.status?.drepDeregistered,
       });
     }
   }, [data]);
@@ -401,6 +404,33 @@ function EpochBriefingContent({
       )}
     </div>
   );
+
+  const deregisteredAlert = data.status?.drepDeregistered ? (
+    <div
+      className="py-4 border-b border-rose-500/30"
+      role="alert"
+      aria-label="DRep deregistered alert"
+    >
+      <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-4">
+        <div className="flex items-start gap-3">
+          <ShieldAlert className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <p className="text-sm font-semibold text-rose-500">Your DRep has deregistered</p>
+            <p className="text-sm text-muted-foreground">
+              {data.status.delegatedTo?.name
+                ? `${data.status.delegatedTo.name} is`
+                : 'Your representative is'}{' '}
+              no longer an active DRep. Your delegation is void and your ADA is unrepresented in
+              governance votes.
+            </p>
+            <Button asChild size="sm" className="mt-1">
+              <Link href="/match">Find a new DRep</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   const narrativeSection = data.recap?.narrative ? (
     <div className="py-5 border-b border-border">
@@ -759,6 +789,7 @@ function EpochBriefingContent({
       <article className="space-y-0">
         {briefingHeader}
         {statusBanner}
+        {deregisteredAlert}
 
         <div className="py-3">
           <SectionTabs sections={sections} activeIndex={activeSection} onSelect={navigateSection} />
@@ -798,6 +829,7 @@ function EpochBriefingContent({
     >
       <motion.div variants={briefingItem}>{briefingHeader}</motion.div>
       <motion.div variants={briefingItem}>{statusBanner}</motion.div>
+      {deregisteredAlert && <motion.div variants={briefingItem}>{deregisteredAlert}</motion.div>}
       <motion.div variants={briefingItem}>{narrativeSection}</motion.div>
       <motion.div variants={briefingItem}>{headlinesSection}</motion.div>
       <motion.div variants={briefingItem}>{drepSection}</motion.div>

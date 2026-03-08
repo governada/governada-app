@@ -125,6 +125,8 @@ C:\Users\dalto\drepscore\
 | Command | Purpose |
 | ------- | ------- |
 | `/build-step N` | End-to-end step builder: vision research → architecture → decision gate → parallel execution → autonomous deploy → post-build audit |
+| `/fix-audit [last\|area\|all]` | Takes audit findings, plans fixes, executes in parallel, deploys, re-audits to verify scores improved |
+| `/launch-readiness [full\|technical\|business\|blocker-check]` | Pre-launch go/no-go: security blockers, journey regression, performance, brand, legal, monetization, community, SEO |
 | `/ship` | Full deploy pipeline for a single PR (preflight → CI → merge → deploy → verify) |
 | `/hotfix` | Single-commit fix directly on main |
 

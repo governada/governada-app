@@ -94,6 +94,7 @@ C:\Users\dalto\drepscore\
 | `smoke-test`         | Production health checks                   |
 | `pre-merge-check.sh` | Block merge if CI running or branch behind |
 | `cleanup.sh`         | Worktree/dir cleanup (dry-run or --clean)  |
+| `notify.sh`          | Alert founder via Discord/Telegram at decision gates |
 
 ## Context Files (Agent-Optimized)
 

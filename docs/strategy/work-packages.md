@@ -16,15 +16,15 @@
 | WP-4  | Citizen milestone detection               | 4    | SHIPPED     | #159 |
 | WP-5  | Proportional treasury share in briefing   | 4    | SHIPPED     | #159 |
 | WP-6  | DRep delegator sentiment view             | 5+6  | SHIPPED     | #160 |
-| WP-7  | Engagement signals -> score feedback loop | 6->1 | IN PROGRESS |      |
-| WP-8  | Inter-body dynamics narrative             | 2+5  | IN PROGRESS |      |
-| WP-9  | SPO Command Center parity                 | 2.5  | PENDING     |      |
-| WP-10 | SPO vote casting                          | 5    | PENDING     |      |
-| WP-11 | Progressive match confidence              | 1    | PENDING     |      |
-| WP-12 | Proposal outcome tracking                 | 2+4  | PENDING     |      |
-| WP-13 | CC Member Transparency Index              | 2.5  | PENDING     |      |
-| WP-14 | Mobile briefing optimization              | 4    | PENDING     |      |
-| WP-15 | Vote + rationale flow timing              | 5    | IN PROGRESS |      |
+| WP-7  | Engagement signals -> score feedback loop | 6->1 | SHIPPED     | #161 |
+| WP-8  | Inter-body dynamics narrative             | 2+5  | SHIPPED     | #161 |
+| WP-9  | SPO Command Center parity                 | 2.5  | SHIPPED     | #162 |
+| WP-10 | SPO vote casting                          | 5    | SHIPPED     | #162 |
+| WP-11 | Progressive match confidence              | 1    | SHIPPED     |      |
+| WP-12 | Proposal outcome tracking                 | 2+4  | SHIPPED     |      |
+| WP-13 | CC Member Transparency Index              | 2.5  | SHIPPED     |      |
+| WP-14 | Mobile briefing optimization              | 4    | SHIPPED     |      |
+| WP-15 | Vote + rationale flow timing              | 5    | SHIPPED     |      |
 
 ---
 
@@ -253,25 +253,15 @@
 
 ---
 
-## WP-15: Vote + Rationale Flow Timing (IN PROGRESS)
+## WP-15: Vote + Rationale Flow Timing
 
 **Vision gap:** Vote casting and rationale submission are separate flows. Vision says "one submission: vote + rationale together."
 
-**Goal:** Unify vote + rationale into a single guided flow matching the vision's "analyze -> draft -> review -> submit" pattern.
+**Scope:**
 
-**Changes:**
+- Streamline vote + rationale into single flow (analyze -> draft -> vote+rationale)
+- Bundle metadata anchor with vote transaction
+- Post-vote rationale fallback for quick votes
+- Timing UX: fee estimation, confirmation, submission tracking
 
-- Replaced flat `VoteCastingPanel` with stepped `VoteRationaleFlow` wizard:
-  - Step 1 **Select Vote**: Yes/No/Abstain with preflight checks, then "Add Rationale" or "Quick Vote"
-  - Step 2 **Write Rationale**: CIP-100 editor with AI Draft, collapsible proposal context
-  - Step 3 **Review**: Transaction summary (vote + rationale + fee), rationale preview, edit links
-  - Step 4 **Submit**: Animated submission timeline (publish rationale -> build tx -> sign -> submit -> confirm)
-- **Post-vote rationale fallback**: After a quick vote (no rationale), a "Add rationale to your vote" link appears. Uses CIP-1694 re-voting to re-cast the same vote with a CIP-100 metadata anchor attached.
-- **Enhanced timing UX**: Step progress indicator, phased submission timeline with status per step, estimated confirmation time, CardanoScan link
-- Vote + CIP-100 rationale bundled in single transaction (anchor URL + hash passed to MeshTxBuilder)
-
-**Files:**
-
-- `components/civica/proposals/VoteRationaleFlow.tsx` (new — replaces VoteCastingPanel usage)
-- `app/proposal/[txHash]/[index]/page.tsx` (modified — imports VoteRationaleFlow)
-- Existing `hooks/useVote.ts`, `lib/voting.ts`, `lib/rationale.ts`, API routes unchanged
+**Key files:** `components/governance/VoteCaster.tsx`, `components/governance/RationaleFlow.tsx`, CIP-100/metadata anchor logic

@@ -93,11 +93,23 @@ C:\Users\dalto\drepscore\
 | `posthog:check`      | Verify analytics events                    |
 | `smoke-test`         | Production health checks                   |
 | `pre-merge-check.sh` | Block merge if CI running or branch behind |
+| `cleanup.sh`         | Worktree/dir cleanup (dry-run or --clean)  |
+
+## Context Files (Agent-Optimized)
+
+| Need | File | Lines |
+|------|------|-------|
+| Build status / audit checklist | `docs/strategy/context/build-manifest.md` | ~120 |
+| Persona quick reference | `docs/strategy/context/persona-quick-ref.md` | ~60 |
+| Full vision (strategic audits only) | `docs/strategy/ultimate-vision.md` | ~950 |
 
 ## Path-Scoped Rules
 
 Detailed context loads automatically from `.claude/rules/` when working on:
 
+- `product-strategy.md` -- principles, build sequence, context efficiency
+- `product-vision.md` -- UX execution standards, persona experiences
+- `hygiene.md` -- branch, commit, workspace cleanup rules
 - `scoring.md` -- scoring models, tiers, GHI, alignment
 - `sync-pipeline.md` -- Inngest, Koios, sync patterns
 - `api-routes.md` -- force-dynamic, route constraints

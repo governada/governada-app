@@ -6,7 +6,7 @@ import { CivicIdentityProfile } from '@/components/civica/identity/CivicIdentity
 export const metadata: Metadata = {
   title: 'Civica — Civic Identity',
   description:
-    'Your civic identity on Cardano. Delegation history, governance footprint, milestones, and engagement stats.',
+    'Your civic identity — delegation history, governance footprint, milestones, and engagement stats.',
   openGraph: {
     title: 'Civica — Civic Identity',
     description: 'Your civic identity on Cardano governance.',

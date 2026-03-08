@@ -1,4 +1,4 @@
-import { getEnrichedDReps } from '@/lib/koios';
+import { getEnrichedDReps, type EnrichedDRep } from '@/lib/koios';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger as log } from '@/lib/logger';
 import {
@@ -12,6 +12,7 @@ import {
   SyncLogger,
   batchUpsert,
   errMsg,
+  capMsg,
   emitPostHog,
   triggerAnalyticsDeploy,
   alertDiscord,
@@ -41,6 +42,548 @@ interface SupabaseDRepRow {
   anchor_hash: string | null;
 }
 
+/* ─── Serializable types for Inngest step data passing ─── */
+
+/** Serialized proposal context entry (Map can't be serialized between steps) */
+export interface SerializedProposalContext {
+  key: string; // `${txHash}-${index}`
+  proposalType: string;
+  treasuryTier: string | null;
+}
+
+/** Result of phase 1: fetch + classify proposals */
+export interface FetchProposalsResult {
+  classifiedProposals: ClassifiedProposal[];
+  proposalContextEntries: SerializedProposalContext[];
+  errors: string[];
+  durationMs: number;
+}
+
+/** Serialized DRep data for passing between steps */
+export interface SerializedDRep {
+  drepId: string;
+  drepHash: string;
+  handle: string | null;
+  name: string | null;
+  ticker: string | null;
+  description: string | null;
+  votingPower: number;
+  votingPowerLovelace: string;
+  totalVotes: number;
+  yesVotes: number;
+  noVotes: number;
+  abstainVotes: number;
+  isActive: boolean;
+  anchorUrl: string | null;
+  anchorHash: string | null;
+  epochVoteCounts: number[] | null;
+  metadata: Record<string, unknown>;
+  drepScore: number;
+  participationRate: number;
+  rationaleRate: number;
+  reliabilityScore: number;
+  reliabilityStreak: number;
+  reliabilityRecency: number;
+  reliabilityLongestGap: number;
+  reliabilityTenure: number;
+  deliberationModifier: number;
+  effectiveParticipation: number;
+  sizeTier: string;
+  profileCompleteness: number;
+}
+
+/** Result of phase 2: fetch + enrich DReps */
+export interface FetchDRepsResult {
+  dreps: SerializedDRep[];
+  rawVotesMap: Record<string, DRepVote[]> | null;
+  handlesResolved: number;
+  delegatorCounts: Record<string, number>;
+  errors: string[];
+  durationMs: number;
+}
+
+/** Result of phase 3: upsert DReps to DB */
+export interface UpsertDRepsResult {
+  success: number;
+  errors: number;
+  durationMs: number;
+}
+
+/** Result of phase 4: alignment + snapshots + score history */
+export interface PostSyncResult {
+  alignmentComputed: boolean;
+  delegationSnapshotsInserted: number;
+  scoreHistoryInserted: number;
+  errors: string[];
+  durationMs: number;
+}
+
+/* ─── Phase functions (each designed to run in < 60s) ─── */
+
+/**
+ * Phase 1: Fetch proposals from Koios and classify them for scoring context.
+ * Non-fatal — returns empty results on failure.
+ */
+export async function phaseFetchProposals(): Promise<FetchProposalsResult> {
+  const start = Date.now();
+  const errors: string[] = [];
+  let classifiedProposals: ClassifiedProposal[] = [];
+  const proposalContextEntries: SerializedProposalContext[] = [];
+
+  try {
+    const raw = await fetchProposals();
+    const { valid: validRaw, invalidCount } = validateArray(
+      raw,
+      KoiosProposalSchema,
+      'dreps-proposals',
+    );
+    if (invalidCount > 0) {
+      emitPostHog(true, 'dreps', 0, {
+        event_override: 'sync_validation_error',
+        record_type: 'proposal',
+        invalid_count: invalidCount,
+      });
+      alertDiscord(
+        'Validation Errors: dreps',
+        `${invalidCount} proposal records failed Zod validation during DReps sync`,
+      );
+    }
+    if (validRaw.length > 0) {
+      classifiedProposals = classifyProposals(validRaw as unknown as ProposalListResponse);
+      for (const p of classifiedProposals) {
+        proposalContextEntries.push({
+          key: `${p.txHash}-${p.index}`,
+          proposalType: p.type,
+          treasuryTier: p.treasuryTier,
+        });
+      }
+    }
+    log.info('[dreps] Proposals fetched and classified', {
+      fetched: raw.length,
+      classified: classifiedProposals.length,
+    });
+  } catch (err) {
+    errors.push(`Proposals: ${errMsg(err)}`);
+    log.warn('[dreps] Proposal fetch failed (non-fatal)', { error: errMsg(err) });
+  }
+
+  return {
+    classifiedProposals,
+    proposalContextEntries,
+    errors,
+    durationMs: Date.now() - start,
+  };
+}
+
+/**
+ * Phase 2: Fetch enriched DReps from Koios, resolve ADA handles, read existing delegator counts.
+ * Fatal if no DRep data is returned.
+ */
+export async function phaseFetchDReps(
+  proposalContextEntries: SerializedProposalContext[],
+): Promise<FetchDRepsResult> {
+  const start = Date.now();
+  const supabase = getSupabaseAdmin();
+  const errors: string[] = [];
+
+  // Rebuild proposalContextMap from serialized entries
+  const proposalContextMap = new Map<string, ProposalContext>();
+  for (const entry of proposalContextEntries) {
+    proposalContextMap.set(entry.key, {
+      proposalType: entry.proposalType,
+      treasuryTier: entry.treasuryTier,
+    });
+  }
+
+  // Fetch enriched DReps (fatal if no data)
+  const result = await getEnrichedDReps(false, {
+    includeRawVotes: true,
+    proposalContextMap: proposalContextMap.size > 0 ? proposalContextMap : undefined,
+  });
+
+  if (result.error || !result.allDReps?.length) {
+    throw new Error('Koios DRep fetch returned no data');
+  }
+
+  const allDReps = result.allDReps;
+  const rawVotesMap = (result.rawVotesMap as Record<string, DRepVote[]>) || null;
+  log.info('[dreps] Enriched DReps', { count: allDReps.length });
+
+  // ADA Handle resolution (non-fatal)
+  let handlesResolved = 0;
+  try {
+    const handleMap = await resolveADAHandles(
+      allDReps.map((d) => ({ drepId: d.drepId, drepHash: d.drepHash })),
+    );
+    for (const drep of allDReps) {
+      const handle = handleMap.get(drep.drepId);
+      if (handle) (drep as unknown as Record<string, unknown>).handle = handle;
+    }
+    handlesResolved = handleMap.size;
+    log.info('[dreps] ADA Handles resolved', {
+      resolved: handlesResolved,
+      total: allDReps.length,
+    });
+  } catch (err) {
+    errors.push(`ADA Handles: ${errMsg(err)}`);
+    log.warn('[dreps] ADA Handle resolution failed (non-fatal)', { error: errMsg(err) });
+  }
+
+  // Read existing delegator counts from DB
+  const delegatorCounts: Record<string, number> = {};
+  try {
+    const { data: existing } = await supabase.from('dreps').select('id, info');
+    for (const row of existing || []) {
+      const info = row.info as Record<string, unknown> | null;
+      const count = (info?.delegatorCount as number) || 0;
+      delegatorCounts[row.id] = count;
+    }
+    log.info('[dreps] Preserved existing delegator counts', {
+      count: Object.keys(delegatorCounts).length,
+    });
+  } catch (err) {
+    log.warn('[dreps] Could not read existing delegator counts', { error: errMsg(err) });
+  }
+
+  // Serialize DReps for step transfer
+  const serializedDreps: SerializedDRep[] = allDReps.map((drep) => ({
+    drepId: drep.drepId,
+    drepHash: drep.drepHash,
+    handle: ((drep as unknown as Record<string, unknown>).handle as string | null) ?? null,
+    name: drep.name,
+    ticker: drep.ticker,
+    description: drep.description,
+    votingPower: drep.votingPower,
+    votingPowerLovelace: drep.votingPowerLovelace,
+    totalVotes: drep.totalVotes,
+    yesVotes: drep.yesVotes,
+    noVotes: drep.noVotes,
+    abstainVotes: drep.abstainVotes,
+    isActive: drep.isActive,
+    anchorUrl: drep.anchorUrl || null,
+    anchorHash: drep.anchorHash || null,
+    epochVoteCounts: drep.epochVoteCounts || null,
+    metadata: (drep.metadata as Record<string, unknown>) || {},
+    drepScore: drep.drepScore,
+    participationRate: drep.participationRate,
+    rationaleRate: drep.rationaleRate,
+    reliabilityScore: drep.reliabilityScore,
+    reliabilityStreak: drep.reliabilityStreak,
+    reliabilityRecency: drep.reliabilityRecency,
+    reliabilityLongestGap: drep.reliabilityLongestGap,
+    reliabilityTenure: drep.reliabilityTenure,
+    deliberationModifier: drep.deliberationModifier,
+    effectiveParticipation: drep.effectiveParticipation,
+    sizeTier: drep.sizeTier,
+    profileCompleteness: drep.profileCompleteness,
+  }));
+
+  return {
+    dreps: serializedDreps,
+    rawVotesMap,
+    handlesResolved,
+    delegatorCounts,
+    errors,
+    durationMs: Date.now() - start,
+  };
+}
+
+/**
+ * Phase 3: Upsert DRep rows to Supabase.
+ */
+export async function phaseUpsertDReps(
+  dreps: SerializedDRep[],
+  delegatorCounts: Record<string, number>,
+): Promise<UpsertDRepsResult> {
+  const start = Date.now();
+  const supabase = getSupabaseAdmin();
+
+  const drepRows: SupabaseDRepRow[] = dreps.map((drep) => ({
+    id: drep.drepId,
+    metadata: drep.metadata || {},
+    info: {
+      drepHash: drep.drepHash,
+      handle: drep.handle,
+      name: drep.name,
+      ticker: drep.ticker,
+      description: drep.description,
+      votingPower: drep.votingPower,
+      votingPowerLovelace: drep.votingPowerLovelace,
+      delegatorCount: delegatorCounts[drep.drepId] ?? 0,
+      totalVotes: drep.totalVotes,
+      yesVotes: drep.yesVotes,
+      noVotes: drep.noVotes,
+      abstainVotes: drep.abstainVotes,
+      isActive: drep.isActive,
+      anchorUrl: drep.anchorUrl,
+      epochVoteCounts: drep.epochVoteCounts,
+    },
+    votes: [],
+    score: drep.drepScore,
+    participation_rate: drep.participationRate,
+    rationale_rate: drep.rationaleRate,
+    reliability_score: drep.reliabilityScore,
+    reliability_streak: drep.reliabilityStreak,
+    reliability_recency: drep.reliabilityRecency,
+    reliability_longest_gap: drep.reliabilityLongestGap,
+    reliability_tenure: drep.reliabilityTenure,
+    deliberation_modifier: drep.deliberationModifier,
+    effective_participation: drep.effectiveParticipation,
+    size_tier: drep.sizeTier,
+    profile_completeness: drep.profileCompleteness,
+    anchor_url: drep.anchorUrl || null,
+    anchor_hash: drep.anchorHash || null,
+  }));
+
+  const drepResult = await batchUpsert(
+    supabase,
+    'dreps',
+    drepRows as unknown as Record<string, unknown>[],
+    'id',
+    'DReps',
+  );
+  log.info('[dreps] Upserted DReps', { success: drepResult.success, errors: drepResult.errors });
+
+  return {
+    success: drepResult.success,
+    errors: drepResult.errors,
+    durationMs: Date.now() - start,
+  };
+}
+
+/**
+ * Phase 4: Alignment scores, delegation snapshots, and score history.
+ * All three run in parallel within this phase. Each sub-task is non-fatal.
+ */
+export async function phasePostSync(
+  dreps: SerializedDRep[],
+  rawVotesMap: Record<string, DRepVote[]> | null,
+  classifiedProposals: ClassifiedProposal[],
+  delegatorCounts: Record<string, number>,
+): Promise<PostSyncResult> {
+  const start = Date.now();
+  const supabase = getSupabaseAdmin();
+  const errors: string[] = [];
+  let alignmentComputed = false;
+  let delegationSnapshotsInserted = 0;
+  let scoreHistoryInserted = 0;
+
+  const parallelResults = await Promise.allSettled([
+    // Alignment scores
+    (async () => {
+      if (!rawVotesMap || classifiedProposals.length === 0) return;
+      const updates = dreps.map((drep) => {
+        const votes = rawVotesMap[drep.drepId] || [];
+        // computeAllCategoryScores expects the enriched DRep format
+        const drepObj = {
+          drepId: drep.drepId,
+          drepHash: drep.drepHash,
+          handle: drep.handle,
+          name: drep.name,
+          ticker: drep.ticker,
+          description: drep.description,
+          votingPower: drep.votingPower,
+          votingPowerLovelace: drep.votingPowerLovelace,
+          totalVotes: drep.totalVotes,
+          yesVotes: drep.yesVotes,
+          noVotes: drep.noVotes,
+          abstainVotes: drep.abstainVotes,
+          isActive: drep.isActive,
+          anchorUrl: drep.anchorUrl,
+          anchorHash: drep.anchorHash,
+          epochVoteCounts: drep.epochVoteCounts,
+          metadata: drep.metadata,
+          drepScore: drep.drepScore,
+          participationRate: drep.participationRate,
+          rationaleRate: drep.rationaleRate,
+          reliabilityScore: drep.reliabilityScore,
+          reliabilityStreak: drep.reliabilityStreak,
+          reliabilityRecency: drep.reliabilityRecency,
+          reliabilityLongestGap: drep.reliabilityLongestGap,
+          reliabilityTenure: drep.reliabilityTenure,
+          deliberationModifier: drep.deliberationModifier,
+          effectiveParticipation: drep.effectiveParticipation,
+          sizeTier: drep.sizeTier,
+          profileCompleteness: drep.profileCompleteness,
+        };
+        const scores = computeAllCategoryScores(
+          drepObj as unknown as EnrichedDRep,
+          votes,
+          classifiedProposals,
+        );
+        return {
+          id: drep.drepId,
+          alignment_treasury_conservative: scores.alignmentTreasuryConservative,
+          alignment_treasury_growth: scores.alignmentTreasuryGrowth,
+          alignment_decentralization: scores.alignmentDecentralization,
+          alignment_security: scores.alignmentSecurity,
+          alignment_innovation: scores.alignmentInnovation,
+          alignment_transparency: scores.alignmentTransparency,
+          last_vote_time: scores.lastVoteTime,
+        };
+      });
+      const r = await batchUpsert(
+        supabase,
+        'dreps',
+        updates as unknown as Record<string, unknown>[],
+        'id',
+        'Alignment',
+      );
+      alignmentComputed = true;
+      log.info('[dreps] Alignment scores computed', { count: r.success });
+    })(),
+
+    // Delegation snapshots
+    (async () => {
+      try {
+        const { data: statsRow } = await supabase
+          .from('governance_stats')
+          .select('current_epoch')
+          .eq('id', 1)
+          .single();
+        const epoch = statsRow?.current_epoch ?? 0;
+        if (epoch === 0) return;
+
+        const snapshots = dreps.map((drep) => ({
+          epoch,
+          drep_id: drep.drepId,
+          delegator_count: delegatorCounts[drep.drepId] ?? 0,
+          total_power_lovelace: BigInt(drep.votingPowerLovelace || '0').toString(),
+          snapshot_at: new Date().toISOString(),
+        }));
+
+        let inserted = 0;
+        for (let i = 0; i < snapshots.length; i += 100) {
+          const batch = snapshots.slice(i, i + 100);
+          const { error } = await supabase
+            .from('delegation_snapshots')
+            .upsert(batch as unknown as Record<string, unknown>[], {
+              onConflict: 'epoch,drep_id',
+              ignoreDuplicates: true,
+            });
+          if (!error) inserted += batch.length;
+        }
+        delegationSnapshotsInserted = inserted;
+        if (inserted > 0) {
+          log.info('[dreps] Delegation snapshots', { inserted, epoch });
+        }
+      } catch (err) {
+        log.warn('[dreps] Delegation snapshot failed (non-fatal)', { error: errMsg(err) });
+      }
+    })(),
+
+    // Score history snapshot
+    (async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const historyRows = dreps.map((drep) => ({
+        drep_id: drep.drepId,
+        score: drep.drepScore,
+        effective_participation: drep.effectiveParticipation,
+        rationale_rate: drep.rationaleRate,
+        reliability_score: drep.reliabilityScore,
+        profile_completeness: drep.profileCompleteness,
+        snapshot_date: today,
+      }));
+      const r = await batchUpsert(
+        supabase,
+        'drep_score_history',
+        historyRows as unknown as Record<string, unknown>[],
+        'drep_id,snapshot_date',
+        'Score history',
+      );
+      scoreHistoryInserted = r.success;
+      if (r.success > 0)
+        log.info('[dreps] Score history snapshots', { count: r.success, date: today });
+    })(),
+  ]);
+
+  for (const r of parallelResults) {
+    if (r.status === 'rejected') {
+      const msg = errMsg(r.reason);
+      errors.push(`Parallel: ${msg}`);
+      log.error('[dreps] Parallel step error', { error: msg });
+    }
+  }
+
+  return {
+    alignmentComputed,
+    delegationSnapshotsInserted,
+    scoreHistoryInserted,
+    errors,
+    durationMs: Date.now() - start,
+  };
+}
+
+/**
+ * Phase 5: Finalize sync — write sync_log, emit analytics, trigger deploy.
+ */
+export async function phaseFinalize(
+  syncLogId: number | null,
+  startTime: number,
+  upsertResult: UpsertDRepsResult,
+  handlesResolved: number,
+  allErrors: string[],
+  phaseTiming: Record<string, number>,
+): Promise<Record<string, unknown>> {
+  const supabase = getSupabaseAdmin();
+
+  const totalErrors = upsertResult.errors;
+  const totalRows = upsertResult.success + totalErrors;
+  const errorRate = totalRows > 0 ? totalErrors / totalRows : 0;
+  const finalErrors = [...allErrors];
+
+  if (totalErrors > 0) {
+    finalErrors.push(`Upsert errors: ${totalErrors} dreps (${(errorRate * 100).toFixed(1)}% rate)`);
+  }
+
+  const success = errorRate < 0.05 && finalErrors.length === 0;
+  const elapsed = Date.now() - startTime;
+  const duration = (elapsed / 1000).toFixed(1);
+
+  log.info('[dreps] Sync complete', {
+    durationSeconds: duration,
+    synced: upsertResult.success,
+    issues: finalErrors.length,
+  });
+
+  const metrics = {
+    dreps_synced: upsertResult.success,
+    drep_errors: upsertResult.errors,
+    handles_resolved: handlesResolved,
+    ...phaseTiming,
+    ...getKoiosMetrics(),
+  };
+
+  // Finalize sync_log (write directly to avoid SyncLogger startTime mismatch)
+  if (syncLogId) {
+    try {
+      await supabase
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          duration_ms: elapsed,
+          success,
+          error_message: finalErrors.length > 0 ? capMsg(finalErrors.join('; ')) : null,
+          metrics,
+        })
+        .eq('id', syncLogId);
+    } catch (_e) {
+      log.warn('[dreps] sync_log finalize failed', { error: errMsg(_e) });
+    }
+  }
+
+  await emitPostHog(success, 'dreps', elapsed, metrics);
+  triggerAnalyticsDeploy('dreps');
+
+  return {
+    success,
+    dreps: { synced: upsertResult.success, errors: upsertResult.errors },
+    handlesResolved,
+    durationSeconds: duration,
+    timestamp: new Date().toISOString(),
+  };
+}
+
 /**
  * Core DReps sync logic — callable from both Inngest and the HTTP route.
  * Throws on fatal errors (Inngest retries); returns result on success/degraded.
@@ -51,305 +594,49 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
   await syncLog.start();
   resetKoiosMetrics();
 
-  const syncErrors: string[] = [];
+  const startTime = Date.now();
+  const allErrors: string[] = [];
   const phaseTiming: Record<string, number> = {};
-  let drepResult = { success: 0, errors: 0 };
-  let handlesResolved = 0;
 
   try {
-    // Step 1: Fetch proposals for scoring context (non-fatal)
-    const step1Start = Date.now();
-    let classifiedProposalsList: ClassifiedProposal[] = [];
-    const proposalContextMap = new Map<string, ProposalContext>();
+    // Phase 1: Fetch proposals
+    const proposalResult = await phaseFetchProposals();
+    allErrors.push(...proposalResult.errors);
+    phaseTiming.step1_proposals_ms = proposalResult.durationMs;
 
-    try {
-      const raw = await fetchProposals();
-      const { valid: validRaw, invalidCount } = validateArray(
-        raw,
-        KoiosProposalSchema,
-        'dreps-proposals',
-      );
-      if (invalidCount > 0) {
-        emitPostHog(true, 'dreps', 0, {
-          event_override: 'sync_validation_error',
-          record_type: 'proposal',
-          invalid_count: invalidCount,
-        });
-        alertDiscord(
-          'Validation Errors: dreps',
-          `${invalidCount} proposal records failed Zod validation during DReps sync`,
-        );
-      }
-      if (validRaw.length > 0) {
-        classifiedProposalsList = classifyProposals(validRaw as unknown as ProposalListResponse);
-        for (const p of classifiedProposalsList) {
-          proposalContextMap.set(`${p.txHash}-${p.index}`, {
-            proposalType: p.type,
-            treasuryTier: p.treasuryTier,
-          });
-        }
-      }
-      log.info('[dreps] Proposals fetched and classified', {
-        fetched: raw.length,
-        classified: classifiedProposalsList.length,
-      });
-    } catch (err) {
-      syncErrors.push(`Proposals: ${errMsg(err)}`);
-      log.warn('[dreps] Proposal fetch failed (non-fatal)', { error: errMsg(err) });
-    }
-    phaseTiming.step1_proposals_ms = Date.now() - step1Start;
+    // Phase 2: Fetch + enrich DReps
+    const drepData = await phaseFetchDReps(proposalResult.proposalContextEntries);
+    allErrors.push(...drepData.errors);
+    phaseTiming.step2_enrich_ms = drepData.durationMs;
 
-    // Step 2: Fetch enriched DReps (fatal if no data)
-    const step2Start = Date.now();
-    const result = await getEnrichedDReps(false, {
-      includeRawVotes: true,
-      proposalContextMap: proposalContextMap.size > 0 ? proposalContextMap : undefined,
-    });
+    // Phase 3: Upsert DReps
+    const upsertResult = await phaseUpsertDReps(drepData.dreps, drepData.delegatorCounts);
+    phaseTiming.step4_upsert_ms = upsertResult.durationMs;
 
-    if (result.error || !result.allDReps?.length) {
-      const msg = 'Koios DRep fetch returned no data';
-      syncErrors.push(msg);
-      await syncLog.finalize(false, syncErrors.join('; '), phaseTiming);
-      throw new Error(msg);
-    }
-
-    const allDReps = result.allDReps;
-    const rawVotesMap = result.rawVotesMap as Record<string, DRepVote[]> | undefined;
-    log.info('[dreps] Enriched DReps', { count: allDReps.length });
-    phaseTiming.step2_enrich_ms = Date.now() - step2Start;
-
-    // Step 3: ADA Handle resolution (non-fatal)
-    const step3Start = Date.now();
-    try {
-      const handleMap = await resolveADAHandles(
-        allDReps.map((d) => ({ drepId: d.drepId, drepHash: d.drepHash })),
-      );
-      for (const drep of allDReps) {
-        const handle = handleMap.get(drep.drepId);
-        if (handle) (drep as unknown as Record<string, unknown>).handle = handle;
-      }
-      handlesResolved = handleMap.size;
-      log.info('[dreps] ADA Handles resolved', {
-        resolved: handlesResolved,
-        total: allDReps.length,
-      });
-    } catch (err) {
-      syncErrors.push(`ADA Handles: ${errMsg(err)}`);
-      log.warn('[dreps] ADA Handle resolution failed (non-fatal)', { error: errMsg(err) });
-    }
-    phaseTiming.step3_handles_ms = Date.now() - step3Start;
-
-    // Step 3b: Read existing delegator counts from DB so DRep sync doesn't overwrite with 0
-    const step3bStart = Date.now();
-    const existingDelegatorCounts = new Map<string, number>();
-    try {
-      const { data: existing } = await supabase.from('dreps').select('id, info');
-      for (const row of existing || []) {
-        const info = row.info as Record<string, unknown> | null;
-        const count = (info?.delegatorCount as number) || 0;
-        existingDelegatorCounts.set(row.id, count);
-      }
-      log.info('[dreps] Preserved existing delegator counts', {
-        count: existingDelegatorCounts.size,
-      });
-    } catch (err) {
-      log.warn('[dreps] Could not read existing delegator counts', { error: errMsg(err) });
-    }
-    phaseTiming.step3b_delegators_ms = Date.now() - step3bStart;
-
-    // Step 4: Upsert DReps
-    const step4Start = Date.now();
-    const drepRows: SupabaseDRepRow[] = allDReps.map((drep) => ({
-      id: drep.drepId,
-      metadata: (drep.metadata as Record<string, unknown>) || {},
-      info: {
-        drepHash: drep.drepHash,
-        handle: drep.handle,
-        name: drep.name,
-        ticker: drep.ticker,
-        description: drep.description,
-        votingPower: drep.votingPower,
-        votingPowerLovelace: drep.votingPowerLovelace,
-        delegatorCount: existingDelegatorCounts.get(drep.drepId) ?? 0,
-        totalVotes: drep.totalVotes,
-        yesVotes: drep.yesVotes,
-        noVotes: drep.noVotes,
-        abstainVotes: drep.abstainVotes,
-        isActive: drep.isActive,
-        anchorUrl: drep.anchorUrl,
-        epochVoteCounts: drep.epochVoteCounts,
-      },
-      votes: [],
-      score: drep.drepScore,
-      participation_rate: drep.participationRate,
-      rationale_rate: drep.rationaleRate,
-      reliability_score: drep.reliabilityScore,
-      reliability_streak: drep.reliabilityStreak,
-      reliability_recency: drep.reliabilityRecency,
-      reliability_longest_gap: drep.reliabilityLongestGap,
-      reliability_tenure: drep.reliabilityTenure,
-      deliberation_modifier: drep.deliberationModifier,
-      effective_participation: drep.effectiveParticipation,
-      size_tier: drep.sizeTier,
-      profile_completeness: drep.profileCompleteness,
-      anchor_url: drep.anchorUrl || null,
-      anchor_hash: drep.anchorHash || null,
-    }));
-
-    drepResult = await batchUpsert(
-      supabase,
-      'dreps',
-      drepRows as unknown as Record<string, unknown>[],
-      'id',
-      'DReps',
+    // Phase 4: Post-sync (alignment, snapshots, score history)
+    const postSyncResult = await phasePostSync(
+      drepData.dreps,
+      drepData.rawVotesMap,
+      proposalResult.classifiedProposals,
+      drepData.delegatorCounts,
     );
-    log.info('[dreps] Upserted DReps', { success: drepResult.success, errors: drepResult.errors });
-    phaseTiming.step4_upsert_ms = Date.now() - step4Start;
+    allErrors.push(...postSyncResult.errors);
+    phaseTiming.step56_parallel_ms = postSyncResult.durationMs;
 
-    // Steps 5-6: Alignment scores + Score history (parallel)
-    const step56Start = Date.now();
-    const parallelResults = await Promise.allSettled([
-      // Step 5: Alignment scores
-      (async () => {
-        if (!rawVotesMap || classifiedProposalsList.length === 0) return;
-        const updates = allDReps.map((drep) => {
-          const votes = rawVotesMap![drep.drepId] || [];
-          const scores = computeAllCategoryScores(drep, votes, classifiedProposalsList);
-          return {
-            id: drep.drepId,
-            alignment_treasury_conservative: scores.alignmentTreasuryConservative,
-            alignment_treasury_growth: scores.alignmentTreasuryGrowth,
-            alignment_decentralization: scores.alignmentDecentralization,
-            alignment_security: scores.alignmentSecurity,
-            alignment_innovation: scores.alignmentInnovation,
-            alignment_transparency: scores.alignmentTransparency,
-            last_vote_time: scores.lastVoteTime,
-          };
-        });
-        const r = await batchUpsert(
-          supabase,
-          'dreps',
-          updates as unknown as Record<string, unknown>[],
-          'id',
-          'Alignment',
-        );
-        log.info('[dreps] Alignment scores computed', { count: r.success });
-      })(),
-
-      // Step 5b: Delegation snapshots
-      (async () => {
-        try {
-          const { data: statsRow } = await supabase
-            .from('governance_stats')
-            .select('current_epoch')
-            .eq('id', 1)
-            .single();
-          const epoch = statsRow?.current_epoch ?? 0;
-          if (epoch === 0) return;
-
-          const snapshots = allDReps.map((drep) => ({
-            epoch,
-            drep_id: drep.drepId,
-            delegator_count: existingDelegatorCounts.get(drep.drepId) ?? 0,
-            total_power_lovelace: BigInt(drep.votingPowerLovelace || '0').toString(),
-            snapshot_at: new Date().toISOString(),
-          }));
-
-          let inserted = 0;
-          for (let i = 0; i < snapshots.length; i += 100) {
-            const batch = snapshots.slice(i, i + 100);
-            const { error } = await supabase
-              .from('delegation_snapshots')
-              .upsert(batch as unknown as Record<string, unknown>[], {
-                onConflict: 'epoch,drep_id',
-                ignoreDuplicates: true,
-              });
-            if (!error) inserted += batch.length;
-          }
-          if (inserted > 0) {
-            log.info('[dreps] Delegation snapshots', { inserted, epoch });
-          }
-        } catch (err) {
-          log.warn('[dreps] Delegation snapshot failed (non-fatal)', { error: errMsg(err) });
-        }
-      })(),
-
-      // Step 6: Score history snapshot
-      (async () => {
-        const today = new Date().toISOString().split('T')[0];
-        const historyRows = allDReps.map((drep) => ({
-          drep_id: drep.drepId,
-          score: drep.drepScore,
-          effective_participation: drep.effectiveParticipation,
-          rationale_rate: drep.rationaleRate,
-          reliability_score: drep.reliabilityScore,
-          profile_completeness: drep.profileCompleteness,
-          snapshot_date: today,
-        }));
-        const r = await batchUpsert(
-          supabase,
-          'drep_score_history',
-          historyRows as unknown as Record<string, unknown>[],
-          'drep_id,snapshot_date',
-          'Score history',
-        );
-        if (r.success > 0)
-          log.info('[dreps] Score history snapshots', { count: r.success, date: today });
-      })(),
-    ]);
-
-    for (const r of parallelResults) {
-      if (r.status === 'rejected') {
-        const msg = errMsg(r.reason);
-        syncErrors.push(`Parallel: ${msg}`);
-        log.error('[dreps] Parallel step error', { error: msg });
-      }
-    }
-    phaseTiming.step56_parallel_ms = Date.now() - step56Start;
-
-    // Finalize
-    const totalErrors = drepResult.errors;
-    const totalRows = drepResult.success + totalErrors;
-    const errorRate = totalRows > 0 ? totalErrors / totalRows : 0;
-    const success = errorRate < 0.05 && syncErrors.length === 0;
-
-    if (totalErrors > 0) {
-      syncErrors.push(
-        `Upsert errors: ${totalErrors} dreps (${(errorRate * 100).toFixed(1)}% rate)`,
-      );
-    }
-
-    const duration = (syncLog.elapsed / 1000).toFixed(1);
-    log.info('[dreps] Sync complete', {
-      durationSeconds: duration,
-      synced: drepResult.success,
-      issues: syncErrors.length,
-    });
-
-    const metrics = {
-      dreps_synced: drepResult.success,
-      drep_errors: drepResult.errors,
-      handles_resolved: handlesResolved,
-      ...phaseTiming,
-      ...getKoiosMetrics(),
-    };
-
-    await syncLog.finalize(success, syncErrors.length > 0 ? syncErrors.join('; ') : null, metrics);
-    await emitPostHog(success, 'dreps', syncLog.elapsed, metrics);
-    triggerAnalyticsDeploy('dreps');
-
-    return {
-      success,
-      dreps: { synced: drepResult.success, errors: drepResult.errors },
-      handlesResolved,
-      durationSeconds: duration,
-      timestamp: new Date().toISOString(),
-    };
+    // Phase 5: Finalize
+    return await phaseFinalize(
+      syncLog.id,
+      startTime,
+      upsertResult,
+      drepData.handlesResolved,
+      allErrors,
+      phaseTiming,
+    );
   } catch (outerErr) {
     const msg = errMsg(outerErr);
-    syncErrors.push(`Fatal: ${msg}`);
+    allErrors.push(`Fatal: ${msg}`);
     log.error('[dreps] Fatal error', { error: msg });
-    await syncLog.finalize(false, syncErrors.join('; '), phaseTiming);
+    await syncLog.finalize(false, allErrors.join('; '), phaseTiming);
     throw outerErr;
   }
 }

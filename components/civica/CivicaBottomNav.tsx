@@ -40,9 +40,11 @@ export function CivicaBottomNav() {
               href={href}
               className={cn(
                 'relative flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] px-2 transition-colors [touch-action:manipulation]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
                 active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
               )}
               aria-current={active ? 'page' : undefined}
+              aria-label={label}
             >
               <div className="relative inline-flex">
                 <Icon className="h-5 w-5" />

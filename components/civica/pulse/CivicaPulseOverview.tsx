@@ -109,14 +109,16 @@ function StatCard({
       href={href as string}
       className={cn(
         'rounded-xl border border-border bg-card p-4 space-y-2 transition-colors',
-        href && 'hover:border-primary/30 cursor-pointer group',
+        href &&
+          'hover:border-primary/30 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
       )}
+      {...(href ? { 'aria-label': `${label}: ${value}${sub ? `, ${sub}` : ''}` } : {})}
     >
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
           {label}
         </p>
-        <Icon className={cn('h-4 w-4', accentClass)} />
+        <Icon className={cn('h-4 w-4', accentClass)} aria-hidden="true" />
       </div>
       <div className={cn('font-display text-3xl font-bold leading-none tabular-nums', accentClass)}>
         {value}
@@ -197,13 +199,21 @@ export function CivicaPulseOverview() {
         message="The big picture. How healthy is Cardano governance right now? Track participation, treasury, and trends over time."
       />
       {/* ── Tab bar ─────────────────────────────────────────── */}
-      <div className="flex gap-1 border-b border-border -mb-2 overflow-x-auto">
+      <div
+        className="flex gap-1 border-b border-border -mb-2 overflow-x-auto"
+        role="tablist"
+        aria-label="Pulse view"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`pulse-tabpanel-${tab.id}`}
             className={cn(
               'px-4 py-2 text-sm font-medium shrink-0 border-b-2 transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
               activeTab === tab.id
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -214,11 +224,15 @@ export function CivicaPulseOverview() {
         ))}
       </div>
 
-      {activeTab === 'observatory' && <CivicaObservatory />}
+      {activeTab === 'observatory' && (
+        <div role="tabpanel" id="pulse-tabpanel-observatory" aria-label="Observatory">
+          <CivicaObservatory />
+        </div>
+      )}
 
       {/* ── History tab: epoch report + trends + calendar ───── */}
       {activeTab === 'history' && (
-        <div className="space-y-8">
+        <div className="space-y-8" role="tabpanel" id="pulse-tabpanel-history" aria-label="History">
           <CivicaEpochReport />
           <CivicaGovernanceTrends />
           <CivicaGovernanceCalendar />
@@ -227,7 +241,7 @@ export function CivicaPulseOverview() {
 
       {/* ── Now tab ─────────────────────────────────────────── */}
       {activeTab === 'now' && (
-        <>
+        <div role="tabpanel" id="pulse-tabpanel-now" aria-label="Now">
           {/* ── State of Governance narrative ───────────────────── */}
           <StateOfGovernance />
 
@@ -574,7 +588,7 @@ export function CivicaPulseOverview() {
               </Link>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

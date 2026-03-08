@@ -3,7 +3,7 @@
  * Generation, hashing, validation against Supabase api_keys table.
  */
 
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 const KEY_PREFIX = 'ds_live_';
@@ -60,6 +60,18 @@ export async function validateApiKey(rawKey: string): Promise<KeyValidationResul
     .single();
 
   if (error || !row) {
+    return { valid: false, errorCode: 'invalid_api_key' };
+  }
+
+  // Defense-in-depth: constant-time comparison of the computed hash against
+  // the stored hash. The DB lookup by hash already matched, but this prevents
+  // any theoretical timing side-channel from the database query layer.
+  const storedHashBuf = Buffer.from(row.key_hash as string, 'hex');
+  const computedHashBuf = Buffer.from(hash, 'hex');
+  if (
+    storedHashBuf.length !== computedHashBuf.length ||
+    !timingSafeEqual(storedHashBuf, computedHashBuf)
+  ) {
     return { valid: false, errorCode: 'invalid_api_key' };
   }
 

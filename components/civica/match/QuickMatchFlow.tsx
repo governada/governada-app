@@ -392,6 +392,7 @@ function IntroScreen({
           aria-checked={matchType === 'drep'}
           className={cn(
             'px-4 py-1.5 rounded-md text-sm font-medium transition-all',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
             matchType === 'drep'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
@@ -406,6 +407,7 @@ function IntroScreen({
           aria-checked={matchType === 'spo'}
           className={cn(
             'px-4 py-1.5 rounded-md text-sm font-medium transition-all',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
             matchType === 'spo'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
@@ -425,7 +427,7 @@ function IntroScreen({
       {storedProfile && (
         <button
           onClick={onViewPrevious}
-          className="flex items-center gap-2 mx-auto text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2 mx-auto text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
         >
           <History className="h-4 w-4" />
           View your previous {storedProfile.matchType === 'spo' ? 'SPO' : 'DRep'} match results
@@ -464,10 +466,12 @@ function QuestionScreen({
               key={opt.value}
               onClick={() => !selected && onSelect(opt.value)}
               disabled={!!selected}
+              aria-label={`${opt.label}: ${opt.description}`}
+              aria-pressed={isSelected}
               className={cn(
                 'w-full text-left rounded-xl border p-4 sm:p-5 transition-all duration-200',
                 'hover:border-primary/50 hover:bg-primary/5',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                 isSelected
                   ? 'border-primary bg-primary/10 scale-[0.98]'
                   : selected
@@ -483,6 +487,7 @@ function QuestionScreen({
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground',
                   )}
+                  aria-hidden="true"
                 >
                   <Icon className="h-5 w-5" />
                 </div>
@@ -635,11 +640,14 @@ function QuickMatchResultCard({
     : `/drep/${encodeURIComponent(match.drepId)}`;
 
   return (
-    <Card className="overflow-hidden hover:border-primary/30 transition-colors">
+    <Card
+      className="overflow-hidden hover:border-primary/30 transition-colors"
+      aria-label={`Rank ${rank}: ${displayName}, ${match.matchScore}% match`}
+    >
       <CardContent className="p-4">
         <div className="flex gap-4">
           {/* Radar overlay (desktop) */}
-          <div className="hidden sm:block shrink-0">
+          <div className="hidden sm:block shrink-0" aria-hidden="true">
             <RadarOverlay
               userAlignments={userAlignments}
               drepAlignments={match.alignments}

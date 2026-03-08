@@ -51,8 +51,10 @@ export function ConcernFlagBanner({ txHash, proposalIndex, outcome }: ConcernFla
         'rounded-lg border px-4 py-3 flex items-start gap-3',
         isNegativeOutcome ? 'bg-amber-500/5 border-amber-500/20' : 'bg-muted/50 border-border',
       )}
+      role="alert"
+      aria-label={`Community concern: ${topCount} citizens flagged this as ${topLabel}`}
     >
-      <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+      <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
       <div className="min-w-0 text-sm">
         <p className="text-foreground">
           <span className="font-semibold tabular-nums">{topCount}</span> citizens flagged this as{' '}

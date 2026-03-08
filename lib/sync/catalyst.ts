@@ -20,7 +20,11 @@ import {
   type CatalystProposal,
   type CatalystCampaign,
   type CatalystTeamMember,
+  type CatalystFund,
 } from '@/utils/catalyst';
+
+/** Maximum error rate (proportion) before marking sync as failed */
+const MAX_ERROR_RATE = 0.05;
 
 // ---------------------------------------------------------------------------
 // 1. Sync Funds
@@ -37,20 +41,7 @@ export async function syncCatalystFunds(): Promise<{
 
   try {
     const funds = await fetchCatalystFunds();
-    const rows = funds.map((f) => ({
-      id: f.id,
-      title: f.title,
-      slug: f.slug,
-      status: f.status,
-      currency: f.currency,
-      currency_symbol: f.currency_symbol,
-      amount: f.amount,
-      launched_at: f.launched_at,
-      awarded_at: f.awarded_at,
-      hero_img_url: f.hero_img_url,
-      banner_img_url: f.banner_img_url,
-      synced_at: new Date().toISOString(),
-    }));
+    const rows = funds.map(toFundRow);
 
     const result = await batchUpsert(supabase, 'catalyst_funds', rows, 'id', 'catalyst_funds');
     if (result.errors > 0) errors.push(`${result.errors} fund upsert errors`);
@@ -91,9 +82,12 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
   let teamLinksStored = 0;
 
   // Deduplicate campaigns and team members across pages
-  const seenCampaigns = new Map<string, CatalystCampaign>();
+  // Campaign map stores [campaign, fund_id] to populate the FK
+  const seenCampaigns = new Map<string, { campaign: CatalystCampaign; fundId: string | null }>();
   const seenTeamMembers = new Map<string, CatalystTeamMember>();
   const teamLinks: Array<{ proposal_id: string; team_member_id: string }> = [];
+  let totalRecords = 0;
+  let totalCampaignsAttempted = 0;
 
   try {
     // Ensure funds exist first (for FK references)
@@ -109,10 +103,15 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
     for await (const proposals of fetchAllCatalystProposals(fundId)) {
       pageCount++;
 
-      // Extract campaigns from this page
+      totalRecords += proposals.length;
+
+      // Extract campaigns from this page (with fund_id derived from proposal)
       for (const p of proposals) {
         if (p.campaign) {
-          seenCampaigns.set(p.campaign.id, p.campaign);
+          seenCampaigns.set(p.campaign.id, {
+            campaign: p.campaign,
+            fundId: p.fund?.id ?? null,
+          });
         }
         // Extract team members and build junction links
         if (p.team) {
@@ -125,6 +124,7 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
 
       // Flush campaigns before proposals to satisfy FK constraint
       if (seenCampaigns.size > 0) {
+        totalCampaignsAttempted += seenCampaigns.size;
         const campaignResult = await flushCampaigns(supabase, seenCampaigns);
         campaignsStored += campaignResult;
         seenCampaigns.clear();
@@ -149,6 +149,7 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
 
     // Flush remaining campaigns
     if (seenCampaigns.size > 0) {
+      totalCampaignsAttempted += seenCampaigns.size;
       campaignsStored += await flushCampaigns(supabase, seenCampaigns);
     }
 
@@ -179,14 +180,31 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
       if (linkResult.errors > 0) errors.push(`${linkResult.errors} team link errors`);
     }
 
-    // Mark as success if we stored any proposals — partial errors are tolerable
-    const isSuccess = proposalsStored > 0 && errors.length < pageCount;
+    // Tighten success criteria: require < 5% error rate across all record types
+    const totalAttempted =
+      totalRecords + seenTeamMembers.size + teamLinks.length + totalCampaignsAttempted;
+    const totalStored = proposalsStored + teamMembersStored + teamLinksStored + campaignsStored;
+    const errorCount = totalAttempted > 0 ? totalAttempted - totalStored : 0;
+    const errorRate = totalAttempted > 0 ? errorCount / totalAttempted : 0;
+    const isSuccess = proposalsStored > 0 && errorRate < MAX_ERROR_RATE;
+
+    if (errorRate >= MAX_ERROR_RATE) {
+      logger.warn('[catalyst] Error rate exceeded threshold', {
+        errorRate: `${(errorRate * 100).toFixed(1)}%`,
+        threshold: `${(MAX_ERROR_RATE * 100).toFixed(0)}%`,
+        totalAttempted,
+        totalStored,
+        errorCount,
+      });
+    }
+
     await syncLog.finalize(isSuccess, errors.length > 0 ? errors.join('; ') : null, {
       proposals_stored: proposalsStored,
       campaigns_stored: campaignsStored,
       team_members_stored: teamMembersStored,
       team_links_stored: teamLinksStored,
       pages: pageCount,
+      error_rate: `${(errorRate * 100).toFixed(1)}%`,
     });
 
     logger.info('[catalyst] Sync complete', {
@@ -209,6 +227,26 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function toFundRow(f: CatalystFund) {
+  return {
+    id: f.id,
+    title: f.title,
+    slug: f.slug ?? null,
+    status: f.status ?? null,
+    currency: f.currency ?? null,
+    currency_symbol: f.currency_symbol ?? null,
+    amount: f.amount ?? null,
+    launched_at: f.launched_at,
+    awarded_at: f.awarded_at,
+    hero_img_url: f.hero_img_url,
+    banner_img_url: f.banner_img_url,
+    proposals_count: f.proposals_count ?? null,
+    funded_count: f.funded_proposals_count ?? null,
+    completed_count: f.completed_proposals_count ?? null,
+    synced_at: new Date().toISOString(),
+  };
+}
 
 function toProposalRow(p: CatalystProposal) {
   return {
@@ -233,13 +271,13 @@ function toProposalRow(p: CatalystProposal) {
     feasibility_score: p.feasibility_score,
     auditability_score: p.auditability_score,
     website: p.website,
-    opensource: p.opensource,
+    opensource: p.opensource ?? false,
     project_length: p.project_length,
     funded_at: p.funded_at,
     link: p.link,
     chain_proposal_id: p.chain_proposal_id,
     chain_proposal_index: p.chain_proposal_index,
-    ideascale_id: p.ideascale_id ? String(p.ideascale_id) : null,
+    ideascale_id: p.ideascale_id != null ? String(p.ideascale_id) : null,
     unique_wallets: p.unique_wallets,
     yes_wallets: p.yes_wallets,
     no_wallets: p.no_wallets,
@@ -250,33 +288,34 @@ function toProposalRow(p: CatalystProposal) {
 function toTeamMemberRow(m: CatalystTeamMember) {
   return {
     id: m.id,
-    username: m.username,
-    name: m.name,
-    bio: m.bio,
-    twitter: m.twitter,
-    linkedin: m.linkedin,
-    discord: m.discord,
-    ideascale: m.ideascale,
-    telegram: m.telegram,
-    hero_img_url: m.hero_img_url,
-    submitted_proposals: m.submitted_proposals,
-    funded_proposals: m.funded_proposals,
-    completed_proposals: m.completed_proposals,
+    username: m.username ?? null,
+    name: m.name ?? null,
+    bio: m.bio ?? null,
+    twitter: m.twitter ?? null,
+    linkedin: m.linkedin ?? null,
+    discord: m.discord ?? null,
+    ideascale: m.ideascale ?? null,
+    telegram: m.telegram ?? null,
+    hero_img_url: m.hero_img_url ?? null,
+    submitted_proposals: m.submitted_proposals ?? null,
+    funded_proposals: m.funded_proposals ?? null,
+    completed_proposals: m.completed_proposals ?? null,
     synced_at: new Date().toISOString(),
   };
 }
 
 async function flushCampaigns(
   supabase: ReturnType<typeof getSupabaseAdmin>,
-  campaigns: Map<string, CatalystCampaign>,
+  campaigns: Map<string, { campaign: CatalystCampaign; fundId: string | null }>,
 ): Promise<number> {
   if (campaigns.size === 0) return 0;
-  const rows = Array.from(campaigns.values()).map((c) => ({
+  const rows = Array.from(campaigns.values()).map(({ campaign: c, fundId }) => ({
     id: c.id,
     title: c.title,
-    slug: c.slug,
-    excerpt: c.excerpt,
-    amount: c.amount,
+    slug: c.slug ?? null,
+    excerpt: c.excerpt ?? null,
+    amount: c.amount ?? null,
+    fund_id: fundId,
     launched_at: c.launched_at,
     awarded_at: c.awarded_at,
     synced_at: new Date().toISOString(),

@@ -10,15 +10,15 @@
 ## Step 0: Governance Intelligence Engine [COMPLETE]
 
 - [x] DRep Score V3 (4-pillar: EQ 35%, EP 25%, R 25%, GI 15%) | `lib/scoring/drepScore.ts`
-- [x] Percentile normalization | `lib/scoring/percentileNormalization.ts`
-- [x] Momentum tracking | `lib/scoring/momentum.ts`
+- [x] Percentile normalization | `lib/scoring/percentile.ts`
+- [x] Momentum tracking | inline in `lib/scoring/drepScore.ts`
 - [x] 6D PCA alignment system | `lib/alignment/`
 - [x] AI proposal classification | `lib/alignment/classifyProposal.ts`
 - [x] GHI with 6 components + 7 EDI metrics | `lib/ghi/`
-- [x] Daily score snapshots | table: `drep_score_snapshots`
+- [x] Daily score snapshots | table: `drep_score_history`
 - [x] Daily alignment snapshots | table: `alignment_snapshots`
 - [x] Daily GHI snapshots | table: `ghi_snapshots`
-- [x] Daily EDI snapshots | table: `edi_snapshots`
+- [x] Daily EDI snapshots | table: `decentralization_snapshots`
 - verify: `GET /api/v1/drep-scores` returns scored DReps
 
 ## Step 1: Matching & Personalization [COMPLETE]
@@ -27,7 +27,7 @@
 - [x] User governance profiles | table: `user_governance_profiles`
 - [x] Dimension-level agreement | `lib/matching/dimensionAgreement.ts`
 - [x] Persona-agnostic matching (`match_type` param) | `lib/matching/`
-- verify: `GET /api/governance/match` returns matched DReps
+- verify: `POST /api/governance/quick-match` returns matched DReps
 
 ## Step 2: Cross-Body Intelligence [COMPLETE]
 
@@ -44,7 +44,7 @@
 - [x] SPO 4-pillar scoring | `lib/scoring/spoScore.ts`
 - [x] SPO 6D alignment | `lib/alignment/`
 - [x] SPO matching | `lib/matching/`
-- [x] CC Transparency Index | `lib/scoring/ccTransparencyIndex.ts`
+- [x] CC Transparency Index | `lib/scoring/ccTransparency.ts`
 - [x] SPO score snapshots | table: `spo_score_snapshots`
 - [x] SPO alignment snapshots | table: `spo_alignment_snapshots`
 - verify: `GET /api/v1/spo-scores` returns scored SPOs
@@ -54,11 +54,11 @@
 - [x] 33+ page routes | `app/`
 - [x] 269+ components | `components/`
 - [x] 145+ API endpoints | `app/api/`
-- [x] 24 Inngest sync functions | `inngest/functions/`
+- [x] 36 Inngest sync functions | `inngest/functions/`
 - [x] 75+ database tables
 - [x] Persona-aware homes (HomeCitizen, HomeDRep, HomeSPO) | `components/civica/home/`
 - [x] Discover (DRep/SPO/proposal browse) | `app/discover/`
-- [x] DRep/SPO/CC profiles | `app/drep/`, `app/spo/`, `app/committee/`
+- [x] DRep/SPO/CC profiles | `app/drep/`, `app/pool/[poolId]`, `app/committee/`
 - [x] Pulse observatory | `app/pulse/`
 - [x] My Gov command centers | `app/my-gov/`
 - [x] Admin dashboard | `app/admin/`
@@ -108,7 +108,7 @@
 - [x] Engagement -> score feedback loop (WP-7) | PR #161
 - [x] Inter-body dynamics narrative (WP-8) | PR #161
 - [x] Engagement integrity (anti-spam + quorum) | PR #169
-- [ ] Citizen Endorsements (7th mechanism) | deferred
+- [x] Citizen Endorsements (7th mechanism) | `components/engagement/CitizenEndorsements.tsx`, `app/api/engagement/endorsements/`
 - verify: `/engage` page loads, sentiment voting works
 
 ## Step 7: Viral Growth [PARTIALLY COMPLETE]
@@ -167,7 +167,7 @@ Tracked in `docs/strategy/world-class-packages.md`. 13 QPs targeting 84->95+ sco
 | QP-7/8   | Animation + onboarding education | SHIPPED (PR #168) |
 | QP-9     | Civic identity elevation         | SHIPPED (PR #170) |
 | QP-10/11 | Engagement feedback + integrity  | SHIPPED (PR #169) |
-| QP-12    | Citizen endorsements             | NOT STARTED       |
+| QP-12    | Citizen endorsements             | SHIPPED           |
 | QP-13    | Load testing + performance       | NOT STARTED       |
 
 ---

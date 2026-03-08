@@ -42,12 +42,6 @@ export default async function DiscoverPage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6">
       <PageViewTracker event="discover_page_viewed" />
-      <div className="space-y-1 mb-5">
-        <h1 className="text-2xl font-bold tracking-tight">Discover</h1>
-        <p className="text-sm text-muted-foreground">
-          Browse DReps, stake pools, proposals, and Constitutional Committee members.
-        </p>
-      </div>
       <CivicaDiscover
         dreps={allDReps}
         totalAvailable={totalAvailable}

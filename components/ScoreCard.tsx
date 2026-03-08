@@ -72,7 +72,8 @@ export function ScoreCard({
             <CardTitle>DRep Score</CardTitle>
             <div
               className="flex items-center gap-1"
-              title={`${pillarStatuses.filter((s) => s === 'strong').length} of 4 pillars at Strong`}
+              role="group"
+              aria-label={`${pillarStatuses.filter((s) => s === 'strong').length} of 4 pillars at Strong`}
             >
               {pillarStatuses.map((s, i) => (
                 <span
@@ -84,6 +85,8 @@ export function ScoreCard({
                         ? 'bg-amber-500'
                         : 'bg-red-500'
                   }`}
+                  role="img"
+                  aria-label={`Pillar ${i + 1}: ${s === 'strong' ? 'Strong' : s === 'needs-work' ? 'Needs work' : 'Weak'}`}
                 />
               ))}
             </div>

@@ -21,14 +21,20 @@ export interface CatalystFund {
   id: string;
   title: string;
   slug: string;
-  status: string;
-  currency: string;
-  currency_symbol: string;
-  amount: number;
+  label: string | null;
+  description: string | null;
+  status: string | null;
+  currency: string | null;
+  currency_symbol: string | null;
+  amount: number | null;
   launched_at: string | null;
   awarded_at: string | null;
+  assessment_started_at: string | null;
   hero_img_url: string | null;
   banner_img_url: string | null;
+  proposals_count: number | null;
+  funded_proposals_count: number | null;
+  completed_proposals_count: number | null;
 }
 
 export interface CatalystCampaign {
@@ -39,6 +45,8 @@ export interface CatalystCampaign {
   amount: number | null;
   launched_at: string | null;
   awarded_at: string | null;
+  color: string | null;
+  label: string | null;
 }
 
 export interface CatalystTeamMember {
@@ -52,9 +60,9 @@ export interface CatalystTeamMember {
   ideascale: string | null;
   telegram: string | null;
   hero_img_url: string | null;
-  submitted_proposals: number;
-  funded_proposals: number;
-  completed_proposals: number;
+  submitted_proposals: number | null;
+  funded_proposals: number | null;
+  completed_proposals: number | null;
 }
 
 export interface CatalystProposal {
@@ -77,13 +85,13 @@ export interface CatalystProposal {
   feasibility_score: number | null;
   auditability_score: number | null;
   website: string | null;
-  opensource: boolean;
+  opensource: boolean | null;
   project_length: string | null;
   funded_at: string | null;
   link: string | null;
   chain_proposal_id: string | null;
   chain_proposal_index: number | null;
-  ideascale_id: string | null;
+  ideascale_id: string | number | null;
   unique_wallets: number | null;
   yes_wallets: number | null;
   no_wallets: number | null;

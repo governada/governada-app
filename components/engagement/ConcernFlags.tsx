@@ -142,11 +142,11 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
   });
 
   return (
-    <Card>
+    <Card aria-label="Citizen concerns about this proposal">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden="true" />
             Citizen Concerns
             {totalFlags > 0 && (
               <Badge variant="secondary" className="text-xs">
@@ -209,6 +209,7 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
                 className={`
                   inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
                   transition-all duration-150 border
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
                   ${
                     isUserFlag
                       ? 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300'

@@ -60,9 +60,11 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
   return (
     <Link
       href={`/drep/${drep.drepId}`}
+      aria-label={`${displayName}, DRep score ${score}, ${tier} tier${matchScore != null ? `, ${matchScore}% match` : ''}`}
       className={cn(
         'group relative flex flex-col rounded-xl border p-4 transition-all duration-200',
         'hover:shadow-lg hover:-translate-y-0.5',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         TIER_BG[tier],
         TIER_BORDER[tier],
         TIER_GLOW[tier],
@@ -193,12 +195,19 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
         </span>
         <span className="flex items-center gap-0.5">
           {momentum !== null && momentum > 0.5 ? (
-            <TrendingUp className="h-3 w-3 text-emerald-400" />
+            <TrendingUp className="h-3 w-3 text-emerald-400" aria-hidden="true" />
           ) : momentum !== null && momentum < -0.5 ? (
-            <TrendingDown className="h-3 w-3 text-rose-400" />
+            <TrendingDown className="h-3 w-3 text-rose-400" aria-hidden="true" />
           ) : (
-            <Minus className="h-3 w-3 text-muted-foreground" />
+            <Minus className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
           )}
+          <span className="sr-only">
+            {momentum !== null && momentum > 0.5
+              ? 'Trending up'
+              : momentum !== null && momentum < -0.5
+                ? 'Trending down'
+                : 'Stable'}
+          </span>
         </span>
       </div>
 

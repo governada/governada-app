@@ -73,27 +73,42 @@ export function ShareModal({
 
           {/* Action buttons */}
           <div className="flex gap-2">
-            <Button variant="default" className="flex-1 gap-2" onClick={handleShareX}>
-              <Share2 className="h-4 w-4" />
+            <Button
+              variant="default"
+              className="flex-1 gap-2"
+              onClick={handleShareX}
+              aria-label="Share on X (Twitter)"
+            >
+              <Share2 className="h-4 w-4" aria-hidden="true" />
               Share on X
             </Button>
 
-            <Button variant="outline" className="flex-1 gap-2" onClick={handleCopy}>
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={handleCopy}
+              aria-label={copied ? 'Link copied' : 'Copy share link'}
+            >
               {copied ? (
                 <>
-                  <Check className="h-4 w-4 text-green-500" />
+                  <Check className="h-4 w-4 text-green-500" aria-hidden="true" />
                   Copied!
                 </>
               ) : (
                 <>
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-4 w-4" aria-hidden="true" />
                   Copy link
                 </>
               )}
             </Button>
 
-            <Button variant="outline" size="icon" onClick={handleDownload} aria-label="Download">
-              <Download className="h-4 w-4" />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleDownload}
+              aria-label="Download share image"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
 

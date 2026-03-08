@@ -20,8 +20,16 @@ export function ScoreRing({ score, size = 140, strokeWidth = 10 }: ScoreRingProp
   const { stroke, label } = getTierColor(score);
 
   return (
-    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
+    <div
+      className="relative flex-shrink-0"
+      style={{ width: size, height: size }}
+      role="meter"
+      aria-valuenow={score}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`Score: ${score} out of 100, ${label}`}
+    >
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         {/* Background track */}
         <circle
           cx={size / 2}

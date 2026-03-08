@@ -216,7 +216,9 @@ export async function getDRepOutcomeSummary(drepId: string): Promise<DRepOutcome
 // ---------------------------------------------------------------------------
 
 /**
- * Compute and upsert outcomes for all enacted treasury proposals.
+ * Compute and upsert outcomes for all proposals that reached terminal states.
+ * Handles enacted treasury proposals (with poll-based scoring) AND all other
+ * proposals that are ratified, expired, or dropped (lifecycle-based status).
  * Called by the track-proposal-outcomes Inngest function.
  */
 export async function computeAllProposalOutcomes(): Promise<{
@@ -226,21 +228,21 @@ export async function computeAllProposalOutcomes(): Promise<{
   const supabase = getSupabaseAdmin();
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
-  // Get all enacted treasury proposals
-  const { data: enacted, error } = await supabase
+  // ── 1. Enacted treasury proposals (poll-based scoring) ──────────────────
+  const { data: enacted, error: enactedErr } = await supabase
     .from('proposals')
     .select('tx_hash, proposal_index, enacted_epoch, treasury_tier')
     .eq('proposal_type', 'TreasuryWithdrawals')
     .not('enacted_epoch', 'is', null);
 
-  if (error || !enacted) {
-    logger.error('[ProposalOutcomes] Failed to fetch enacted proposals', { error });
-    return { evaluated: 0, updated: 0 };
+  if (enactedErr) {
+    logger.error('[ProposalOutcomes] Failed to fetch enacted proposals', { error: enactedErr });
   }
 
   let updated = 0;
+  const enactedList = enacted ?? [];
 
-  for (const proposal of enacted) {
+  for (const proposal of enactedList) {
     const outcome = await computeOutcomeForProposal(
       supabase,
       proposal.tx_hash,
@@ -273,7 +275,66 @@ export async function computeAllProposalOutcomes(): Promise<{
     }
   }
 
-  return { evaluated: enacted.length, updated };
+  // ── 2. All other terminal-state proposals (lifecycle-based) ─────────────
+  // Ratified, expired, dropped, or enacted non-treasury proposals that don't
+  // have accountability polls. Create outcome rows so the table reflects the
+  // full governance lifecycle.
+  const enactedKeys = new Set(enactedList.map((p) => `${p.tx_hash}|${p.proposal_index}`));
+
+  const { data: terminal, error: terminalErr } = await supabase
+    .from('proposals')
+    .select('tx_hash, proposal_index, ratified_epoch, expired_epoch, enacted_epoch, dropped_epoch')
+    .or(
+      'ratified_epoch.not.is.null,expired_epoch.not.is.null,enacted_epoch.not.is.null,dropped_epoch.not.is.null',
+    );
+
+  if (terminalErr) {
+    logger.error('[ProposalOutcomes] Failed to fetch terminal proposals', { error: terminalErr });
+  }
+
+  const terminalList = terminal ?? [];
+  let terminalUpdated = 0;
+
+  for (const p of terminalList) {
+    // Skip enacted treasury proposals — already handled above with poll data
+    if (enactedKeys.has(`${p.tx_hash}|${p.proposal_index}`)) continue;
+
+    const status = deriveLifecycleStatus(p);
+
+    const { error: upsertErr } = await supabase.from('proposal_outcomes').upsert(
+      {
+        proposal_tx_hash: p.tx_hash,
+        proposal_index: p.proposal_index,
+        delivery_status: status,
+        delivery_score: null,
+        total_poll_responses: 0,
+        delivered_count: 0,
+        partial_count: 0,
+        not_delivered_count: 0,
+        too_early_count: 0,
+        would_approve_again_pct: null,
+        enacted_epoch: p.enacted_epoch,
+        last_evaluated_epoch: currentEpoch,
+        epochs_since_enactment: p.enacted_epoch ? currentEpoch - p.enacted_epoch : null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'proposal_tx_hash,proposal_index' },
+    );
+
+    if (!upsertErr) terminalUpdated++;
+  }
+
+  const totalEvaluated = enactedList.length + terminalList.length - enactedKeys.size;
+  const totalUpdated = updated + terminalUpdated;
+
+  logger.info('[ProposalOutcomes] Outcomes computed', {
+    enactedTreasury: enactedList.length,
+    enactedTreasuryUpdated: updated,
+    terminalLifecycle: terminalList.length - enactedKeys.size,
+    terminalLifecycleUpdated: terminalUpdated,
+  });
+
+  return { evaluated: totalEvaluated, updated: totalUpdated };
 }
 
 async function computeOutcomeForProposal(
@@ -359,6 +420,23 @@ async function computeOutcomeForProposal(
     tooEarlyCount,
     wouldApproveAgainPct,
   };
+}
+
+/**
+ * Derive a delivery status from proposal lifecycle fields (no poll data needed).
+ * Used for non-treasury proposals and proposals without accountability polls.
+ */
+function deriveLifecycleStatus(p: {
+  enacted_epoch: number | null;
+  ratified_epoch: number | null;
+  expired_epoch: number | null;
+  dropped_epoch: number | null;
+}): DeliveryStatus {
+  if (p.enacted_epoch) return 'delivered';
+  if (p.ratified_epoch) return 'in_progress';
+  if (p.dropped_epoch) return 'not_delivered';
+  if (p.expired_epoch) return 'not_delivered';
+  return 'unknown';
 }
 
 /**

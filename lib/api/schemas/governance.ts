@@ -8,6 +8,7 @@ export const ProposalExplainSchema = z.object({
 
 export const RationaleDraftSchema = z.object({
   drepId: DrepIdSchema,
+  voterRole: z.enum(['drep', 'spo']).optional().default('drep'),
   proposalTitle: z.string().min(1, 'proposalTitle is required').max(500),
   proposalAbstract: z.string().max(5000).optional(),
   proposalType: z.string().max(200).optional(),

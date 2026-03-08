@@ -7,6 +7,7 @@
  */
 
 import { MeshTxBuilder, KoiosProvider, BrowserWallet } from '@meshsdk/core';
+import { poolBech32ToKeyHash } from '@/utils/drepId';
 
 const KOIOS_BASE = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
 
@@ -223,10 +224,15 @@ export async function castVote(
     }
 
     // Build voter object based on role
+    // SPO credentials: convert bech32 pool ID (pool1...) to hex key hash
+    const poolKeyHash =
+      role === 'spo' && credentialId.startsWith('pool')
+        ? poolBech32ToKeyHash(credentialId)
+        : credentialId;
     const voter =
       role === 'drep'
         ? { type: 'DRep' as const, drepId: credentialId }
-        : { type: 'StakingPool' as const, keyHash: credentialId };
+        : { type: 'StakingPool' as const, keyHash: poolKeyHash };
 
     // Build voting procedure
     const votingProcedure: {

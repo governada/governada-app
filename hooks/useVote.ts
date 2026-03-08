@@ -26,16 +26,17 @@ export type VotePhase =
   | { status: 'error'; code: string; message: string; hint: string };
 
 export function useVote() {
-  const { wallet, walletName, connected, ownDRepId } = useWallet();
+  const { wallet, walletName, connected } = useWallet();
   const [phase, setPhase] = useState<VotePhase>({ status: 'idle' });
   const preflightRef = useRef<VotePreflight | null>(null);
   const targetRef = useRef<VoteTarget | null>(null);
 
   /**
    * Step 1: Run preflight checks and move to confirmation state.
+   * @param credentialId - DRep bech32 ID or SPO bech32 pool ID
    */
   const startVote = useCallback(
-    async (target: VoteTarget, role: VoterRole = 'drep') => {
+    async (target: VoteTarget, role: VoterRole = 'drep', credentialId?: string | null) => {
       if (!wallet || !connected) {
         setPhase({
           status: 'error',
@@ -46,8 +47,6 @@ export function useVote() {
         return;
       }
 
-      // Resolve credential based on role
-      const credentialId = role === 'drep' ? ownDRepId : null;
       if (!credentialId) {
         setPhase({
           status: 'error',
@@ -94,7 +93,7 @@ export function useVote() {
         }
       }
     },
-    [wallet, walletName, connected, ownDRepId],
+    [wallet, walletName, connected],
   );
 
   /**
@@ -198,6 +197,5 @@ export function useVote() {
     confirmVote,
     reset,
     isProcessing,
-    canVote: connected && !!wallet && !!ownDRepId,
   };
 }

@@ -478,3 +478,11 @@ export function useSPOPoolCompetitive(poolId: string | null | undefined) {
     staleTime: 60_000,
   });
 }
+
+export function useSPOUrgent(poolId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['spo-urgent', poolId],
+    queryFn: () => fetchJson(`/api/dashboard/spo-urgent?poolId=${encodeURIComponent(poolId!)}`),
+    enabled: !!poolId,
+  });
+}

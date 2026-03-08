@@ -46,6 +46,18 @@ export function deriveDRepIdFromStakeAddress(stakeAddress: string): string | nul
 }
 
 /**
+ * Decode a bech32 pool ID (pool1...) to its raw hex key hash.
+ * MeshJS StakingPool voter requires the hex credential, not bech32.
+ */
+export function poolBech32ToKeyHash(poolId: string): string {
+  const decoded = bech32.decode(poolId, 256);
+  const data = bech32.fromWords(decoded.words);
+  return Array.from(data)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
  * Check if a DRep ID exists in the database via the API.
  * Light client-side check; avoids importing Supabase client in the browser.
  */

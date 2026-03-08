@@ -4,7 +4,9 @@ export type ActionType =
   | 'score_dropped'
   | 'proposal_expiring'
   | 'tier_approaching'
-  | 'wrapped_ready';
+  | 'wrapped_ready'
+  | 'statement_missing'
+  | 'rationale_missing';
 
 export interface Action {
   id: string;
@@ -32,6 +34,10 @@ export interface ActionFeedInput {
   spoScoreDelta?: number;
   spoVoteCount?: number;
   spoIsClaimed?: boolean;
+  spoTier?: string;
+  spoPoolId?: string;
+  spoHasGovernanceStatement?: boolean;
+  spoUnexplainedVotesCount?: number;
   /** When set, injects a wrapped_ready action linking to /my-gov/wrapped/[period] */
   wrappedReadyPeriod?: string;
 }
@@ -246,6 +252,49 @@ export function generateActions(input: ActionFeedInput): Action[] {
         priority: 2,
         cta: 'View Now',
       });
+    }
+
+    if (input.spoHasGovernanceStatement === false && input.spoIsClaimed !== false) {
+      actions.push({
+        id: 'spo_no_statement',
+        type: 'statement_missing',
+        title: 'Publish your governance statement',
+        description:
+          'Tell delegators what your pool stands for in governance. Boosts your Identity score.',
+        href: input.spoPoolId ? `/pool/${input.spoPoolId}` : '/my-gov',
+        priority: 2,
+        cta: 'Write Statement',
+      });
+    }
+
+    if (input.spoUnexplainedVotesCount && input.spoUnexplainedVotesCount > 0) {
+      actions.push({
+        id: 'spo_unexplained_votes',
+        type: 'rationale_missing',
+        title: `${input.spoUnexplainedVotesCount} vote${input.spoUnexplainedVotesCount > 1 ? 's' : ''} without rationale`,
+        description: 'Adding rationales improves your Deliberation Quality score.',
+        href: input.spoPoolId ? `/pool/${input.spoPoolId}` : '/my-gov',
+        priority: 2,
+        cta: 'Add Rationale',
+      });
+    }
+
+    if (input.spoScore !== undefined) {
+      const nextTier = Object.entries(TIER_THRESHOLDS).find(([, t]) => input.spoScore! < t);
+      if (nextTier) {
+        const gap = nextTier[1] - input.spoScore;
+        if (gap <= 5) {
+          actions.push({
+            id: 'spo_tier_approaching',
+            type: 'tier_approaching',
+            title: `${gap.toFixed(1)} pts from ${nextTier[0]} tier`,
+            description: 'Keep voting and providing rationales to reach the next tier.',
+            href: '/my-gov',
+            priority: 3,
+            cta: 'See Breakdown',
+          });
+        }
+      }
     }
   }
 

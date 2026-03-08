@@ -15,9 +15,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useWallet } from '@/utils/wallet';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { useVote, type VotePhase } from '@/hooks/useVote';
 import { useFeatureFlag } from '@/components/FeatureGate';
-import type { VoteChoice } from '@/lib/voting';
+import type { VoteChoice, VoterRole } from '@/lib/voting';
 
 interface VoteCastingPanelProps {
   txHash: string;
@@ -138,7 +139,8 @@ export function VoteCastingPanel({
   aiSummary,
 }: VoteCastingPanelProps) {
   const { connected, ownDRepId } = useWallet();
-  const { phase, startVote, confirmVote, reset, isProcessing, canVote } = useVote();
+  const { segment, poolId } = useSegment();
+  const { phase, startVote, confirmVote, reset, isProcessing } = useVote();
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
   const [rationaleText, setRationaleText] = useState('');
   const [showRationale, setShowRationale] = useState(true);
@@ -146,11 +148,16 @@ export function VoteCastingPanel({
   const [isPublishing, setIsPublishing] = useState(false);
   const voteCastingEnabled = useFeatureFlag('governance_vote_casting');
 
+  // Determine voter role and credential from segment
+  const voterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
+  const voterId = segment === 'spo' ? poolId : ownDRepId;
+  const canVote = connected && !!voterId;
+
   // Don't show for closed proposals
   if (!isOpen) return null;
 
-  // Don't show if not a DRep
-  if (!connected || !ownDRepId) return null;
+  // Don't show if not a DRep or SPO
+  if (!connected || !voterId) return null;
 
   // Gated behind feature flag
   if (voteCastingEnabled === null || !voteCastingEnabled) return null;
@@ -159,25 +166,31 @@ export function VoteCastingPanel({
   const isDone = phase.status === 'success';
   const hasError = phase.status === 'error';
 
+  const roleLabel = voterRole === 'spo' ? 'SPO' : 'DRep';
+  const scoringHint =
+    voterRole === 'spo'
+      ? 'SPOs who explain votes score higher on Deliberation Quality (25% weight)'
+      : 'DReps who explain votes score higher on Engagement (25% weight)';
+
   const handleVoteSelect = (vote: VoteChoice) => {
     if (isProcessing || isDone) return;
     setSelectedVote(vote);
 
     if (hasError) reset();
 
-    // Start preflight immediately
-    startVote({ txHash, txIndex: proposalIndex, title }, 'drep');
+    startVote({ txHash, txIndex: proposalIndex, title }, voterRole, voterId);
   };
 
   const handleAiDraft = async () => {
-    if (!ownDRepId) return;
+    if (!voterId) return;
     setIsDrafting(true);
     try {
       const res = await fetch('/api/rationale/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          drepId: ownDRepId,
+          drepId: voterId,
+          voterRole,
           proposalTitle: title,
           proposalAbstract: proposalAbstract || undefined,
           proposalType: proposalType || undefined,
@@ -194,7 +207,7 @@ export function VoteCastingPanel({
   };
 
   const handleConfirm = async () => {
-    if (!selectedVote || !ownDRepId) return;
+    if (!selectedVote || !voterId) return;
 
     let anchorUrl: string | undefined;
     let anchorHash: string | undefined;
@@ -207,7 +220,7 @@ export function VoteCastingPanel({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            drepId: ownDRepId,
+            drepId: voterId,
             proposalTxHash: txHash,
             proposalIndex,
             rationaleText: rationaleText.trim(),
@@ -237,7 +250,7 @@ export function VoteCastingPanel({
     <Card className="border-primary/20">
       <CardContent className="pt-6 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-foreground">Cast Your Vote</p>
+          <p className="text-sm font-semibold text-foreground">Cast Your {roleLabel} Vote</p>
           {(isDone || hasError) && (
             <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs">
               {isDone ? 'Vote again' : 'Try again'}
@@ -331,9 +344,7 @@ export function VoteCastingPanel({
                   maxLength={10000}
                 />
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-muted-foreground">
-                    DReps who explain votes score higher on Engagement (25% weight)
-                  </p>
+                  <p className="text-[10px] text-muted-foreground">{scoringHint}</p>
                   <p className="text-xs text-muted-foreground tabular-nums">
                     {rationaleText.length.toLocaleString()} / 10,000
                   </p>

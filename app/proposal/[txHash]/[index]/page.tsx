@@ -164,7 +164,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         <ParamChangesCard paramChanges={proposal.paramChanges} />
       )}
 
-      {/* Vote Casting (DReps only, open proposals only) */}
+      {/* Vote Casting (DReps and SPOs, open proposals only) */}
       <VoteCastingPanel
         txHash={txHash}
         proposalIndex={proposalIndex}

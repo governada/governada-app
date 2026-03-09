@@ -26,6 +26,7 @@ import { CivicaGovernanceTrends } from './CivicaGovernanceTrends';
 import { CivicaObservatory } from './CivicaObservatory';
 import { CivicaGovernanceCalendar } from './CivicaGovernanceCalendar';
 import { StateOfGovernance } from './StateOfGovernance';
+import { GHIHero } from './GHIHero';
 import { GovernanceImpactCard } from './GovernanceImpactCard';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
 import type {
@@ -46,6 +47,11 @@ interface PulseDataLocal {
   avgParticipationRate?: number;
   avgRationaleRate?: number;
   totalAdaGoverned?: string;
+  deltas?: {
+    participationDelta?: number | null;
+    rationaleDelta?: number | null;
+    activeDRepsDelta?: number | null;
+  };
   communityGap?: CommunityGapItem[];
   spotlightProposal?: {
     txHash: string;
@@ -91,6 +97,8 @@ function StatCard({
   icon: Icon,
   accent,
   href,
+  trend,
+  delta,
 }: {
   label: string;
   value: React.ReactNode;
@@ -98,6 +106,8 @@ function StatCard({
   icon: React.FC<{ className?: string }>;
   accent?: 'default' | 'warning' | 'success' | 'danger';
   href?: string;
+  trend?: 'up' | 'down' | 'flat' | null;
+  delta?: string | null;
 }) {
   const accentClass = {
     default: 'text-primary',
@@ -123,8 +133,22 @@ function StatCard({
         </p>
         <Icon className={cn('h-4 w-4', accentClass)} aria-hidden="true" />
       </div>
-      <div className={cn('font-display text-3xl font-bold leading-none tabular-nums', accentClass)}>
-        {value}
+      <div className="flex items-baseline gap-2">
+        <div
+          className={cn('font-display text-3xl font-bold leading-none tabular-nums', accentClass)}
+        >
+          {value}
+        </div>
+        {delta && trend && trend !== 'flat' && (
+          <span
+            className={cn(
+              'text-[10px] font-medium whitespace-nowrap',
+              trend === 'up' ? 'text-emerald-500' : 'text-rose-500',
+            )}
+          >
+            {trend === 'up' ? '↑' : '↓'} {delta}
+          </span>
+        )}
       </div>
       {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       {href && (
@@ -258,6 +282,9 @@ export function CivicaPulseOverview() {
       {/* ── Now tab ─────────────────────────────────────────── */}
       {activeTab === 'now' && (
         <div role="tabpanel" id="pulse-tabpanel-now" aria-label="Now">
+          {/* ── GHI Hero ─────────────────────────────────────────── */}
+          <GHIHero />
+
           {/* ── State of Governance narrative ───────────────────── */}
           <StateOfGovernance />
 
@@ -269,16 +296,13 @@ export function CivicaPulseOverview() {
             treasuryBalanceAda={treasury?.balance ?? treasury?.balanceAda ?? 0}
           />
 
-          {/* ── Header ──────────────────────────────────────────── */}
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-lg font-bold">State of Governance</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {pulse?.currentEpoch
-                  ? `Epoch ${pulse.currentEpoch} · live data`
-                  : 'Live Cardano governance data'}
-              </p>
-            </div>
+          {/* ── Epoch context ────────────────────────────────────── */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {pulse?.currentEpoch
+                ? `Epoch ${pulse.currentEpoch} · live data`
+                : 'Live Cardano governance data'}
+            </p>
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -322,6 +346,20 @@ export function CivicaPulseOverview() {
                 icon={Users}
                 accent="default"
                 href="/discover"
+                trend={
+                  pulse?.deltas?.activeDRepsDelta != null
+                    ? pulse.deltas.activeDRepsDelta > 0
+                      ? 'up'
+                      : pulse.deltas.activeDRepsDelta < 0
+                        ? 'down'
+                        : 'flat'
+                    : null
+                }
+                delta={
+                  pulse?.deltas?.activeDRepsDelta != null && pulse.deltas.activeDRepsDelta !== 0
+                    ? `${Math.abs(pulse.deltas.activeDRepsDelta)} from last epoch`
+                    : null
+                }
               />
               <StatCard
                 label="Votes This Week"
@@ -342,6 +380,20 @@ export function CivicaPulseOverview() {
                       ? 'warning'
                       : 'danger'
                 }
+                trend={
+                  pulse?.deltas?.participationDelta != null
+                    ? pulse.deltas.participationDelta > 0
+                      ? 'up'
+                      : pulse.deltas.participationDelta < 0
+                        ? 'down'
+                        : 'flat'
+                    : null
+                }
+                delta={
+                  pulse?.deltas?.participationDelta != null && pulse.deltas.participationDelta !== 0
+                    ? `${Math.abs(pulse.deltas.participationDelta)}% from last epoch`
+                    : null
+                }
               />
               <StatCard
                 label="Avg Rationale Rate"
@@ -354,6 +406,20 @@ export function CivicaPulseOverview() {
                     : ((pulse?.avgRationaleRate as number | undefined) ?? 0) >= 30
                       ? 'warning'
                       : 'danger'
+                }
+                trend={
+                  pulse?.deltas?.rationaleDelta != null
+                    ? pulse.deltas.rationaleDelta > 0
+                      ? 'up'
+                      : pulse.deltas.rationaleDelta < 0
+                        ? 'down'
+                        : 'flat'
+                    : null
+                }
+                delta={
+                  pulse?.deltas?.rationaleDelta != null && pulse.deltas.rationaleDelta !== 0
+                    ? `${Math.abs(pulse.deltas.rationaleDelta)}% from last epoch`
+                    : null
                 }
               />
               {treasury && (
@@ -426,6 +492,45 @@ export function CivicaPulseOverview() {
             </div>
           )}
 
+          {/* ── Community vs DRep Sentiment Gap ─────────────────── */}
+          {(pulse?.communityGap?.length ?? 0) > 0 && (
+            <div className="rounded-xl border-l-2 border-l-primary border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">Where Citizens & DReps Diverge</h3>
+                <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                  Unique to Governada
+                </span>
+              </div>
+              <div className="divide-y divide-border">
+                {(pulse!.communityGap as CommunityGapItem[]).slice(0, 3).map((g) => {
+                  const pollTotal = g.pollTotal || 1;
+                  const yesPct = Math.round(((g.pollYes ?? 0) / pollTotal) * 100);
+                  const noPct = Math.round(((g.pollNo ?? 0) / pollTotal) * 100);
+                  return (
+                    <Link
+                      key={`${g.txHash}-${g.index}`}
+                      href={`/proposal/${g.txHash}/${g.index}`}
+                      className="block py-3 first:pt-0 last:pb-0 hover:bg-muted/20 transition-colors"
+                    >
+                      <p className="text-sm truncate mb-1.5">{g.title}</p>
+                      <div className="flex items-center gap-3 text-[11px]">
+                        <span className="text-muted-foreground">
+                          Community: <strong className="text-emerald-400">{yesPct}% Yes</strong>
+                          {' / '}
+                          <strong className="text-rose-400">{noPct}% No</strong>
+                          <span className="text-muted-foreground/60"> ({pollTotal} votes)</span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          DReps: <strong className="text-foreground">{g.drepVotePct}%</strong> voted
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Weekly movers ───────────────────────────────────── */}
           {(gainers.length > 0 || losers.length > 0) && (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -491,42 +596,6 @@ export function CivicaPulseOverview() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* ── Community vs DRep Sentiment Gap ─────────────────── */}
-          {(pulse?.communityGap?.length ?? 0) > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Community vs DRep Sentiment
-              </p>
-              <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-                {(pulse!.communityGap as CommunityGapItem[]).slice(0, 3).map((g) => {
-                  const pollTotal = g.pollTotal || 1;
-                  const yesPct = Math.round(((g.pollYes ?? 0) / pollTotal) * 100);
-                  const noPct = Math.round(((g.pollNo ?? 0) / pollTotal) * 100);
-                  return (
-                    <Link
-                      key={`${g.txHash}-${g.index}`}
-                      href={`/proposal/${g.txHash}/${g.index}`}
-                      className="block px-4 py-3 hover:bg-muted/20 transition-colors"
-                    >
-                      <p className="text-sm truncate mb-1.5">{g.title}</p>
-                      <div className="flex items-center gap-3 text-[11px]">
-                        <span className="text-muted-foreground">
-                          Community: <strong className="text-emerald-400">{yesPct}% Yes</strong>
-                          {' / '}
-                          <strong className="text-rose-400">{noPct}% No</strong>
-                          <span className="text-muted-foreground/60"> ({pollTotal} votes)</span>
-                        </span>
-                        <span className="text-muted-foreground">
-                          DReps: <strong className="text-foreground">{g.drepVotePct}%</strong> voted
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
             </div>
           )}
 

@@ -132,6 +132,23 @@ export const GET = withRouteHandler(async () => {
     }
   }
 
+  // Fetch previous epoch snapshot for epoch-over-epoch deltas
+  const { data: prevSnapshot } = await supabase
+    .from('governance_participation_snapshots')
+    .select('participation_rate, rationale_rate, active_drep_count')
+    .eq('epoch', currentEpoch - 1)
+    .single();
+
+  const deltas = {
+    participationDelta: prevSnapshot
+      ? Math.round((avgParticipation - prevSnapshot.participation_rate) * 10) / 10
+      : null,
+    rationaleDelta: prevSnapshot
+      ? Math.round((avgRationale - (prevSnapshot.rationale_rate ?? avgRationale)) * 10) / 10
+      : null,
+    activeDRepsDelta: prevSnapshot ? activeDReps.length - prevSnapshot.active_drep_count : null,
+  };
+
   const communityGap = topOpenForGap
     .map((p) => {
       const key = `${p.tx_hash}:${p.proposal_index}`;
@@ -176,6 +193,7 @@ export const GET = withRouteHandler(async () => {
         : null,
       currentEpoch,
       communityGap,
+      deltas,
     },
     {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },

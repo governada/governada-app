@@ -7,8 +7,8 @@ export type UserSegment = 'anonymous' | 'citizen' | 'spo' | 'drep' | 'cc';
 
 export interface SegmentOverride {
   segment: UserSegment;
-  drepId?: string;
-  poolId?: string;
+  drepId?: string | null;
+  poolId?: string | null;
   delegatedDrep?: string | null;
   delegatedPool?: string | null;
 }
@@ -158,8 +158,8 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     ...detected,
     segment: override?.segment ?? detectedSegment,
     realSegment: detectedSegment,
-    drepId: override?.drepId ?? detected.drepId,
-    poolId: override?.poolId ?? detected.poolId,
+    drepId: override && 'drepId' in override ? (override.drepId ?? null) : detected.drepId,
+    poolId: override && 'poolId' in override ? (override.poolId ?? null) : detected.poolId,
     delegatedDrep:
       override && 'delegatedDrep' in override
         ? (override.delegatedDrep ?? null)

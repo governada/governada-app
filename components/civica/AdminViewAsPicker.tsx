@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { computeTier } from '@/lib/scoring/tiers';
 
-type PickerMode = 'drep' | 'spo';
+type PickerMode = 'drep' | 'spo' | 'cc';
 
 interface AdminViewAsPickerProps {
   mode: PickerMode;
@@ -39,6 +39,13 @@ interface PoolItem {
   governanceScore?: number | null;
 }
 
+interface CCMemberItem {
+  ccHotId: string;
+  name?: string | null;
+  transparencyGrade?: string | null;
+  voteCount?: number;
+}
+
 function useDRepList(enabled: boolean) {
   return useQuery({
     queryKey: ['admin-view-as-dreps'],
@@ -61,6 +68,20 @@ function usePoolList(enabled: boolean) {
       if (!res.ok) return [];
       const data = await res.json();
       return (data.pools ?? []) as PoolItem[];
+    },
+    enabled,
+    staleTime: 120_000,
+  });
+}
+
+function useCCMemberList(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-view-as-cc'],
+    queryFn: async () => {
+      const res = await fetch('/api/governance/committee');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.members ?? []) as CCMemberItem[];
     },
     enabled,
     staleTime: 120_000,
@@ -103,8 +124,9 @@ export function AdminViewAsPicker({
   const [search, setSearch] = useState('');
   const { data: dreps, isLoading: drepsLoading } = useDRepList(open && mode === 'drep');
   const { data: pools, isLoading: poolsLoading } = usePoolList(open && mode === 'spo');
+  const { data: ccMembers, isLoading: ccLoading } = useCCMemberList(open && mode === 'cc');
 
-  const isLoading = mode === 'drep' ? drepsLoading : poolsLoading;
+  const isLoading = mode === 'drep' ? drepsLoading : mode === 'spo' ? poolsLoading : ccLoading;
 
   const filteredDreps = useMemo(() => {
     if (mode !== 'drep' || !dreps) return [];
@@ -134,18 +156,38 @@ export function AdminViewAsPicker({
       .slice(0, 100);
   }, [mode, pools, search]);
 
+  const filteredCC = useMemo(() => {
+    if (mode !== 'cc' || !ccMembers) return [];
+    const q = search.toLowerCase().trim();
+    if (!q) return ccMembers;
+    return ccMembers.filter(
+      (m) => m.ccHotId.toLowerCase().includes(q) || m.name?.toLowerCase().includes(q),
+    );
+  }, [mode, ccMembers, search]);
+
   const handleSelect = (id: string) => {
     onSelect(id);
     onOpenChange(false);
     setSearch('');
   };
 
-  const title = titleOverride ?? (mode === 'drep' ? 'Select a DRep' : 'Select a Stake Pool');
-  const description =
-    descriptionOverride ??
-    (mode === 'drep'
-      ? 'View the app as this DRep. Sorted by score.'
-      : 'View the app as this SPO. Sorted by governance score.');
+  const defaultTitles: Record<PickerMode, string> = {
+    drep: 'Select a DRep',
+    spo: 'Select a Stake Pool',
+    cc: 'Select a CC Member',
+  };
+  const defaultDescriptions: Record<PickerMode, string> = {
+    drep: 'View the app as this DRep. Sorted by score.',
+    spo: 'View the app as this SPO. Sorted by governance score.',
+    cc: 'View the app as this committee member.',
+  };
+  const searchPlaceholders: Record<PickerMode, string> = {
+    drep: 'Search by name or ID...',
+    spo: 'Search by ticker, name, or ID...',
+    cc: 'Search by name or ID...',
+  };
+  const title = titleOverride ?? defaultTitles[mode];
+  const description = descriptionOverride ?? defaultDescriptions[mode];
 
   return (
     <Dialog
@@ -164,13 +206,11 @@ export function AdminViewAsPicker({
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={
-              mode === 'drep' ? 'Search by name or ID...' : 'Search by ticker, name, or ID...'
-            }
+            placeholder={searchPlaceholders[mode]}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
-            // eslint-disable-next-line jsx-a11y/no-autofocus
+             
             autoFocus
           />
         </div>
@@ -208,29 +248,61 @@ export function AdminViewAsPicker({
                 ))}
               </div>
             )
-          ) : filteredPools.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">No pools found.</p>
+          ) : mode === 'spo' ? (
+            filteredPools.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No pools found.</p>
+            ) : (
+              <div className="space-y-0.5 py-1">
+                {filteredPools.map((p) => (
+                  <button
+                    key={p.poolId}
+                    onClick={() => handleSelect(p.poolId)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left hover:bg-accent transition-colors cursor-pointer"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {p.ticker
+                          ? `[${p.ticker}] ${p.poolName || ''}`.trim()
+                          : p.poolName || truncateId(p.poolId)}
+                      </div>
+                      {(p.poolName || p.ticker) && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {truncateId(p.poolId)}
+                        </div>
+                      )}
+                    </div>
+                    <ScoreBadge score={p.governanceScore} />
+                  </button>
+                ))}
+              </div>
+            )
+          ) : filteredCC.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              No committee members found.
+            </p>
           ) : (
             <div className="space-y-0.5 py-1">
-              {filteredPools.map((p) => (
+              {filteredCC.map((m) => (
                 <button
-                  key={p.poolId}
-                  onClick={() => handleSelect(p.poolId)}
+                  key={m.ccHotId}
+                  onClick={() => handleSelect(m.ccHotId)}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left hover:bg-accent transition-colors cursor-pointer"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
-                      {p.ticker
-                        ? `[${p.ticker}] ${p.poolName || ''}`.trim()
-                        : p.poolName || truncateId(p.poolId)}
+                      {m.name || truncateId(m.ccHotId)}
                     </div>
-                    {(p.poolName || p.ticker) && (
+                    {m.name && (
                       <div className="text-xs text-muted-foreground truncate">
-                        {truncateId(p.poolId)}
+                        {truncateId(m.ccHotId)}
                       </div>
                     )}
                   </div>
-                  <ScoreBadge score={p.governanceScore} />
+                  {m.transparencyGrade && (
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {m.transparencyGrade}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

@@ -27,7 +27,7 @@ export const GET = withRouteHandler(async () => {
     supabase
       .from('proposals')
       .select(
-        'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, created_at',
+        'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, block_time',
       ),
     supabase
       .from('drep_votes')
@@ -88,8 +88,8 @@ export const GET = withRouteHandler(async () => {
     openProposals
       .filter((p) => p.title)
       .sort((a, b) => {
-        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const aTime = a.block_time ?? 0;
+        const bTime = b.block_time ?? 0;
         return bTime - aTime;
       })[0] || null;
 

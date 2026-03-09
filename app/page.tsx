@@ -45,7 +45,7 @@ async function getGovernancePulse() {
     supabase
       .from('proposals')
       .select(
-        'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, created_at',
+        'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
       ),
     supabase
       .from('drep_votes')

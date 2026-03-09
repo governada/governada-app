@@ -210,7 +210,6 @@ export function AdminViewAsPicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
-             
             autoFocus
           />
         </div>

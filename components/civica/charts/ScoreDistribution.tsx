@@ -11,6 +11,7 @@ interface ScoreDistributionProps {
   scores: number[];
   highlightScore?: number;
   className?: string;
+  onBinClick?: (rangeStart: number, rangeEnd: number) => void;
 }
 
 const NUM_BINS = 10;
@@ -44,7 +45,12 @@ function getBinColor(midpoint: number): {
   };
 }
 
-export function ScoreDistribution({ scores, highlightScore, className }: ScoreDistributionProps) {
+export function ScoreDistribution({
+  scores,
+  highlightScore,
+  className,
+  onBinClick,
+}: ScoreDistributionProps) {
   const { containerRef, dimensions } = useChartDimensions(200, {
     top: 24,
     right: 16,
@@ -118,7 +124,10 @@ export function ScoreDistribution({ scores, highlightScore, className }: ScoreDi
                     key={i}
                     onMouseEnter={() => setHoveredBin(i)}
                     onMouseLeave={() => setHoveredBin(null)}
-                    className="cursor-default"
+                    onTouchStart={() => setHoveredBin(i)}
+                    onTouchEnd={() => setHoveredBin(null)}
+                    onClick={() => onBinClick?.(b.x0 ?? 0, b.x1 ?? 0)}
+                    className={onBinClick ? 'cursor-pointer' : 'cursor-default'}
                   >
                     {/* Bar with rounded top */}
                     <rect

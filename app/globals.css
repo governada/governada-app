@@ -550,6 +550,16 @@ button:not(:disabled):active,
   animation: breathing-glow 3s ease-in-out infinite;
 }
 
+@keyframes shimmer {
+  0%,
+  100% {
+    background-position: 200% 0;
+  }
+  50% {
+    background-position: -200% 0;
+  }
+}
+
 /* ============================================================
    Scrollbar & snap utilities
    ============================================================ */

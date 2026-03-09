@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CivicaSPOCard, type CivicaSPOData } from '@/components/civica/cards/CivicaSPOCard';
 import { computeTier } from '@/lib/scoring/tiers';
@@ -23,6 +23,7 @@ function usePools() {
 }
 
 export function CivicaSPOBrowse() {
+  const contentRef = useRef<HTMLDivElement>(null);
   const { data: rawPools, isLoading } = usePools();
   const pools: CivicaSPOData[] = useMemo(() => (rawPools as CivicaSPOData[]) ?? [], [rawPools]);
 
@@ -30,6 +31,11 @@ export function CivicaSPOBrowse() {
   const [tier, setTier] = useState('All');
   const [claimedOnly, setClaimedOnly] = useState(false);
   const [page, setPage] = useState(0);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+    contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const isDefault = search === '' && tier === 'All' && !claimedOnly;
 
@@ -96,7 +102,7 @@ export function CivicaSPOBrowse() {
   }
 
   return (
-    <div className="space-y-4 pt-4">
+    <div ref={contentRef} className="space-y-4 pt-4">
       <DiscoverFilterBar
         search={search}
         onSearchChange={setFilter(setSearch)}
@@ -139,7 +145,7 @@ export function CivicaSPOBrowse() {
         </div>
       )}
 
-      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
     </div>
   );
 }

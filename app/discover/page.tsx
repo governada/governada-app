@@ -33,10 +33,35 @@ async function getProposalCount(): Promise<number> {
   }
 }
 
+async function getCCMemberCount(): Promise<number> {
+  try {
+    const supabase = createClient();
+    const { count } = await supabase.from('cc_members').select('*', { count: 'exact', head: true });
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function getSPOCount(): Promise<number> {
+  try {
+    const supabase = createClient();
+    const { count } = await supabase
+      .from('pools')
+      .select('*', { count: 'exact', head: true })
+      .gt('governance_score', 0);
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default async function DiscoverPage() {
-  const [{ allDReps, totalAvailable }, proposalCount] = await Promise.all([
+  const [{ allDReps, totalAvailable }, proposalCount, ccMemberCount, spoCount] = await Promise.all([
     getAllDReps(),
     getProposalCount(),
+    getCCMemberCount(),
+    getSPOCount(),
   ]);
 
   return (
@@ -46,6 +71,8 @@ export default async function DiscoverPage() {
         dreps={allDReps}
         totalAvailable={totalAvailable}
         proposalCount={proposalCount}
+        ccMemberCount={ccMemberCount}
+        spoCount={spoCount}
       />
     </div>
   );

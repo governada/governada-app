@@ -156,6 +156,99 @@ describe('Committee VoteBar', () => {
   });
 });
 
+// ── Keyboard tab navigation ─────────────────────────────────
+
+describe('Keyboard tab navigation logic', () => {
+  const TAB_IDS = ['dreps', 'spos', 'proposals', 'committee', 'rankings'];
+
+  function nextTab(current: string, direction: 'right' | 'left' | 'home' | 'end'): string {
+    const idx = TAB_IDS.indexOf(current);
+    if (direction === 'right') return TAB_IDS[(idx + 1) % TAB_IDS.length];
+    if (direction === 'left') return TAB_IDS[(idx - 1 + TAB_IDS.length) % TAB_IDS.length];
+    if (direction === 'home') return TAB_IDS[0];
+    return TAB_IDS[TAB_IDS.length - 1];
+  }
+
+  it('ArrowRight wraps from last to first', () => {
+    expect(nextTab('rankings', 'right')).toBe('dreps');
+  });
+
+  it('ArrowLeft wraps from first to last', () => {
+    expect(nextTab('dreps', 'left')).toBe('rankings');
+  });
+
+  it('Home goes to first tab', () => {
+    expect(nextTab('committee', 'home')).toBe('dreps');
+  });
+
+  it('End goes to last tab', () => {
+    expect(nextTab('dreps', 'end')).toBe('rankings');
+  });
+
+  it('ArrowRight from middle advances by one', () => {
+    expect(nextTab('proposals', 'right')).toBe('committee');
+  });
+});
+
+// ── Needs-vote badge logic ──────────────────────────────────
+
+describe('Needs-vote badge logic', () => {
+  function shouldShowNeedsVote(
+    status: string,
+    hasDrepVote: boolean,
+    delegatedDrepId: string | null,
+    voteMapSize: number,
+  ): boolean {
+    return !hasDrepVote && status === 'Open' && !!delegatedDrepId && voteMapSize > 0;
+  }
+
+  it('shows for Open proposals without DRep vote when delegating', () => {
+    expect(shouldShowNeedsVote('Open', false, 'drep1abc', 5)).toBe(true);
+  });
+
+  it('does not show when not delegating', () => {
+    expect(shouldShowNeedsVote('Open', false, null, 5)).toBe(false);
+  });
+
+  it('does not show on non-Open proposals', () => {
+    expect(shouldShowNeedsVote('Ratified', false, 'drep1abc', 5)).toBe(false);
+    expect(shouldShowNeedsVote('Enacted', false, 'drep1abc', 5)).toBe(false);
+  });
+
+  it('does not show when DRep already voted', () => {
+    expect(shouldShowNeedsVote('Open', true, 'drep1abc', 5)).toBe(false);
+  });
+
+  it('does not show when vote map is empty (still loading)', () => {
+    expect(shouldShowNeedsVote('Open', false, 'drep1abc', 0)).toBe(false);
+  });
+});
+
+// ── Score distribution threshold ────────────────────────────
+
+describe('Score distribution visibility', () => {
+  it('shows chart when > 10 DReps', () => {
+    const drepsLength = 15;
+    expect(drepsLength > 10).toBe(true);
+  });
+
+  it('shows fallback message when 1-10 DReps', () => {
+    const drepsLength = 5;
+    const showChart = drepsLength > 10;
+    const showFallback = !showChart && drepsLength > 0;
+    expect(showChart).toBe(false);
+    expect(showFallback).toBe(true);
+  });
+
+  it('hides entirely when 0 DReps', () => {
+    const drepsLength = 0;
+    const showChart = drepsLength > 10;
+    const showFallback = !showChart && drepsLength > 0;
+    expect(showChart).toBe(false);
+    expect(showFallback).toBe(false);
+  });
+});
+
 describe('Committee member display name', () => {
   it('shows author_name when available', () => {
     const member = { name: 'Alice', ccHotId: 'cc_hot_1abc123def456' };

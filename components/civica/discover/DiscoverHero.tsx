@@ -2,7 +2,17 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronRight, Compass, Vote, Shield, Users, FileText, Scale, Search } from 'lucide-react';
+import {
+  ChevronRight,
+  Compass,
+  Vote,
+  Shield,
+  ShieldCheck,
+  Users,
+  FileText,
+  Scale,
+  Search,
+} from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet-context';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
@@ -10,6 +20,8 @@ import { fadeInUp, staggerContainer } from '@/lib/animations';
 interface DiscoverHeroProps {
   totalDreps: number;
   proposalCount: number;
+  ccMemberCount?: number;
+  spoCount?: number;
 }
 
 /* ── Stat pill shown in the hero ────────────────────────── */
@@ -161,7 +173,12 @@ function SegmentBanner({ totalDreps }: { totalDreps: number }) {
 }
 
 /* ── Main hero component ────────────────────────────────── */
-export function DiscoverHero({ totalDreps, proposalCount }: DiscoverHeroProps) {
+export function DiscoverHero({
+  totalDreps,
+  proposalCount,
+  ccMemberCount,
+  spoCount,
+}: DiscoverHeroProps) {
   const formattedDreps =
     totalDreps >= 1000 ? `${(totalDreps / 1000).toFixed(1)}k` : totalDreps.toLocaleString();
 
@@ -223,10 +240,15 @@ export function DiscoverHero({ totalDreps, proposalCount }: DiscoverHeroProps) {
           {/* Live stat pills */}
           <div className="flex flex-wrap gap-2">
             <StatPill icon={Users} value={formattedDreps} label="DReps" />
+            {spoCount != null && spoCount > 0 && (
+              <StatPill icon={ShieldCheck} value={spoCount.toString()} label="SPOs" />
+            )}
             {proposalCount > 0 && (
               <StatPill icon={FileText} value={proposalCount.toString()} label="Proposals" />
             )}
-            <StatPill icon={Scale} value="CC" label="Members" />
+            {ccMemberCount != null && ccMemberCount > 0 && (
+              <StatPill icon={Scale} value={ccMemberCount.toString()} label="CC Members" />
+            )}
           </div>
         </div>
 

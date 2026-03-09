@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Users, ShieldCheck, FileText, Scale, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CivicaDRepBrowse } from './CivicaDRepBrowse';
@@ -15,6 +16,8 @@ import type { EnrichedDRep } from '@/lib/koios';
 
 type TabId = 'dreps' | 'spos' | 'proposals' | 'committee' | 'rankings';
 
+const TAB_IDS: TabId[] = ['dreps', 'spos', 'proposals', 'committee', 'rankings'];
+
 /** Map legacy/alias param values to canonical tab IDs */
 const TAB_ALIASES: Record<string, TabId> = {
   dreps: 'dreps',
@@ -26,7 +29,7 @@ const TAB_ALIASES: Record<string, TabId> = {
   leaderboard: 'rankings',
 };
 
-const VALID_TABS = new Set<TabId>(['dreps', 'spos', 'proposals', 'committee', 'rankings']);
+const VALID_TABS = new Set<TabId>(TAB_IDS);
 
 function resolveTab(param: string | null): TabId {
   if (!param) return 'dreps';
@@ -45,9 +48,17 @@ interface CivicaDiscoverProps {
   dreps: EnrichedDRep[];
   totalAvailable: number;
   proposalCount: number;
+  ccMemberCount?: number;
+  spoCount?: number;
 }
 
-export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaDiscoverProps) {
+export function CivicaDiscover({
+  dreps,
+  totalAvailable,
+  proposalCount,
+  ccMemberCount,
+  spoCount,
+}: CivicaDiscoverProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -69,18 +80,45 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
     [searchParams, pathname],
   );
 
+  // Keyboard navigation for tabs (WAI-ARIA roving tabindex pattern)
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const currentIndex = TAB_IDS.indexOf(activeTab);
+      let newIndex: number | null = null;
+
+      if (e.key === 'ArrowRight') newIndex = (currentIndex + 1) % TAB_IDS.length;
+      else if (e.key === 'ArrowLeft')
+        newIndex = (currentIndex - 1 + TAB_IDS.length) % TAB_IDS.length;
+      else if (e.key === 'Home') newIndex = 0;
+      else if (e.key === 'End') newIndex = TAB_IDS.length - 1;
+
+      if (newIndex !== null) {
+        e.preventDefault();
+        setActiveTab(TAB_IDS[newIndex]);
+        const btn = document.getElementById(`tab-${TAB_IDS[newIndex]}`);
+        btn?.focus();
+      }
+    },
+    [activeTab, setActiveTab],
+  );
+
   const tabs: Tab[] = [
     { id: 'dreps', label: 'DReps', icon: Users, count: totalAvailable },
-    { id: 'spos', label: 'SPOs', icon: ShieldCheck },
+    { id: 'spos', label: 'SPOs', icon: ShieldCheck, count: spoCount },
     { id: 'proposals', label: 'Proposals', icon: FileText, count: proposalCount },
-    { id: 'committee', label: 'Committee', icon: Scale },
+    { id: 'committee', label: 'Committee', icon: Scale, count: ccMemberCount },
     { id: 'rankings', label: 'Rankings', icon: Trophy },
   ];
 
   return (
     <div className="space-y-0">
       <div className="mb-4">
-        <DiscoverHero totalDreps={totalAvailable} proposalCount={proposalCount} />
+        <DiscoverHero
+          totalDreps={totalAvailable}
+          proposalCount={proposalCount}
+          ccMemberCount={ccMemberCount}
+          spoCount={spoCount}
+        />
       </div>
       <FirstVisitBanner
         pageKey="discover"
@@ -97,14 +135,16 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
             <button
               key={id}
               onClick={() => setActiveTab(id)}
+              onKeyDown={handleTabKeyDown}
               role="tab"
               aria-selected={activeTab === id}
               aria-controls={`tabpanel-${id}`}
               id={`tab-${id}`}
+              tabIndex={activeTab === id ? 0 : -1}
               aria-label={count != null && count > 0 ? `${label} (${count})` : label}
               className={cn(
                 'relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap',
-                'transition-colors shrink-0',
+                'transition-colors shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
                 activeTab === id
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground/80',
@@ -126,9 +166,11 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
                 </span>
               )}
               {activeTab === id && (
-                <span
+                <motion.span
+                  layoutId="discover-tab-indicator"
                   className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary"
                   aria-hidden="true"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
             </button>
@@ -137,24 +179,31 @@ export function CivicaDiscover({ dreps, totalAvailable, proposalCount }: CivicaD
       </div>
 
       {/* ── Tab content ──────────────────────────────────────── */}
-      <div
-        className="pt-1"
-        role="tabpanel"
-        id={`tabpanel-${activeTab}`}
-        aria-labelledby={`tab-${activeTab}`}
-      >
-        {activeTab === 'dreps' && (
-          <CivicaDRepBrowse dreps={dreps} totalAvailable={totalAvailable} />
-        )}
-        {activeTab === 'spos' && <CivicaSPOBrowse />}
-        {activeTab === 'proposals' && <ProposalsBrowse />}
-        {activeTab === 'committee' && (
-          <div className="pt-4">
-            <CommitteeDiscovery />
-          </div>
-        )}
-        {activeTab === 'rankings' && <CivicaLeaderboard />}
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
+          className="pt-1"
+          role="tabpanel"
+          id={`tabpanel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+        >
+          {activeTab === 'dreps' && (
+            <CivicaDRepBrowse dreps={dreps} totalAvailable={totalAvailable} />
+          )}
+          {activeTab === 'spos' && <CivicaSPOBrowse />}
+          {activeTab === 'proposals' && <ProposalsBrowse />}
+          {activeTab === 'committee' && (
+            <div className="pt-4">
+              <CommitteeDiscovery />
+            </div>
+          )}
+          {activeTab === 'rankings' && <CivicaLeaderboard />}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

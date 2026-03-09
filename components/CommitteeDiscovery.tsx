@@ -149,8 +149,14 @@ export function CommitteeDiscovery() {
         </div>
       ) : (
         <div className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden">
-          {filtered.map((member) => (
-            <MemberRow key={member.ccHotId} member={member} />
+          {filtered.map((member, i) => (
+            <div
+              key={member.ccHotId}
+              className="animate-in fade-in duration-200 fill-mode-backwards"
+              style={{ animationDelay: `${Math.min(i, 14) * 20}ms` }}
+            >
+              <MemberRow member={member} />
+            </div>
           ))}
         </div>
       )}

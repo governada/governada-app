@@ -1,8 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Clock, Landmark, Users, Shield, Scale, AlertTriangle } from 'lucide-react';
+import {
+  ChevronRight,
+  Clock,
+  Landmark,
+  Users,
+  Shield,
+  Scale,
+  AlertTriangle,
+  CircleDot,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
@@ -158,6 +167,7 @@ function getConsensusLabel(triBody: {
 const PAGE_SIZE = 25;
 
 export function ProposalsBrowse() {
+  const contentRef = useRef<HTMLDivElement>(null);
   const { data: rawData, isLoading } = useProposals(200);
   const data = rawData as { proposals?: BrowseProposal[]; currentEpoch?: number } | undefined;
   const proposals: BrowseProposal[] = useMemo(() => data?.proposals ?? [], [data]);
@@ -169,6 +179,11 @@ export function ProposalsBrowse() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [page, setPage] = useState(0);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+    contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const isDefault = search === '' && statusFilter === 'All' && typeFilter === 'All';
 
@@ -252,7 +267,7 @@ export function ProposalsBrowse() {
   }
 
   return (
-    <div className="space-y-4 pt-4">
+    <div ref={contentRef} className="space-y-4 pt-4">
       {/* Status pipeline overview */}
       {statusCounts.length > 1 && (
         <div className="rounded-xl border border-border bg-card p-4">
@@ -385,6 +400,15 @@ export function ProposalsBrowse() {
                       DRep: {pill.label}
                     </span>
                   )}
+                  {!pill && status === 'Open' && delegatedDrepId && drepVoteMap.size > 0 && (
+                    <span
+                      className="flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border text-violet-400 bg-violet-500/10 border-violet-500/20 shrink-0"
+                      title="Your DRep has not yet voted on this proposal"
+                    >
+                      <CircleDot className="h-2.5 w-2.5" />
+                      Needs vote
+                    </span>
+                  )}
                   {epochsLeft != null && epochsLeft > 0 && (
                     <span
                       className={cn(
@@ -422,7 +446,7 @@ export function ProposalsBrowse() {
         </div>
       )}
 
-      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
     </div>
   );
 }

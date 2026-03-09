@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -39,9 +39,15 @@ const RANK_MEDALS: Record<number, string> = {
 };
 
 export function CivicaLeaderboard() {
+  const contentRef = useRef<HTMLDivElement>(null);
   const [tierFilter, setTierFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+    contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const { data: rawData, isLoading } = useGovernanceLeaderboard();
   const data = rawData as LeaderboardData | undefined;
@@ -104,7 +110,7 @@ export function CivicaLeaderboard() {
   }
 
   return (
-    <div className="space-y-4 pt-4">
+    <div ref={contentRef} className="space-y-4 pt-4">
       <DiscoverFilterBar
         search={search}
         onSearchChange={(v) => {
@@ -134,8 +140,11 @@ export function CivicaLeaderboard() {
       {/* Ranked list */}
       <div className="rounded-xl border border-border overflow-hidden">
         {pageEntries.length === 0 ? (
-          <div className="py-16 text-center text-muted-foreground text-sm">
-            No DReps in this tier range yet.
+          <div className="py-16 text-center text-muted-foreground text-sm space-y-1">
+            <p>No DReps have reached {tierFilter} tier yet.</p>
+            <p className="text-xs text-muted-foreground/70">
+              Scores update every epoch as DReps participate in governance.
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-border/50">
@@ -217,7 +226,7 @@ export function CivicaLeaderboard() {
         )}
       </div>
 
-      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
 
       {/* Weekly movers strip */}
       {(weeklyMovers.gainers.length > 0 || weeklyMovers.losers.length > 0) && (
@@ -273,7 +282,17 @@ export function CivicaLeaderboard() {
 
       {/* Hall of Fame */}
       {hallOfFame.length > 0 && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-4 space-y-3">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-4 space-y-3 relative overflow-hidden">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(110deg, transparent 30%, rgba(245,158,11,0.06) 50%, transparent 70%)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 4s ease-in-out infinite',
+            }}
+            aria-hidden="true"
+          />
           <div className="flex items-center gap-1.5">
             <Trophy className="h-3.5 w-3.5 text-amber-500" />
             <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">

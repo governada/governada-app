@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RotateCcw, LayoutGrid, TableProperties, ChevronRight, Sparkles } from 'lucide-react';
+import { useWallet } from '@/utils/wallet-context';
 import { cn } from '@/lib/utils';
 import { CivicaDRepCard } from '@/components/civica/cards/CivicaDRepCard';
 import { computeTier } from '@/lib/scoring/tiers';
@@ -114,6 +115,8 @@ type SortMode = 'score' | 'match';
 
 export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
   const searchParams = useSearchParams();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { delegatedDrepId } = useWallet();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode);
@@ -231,20 +234,54 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
     [dreps],
   );
 
+  // Find delegated DRep's score for the ScoreDistribution highlight marker
+  const delegatedDrepScore = useMemo(() => {
+    if (!delegatedDrepId) return undefined;
+    const delegated = dreps.find((d) => d.drepId === delegatedDrepId);
+    return delegated?.drepScore ?? undefined;
+  }, [dreps, delegatedDrepId]);
+
+  // Click a ScoreDistribution bar to filter by tier
+  const handleBinClick = useCallback(
+    (start: number, end: number) => {
+      const midpoint = (start + end) / 2;
+      const tierName = computeTier(midpoint);
+      setFilter('tier', tierName);
+    },
+
+    [],
+  );
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+    contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   const totalPages = Math.ceil(filtered.length / pageSize);
   const pageItems = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
   return (
-    <div className="space-y-4 pt-4">
+    <div ref={contentRef} className="space-y-4 pt-4">
       {/* Score distribution overview */}
-      {dreps.length > 10 && (
+      {dreps.length > 10 ? (
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Score Distribution
           </p>
-          <ScoreDistribution scores={allScores} />
+          <ScoreDistribution
+            scores={allScores}
+            highlightScore={delegatedDrepScore}
+            onBinClick={handleBinClick}
+          />
         </div>
-      )}
+      ) : dreps.length > 0 ? (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-xs text-muted-foreground">
+            Score distribution chart available once 10+ DReps are tracked. Currently tracking{' '}
+            {dreps.length} DRep{dreps.length !== 1 ? 's' : ''}.
+          </p>
+        </div>
+      ) : null}
 
       <DiscoverFilterBar
         search={filters.search}
@@ -335,7 +372,20 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
       {/* Content */}
       {pageItems.length === 0 ? (
         <div className="py-16 text-center space-y-2">
-          <p className="text-muted-foreground text-sm">No DReps match your filters.</p>
+          {filters.alignment !== 'all' ? (
+            <>
+              <p className="text-muted-foreground text-sm">
+                No DReps have{' '}
+                {ALIGNMENT_OPTIONS.find((a) => a.value === filters.alignment)?.label?.toLowerCase()}{' '}
+                as their strongest alignment.
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Try a different alignment or clear filters to browse all DReps.
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">No DReps match your filters.</p>
+          )}
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
             Clear filters
@@ -388,7 +438,7 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
         </div>
       )}
 
-      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
     </div>
   );
 }

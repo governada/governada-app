@@ -92,39 +92,41 @@ export function CivicaHeader() {
             href="/"
             className="font-display text-lg font-bold tracking-tight mr-6 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
           >
-            Governada
+            governada
           </Link>
 
           <nav className="flex items-center gap-1" aria-label="Main navigation">
-            {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-              const active = isActive(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={cn(
-                    'relative flex items-center gap-2 px-3 py-2 min-h-[44px] text-sm font-medium rounded-md transition-colors',
-                    'hover:bg-accent hover:text-accent-foreground',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                    active ? 'text-foreground' : 'text-muted-foreground',
-                  )}
-                  aria-current={active ? 'page' : undefined}
-                >
-                  <span className="relative inline-flex">
-                    <Icon className="h-4 w-4" />
-                    {href === '/my-gov' && unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
+            {NAV_ITEMS.filter((item) => item.href !== '/my-gov' || connected).map(
+              ({ href, label, icon: Icon }) => {
+                const active = isActive(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      'relative flex items-center gap-2 px-3 py-2 min-h-[44px] text-sm font-medium rounded-md transition-colors',
+                      'hover:bg-accent hover:text-accent-foreground',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                      active ? 'text-foreground' : 'text-muted-foreground',
                     )}
-                  </span>
-                  {label}
-                  {active && (
-                    <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />
-                  )}
-                </Link>
-              );
-            })}
+                    aria-current={active ? 'page' : undefined}
+                  >
+                    <span className="relative inline-flex">
+                      <Icon className="h-4 w-4" />
+                      {href === '/my-gov' && unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                    {label}
+                    {active && (
+                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />
+                    )}
+                  </Link>
+                );
+              },
+            )}
           </nav>
         </div>
 

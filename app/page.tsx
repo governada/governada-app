@@ -49,7 +49,7 @@ async function getGovernancePulse() {
         .select('wallet_address', { count: 'exact', head: true })
         .not('claimed_drep_id', 'is', null),
       supabase.from('spo_votes').select('pool_id').limit(1000),
-      supabase.from('cc_votes').select('cc_hot_id').limit(100),
+      supabase.from('committee_members').select('cc_hot_id, status'),
     ]);
 
   const dreps = drepsResult.data || [];
@@ -74,7 +74,9 @@ async function getGovernancePulse() {
   );
 
   const spoPoolIds = new Set((spoResult.data || []).map((v) => v.pool_id));
-  const ccIds = new Set((ccResult.data || []).map((v) => v.cc_hot_id));
+  const ccMemberRows = (ccResult.data || []).filter(
+    (m) => !m.status || m.status.toLowerCase() === 'active',
+  );
 
   return {
     totalAdaGoverned: formattedAda,
@@ -84,7 +86,7 @@ async function getGovernancePulse() {
     votesThisWeek: votesResult.count || 0,
     claimedDReps: claimedResult.count || 0,
     activeSpOs: spoPoolIds.size,
-    ccMembers: ccIds.size,
+    ccMembers: ccMemberRows.length,
   };
 }
 

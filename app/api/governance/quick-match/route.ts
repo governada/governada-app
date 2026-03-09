@@ -145,7 +145,7 @@ export const POST = withRouteHandler(async (request) => {
           differDimensions: dimAgreement.differDimensions,
         };
       })
-      .sort((a, b) => b.matchScore - a.matchScore)
+      .sort((a, b) => b.matchScore - a.matchScore || b.entityScore - a.entityScore)
       .slice(0, 5);
 
     const personalityLabel = getPersonalityLabel(userAlignments);
@@ -224,8 +224,11 @@ export const POST = withRouteHandler(async (request) => {
         differDimensions: dimAgreement.differDimensions,
       };
     })
-    .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, 5);
+    .sort((a, b) => b.matchScore - a.matchScore || b.drepScore - a.drepScore);
+
+  // Prefer named DReps in results; fall back to unnamed if fewer than 3 named
+  const namedRanked = ranked.filter((r) => r.drepName);
+  const topRanked = (namedRanked.length >= 3 ? namedRanked : ranked).slice(0, 5);
 
   const personalityLabel = getPersonalityLabel(userAlignments);
   const dominant = getDominantDimension(userAlignments);
@@ -246,12 +249,12 @@ export const POST = withRouteHandler(async (request) => {
     transparency,
     match_type: 'drep',
     personality_label: personalityLabel,
-    top_match_score: ranked[0]?.matchScore ?? null,
-    matches_count: ranked.length,
+    top_match_score: topRanked[0]?.matchScore ?? null,
+    matches_count: topRanked.length,
   });
 
   return NextResponse.json({
-    matches: ranked.map((r) => ({
+    matches: topRanked.map((r) => ({
       drepId: r.drepId,
       drepName: r.drepName,
       drepScore: r.drepScore,

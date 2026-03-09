@@ -56,10 +56,12 @@ export const GET = withRouteHandler(async () => {
     formattedAda = `${Math.round(totalAdaGoverned).toLocaleString()}`;
   }
 
-  const participationRates = dreps
+  const participationRates = activeDReps
     .map((d) => (d.effective_participation as number) || 0)
     .filter((r) => r > 0);
-  const rationaleRates = dreps.map((d) => (d.rationale_rate as number) || 0).filter((r) => r > 0);
+  const rationaleRates = activeDReps
+    .map((d) => (d.rationale_rate as number) || 0)
+    .filter((r) => r > 0);
   const avgParticipation =
     participationRates.length > 0
       ? Math.round(participationRates.reduce((a, b) => a + b, 0) / participationRates.length)

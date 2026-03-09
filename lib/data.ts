@@ -185,7 +185,8 @@ export async function getAllDReps(): Promise<{
     const { data: rows, error: supabaseError } = await supabase
       .from('dreps')
       .select('*')
-      .order('score', { ascending: false });
+      .order('score', { ascending: false })
+      .range(0, 9999);
 
     if (supabaseError) {
       logger.error('[Data] Supabase query failed', { error: supabaseError.message });

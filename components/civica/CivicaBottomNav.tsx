@@ -31,36 +31,38 @@ export function CivicaBottomNav() {
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around h-14">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, ...rest }) => {
-          const active = isActive(href);
-          const showBadge = 'showBadge' in rest && rest.showBadge;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'relative flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] px-2 transition-colors [touch-action:manipulation]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
-                active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
-              )}
-              aria-current={active ? 'page' : undefined}
-              aria-label={label}
-            >
-              <div className="relative inline-flex">
-                <Icon className="h-5 w-5" />
-                {showBadge && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+        {NAV_ITEMS.filter((item) => item.href !== '/my-gov' || !!stakeAddress).map(
+          ({ href, label, icon: Icon, ...rest }) => {
+            const active = isActive(href);
+            const showBadge = 'showBadge' in rest && rest.showBadge;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'relative flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] px-2 transition-colors [touch-action:manipulation]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+                  active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
                 )}
-              </div>
-              <span className="text-[10px] font-medium leading-tight">{label}</span>
-              {active && (
-                <span className="absolute bottom-[calc(env(safe-area-inset-bottom)+2px)] h-0.5 w-6 rounded-full bg-primary" />
-              )}
-            </Link>
-          );
-        })}
+                aria-current={active ? 'page' : undefined}
+                aria-label={label}
+              >
+                <div className="relative inline-flex">
+                  <Icon className="h-5 w-5" />
+                  {showBadge && unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-medium leading-tight">{label}</span>
+                {active && (
+                  <span className="absolute bottom-[calc(env(safe-area-inset-bottom)+2px)] h-0.5 w-6 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          },
+        )}
       </div>
     </nav>
   );

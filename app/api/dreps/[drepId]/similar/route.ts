@@ -70,7 +70,14 @@ export const GET = withRouteHandler(async (request) => {
     }
   }
 
-  const similar = similarities.map((s) => {
+  // Filter to DReps with metadata names for quality results
+  const namedSimilarities = similarities.filter((s) => {
+    const info = infoMap.get(s.drepId);
+    return info?.name != null;
+  });
+  const finalSimilarities = namedSimilarities.length >= 3 ? namedSimilarities : similarities;
+
+  const similar = finalSimilarities.map((s) => {
     const info = infoMap.get(s.drepId);
     return {
       drepId: s.drepId,

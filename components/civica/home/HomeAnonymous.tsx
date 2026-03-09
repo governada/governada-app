@@ -12,6 +12,7 @@ import {
   Coins,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { posthog } from '@/lib/posthog';
 import { ConstellationScene } from '@/components/ConstellationScene';
 
@@ -47,17 +48,55 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
 
         {/* Live data overlay on constellation */}
         <div className="absolute top-16 sm:top-20 left-4 right-4 flex justify-center pointer-events-none">
-          <div className="flex items-center gap-3 sm:gap-6 text-white/60 text-[10px] sm:text-xs tracking-wider uppercase">
+          <div className="flex items-center gap-3 sm:gap-6 text-white/80 text-[10px] sm:text-xs tracking-wider uppercase rounded-full bg-black/40 backdrop-blur-sm px-4 py-1.5 shadow-lg pointer-events-auto">
             <span className="tabular-nums">
-              <strong className="text-white/90">{pulseData.activeDReps}</strong> DReps
+              <strong className="text-emerald-400 font-bold">{pulseData.activeDReps}</strong>{' '}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="underline decoration-dotted cursor-help">DReps</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs max-w-[200px]">
+                      Delegated Representatives who vote on governance proposals on behalf of ADA
+                      holders
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </span>
             <span className="text-white/30">&middot;</span>
             <span className="tabular-nums">
-              <strong className="text-white/90">{pulseData.activeSpOs}</strong> SPOs
+              <strong className="text-sky-400 font-bold">{pulseData.activeSpOs}</strong>{' '}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="underline decoration-dotted cursor-help">SPOs</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs max-w-[200px]">
+                      Stake Pool Operators who run the network and vote on protocol changes
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </span>
             <span className="text-white/30">&middot;</span>
             <span className="tabular-nums">
-              <strong className="text-white/90">{pulseData.ccMembers}</strong> CC Members
+              <strong className="text-amber-400 font-bold">{pulseData.ccMembers}</strong>{' '}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="underline decoration-dotted cursor-help">CC Members</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs max-w-[200px]">
+                      Constitutional Committee members who ensure proposals comply with the Cardano
+                      Constitution
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </span>
           </div>
         </div>

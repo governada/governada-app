@@ -17,8 +17,14 @@ export function InstallPrompt() {
     const dismissed = localStorage.getItem('pwa-install-dismissed');
     if (dismissed) return;
 
-    const visits = parseInt(localStorage.getItem('pwa-visit-count') || '0', 10) + 1;
-    localStorage.setItem('pwa-visit-count', String(visits));
+    // Only count once per session to avoid prompting on every page navigation
+    const alreadyCounted = sessionStorage.getItem('pwa-visit-counted');
+    let visits = parseInt(localStorage.getItem('pwa-visit-count') || '0', 10);
+    if (!alreadyCounted) {
+      visits += 1;
+      localStorage.setItem('pwa-visit-count', String(visits));
+      sessionStorage.setItem('pwa-visit-counted', '1');
+    }
 
     if (visits < 3) return;
 

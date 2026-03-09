@@ -5,6 +5,7 @@
  */
 
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import nextDynamic from 'next/dynamic';
 import type { Metadata } from 'next';
@@ -479,6 +480,13 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
   const pendingProposalCount = openProposals.length;
 
+  // Check if viewer is authenticated (hide certain elements for anonymous visitors)
+  let isViewerAuthenticated = false;
+  try {
+    const cookieStore = await cookies();
+    isViewerAuthenticated = !!cookieStore.get('drepscore_session')?.value;
+  } catch {}
+
   const brokenLinks = new Set(linkChecks.filter((c) => c.status === 'broken').map((c) => c.uri));
 
   const adjustedRationale = applyRationaleCurve(drep.rationaleRate);
@@ -606,7 +614,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       />
 
       {/* 3. Tier Progress + Momentum */}
-      {tierProgress.pointsToNext != null && (
+      {isViewerAuthenticated && tierProgress.pointsToNext != null && (
         <div className="flex items-center justify-between rounded-xl border border-border bg-card px-5 py-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium">

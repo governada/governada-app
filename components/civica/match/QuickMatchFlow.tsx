@@ -157,7 +157,7 @@ type Step = 'intro' | 0 | 1 | 2 | 'loading' | 'results' | 'error';
 type MatchType = 'drep' | 'spo';
 
 export function QuickMatchFlow() {
-  const [step, setStep] = useState<Step>('intro');
+  const [step, setStep] = useState<Step>(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [drepResults, setDrepResults] = useState<QuickMatchResponse | null>(null);

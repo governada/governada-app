@@ -23,7 +23,9 @@ interface GovernanceRadarProps {
 }
 
 const SIZE_MAP: Record<RadarSize, number> = { full: 220, medium: 80, mini: 32 };
-const PADDING_MAP: Record<RadarSize, number> = { full: 44, medium: 8, mini: 2 };
+const PADDING_MAP: Record<RadarSize, number> = { full: 52, medium: 8, mini: 2 };
+// Label area extends beyond the SVG polygon — use overflow visible to prevent clipping
+const LABEL_OVERFLOW: Record<RadarSize, number> = { full: 36, medium: 0, mini: 0 };
 
 function getPolygonPoints(scores: number[], cx: number, cy: number, maxR: number): string {
   return scores
@@ -194,9 +196,10 @@ export function GovernanceRadar({
     <div role="img" aria-label="Governance alignment radar" className={cn('shrink-0', className)}>
       <svg
         ref={ref}
-        viewBox={`0 0 ${svgSize} ${svgSize}`}
-        width={svgSize}
-        height={svgSize}
+        viewBox={`${-LABEL_OVERFLOW[size]} ${-LABEL_OVERFLOW[size]} ${svgSize + LABEL_OVERFLOW[size] * 2} ${svgSize + LABEL_OVERFLOW[size] * 2}`}
+        width={svgSize + LABEL_OVERFLOW[size] * 2}
+        height={svgSize + LABEL_OVERFLOW[size] * 2}
+        style={{ overflow: 'visible' }}
         aria-hidden="true"
       >
         <defs>

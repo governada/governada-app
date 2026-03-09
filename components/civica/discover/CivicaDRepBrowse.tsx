@@ -216,14 +216,20 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
           innovation: b.alignmentInnovation,
           transparency: b.alignmentTransparency,
         };
-        return alignmentDistance(userAlign, aAlign) - alignmentDistance(userAlign, bAlign);
+        const distDiff =
+          alignmentDistance(userAlign, aAlign) - alignmentDistance(userAlign, bAlign);
+        if (distDiff !== 0) return distDiff;
+        return (b.drepScore ?? 0) - (a.drepScore ?? 0);
       });
     }
 
     return result;
   }, [dreps, filters, sortMode, matchProfile]);
 
-  const allScores = useMemo(() => dreps.map((d) => d.drepScore ?? 0), [dreps]);
+  const allScores = useMemo(
+    () => dreps.filter((d) => d.isActive).map((d) => d.drepScore ?? 0),
+    [dreps],
+  );
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const pageItems = filtered.slice(page * pageSize, (page + 1) * pageSize);

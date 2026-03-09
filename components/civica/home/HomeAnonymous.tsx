@@ -124,7 +124,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
         </div>
 
         {/* Value prop overlay */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:pt-14">
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:pt-14 pointer-events-none">
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white drop-shadow-lg leading-tight text-center">
             Your ADA gives you a voice.
           </h1>

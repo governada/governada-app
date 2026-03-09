@@ -120,7 +120,8 @@ export async function getSystemAlignment(): Promise<SystemAlignment> {
   const { data: cached } = await supabase
     .from('inter_body_alignment')
     .select('*')
-    .order('computed_at', { ascending: false });
+    .order('computed_at', { ascending: false })
+    .limit(1000);
 
   if (!cached || cached.length === 0) {
     return {
@@ -135,7 +136,8 @@ export async function getSystemAlignment(): Promise<SystemAlignment> {
 
   const { data: proposals } = await supabase
     .from('proposals')
-    .select('tx_hash, proposal_index, proposal_type');
+    .select('tx_hash, proposal_index, proposal_type')
+    .limit(500);
 
   const typeMap = new Map(
     (proposals || []).map((p) => [`${p.tx_hash}-${p.proposal_index}`, p.proposal_type]),

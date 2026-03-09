@@ -30,11 +30,6 @@ export const precomputeCitizenSummaries = inngest.createFunction(
         statsRow?.current_epoch ?? blockTimeToEpoch(Math.floor(Date.now() / 1000));
       const targetEpoch = currentEpoch - 1;
 
-      await supabase
-        .from('citizen_epoch_summaries')
-        .select('user_id', { count: 'exact', head: true })
-        .eq('epoch_no', targetEpoch);
-
       const { data: users } = await supabase
         .from('users')
         .select('id, wallet_address, claimed_drep_id')
@@ -94,7 +89,7 @@ export const precomputeCitizenSummaries = inngest.createFunction(
             drep_tier_at_epoch: drepTier,
             proposals_voted_on: recap?.proposals_submitted ?? 0,
             treasury_allocated_lovelace: recap?.treasury_withdrawn_ada
-              ? Math.round(recap.treasury_withdrawn_ada * 1_000_000)
+              ? Math.round(recap.treasury_withdrawn_ada)
               : 0,
             summary_json: {
               proposalsSubmitted: recap?.proposals_submitted ?? 0,

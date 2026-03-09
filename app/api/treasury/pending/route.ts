@@ -13,11 +13,14 @@ export const GET = withRouteHandler(async () => {
   const pending = await getPendingTreasuryProposals(balance.balanceAda);
   const totalAda = pending.reduce((s, p) => s + p.withdrawalAda, 0);
 
-  return NextResponse.json({
-    proposals: pending,
-    totalAda,
-    pctOfTreasury:
-      balance.balanceAda > 0 ? ((totalAda / balance.balanceAda) * 100).toFixed(2) : '0',
-    treasuryBalanceAda: balance.balanceAda,
-  });
+  return NextResponse.json(
+    {
+      proposals: pending,
+      totalAda,
+      pctOfTreasury:
+        balance.balanceAda > 0 ? ((totalAda / balance.balanceAda) * 100).toFixed(2) : '0',
+      treasuryBalanceAda: balance.balanceAda,
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300' } },
+  );
 });

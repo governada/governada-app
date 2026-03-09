@@ -133,9 +133,12 @@ export const GET = withRouteHandler(async (request) => {
     hall_of_fame_count: hallOfFame.length,
   });
 
-  return NextResponse.json({
-    leaderboard,
-    weeklyMovers: { gainers, losers },
-    hallOfFame,
-  });
+  return NextResponse.json(
+    {
+      leaderboard,
+      weeklyMovers: { gainers, losers },
+      hallOfFame,
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300' } },
+  );
 });

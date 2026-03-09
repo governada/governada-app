@@ -11,13 +11,16 @@ export const GET = withRouteHandler(async (request) => {
   const snapshots = await getTreasuryTrend(epochs);
   const incomeVsOutflow = getIncomeVsOutflow(snapshots);
 
-  return NextResponse.json({
-    snapshots: snapshots.map((s) => ({
-      epoch: s.epoch,
-      balanceAda: s.balanceAda,
-      withdrawalsAda: s.withdrawalsAda,
-      reservesIncomeAda: s.reservesIncomeAda,
-    })),
-    incomeVsOutflow,
-  });
+  return NextResponse.json(
+    {
+      snapshots: snapshots.map((s) => ({
+        epoch: s.epoch,
+        balanceAda: s.balanceAda,
+        withdrawalsAda: s.withdrawalsAda,
+        reservesIncomeAda: s.reservesIncomeAda,
+      })),
+      incomeVsOutflow,
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' } },
+  );
 });

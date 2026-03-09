@@ -495,6 +495,14 @@ export function useSPOUrgent(poolId: string | null | undefined) {
   });
 }
 
+export function useSPOInbox(poolId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['spo-inbox', poolId],
+    queryFn: () => fetchJson(`/api/dashboard/spo-inbox?poolId=${encodeURIComponent(poolId!)}`),
+    enabled: !!poolId,
+  });
+}
+
 export function useProposalOutcome(txHash: string | null | undefined, index: number | undefined) {
   return useQuery({
     queryKey: ['proposal-outcome', txHash, index],

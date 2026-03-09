@@ -15,31 +15,24 @@ import {
   ChevronDown,
   BarChart2,
   Activity,
-  MessageSquare,
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import {
-  useDRepReportCard,
-  useGovernancePulse,
-  useDashboardInbox,
-  useDashboardUrgent,
-} from '@/hooks/queries';
+import { useSPOSummary, useGovernancePulse, useSPOInbox } from '@/hooks/queries';
 import { generateActions } from '@/lib/actionFeed';
-import { SPOInbox } from './SPOInbox';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type NotificationCategory = 'proposal' | 'score' | 'alignment' | 'communication' | 'system';
-type FilterTab = 'all' | NotificationCategory;
+type SPONotificationCategory = 'proposal' | 'score' | 'pool' | 'system';
+type SPOFilterTab = 'all' | SPONotificationCategory;
 
-interface NotificationItem {
+interface SPONotificationItem {
   id: string;
-  category: NotificationCategory;
+  category: SPONotificationCategory;
   icon: React.FC<{ className?: string }>;
   iconColor: string;
   borderColor: string;
@@ -51,7 +44,7 @@ interface NotificationItem {
   priority: 1 | 2 | 3;
 }
 
-const STORAGE_KEY = 'civica_inbox_read';
+const STORAGE_KEY = 'civica_spo_inbox_read';
 
 function getReadSet(): Set<string> {
   if (typeof window === 'undefined') return new Set();
@@ -77,25 +70,24 @@ function markRead(ids: string[]) {
 // Filter tabs
 // ---------------------------------------------------------------------------
 
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
+const FILTER_TABS: { key: SPOFilterTab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'proposal', label: 'Proposals' },
   { key: 'score', label: 'Score' },
-  { key: 'alignment', label: 'Alignment' },
-  { key: 'communication', label: 'Communication' },
+  { key: 'pool', label: 'Pool' },
   { key: 'system', label: 'System' },
 ];
 
 // ---------------------------------------------------------------------------
-// Map action types → notification metadata
+// Map action types -> notification metadata
 // ---------------------------------------------------------------------------
 
 function actionToNotification(
   action: ReturnType<typeof generateActions>[number],
-): NotificationItem {
+): SPONotificationItem {
   const map: Record<
     string,
-    Pick<NotificationItem, 'category' | 'icon' | 'iconColor' | 'borderColor' | 'bgColor'>
+    Pick<SPONotificationItem, 'category' | 'icon' | 'iconColor' | 'borderColor' | 'bgColor'>
   > = {
     vote_required: {
       category: 'proposal',
@@ -103,13 +95,6 @@ function actionToNotification(
       iconColor: 'text-primary',
       borderColor: 'border-primary/20',
       bgColor: 'bg-primary/5',
-    },
-    delegation_stale: {
-      category: 'alignment',
-      icon: AlertCircle,
-      iconColor: 'text-rose-400',
-      borderColor: 'border-rose-900/30',
-      bgColor: 'bg-rose-950/10',
     },
     score_dropped: {
       category: 'score',
@@ -131,6 +116,27 @@ function actionToNotification(
       iconColor: 'text-violet-400',
       borderColor: 'border-violet-900/30',
       bgColor: 'bg-violet-950/10',
+    },
+    delegation_stale: {
+      category: 'pool',
+      icon: AlertCircle,
+      iconColor: 'text-rose-400',
+      borderColor: 'border-rose-900/30',
+      bgColor: 'bg-rose-950/10',
+    },
+    statement_missing: {
+      category: 'pool',
+      icon: Shield,
+      iconColor: 'text-cyan-400',
+      borderColor: 'border-cyan-900/30',
+      bgColor: 'bg-cyan-950/10',
+    },
+    rationale_missing: {
+      category: 'score',
+      icon: Vote,
+      iconColor: 'text-amber-400',
+      borderColor: 'border-amber-900/30',
+      bgColor: 'bg-amber-950/10',
     },
   };
 
@@ -154,7 +160,7 @@ function actionToNotification(
 }
 
 // ---------------------------------------------------------------------------
-// Notification card
+// Notification card (reuses same pattern as CivicaInbox)
 // ---------------------------------------------------------------------------
 
 function NotificationCard({
@@ -162,7 +168,7 @@ function NotificationCard({
   isRead,
   onRead,
 }: {
-  item: NotificationItem;
+  item: SPONotificationItem;
   isRead: boolean;
   onRead: (id: string) => void;
 }) {
@@ -213,7 +219,7 @@ function NotificationCard({
 }
 
 // ---------------------------------------------------------------------------
-// Quiet-mode summary — shown when only informational (priority 3) items exist
+// Quiet-mode summary
 // ---------------------------------------------------------------------------
 
 function QuietModeSummary({
@@ -253,14 +259,13 @@ function QuietModeSummary({
       <div className="flex items-center gap-3">
         <Shield className="h-6 w-6 text-emerald-400 shrink-0" />
         <div>
-          <p className="text-sm font-medium text-emerald-300">Governance is running smoothly</p>
+          <p className="text-sm font-medium text-emerald-300">Your pool is in good standing</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            No urgent items require your attention this epoch.
+            No urgent governance items require your attention this epoch.
           </p>
         </div>
       </div>
 
-      {/* Quick stats */}
       <div className="flex gap-4 text-xs text-muted-foreground">
         {ghiScore != null && (
           <span>
@@ -283,7 +288,6 @@ function QuietModeSummary({
         )}
       </div>
 
-      {/* Toggle for informational items */}
       {infoCount > 0 && (
         <button
           onClick={onToggleDetails}
@@ -300,11 +304,13 @@ function QuietModeSummary({
 }
 
 // ---------------------------------------------------------------------------
-// Supplemental system notifications (epoch health, governance activity)
+// System notifications for SPO context
 // ---------------------------------------------------------------------------
 
-function buildSystemNotifications(pulse: Record<string, unknown> | undefined): NotificationItem[] {
-  const items: NotificationItem[] = [];
+function buildSystemNotifications(
+  pulse: Record<string, unknown> | undefined,
+): SPONotificationItem[] {
+  const items: SPONotificationItem[] = [];
   if (!pulse) return items;
 
   const activeProposals = pulse.activeProposals as number | undefined;
@@ -313,14 +319,14 @@ function buildSystemNotifications(pulse: Record<string, unknown> | undefined): N
 
   if (activeProposals != null && activeProposals > 0) {
     items.push({
-      id: 'sys_active_proposals',
+      id: 'sys_spo_active_proposals',
       category: 'system',
       icon: Activity,
       iconColor: 'text-sky-400',
       borderColor: 'border-sky-900/30',
       bgColor: 'bg-sky-950/10',
       title: `${activeProposals} governance proposal${activeProposals > 1 ? 's' : ''} in progress`,
-      description: 'Cardano governance is active. Your delegation is participating.',
+      description: 'Some proposals may require SPO votes. Check for pending actions.',
       href: '/discover?tab=proposals',
       cta: 'View',
       priority: 3,
@@ -330,7 +336,7 @@ function buildSystemNotifications(pulse: Record<string, unknown> | undefined): N
   if (ghiScore != null) {
     const ghiDir = (ghiDelta ?? 0) > 0 ? 'up' : (ghiDelta ?? 0) < 0 ? 'down' : 'stable';
     items.push({
-      id: 'sys_ghi',
+      id: 'sys_spo_ghi',
       category: 'system',
       icon: BarChart2,
       iconColor:
@@ -353,48 +359,29 @@ function buildSystemNotifications(pulse: Record<string, unknown> | undefined): N
 }
 
 // ---------------------------------------------------------------------------
-// Main component
+// Main SPO Inbox component
 // ---------------------------------------------------------------------------
 
-export function CivicaInbox() {
-  const { segment, drepId, delegatedDrep, poolId } = useSegment();
-
-  // Render SPO-specific inbox when in SPO segment
-  if (segment === 'spo' && poolId) {
-    return <SPOInbox />;
-  }
-
-  return <CivicaInboxInner segment={segment} drepId={drepId} delegatedDrep={delegatedDrep} />;
-}
-
-function CivicaInboxInner({
-  segment,
-  drepId,
-  delegatedDrep,
-}: {
-  segment: string;
-  drepId: string | null;
-  delegatedDrep: string | null;
-}) {
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+export function SPOInbox() {
+  const { poolId } = useSegment();
+  const [activeFilter, setActiveFilter] = useState<SPOFilterTab>('all');
   const [readSet, setReadSet] = useState<Set<string>>(new Set());
   const [showInfoItems, setShowInfoItems] = useState(false);
 
-  const { data: rawCard } = useDRepReportCard(segment === 'drep' ? drepId : delegatedDrep);
+  const { data: rawSummary } = useSPOSummary(poolId);
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
-  const { data: rawInbox, isLoading: inboxLoading } = useDashboardInbox(
-    segment === 'drep' ? drepId : null,
-  );
-  const { data: rawUrgent } = useDashboardUrgent(segment === 'drep' ? drepId : null);
+  const { data: rawInbox, isLoading: inboxLoading } = useSPOInbox(poolId);
 
-  const card = rawCard as
+  const summary = rawSummary as
     | {
         score?: number;
-        momentum?: number;
-        isActive?: boolean;
+        spoScore?: number;
         tier?: string;
-        totalVotes?: number;
+        voteCount?: number;
         claimed?: boolean;
+        isClaimed?: boolean;
+        scoreDelta?: number;
+        momentum?: number;
       }
     | undefined;
   const pulse = rawPulse as
@@ -403,15 +390,16 @@ function CivicaInboxInner({
   const inbox = rawInbox as
     | {
         pendingCount?: number;
-        scoreImpact?: { potentialGain?: number };
+        scoreImpact?: { potentialGain?: number; perProposalGain?: number };
+        criticalCount?: number;
+        urgentCount?: number;
         pendingProposals?: {
           txHash?: string;
-          id?: string;
           index?: number;
           title?: string;
-          proposalTitle?: string;
+          proposalType?: string;
           priority?: string;
-          epochsRemaining?: number;
+          epochsRemaining?: number | null;
           perProposalScoreImpact?: number;
         }[];
       }
@@ -426,64 +414,89 @@ function CivicaInboxInner({
     setReadSet((prev) => new Set([...prev, id]));
   }, []);
 
-  const handleMarkAllRead = useCallback((items: NotificationItem[]) => {
+  const handleMarkAllRead = useCallback((items: SPONotificationItem[]) => {
     const ids = items.map((i) => i.id);
     markRead(ids);
     setReadSet((prev) => new Set([...prev, ...ids]));
   }, []);
 
+  const spoScore = summary?.spoScore ?? summary?.score ?? 0;
+  const scoreDelta = summary?.scoreDelta ?? summary?.momentum;
+  const voteCount = summary?.voteCount ?? 0;
+  const isClaimed = summary?.isClaimed ?? summary?.claimed ?? true;
+
   // Build notifications from action feed + system events
   const actions = generateActions({
-    segment,
+    segment: 'spo',
     activeProposals: pulse?.activeProposals ?? 0,
     criticalProposals: pulse?.criticalProposals ?? 0,
-    drepScore: card?.score ?? undefined,
-    scoreDelta: card?.momentum ?? undefined,
-    drepIsActive: card?.isActive ?? undefined,
-    delegatedDrep,
-    delegatedDrepScore: segment !== 'drep' ? (card?.score ?? undefined) : undefined,
-    delegatedDrepIsActive: segment !== 'drep' ? (card?.isActive ?? undefined) : undefined,
-    pendingVotesCount: segment === 'drep' ? (inbox?.pendingCount ?? 0) : 0,
-    drepTier: card?.tier ?? undefined,
-    spoScore: segment === 'spo' ? (card?.score ?? undefined) : undefined,
-    spoScoreDelta: segment === 'spo' ? (card?.momentum ?? undefined) : undefined,
-    spoVoteCount: segment === 'spo' ? (card?.totalVotes ?? 0) : undefined,
-    spoIsClaimed: segment === 'spo' ? (card?.claimed ?? true) : undefined,
+    pendingVotesCount: inbox?.pendingCount ?? 0,
+    spoScore,
+    spoScoreDelta: scoreDelta,
+    spoVoteCount: voteCount,
+    spoIsClaimed: isClaimed,
+    spoPoolId: poolId ?? undefined,
   });
 
   const systemNotes = buildSystemNotifications(pulse);
-  const urgent = rawUrgent as { unansweredQuestions?: number } | undefined;
-  const communicationNotes: NotificationItem[] = [];
-  if (segment === 'drep' && (urgent?.unansweredQuestions ?? 0) > 0) {
-    const count = urgent!.unansweredQuestions!;
-    communicationNotes.push({
-      id: `comm_unanswered_${count}`,
-      category: 'communication',
-      icon: MessageSquare,
-      iconColor: 'text-primary',
-      borderColor: 'border-primary/20',
-      bgColor: 'bg-primary/5',
-      title: `${count} unanswered question${count > 1 ? 's' : ''} from delegators`,
-      description: 'Responding to questions builds trust and improves engagement.',
-      href: '/my-gov',
-      cta: 'Respond',
+
+  // Build pool-specific notifications
+  const poolNotes: SPONotificationItem[] = [];
+  if (inbox?.criticalCount && inbox.criticalCount > 0) {
+    poolNotes.push({
+      id: `spo_critical_${inbox.criticalCount}`,
+      category: 'proposal',
+      icon: AlertCircle,
+      iconColor: 'text-rose-400',
+      borderColor: 'border-rose-900/30',
+      bgColor: 'bg-rose-950/10',
+      title: `${inbox.criticalCount} critical proposal${inbox.criticalCount > 1 ? 's' : ''} need your vote`,
+      description: 'These proposals affect core protocol parameters or governance structure.',
+      href: '/discover?tab=proposals',
+      cta: 'Review',
+      priority: 1,
+    });
+  }
+
+  if (
+    inbox?.urgentCount &&
+    inbox.urgentCount > 0 &&
+    !(inbox?.criticalCount && inbox.criticalCount > 0)
+  ) {
+    poolNotes.push({
+      id: `spo_urgent_${inbox.urgentCount}`,
+      category: 'proposal',
+      icon: Clock,
+      iconColor: 'text-amber-400',
+      borderColor: 'border-amber-900/30',
+      bgColor: 'bg-amber-950/10',
+      title: `${inbox.urgentCount} proposal${inbox.urgentCount > 1 ? 's' : ''} expiring soon`,
+      description: 'Vote before these proposals expire to maintain your participation score.',
+      href: '/discover?tab=proposals',
+      cta: 'Vote Now',
       priority: 2,
     });
   }
 
-  const allNotifications: NotificationItem[] = [
+  const allNotifications: SPONotificationItem[] = [
+    ...poolNotes,
     ...actions.map(actionToNotification),
-    ...communicationNotes,
     ...systemNotes,
   ];
 
+  // Deduplicate by id (action feed may generate similar items to poolNotes)
+  const seen = new Set<string>();
+  const deduped = allNotifications.filter((n) => {
+    if (seen.has(n.id)) return false;
+    seen.add(n.id);
+    return true;
+  });
+
   // Filter
   const filtered =
-    activeFilter === 'all'
-      ? allNotifications
-      : allNotifications.filter((n) => n.category === activeFilter);
+    activeFilter === 'all' ? deduped : deduped.filter((n) => n.category === activeFilter);
 
-  const unreadCount = allNotifications.filter((n) => !readSet.has(n.id)).length;
+  const unreadCount = deduped.filter((n) => !readSet.has(n.id)).length;
   const isLoading = pulseLoading || inboxLoading;
 
   return (
@@ -491,7 +504,7 @@ function CivicaInboxInner({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="font-display text-xl font-bold">Inbox</h2>
+          <h2 className="font-display text-xl font-bold">SPO Inbox</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {unreadCount > 0
               ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
@@ -511,15 +524,11 @@ function CivicaInboxInner({
 
       {/* Filter tabs */}
       <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-        {FILTER_TABS.filter((t) => {
-          // Hide system tab for anon
-          if (t.key === 'system' && segment === 'anonymous') return false;
-          return true;
-        }).map((tab) => {
+        {FILTER_TABS.map((tab) => {
           const count =
             tab.key === 'all'
-              ? allNotifications.filter((n) => !readSet.has(n.id)).length
-              : allNotifications.filter((n) => n.category === tab.key && !readSet.has(n.id)).length;
+              ? deduped.filter((n) => !readSet.has(n.id)).length
+              : deduped.filter((n) => n.category === tab.key && !readSet.has(n.id)).length;
           return (
             <button
               key={tab.key}
@@ -549,7 +558,7 @@ function CivicaInboxInner({
         })}
       </div>
 
-      {/* Content — smart quiet mode */}
+      {/* Content -- smart quiet mode */}
       {(() => {
         if (isLoading) {
           return (
@@ -568,7 +577,7 @@ function CivicaInboxInner({
               <p className="text-sm font-medium text-emerald-300">You&apos;re all caught up</p>
               <p className="text-xs text-muted-foreground">
                 {activeFilter === 'all'
-                  ? 'No governance notifications right now. Your participation is healthy.'
+                  ? 'No governance notifications right now. Your pool is in good standing.'
                   : `No ${activeFilter} notifications right now.`}
               </p>
             </div>
@@ -655,12 +664,12 @@ function CivicaInboxInner({
         );
       })()}
 
-      {/* DRep pending proposals detail (DRep segment only) */}
-      {segment === 'drep' && inbox?.pendingProposals && inbox.pendingProposals.length > 0 && (
+      {/* SPO pending proposals detail */}
+      {inbox?.pendingProposals && inbox.pendingProposals.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Pending Votes ({inbox.pendingCount ?? 0})
+              Pending SPO Votes ({inbox.pendingCount ?? 0})
             </p>
             {(inbox.scoreImpact?.potentialGain ?? 0) > 0 && (
               <span className="text-xs text-emerald-400 font-medium">
@@ -671,22 +680,30 @@ function CivicaInboxInner({
           <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
             {inbox.pendingProposals.slice(0, 5).map((p) => (
               <Link
-                key={p.txHash ?? p.id ?? ''}
+                key={`${p.txHash}-${p.index}`}
                 href={`/proposal/${p.txHash}/${p.index ?? 0}`}
                 className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors group"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate font-medium">
-                    {p.title ?? p.proposalTitle ?? 'Proposal'}
-                  </p>
+                  <p className="text-sm truncate font-medium">{p.title ?? 'Proposal'}</p>
                   <div className="flex items-center gap-2 mt-0.5">
+                    {p.proposalType && (
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {p.proposalType}
+                      </span>
+                    )}
                     {p.priority === 'critical' && (
                       <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">
                         Critical
                       </span>
                     )}
                     {p.epochsRemaining != null && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span
+                        className={cn(
+                          'text-[10px]',
+                          p.epochsRemaining <= 2 ? 'text-amber-400' : 'text-muted-foreground',
+                        )}
+                      >
                         {p.epochsRemaining} epoch{p.epochsRemaining !== 1 ? 's' : ''} left
                       </span>
                     )}
@@ -703,7 +720,7 @@ function CivicaInboxInner({
           </div>
           {inbox.pendingProposals.length > 5 && (
             <Link
-              href="/discover"
+              href="/discover?tab=proposals"
               className="block text-center text-xs text-muted-foreground hover:text-primary transition-colors py-1"
             >
               View all {inbox.pendingCount ?? 0} pending proposals

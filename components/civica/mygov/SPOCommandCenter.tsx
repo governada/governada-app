@@ -22,6 +22,7 @@ import {
   Zap,
   Fingerprint,
   ScrollText,
+  Inbox,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareModal } from '@/components/civica/shared/ShareModal';
@@ -34,6 +35,7 @@ import {
   useGovernancePulse,
   useSPODelegatorTrends,
   useSPOUrgent,
+  useSPOInbox,
 } from '@/hooks/queries';
 import {
   tierKey,
@@ -181,6 +183,16 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
   const { data: rawPulse } = useGovernancePulse();
   const { data: rawDelegatorTrends } = useSPODelegatorTrends(poolId);
   const { data: rawUrgent } = useSPOUrgent(poolId);
+  const { data: rawSPOInbox } = useSPOInbox(poolId);
+
+  const spoInbox = rawSPOInbox as
+    | {
+        pendingCount?: number;
+        scoreImpact?: { potentialGain?: number; perProposalGain?: number };
+        criticalCount?: number;
+        urgentCount?: number;
+      }
+    | undefined;
 
   const summary = rawSummary as SPOSummaryData | undefined;
   const pulse = rawPulse as PulseData | undefined;
@@ -401,6 +413,52 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
           </div>
         ))}
       </div>
+
+      {/* Governance Inbox summary */}
+      {!summaryLoading && isClaimed && (spoInbox?.pendingCount ?? 0) > 0 && (
+        <Link href="/my-gov/inbox" className="block group">
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between hover:brightness-110 transition-all">
+            <div className="flex items-center gap-3">
+              <Inbox className="h-5 w-5 text-primary shrink-0" />
+              <div>
+                <p className="text-sm font-medium">
+                  {spoInbox!.pendingCount} proposal{spoInbox!.pendingCount !== 1 ? 's' : ''} need
+                  your vote
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {(spoInbox?.criticalCount ?? 0) > 0 && (
+                    <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">
+                      {spoInbox!.criticalCount} critical
+                    </span>
+                  )}
+                  {(spoInbox?.scoreImpact?.potentialGain ?? 0) > 0 && (
+                    <span className="text-[10px] text-emerald-400 font-medium">
+                      +{spoInbox!.scoreImpact!.potentialGain!.toFixed(1)} pts if you vote with
+                      rationale
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-primary group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </div>
+        </Link>
+      )}
+
+      {!summaryLoading &&
+        isClaimed &&
+        (spoInbox?.pendingCount ?? 0) === 0 &&
+        pendingCount === 0 && (
+          <div className="rounded-xl border border-emerald-900/30 bg-emerald-950/10 px-4 py-3 flex items-center gap-3">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-emerald-300">All caught up</p>
+              <p className="text-xs text-muted-foreground">
+                No SPO-eligible proposals need your vote right now.
+              </p>
+            </div>
+          </div>
+        )}
 
       {/* Pillar breakdown */}
       {!summaryLoading && voteCount > 0 && (

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { computeGHI, type GHIResult } from '@/lib/ghi';
+import { GHI_CALIBRATION } from '@/lib/scoring/calibration';
 
 export const GET = withRouteHandler(async (request) => {
   const epochs = Math.min(parseInt(request.nextUrl.searchParams.get('epochs') ?? '20', 10), 50);
@@ -21,6 +22,9 @@ export const GET = withRouteHandler(async (request) => {
     epoch: s.epoch_no,
     score: Number(s.score),
     band: s.band as string,
+    components:
+      (s.components as { name: string; value: number; weight: number; contribution: number }[]) ??
+      null,
   }));
 
   const trend: { direction: 'up' | 'down' | 'flat'; delta: number; streakEpochs: number } = {
@@ -70,6 +74,7 @@ export const GET = withRouteHandler(async (request) => {
       history,
       trend,
       componentTrends,
+      calibration: GHI_CALIBRATION,
     },
     { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' } },
   );

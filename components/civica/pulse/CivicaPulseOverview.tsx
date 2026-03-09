@@ -27,7 +27,10 @@ import { CivicaObservatory } from './CivicaObservatory';
 import { CivicaGovernanceCalendar } from './CivicaGovernanceCalendar';
 import { StateOfGovernance } from './StateOfGovernance';
 import { GHIHero } from './GHIHero';
+import { GHIExplorer } from './GHIExplorer';
 import { GovernanceImpactCard } from './GovernanceImpactCard';
+import { ActivityTicker } from '@/components/ActivityTicker';
+import { useGovernanceHealthIndex } from '@/hooks/queries';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
 import type {
   TreasuryData,
@@ -214,6 +217,28 @@ export function CivicaPulseOverview() {
       })
     | undefined;
 
+  const { data: rawGhi } = useGovernanceHealthIndex(5);
+  const ghiData = rawGhi as
+    | {
+        current: {
+          score: number;
+          band: string;
+          components: { name: string; value: number; weight: number; contribution: number }[];
+        };
+        history: {
+          epoch: number;
+          components:
+            | { name: string; value: number; weight: number; contribution: number }[]
+            | null;
+        }[];
+        componentTrends: Record<string, { direction: string; delta: number }>;
+        calibration: Record<
+          string,
+          { floor: number; targetLow: number; targetHigh: number; ceiling: number }
+        >;
+      }
+    | undefined;
+
   const { data: rawLeaderboard } = useGovernanceLeaderboard();
   const leaderboard = rawLeaderboard as LeaderboardData | undefined;
 
@@ -284,6 +309,18 @@ export function CivicaPulseOverview() {
         <div role="tabpanel" id="pulse-tabpanel-now" aria-label="Now">
           {/* ── GHI Hero ─────────────────────────────────────────── */}
           <GHIHero />
+
+          {/* ── GHI Explorer (click-to-expand breakdown) ──────── */}
+          {ghiData?.current && (
+            <GHIExplorer
+              components={ghiData.current.components}
+              componentHistory={ghiData.history}
+              calibration={ghiData.calibration}
+              componentTrends={ghiData.componentTrends}
+              band={ghiData.current.band}
+              score={ghiData.current.score}
+            />
+          )}
 
           {/* ── State of Governance narrative ───────────────────── */}
           <StateOfGovernance />
@@ -681,6 +718,9 @@ export function CivicaPulseOverview() {
               </Link>
             </div>
           )}
+
+          {/* ── Live Activity Ticker (inline) ────────────────────── */}
+          <ActivityTicker variant="inline" />
         </div>
       )}
     </div>

@@ -22,7 +22,8 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
     const syncLog = new SyncLogger(supabase, 'proposals');
     await syncLog.start();
 
-    const errors: string[] = [];
+    const fatalErrors: string[] = [];
+    const warnings: string[] = [];
     let proposalCount = 0;
     let voteCount = 0;
     let summaryCount = 0;
@@ -42,7 +43,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
         } = validateArray(rawProposals, KoiosProposalSchema, 'proposals');
 
         if (invalidCount > 0) {
-          errors.push(...validationErrors);
+          warnings.push(...validationErrors);
           emitPostHog(true, 'proposals', 0, {
             event_override: 'sync_validation_error',
             record_type: 'proposal',
@@ -89,7 +90,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
             .from('proposals')
             .upsert(batch, { onConflict: 'tx_hash,proposal_index', ignoreDuplicates: false });
           if (error) {
-            errors.push(`Proposal upsert: ${error.message}`);
+            fatalErrors.push(`Proposal upsert: ${error.message}`);
             logger.error(`${TAG} Proposal upsert error`, { error: error.message });
           }
         }
@@ -105,7 +106,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
           open: openProposals.length,
         });
       } catch (err) {
-        errors.push(`Proposals: ${errMsg(err)}`);
+        fatalErrors.push(`Proposals: ${errMsg(err)}`);
         logger.error(`${TAG} Proposal fetch failed`, { error: errMsg(err) });
       }
 
@@ -140,8 +141,8 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
               .from('drep_votes')
               .upsert(batch, { onConflict: 'vote_tx_hash', ignoreDuplicates: false });
             if (error) {
-              errors.push(`Vote upsert: ${error.message}`);
-              logger.error(`${TAG} Vote upsert error`, { error: error.message });
+              warnings.push(`Vote upsert: ${error.message}`);
+              logger.warn(`${TAG} Vote upsert error (non-fatal)`, { error: error.message });
             }
           }
 
@@ -151,8 +152,8 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
             openProposals: openProposals.length,
           });
         } catch (err) {
-          errors.push(`Votes: ${errMsg(err)}`);
-          logger.error(`${TAG} Vote fetch failed`, { error: errMsg(err) });
+          warnings.push(`Votes: ${errMsg(err)}`);
+          logger.warn(`${TAG} Vote fetch failed (non-fatal)`, { error: errMsg(err) });
         }
       }
 
@@ -326,24 +327,26 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
         logger.warn(`${TAG} Notification broadcast skipped`, { error: err });
       }
     } catch (err) {
-      errors.push(`Unhandled: ${errMsg(err)}`);
+      fatalErrors.push(`Unhandled: ${errMsg(err)}`);
       logger.error(`${TAG} Unhandled error`, { error: errMsg(err) });
     }
 
-    const success = errors.length === 0;
+    const allIssues = [...fatalErrors, ...warnings];
+    const success = fatalErrors.length === 0;
     const metrics = {
       proposals_synced: proposalCount,
       votes_synced: voteCount,
       summaries_refreshed: summaryCount,
       vote_snapshots: voteSnapshotCount,
       push_sent: pushSent,
+      warning_count: warnings.length,
     };
 
-    await syncLog.finalize(success, errors.length > 0 ? errors.join('; ') : null, metrics);
+    await syncLog.finalize(success, allIssues.length > 0 ? allIssues.join('; ') : null, metrics);
     await emitPostHog(success, 'proposals', syncLog.elapsed, metrics);
 
     if (!success) {
-      throw new Error(errors.join('; '));
+      throw new Error(fatalErrors.join('; '));
     }
 
     return {
@@ -353,6 +356,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
       summariesRefreshed: summaryCount,
       voteSnapshots: voteSnapshotCount,
       pushSent,
+      warnings: warnings.length,
       durationSeconds: (syncLog.elapsed / 1000).toFixed(1),
       timestamp: new Date().toISOString(),
     };

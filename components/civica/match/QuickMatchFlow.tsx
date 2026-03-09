@@ -550,6 +550,22 @@ function getPersonalityDescription(label: string): string {
   return descriptions[label] || "Your unique governance values shape how you see Cardano's future.";
 }
 
+function getMatchNarrative(match: MatchResult): string {
+  const { agreeDimensions, differDimensions, matchScore } = match;
+  const strength = matchScore >= 80 ? 'Strong' : matchScore >= 60 ? 'Good' : 'Moderate';
+
+  if (agreeDimensions.length > 0 && differDimensions.length > 0) {
+    return `${strength} alignment on ${agreeDimensions.slice(0, 2).join(' and ')} — you differ on ${differDimensions[0]}.`;
+  }
+  if (agreeDimensions.length > 0) {
+    return `${strength} alignment on ${agreeDimensions.slice(0, 2).join(' and ')}.`;
+  }
+  if (differDimensions.length > 0) {
+    return `${strength} overall match — you differ on ${differDimensions.slice(0, 2).join(' and ')}.`;
+  }
+  return `${strength} alignment across your governance values.`;
+}
+
 function ResultsScreen({
   drepResults,
   spoResults,
@@ -660,15 +676,81 @@ function ResultsScreen({
         </p>
 
         {hasMatches ? (
-          <div className="grid gap-3">
-            {activeResults.matches.map((match, i) => (
-              <QuickMatchResultCard
+          <div className="space-y-4">
+            {/* Hero: #1 match */}
+            {(() => {
+              const heroMatch = activeResults.matches[0];
+              const heroName = heroMatch.drepName || heroMatch.drepId.slice(0, 16) + '...';
+              const heroIsSPO = activeTab === 'spo';
+              const heroProfilePath = heroIsSPO
+                ? `/pool/${encodeURIComponent(heroMatch.drepId)}`
+                : `/drep/${encodeURIComponent(heroMatch.drepId)}`;
+              return (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-primary text-center tracking-wide uppercase">
+                    Your Top Match
+                  </p>
+                  <Card className="overflow-hidden border-primary/20 bg-primary/[0.02]">
+                    <CardContent className="p-5 space-y-4">
+                      <div className="flex justify-center" aria-hidden="true">
+                        <RadarOverlay
+                          userAlignments={drepResults.userAlignments}
+                          drepAlignments={heroMatch.alignments}
+                          size={180}
+                        />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <div className="flex items-center justify-center gap-2">
+                          <Link
+                            href={heroProfilePath}
+                            className="font-semibold text-lg hover:text-primary transition-colors"
+                          >
+                            {heroName}
+                          </Link>
+                          <Badge
+                            variant="outline"
+                            className="text-base font-bold text-green-600 border-green-600/30 bg-green-500/5"
+                          >
+                            {heroMatch.matchScore}%
+                          </Badge>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {heroMatch.personalityLabel}
+                        </Badge>
+                        <p className="text-sm text-muted-foreground">
+                          {getMatchNarrative(heroMatch)}
+                        </p>
+                        <div className="flex gap-2 justify-center pt-1">
+                          {!heroIsSPO && (
+                            <DelegateButton drepId={heroMatch.drepId} drepName={heroName} />
+                          )}
+                          <Link href={heroProfilePath}>
+                            <Button variant="outline" size="sm" className="gap-1">
+                              View Profile <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()}
+
+            {/* Remaining matches with stagger */}
+            {activeResults.matches.slice(1).map((match, i) => (
+              <div
                 key={match.drepId}
-                rank={i + 1}
-                match={match}
-                userAlignments={drepResults.userAlignments}
-                matchType={activeTab}
-              />
+                className="animate-in fade-in slide-in-from-bottom-3"
+                style={{ animationDelay: `${(i + 1) * 150}ms`, animationFillMode: 'backwards' }}
+              >
+                <QuickMatchResultCard
+                  rank={i + 2}
+                  match={match}
+                  userAlignments={drepResults.userAlignments}
+                  matchType={activeTab}
+                />
+              </div>
             ))}
           </div>
         ) : (
@@ -797,22 +879,10 @@ function QuickMatchResultCard({
               {match.personalityLabel}
             </Badge>
 
-            {/* Dimension agreement */}
+            {/* Match narrative */}
             {(match.agreeDimensions.length > 0 || match.differDimensions.length > 0) && (
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {match.agreeDimensions.length > 0 && (
-                  <>
-                    <span className="text-green-600 dark:text-green-400">Agree on: </span>
-                    {match.agreeDimensions.join(', ')}
-                  </>
-                )}
-                {match.agreeDimensions.length > 0 && match.differDimensions.length > 0 && '. '}
-                {match.differDimensions.length > 0 && (
-                  <>
-                    <span className="text-amber-600 dark:text-amber-400">Differ on: </span>
-                    {match.differDimensions.join(', ')}
-                  </>
-                )}
+                {getMatchNarrative(match)}
               </p>
             )}
 

@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ChevronRight,
   Trophy,
+  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -167,13 +168,33 @@ export function HomeDRep() {
               </div>
             ) : (
               <div className="flex items-end justify-center gap-3">
-                <span
-                  className={cn(
-                    'font-display text-6xl sm:text-7xl font-bold tabular-nums leading-none drop-shadow-lg hero-text-shadow',
-                    TIER_HERO_COLORS[tier] ?? 'text-white',
-                  )}
-                >
-                  {score}
+                <span className="relative">
+                  <span
+                    className="absolute inset-0 -inset-x-4 -inset-y-2 rounded-full blur-2xl opacity-30 animate-pulse"
+                    style={{
+                      background:
+                        tier === 'Diamond'
+                          ? 'radial-gradient(circle, rgba(34,211,238,0.4), transparent 70%)'
+                          : tier === 'Legendary'
+                            ? 'radial-gradient(circle, rgba(167,139,250,0.4), transparent 70%)'
+                            : tier === 'Gold'
+                              ? 'radial-gradient(circle, rgba(234,179,8,0.3), transparent 70%)'
+                              : tier === 'Silver'
+                                ? 'radial-gradient(circle, rgba(148,163,184,0.3), transparent 70%)'
+                                : tier === 'Bronze'
+                                  ? 'radial-gradient(circle, rgba(217,119,6,0.3), transparent 70%)'
+                                  : 'radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%)',
+                    }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className={cn(
+                      'relative font-display text-6xl sm:text-7xl font-bold tabular-nums leading-none drop-shadow-lg hero-text-shadow',
+                      TIER_HERO_COLORS[tier] ?? 'text-white',
+                    )}
+                  >
+                    {score}
+                  </span>
                 </span>
                 <div className="pb-1.5 space-y-0.5 text-left">
                   <span
@@ -333,6 +354,17 @@ export function HomeDRep() {
         )}
 
         {urgentLoading && <Skeleton className="h-24 rounded-xl" />}
+
+        {!urgentLoading && urgentItems.length === 0 && (
+          <div className="rounded-xl border border-emerald-800/30 bg-emerald-950/10 p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+              <p className="text-sm font-medium text-foreground">
+                All caught up — no urgent votes this epoch
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ── Competitive context ──────────────────────────────────── */}
         {!compLoading && (competitive?.nearbyAbove?.length ?? 0) > 0 && (

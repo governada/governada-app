@@ -17,7 +17,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   const { data: pool } = await supabase
     .from('pools')
     .select(
-      'pool_id, ticker, pool_name, governance_score, vote_count, current_tier, score_momentum',
+      'pool_id, ticker, pool_name, governance_score, vote_count, current_tier, score_momentum, claimed_by',
     )
     .eq('pool_id', poolId)
     .single();

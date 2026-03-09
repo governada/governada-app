@@ -100,7 +100,7 @@ export function HomeSPO() {
   const score: number = (pool?.governance_score as number) ?? 0;
   const tier: string = (pool?.tier as string) ?? 'Emerging';
   const ticker: string = (pool?.ticker as string) ?? '';
-  const isClaimed = false; // Server-side claim status deferred; always show soft claim prompt
+  const isClaimed = !!pool?.claimed_by;
 
   const momentumLabel =
     momentum !== null && momentum > 0.5
@@ -138,13 +138,33 @@ export function HomeSPO() {
               </div>
             ) : (
               <div className="flex items-end justify-center gap-3">
-                <span
-                  className={cn(
-                    'font-display text-6xl sm:text-7xl font-bold tabular-nums leading-none drop-shadow-lg hero-text-shadow',
-                    TIER_HERO_COLORS[tier] ?? 'text-white',
-                  )}
-                >
-                  {score}
+                <span className="relative">
+                  <span
+                    className="absolute inset-0 -inset-x-4 -inset-y-2 rounded-full blur-2xl opacity-30 animate-pulse"
+                    style={{
+                      background:
+                        tier === 'Diamond'
+                          ? 'radial-gradient(circle, rgba(34,211,238,0.4), transparent 70%)'
+                          : tier === 'Legendary'
+                            ? 'radial-gradient(circle, rgba(167,139,250,0.4), transparent 70%)'
+                            : tier === 'Gold'
+                              ? 'radial-gradient(circle, rgba(234,179,8,0.3), transparent 70%)'
+                              : tier === 'Silver'
+                                ? 'radial-gradient(circle, rgba(148,163,184,0.3), transparent 70%)'
+                                : tier === 'Bronze'
+                                  ? 'radial-gradient(circle, rgba(217,119,6,0.3), transparent 70%)'
+                                  : 'radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%)',
+                    }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className={cn(
+                      'relative font-display text-6xl sm:text-7xl font-bold tabular-nums leading-none drop-shadow-lg hero-text-shadow',
+                      TIER_HERO_COLORS[tier] ?? 'text-white',
+                    )}
+                  >
+                    {score}
+                  </span>
                 </span>
                 <div className="pb-1.5 space-y-0.5 text-left">
                   <span

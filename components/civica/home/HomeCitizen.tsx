@@ -174,7 +174,7 @@ export function HomeCitizen({ pulseData, ssrHolderData, ssrWalletAddress }: Home
     <div className="flex flex-col pb-16">
       {/* Epoch Briefing — the citizen's entire home experience */}
       <section className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-4 sm:pt-6">
-        <EpochBriefing drepId={drepId} wallet={wallet} />
+        <EpochBriefing wallet={wallet} />
       </section>
     </div>
   );

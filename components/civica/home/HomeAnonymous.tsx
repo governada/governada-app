@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -11,10 +12,26 @@ import {
   HelpCircle,
   Coins,
 } from 'lucide-react';
+import { useInView, useSpring, useTransform, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { posthog } from '@/lib/posthog';
 import { ConstellationScene } from '@/components/ConstellationScene';
+
+function AnimatedNumber({ value, className }: { value: number; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-50px' });
+  const spring = useSpring(0, { stiffness: 75, damping: 15 });
+  const display = useTransform(spring, (v) => Math.round(v).toLocaleString());
+
+  if (isInView) spring.set(value);
+
+  return (
+    <motion.span ref={ref} className={className}>
+      {display}
+    </motion.span>
+  );
+}
 
 interface PulseData {
   totalAdaGoverned: string;
@@ -241,7 +258,12 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-xl border border-border bg-card/60 backdrop-blur-sm p-4 space-y-1"
+              className={cn(
+                'rounded-xl border bg-card/60 backdrop-blur-sm p-4 space-y-1',
+                s.label === 'Open Proposals' && (s.value as number) > 0
+                  ? 'border-primary/40'
+                  : 'border-border',
+              )}
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <s.icon className="h-3.5 w-3.5 text-primary/50" />
@@ -250,7 +272,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
                 </p>
               </div>
               <p className="font-display text-2xl font-bold text-foreground tabular-nums">
-                {s.value}
+                {typeof s.value === 'number' ? <AnimatedNumber value={s.value} /> : s.value}
               </p>
               <p className="text-[10px] text-muted-foreground">{s.sub}</p>
             </div>
@@ -259,7 +281,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
       </section>
 
       {/* ── Social proof strip ──────────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-4xl px-4 pb-16">
+      <section className="mx-auto w-full max-w-4xl px-4 pb-8">
         <div className="rounded-xl border border-border/50 bg-muted/30 px-6 py-4 space-y-2">
           <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Citizens are already shaping Cardano&apos;s future
@@ -268,22 +290,45 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
             <span className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary/60 shrink-0" />
               <strong className="text-foreground">
-                {pulseData.totalDReps.toLocaleString()}
+                <AnimatedNumber value={pulseData.totalDReps} />
               </strong>{' '}
               DReps scored
             </span>
             <span className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary/60 shrink-0" />
-              <strong className="text-foreground">{pulseData.claimedDReps}</strong> profiles claimed
+              <strong className="text-foreground">
+                <AnimatedNumber value={pulseData.claimedDReps} />
+              </strong>{' '}
+              profiles claimed
             </span>
             <span className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary/60 shrink-0" />
               <strong className="text-foreground">
-                {pulseData.votesThisWeek.toLocaleString()}
+                <AnimatedNumber value={pulseData.votesThisWeek} />
               </strong>{' '}
               votes cast this week
             </span>
           </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA ────────────────────────────────────────────────── */}
+      <section className="mx-auto w-full max-w-2xl px-4 pb-16">
+        <div className="text-center space-y-4">
+          <p className="text-lg font-semibold text-foreground">Ready to use your voice?</p>
+          <Link
+            href="/match"
+            onClick={() => posthog?.capture('citizen_path_clicked', { path: 'govern_bottom' })}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3',
+              'text-sm font-semibold text-primary-foreground',
+              'hover:bg-primary/90 transition-colors',
+            )}
+          >
+            <Zap className="h-4 w-4" />
+            Find My DRep — 60 Seconds
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
     </div>

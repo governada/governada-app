@@ -40,7 +40,6 @@ import {
 /* ── Types ──────────────────────────────────────────────────────── */
 
 interface EpochBriefingProps {
-  drepId: string | null | undefined;
   wallet: string | null | undefined;
 }
 
@@ -715,7 +714,12 @@ function EpochBriefingContent({
   const civicIdentityStrip = identity ? (
     <Link
       href="/my-gov/identity"
-      className="group block pt-5 hover:bg-muted/30 -mx-4 px-4 rounded-lg transition-colors"
+      className={cn(
+        'group block pt-5 -mx-4 px-4 rounded-lg transition-colors',
+        identity.delegationStreak != null && (identity.delegationStreak as number) >= 5
+          ? 'bg-amber-500/5 hover:bg-amber-500/10'
+          : 'hover:bg-muted/30',
+      )}
     >
       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
         {identity.citizenSinceEpoch != null && (
@@ -726,7 +730,17 @@ function EpochBriefingContent({
         )}
         {identity.delegationStreak != null && (identity.delegationStreak as number) > 0 && (
           <span className="inline-flex items-center gap-1.5 min-h-[36px]">
-            <Flame className="h-3.5 w-3.5 text-amber-500 animate-pulse" aria-hidden="true" />
+            <Flame
+              className={cn(
+                'text-amber-500 animate-pulse',
+                (identity.delegationStreak as number) >= 8
+                  ? 'h-5 w-5'
+                  : (identity.delegationStreak as number) >= 4
+                    ? 'h-4 w-4'
+                    : 'h-3.5 w-3.5',
+              )}
+              aria-hidden="true"
+            />
             {identity.delegationStreak as React.ReactNode} epoch streak
           </span>
         )}
@@ -745,13 +759,13 @@ function EpochBriefingContent({
       </div>
       {(identity.recentMilestone as string | undefined) && (
         <div className="mt-2 flex items-center gap-2 text-xs">
-          <Trophy className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+          <Trophy className="h-3.5 w-3.5 text-amber-500 animate-bounce" aria-hidden="true" />
           <span className="font-medium text-foreground">
             {identity.recentMilestone as React.ReactNode}
           </span>
         </div>
       )}
-      <div className="mt-2 flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
         View your civic identity
         <ArrowRight className="h-3 w-3" />
       </div>

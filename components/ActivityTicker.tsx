@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Vote, FileText, Users, ScrollText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ActivityEvent {
   type: 'vote' | 'rationale' | 'proposal';
@@ -15,6 +16,7 @@ interface ActivityEvent {
 interface ActivityTickerProps {
   initialEvents?: ActivityEvent[];
   onEventVisible?: (drepId: string) => void;
+  variant?: 'overlay' | 'inline';
 }
 
 const EVENT_ICONS: Record<string, { icon: typeof Vote; color: string }> = {
@@ -49,7 +51,11 @@ function formatEventText(event: ActivityEvent): string {
   }
 }
 
-export function ActivityTicker({ initialEvents, onEventVisible }: ActivityTickerProps) {
+export function ActivityTicker({
+  initialEvents,
+  onEventVisible,
+  variant = 'overlay',
+}: ActivityTickerProps) {
   const [events, setEvents] = useState<ActivityEvent[]>(initialEvents || []);
   const tickerRef = useRef<HTMLUListElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -98,32 +104,62 @@ export function ActivityTicker({ initialEvents, onEventVisible }: ActivityTicker
   // Duplicate events for seamless scroll loop
   const displayEvents = [...events, ...events];
 
+  const tickerList = (
+    <ul
+      ref={tickerRef}
+      className={cn(
+        'flex items-center gap-8 whitespace-nowrap',
+        variant === 'overlay' ? 'px-4 py-2.5 animate-ticker' : 'px-3 py-2 animate-ticker',
+      )}
+      aria-live="polite"
+      aria-label="Recent governance activity"
+      style={{
+        animationDuration: `${Math.max(15, displayEvents.length * 2)}s`,
+      }}
+    >
+      {displayEvents.map((event, i) => {
+        const config = EVENT_ICONS[event.type] || EVENT_ICONS.vote;
+        const Icon = config.icon;
+        return (
+          <li key={`${event.timestamp}-${i}`} className="flex items-center gap-2 text-sm shrink-0">
+            <Icon className={`h-3.5 w-3.5 ${config.color} shrink-0`} />
+            <span className={variant === 'overlay' ? 'text-white/70' : 'text-foreground/70'}>
+              {formatEventText(event)}
+            </span>
+            <span
+              className={cn(
+                'text-xs',
+                variant === 'overlay' ? 'text-white/30' : 'text-muted-foreground',
+              )}
+            >
+              {formatRelativeTime(event.timestamp)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  if (variant === 'inline') {
+    return (
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-border">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+          </span>
+          <span className="text-xs font-medium text-muted-foreground">
+            Live Governance Activity
+          </span>
+        </div>
+        <div className="overflow-hidden">{tickerList}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="absolute bottom-0 left-0 right-0 z-10 overflow-hidden bg-black/50 backdrop-blur-md border-t border-white/5">
-      <ul
-        ref={tickerRef}
-        className="flex items-center gap-8 px-4 py-2.5 animate-ticker whitespace-nowrap"
-        aria-live="polite"
-        aria-label="Recent governance activity"
-        style={{
-          animationDuration: `${Math.max(15, displayEvents.length * 2)}s`,
-        }}
-      >
-        {displayEvents.map((event, i) => {
-          const config = EVENT_ICONS[event.type] || EVENT_ICONS.vote;
-          const Icon = config.icon;
-          return (
-            <li
-              key={`${event.timestamp}-${i}`}
-              className="flex items-center gap-2 text-sm shrink-0"
-            >
-              <Icon className={`h-3.5 w-3.5 ${config.color} shrink-0`} />
-              <span className="text-white/70">{formatEventText(event)}</span>
-              <span className="text-white/30 text-xs">{formatRelativeTime(event.timestamp)}</span>
-            </li>
-          );
-        })}
-      </ul>
+      {tickerList}
     </div>
   );
 }

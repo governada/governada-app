@@ -77,14 +77,23 @@ export function CivicaHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
-  const { segment, realSegment, stakeAddress, delegatedDrep, tier, setOverride } = useSegment();
+  const { segment, realSegment, stakeAddress, tier, setOverride } = useSegment();
   const { data: adminData } = useAdminCheck(isAuthenticated);
   const isAdmin = adminData?.isAdmin === true;
   const hasOverride = segment !== realSegment;
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
   const { resolvedTheme, setTheme } = useTheme();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState<'drep' | 'spo' | 'citizen-delegation' | null>(null);
+  const [pickerMode, setPickerMode] = useState<
+    | 'drep'
+    | 'spo'
+    | 'cc'
+    | 'citizen-delegation'
+    | 'drep-claimed'
+    | 'spo-claimed'
+    | 'cc-claimed'
+    | null
+  >(null);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -222,6 +231,7 @@ export function CivicaHeader() {
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
                           Simulate segment
                         </DropdownMenuLabel>
+                        {/* Citizen sub-menu */}
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>
                             Citizen
@@ -235,23 +245,90 @@ export function CivicaHeader() {
                               }
                             >
                               Undelegated
-                              {segment === 'citizen' && !delegatedDrep && hasOverride && ' ✓'}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setPickerMode('citizen-delegation')}>
                               Delegated to...
-                              {segment === 'citizen' && delegatedDrep && hasOverride && ' ✓'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setOverride({
+                                  segment: 'citizen',
+                                  delegatedDrep: 'drep_always_abstain',
+                                })
+                              }
+                            >
+                              Abstainer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setOverride({
+                                  segment: 'citizen',
+                                  delegatedDrep: 'drep_always_no_confidence',
+                                })
+                              }
+                            >
+                              No Confidence
                             </DropdownMenuItem>
                           </DropdownMenuSubContent>
                         </DropdownMenuSub>
-                        <DropdownMenuItem onClick={() => setPickerMode('drep')}>
-                          DRep
-                          {realSegment === 'drep' && ' (yours)'}
-                          {segment === 'drep' && hasOverride && ' ✓'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setPickerMode('spo')}>
-                          SPO
-                          {realSegment === 'spo' && ' (yours)'}
-                          {segment === 'spo' && hasOverride && ' ✓'}
+                        {/* DRep sub-menu */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            DRep
+                            {realSegment === 'drep' && ' (yours)'}
+                            {segment === 'drep' && hasOverride && ' ✓'}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem
+                              onClick={() => setOverride({ segment: 'drep', drepId: null })}
+                            >
+                              Unclaimed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPickerMode('drep-claimed')}>
+                              Claimed (pick DRep)...
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        {/* SPO sub-menu */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            SPO
+                            {realSegment === 'spo' && ' (yours)'}
+                            {segment === 'spo' && hasOverride && ' ✓'}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem
+                              onClick={() => setOverride({ segment: 'spo', poolId: null })}
+                            >
+                              Unclaimed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPickerMode('spo-claimed')}>
+                              Claimed (pick SPO)...
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        {/* CC Member sub-menu */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            CC Member
+                            {realSegment === 'cc' && ' (yours)'}
+                            {segment === 'cc' && hasOverride && ' ✓'}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => setOverride({ segment: 'cc' })}>
+                              Unclaimed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPickerMode('cc-claimed')}>
+                              Claimed (pick member)...
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        {/* Anonymous */}
+                        <DropdownMenuItem onClick={() => setOverride({ segment: 'anonymous' })}>
+                          Anonymous (no wallet)
+                          {segment === 'anonymous' && hasOverride && ' ✓'}
                         </DropdownMenuItem>
                         {hasOverride && (
                           <>
@@ -291,7 +368,15 @@ export function CivicaHeader() {
       </div>
       {isAdmin && pickerMode && (
         <AdminViewAsPicker
-          mode={pickerMode === 'citizen-delegation' ? 'drep' : pickerMode}
+          mode={
+            pickerMode === 'citizen-delegation' || pickerMode === 'drep-claimed'
+              ? 'drep'
+              : pickerMode === 'spo-claimed'
+                ? 'spo'
+                : pickerMode === 'cc-claimed'
+                  ? 'cc'
+                  : (pickerMode as 'drep' | 'spo' | 'cc')
+          }
           open={!!pickerMode}
           onOpenChange={(open) => {
             if (!open) setPickerMode(null);
@@ -299,16 +384,35 @@ export function CivicaHeader() {
           onSelect={(id) => {
             if (pickerMode === 'citizen-delegation') {
               setOverride({ segment: 'citizen', delegatedDrep: id });
-            } else if (pickerMode === 'drep') {
+            } else if (pickerMode === 'drep-claimed') {
               setOverride({ segment: 'drep', drepId: id });
-            } else {
+            } else if (pickerMode === 'spo-claimed') {
               setOverride({ segment: 'spo', poolId: id });
+            } else if (pickerMode === 'cc-claimed') {
+              setOverride({ segment: 'cc' });
             }
           }}
-          {...(pickerMode === 'citizen-delegation' && {
-            titleOverride: 'Delegate to a DRep',
-            descriptionOverride: 'View the app as a citizen delegated to this DRep.',
-          })}
+          {...(pickerMode === 'citizen-delegation'
+            ? {
+                titleOverride: 'Delegate to a DRep',
+                descriptionOverride: 'View the app as a citizen delegated to this DRep.',
+              }
+            : pickerMode === 'drep-claimed'
+              ? {
+                  titleOverride: 'Claim a DRep profile',
+                  descriptionOverride: 'View the app as this DRep.',
+                }
+              : pickerMode === 'spo-claimed'
+                ? {
+                    titleOverride: 'Claim an SPO profile',
+                    descriptionOverride: 'View the app as this pool operator.',
+                  }
+                : pickerMode === 'cc-claimed'
+                  ? {
+                      titleOverride: 'Claim a CC member profile',
+                      descriptionOverride: 'View the app as this committee member.',
+                    }
+                  : {})}
         />
       )}
     </header>

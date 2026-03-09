@@ -322,6 +322,13 @@ export function CivicaPulseOverview() {
               score={ghiData.current.score}
             />
           )}
+          {!ghiData?.current && !loading && (
+            <EmptyState
+              icon={<Activity className="h-8 w-8" />}
+              title="Governance Health is being computed"
+              description="Check back after the current epoch"
+            />
+          )}
 
           {/* ── State of Governance narrative ───────────────────── */}
           <StateOfGovernance />
@@ -568,6 +575,13 @@ export function CivicaPulseOverview() {
               </div>
             </div>
           )}
+          {(pulse?.communityGap?.length ?? 0) === 0 && !loading && (
+            <EmptyState
+              icon={<Users className="h-8 w-8" />}
+              title="Community sentiment polls coming soon"
+              description="Be the first to participate"
+            />
+          )}
 
           {/* ── Weekly movers ───────────────────────────────────── */}
           {(gainers.length > 0 || losers.length > 0) && (
@@ -636,6 +650,13 @@ export function CivicaPulseOverview() {
               )}
             </div>
           )}
+          {gainers.length === 0 && losers.length === 0 && !loading && (
+            <EmptyState
+              icon={<TrendingUp className="h-8 w-8" />}
+              title="No significant DRep score changes this week"
+              description="Score changes are tracked weekly across all active DReps"
+            />
+          )}
 
           {/* ── Treasury Health Components ─────────────────────── */}
           {treasury?.healthComponents &&
@@ -680,7 +701,14 @@ export function CivicaPulseOverview() {
                             {Math.round(c.score ?? c.value ?? 0)}
                           </span>
                         </div>
-                        <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+                        <div
+                          className="w-full h-1.5 bg-border rounded-full overflow-hidden"
+                          role="meter"
+                          aria-valuenow={Math.round(c.score ?? c.value ?? 0)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`${c.name ?? c.label}: ${Math.round(c.score ?? c.value ?? 0)} out of 100`}
+                        >
                           <div
                             className={cn(
                               'h-full rounded-full',
@@ -691,6 +719,7 @@ export function CivicaPulseOverview() {
                                   : 'bg-rose-500',
                             )}
                             style={{ width: `${Math.min(100, c.score ?? c.value ?? 0)}%` }}
+                            aria-hidden="true"
                           />
                         </div>
                       </div>

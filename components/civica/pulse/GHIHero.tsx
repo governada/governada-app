@@ -91,8 +91,15 @@ export function GHIHero() {
   return (
     <div className="flex items-center gap-5 p-5 rounded-xl border border-border bg-card">
       {/* Score ring */}
-      <div className="relative h-20 w-20 shrink-0">
-        <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
+      <div
+        className="relative h-20 w-20 shrink-0"
+        role="meter"
+        aria-valuenow={Math.round(score)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Governance Health Index: ${Math.round(score)} out of 100`}
+      >
+        <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90" aria-hidden="true">
           <circle
             cx="18"
             cy="18"
@@ -114,7 +121,7 @@ export function GHIHero() {
             className="transition-all duration-1000"
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
           <span className="text-2xl font-bold tabular-nums">{Math.round(score)}</span>
         </div>
       </div>
@@ -131,8 +138,9 @@ export function GHIHero() {
           {delta !== 0 && (
             <span
               className={cn('inline-flex items-center gap-0.5 text-xs font-medium', trendColor)}
+              aria-label={`Score ${delta > 0 ? 'increased' : 'decreased'} by ${Math.abs(Math.round(delta * 10) / 10)} points`}
             >
-              <TrendIcon className="h-3 w-3" />
+              <TrendIcon className="h-3 w-3" aria-hidden="true" />
               {delta > 0 ? '+' : ''}
               {Math.round(delta * 10) / 10}
             </span>

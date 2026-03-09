@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Vote, FileText, Users, ScrollText } from 'lucide-react';
+import { Vote, FileText, Users, ScrollText, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ActivityEvent {
@@ -99,7 +99,18 @@ export function ActivityTicker({
     return () => clearInterval(interval);
   }, [events, onEventVisible]);
 
-  if (events.length === 0) return null;
+  if (events.length === 0) {
+    if (variant === 'inline') {
+      return (
+        <div className="rounded-xl border border-dashed border-border p-6 text-center space-y-2">
+          <Activity className="h-8 w-8 text-muted-foreground mx-auto" />
+          <p className="text-sm font-medium">No recent governance activity</p>
+          <p className="text-xs text-muted-foreground">The chain is quiet</p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   // Duplicate events for seamless scroll loop
   const displayEvents = [...events, ...events];

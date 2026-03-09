@@ -92,7 +92,11 @@ function ZoneIndicator({ value, curve }: { value: number; curve: CalibrationCurv
   ];
 
   return (
-    <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
+    <div
+      className="relative h-1.5 rounded-full bg-muted overflow-hidden"
+      role="img"
+      aria-label={`Calibration zone: value ${Math.round(value)} of ${Math.round(curve.ceiling)} (target range ${Math.round(curve.targetLow)}–${Math.round(curve.targetHigh)})`}
+    >
       {zones.map((z, i) => {
         const next = zones[i + 1]?.pct ?? 100;
         return (
@@ -177,12 +181,20 @@ export function GHIExplorer({
                   </div>
 
                   {/* Score bar */}
-                  <div className="relative h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="relative h-2 rounded-full bg-muted overflow-hidden"
+                    role="meter"
+                    aria-valuenow={Math.round(comp.value)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${label}: ${Math.round(comp.value)} out of 100`}
+                  >
                     <motion.div
                       className={cn('absolute inset-y-0 left-0 rounded-full', barColor)}
                       initial={{ width: 0 }}
                       animate={{ width: `${scorePct}%` }}
                       transition={shouldReduceMotion ? { duration: 0 } : (spring.smooth as object)}
+                      aria-hidden="true"
                     />
                   </div>
 

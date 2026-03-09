@@ -60,6 +60,22 @@ export function useGovernanceHealthIndex(epochs = 20) {
   });
 }
 
+export function useEpochSummary(wallet: string | undefined, epoch?: number) {
+  return useQuery({
+    queryKey: ['epoch-summary', wallet, epoch],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (wallet) params.set('wallet', wallet);
+      if (epoch) params.set('epoch', String(epoch));
+      const res = await fetch(`/api/user/epoch-summary?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch epoch summary');
+      return res.json();
+    },
+    enabled: !!wallet,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useGovernanceTimeline() {
   return useQuery({
     queryKey: ['governance-timeline'],

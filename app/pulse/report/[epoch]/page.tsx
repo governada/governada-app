@@ -7,9 +7,11 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { ShareActions } from '@/components/ShareActions';
 import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi';
 import { StateOfGovernanceContent } from './report-content';
+import { FloatingShareFAB } from '@/components/civica/pulse/FloatingShareFAB';
 import type { ReportData } from '@/lib/stateOfGovernance';
 import { BASE_URL } from '@/lib/constants';
-import { ArrowLeft, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ArrowLeft, Calendar, TrendingUp, TrendingDown, Bell } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +87,11 @@ export default async function StateOfGovernancePage({ params }: Props) {
   const ghiDelta =
     data.ghiPrevScore != null ? Math.round((data.ghi.score - data.ghiPrevScore) * 10) / 10 : null;
 
+  // Fetch previous epoch report for inter-epoch comparison
+  const prevEpoch = data.epoch - 1;
+  const prevReport = await getReport(String(prevEpoch));
+  const prevData = prevReport ? (prevReport.report_data as unknown as ReportData) : null;
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
       <Link
@@ -158,6 +165,66 @@ export default async function StateOfGovernancePage({ params }: Props) {
         </div>
       </header>
 
+      {/* Key Takeaways */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <h3 className="text-sm font-bold">Key Takeaways</h3>
+        <ul className="space-y-1.5 text-sm text-muted-foreground list-disc list-inside">
+          {data.stats.activeDReps > 0 && (
+            <li>
+              {data.stats.activeDReps} DReps voted this epoch
+              {ghiDelta != null && (
+                <>
+                  {' '}
+                  — participation is{' '}
+                  {ghiDelta > 0 ? 'trending up' : ghiDelta < 0 ? 'declining' : 'holding steady'}
+                </>
+              )}
+            </li>
+          )}
+          {data.proposals.length > 0 && (
+            <li>{data.proposals.length} proposals were submitted for governance review</li>
+          )}
+          <li>
+            Governance Health Index: {data.ghi.score} ({bandLabel})
+            {ghiDelta != null && ghiDelta !== 0 && (
+              <>
+                {' '}
+                — {ghiDelta > 0
+                  ? `up ${ghiDelta} points`
+                  : `down ${Math.abs(ghiDelta)} points`}{' '}
+                from last epoch
+              </>
+            )}
+          </li>
+          {data.stats.avgParticipation > 0 && (
+            <li>Average DRep participation rate: {data.stats.avgParticipation}%</li>
+          )}
+        </ul>
+      </div>
+
+      {/* Inter-epoch comparison */}
+      {prevData && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <DeltaCard label="GHI Score" current={data.ghi.score} previous={prevData.ghi.score} />
+          <DeltaCard
+            label="Active DReps"
+            current={data.stats.activeDReps}
+            previous={prevData.stats.activeDReps}
+          />
+          <DeltaCard
+            label="Votes Cast"
+            current={data.stats.totalVotes}
+            previous={prevData.stats.totalVotes}
+          />
+          <DeltaCard
+            label="Participation"
+            current={data.stats.avgParticipation}
+            previous={prevData.stats.avgParticipation}
+            suffix="%"
+          />
+        </div>
+      )}
+
       <StateOfGovernanceContent data={data} narrative={narrative} />
 
       {/* Share footer */}
@@ -169,12 +236,56 @@ export default async function StateOfGovernancePage({ params }: Props) {
           surface="governance_report"
         />
 
-        <div className="text-center">
-          <Link href="/my-gov/profile" className="text-sm text-primary hover:underline">
-            Subscribe to weekly governance updates
+        {/* Subscribe CTA */}
+        <div className="rounded-xl border border-dashed border-border p-5 text-center space-y-2">
+          <Bell className="h-5 w-5 text-primary mx-auto" />
+          <p className="text-sm font-medium">Get epoch reports in your inbox</p>
+          <p className="text-xs text-muted-foreground">
+            Be the first to read each epoch&apos;s governance analysis
+          </p>
+          <Link
+            href="/my-gov/profile"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            Set up notifications &rarr;
           </Link>
         </div>
       </div>
+
+      {/* Floating share FAB */}
+      <FloatingShareFAB epoch={data.epoch} score={data.ghi.score} band={bandLabel} />
+    </div>
+  );
+}
+
+function DeltaCard({
+  label,
+  current,
+  previous,
+  suffix = '',
+}: {
+  label: string;
+  current: number;
+  previous: number;
+  suffix?: string;
+}) {
+  const delta = Math.round((current - previous) * 10) / 10;
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 text-center">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold tabular-nums">
+        {current}
+        {suffix}
+      </p>
+      <p
+        className={cn(
+          'text-xs font-medium',
+          delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-rose-500' : 'text-muted-foreground',
+        )}
+      >
+        {delta > 0 ? '\u2191' : delta < 0 ? '\u2193' : '\u2192'} {Math.abs(delta)}
+        {suffix} from last epoch
+      </p>
     </div>
   );
 }

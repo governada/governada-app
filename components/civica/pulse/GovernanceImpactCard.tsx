@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWallet } from '@/utils/wallet-context';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { useDRepReportCard, useAccountInfo } from '@/hooks/queries';
+import { useDRepReportCard, useAccountInfo, useEpochSummary } from '@/hooks/queries';
 import { computeTier } from '@/lib/scoring/tiers';
 
 interface GovernanceImpactCardProps {
@@ -56,33 +56,68 @@ export function GovernanceImpactCard({
 
   const { data: reportCard, isLoading: reportCardLoading } = useDRepReportCard(effectiveDrepId);
   const { data: accountInfo, isLoading: accountLoading } = useAccountInfo(stakeAddress);
+  const walletAddress = stakeAddress ?? undefined;
+  const { data: epochSummary } = useEpochSummary(walletAddress);
 
-  // Don't render if wallet not connected
-  if (!connected) return null;
-
-  // Connected but no delegation — show CTA
-  if (!effectiveDrepId) {
+  // No-wallet preview: blurred mock stats create FOMO
+  if (!connected) {
     return (
-      <Link
-        href="/match"
-        className={cn(
-          'block rounded-xl border border-border bg-card p-4 transition-colors',
-          'hover:border-primary/30 group',
-        )}
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10">
-            <UserCheck className="h-4.5 w-4.5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">Delegate to personalize your view</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Find a DRep who represents your governance values
-            </p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+      <div className="relative rounded-xl border border-border bg-card p-4 overflow-hidden">
+        <div className="absolute inset-0 backdrop-blur-sm bg-card/60 z-10 flex flex-col items-center justify-center gap-2">
+          <Shield className="h-5 w-5 text-primary" aria-hidden />
+          <p className="text-sm font-medium">Your Governance This Epoch</p>
+          <p className="text-xs text-muted-foreground text-center max-w-[200px]">
+            Connect your wallet to see how your DRep represents you
+          </p>
         </div>
-      </Link>
+        <div className="opacity-30 pointer-events-none select-none" aria-hidden="true">
+          <div className="grid grid-cols-3 gap-4 py-2">
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground block">Voting Power</span>
+              <span className="text-lg font-semibold block">{'\u2588\u2588'} ADA</span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground block">Your DRep</span>
+              <span className="text-lg font-semibold block">
+                {'\u2588\u2588\u2588\u2588\u2588\u2588'}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground block">Proposals Voted</span>
+              <span className="text-lg font-semibold block">{'\u2588\u2588'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Connected but no delegation — show CTA with ADA balance
+  if (!effectiveDrepId) {
+    const balanceAda = accountInfo?.totalBalanceAda
+      ? Math.round(Number(accountInfo.totalBalanceAda))
+      : null;
+
+    return (
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-primary" aria-hidden />
+          <h3 className="text-xs font-semibold text-primary uppercase tracking-wider">
+            Your Governance Impact
+          </h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {balanceAda
+            ? `You hold ${balanceAda.toLocaleString()} ADA but aren't represented in governance.`
+            : `You're connected but not yet represented in governance.`}
+        </p>
+        <Link
+          href="/match"
+          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+        >
+          Find your DRep match <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
     );
   }
 
@@ -96,8 +131,26 @@ export function GovernanceImpactCard({
         tier?: string;
         participationRate?: number | null;
         drepId?: string;
+        scoreHistory?: { snapshot_date: string; score: number }[];
       }
     | undefined;
+
+  const es = epochSummary as
+    | {
+        drep_votes_cast: number;
+        proposals_voted_on: number;
+        drep_score_at_epoch: number | null;
+        drep_tier_at_epoch: string | null;
+      }
+    | undefined;
+
+  // Score trajectory from report card history
+  const scoreHistory = rc?.scoreHistory ?? [];
+  const currentScore =
+    scoreHistory.length > 0 ? scoreHistory[scoreHistory.length - 1]?.score : null;
+  const prevScore = scoreHistory.length > 1 ? scoreHistory[scoreHistory.length - 2]?.score : null;
+  const scoreDelta =
+    currentScore != null && prevScore != null ? Math.round(currentScore - prevScore) : null;
 
   const userAda = accountInfo?.totalBalanceAda ?? 0;
   const totalGovernedAda = totalAdaGovernedLovelace / 1_000_000;
@@ -214,6 +267,47 @@ export function GovernanceImpactCard({
           </p>
         </div>
       </div>
+
+      {/* DRep activity this epoch */}
+      {es && (
+        <div className="border-t border-border pt-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              This Epoch
+            </h4>
+            {scoreDelta != null && scoreDelta !== 0 && (
+              <span
+                className={cn(
+                  'text-xs font-medium',
+                  scoreDelta > 0
+                    ? 'text-emerald-500'
+                    : scoreDelta < 0
+                      ? 'text-rose-500'
+                      : 'text-muted-foreground',
+                )}
+              >
+                Score: {prevScore} {'\u2192'} {currentScore} ({scoreDelta > 0 ? '+' : ''}
+                {scoreDelta})
+              </span>
+            )}
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            Your DRep voted on <strong>{es.drep_votes_cast}</strong> of{' '}
+            <strong>{es.proposals_voted_on}</strong> proposals
+            {es.drep_votes_cast > 0 && es.proposals_voted_on > 0 && (
+              <>
+                {' '}
+                &mdash;{' '}
+                <strong>
+                  {Math.round((es.drep_votes_cast / es.proposals_voted_on) * 100)}%
+                </strong>{' '}
+                participation
+              </>
+            )}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

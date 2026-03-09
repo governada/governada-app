@@ -41,7 +41,7 @@ Governada (formerly DRepScore) is the governance intelligence platform for Carda
 
 ```bash
 git clone <repository-url>
-cd drepscore-app
+cd governada-app
 npm install
 cp .env.example .env.local
 npm run dev

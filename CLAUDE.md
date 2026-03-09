@@ -11,7 +11,7 @@ Implementation is NOT complete until deployed and validated in production. Use `
 3. `git push -u origin HEAD`
 4. `gh pr create` -- poll CI until green, fix failures
 5. **Pre-merge check**: `bash scripts/pre-merge-check.sh <PR#>` -- blocks if CI is running on main or branch is behind
-6. Merge: `gh api repos/drepscore/drepscore-app/pulls/<N>/merge -X PUT -f merge_method=squash`
+6. Merge: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
 7. Apply migrations via Supabase MCP -> `npm run gen:types` if needed
 8. Monitor Railway (`railway logs`, poll ~5 min)
 9. PUT `https://governada.io/api/inngest` if Inngest functions changed
@@ -63,12 +63,12 @@ Build failures or production bugs if violated:
 ## Worktrees
 
 ```
-C:\Users\dalto\drepscore\
-  drepscore-app/           <- main (production)
-  drepscore-<feature>/     <- feature worktrees
+C:\Users\dalto\governada\
+  governada-app/           <- main (production)
+  governada-<feature>/     <- feature worktrees
 ```
 
-- Hotfixes: direct on main. Features: `git worktree add ../drepscore-<name> -b feature/<name>`
+- Hotfixes: direct on main. Features: `git worktree add ../governada-<name> -b feature/<name>`
 - `gh auth switch --user drepscore` before gh commands
 - From worktrees: `gh api .../merge` (not `gh pr merge`)
 - **Parallel agent safety**: Multiple agents may be working simultaneously. Before merging:

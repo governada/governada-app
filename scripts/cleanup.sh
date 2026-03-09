@@ -21,7 +21,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-echo -e "${CYAN}=== Civica Workspace Cleanup ===${NC}"
+echo -e "${CYAN}=== Governada Workspace Cleanup ===${NC}"
 echo "Workspace: $WORKSPACE"
 echo "Mode: $MODE"
 echo ""
@@ -36,10 +36,10 @@ echo ""
 # ─── 2. Detect orphaned directories (no .git at all) ────────────────
 echo -e "${CYAN}[2/6] Scanning for orphaned directories...${NC}"
 ORPHANED=()
-for dir in "$WORKSPACE"/drepscore-*/; do
+for dir in "$WORKSPACE"/governada-*/; do
   [ -d "$dir" ] || continue
   dirname="$(basename "$dir")"
-  [ "$dirname" = "drepscore-app" ] && continue
+  [ "$dirname" = "governada-app" ] && continue
   if [ ! -f "$dir/.git" ] && [ ! -d "$dir/.git" ]; then
     ORPHANED+=("$dir")
     echo -e "  ${RED}ORPHANED${NC}: $dirname (no .git -- leftover from removed worktree)"
@@ -65,7 +65,7 @@ while IFS= read -r line; do
   wt_name="$(basename "$wt_path")"
 
   # Skip main worktree
-  [ "$wt_name" = "drepscore-app" ] && continue
+  [ "$wt_name" = "governada-app" ] && continue
 
   # Check if branch exists on remote
   remote_branch="${wt_branch}"

@@ -6,7 +6,7 @@ restartPolicyType = "ALWAYS"
 
 # Required Railway env vars (set via Railway dashboard):
 #   ACCESS_TOKEN   - GitHub PAT with repo scope (drepscore account)
-#   REPO_URL       - https://github.com/drepscore/drepscore-app
-#   RUNNER_NAME    - civica-railway-1
+#   REPO_URL       - https://github.com/governada/governada-app
+#   RUNNER_NAME    - governada-railway-1
 #   RUNNER_SCOPE   - repo
 #   LABELS         - self-hosted,linux,x64

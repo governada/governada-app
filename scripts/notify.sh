@@ -23,8 +23,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 for ENV_PATH in \
   "$SCRIPT_DIR/../.env.local" \
-  "$SCRIPT_DIR/../../drepscore-app/.env.local" \
-  "/c/Users/dalto/drepscore/drepscore-app/.env.local"; do
+  "$SCRIPT_DIR/../../governada-app/.env.local" \
+  "/c/Users/dalto/governada/governada-app/.env.local"; do
   if [ -f "$ENV_PATH" ]; then
     # Source only the vars we need (avoid breaking on Next.js-specific syntax)
     while IFS='=' read -r key value; do

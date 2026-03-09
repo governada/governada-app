@@ -7,8 +7,8 @@ disable-model-invocation: true
 A lesson was learned during this session. Record it properly:
 
 1. Read the current memory files:
-   - `~/.claude/projects/c--Users-dalto-drepscore/memory/MEMORY.md`
-   - `~/.claude/projects/c--Users-dalto-drepscore/memory/lessons-detailed.md`
+   - `~/.claude/projects/c--Users-dalto-governada/memory/MEMORY.md`
+   - `~/.claude/projects/c--Users-dalto-governada/memory/lessons-detailed.md`
 
 2. Check if this lesson already exists (avoid duplicates)
 
@@ -18,6 +18,6 @@ A lesson was learned during this session. Record it properly:
 
 4. If it updates an existing lesson, edit the existing entry
 
-5. If the lesson reveals a hard constraint that causes build/deploy failures, also update `drepscore-app/CLAUDE.md` Hard Constraints section
+5. If the lesson reveals a hard constraint that causes build/deploy failures, also update `governada-app/CLAUDE.md` Hard Constraints section
 
 The lesson to record: $ARGUMENTS

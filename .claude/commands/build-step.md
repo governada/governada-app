@@ -292,7 +292,7 @@ Process PR groups in the order determined in Phase 2.5. For each group:
 
 1. **Rebase check**: `git fetch origin && git log --oneline origin/main..HEAD` — if behind, rebase the PR branch.
 2. **Pre-merge check**: `bash scripts/pre-merge-check.sh <PR#>` — if blocked, wait and retry (max 3 attempts with 60s between).
-3. **Merge**: `gh api repos/drepscore/drepscore-app/pulls/<N>/merge -X PUT -f merge_method=squash`
+3. **Merge**: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
 4. **Migrations**: If the chunk included database migrations, apply via Supabase MCP `apply_migration`, then `npm run gen:types`.
 5. **Deploy wait**: Poll Railway for ~5 minutes until the new commit is deployed.
 6. **Inngest sync**: If Inngest functions were added/modified, PUT `https://governada.io/api/inngest`.

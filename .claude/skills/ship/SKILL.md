@@ -14,7 +14,7 @@ Execute the full Governada deploy pipeline. Do NOT pause between steps.
 6. `git push -u origin HEAD`
 7. Create PR: `gh pr create --title "<type>: <description>" --body "<summary>"`
 8. Poll CI: `gh pr checks <N> --watch` -- if fails, read logs, fix, push, re-check (max 3 attempts)
-9. Merge: `gh api repos/drepscore/drepscore-app/pulls/<N>/merge -X PUT -f merge_method=squash`
+9. Merge: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
 10. Apply pending migrations via Supabase MCP `apply_migration`
 11. If migrations applied: `npm run gen:types`, commit and push updated `types/database.ts`
 12. Monitor Railway: poll `railway logs` until deploy completes (~3-7 min)

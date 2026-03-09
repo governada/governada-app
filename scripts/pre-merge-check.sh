@@ -8,7 +8,7 @@
 set -euo pipefail
 
 PR_NUMBER="${1:?Usage: pre-merge-check.sh <pr-number>}"
-REPO="drepscore/drepscore-app"
+REPO="governada/governada-app"
 BASE_BRANCH="main"
 
 echo "Checking merge safety for PR #${PR_NUMBER}..."

@@ -63,7 +63,7 @@ export default async function CommitteeTransparencyPage() {
       supabase
         .from('inter_body_alignment')
         .select('proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct'),
-      supabase.from('proposals').select('tx_hash, index, title'),
+      supabase.from('proposals').select('tx_hash, proposal_index, title'),
     ]);
 
   const safeVotes = votes ?? [];
@@ -84,7 +84,7 @@ export default async function CommitteeTransparencyPage() {
   // Build proposal title map
   const proposalTitleMap = new Map<string, string>();
   for (const p of proposals ?? []) {
-    proposalTitleMap.set(`${p.tx_hash}-${p.index}`, p.title ?? '');
+    proposalTitleMap.set(`${p.tx_hash}-${p.proposal_index}`, p.title ?? '');
   }
 
   // Build vote counts

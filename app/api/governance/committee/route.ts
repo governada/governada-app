@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
+  // Fetch vote aggregation
   const { data: votes, error } = await supabase.from('cc_votes').select('cc_hot_id, vote');
 
   if (error) {
@@ -28,11 +29,34 @@ export const GET = withRouteHandler(async () => {
     memberMap.set(v.cc_hot_id, existing);
   }
 
+  // Fetch CC member metadata (names + transparency grades)
+  const ccIds = Array.from(memberMap.keys());
+  const { data: memberMeta } = await supabase
+    .from('cc_members')
+    .select('cc_hot_id, author_name, transparency_grade, transparency_index')
+    .in('cc_hot_id', ccIds);
+
+  const metaMap = new Map<
+    string,
+    { name: string | null; grade: string | null; index: number | null }
+  >();
+  for (const m of memberMeta || []) {
+    metaMap.set(m.cc_hot_id, {
+      name: m.author_name,
+      grade: m.transparency_grade,
+      index: m.transparency_index,
+    });
+  }
+
   const members = Array.from(memberMap.entries())
     .map(([ccHotId, counts]) => {
       const total = counts.yes + counts.no + counts.abstain;
+      const meta = metaMap.get(ccHotId);
       return {
         ccHotId,
+        name: meta?.name ?? null,
+        transparencyGrade: meta?.grade ?? null,
+        transparencyIndex: meta?.index ?? null,
         voteCount: total,
         yesCount: counts.yes,
         noCount: counts.no,
@@ -40,7 +64,13 @@ export const GET = withRouteHandler(async () => {
         approvalRate: total > 0 ? Math.round((counts.yes / total) * 100) : 0,
       };
     })
-    .sort((a, b) => b.voteCount - a.voteCount);
+    .sort((a, b) => {
+      // Sort by transparency index (descending) if available, then by vote count
+      if (a.transparencyIndex != null && b.transparencyIndex != null) {
+        return b.transparencyIndex - a.transparencyIndex;
+      }
+      return b.voteCount - a.voteCount;
+    });
 
   return NextResponse.json(
     { members },

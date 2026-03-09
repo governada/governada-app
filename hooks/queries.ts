@@ -8,6 +8,26 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+export interface CommitteeMemberQuickView {
+  ccHotId: string;
+  name: string | null;
+  transparencyGrade: string | null;
+  transparencyIndex: number | null;
+  voteCount: number;
+  yesCount: number;
+  noCount: number;
+  abstainCount: number;
+  approvalRate: number;
+}
+
+export function useCommitteeMembers() {
+  return useQuery<{ members: CommitteeMemberQuickView[] }>({
+    queryKey: ['cc-members'],
+    queryFn: () => fetchJson('/api/governance/committee'),
+    staleTime: 120_000,
+  });
+}
+
 export function useGovernanceHolder(stakeAddress?: string | null) {
   return useQuery({
     queryKey: ['governance-holder', stakeAddress],

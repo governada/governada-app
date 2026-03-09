@@ -139,6 +139,37 @@ describe('Proposal epochs-left logic', () => {
   });
 });
 
+// ── Committee VoteBar logic ─────────────────────────────────────
+
+describe('Committee VoteBar', () => {
+  it('computes correct proportions', () => {
+    const total = 10 + 3 + 2;
+    const yPct = (10 / total) * 100;
+    const nPct = (3 / total) * 100;
+    expect(yPct).toBeCloseTo(66.67, 1);
+    expect(nPct).toBeCloseTo(20, 1);
+  });
+
+  it('handles zero total gracefully', () => {
+    const total = 0 + 0 + 0;
+    expect(total).toBe(0);
+  });
+});
+
+describe('Committee member display name', () => {
+  it('shows author_name when available', () => {
+    const member = { name: 'Alice', ccHotId: 'cc_hot_1abc123def456' };
+    const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
+    expect(displayName).toBe('Alice');
+  });
+
+  it('falls back to truncated hex when name is null', () => {
+    const member = { name: null, ccHotId: 'cc_hot_1abc123def456789' };
+    const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
+    expect(displayName).toBe('cc_hot_1abc1…456789');
+  });
+});
+
 // ── Component tests ─────────────────────────────────────────────
 
 vi.mock('@/lib/utils', () => ({

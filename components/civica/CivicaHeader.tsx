@@ -13,11 +13,13 @@ import {
   BookOpen,
   Search,
   User,
+  Users,
   LogOut,
   Sun,
   Moon,
   Eye,
   Shield,
+  ShieldCheck,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { useTheme } from 'next-themes';
@@ -58,6 +60,13 @@ const SEGMENT_LABELS: Record<UserSegment, string> = {
   citizen: 'Citizen',
   drep: 'DRep',
   spo: 'SPO',
+};
+
+const SEGMENT_ICONS: Record<UserSegment, typeof User> = {
+  anonymous: User,
+  citizen: User,
+  drep: Users,
+  spo: ShieldCheck,
 };
 
 export function CivicaHeader() {
@@ -171,7 +180,11 @@ export function CivicaHeader() {
                   )}
                   aria-label="User menu"
                 >
-                  {hasOverride ? <Eye className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                  {(() => {
+                    if (hasOverride) return <Eye className="h-3.5 w-3.5" />;
+                    const SegmentIcon = SEGMENT_ICONS[segment];
+                    return <SegmentIcon className="h-3.5 w-3.5" />;
+                  })()}
                   {segment !== 'anonymous' && SEGMENT_LABELS[segment]}
                 </button>
               </DropdownMenuTrigger>

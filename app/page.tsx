@@ -81,9 +81,17 @@ async function getGovernancePulse() {
   );
 
   const spoPoolIds = new Set((spoResult.data || []).map((v) => v.pool_id));
-  const ccMemberRows = (ccResult.data || []).filter(
+  let ccMemberCount = (ccResult.data || []).filter(
     (m) => !m.status || m.status.toLowerCase() === 'active',
-  );
+  ).length;
+
+  // Fallback: if committee_members table is empty, count distinct voters from cc_votes
+  if (ccMemberCount === 0) {
+    const { data: ccVoters } = await supabase.from('cc_votes').select('cc_hot_id').limit(1000);
+    if (ccVoters && ccVoters.length > 0) {
+      ccMemberCount = new Set(ccVoters.map((v) => v.cc_hot_id)).size;
+    }
+  }
 
   return {
     totalAdaGoverned: formattedAda,
@@ -93,7 +101,7 @@ async function getGovernancePulse() {
     votesThisWeek: votesResult.count || 0,
     claimedDReps: claimedResult.count || 0,
     activeSpOs: spoPoolIds.size,
-    ccMembers: ccMemberRows.length,
+    ccMembers: ccMemberCount,
   };
 }
 

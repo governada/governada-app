@@ -65,57 +65,62 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
 
         {/* Live data overlay on constellation */}
         <div className="absolute top-16 sm:top-20 left-4 right-4 flex justify-center pointer-events-none">
-          <div className="flex items-center gap-3 sm:gap-6 text-white/80 text-[10px] sm:text-xs tracking-wider uppercase rounded-full bg-black/40 backdrop-blur-sm px-4 py-1.5 shadow-lg pointer-events-auto">
-            <span className="tabular-nums">
-              <strong className="text-emerald-400 font-bold">{pulseData.activeDReps}</strong>{' '}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="underline decoration-dotted cursor-help">DReps</span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs max-w-[200px]">
-                      Delegated Representatives who vote on governance proposals on behalf of ADA
-                      holders
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </span>
-            <span className="text-white/30">&middot;</span>
-            <span className="tabular-nums">
-              <strong className="text-sky-400 font-bold">{pulseData.activeSpOs}</strong>{' '}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="underline decoration-dotted cursor-help">SPOs</span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs max-w-[200px]">
-                      Stake Pool Operators who run the network and vote on protocol changes
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </span>
-            <span className="text-white/30">&middot;</span>
-            <span className="tabular-nums">
-              <strong className="text-amber-400 font-bold">{pulseData.ccMembers}</strong>{' '}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="underline decoration-dotted cursor-help">CC Members</span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs max-w-[200px]">
-                      Constitutional Committee members who ensure proposals comply with the Cardano
-                      Constitution
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </span>
-          </div>
+          <TooltipProvider delayDuration={100}>
+            <div className="flex items-center gap-3 sm:gap-6 text-white/60 text-[10px] sm:text-xs tracking-wider uppercase rounded-full bg-black/40 backdrop-blur-sm px-4 py-1.5 shadow-lg pointer-events-auto">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="tabular-nums hover:text-white/90 transition-colors duration-200 cursor-default">
+                    <strong className="text-emerald-400 font-bold">{pulseData.activeDReps}</strong>{' '}
+                    DReps
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="bg-black/90 border-white/10 backdrop-blur-md max-w-[220px]"
+                >
+                  <p className="text-xs text-white/90 leading-relaxed">
+                    <strong className="text-emerald-400">Delegated Representatives</strong> who vote
+                    on governance proposals on behalf of ADA holders
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              <span className="text-white/20">&middot;</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="tabular-nums hover:text-white/90 transition-colors duration-200 cursor-default">
+                    <strong className="text-sky-400 font-bold">{pulseData.activeSpOs}</strong> SPOs
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="bg-black/90 border-white/10 backdrop-blur-md max-w-[220px]"
+                >
+                  <p className="text-xs text-white/90 leading-relaxed">
+                    <strong className="text-sky-400">Stake Pool Operators</strong> who run the
+                    network and vote on protocol changes
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              <span className="text-white/20">&middot;</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="tabular-nums hover:text-white/90 transition-colors duration-200 cursor-default">
+                    <strong className="text-amber-400 font-bold">{pulseData.ccMembers}</strong> CC
+                    Members
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="bg-black/90 border-white/10 backdrop-blur-md max-w-[220px]"
+                >
+                  <p className="text-xs text-white/90 leading-relaxed">
+                    <strong className="text-amber-400">Constitutional Committee</strong> members who
+                    ensure proposals comply with the Cardano Constitution
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </div>
 
         {/* Value prop overlay */}

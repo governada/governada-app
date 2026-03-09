@@ -286,7 +286,7 @@ export const checkSnapshotCompleteness = inngest.createFunction(
         // 19. Committee members (data moat) — not epoch-scoped; verify presence
         const { count: ccMemberCount } = await supabase
           .from('committee_members')
-          .select('hot_credential', { count: 'exact', head: true });
+          .select('cc_hot_id', { count: 'exact', head: true });
         results.push({
           name: 'committee_members',
           passed: (ccMemberCount ?? 0) > 0,

@@ -24,8 +24,7 @@ async function handler(_request: NextRequest, ctx: ApiContext) {
       .is('dropped_epoch', null),
     supabase
       .from('dreps')
-      .select('drep_id', { count: 'exact', head: true })
-      .eq('registered', true)
+      .select('id', { count: 'exact', head: true })
       .not('info->isActive', 'eq', false),
   ]);
 

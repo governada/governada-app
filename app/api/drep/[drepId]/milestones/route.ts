@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ drep
   const [currentResult, historyResult] = await Promise.all([
     supabase.from('dreps').select('score').eq('id', drepId).single(),
     supabase
-      .from('drep_score_snapshots')
+      .from('drep_score_history')
       .select('score, epoch_no')
       .eq('drep_id', drepId)
       .order('score', { ascending: false })
@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ drep
   if (since) {
     const sinceDate = new Date(parseInt(since, 10)).toISOString();
     const { data: priorSnapshots } = await supabase
-      .from('drep_score_snapshots')
+      .from('drep_score_history')
       .select('score, epoch_no, created_at')
       .eq('drep_id', drepId)
       .lt('created_at', sinceDate)

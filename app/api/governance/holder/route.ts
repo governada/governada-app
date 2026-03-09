@@ -237,7 +237,7 @@ export const GET = withRouteHandler(
         .from('drep_score_history')
         .select('score')
         .eq('drep_id', delegatedDrepId)
-        .order('recorded_at', { ascending: false })
+        .order('snapshot_date', { ascending: false })
         .limit(2);
 
       if (scoreHistory && scoreHistory.length === 2) {

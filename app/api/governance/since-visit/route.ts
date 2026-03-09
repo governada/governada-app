@@ -27,11 +27,11 @@ export const GET = withRouteHandler(
       supabase
         .from('proposals')
         .select('tx_hash', { count: 'exact', head: true })
-        .gte('created_at', sinceDate.toISOString()),
+        .gte('block_time', sinceBlockTime),
       supabase
         .from('proposals')
         .select('tx_hash', { count: 'exact', head: true })
-        .gte('created_at', sinceDate.toISOString())
+        .gte('block_time', sinceBlockTime)
         .not('ratified_epoch', 'is', null),
     ]);
 
@@ -81,18 +81,18 @@ export const GET = withRouteHandler(
             .not('meta_url', 'is', null),
           supabase
             .from('drep_score_history')
-            .select('score, recorded_at')
+            .select('score, snapshot_date')
             .eq('drep_id', drepId)
-            .order('recorded_at', { ascending: false })
+            .order('snapshot_date', { ascending: false })
             .limit(1),
           supabase
             .from('drep_score_history')
-            .select('score, recorded_at')
+            .select('score, snapshot_date')
             .eq('drep_id', drepId)
-            .lte('recorded_at', sinceDate.toISOString())
-            .order('recorded_at', { ascending: false })
+            .lte('snapshot_date', sinceDate.toISOString().split('T')[0])
+            .order('snapshot_date', { ascending: false })
             .limit(1),
-          supabase.from('dreps').select('info').eq('drep_id', drepId).single(),
+          supabase.from('dreps').select('info').eq('id', drepId).single(),
         ]);
 
       drepVotesCast = votesResult.count || 0;

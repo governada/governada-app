@@ -33,7 +33,7 @@ export async function GET(
 
     const { data: pool } = await supabase
       .from('pools')
-      .select('pool_id, pool_name, ticker, governance_score, delegator_count, live_stake')
+      .select('pool_id, pool_name, ticker, governance_score, delegator_count, live_stake_lovelace')
       .eq('pool_id', poolId)
       .single();
 

@@ -2,22 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { isAdminWallet } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
 // List all assemblies for admin review
 export const GET = withRouteHandler(
-  async (_request: NextRequest, { userId }: RouteContext) => {
+  async (_request: NextRequest, { userId, wallet }: RouteContext) => {
     const supabase = getSupabaseAdmin();
 
-    // Verify admin
-    const { data: admin } = await supabase
-      .from('admin_users')
-      .select('user_id')
-      .eq('user_id', userId!)
-      .maybeSingle();
-
-    if (!admin) {
+    // Verify admin via ADMIN_WALLETS env var
+    if (!wallet || !isAdminWallet(wallet)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -40,17 +35,11 @@ export const GET = withRouteHandler(
 
 // Update assembly status (activate / cancel)
 export const PATCH = withRouteHandler(
-  async (request: NextRequest, { userId }: RouteContext) => {
+  async (request: NextRequest, { userId, wallet }: RouteContext) => {
     const supabase = getSupabaseAdmin();
 
-    // Verify admin
-    const { data: admin } = await supabase
-      .from('admin_users')
-      .select('user_id')
-      .eq('user_id', userId!)
-      .maybeSingle();
-
-    if (!admin) {
+    // Verify admin via ADMIN_WALLETS env var
+    if (!wallet || !isAdminWallet(wallet)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

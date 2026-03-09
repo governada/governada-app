@@ -4,23 +4,26 @@ import { getTreasuryBalance, getPendingTreasuryProposals } from '@/lib/treasury'
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async () => {
-  const balance = await getTreasuryBalance();
-  if (!balance) {
-    return NextResponse.json({ error: 'No treasury data' }, { status: 404 });
-  }
+export const GET = withRouteHandler(
+  async () => {
+    const balance = await getTreasuryBalance();
+    if (!balance) {
+      return NextResponse.json({ error: 'No treasury data' }, { status: 404 });
+    }
 
-  const pending = await getPendingTreasuryProposals(balance.balanceAda);
-  const totalAda = pending.reduce((s, p) => s + p.withdrawalAda, 0);
+    const pending = await getPendingTreasuryProposals(balance.balanceAda);
+    const totalAda = pending.reduce((s, p) => s + p.withdrawalAda, 0);
 
-  return NextResponse.json(
-    {
-      proposals: pending,
-      totalAda,
-      pctOfTreasury:
-        balance.balanceAda > 0 ? ((totalAda / balance.balanceAda) * 100).toFixed(2) : '0',
-      treasuryBalanceAda: balance.balanceAda,
-    },
-    { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300' } },
-  );
-});
+    return NextResponse.json(
+      {
+        proposals: pending,
+        totalAda,
+        pctOfTreasury:
+          balance.balanceAda > 0 ? ((totalAda / balance.balanceAda) * 100).toFixed(2) : '0',
+        treasuryBalanceAda: balance.balanceAda,
+      },
+      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300' } },
+    );
+  },
+  { rateLimit: { max: 60, window: 60 } },
+);

@@ -310,8 +310,8 @@ export const generateEpochSummary = inngest.createFunction(
         supabase.from('drep_votes').select('drep_id').eq('epoch_no', epoch),
         supabase
           .from('dreps')
-          .select('drep_id', { count: 'exact', head: true })
-          .eq('registered', true),
+          .select('id', { count: 'exact', head: true })
+          .not('info->isActive', 'eq', false),
       ]);
 
       const uniqueVoters = new Set((votersResult.data || []).map((v) => v.drep_id)).size;
@@ -409,9 +409,9 @@ Output ONLY the narrative paragraph, nothing else.`,
             supabase.from('drep_votes').select('drep_id').eq('epoch_no', epoch),
             supabase
               .from('dreps')
-              .select('drep_id', { count: 'exact', head: true })
-              .eq('registered', true),
-            supabase.from('dreps').select('info').eq('registered', true),
+              .select('id', { count: 'exact', head: true })
+              .not('info->isActive', 'eq', false),
+            supabase.from('dreps').select('info').not('info->isActive', 'eq', false),
             supabase
               .from('drep_votes')
               .select('vote_tx_hash', { count: 'exact', head: true })

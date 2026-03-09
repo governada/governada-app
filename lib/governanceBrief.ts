@@ -78,7 +78,7 @@ export async function assembleDRepBriefContext(
       .eq('drep_id', drepId)
       .order('created_at', { ascending: false })
       .limit(2),
-    supabase.from('dreps').select('drep_id', { count: 'exact', head: true }),
+    supabase.from('dreps').select('id', { count: 'exact', head: true }),
   ]);
 
   if (!drepRes.data) return null;

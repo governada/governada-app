@@ -87,12 +87,12 @@ export const POST = withRouteHandler(
       const txHashes = [...new Set(epochVotes.map((v) => v.proposal_tx_hash))];
       const { data: proposals } = await supabase
         .from('proposals')
-        .select('tx_hash, index, title')
+        .select('tx_hash, proposal_index, title')
         .in('tx_hash', txHashes);
 
       if (proposals) {
         for (const p of proposals) {
-          proposalTitles[`${p.tx_hash}#${p.index}`] = p.title || 'Untitled proposal';
+          proposalTitles[`${p.tx_hash}#${p.proposal_index}`] = p.title || 'Untitled proposal';
         }
       }
     }

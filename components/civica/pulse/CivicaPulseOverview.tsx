@@ -31,6 +31,7 @@ import { GHIExplorer } from './GHIExplorer';
 import { GovernanceImpactCard } from './GovernanceImpactCard';
 import { ActivityTicker } from '@/components/ActivityTicker';
 import { useGovernanceHealthIndex } from '@/hooks/queries';
+import { EmptyState } from './EmptyState';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
 import type {
   TreasuryData,

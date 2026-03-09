@@ -4,23 +4,26 @@ import { getTreasuryTrend, getIncomeVsOutflow } from '@/lib/treasury';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withRouteHandler(async (request) => {
-  const { searchParams } = new URL(request.url);
-  const epochs = Math.min(parseInt(searchParams.get('epochs') || '90'), 500);
+export const GET = withRouteHandler(
+  async (request) => {
+    const { searchParams } = new URL(request.url);
+    const epochs = Math.min(parseInt(searchParams.get('epochs') || '90'), 500);
 
-  const snapshots = await getTreasuryTrend(epochs);
-  const incomeVsOutflow = getIncomeVsOutflow(snapshots);
+    const snapshots = await getTreasuryTrend(epochs);
+    const incomeVsOutflow = getIncomeVsOutflow(snapshots);
 
-  return NextResponse.json(
-    {
-      snapshots: snapshots.map((s) => ({
-        epoch: s.epoch,
-        balanceAda: s.balanceAda,
-        withdrawalsAda: s.withdrawalsAda,
-        reservesIncomeAda: s.reservesIncomeAda,
-      })),
-      incomeVsOutflow,
-    },
-    { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' } },
-  );
-});
+    return NextResponse.json(
+      {
+        snapshots: snapshots.map((s) => ({
+          epoch: s.epoch,
+          balanceAda: s.balanceAda,
+          withdrawalsAda: s.withdrawalsAda,
+          reservesIncomeAda: s.reservesIncomeAda,
+        })),
+        incomeVsOutflow,
+      },
+      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' } },
+    );
+  },
+  { rateLimit: { max: 60, window: 60 } },
+);

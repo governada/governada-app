@@ -96,12 +96,12 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   const proposalKeys = safeVotes.map((v) => v.proposal_tx_hash);
   const { data: proposals } = await supabase
     .from('proposals')
-    .select('tx_hash, index, title, proposal_type, block_time')
+    .select('tx_hash, proposal_index, title, proposal_type, block_time')
     .in('tx_hash', [...new Set(proposalKeys)]);
 
   const proposalMap = new Map<string, { title: string | null; type: string; blockTime: number }>();
   for (const p of proposals ?? []) {
-    proposalMap.set(`${p.tx_hash}:${p.index}`, {
+    proposalMap.set(`${p.tx_hash}:${p.proposal_index}`, {
       title: p.title,
       type: p.proposal_type,
       blockTime: p.block_time,

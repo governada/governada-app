@@ -44,7 +44,7 @@ export const generateGovernanceWrapped = inngest.createFunction(
       if (!dreps?.length) return { count: 0 };
 
       const { data: snapshots } = await supabase
-        .from('drep_score_snapshots')
+        .from('drep_score_history')
         .select('drep_id, score, epoch_no')
         .in(
           'drep_id',

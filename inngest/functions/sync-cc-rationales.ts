@@ -206,7 +206,7 @@ export const syncCcRationales = inngest.createFunction(
       // Get proposal types and block times
       const { data: proposals } = await supabase
         .from('proposals')
-        .select('tx_hash, index, proposal_type, block_time');
+        .select('tx_hash, proposal_index, proposal_type, block_time');
 
       // Get cached rationales
       const { data: rationales } = await supabase
@@ -220,7 +220,7 @@ export const syncCcRationales = inngest.createFunction(
       // Build lookups
       const proposalMap = new Map<string, { type: string; blockTime: number }>();
       for (const p of proposals ?? []) {
-        proposalMap.set(`${p.tx_hash}:${p.index}`, {
+        proposalMap.set(`${p.tx_hash}:${p.proposal_index}`, {
           type: p.proposal_type,
           blockTime: p.block_time,
         });
@@ -409,7 +409,7 @@ export const syncCcRationales = inngest.createFunction(
       // Get proposals for eligible count and type lookups
       const { data: proposals } = await supabase
         .from('proposals')
-        .select('tx_hash, index, proposal_type, block_time');
+        .select('tx_hash, proposal_index, proposal_type, block_time');
 
       // Get rationales
       const { data: rationales } = await supabase
@@ -423,7 +423,7 @@ export const syncCcRationales = inngest.createFunction(
       // Build lookups
       const proposalMap = new Map<string, { type: string; blockTime: number }>();
       for (const p of proposals) {
-        proposalMap.set(`${p.tx_hash}:${p.index}`, {
+        proposalMap.set(`${p.tx_hash}:${p.proposal_index}`, {
           type: p.proposal_type,
           blockTime: p.block_time,
         });
@@ -478,7 +478,9 @@ export const syncCcRationales = inngest.createFunction(
       }
 
       // Total eligible proposals (all proposals in the system)
-      const totalEligibleProposals = new Set(proposals.map((p) => `${p.tx_hash}:${p.index}`)).size;
+      const totalEligibleProposals = new Set(
+        proposals.map((p) => `${p.tx_hash}:${p.proposal_index}`),
+      ).size;
 
       // Group votes by member
       const memberVotes = new Map<string, CCMemberVoteData[]>();

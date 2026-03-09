@@ -44,9 +44,9 @@ export const GET = withRouteHandler(async () => {
     supabase
       .from('proposals')
       .select(
-        'tx_hash, proposal_index, title, proposal_type, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+        'tx_hash, proposal_index, title, proposal_type, block_time, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
       )
-      .order('created_at', { ascending: false })
+      .order('block_time', { ascending: false })
       .limit(20),
 
     supabase
@@ -185,7 +185,7 @@ export const GET = withRouteHandler(async () => {
       type: 'proposal',
       drepId: '',
       detail: p.title,
-      timestamp: p.created_at ? new Date(p.created_at).getTime() / 1000 : Date.now() / 1000,
+      timestamp: p.block_time ? p.block_time : Date.now() / 1000,
     });
   }
 

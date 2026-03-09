@@ -25,12 +25,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
         .select(
           'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
         ),
-      supabase
-        .from('treasury_balance')
-        .select('balance_ada')
-        .order('fetched_at', { ascending: false })
-        .limit(1)
-        .single(),
+      supabase.from('governance_stats').select('treasury_balance_lovelace').eq('id', 1).single(),
       supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
       supabase
         .from('proposal_outcomes')
@@ -79,7 +74,10 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     }
   }
 
-  const treasuryBalance = treasuryResult.data?.balance_ada ?? null;
+  const treasuryBalanceLovelace = treasuryResult.data?.treasury_balance_lovelace ?? null;
+  const treasuryBalance = treasuryBalanceLovelace
+    ? Number(treasuryBalanceLovelace) / 1_000_000
+    : null;
 
   // Build outcome lookup for delivery status badges
   const outcomeMap = new Map<string, { deliveryStatus: string; deliveryScore: number | null }>();

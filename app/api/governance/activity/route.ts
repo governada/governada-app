@@ -43,9 +43,9 @@ export const GET = withRouteHandler(async (request) => {
     supabase
       .from('proposals')
       .select(
-        'tx_hash, proposal_index, title, created_at, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+        'tx_hash, proposal_index, title, block_time, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
       )
-      .order('created_at', { ascending: false })
+      .order('block_time', { ascending: false })
       .limit(Math.ceil(limit / 3)),
   ]);
 
@@ -114,7 +114,7 @@ export const GET = withRouteHandler(async (request) => {
   }
 
   const recentProposals = proposals.filter(
-    (p) => p.created_at && new Date(p.created_at).getTime() > Date.now() - 7 * 86400000,
+    (p) => p.block_time && p.block_time * 1000 > Date.now() - 7 * 86400000,
   );
   for (const p of recentProposals) {
     events.push({
@@ -122,7 +122,7 @@ export const GET = withRouteHandler(async (request) => {
       drepId: '',
       drepName: null,
       detail: p.title,
-      timestamp: Math.floor(new Date(p.created_at).getTime() / 1000),
+      timestamp: p.block_time,
       proposalTxHash: p.tx_hash ?? undefined,
       proposalIndex: p.proposal_index ?? 0,
     });
@@ -143,7 +143,7 @@ export const GET = withRouteHandler(async (request) => {
           drepId: '',
           drepName: null,
           detail: `${p.title || 'Proposal'} — ${o.label}`,
-          timestamp: Math.floor(new Date(p.created_at).getTime() / 1000),
+          timestamp: p.block_time,
           proposalTxHash: p.tx_hash ?? undefined,
           proposalIndex: p.proposal_index ?? 0,
         });

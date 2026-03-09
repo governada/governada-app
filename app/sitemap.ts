@@ -13,8 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase.from('dreps').select('id, updated_at').order('score', { ascending: false }),
     supabase
       .from('proposals')
-      .select('tx_hash, index, updated_at')
-      .order('created_at', { ascending: false }),
+      .select('tx_hash, proposal_index, updated_at')
+      .order('updated_at', { ascending: false }),
   ]);
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -60,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const proposalPages: MetadataRoute.Sitemap = (proposalsResult.data ?? []).map((p) => ({
-    url: `${BASE_URL}/proposals/${encodeURIComponent(p.tx_hash)}/${p.index}`,
+    url: `${BASE_URL}/proposals/${encodeURIComponent(p.tx_hash)}/${p.proposal_index}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.6,

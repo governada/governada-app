@@ -32,7 +32,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ pool
 
     const { data: pool } = await supabase
       .from('pools')
-      .select('pool_name, ticker, governance_score, live_stake, delegator_count')
+      .select('pool_name, ticker, governance_score, live_stake_lovelace, delegator_count')
       .eq('pool_id', decodeURIComponent(poolId))
       .single();
 
@@ -86,7 +86,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ pool
         value:
           period && periodData ? `${periodData.votes_cast ?? voteCount ?? 0}` : `${voteCount ?? 0}`,
       },
-      { label: 'Live Stake', value: formatAdaCompact(pool.live_stake ?? 0) },
+      { label: 'Live Stake', value: formatAdaCompact(pool.live_stake_lovelace ?? 0) },
       { label: 'Delegators', value: `${pool.delegator_count ?? 0}` },
       { label: 'Rank', value: `#${rank}` },
     ];

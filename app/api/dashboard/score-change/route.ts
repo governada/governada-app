@@ -15,9 +15,9 @@ export const GET = withRouteHandler(async (request) => {
 
   const { data: history } = await supabase
     .from('drep_score_history')
-    .select('score, recorded_at')
+    .select('score, snapshot_date')
     .eq('drep_id', drepId)
-    .order('recorded_at', { ascending: false })
+    .order('snapshot_date', { ascending: false })
     .limit(14);
 
   if (!history || history.length < 2) {
@@ -39,6 +39,6 @@ export const GET = withRouteHandler(async (request) => {
     currentScore,
     previousScore,
     delta,
-    date: weekAgo.recorded_at,
+    date: weekAgo.snapshot_date,
   });
 });

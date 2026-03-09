@@ -73,7 +73,7 @@ function saveCache(state: CachedSegment, stakeAddress: string) {
 }
 
 export function SegmentProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, address } = useWallet();
+  const { connected, isAuthenticated, address } = useWallet();
   const [detected, setDetected] = useState<
     Omit<SegmentState, 'segment' | 'realSegment' | 'setOverride'>
   >({
@@ -128,7 +128,9 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || !address) {
+    // Detect segment when wallet is connected (address available),
+    // not just when fully authenticated (nonce signed)
+    if ((!connected && !isAuthenticated) || !address) {
       setDetected({
         isLoading: false,
         stakeAddress: null,
@@ -142,7 +144,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       return;
     }
     detect(address);
-  }, [isAuthenticated, address, detect]);
+  }, [connected, isAuthenticated, address, detect]);
 
   const value: SegmentState = {
     ...detected,

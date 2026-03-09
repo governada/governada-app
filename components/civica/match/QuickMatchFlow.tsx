@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Shield,
@@ -13,7 +13,6 @@ import {
   Eye,
   ArrowRight,
   ArrowLeft,
-  Loader2,
   ChevronRight,
   Zap,
   RotateCcw,
@@ -31,6 +30,8 @@ import { usePostHog } from 'posthog-js/react';
 import { DelegateButton } from '@/components/DelegateButton';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type { AlignmentScores } from '@/lib/drepIdentity';
+import { getDominantDimension, getIdentityColor, getPersonalityLabel } from '@/lib/drepIdentity';
+import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
 import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
 import { saveMatchProfile, loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
@@ -167,6 +168,13 @@ export function QuickMatchFlow() {
   const abortRef = useRef<AbortController | null>(null);
   const posthog = usePostHog();
 
+  const partialIdentityColor = useMemo(() => {
+    if (Object.keys(answers).length === 0) return 'hsl(var(--primary))';
+    const partial = buildAlignmentFromAnswers(answers);
+    const dominant = getDominantDimension(partial);
+    return getIdentityColor(dominant).hex;
+  }, [answers]);
+
   // Load stored match profile on mount
   useEffect(() => {
     setStoredProfile(loadMatchProfile());
@@ -290,9 +298,10 @@ export function QuickMatchFlow() {
                   <div key={i} className="h-1 flex-1 rounded-full overflow-hidden bg-muted">
                     <div
                       className={cn(
-                        'h-full rounded-full bg-primary transition-all duration-300',
+                        'h-full rounded-full transition-all duration-500',
                         i < step ? 'w-full' : i === step ? 'w-1/2' : 'w-0',
                       )}
+                      style={{ backgroundColor: partialIdentityColor }}
                     />
                   </div>
                 ))}
@@ -330,7 +339,7 @@ export function QuickMatchFlow() {
             onSelect={(value) => handleAnswer(QUESTIONS[step].id, value)}
           />
         )}
-        {step === 'loading' && <LoadingScreen />}
+        {step === 'loading' && <LoadingScreen answers={answers} />}
         {step === 'results' && drepResults && spoResults && (
           <ResultsScreen drepResults={drepResults} spoResults={spoResults} onRestart={restart} />
         )}
@@ -456,23 +465,40 @@ function QuestionScreen({
   );
 }
 
-function LoadingScreen() {
+function LoadingScreen({ answers }: { answers: Record<string, string> }) {
+  const { alignments, personalityLabel, identityColor } = useMemo(() => {
+    const partial = buildAlignmentFromAnswers(answers);
+    const dominant = getDominantDimension(partial);
+    return {
+      alignments: partial,
+      personalityLabel: getPersonalityLabel(partial),
+      identityColor: getIdentityColor(dominant),
+    };
+  }, [answers]);
+
   return (
     <div
-      className="text-center space-y-6 animate-in fade-in duration-300"
+      className="text-center space-y-6 animate-in fade-in duration-500"
       role="status"
       aria-live="polite"
     >
-      <div className="relative mx-auto w-24 h-24" aria-hidden="true">
-        <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping" />
-        <div className="absolute inset-2 rounded-full border-2 border-primary/40 animate-pulse" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
-        </div>
+      <div className="flex justify-center">
+        <GovernanceRadar alignments={alignments} size="medium" animate />
       </div>
-      <div className="space-y-1">
-        <p className="font-display text-lg font-semibold">Analyzing your governance values...</p>
-        <p className="text-sm text-muted-foreground">Matching against DReps and SPOs</p>
+      <div className="space-y-2">
+        <p className="font-display text-lg font-semibold">
+          Discovering your governance identity...
+        </p>
+        <Badge
+          className="text-xs px-2.5 py-0.5 animate-in fade-in duration-700"
+          style={{
+            backgroundColor: identityColor.hex + '20',
+            color: identityColor.hex,
+            borderColor: identityColor.hex + '40',
+          }}
+        >
+          {personalityLabel}
+        </Badge>
       </div>
     </div>
   );

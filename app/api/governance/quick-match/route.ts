@@ -16,27 +16,10 @@ import {
 import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
 import { computeDimensionAgreement } from '@/lib/matching/dimensionAgreement';
 import { calculateProgressiveConfidence } from '@/lib/matching/confidence';
+import { ANSWER_VECTORS } from '@/lib/matching/answerVectors';
 import { captureServerEvent } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
-
-const ANSWER_VECTORS: Record<string, Record<string, Partial<AlignmentScores>>> = {
-  treasury: {
-    conservative: { treasuryConservative: 85, treasuryGrowth: 20 },
-    growth: { treasuryConservative: 20, treasuryGrowth: 85 },
-    balanced: { treasuryConservative: 55, treasuryGrowth: 55 },
-  },
-  protocol: {
-    caution: { security: 85, innovation: 25 },
-    innovation: { security: 25, innovation: 85 },
-    case_by_case: { security: 55, innovation: 55 },
-  },
-  transparency: {
-    essential: { transparency: 90, decentralization: 70 },
-    nice_to_have: { transparency: 55, decentralization: 50 },
-    doesnt_matter: { transparency: 20, decentralization: 35 },
-  },
-};
 
 const DIMENSIONS: AlignmentDimension[] = [
   'treasuryConservative',

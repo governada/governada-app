@@ -22,7 +22,8 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     .from('proposals')
     .select(
       'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, expiration_epoch',
-    );
+    )
+    .limit(500);
 
   if (error || !proposals) {
     logger.error('Failed to fetch proposals', {
@@ -59,7 +60,8 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       .from('drep_votes')
       .select('proposal_tx_hash, proposal_index, vote, block_time')
       .eq('drep_id', drepId)
-      .order('block_time', { ascending: false });
+      .order('block_time', { ascending: false })
+      .limit(1000);
 
     const votedOnOpen = new Set<string>();
     const recentVotes: { title: string; vote: string; txHash: string; index: number }[] = [];
@@ -96,5 +98,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     result.recentVotes = recentVotes;
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=120' },
+  });
 });

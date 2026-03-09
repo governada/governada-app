@@ -12,7 +12,8 @@ export const GET = withRouteHandler(async () => {
   const { data: dreps } = await supabase
     .from('dreps')
     .select('id, info')
-    .not('info->isActive', 'is', null);
+    .not('info->isActive', 'is', null)
+    .limit(1000);
 
   const activeDreps = (dreps ?? []).filter((d) => d.info?.isActive);
   const votingPowers = activeDreps

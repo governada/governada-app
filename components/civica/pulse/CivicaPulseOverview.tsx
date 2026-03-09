@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAda } from '@/lib/treasury';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGovernancePulse } from '@/hooks/queries';
 import { useTreasuryCurrent } from '@/hooks/queries';
@@ -142,13 +143,6 @@ function StatCardSkeleton() {
       <Skeleton className="h-2.5 w-32" />
     </div>
   );
-}
-
-function formatAda(ada: number): string {
-  if (ada >= 1_000_000_000) return `₳${(ada / 1_000_000_000).toFixed(1)}B`;
-  if (ada >= 1_000_000) return `₳${(ada / 1_000_000).toFixed(1)}M`;
-  if (ada >= 1_000) return `₳${Math.round(ada / 1_000)}K`;
-  return `₳${Math.round(ada)}`;
 }
 
 export function CivicaPulseOverview() {

@@ -34,16 +34,19 @@ export const GET = withRouteHandler(async () => {
       : 'shrinking'
     : 'stable';
 
-  return NextResponse.json({
-    balance: balance.balanceAda,
-    epoch: balance.epoch,
-    snapshotAt: balance.snapshotAt,
-    runwayMonths: runwayMonths === Infinity ? 999 : Math.round(runwayMonths),
-    burnRatePerEpoch: Math.round(burnRate),
-    trend,
-    healthScore: healthScore?.score ?? null,
-    healthComponents: healthScore?.components ?? null,
-    pendingCount: pending.length,
-    pendingTotalAda: totalPendingAda,
-  });
+  return NextResponse.json(
+    {
+      balance: balance.balanceAda,
+      epoch: balance.epoch,
+      snapshotAt: balance.snapshotAt,
+      runwayMonths: runwayMonths === Infinity ? 999 : Math.round(runwayMonths),
+      burnRatePerEpoch: Math.round(burnRate),
+      trend,
+      healthScore: healthScore?.score ?? null,
+      healthComponents: healthScore?.components ?? null,
+      pendingCount: pending.length,
+      pendingTotalAda: totalPendingAda,
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300' } },
+  );
 });

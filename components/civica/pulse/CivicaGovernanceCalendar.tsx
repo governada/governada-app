@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Calendar, Clock, AlertTriangle, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAda } from '@/lib/treasury';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useGovernancePulse,
@@ -179,13 +180,6 @@ function EpochRecapCard({ recap }: { recap: Record<string, unknown> }) {
   );
 }
 
-function formatAda(ada: number): string {
-  if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
-  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
-  if (ada >= 1_000) return `${Math.round(ada / 1_000)}K`;
-  return `${Math.round(ada)}`;
-}
-
 export function CivicaGovernanceCalendar() {
   const { data: rawCalendar, isLoading: calendarLoading } = useGovernanceCalendar();
   const calendar = (rawCalendar as CalendarData) ?? null;
@@ -266,18 +260,32 @@ export function CivicaGovernanceCalendar() {
           </div>
           <div className="flex items-end gap-[2px] h-12">
             {(() => {
-              const maxP = Math.max(...participationRows.map((r) => r.participation_rate), 1);
-              return participationRows.slice(-20).map((r) => (
-                <div key={r.epoch} className="flex-1 flex flex-col justify-end gap-[1px]">
+              const maxVal = Math.max(
+                ...participationRows.map((r) =>
+                  Math.max(r.participation_rate, r.rationale_rate ?? 0),
+                ),
+                1,
+              );
+              return participationRows.slice(-20).map((r) => {
+                const pRate = r.participation_rate ?? 0;
+                const rRate = r.rationale_rate ?? 0;
+                return (
                   <div
-                    className="bg-blue-400/70 rounded-t-sm min-w-[2px]"
-                    style={{
-                      height: `${Math.max(2, (r.participation_rate / maxP) * 100)}%`,
-                    }}
-                    title={`Epoch ${r.epoch}: ${r.participation_rate.toFixed(1)}% participation`}
-                  />
-                </div>
-              ));
+                    key={r.epoch}
+                    className="flex-1 flex items-end gap-[1px]"
+                    title={`Epoch ${r.epoch}: ${pRate.toFixed(1)}% participation, ${rRate.toFixed(1)}% rationale`}
+                  >
+                    <div
+                      className="flex-1 bg-blue-400/70 rounded-t-sm min-w-[1px]"
+                      style={{ height: `${Math.max(2, (pRate / maxVal) * 100)}%` }}
+                    />
+                    <div
+                      className="flex-1 bg-emerald-400/70 rounded-t-sm min-w-[1px]"
+                      style={{ height: `${Math.max(2, (rRate / maxVal) * 100)}%` }}
+                    />
+                  </div>
+                );
+              });
             })()}
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">

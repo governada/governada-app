@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
@@ -10,11 +11,13 @@ import type { ReportData } from '@/lib/stateOfGovernance';
 import { BASE_URL } from '@/lib/constants';
 import { ArrowLeft, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 interface Props {
   params: Promise<{ epoch: string }>;
 }
 
-async function getReport(epochParam: string) {
+const getReport = cache(async (epochParam: string) => {
   const supabase = getSupabaseAdmin();
 
   if (epochParam === 'latest') {
@@ -39,7 +42,7 @@ async function getReport(epochParam: string) {
     .single();
 
   return data;
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { epoch } = await params;

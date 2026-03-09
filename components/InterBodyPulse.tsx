@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGovernanceInterBody } from '@/hooks/queries';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import { Users } from 'lucide-react';
 
 interface SystemAlignment {
@@ -26,8 +27,12 @@ function AlignmentBar({ value, color }: { value: number; color: string }) {
 }
 
 export function InterBodyPulse() {
-  const { data: rawData, isLoading } = useGovernanceInterBody();
+  const { data: rawData, isLoading, isError, refetch } = useGovernanceInterBody();
   const data = (rawData as SystemAlignment) ?? null;
+
+  if (isError) {
+    return <ErrorCard message="Unable to load inter-body alignment." onRetry={refetch} />;
+  }
 
   if (isLoading) {
     return (
@@ -37,7 +42,7 @@ export function InterBodyPulse() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Skeleton className="h-4 w-full" />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-16 w-full" />
             ))}
@@ -64,7 +69,7 @@ export function InterBodyPulse() {
           alignment.
         </p>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
             <div className="text-center">
               <p className="text-2xl font-bold tabular-nums text-primary">

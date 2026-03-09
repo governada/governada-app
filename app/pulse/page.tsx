@@ -26,7 +26,7 @@ function PulseFallback() {
   return (
     <div className="space-y-6 pt-4">
       <div className="flex gap-1 border-b border-border -mb-2">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-9 w-20" />
         ))}
       </div>

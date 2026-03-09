@@ -4,6 +4,7 @@ import { Globe, TrendingUp, TrendingDown, Minus, Info, GitBranch } from 'lucide-
 import { scaleLinear } from 'd3-scale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import {
   useGovernanceBenchmarks,
   useGovernanceHealthIndex,
@@ -357,8 +358,18 @@ function ChainComparisonBar({ chain, benchmark }: { chain: string; benchmark: Ch
 }
 
 export function CivicaObservatory() {
-  const { data: rawGHI, isLoading: ghiLoading } = useGovernanceHealthIndex(1);
-  const { data: rawBenchmarks, isLoading: benchLoading } = useGovernanceBenchmarks();
+  const {
+    data: rawGHI,
+    isLoading: ghiLoading,
+    isError: ghiError,
+    refetch: refetchGhi,
+  } = useGovernanceHealthIndex(1);
+  const {
+    data: rawBenchmarks,
+    isLoading: benchLoading,
+    isError: benchError,
+    refetch: refetchBench,
+  } = useGovernanceBenchmarks();
   const { data: rawDecentralization } = useGovernanceDecentralization();
   const { data: rawInterBody } = useGovernanceInterBody();
 
@@ -395,9 +406,22 @@ export function CivicaObservatory() {
     votingPower: number;
   }[];
   const loading = ghiLoading || benchLoading;
+  const hasError = ghiError || benchError;
 
   const cardanoBench = benchmarks.find((b) => b.chain === 'cardano');
   const otherBenchmarks = benchmarks.filter((b) => b.chain !== 'cardano');
+
+  if (hasError) {
+    return (
+      <ErrorCard
+        message="Unable to load observatory data."
+        onRetry={() => {
+          refetchGhi();
+          refetchBench();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

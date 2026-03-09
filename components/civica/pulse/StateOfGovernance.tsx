@@ -2,6 +2,7 @@
 
 import { Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import {
   useGovernanceHealthIndex,
   useGovernancePulse,
@@ -130,8 +131,18 @@ function buildPersonalAddendum(
 }
 
 export function StateOfGovernance() {
-  const { data: rawGHI, isLoading: ghiLoading } = useGovernanceHealthIndex(1);
-  const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
+  const {
+    data: rawGHI,
+    isLoading: ghiLoading,
+    isError: ghiError,
+    refetch: refetchGhi,
+  } = useGovernanceHealthIndex(1);
+  const {
+    data: rawPulse,
+    isLoading: pulseLoading,
+    isError: pulseError,
+    refetch: refetchPulse,
+  } = useGovernancePulse();
   const { data: rawTreasury } = useTreasuryCurrent();
 
   const { segment, delegatedDrep, drepId } = useSegment();
@@ -146,6 +157,19 @@ export function StateOfGovernance() {
   const narrative = buildNarrative(ghi, pulse, treasury);
   const personal = buildPersonalAddendum(pulse, summary, segment);
   const loading = ghiLoading || pulseLoading;
+  const hasError = ghiError || pulseError;
+
+  if (hasError) {
+    return (
+      <ErrorCard
+        message="Unable to load governance state."
+        onRetry={() => {
+          refetchGhi();
+          refetchPulse();
+        }}
+      />
+    );
+  }
 
   if (loading) {
     return (

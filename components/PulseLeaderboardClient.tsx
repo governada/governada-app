@@ -1,11 +1,13 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import { Trophy } from 'lucide-react';
 
 interface LeaderboardEntry {
@@ -35,20 +37,31 @@ function tierColorClass(score: number) {
   return 'text-red-600 dark:text-red-400';
 }
 
+async function fetchLeaderboard(tier: string): Promise<{ leaderboard: LeaderboardEntry[] }> {
+  const res = await fetch(`/api/governance/leaderboard?tier=${tier}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export function PulseLeaderboardClient({ initialLeaderboard }: PulseLeaderboardClientProps) {
   const [tierFilter, setTierFilter] = useState('all');
-  const [leaderboard, setLeaderboard] = useState(initialLeaderboard);
 
-  useEffect(() => {
-    if (tierFilter === 'all') {
-      setLeaderboard(initialLeaderboard);
-      return;
-    }
-    fetch(`/api/governance/leaderboard?tier=${tierFilter}`)
-      .then((r) => r.json())
-      .then((d) => setLeaderboard(d.leaderboard))
-      .catch(() => {});
-  }, [tierFilter, initialLeaderboard]);
+  const {
+    data: queryData,
+    isLoading: tierLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['pulse-leaderboard', tierFilter],
+    queryFn: () =>
+      tierFilter === 'all'
+        ? Promise.resolve({ leaderboard: initialLeaderboard })
+        : fetchLeaderboard(tierFilter),
+    staleTime: 120_000,
+    initialData: tierFilter === 'all' ? { leaderboard: initialLeaderboard } : undefined,
+  });
+
+  const leaderboard = queryData?.leaderboard ?? initialLeaderboard;
 
   return (
     <Card>
@@ -74,36 +87,46 @@ export function PulseLeaderboardClient({ initialLeaderboard }: PulseLeaderboardC
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
-          {leaderboard.map((d) => (
-            <Link key={d.drepId} href={`/drep/${encodeURIComponent(d.drepId)}`} className="block">
-              <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                <span
-                  className={`text-lg font-bold tabular-nums w-8 ${d.rank <= 3 ? 'text-amber-500' : 'text-muted-foreground'}`}
-                >
-                  #{d.rank}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{d.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] ${SIZE_COLORS[d.sizeTier] || ''}`}
-                    >
-                      {d.sizeTier}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground">
-                      P:{d.participation}% R:{d.rationale}%
-                    </span>
+        {isError ? (
+          <ErrorCard message="Unable to load leaderboard." onRetry={() => refetch()} />
+        ) : tierLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {leaderboard.map((d) => (
+              <Link key={d.drepId} href={`/drep/${encodeURIComponent(d.drepId)}`} className="block">
+                <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                  <span
+                    className={`text-lg font-bold tabular-nums w-8 ${d.rank <= 3 ? 'text-amber-500' : 'text-muted-foreground'}`}
+                  >
+                    #{d.rank}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{d.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${SIZE_COLORS[d.sizeTier] || ''}`}
+                      >
+                        {d.sizeTier}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        P:{d.participation}% R:{d.rationale}%
+                      </span>
+                    </div>
                   </div>
+                  <span className={`text-xl font-bold tabular-nums ${tierColorClass(d.score)}`}>
+                    {d.score}
+                  </span>
                 </div>
-                <span className={`text-xl font-bold tabular-nums ${tierColorClass(d.score)}`}>
-                  {d.score}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

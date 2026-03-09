@@ -2,6 +2,7 @@
 
 import { scaleLinear } from 'd3-scale';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import { cn } from '@/lib/utils';
 import {
   useGovernanceSparklines,
@@ -133,8 +134,18 @@ function TierDistribution({ dreps }: { dreps: Record<string, unknown>[] }) {
 }
 
 export function CivicaGovernanceTrends() {
-  const { data: rawSparklines, isLoading: sparklinesLoading } = useGovernanceSparklines();
-  const { data: rawGhi, isLoading: ghiLoading } = useGovernanceHealthIndex(20);
+  const {
+    data: rawSparklines,
+    isLoading: sparklinesLoading,
+    isError: sparklinesError,
+    refetch: refetchSparklines,
+  } = useGovernanceSparklines();
+  const {
+    data: rawGhi,
+    isLoading: ghiLoading,
+    isError: ghiError,
+    refetch: refetchGhi,
+  } = useGovernanceHealthIndex(20);
   const { data: rawLeaderboard } = useGovernanceLeaderboard();
 
   const sparklines = rawSparklines as Record<string, unknown> | undefined;
@@ -167,6 +178,7 @@ export function CivicaGovernanceTrends() {
   const ghiValues = ghiHistory.map((h) => h.score);
 
   const isLoading = sparklinesLoading || ghiLoading;
+  const hasError = sparklinesError || ghiError;
 
   // Build a human-readable narrative for the GHI gauge
   const ghiNarrative = (() => {
@@ -185,6 +197,18 @@ export function CivicaGovernanceTrends() {
       : trend?.direction === 'down'
         ? 'text-rose-400'
         : 'text-muted-foreground';
+
+  if (hasError) {
+    return (
+      <ErrorCard
+        message="Unable to load governance trends."
+        onRetry={() => {
+          refetchSparklines();
+          refetchGhi();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

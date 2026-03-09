@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Vote, Users, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import { cn } from '@/lib/utils';
 import { useGovernancePulse } from '@/hooks/queries';
 
@@ -69,7 +70,7 @@ function PipelineStep({
 }
 
 export function CivicaEpochReport() {
-  const { data: rawPulse, isLoading } = useGovernancePulse();
+  const { data: rawPulse, isLoading, isError, refetch } = useGovernancePulse();
   const pulse = rawPulse as
     | {
         currentEpoch?: number;
@@ -100,6 +101,10 @@ export function CivicaEpochReport() {
   const activeDReps: number = pulse?.activeDReps ?? 0;
   const totalDReps: number = pulse?.totalDReps ?? 0;
   const votesThisWeek: number = pulse?.votesThisWeek ?? 0;
+
+  if (isError) {
+    return <ErrorCard message="Unable to load epoch report." onRetry={refetch} />;
+  }
 
   return (
     <div className="space-y-6">

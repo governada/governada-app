@@ -7,6 +7,7 @@ import { Calendar, Clock, AlertTriangle, ChevronRight, ChevronDown } from 'lucid
 import { cn } from '@/lib/utils';
 import { formatAda } from '@/lib/treasury';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import {
   useGovernancePulse,
   useGovernanceEpochRecap,
@@ -181,7 +182,12 @@ function EpochRecapCard({ recap }: { recap: Record<string, unknown> }) {
 }
 
 export function CivicaGovernanceCalendar() {
-  const { data: rawCalendar, isLoading: calendarLoading } = useGovernanceCalendar();
+  const {
+    data: rawCalendar,
+    isLoading: calendarLoading,
+    isError: calendarError,
+    refetch: refetchCalendar,
+  } = useGovernanceCalendar();
   const calendar = (rawCalendar as CalendarData) ?? null;
 
   const { data: rawPulse } = useGovernancePulse();
@@ -222,6 +228,10 @@ export function CivicaGovernanceCalendar() {
     : Array.isArray(recap)
       ? recap
       : [];
+
+  if (calendarError) {
+    return <ErrorCard message="Unable to load governance calendar." onRetry={refetchCalendar} />;
+  }
 
   return (
     <div className="space-y-6">

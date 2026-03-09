@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatAda } from '@/lib/treasury';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import { useGovernancePulse } from '@/hooks/queries';
 import { useTreasuryCurrent } from '@/hooks/queries';
 import { useGovernanceLeaderboard } from '@/hooks/queries';
@@ -166,10 +167,20 @@ export function CivicaPulseOverview() {
     [searchParams, pathname],
   );
 
-  const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
+  const {
+    data: rawPulse,
+    isLoading: pulseLoading,
+    isError: pulseError,
+    refetch: refetchPulse,
+  } = useGovernancePulse();
   const pulse = rawPulse as PulseDataLocal | undefined;
 
-  const { data: rawTreasury, isLoading: treasuryLoading } = useTreasuryCurrent();
+  const {
+    data: rawTreasury,
+    isLoading: treasuryLoading,
+    isError: treasuryError,
+    refetch: refetchTreasury,
+  } = useTreasuryCurrent();
   const treasury = rawTreasury as
     | (TreasuryData & {
         balance?: number;
@@ -186,9 +197,19 @@ export function CivicaPulseOverview() {
   const losers: LeaderboardEntry[] = leaderboard?.weeklyMovers?.losers?.slice(0, 3) ?? [];
 
   const loading = pulseLoading || treasuryLoading;
+  const hasError = pulseError || treasuryError;
 
   return (
     <div className="space-y-6 pt-4">
+      {hasError && (
+        <ErrorCard
+          message="Unable to load governance data."
+          onRetry={() => {
+            refetchPulse();
+            refetchTreasury();
+          }}
+        />
+      )}
       <FirstVisitBanner
         pageKey="pulse"
         message="The big picture. How healthy is Cardano governance right now? Track participation, treasury, and trends over time."

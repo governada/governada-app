@@ -50,15 +50,12 @@ export function DelegatorPulse({ txHash, proposalIndex, drepId }: DelegatorPulse
           <HeartPulse className="h-4 w-4" />
         </span>
         <h3 className="text-sm font-medium">Delegator Pulse</h3>
-        <Badge
-          variant="outline"
-          className="text-[10px] bg-primary/10 text-primary border-primary/30"
-        >
+        <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
           Pro
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <PulseColumn
           label="Your Delegators"
           icon={<HeartPulse className="h-3 w-3" />}
@@ -73,7 +70,7 @@ export function DelegatorPulse({ txHash, proposalIndex, drepId }: DelegatorPulse
         />
       </div>
 
-      <p className="text-[10px] text-muted-foreground pt-1">
+      <p className="text-xs text-muted-foreground pt-1">
         Non-binding sentiment from ADA holders — distinct from on-chain DRep votes.
       </p>
     </div>
@@ -96,10 +93,10 @@ function PulseColumn({
   if (total === 0) {
     return (
       <div className="rounded-lg border p-2.5 space-y-1.5">
-        <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           {icon} {label}
         </div>
-        <p className="text-[10px] text-muted-foreground">{emptyText}</p>
+        <p className="text-xs text-muted-foreground">{emptyText}</p>
       </div>
     );
   }
@@ -111,10 +108,10 @@ function PulseColumn({
   return (
     <div className="rounded-lg border p-2.5 space-y-1.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           {icon} {label}
         </div>
-        <span className="text-[10px] tabular-nums text-muted-foreground">{total}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{total}</span>
       </div>
 
       {/* Stacked bar */}
@@ -124,7 +121,7 @@ function PulseColumn({
         {abstain > 0 && <div className="bg-amber-500 h-full" style={{ width: `${ap}%` }} />}
       </div>
 
-      <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground">
+      <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
         <span className="text-green-600 dark:text-green-400">{yp}% Y</span>
         <span className="text-red-600 dark:text-red-400">{np}% N</span>
         <span className="text-amber-600 dark:text-amber-400">{ap}% A</span>

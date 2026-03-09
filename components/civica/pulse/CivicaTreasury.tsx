@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { TrendingUp, TrendingDown, Minus, DollarSign, Clock, ExternalLink } from 'lucide-react';
 import { scaleLinear } from 'd3-scale';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
 import { cn } from '@/lib/utils';
 import { useTreasuryCurrent, useTreasuryHistory, useTreasuryPending } from '@/hooks/queries';
 import type { TreasuryData } from '@/types/api';
@@ -85,8 +86,18 @@ function BalanceSparkline({ snapshots }: { snapshots: { epoch: number; balanceAd
 }
 
 export function CivicaTreasury() {
-  const { data: rawCurrent, isLoading: currentLoading } = useTreasuryCurrent();
-  const { data: rawHistory, isLoading: historyLoading } = useTreasuryHistory(30);
+  const {
+    data: rawCurrent,
+    isLoading: currentLoading,
+    isError: currentError,
+    refetch: refetchCurrent,
+  } = useTreasuryCurrent();
+  const {
+    data: rawHistory,
+    isLoading: historyLoading,
+    isError: historyError,
+    refetch: refetchHistory,
+  } = useTreasuryHistory(30);
   const { data: rawPending, isLoading: pendingLoading } = useTreasuryPending();
 
   const treasury = rawCurrent as
@@ -116,6 +127,19 @@ export function CivicaTreasury() {
       : [];
 
   const isLoading = currentLoading || historyLoading;
+  const hasError = currentError || historyError;
+
+  if (hasError) {
+    return (
+      <ErrorCard
+        message="Unable to load treasury data."
+        onRetry={() => {
+          refetchCurrent();
+          refetchHistory();
+        }}
+      />
+    );
+  }
 
   const trendIcon =
     treasury?.trend === 'growing'

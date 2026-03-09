@@ -85,11 +85,24 @@ export function WalletConnectModal({
     await connect(walletName);
   };
 
-  // Move to sign step when connected successfully
+  // Auto-authenticate once wallet connects — skip the manual sign step.
+  // The wallet extension will prompt the user to sign immediately after connection.
   useEffect(() => {
     if (connected && address && !error && step === 'connect') {
       setStep('sign');
+      // Auto-trigger authentication so user doesn't land in connected-but-not-authenticated state
+      (async () => {
+        clearError();
+        setAuthenticating(true);
+        const success = await authenticate();
+        setAuthenticating(false);
+        if (success) {
+          posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
+          setStep(skipPushPrompt ? 'success' : 'push');
+        }
+      })();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally fire only on connection state changes
   }, [connected, address, error, step]);
 
   const handleTryAgain = async () => {
@@ -136,6 +149,11 @@ export function WalletConnectModal({
     onOpenChange(false);
     if (step === 'success') {
       onSuccess?.();
+    }
+    // If user closes before authenticating, disconnect to prevent half-state
+    // (connected to wallet extension but no session token)
+    if (step === 'sign' || step === 'connect') {
+      disconnect();
     }
     setTimeout(() => setStep('connect'), 300);
   };

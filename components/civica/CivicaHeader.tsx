@@ -78,7 +78,7 @@ export function CivicaHeader() {
   const router = useRouter();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
   const { segment, realSegment, stakeAddress, delegatedDrep, tier, setOverride } = useSegment();
-  const { data: adminData } = useAdminCheck(isAuthenticated || connected);
+  const { data: adminData } = useAdminCheck(isAuthenticated);
   const isAdmin = adminData?.isAdmin === true;
   const hasOverride = segment !== realSegment;
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
@@ -110,7 +110,7 @@ export function CivicaHeader() {
           </Link>
 
           <nav className="flex items-center gap-1" aria-label="Main navigation">
-            {NAV_ITEMS.filter((item) => item.href !== '/my-gov' || connected).map(
+            {NAV_ITEMS.filter((item) => item.href !== '/my-gov' || isAuthenticated).map(
               ({ href, label, icon: Icon }) => {
                 const active = isActive(href);
                 return (
@@ -172,7 +172,7 @@ export function CivicaHeader() {
             <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
           </Button>
 
-          {connected ? (
+          {connected && isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

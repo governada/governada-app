@@ -22,7 +22,7 @@ export const GET = withRouteHandler(async (request) => {
       )
       .eq('id', drepId)
       .single(),
-    supabase.from('proposals').select('id', { count: 'exact', head: true }),
+    supabase.from('proposals').select('tx_hash', { count: 'exact', head: true }),
     supabase
       .from('dreps')
       .select('score')

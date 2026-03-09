@@ -49,7 +49,7 @@ async function getGovernancePulse() {
       ),
     supabase
       .from('drep_votes')
-      .select('id', { count: 'exact', head: true })
+      .select('vote_tx_hash', { count: 'exact', head: true })
       .gt('block_time', oneWeekAgoBlockTime),
     supabase
       .from('users')

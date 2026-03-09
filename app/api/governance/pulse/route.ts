@@ -28,10 +28,11 @@ export const GET = withRouteHandler(async () => {
       .from('proposals')
       .select(
         'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, block_time',
-      ),
+      )
+      .limit(500),
     supabase
       .from('drep_votes')
-      .select('id', { count: 'exact', head: true })
+      .select('vote_tx_hash', { count: 'exact', head: true })
       .gt('block_time', oneWeekAgoBlockTime),
     supabase
       .from('users')

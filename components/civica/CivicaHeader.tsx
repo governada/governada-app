@@ -13,7 +13,6 @@ import {
   BookOpen,
   Search,
   User,
-  UserCheck,
   Users,
   LogOut,
   Sun,
@@ -65,7 +64,7 @@ const SEGMENT_LABELS: Record<UserSegment, string> = {
 
 const SEGMENT_ICONS: Record<UserSegment, typeof User> = {
   anonymous: User,
-  citizen: UserCheck,
+  citizen: User,
   drep: Users,
   spo: ShieldCheck,
 };

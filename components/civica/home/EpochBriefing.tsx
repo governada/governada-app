@@ -21,13 +21,14 @@ import {
   ExternalLink,
   Megaphone,
   Trophy,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { AsyncContent } from '@/components/ui/AsyncContent';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTreasuryCurrent, useTreasuryPending } from '@/hooks/queries';
+import { useTreasuryCurrent, useTreasuryPending, useGovernanceCalendar } from '@/hooks/queries';
 import { briefingContainer, briefingItem } from '@/lib/animations';
 import { GovTerm } from '@/components/ui/GovTerm';
 import {
@@ -226,9 +227,13 @@ function BriefingSkeleton() {
 export function EpochBriefing({ wallet }: EpochBriefingProps) {
   const briefingQuery = useCitizenBriefing(wallet);
   const { data: identity } = useCivicIdentity(wallet);
-  const { data: rawTreasury } = useTreasuryCurrent();
+  const { data: rawTreasury, dataUpdatedAt } = useTreasuryCurrent();
   const { data: rawPending } = useTreasuryPending();
   const { data: voiceData } = useCitizenVoice(wallet);
+  const { data: calendarRaw } = useGovernanceCalendar();
+  const calendar = calendarRaw as
+    | { currentEpoch?: number; secondsRemaining?: number; epochProgress?: number }
+    | undefined;
 
   return (
     <AsyncContent
@@ -243,6 +248,9 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
           rawTreasury={rawTreasury}
           rawPending={rawPending}
           voiceData={voiceData}
+          epochSecondsRemaining={calendar?.secondsRemaining ?? null}
+          epochProgress={calendar?.epochProgress ?? null}
+          dataUpdatedAt={briefingQuery.dataUpdatedAt || dataUpdatedAt || 0}
         />
       )}
     </AsyncContent>
@@ -286,18 +294,43 @@ interface EpochBriefingData {
   [key: string]: unknown;
 }
 
+function formatCountdownCompact(totalSeconds: number): string {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  if (days > 0) return `${days}d ${hours}h left`;
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${mins}m left`;
+  return `${mins}m left`;
+}
+
+function formatTimeAgo(timestamp: number): string | null {
+  if (!timestamp) return null;
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
 function EpochBriefingContent({
   data,
   identity,
   rawTreasury,
   rawPending,
   voiceData,
+  epochSecondsRemaining,
+  epochProgress,
+  dataUpdatedAt,
 }: {
   data: EpochBriefingData;
   identity: Record<string, unknown> | null;
   rawTreasury: unknown;
   rawPending: unknown;
   voiceData: CitizenVoiceData | undefined | null;
+  epochSecondsRemaining: number | null;
+  epochProgress: number | null;
+  dataUpdatedAt: number;
 }) {
   const tracked = useRef(false);
   const isMobile = useIsMobile();
@@ -357,14 +390,39 @@ function EpochBriefingContent({
 
   /* ── Shared section content ──────────────────────────────────── */
 
+  const freshness = formatTimeAgo(dataUpdatedAt);
+
   const briefingHeader = (
     <header className="pb-5 border-b border-border">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Your Governance Briefing
-      </p>
-      <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mt-1">
-        Epoch {data.epoch}
-      </h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Your Governance Briefing
+          </p>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mt-1">
+            Epoch {data.epoch}
+          </h1>
+        </div>
+        {epochSecondsRemaining != null && epochSecondsRemaining > 0 && (
+          <div className="text-right shrink-0 mt-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span className="tabular-nums">{formatCountdownCompact(epochSecondsRemaining)}</span>
+            </div>
+            {epochProgress != null && (
+              <div className="mt-1.5 w-16 h-1 rounded-full bg-border overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary/60 transition-all"
+                  style={{ width: `${epochProgress}%` }}
+                />
+              </div>
+            )}
+            {freshness && (
+              <p className="text-[10px] text-muted-foreground/60 mt-1 tabular-nums">{freshness}</p>
+            )}
+          </div>
+        )}
+      </div>
     </header>
   );
 

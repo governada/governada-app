@@ -36,6 +36,7 @@ export interface WalletContextType {
   isAuthenticated: boolean;
   delegatedDrepId: string | null;
   ownDRepId: string | null;
+  balanceAda: number | null;
   error: WalletError | null;
   availableWallets: string[];
   connect: (walletName: string) => Promise<void>;

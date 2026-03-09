@@ -9,6 +9,12 @@ import { useWallet } from '@/utils/wallet';
 import { ConstellationScene } from '@/components/ConstellationScene';
 import { EpochBriefing } from './EpochBriefing';
 
+function formatAdaShort(ada: number): string {
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${(ada / 1_000).toFixed(0)}K`;
+  return ada.toLocaleString();
+}
+
 interface PulseData {
   totalAdaGoverned: string;
   activeProposals: number;
@@ -29,6 +35,8 @@ interface HomeCitizenProps {
 /* ── Undelegated citizen: wallet connected but no DRep ──────────── */
 
 function UndelegatedHome({ pulseData }: { pulseData: PulseData }) {
+  const { balanceAda } = useWallet();
+
   const stats = [
     { label: 'ADA Governed', value: `₳${pulseData.totalAdaGoverned}`, sub: 'without your voice' },
     { label: 'Active DReps', value: pulseData.activeDReps, sub: 'ready to represent you' },
@@ -48,7 +56,16 @@ function UndelegatedHome({ pulseData }: { pulseData: PulseData }) {
         <div className="absolute inset-0 flex items-center justify-center px-4 sm:pt-14">
           <div className="text-center max-w-xl space-y-3">
             <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white drop-shadow-lg leading-tight hero-text-shadow">
-              Your ADA is <span className="text-primary">unrepresented</span>.
+              {balanceAda != null && balanceAda > 0 ? (
+                <>
+                  Your <span className="text-primary">&#x20B3;{formatAdaShort(balanceAda)}</span> is
+                  sitting silent.
+                </>
+              ) : (
+                <>
+                  Your ADA is <span className="text-primary">unrepresented</span>.
+                </>
+              )}
             </h1>
             <p
               className="text-sm sm:text-base text-white/80 max-w-md mx-auto leading-relaxed hero-text-shadow"

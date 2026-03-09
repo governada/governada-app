@@ -130,6 +130,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [sessionAddress, setSessionAddress] = useState<string | null>(null);
   const [delegatedDrepId, setDelegatedDrepId] = useState<string | null>(null);
   const [ownDRepId, setOwnDRepId] = useState<string | null>(null);
+  const [balanceAda, setBalanceAda] = useState<number | null>(null);
   const [error, setError] = useState<WalletError | null>(null);
   const [availableWallets, setAvailableWallets] = useState<string[]>([]);
 
@@ -201,6 +202,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           if (hexAddresses.length > 0) setHexAddress(hexAddresses[0]);
           setConnected(true);
 
+          // Non-blocking: fetch wallet balance
+          browserWallet
+            .getLovelace()
+            .then((lovelace) => {
+              if (!cancelled) setBalanceAda(Math.floor(Number(lovelace) / 1_000_000));
+            })
+            .catch(() => {});
+
           try {
             const stakeAddr = resolveRewardAddress(addresses[0]);
             if (stakeAddr) {
@@ -270,6 +279,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setConnected(true);
         localStorage.setItem(WALLET_NAME_KEY, name);
 
+        // Non-blocking: fetch wallet balance
+        browserWallet
+          .getLovelace()
+          .then((lovelace) => setBalanceAda(Math.floor(Number(lovelace) / 1_000_000)))
+          .catch(() => {});
+
         try {
           const { posthog } = await import('@/lib/posthog');
           posthog.capture('wallet_connected', { wallet_type: name });
@@ -324,6 +339,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setHexAddress(null);
     setDelegatedDrepId(null);
     setOwnDRepId(null);
+    setBalanceAda(null);
     setError(null);
     localStorage.removeItem(WALLET_NAME_KEY);
   };
@@ -458,6 +474,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         delegatedDrepId,
         ownDRepId,
+        balanceAda,
         error,
         availableWallets,
         connect,

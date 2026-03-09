@@ -12,17 +12,30 @@ import {
   HelpCircle,
   Coins,
 } from 'lucide-react';
-import { useInView, useSpring, useTransform, motion } from 'framer-motion';
+import {
+  useInView,
+  useSpring,
+  useTransform,
+  useScroll,
+  useReducedMotion,
+  motion,
+} from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { posthog } from '@/lib/posthog';
 import { ConstellationScene } from '@/components/ConstellationScene';
+import { staggerContainer, fadeInUp } from '@/lib/animations';
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
+  const prefersReducedMotion = useReducedMotion();
   const isInView = useInView(ref, { once: true, margin: '-50px' });
   const spring = useSpring(0, { stiffness: 75, damping: 15 });
   const display = useTransform(spring, (v) => Math.round(v).toLocaleString());
+
+  if (prefersReducedMotion) {
+    return <span className={className}>{value.toLocaleString()}</span>;
+  }
 
   if (isInView) spring.set(value);
 
@@ -49,10 +62,20 @@ interface HomeAnonymousProps {
 }
 
 export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
+  const heroRef = useRef<HTMLElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const heroTextY = useTransform(scrollYProgress, [0, 1], [0, 60]);
+  const heroTextOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+
   return (
     <div className="relative min-h-screen flex flex-col">
       {/* ── Constellation hero ─────────────────────────────────────── */}
       <section
+        ref={heroRef}
         className="relative h-[55vh] sm:h-[calc(55vh+3.5rem)] min-h-[420px] sm:-mt-14 overflow-hidden"
         aria-label="Governance constellation visualization"
       >
@@ -125,7 +148,10 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
         </div>
 
         {/* Value prop overlay */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:pt-14 pointer-events-none">
+        <motion.div
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:pt-14 pointer-events-none"
+          style={prefersReducedMotion ? {} : { y: heroTextY, opacity: heroTextOpacity }}
+        >
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white drop-shadow-lg leading-tight text-center">
             Your ADA gives you a voice.
           </h1>
@@ -149,7 +175,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
               stake.
             </p>
           )}
-        </div>
+        </motion.div>
       </section>
 
       {/* ── Two-Path Entry ─────────────────────────────────────────── */}
@@ -235,7 +261,13 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
 
       {/* ── Live governance stats ──────────────────────────────────── */}
       <section className="mx-auto w-full max-w-4xl px-4 mt-8 mb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <motion.div
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+        >
           {[
             {
               icon: Vote,
@@ -262,8 +294,9 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
               sub: 'across all bodies',
             },
           ].map((s) => (
-            <div
+            <motion.div
               key={s.label}
+              variants={fadeInUp}
               className={cn(
                 'rounded-xl border bg-card/60 backdrop-blur-sm p-4 space-y-1',
                 s.label === 'Open Proposals' && (s.value as number) > 0
@@ -281,13 +314,19 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
                 {typeof s.value === 'number' ? <AnimatedNumber value={s.value} /> : s.value}
               </p>
               <p className="text-[10px] text-muted-foreground">{s.sub}</p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* ── Social proof strip ──────────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-4xl px-4 pb-8">
+      <motion.section
+        className="mx-auto w-full max-w-4xl px-4 pb-8"
+        variants={fadeInUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-40px' }}
+      >
         <div className="rounded-xl border border-border/50 bg-muted/30 px-6 py-4 space-y-2">
           <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Citizens are already shaping Cardano&apos;s future
@@ -316,10 +355,16 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
             </span>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ── Final CTA ────────────────────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-2xl px-4 pb-16">
+      <motion.section
+        className="mx-auto w-full max-w-2xl px-4 pb-16"
+        variants={fadeInUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-40px' }}
+      >
         <div className="text-center space-y-4">
           <p className="text-lg font-semibold text-foreground">Ready to use your voice?</p>
           <Link
@@ -336,7 +381,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

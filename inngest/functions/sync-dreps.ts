@@ -5,12 +5,10 @@
  * across Inngest step boundaries — those objects can exceed the 4MB step output limit.
  *
  *   0. init-sync — create sync_log entry, reset Koios metrics
- *   1. fetch-proposals — fetch + classify governance proposals (non-fatal)
- *      (returns only lightweight proposalContextEntries; classifiedProposals stay in memory)
- *   2. core-sync — fetch DReps, upsert, post-sync (alignment, snapshots, history)
- *      (rawVotesMap never leaves this step)
- *   3. finalize — write sync_log, emit analytics
- *   4. heartbeat + follow-on events
+ *   1. core-sync — fetch proposals, fetch DReps, upsert, post-sync (alignment, snapshots, history)
+ *      (classifiedProposals + rawVotesMap never leave this step)
+ *   2. finalize — write sync_log, emit analytics
+ *   3. heartbeat + follow-on events
  */
 
 import { inngest } from '@/lib/inngest';
@@ -37,13 +35,18 @@ export const syncDreps = inngest.createFunction(
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
-      logger.error('[dreps] Function failed permanently', { error });
+      const errorName =
+        error && typeof error === 'object'
+          ? (error as unknown as Record<string, unknown>).name
+          : undefined;
+      const detail = msg || errorName || JSON.stringify(error);
+      logger.error('[dreps] Function failed permanently', { error: detail });
       await sb
         .from('sync_log')
         .update({
           finished_at: new Date().toISOString(),
           success: false,
-          error_message: capMsg(`onFailure: ${msg}`),
+          error_message: capMsg(`onFailure: ${detail}`),
         })
         .eq('sync_type', 'dreps')
         .is('finished_at', null);
@@ -69,26 +72,24 @@ export const syncDreps = inngest.createFunction(
         return { syncLogId: logRow?.id ?? null, startTime: Date.now() };
       });
 
-      // Step 1: Fetch + classify proposals (non-fatal)
-      // Only serializes lightweight proposalContextEntries across step boundary
-      const proposalResult = await step.run('fetch-proposals', async () => {
+      // Step 1: Core sync — fetch proposals + DReps, upsert, post-sync (alignment, snapshots, history)
+      // All large data (classifiedProposals, rawVotesMap) stays in memory within this step
+      // and never crosses an Inngest step boundary (they can exceed the 4MB output limit).
+      const coreSyncResult = await step.run('core-sync', async () => {
+        // Fetch + classify proposals (non-fatal)
+        let proposalResult;
         try {
-          return await phaseFetchProposals();
+          proposalResult = await phaseFetchProposals();
         } catch (err) {
-          logger.error('[dreps] Proposal fetch step failed', { error: err });
-          return {
+          logger.error('[dreps] Proposal fetch failed (non-fatal)', { error: err });
+          proposalResult = {
             classifiedProposals: [],
             proposalContextEntries: [],
             errors: [errMsg(err)],
             durationMs: 0,
           };
         }
-      });
 
-      // Step 2: Core sync — fetch DReps, upsert to DB, run post-sync (alignment, snapshots, history)
-      // Combined into a single step so rawVotesMap + classifiedProposals stay in memory
-      // and never cross an Inngest step boundary (they can exceed the 4MB output limit).
-      const coreSyncResult = await step.run('core-sync', async () => {
         const drepData = await phaseFetchDReps(proposalResult.proposalContextEntries);
 
         const upsertResult = await phaseUpsertDReps(drepData.dreps, drepData.delegatorCounts);
@@ -111,19 +112,21 @@ export const syncDreps = inngest.createFunction(
             durationMs: postSyncResult.durationMs,
           } satisfies PostSyncResult,
           handlesResolved: drepData.handlesResolved,
+          proposalErrors: proposalResult.errors,
+          proposalDurationMs: proposalResult.durationMs,
           fetchErrors: drepData.errors,
           fetchDurationMs: drepData.durationMs,
         };
       });
 
-      // Step 3: Finalize sync_log, emit analytics
+      // Step 2: Finalize sync_log, emit analytics
       const allErrors = [
-        ...proposalResult.errors,
+        ...coreSyncResult.proposalErrors,
         ...coreSyncResult.fetchErrors,
         ...coreSyncResult.postSyncResult.errors,
       ];
       const phaseTiming: Record<string, number> = {
-        step1_proposals_ms: proposalResult.durationMs,
+        step1_proposals_ms: coreSyncResult.proposalDurationMs,
         step2_enrich_ms: coreSyncResult.fetchDurationMs,
         step4_upsert_ms: coreSyncResult.upsertResult.durationMs,
         step56_parallel_ms: coreSyncResult.postSyncResult.durationMs,

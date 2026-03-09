@@ -17,13 +17,18 @@ export const syncProposals = inngest.createFunction(
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
-      logger.error('[proposals] Function failed permanently', { error });
+      const errorName =
+        error && typeof error === 'object'
+          ? (error as unknown as Record<string, unknown>).name
+          : undefined;
+      const detail = msg || errorName || JSON.stringify(error);
+      logger.error('[proposals] Function failed permanently', { error: detail });
       await sb
         .from('sync_log')
         .update({
           finished_at: new Date().toISOString(),
           success: false,
-          error_message: capMsg(`onFailure: ${msg}`),
+          error_message: capMsg(`onFailure: ${detail}`),
         })
         .eq('sync_type', 'proposals')
         .is('finished_at', null);

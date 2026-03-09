@@ -304,7 +304,7 @@ export function ProposalsBrowse() {
             const drepVote = drepVoteMap.get(`${p.txHash}:${p.index}`);
             const pill = drepVote ? VOTE_PILL[drepVote] : null;
             const epochsLeft =
-              status === 'active' && currentEpoch && p.expirationEpoch
+              status === 'Open' && currentEpoch && p.expirationEpoch
                 ? p.expirationEpoch - currentEpoch
                 : null;
             const hasTreasury = p.type === 'TreasuryWithdrawals' && p.withdrawalAmount;

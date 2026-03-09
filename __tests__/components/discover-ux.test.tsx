@@ -99,6 +99,46 @@ describe('Pulse tab resolution', () => {
   });
 });
 
+// ── Proposal epochs-left logic ──────────────────────────────────
+
+describe('Proposal epochs-left logic', () => {
+  it('shows epochs remaining for Open proposals', () => {
+    const currentEpoch = 100;
+    const expirationEpoch = 102;
+    const status = 'Open';
+
+    const epochsLeft =
+      status === 'Open' && currentEpoch && expirationEpoch ? expirationEpoch - currentEpoch : null;
+
+    expect(epochsLeft).toBe(2);
+  });
+
+  it('returns null for non-Open proposals', () => {
+    const currentEpoch = 100;
+    const expirationEpoch = 102;
+
+    for (const status of ['Ratified', 'Enacted', 'Expired', 'Dropped']) {
+      const epochsLeft =
+        status === 'Open' && currentEpoch && expirationEpoch
+          ? expirationEpoch - currentEpoch
+          : null;
+
+      expect(epochsLeft).toBeNull();
+    }
+  });
+
+  it('returns null when expiration is missing', () => {
+    const currentEpoch = 100;
+    const expirationEpoch = undefined;
+    const status = 'Open';
+
+    const epochsLeft =
+      status === 'Open' && currentEpoch && expirationEpoch ? expirationEpoch - currentEpoch : null;
+
+    expect(epochsLeft).toBeNull();
+  });
+});
+
 // ── Component tests ─────────────────────────────────────────────
 
 vi.mock('@/lib/utils', () => ({

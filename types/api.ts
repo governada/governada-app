@@ -144,12 +144,20 @@ export interface LeaderboardEntry {
   [key: string]: unknown;
 }
 
+export interface HallOfFameEntry {
+  drepId: string;
+  name: string;
+  score: number;
+  days: number;
+}
+
 export interface LeaderboardData {
   leaderboard?: LeaderboardEntry[];
   weeklyMovers?: {
     gainers?: LeaderboardEntry[];
     losers?: LeaderboardEntry[];
   };
+  hallOfFame?: HallOfFameEntry[];
   totalActive?: number;
   averageScore?: number;
   [key: string]: unknown;

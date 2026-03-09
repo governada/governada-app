@@ -10,7 +10,7 @@ import { TIER_SCORE_COLOR, TIER_BADGE_BG, tierKey } from '@/components/civica/ca
 import { useGovernanceLeaderboard } from '@/hooks/queries';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
-import type { LeaderboardData, LeaderboardEntry } from '@/types/api';
+import type { LeaderboardData, LeaderboardEntry, HallOfFameEntry } from '@/types/api';
 
 const PAGE_SIZE = 25;
 
@@ -52,6 +52,11 @@ export function CivicaLeaderboard() {
       gainers: data?.weeklyMovers?.gainers ?? [],
       losers: data?.weeklyMovers?.losers ?? [],
     }),
+    [data],
+  );
+
+  const hallOfFame = useMemo<HallOfFameEntry[]>(
+    () => (data?.hallOfFame as HallOfFameEntry[] | undefined) ?? [],
     [data],
   );
 
@@ -262,6 +267,34 @@ export function CivicaLeaderboard() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Hall of Fame */}
+      {hallOfFame.length > 0 && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-4 space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Trophy className="h-3.5 w-3.5 text-amber-500" />
+            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">
+              Hall of Fame
+            </p>
+            <span className="text-[10px] text-muted-foreground ml-1">80+ score for 60+ days</span>
+          </div>
+          <div className="space-y-1">
+            {hallOfFame.map((entry) => (
+              <Link
+                key={entry.drepId}
+                href={`/drep/${entry.drepId}`}
+                className="flex items-center justify-between text-xs hover:text-primary transition-colors py-1"
+              >
+                <span className="truncate text-foreground/80 max-w-[200px]">{entry.name}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-amber-500/80 font-medium tabular-nums">{entry.days}d</span>
+                  <span className="font-bold tabular-nums text-amber-500">{entry.score}</span>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       )}

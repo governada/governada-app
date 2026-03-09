@@ -305,7 +305,7 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-1">
+      <div className="hidden sm:flex items-center justify-end gap-1">
         <button
           onClick={() => toggleViewMode('cards')}
           className={cn(

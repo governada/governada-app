@@ -22,6 +22,8 @@ export interface SegmentState {
   poolId: string | null;
   delegatedDrep: string | null;
   delegatedPool: string | null;
+  /** Score tier for DRep/SPO segments (e.g. 'Gold', 'Diamond') */
+  tier: string | null;
   setOverride: (override: SegmentOverride | null) => void;
 }
 
@@ -38,6 +40,7 @@ const DEFAULT_STATE: SegmentState = {
   poolId: null,
   delegatedDrep: null,
   delegatedPool: null,
+  tier: null,
   setOverride: noop,
 };
 
@@ -50,6 +53,7 @@ interface CachedSegment {
   poolId: string | null;
   delegatedDrep: string | null;
   delegatedPool: string | null;
+  tier: string | null;
 }
 
 function loadCached(stakeAddress: string): CachedSegment | null {
@@ -83,6 +87,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     poolId: null,
     delegatedDrep: null,
     delegatedPool: null,
+    tier: null,
   });
   const [detectedSegment, setDetectedSegment] = useState<UserSegment>('anonymous');
   const [override, setOverride] = useState<SegmentOverride | null>(null);
@@ -98,6 +103,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
         poolId: cached.poolId,
         delegatedDrep: cached.delegatedDrep,
         delegatedPool: cached.delegatedPool,
+        tier: cached.tier ?? null,
       });
       return;
     }
@@ -118,6 +124,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
         poolId: data.poolId ?? null,
         delegatedDrep: data.delegatedDrep ?? null,
         delegatedPool: data.delegatedPool ?? null,
+        tier: data.tier ?? null,
       };
       setDetected(next);
       saveCache({ ...next, segment: seg }, stakeAddress);
@@ -138,6 +145,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
         poolId: null,
         delegatedDrep: null,
         delegatedPool: null,
+        tier: null,
       });
       setDetectedSegment('anonymous');
       setOverride(null);

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { detectUserSegment } from '@/lib/walletDetection';
 import { createClient } from '@/lib/supabase';
+import { computeTier } from '@/lib/scoring/tiers';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/user/detect-segment?stakeAddress=stake1...
  * Detects user segment (citizen, spo, drep, cc) from their stake address.
+ * Also returns tier for DReps/SPOs for header personalization.
  */
 export const GET = withRouteHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
@@ -18,10 +20,10 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   }
 
   const result = await detectUserSegment(stakeAddress);
+  const supabase = createClient();
 
   // Check CC membership: match stake address against cc_members hot/cold credentials
   if (result.segment === 'citizen') {
-    const supabase = createClient();
     const { data: ccMatch } = await supabase
       .from('cc_members')
       .select('cc_hot_id')
@@ -33,5 +35,28 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     }
   }
 
-  return NextResponse.json(result);
+  // Enrich with tier data for header personalization
+  let tier: string | null = null;
+
+  if (result.segment === 'drep' && result.drepId) {
+    const { data: drep } = await supabase
+      .from('dreps')
+      .select('score')
+      .eq('id', result.drepId)
+      .single();
+    if (drep?.score != null) {
+      tier = computeTier(drep.score);
+    }
+  } else if (result.segment === 'spo' && result.poolId) {
+    const { data: pool } = await supabase
+      .from('pools')
+      .select('governance_score')
+      .eq('pool_id', result.poolId)
+      .single();
+    if (pool?.governance_score != null) {
+      tier = computeTier(pool.governance_score);
+    }
+  }
+
+  return NextResponse.json({ ...result, tier });
 });

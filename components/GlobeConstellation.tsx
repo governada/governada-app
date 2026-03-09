@@ -654,7 +654,7 @@ const EDGE_STYLES = {
   proximity: { color: '#4488aa', opacity: 0.12, dimOpacity: 0.03 },
   infrastructure: { color: '#7c6cc4', opacity: 0.15, dimOpacity: 0.04 },
   lastmile: { color: '#1a3a4a', opacity: 0.06, dimOpacity: 0.015 },
-  orbital: { color: '#fbbf24', opacity: 0.2, dimOpacity: 0.05 },
+  orbital: { color: '#fbbf24', opacity: 0.3, dimOpacity: 0.08 },
 } as const;
 
 function EdgeLayer({
@@ -714,6 +714,7 @@ function ConstellationEdges({ edges, dimmed }: { edges: ConstellationEdge3D[]; d
     <>
       <EdgeLayer edges={layers.proximity} dimmed={dimmed} edgeType="proximity" />
       <EdgeLayer edges={layers.lastmile} dimmed={dimmed} edgeType="lastmile" />
+      <EdgeLayer edges={layers.orbital} dimmed={dimmed} edgeType="orbital" />
     </>
   );
 }

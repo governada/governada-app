@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Home,
@@ -27,6 +27,7 @@ import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useWallet } from '@/utils/wallet-context';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
+import { TIER_SCORE_COLOR, type TierKey } from '@/components/civica/cards/tierStyles';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useAdminCheck } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
@@ -74,8 +75,9 @@ const SEGMENT_ICONS: Record<UserSegment, typeof User> = {
 
 export function CivicaHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
-  const { segment, realSegment, stakeAddress, delegatedDrep, setOverride } = useSegment();
+  const { segment, realSegment, stakeAddress, delegatedDrep, tier, setOverride } = useSegment();
   const { data: adminData } = useAdminCheck(isAuthenticated || connected);
   const isAdmin = adminData?.isAdmin === true;
   const hasOverride = segment !== realSegment;
@@ -189,14 +191,18 @@ export function CivicaHeader() {
                     return <SegmentIcon className="h-3.5 w-3.5" />;
                   })()}
                   {segment !== 'anonymous' && SEGMENT_LABELS[segment]}
+                  {tier && (segment === 'drep' || segment === 'spo') && (
+                    <>
+                      <span className="text-muted-foreground/50 mx-0.5">·</span>
+                      <span className={TIER_SCORE_COLOR[tier as TierKey] ?? ''}>{tier}</span>
+                    </>
+                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link href="/my-gov/profile">
-                    <User className="h-4 w-4" />
-                    Profile & Settings
-                  </Link>
+                <DropdownMenuItem onSelect={() => router.push('/my-gov/profile')}>
+                  <User className="h-4 w-4" />
+                  Profile & Settings
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>

@@ -31,12 +31,12 @@ const DIM_LONGITUDES: Record<string, number> = (() => {
 })();
 
 const GLOBE_RADIUS = 8;
-const CC_RADIUS = 9.5; // orbital altitude above the surface
+const CC_RADIUS = 10.5; // orbital altitude — well above surface for clear guardian ring
 const SPO_ARC_RADIUS = GLOBE_RADIUS + 0.3; // slightly above surface
 const MIN_VISIBLE_SCALE = 0.06;
 const MAX_VISIBLE_SCALE = 0.25;
 const SPO_SCALE_FACTOR = 0.6;
-const CC_SCALE_FACTOR = 1.0; // same base size — perspective handles visual weight
+const CC_SCALE_FACTOR = 1.3; // slightly larger than DReps for guardian presence
 const SPO_LIMIT = 400;
 
 interface LayoutInput {
@@ -73,13 +73,13 @@ export function computeGlobeLayout(inputs: LayoutInput[], nodeLimit: number): La
     nodeMap.set(node.id, node);
   }
 
-  // CC members — orbital satellites above the surface
+  // CC members — equatorial guardian ring above the surface
+  // Evenly spaced at the equator for consistent, authoritative orbital presence
   const ccNodes: ConstellationNode3D[] = [];
   for (let i = 0; i < ccInputs.length; i++) {
     const input = ccInputs[i];
     const lon = (i / Math.max(ccInputs.length, 1)) * Math.PI * 2 - Math.PI;
-    // Spread across latitudes for visual coverage
-    const lat = ((simpleHash(input.id) % 60) - 30) * (Math.PI / 180);
+    const lat = 0; // equatorial ring — always visible, consistent orbit
     const pos = sphereToCartesian(lat, lon, CC_RADIUS);
     const scale = MAX_VISIBLE_SCALE * CC_SCALE_FACTOR;
     const node: ConstellationNode3D = { ...input, position: pos, scale };

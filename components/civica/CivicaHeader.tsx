@@ -5,13 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Home,
-  Compass,
-  Activity,
-  Landmark,
-  MessageCircle,
-  BookOpen,
   Search,
+  Bell,
   User,
   Users,
   LogOut,
@@ -55,15 +50,6 @@ const WalletConnectModal = dynamic(
   { ssr: false },
 );
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/discover', label: 'Discover', icon: Compass },
-  { href: '/pulse', label: 'Pulse', icon: Activity },
-  { href: '/engage', label: 'Engage', icon: MessageCircle },
-  { href: '/my-gov', label: 'My Gov', icon: Landmark },
-  { href: '/learn', label: 'Learn', icon: BookOpen },
-] as const;
-
 const SEGMENT_LABELS: Record<UserSegment, string> = {
   anonymous: '',
   citizen: 'Citizen',
@@ -103,11 +89,6 @@ export function CivicaHeader() {
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [pickerPreset, setPickerPreset] = useState<SegmentPreset | null>(null);
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname === href || pathname.startsWith(href + '/');
-  };
-
   const isHome = pathname === '/';
 
   const [scrolled, setScrolled] = useState(false);
@@ -130,52 +111,16 @@ export function CivicaHeader() {
       )}
     >
       <div className="mx-auto max-w-7xl flex items-center justify-between h-14 px-6">
-        <div className="flex items-center gap-1">
-          <Link
-            href="/"
-            className={cn(
-              'font-display text-lg font-bold tracking-tight mr-6 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
-              headerTransparent && 'nav-text-shadow',
-            )}
-          >
-            governada
-          </Link>
-
-          <nav className="flex items-center gap-1" aria-label="Main navigation">
-            {NAV_ITEMS.filter((item) => item.href !== '/my-gov' || isAuthenticated).map(
-              ({ href, label, icon: Icon }) => {
-                const active = isActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      'relative flex items-center gap-2 px-3 py-2 min-h-[44px] text-sm font-medium rounded-md transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                      active ? 'text-foreground' : 'text-muted-foreground',
-                      headerTransparent && 'nav-text-shadow',
-                    )}
-                    aria-current={active ? 'page' : undefined}
-                  >
-                    <span className="relative inline-flex">
-                      <Icon className="h-4 w-4" />
-                      {href === '/my-gov' && unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
-                    </span>
-                    {label}
-                    {active && (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />
-                    )}
-                  </Link>
-                );
-              },
-            )}
-          </nav>
-        </div>
+        {/* Logo — sidebar handles navigation on desktop */}
+        <Link
+          href="/"
+          className={cn(
+            'font-display text-lg font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+            headerTransparent && 'nav-text-shadow',
+          )}
+        >
+          governada
+        </Link>
 
         <div className="flex items-center gap-2">
           <Button
@@ -192,6 +137,24 @@ export function CivicaHeader() {
               ⌘K
             </kbd>
           </Button>
+
+          {/* Notification bell */}
+          {connected && isAuthenticated && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={() => router.push('/you/inbox')}
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Button>
+          )}
 
           <Button
             variant="ghost"
@@ -234,7 +197,7 @@ export function CivicaHeader() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onSelect={() => router.push('/my-gov/profile')}>
+                <DropdownMenuItem onSelect={() => router.push('/you/settings')}>
                   <User className="h-4 w-4" />
                   Profile & Settings
                 </DropdownMenuItem>

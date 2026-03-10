@@ -48,23 +48,38 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // Legacy route redirects (Phase A Task 1.5 — civica cutover)
-      { source: '/governance/calendar', destination: '/pulse', permanent: true },
-      { source: '/governance', destination: '/my-gov', permanent: true },
-      { source: '/dashboard', destination: '/my-gov', permanent: true },
-      { source: '/dashboard/spo', destination: '/my-gov', permanent: true },
-      { source: '/dashboard/inbox', destination: '/my-gov/inbox', permanent: true },
-      { source: '/profile', destination: '/my-gov/profile', permanent: true },
-      // /methodology now has its own page — no redirect needed
-      { source: '/treasury', destination: '/pulse', permanent: true },
-      { source: '/decentralization', destination: '/pulse', permanent: true },
+      // ── Navigation architecture v2 ────────────────────────────────────
+      // Old sections → new sections
+      { source: '/discover', destination: '/governance', permanent: true },
+      { source: '/pulse', destination: '/governance/health', permanent: true },
+      { source: '/pulse/history', destination: '/governance/health', permanent: true },
+      {
+        source: '/pulse/report/:epoch',
+        destination: '/governance/health/epoch/:epoch',
+        permanent: true,
+      },
+      { source: '/my-gov', destination: '/', permanent: true },
+      { source: '/my-gov/identity', destination: '/you/identity', permanent: true },
+      { source: '/my-gov/inbox', destination: '/you/inbox', permanent: true },
+      { source: '/my-gov/profile', destination: '/you/settings', permanent: true },
+      { source: '/engage', destination: '/', permanent: true },
+      { source: '/learn', destination: '/help', permanent: true },
+      { source: '/methodology', destination: '/help/methodology', permanent: true },
+
+      // Legacy routes (pre-civica)
+      { source: '/governance/calendar', destination: '/governance/health', permanent: true },
+      { source: '/dashboard', destination: '/', permanent: true },
+      { source: '/dashboard/spo', destination: '/', permanent: true },
+      { source: '/dashboard/inbox', destination: '/you/inbox', permanent: true },
+      { source: '/profile', destination: '/you/settings', permanent: true },
+      { source: '/treasury', destination: '/governance/treasury', permanent: true },
+      { source: '/decentralization', destination: '/governance/health', permanent: true },
       {
         source: '/proposals/:txHash/:index',
         destination: '/proposal/:txHash/:index',
         permanent: true,
       },
-      { source: '/proposals', destination: '/discover', permanent: true },
-      { source: '/committee', destination: '/discover/committee', permanent: true },
+      { source: '/proposals', destination: '/governance/proposals', permanent: true },
     ];
   },
   images: {

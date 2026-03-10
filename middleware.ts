@@ -1,7 +1,8 @@
 /**
  * Next.js Middleware
+ * - Query-param redirects for old /discover?tab= routes
+ * - Auth gate for protected routes (workspace, you, delegation)
  * - CORS for /api/v1/* routes
- * - Auth gate for /dashboard (redirect to / if no session cookie)
  * Auth and rate limiting for API routes are handled in lib/api/handler.ts.
  */
 
@@ -16,12 +17,39 @@ const CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 };
 
-const AUTH_REQUIRED_PATHS = ['/my-gov'];
+/** Old /discover?tab= → new /governance/* routes */
+const DISCOVER_TAB_MAP: Record<string, string> = {
+  dreps: '/governance/representatives',
+  spos: '/governance/pools',
+  proposals: '/governance/proposals',
+  committee: '/governance/committee',
+  rankings: '/governance/representatives?view=rankings',
+};
+
+const AUTH_REQUIRED_PATHS = ['/workspace', '/you', '/delegation'];
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
 
-  // Auth gate: redirect to home if no session cookie
+  // ── Query-param redirects ─────────────────────────────────────────
+  // /discover?tab=dreps → /governance/representatives etc.
+  if (pathname === '/discover') {
+    const tab = searchParams.get('tab');
+    if (tab && DISCOVER_TAB_MAP[tab]) {
+      return NextResponse.redirect(new URL(DISCOVER_TAB_MAP[tab], request.url), 301);
+    }
+    // No tab param → handled by next.config.ts redirect to /governance
+  }
+
+  // /pulse?tab=history → /governance/health (history merged into health page)
+  if (pathname === '/pulse') {
+    const tab = searchParams.get('tab');
+    if (tab === 'history') {
+      return NextResponse.redirect(new URL('/governance/health', request.url), 301);
+    }
+  }
+
+  // ── Auth gate ─────────────────────────────────────────────────────
   if (AUTH_REQUIRED_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     const session = request.cookies.get('drepscore_session');
     const isPrefetch =
@@ -36,16 +64,15 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // ── CORS for public API ───────────────────────────────────────────
   if (!pathname.startsWith('/api/v1')) {
     return NextResponse.next();
   }
 
-  // Handle CORS preflight
   if (request.method === 'OPTIONS') {
     return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
   }
 
-  // Add CORS headers to the response
   const response = NextResponse.next();
   for (const [key, value] of Object.entries(CORS_HEADERS)) {
     response.headers.set(key, value);
@@ -55,5 +82,12 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/v1/:path*', '/my-gov/:path*'],
+  matcher: [
+    '/api/v1/:path*',
+    '/discover',
+    '/pulse',
+    '/workspace/:path*',
+    '/you/:path*',
+    '/delegation/:path*',
+  ],
 };

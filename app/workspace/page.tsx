@@ -1,19 +1,19 @@
+import type { Metadata } from 'next';
+import { PageViewTracker } from '@/components/PageViewTracker';
+import { WorkspacePage } from '@/components/hub/WorkspacePage';
+
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
-import { MyGovClient } from '@/components/civica/MyGovClient';
-
 export const metadata: Metadata = {
-  title: 'Governada — Workspace',
-  description:
-    'Your governance workspace. Action queue for DReps, governance score dashboard for SPOs.',
-  openGraph: {
-    title: 'Governada — Workspace',
-    description: 'Your governance workspace on Cardano.',
-    type: 'website',
-  },
+  title: 'Workspace — Governada',
+  description: 'Your governance workspace. Review pending proposals and take action.',
 };
 
-export default function WorkspacePage() {
-  return <MyGovClient />;
+export default function Workspace() {
+  return (
+    <>
+      <PageViewTracker event="workspace_viewed" />
+      <WorkspacePage />
+    </>
+  );
 }

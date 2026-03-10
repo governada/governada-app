@@ -1,17 +1,19 @@
+import type { Metadata } from 'next';
+import { PageViewTracker } from '@/components/PageViewTracker';
+import { WorkspacePerformancePage } from '@/components/hub/WorkspacePerformancePage';
+
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
-
 export const metadata: Metadata = {
-  title: 'Governada — Performance',
-  description: 'Your score breakdown, competitive position, and improvement suggestions.',
+  title: 'Performance — Governada',
+  description: 'Your DRep score breakdown and competitive position.',
 };
 
-export default function PerformancePage() {
+export default function WorkspacePerformance() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Performance</h1>
-      <p className="text-muted-foreground">Performance analytics will appear here.</p>
-    </div>
+    <>
+      <PageViewTracker event="workspace_performance_viewed" />
+      <WorkspacePerformancePage />
+    </>
   );
 }

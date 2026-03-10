@@ -1,17 +1,19 @@
+import type { Metadata } from 'next';
+import { PageViewTracker } from '@/components/PageViewTracker';
+import { WorkspaceDelegatorsPage } from '@/components/hub/WorkspaceDelegatorsPage';
+
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
-
 export const metadata: Metadata = {
-  title: 'Governada — Delegators',
-  description: 'Who trusts you and how to engage them. Delegator management and communication.',
+  title: 'Delegators — Governada',
+  description: 'Your delegator summary and recent changes.',
 };
 
-export default function DelegatorsPage() {
+export default function WorkspaceDelegators() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Delegators</h1>
-      <p className="text-muted-foreground">Delegator management will appear here.</p>
-    </div>
+    <>
+      <PageViewTracker event="workspace_delegators_viewed" />
+      <WorkspaceDelegatorsPage />
+    </>
   );
 }

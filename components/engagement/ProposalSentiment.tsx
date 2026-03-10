@@ -352,7 +352,7 @@ function ResultsView({
     <div className="space-y-3" aria-live="polite">
       {userSentiment && (
         <div className="flex items-center gap-2 text-sm">
-          <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+          <CheckCircle2 className="h-4 w-4 text-primary shrink-0 motion-safe:animate-scale-in" />
           <span>
             You voted <strong>{labelMap[userSentiment]}</strong>.
           </span>

@@ -245,8 +245,10 @@ export function CitizenAssembly() {
 
         {hasVoted && (
           <div className="flex items-center gap-2 text-sm text-primary">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>Your voice has been recorded. Results update live.</span>
+            <CheckCircle2 className="h-4 w-4 motion-safe:animate-scale-in" />
+            <span className="motion-safe:animate-fade-in-up">
+              Your voice has been recorded. Results update live.
+            </span>
           </div>
         )}
       </CardContent>

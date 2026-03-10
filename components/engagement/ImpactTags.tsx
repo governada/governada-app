@@ -259,7 +259,7 @@ export function ImpactTags({ txHash, proposalIndex }: ImpactTagsProps) {
         {(hasUserTag || submitted) && (
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2 text-sm text-primary">
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="h-4 w-4 motion-safe:animate-scale-in" />
               <span>Thanks for your feedback!</span>
             </div>
             <Button

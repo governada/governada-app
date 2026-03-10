@@ -318,7 +318,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
           <CardContent className="py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-primary">
-                <CheckCircle2 className="h-5 w-5" />
+                <CheckCircle2 className="h-5 w-5 motion-safe:animate-scale-in" />
                 <span className="font-medium">
                   Your priorities have been recorded for Epoch {epoch}. Thanks for making your voice
                   heard!

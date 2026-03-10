@@ -44,35 +44,35 @@ export function EngageClient({ epoch }: EngageClientProps) {
         message="This is your direct line to Cardano governance. Rank your priorities, react to proposals, and join citizen assemblies. Your signals are credibility-weighted so genuine participation is rewarded."
       />
 
-      {/* Engagement Hero (replaces CredibilityBanner — authenticated only) */}
-      {credibility && <EngagementHero credibility={credibility} epoch={epoch} />}
+      {/* ── Hero Zone: personal context + community pulse ── */}
+      <div className="space-y-6">
+        {credibility && <EngagementHero credibility={credibility} epoch={epoch} />}
+        {currentRankings && currentRankings.rankings.length > 0 && (
+          <EpochRecap current={currentRankings} previous={previousRankings ?? null} epoch={epoch} />
+        )}
+      </div>
 
-      {/* Last Epoch Recap */}
-      {currentRankings && currentRankings.rankings.length > 0 && (
-        <EpochRecap current={currentRankings} previous={previousRankings ?? null} epoch={epoch} />
-      )}
-
-      {/* Citizen Assembly (if active) */}
-      <section>
-        <CitizenAssembly />
-      </section>
-
-      {/* Priority Signals */}
-      <section>
-        <PrioritySignals epoch={epoch} />
-      </section>
-
-      {/* Citizen Voice — feedback loop (authenticated + has votes only) */}
-      {citizenVoice && (
+      {/* ── Action Zone: interactive participation ── */}
+      <div className="space-y-6 pt-2">
         <section>
-          <CitizenVoiceSection data={citizenVoice} />
+          <CitizenAssembly />
         </section>
-      )}
+        <section>
+          <PrioritySignals epoch={epoch} />
+        </section>
+      </div>
 
-      {/* Past Assemblies */}
-      <section>
-        <AssemblyHistory />
-      </section>
+      {/* ── Reflection Zone: see what happened ── */}
+      <div className="space-y-6 pt-2 opacity-[0.92]">
+        {citizenVoice && (
+          <section>
+            <CitizenVoiceSection data={citizenVoice} />
+          </section>
+        )}
+        <section>
+          <AssemblyHistory />
+        </section>
+      </div>
     </div>
   );
 }

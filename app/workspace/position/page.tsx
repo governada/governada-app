@@ -1,17 +1,19 @@
+import type { Metadata } from 'next';
+import { PageViewTracker } from '@/components/PageViewTracker';
+import { WorkspacePositionPage } from '@/components/hub/WorkspacePositionPage';
+
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
-
 export const metadata: Metadata = {
-  title: 'Governada — Competitive Position',
-  description: 'Your competitive landscape, peer comparison, and governance rankings.',
+  title: 'Competitive Position — Governada',
+  description: 'See where your pool ranks in governance participation.',
 };
 
-export default function PositionPage() {
+export default function WorkspacePosition() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Competitive Position</h1>
-      <p className="text-muted-foreground">Competitive analysis will appear here.</p>
-    </div>
+    <>
+      <PageViewTracker event="workspace_position_viewed" />
+      <WorkspacePositionPage />
+    </>
   );
 }

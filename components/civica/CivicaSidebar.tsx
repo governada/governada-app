@@ -5,7 +5,12 @@ import { usePathname } from 'next/navigation';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { getSidebarSections, type NavSection, type NavItem } from '@/lib/nav/config';
+import {
+  getSidebarSections,
+  type NavSection,
+  type NavItem,
+  type NavItemGroup,
+} from '@/lib/nav/config';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { Button } from '@/components/ui/button';
 
@@ -16,10 +21,10 @@ interface CivicaSidebarProps {
 
 export function CivicaSidebar({ collapsed, onToggle }: CivicaSidebarProps) {
   const pathname = usePathname();
-  const { segment, stakeAddress } = useSegment();
+  const { segment, stakeAddress, drepId, poolId } = useSegment();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
 
-  const sections = getSidebarSections(segment);
+  const sections = getSidebarSections({ segment, drepId, poolId });
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -37,6 +42,77 @@ export function CivicaSidebar({ collapsed, onToggle }: CivicaSidebarProps) {
     return 0;
   };
 
+  /** Render a single nav item link */
+  const renderItem = (item: NavItem) => {
+    const active = isActive(item.href);
+    const badge = getBadgeCount(item);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+          'hover:bg-accent hover:text-accent-foreground',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+          active ? 'bg-accent text-foreground' : 'text-muted-foreground',
+          collapsed && 'justify-center px-0',
+        )}
+        aria-current={active ? 'page' : undefined}
+        title={collapsed ? item.label : undefined}
+      >
+        {active && (
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
+        )}
+        <span className="relative inline-flex shrink-0">
+          <item.icon className="h-4 w-4" />
+          {badge > 0 && (
+            <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
+              {badge > 9 ? '9+' : badge}
+            </span>
+          )}
+        </span>
+        {!collapsed && <span className="truncate">{item.label}</span>}
+      </Link>
+    );
+  };
+
+  /** Render items for a section — flat list or role-grouped */
+  const renderSectionItems = (section: NavSection) => {
+    // Dual-role grouped workspace
+    if (section.groups) {
+      return (
+        <div className="space-y-0.5">
+          {section.groups.map((group: NavItemGroup, groupIdx: number) => (
+            <div key={group.id}>
+              {/* Role sub-header — subtle, small text */}
+              {!collapsed && (
+                <div
+                  className={cn(
+                    'px-3 py-1 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50',
+                    groupIdx > 0 && 'mt-2',
+                  )}
+                >
+                  {group.label}
+                </div>
+              )}
+              {collapsed && groupIdx > 0 && (
+                <div className="mx-3 my-1.5 border-t border-border/30" />
+              )}
+              {group.items.map(renderItem)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Standard flat items
+    if (section.items) {
+      return <div className="space-y-0.5">{section.items.map(renderItem)}</div>;
+    }
+
+    return null;
+  };
+
   return (
     <aside
       className={cn(
@@ -48,7 +124,7 @@ export function CivicaSidebar({ collapsed, onToggle }: CivicaSidebarProps) {
         {sections.map((section, sectionIdx) => (
           <div key={section.id} className={cn(sectionIdx > 0 && 'mt-4')}>
             {/* Section header / single link */}
-            {section.items ? (
+            {section.items || section.groups ? (
               <>
                 {/* Section label (not clickable) */}
                 {!collapsed && (
@@ -61,41 +137,8 @@ export function CivicaSidebar({ collapsed, onToggle }: CivicaSidebarProps) {
                     <section.icon className="h-4 w-4 text-muted-foreground/40" />
                   </div>
                 )}
-                {/* Sub-items */}
-                <div className="space-y-0.5">
-                  {section.items.map((item) => {
-                    const active = isActive(item.href);
-                    const badge = getBadgeCount(item);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                          'hover:bg-accent hover:text-accent-foreground',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                          active ? 'bg-accent text-foreground' : 'text-muted-foreground',
-                          collapsed && 'justify-center px-0',
-                        )}
-                        aria-current={active ? 'page' : undefined}
-                        title={collapsed ? item.label : undefined}
-                      >
-                        {active && (
-                          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
-                        )}
-                        <span className="relative inline-flex shrink-0">
-                          <item.icon className="h-4 w-4" />
-                          {badge > 0 && (
-                            <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
-                              {badge > 9 ? '9+' : badge}
-                            </span>
-                          )}
-                        </span>
-                        {!collapsed && <span className="truncate">{item.label}</span>}
-                      </Link>
-                    );
-                  })}
-                </div>
+                {/* Sub-items (flat or grouped) */}
+                {renderSectionItems(section)}
               </>
             ) : (
               /* Single link section (Home, Delegation) */

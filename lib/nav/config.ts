@@ -54,6 +54,13 @@ export interface NavItem {
   requiresAuth?: boolean;
 }
 
+/** A labelled group of items within a section (for dual-role workspace) */
+export interface NavItemGroup {
+  id: string;
+  label: string;
+  items: NavItem[];
+}
+
 export interface NavSection {
   id: string;
   label: string;
@@ -61,6 +68,8 @@ export interface NavSection {
   href: string;
   /** Sub-pages within this section (shown in sidebar + pill bar) */
   items?: NavItem[];
+  /** Role-grouped items (used for dual-role workspace sections) */
+  groups?: NavItemGroup[];
   /** Only show for these segments (undefined = all) */
   segments?: UserSegment[];
   /** Only show for authenticated users */
@@ -117,7 +126,38 @@ export const HELP_ITEMS: NavItem[] = [
 // Sidebar sections — ordered top to bottom
 // ---------------------------------------------------------------------------
 
-export function getSidebarSections(segment: UserSegment): NavSection[] {
+/** Context for sidebar generation — supports dual-role detection */
+export interface SidebarContext {
+  segment: UserSegment;
+  /** Non-null when user is a registered DRep */
+  drepId?: string | null;
+  /** Non-null when user operates a stake pool */
+  poolId?: string | null;
+}
+
+/**
+ * Build deduplicated dual-role workspace groups.
+ * Items that appear in both lists (matched by href) are shown only in the
+ * DRep group to avoid visual clutter.
+ */
+function buildDualRoleGroups(): NavItemGroup[] {
+  const drepHrefs = new Set(WORKSPACE_DREP_ITEMS.map((i) => i.href));
+  const dedupedSpoItems = WORKSPACE_SPO_ITEMS.filter((i) => !drepHrefs.has(i.href));
+
+  return [
+    { id: 'workspace-drep', label: 'DRep', items: WORKSPACE_DREP_ITEMS },
+    { id: 'workspace-pool', label: 'Pool', items: dedupedSpoItems },
+  ];
+}
+
+export function getSidebarSections(segmentOrContext: UserSegment | SidebarContext): NavSection[] {
+  // Support both the legacy single-segment call and the new context call
+  const ctx: SidebarContext =
+    typeof segmentOrContext === 'string' ? { segment: segmentOrContext } : segmentOrContext;
+  const { segment, drepId, poolId } = ctx;
+
+  const isDualRole = !!(drepId && poolId);
+
   const sections: NavSection[] = [
     {
       id: 'home',
@@ -127,8 +167,17 @@ export function getSidebarSections(segment: UserSegment): NavSection[] {
     },
   ];
 
-  // Workspace — DRep/SPO only
-  if (segment === 'drep' || segment === 'spo') {
+  // Workspace — DRep/SPO only (with dual-role grouping)
+  if (isDualRole) {
+    sections.push({
+      id: 'workspace',
+      label: 'Workspace',
+      icon: Briefcase,
+      href: '/workspace',
+      groups: buildDualRoleGroups(),
+      segments: ['drep', 'spo'],
+    });
+  } else if (segment === 'drep' || segment === 'spo') {
     const workspaceItems = segment === 'drep' ? WORKSPACE_DREP_ITEMS : WORKSPACE_SPO_ITEMS;
     sections.push({
       id: 'workspace',
@@ -251,14 +300,26 @@ export function getBottomBarItems(segment: UserSegment, hasDelegation: boolean):
 // Pill bar — derive from current route's section
 // ---------------------------------------------------------------------------
 
-export function getPillBarItems(pathname: string, segment: UserSegment): NavItem[] | null {
+export function getPillBarItems(
+  pathname: string,
+  segment: UserSegment,
+  context?: { drepId?: string | null; poolId?: string | null },
+): NavItem[] | null {
   if (pathname.startsWith('/governance')) {
     return GOVERNANCE_ITEMS;
   }
   if (pathname.startsWith('/workspace')) {
+    const isDualRole = !!(context?.drepId && context?.poolId);
+    if (isDualRole) {
+      // For dual-role users, combine both item sets (deduped) for pill bar
+      const drepHrefs = new Set(WORKSPACE_DREP_ITEMS.map((i) => i.href));
+      return [
+        ...WORKSPACE_DREP_ITEMS,
+        ...WORKSPACE_SPO_ITEMS.filter((i) => !drepHrefs.has(i.href)),
+      ];
+    }
     if (segment === 'drep') return WORKSPACE_DREP_ITEMS;
     if (segment === 'spo') return WORKSPACE_SPO_ITEMS;
-    // DRep+SPO: show DRep items (action queue is default)
     return WORKSPACE_DREP_ITEMS;
   }
   if (pathname.startsWith('/you')) {

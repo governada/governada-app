@@ -36,9 +36,10 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   }
 
   // Enrich with tier data for header personalization
+  // For dual-role (DRep+SPO), use DRep tier since DRep is the primary segment
   let tier: string | null = null;
 
-  if (result.segment === 'drep' && result.drepId) {
+  if (result.drepId) {
     const { data: drep } = await supabase
       .from('dreps')
       .select('score')
@@ -47,7 +48,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     if (drep?.score != null) {
       tier = computeTier(drep.score);
     }
-  } else if (result.segment === 'spo' && result.poolId) {
+  } else if (result.poolId) {
     const { data: pool } = await supabase
       .from('pools')
       .select('governance_score')

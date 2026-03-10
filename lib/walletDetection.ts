@@ -34,6 +34,10 @@ interface KoiosPoolInfo {
 /**
  * Detect user segment from their wallet's stake address.
  * Checks: is SPO (pool operator), is DRep (registered), or citizen.
+ *
+ * When a user is both an SPO and a DRep, the primary segment is 'drep'
+ * (DRep action queue is the default workspace landing) but both poolId
+ * and drepId are populated so the UI can show both workspace groups.
  */
 export async function detectUserSegment(stakeAddress: string): Promise<SegmentDetectionResult> {
   const result: SegmentDetectionResult = {
@@ -66,16 +70,23 @@ export async function detectUserSegment(stakeAddress: string): Promise<SegmentDe
     result.delegatedPool = account.delegated_pool ?? null;
     result.delegatedDrep = account.delegated_drep ?? null;
 
+    // Check both roles — a user can be both an SPO and a DRep
     const poolId = await detectPoolOwnership(stakeAddress);
     if (poolId) {
-      result.segment = 'spo';
       result.poolId = poolId;
-      return result;
     }
 
-    if (account.delegated_drep && account.delegated_drep === stakeAddress) {
+    const isDrep = !!(account.delegated_drep && account.delegated_drep === stakeAddress);
+    if (isDrep) {
+      result.drepId = account.delegated_drep!;
+    }
+
+    // Determine primary segment. DRep takes priority for dual-role users
+    // because the DRep action queue is the default workspace landing.
+    if (isDrep) {
       result.segment = 'drep';
-      result.drepId = account.delegated_drep;
+    } else if (poolId) {
+      result.segment = 'spo';
     }
 
     return result;

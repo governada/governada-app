@@ -109,6 +109,18 @@ export const SEGMENT_PRESETS: SegmentPreset[] = [
     pickerDescription: 'View the app as this pool operator.',
   },
 
+  // -- DRep + SPO (dual role) --
+  {
+    id: 'drep-spo-dual',
+    label: 'DRep + SPO (dual role)',
+    description: 'User is both a DRep and an SPO — shows combined workspace',
+    segment: 'drep',
+    overrides: {
+      drepId: 'drep1_placeholder_dual',
+      poolId: 'pool1_placeholder_dual',
+    },
+  },
+
   // -- CC Member --
   {
     id: 'cc-unclaimed',

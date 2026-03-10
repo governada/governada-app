@@ -16,8 +16,8 @@ interface SectionPillBarProps {
  */
 export function SectionPillBar({ section: _section }: SectionPillBarProps) {
   const pathname = usePathname();
-  const { segment } = useSegment();
-  const items = getPillBarItems(pathname, segment);
+  const { segment, drepId, poolId } = useSegment();
+  const items = getPillBarItems(pathname, segment, { drepId, poolId });
 
   if (!items || items.length < 2) return null;
 

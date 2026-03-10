@@ -57,7 +57,11 @@ export function GovernanceHealthCard() {
         : 'text-red-600 dark:text-red-400';
 
   return (
-    <HubCard href="/pulse" urgency="default" label={`Governance health: ${band}, score ${rounded}`}>
+    <HubCard
+      href="/governance/health"
+      urgency="default"
+      label={`Governance health: ${band}, score ${rounded}`}
+    >
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">

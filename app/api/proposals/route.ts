@@ -122,5 +122,10 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
 
   const currentEpoch = epochResult.data?.current_epoch ?? null;
 
-  return NextResponse.json({ proposals, currentEpoch });
+  return NextResponse.json(
+    { proposals, currentEpoch },
+    {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    },
+  );
 });

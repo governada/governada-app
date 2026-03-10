@@ -168,22 +168,8 @@ function NotificationCard({
 }) {
   const Icon = item.icon;
 
-  const inner = (
-    <div
-      className={cn(
-        'relative flex items-start gap-3 rounded-xl border p-4 transition-all',
-        item.borderColor,
-        item.bgColor,
-        !isRead && 'shadow-sm',
-        item.href && 'hover:brightness-110 cursor-pointer',
-      )}
-      onClick={() => onRead(item.id)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onRead(item.id);
-      }}
-      role="button"
-      tabIndex={0}
-    >
+  const cardContent = (
+    <>
       {!isRead && (
         <span className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary shrink-0" />
       )}
@@ -200,15 +186,40 @@ function NotificationCard({
           <ChevronRight className="h-3 w-3" />
         </div>
       )}
-    </div>
+    </>
   );
 
-  return item.href ? (
-    <Link href={item.href} className="block">
-      {inner}
-    </Link>
-  ) : (
-    inner
+  const cardClasses = cn(
+    'relative flex items-start gap-3 rounded-xl border p-4 transition-all',
+    item.borderColor,
+    item.bgColor,
+    !isRead && 'shadow-sm',
+  );
+
+  if (item.href) {
+    return (
+      <Link
+        href={item.href}
+        className={cn(cardClasses, 'hover:brightness-110 cursor-pointer block')}
+        onClick={() => onRead(item.id)}
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className={cardClasses}
+      onClick={() => onRead(item.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onRead(item.id);
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      {cardContent}
+    </div>
   );
 }
 
@@ -321,7 +332,7 @@ function buildSystemNotifications(pulse: Record<string, unknown> | undefined): N
       bgColor: 'bg-sky-950/10',
       title: `${activeProposals} governance proposal${activeProposals > 1 ? 's' : ''} in progress`,
       description: 'Cardano governance is active. Your delegation is participating.',
-      href: '/discover?tab=proposals',
+      href: '/governance/proposals',
       cta: 'View',
       priority: 3,
     });
@@ -703,7 +714,7 @@ function CivicaInboxInner({
           </div>
           {inbox.pendingProposals.length > 5 && (
             <Link
-              href="/discover"
+              href="/governance/proposals"
               className="block text-center text-xs text-muted-foreground hover:text-primary transition-colors py-1"
             >
               View all {inbox.pendingCount ?? 0} pending proposals

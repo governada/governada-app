@@ -268,6 +268,16 @@ export function ProposalsBrowse() {
 
   return (
     <div ref={contentRef} className="space-y-4 pt-4">
+      {/* Page heading */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">What&apos;s Being Decided</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {delegatedDrepId
+            ? 'Active governance proposals and how your representative voted'
+            : 'Active governance proposals in Cardano'}
+        </p>
+      </div>
+
       {/* Status pipeline overview */}
       {statusCounts.length > 1 && (
         <div className="rounded-xl border border-border bg-card p-4">

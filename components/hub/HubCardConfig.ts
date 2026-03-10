@@ -59,7 +59,7 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'status',
     priority: 3,
     conditional: false,
-    href: '/pulse',
+    href: '/governance/health',
   },
   alert: {
     id: 'alert',
@@ -73,7 +73,7 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'engagement',
     priority: 1,
     conditional: true,
-    href: '/engage',
+    href: '/governance/proposals',
   },
 
   // DRep cards

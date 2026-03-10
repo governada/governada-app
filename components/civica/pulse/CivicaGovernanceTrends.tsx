@@ -153,7 +153,7 @@ export function CivicaGovernanceTrends() {
     isError: ghiError,
     refetch: refetchGhi,
   } = useGovernanceHealthIndex(20);
-  const { data: rawLeaderboard } = useGovernanceLeaderboard();
+  const { data: rawLeaderboard, isLoading: leaderboardLoading } = useGovernanceLeaderboard();
 
   const sparklines = rawSparklines as Record<string, unknown> | undefined;
   const ghi = rawGhi as
@@ -312,7 +312,7 @@ export function CivicaGovernanceTrends() {
         <p className="text-sm font-semibold">DRep Tier Distribution</p>
         {dreps.length > 0 ? (
           <TierDistribution dreps={dreps} />
-        ) : (
+        ) : leaderboardLoading ? (
           <div className="space-y-2">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="flex items-center gap-2">
@@ -322,6 +322,10 @@ export function CivicaGovernanceTrends() {
               </div>
             ))}
           </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            DRep tier distribution data is being compiled.
+          </p>
         )}
       </div>
 

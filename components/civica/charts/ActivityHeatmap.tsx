@@ -17,14 +17,15 @@ interface ActivityHeatmapProps {
 
 const CELL_SIZE = 18;
 const CELL_GAP = 2;
-const COLS = 10;
 
 function getHeatColor(value: number): string {
-  if (value >= 80) return 'bg-emerald-500/80';
-  if (value >= 60) return 'bg-emerald-500/50';
-  if (value >= 40) return 'bg-emerald-500/30';
-  if (value >= 20) return 'bg-emerald-500/15';
-  if (value > 0) return 'bg-emerald-500/8';
+  // Adjusted thresholds: most participation rates cluster 30-60%, so spread
+  // the color range to better differentiate mid-range values
+  if (value >= 70) return 'bg-emerald-500/80';
+  if (value >= 55) return 'bg-emerald-500/60';
+  if (value >= 40) return 'bg-emerald-500/40';
+  if (value >= 25) return 'bg-emerald-500/25';
+  if (value > 0) return 'bg-emerald-500/10';
   return 'bg-muted/30';
 }
 
@@ -35,17 +36,19 @@ export function ActivityHeatmap({
 }: ActivityHeatmapProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
+  // Responsive column count: use fewer columns for small datasets
+  const cols = data.length < 20 ? 5 : 10;
+
   const cells = useMemo(() => {
-    // Take most recent N epochs, arrange in rows of COLS
     const sorted = [...data].sort((a, b) => a.epoch - b.epoch);
     return sorted.map((cell, i) => ({
       ...cell,
-      row: Math.floor(i / COLS),
-      col: i % COLS,
+      row: Math.floor(i / cols),
+      col: i % cols,
     }));
-  }, [data]);
+  }, [data, cols]);
 
-  const gridWidth = COLS * (CELL_SIZE + CELL_GAP);
+  const gridWidth = cols * (CELL_SIZE + CELL_GAP);
 
   const avgValue = cells.length > 0 ? cells.reduce((s, c) => s + c.value, 0) / cells.length : 0;
   const recentAvg =
@@ -61,10 +64,10 @@ export function ActivityHeatmap({
           <div className="flex gap-0.5">
             {[
               'bg-muted/30',
-              'bg-emerald-500/8',
-              'bg-emerald-500/15',
-              'bg-emerald-500/30',
-              'bg-emerald-500/50',
+              'bg-emerald-500/10',
+              'bg-emerald-500/25',
+              'bg-emerald-500/40',
+              'bg-emerald-500/60',
               'bg-emerald-500/80',
             ].map((c, i) => (
               <div key={i} className={cn('h-3 w-3 rounded-sm', c)} />
@@ -87,7 +90,7 @@ export function ActivityHeatmap({
         <div
           className="inline-grid"
           style={{
-            gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
+            gridTemplateColumns: `repeat(${cols}, ${CELL_SIZE}px)`,
             gap: CELL_GAP,
           }}
         >
@@ -125,11 +128,11 @@ export function ActivityHeatmap({
         )}
       </div>
 
-      {/* Epoch range */}
+      {/* Epoch range + count label */}
       {cells.length > 0 && (
         <div className="flex justify-between text-[10px] text-muted-foreground">
           <span>Epoch {cells[0].epoch}</span>
-          <span>{cells.length} epochs</span>
+          <span>Last {cells.length} epochs</span>
           <span>Epoch {cells[cells.length - 1].epoch}</span>
         </div>
       )}

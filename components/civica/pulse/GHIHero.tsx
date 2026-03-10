@@ -24,30 +24,37 @@ interface GHIData {
   trend: GHITrend;
 }
 
-const BAND_STYLES: Record<string, { text: string; ring: string; bg: string; label: string }> = {
+const BAND_STYLES: Record<
+  string,
+  { text: string; ring: string; bg: string; label: string; description: string }
+> = {
   strong: {
     text: 'text-emerald-500',
     ring: 'var(--color-emerald-500)',
     bg: 'bg-emerald-500/10',
     label: 'Strong',
+    description: 'Cardano governance is highly active with broad participation.',
   },
   good: {
     text: 'text-green-500',
     ring: 'var(--color-green-500)',
     bg: 'bg-green-500/10',
     label: 'Good',
+    description: 'Governance is healthy with solid participation across most areas.',
   },
   fair: {
     text: 'text-amber-500',
     ring: 'var(--color-amber-500)',
     bg: 'bg-amber-500/10',
     label: 'Fair',
+    description: 'Governance participation is moderate, with room for improvement.',
   },
   critical: {
     text: 'text-rose-500',
     ring: 'var(--color-rose-500)',
     bg: 'bg-rose-500/10',
     label: 'Critical',
+    description: 'Governance participation is low. Key areas need attention.',
   },
 };
 
@@ -145,7 +152,10 @@ export function GHIHero() {
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
-          <span className="text-2xl font-bold tabular-nums">{Math.round(score)}</span>
+          <div className="text-center leading-none">
+            <span className="text-2xl font-bold tabular-nums">{Math.round(score)}</span>
+            <span className="text-[9px] text-muted-foreground font-medium">/100</span>
+          </div>
         </div>
       </div>
 
@@ -170,6 +180,7 @@ export function GHIHero() {
           )}
         </div>
         {streakLabel && <p className="text-xs text-muted-foreground">{streakLabel}</p>}
+        <p className="text-sm text-muted-foreground">{style.description}</p>
       </div>
     </div>
   );

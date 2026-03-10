@@ -6,6 +6,7 @@ import { ChevronDown, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { staggerContainerSlow, fadeInUp, spring } from '@/lib/animations';
 import { ShareModal } from '@/components/civica/shared/ShareModal';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GHIComponentData {
   name: string;
@@ -49,6 +50,15 @@ const COMPONENT_LABELS: Record<string, string> = {
   governanceEffectiveness: 'Governance Effectiveness',
   powerDistribution: 'Power Distribution',
   systemStability: 'System Stability',
+};
+
+const COMPONENT_TOOLTIPS: Record<string, string> = {
+  drepParticipation: 'Percentage of active DReps who voted on proposals this epoch',
+  citizenEngagement: 'Delegation activity, endorsements, and community sentiment participation',
+  deliberationQuality: 'Rationale provision rate and depth of governance deliberation',
+  governanceEffectiveness: 'Proposal throughput, vote decisiveness, and outcome delivery',
+  powerDistribution: 'Distribution of voting power and delegation diversity across DReps',
+  systemStability: 'Protocol parameter stability and governance process consistency',
 };
 
 function getCalibrationKey(name: string): string {
@@ -156,6 +166,7 @@ export function GHIExplorer({
               const curve = calibration[calKey];
               const trend = componentTrends[comp.name];
               const label = COMPONENT_LABELS[calKey] ?? comp.name;
+              const tooltipText = COMPONENT_TOOLTIPS[calKey];
 
               const sparkData = componentHistory
                 .filter((h) => h.components)
@@ -174,7 +185,22 @@ export function GHIExplorer({
                   className="rounded-lg border border-border bg-card p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{label}</span>
+                    {tooltipText ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm font-medium cursor-help border-b border-dashed border-muted-foreground/40">
+                              {label}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-60">
+                            <p>{tooltipText}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <span className="text-sm font-medium">{label}</span>
+                    )}
                     <span className="text-xs text-muted-foreground tabular-nums">
                       {Math.round(comp.weight * 100)}%
                     </span>

@@ -33,6 +33,7 @@ import { ActivityTicker } from '@/components/ActivityTicker';
 import { useGovernanceHealthIndex } from '@/hooks/queries';
 import { EmptyState } from './EmptyState';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type {
   TreasuryData,
   LeaderboardData,
@@ -595,25 +596,42 @@ export function CivicaPulseOverview() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    {gainers.map((m) => (
-                      <Link
-                        key={m.drepId}
-                        href={`/drep/${m.drepId}`}
-                        className="flex items-center justify-between group"
-                      >
-                        <span className="text-sm text-foreground/80 truncate max-w-[200px] group-hover:text-foreground transition-colors">
-                          {m.name}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-xs font-bold text-emerald-400 tabular-nums">
-                            +{m.delta}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            → {m.currentScore}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
+                    {gainers.map((m) => {
+                      const prevScore =
+                        m.currentScore != null && m.delta != null
+                          ? (m.currentScore as number) - (m.delta as number)
+                          : null;
+                      return (
+                        <TooltipProvider key={m.drepId}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link
+                                href={`/drep/${m.drepId}`}
+                                className="flex items-center justify-between group"
+                              >
+                                <span className="text-sm text-foreground/80 truncate max-w-[200px] group-hover:text-foreground transition-colors">
+                                  {m.name}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                                    +{m.delta}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    → {m.currentScore}
+                                  </span>
+                                </div>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-64">
+                              <p>
+                                Score changed from {prevScore ?? '?'} to {m.currentScore} this week.
+                                Visit their profile for detailed breakdown.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -626,25 +644,42 @@ export function CivicaPulseOverview() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    {losers.map((m) => (
-                      <Link
-                        key={m.drepId}
-                        href={`/drep/${m.drepId}`}
-                        className="flex items-center justify-between group"
-                      >
-                        <span className="text-sm text-foreground/80 truncate max-w-[200px] group-hover:text-foreground transition-colors">
-                          {m.name}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-xs font-bold text-rose-400 tabular-nums">
-                            {m.delta}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            → {m.currentScore}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
+                    {losers.map((m) => {
+                      const prevScore =
+                        m.currentScore != null && m.delta != null
+                          ? (m.currentScore as number) - (m.delta as number)
+                          : null;
+                      return (
+                        <TooltipProvider key={m.drepId}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link
+                                href={`/drep/${m.drepId}`}
+                                className="flex items-center justify-between group"
+                              >
+                                <span className="text-sm text-foreground/80 truncate max-w-[200px] group-hover:text-foreground transition-colors">
+                                  {m.name}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="text-xs font-bold text-rose-400 tabular-nums">
+                                    {m.delta}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    → {m.currentScore}
+                                  </span>
+                                </div>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-64">
+                              <p>
+                                Score changed from {prevScore ?? '?'} to {m.currentScore} this week.
+                                Visit their profile for detailed breakdown.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
                   </div>
                 </div>
               )}

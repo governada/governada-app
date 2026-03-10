@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useDeferredValue } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -190,6 +190,7 @@ export function CivicaDRepBrowse(_props: CivicaDRepBrowseProps) {
     return sortParam === 'match' && loadMatchProfile() ? 'match' : 'score';
   });
 
+  const deferredSearch = useDeferredValue(filters.search);
   const pageSize = viewMode === 'table' ? TABLE_PAGE_SIZE : CARD_PAGE_SIZE;
 
   const toggleViewMode = (mode: ViewMode) => {
@@ -219,8 +220,8 @@ export function CivicaDRepBrowse(_props: CivicaDRepBrowseProps) {
   const filtered = useMemo(() => {
     let result = dreps;
 
-    if (filters.search.trim()) {
-      const q = filters.search.toLowerCase();
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase();
       result = result.filter(
         (d) =>
           d.name?.toLowerCase().includes(q) ||
@@ -286,7 +287,7 @@ export function CivicaDRepBrowse(_props: CivicaDRepBrowseProps) {
     }
 
     return result;
-  }, [dreps, filters, sortMode, matchProfile]);
+  }, [dreps, deferredSearch, filters, sortMode, matchProfile]);
 
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);

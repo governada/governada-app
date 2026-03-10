@@ -16,28 +16,26 @@ interface DRepDetailedAnalysisProps {
  * - Citizens and anonymous users see a collapsed "Show detailed analysis" toggle.
  * - DReps, SPOs, CC members, and researchers see everything expanded by default.
  *
- * This keeps the citizen experience focused on summary intelligence while
- * preserving full depth for governance participants who need it.
+ * Defaults to collapsed to avoid CLS — expands only after segment confirms
+ * the user is a governance participant.
  */
 export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
   const { segment, isLoading } = useSegment();
 
-  // DReps, SPOs, and CC members see everything expanded
   const isDetailedSegment = segment === 'drep' || segment === 'spo' || segment === 'cc';
 
-  const [expanded, setExpanded] = useState(isDetailedSegment);
+  // User toggle: null = not yet toggled by user, use segment-derived default
+  const [userToggled, setUserToggled] = useState<boolean | null>(null);
 
-  // For detailed segments, always render expanded (no gate)
-  if (isDetailedSegment) {
+  // Derived expanded state: user toggle wins, else expand for confirmed detailed segments
+  const expanded = userToggled !== null ? userToggled : !isLoading && isDetailedSegment;
+
+  // For confirmed detailed segments, render children directly (no gate)
+  if (!isLoading && isDetailedSegment) {
     return <>{children}</>;
   }
 
-  // While loading segment, render nothing to avoid flash of collapsed → expanded
-  if (isLoading) {
-    return null;
-  }
-
-  // Citizens and anonymous users get the collapsible gate
+  // Citizens, anonymous, and loading state: show collapsed gate (stable layout)
   return (
     <div className="space-y-4">
       {!expanded && (
@@ -45,7 +43,7 @@ export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setExpanded(true)}
+            onClick={() => setUserToggled(true)}
             className="gap-2 text-muted-foreground hover:text-foreground"
           >
             <span>Show detailed analysis</span>
@@ -60,7 +58,6 @@ export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
           expanded ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
         )}
       >
-        {/* Only mount children when expanded to avoid unnecessary data fetching */}
         {expanded && <div className="space-y-6">{children}</div>}
       </div>
 
@@ -69,7 +66,7 @@ export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setExpanded(false)}
+            onClick={() => setUserToggled(false)}
             className="gap-2 text-xs text-muted-foreground"
           >
             <span>Hide detailed analysis</span>

@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { loadMatchProfile, alignmentDistance, distanceToMatchScore } from '@/lib/matchStore';
+import { computeDimensionAgreement } from '@/lib/matching/dimensionAgreement';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 
 interface MatchContextBadgeProps {
@@ -17,14 +19,14 @@ interface MatchContextBadgeProps {
  * Shows "Your match: X%" when the user has completed Quick Match and the
  * current DRep can be scored against their stored governance preferences.
  *
- * Reads from localStorage — renders nothing if no stored profile or if
- * an explicit matchScore is already being displayed.
+ * Hover/tap reveals which dimensions you agree/differ on.
  */
 export function MatchContextBadge({ drepAlignments, existingMatchScore }: MatchContextBadgeProps) {
   const [matchScore, setMatchScore] = useState<number | null>(null);
+  const [agreeDims, setAgreeDims] = useState<string[]>([]);
+  const [differDims, setDifferDims] = useState<string[]>([]);
 
   useEffect(() => {
-    // Don't compute if an explicit score is already shown
     if (existingMatchScore != null && existingMatchScore > 0) return;
 
     const profile = loadMatchProfile();
@@ -34,15 +36,48 @@ export function MatchContextBadge({ drepAlignments, existingMatchScore }: MatchC
     const score = distanceToMatchScore(distance);
     if (score > 0) {
       setMatchScore(score);
+      const { agreeDimensions, differDimensions } = computeDimensionAgreement(
+        profile.userAlignments,
+        drepAlignments,
+      );
+      setAgreeDims(agreeDimensions);
+      setDifferDims(differDimensions);
     }
   }, [drepAlignments, existingMatchScore]);
 
   if (matchScore === null) return null;
 
+  const hasExplanation = agreeDims.length > 0 || differDims.length > 0;
+
   return (
-    <Badge variant="outline" className="text-xs gap-1 border-primary/30 bg-primary/5 text-primary">
-      <Sparkles className="h-3 w-3" />
-      Your match: {matchScore}%
-    </Badge>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge
+            variant="outline"
+            className="text-xs gap-1 border-primary/30 bg-primary/5 text-primary cursor-help"
+          >
+            <Sparkles className="h-3 w-3" />
+            Your match: {matchScore}%
+          </Badge>
+        </TooltipTrigger>
+        {hasExplanation && (
+          <TooltipContent side="bottom" className="max-w-64 space-y-1.5">
+            {agreeDims.length > 0 && (
+              <p className="text-xs">
+                <span className="font-medium text-emerald-500">Aligned:</span>{' '}
+                {agreeDims.join(', ')}
+              </p>
+            )}
+            {differDims.length > 0 && (
+              <p className="text-xs">
+                <span className="font-medium text-rose-400">Differ:</span> {differDims.join(', ')}
+              </p>
+            )}
+            <p className="text-[10px] text-muted-foreground">Based on your Quick Match answers</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   );
 }

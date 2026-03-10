@@ -45,6 +45,21 @@ interface CivicaDRepCardProps {
   endorsementCount?: number;
 }
 
+/** Returns the top 1-2 pillar strengths (scores >= 65) as citizen-friendly labels. */
+function getPillarStrengths(drep: EnrichedDRep): string[] {
+  const pillars: [string, number][] = [
+    ['Strong rationale', drep.engagementQuality ?? 0],
+    ['Active voter', drep.effectiveParticipationV3 ?? 0],
+    ['Reliable', drep.reliabilityV3 ?? 0],
+    ['Clear identity', drep.governanceIdentity ?? 0],
+  ];
+  return pillars
+    .filter(([, v]) => v >= 65)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([label]) => label);
+}
+
 export function CivicaDRepCard({ drep, rank, matchScore, endorsementCount }: CivicaDRepCardProps) {
   const score = drep.drepScore ?? 0;
   const tier = tierKey(computeTier(score));
@@ -57,6 +72,7 @@ export function CivicaDRepCard({ drep, rank, matchScore, endorsementCount }: Civ
   const dominantDim = hasAlignment ? getDominantDimension(alignments) : null;
   const identityColor = dominantDim ? getIdentityColor(dominantDim) : null;
   const traitTags = getDRepTraitTags(drep);
+  const pillarStrengths = getPillarStrengths(drep);
 
   const recency = formatRecency(drep.lastVoteTime);
   const rationaleRate = Math.round(drep.rationaleRate ?? 0);
@@ -172,6 +188,20 @@ export function CivicaDRepCard({ drep, rank, matchScore, endorsementCount }: Civ
               className="text-[9px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-full"
             >
               {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Pillar strengths ─────────────────────────────────── */}
+      {pillarStrengths.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+          {pillarStrengths.map((label) => (
+            <span
+              key={label}
+              className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full"
+            >
+              {label}
             </span>
           ))}
         </div>

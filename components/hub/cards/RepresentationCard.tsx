@@ -20,13 +20,7 @@ export function RepresentationCard() {
   const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
   const { data: holderRaw, isLoading, isError, refetch } = useGovernanceHolder(stakeAddress);
 
-  if (isLoading) return <HubCardSkeleton />;
-  if (isError)
-    return <HubCardError message="Couldn't load delegation status" onRetry={() => refetch()} />;
-
-  const holder = holderRaw as Record<string, unknown> | undefined;
-
-  // Undelegated state
+  // Undelegated citizens don't need holder data — show CTA immediately
   if (!delegatedDrep) {
     return (
       <HubCard href="/match" urgency="warning" label="You have no DRep. Find a representative.">
@@ -48,7 +42,12 @@ export function RepresentationCard() {
     );
   }
 
+  if (isLoading) return <HubCardSkeleton />;
+  if (isError)
+    return <HubCardError message="Couldn't load delegation status" onRetry={() => refetch()} />;
+
   // Delegated state — build the summary
+  const holder = holderRaw as Record<string, unknown> | undefined;
   const drep = holder?.drep as Record<string, unknown> | undefined;
   const drepName = (drep?.name as string) || (drep?.ticker as string) || 'Your DRep';
   const drepScore = (drep?.score as number) ?? 0;

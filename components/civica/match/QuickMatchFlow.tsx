@@ -830,6 +830,27 @@ function ResultsScreen({
                         <Badge variant="secondary" className="text-xs">
                           {heroMatch.personalityLabel}
                         </Badge>
+                        {(heroMatch.agreeDimensions.length > 0 ||
+                          heroMatch.differDimensions.length > 0) && (
+                          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                            {heroMatch.agreeDimensions.slice(0, 3).map((dim) => (
+                              <span
+                                key={dim}
+                                className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full"
+                              >
+                                {dim}
+                              </span>
+                            ))}
+                            {heroMatch.differDimensions.slice(0, 2).map((dim) => (
+                              <span
+                                key={dim}
+                                className="text-[10px] font-medium text-rose-500 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full"
+                              >
+                                {dim}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-sm text-muted-foreground">
                           {getMatchNarrative(heroMatch)}
                         </p>
@@ -1082,11 +1103,26 @@ function QuickMatchResultCard({
               )}
             </div>
 
-            {/* Match narrative */}
+            {/* Alignment dimension badges */}
             {(match.agreeDimensions.length > 0 || match.differDimensions.length > 0) && (
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {getMatchNarrative(match)}
-              </p>
+              <div className="flex items-center gap-1 flex-wrap">
+                {match.agreeDimensions.slice(0, 3).map((dim) => (
+                  <span
+                    key={dim}
+                    className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full"
+                  >
+                    {dim}
+                  </span>
+                ))}
+                {match.differDimensions.slice(0, 2).map((dim) => (
+                  <span
+                    key={dim}
+                    className="text-[9px] font-medium text-rose-500 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-full"
+                  >
+                    {dim}
+                  </span>
+                ))}
+              </div>
             )}
 
             <div className="flex gap-2 mt-1">

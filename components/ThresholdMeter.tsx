@@ -125,10 +125,13 @@ function CountBasedBar({
   isInfoAction: boolean;
   variant: 'compact' | 'full';
 }) {
-  if (totalVotes === 0) return <span className="text-xs text-muted-foreground">No votes yet</span>;
+  const actualTotal = yesCount + noCount + abstainCount;
+  if (totalVotes === 0 && actualTotal === 0)
+    return <span className="text-xs text-muted-foreground">No votes yet</span>;
+  const effectiveTotal = totalVotes > 0 ? totalVotes : actualTotal;
 
-  const yp = (yesCount / totalVotes) * 100;
-  const np = (noCount / totalVotes) * 100;
+  const yp = effectiveTotal > 0 ? (yesCount / effectiveTotal) * 100 : 0;
+  const np = effectiveTotal > 0 ? (noCount / effectiveTotal) * 100 : 0;
   const barHeight = variant === 'full' ? 'h-4' : 'h-2';
 
   return (
@@ -147,7 +150,7 @@ function CountBasedBar({
         <span className="text-amber-600 dark:text-amber-400 font-medium">
           {abstainCount} Abstain
         </span>
-        <span className="text-muted-foreground ml-auto">{totalVotes} DReps</span>
+        <span className="text-muted-foreground ml-auto">{effectiveTotal} DReps</span>
       </div>
 
       {isInfoAction && <p className="text-[10px] text-muted-foreground">Advisory — no threshold</p>}

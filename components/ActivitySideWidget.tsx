@@ -2,6 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Vote, FileText, Users, ScrollText, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 
@@ -12,6 +13,8 @@ interface ActivityEvent {
   detail: string | null;
   vote?: 'Yes' | 'No' | 'Abstain';
   timestamp: number;
+  proposalTxHash?: string;
+  proposalIndex?: number;
 }
 
 const EVENT_CONFIG: Record<string, { icon: typeof Vote; color: string; bg: string }> = {
@@ -108,7 +111,16 @@ export function ActivitySideWidget({ drepId, limit = 5, className = '' }: Activi
                 <Icon className={`h-3 w-3 ${config.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs leading-snug line-clamp-2">{formatEventText(event)}</p>
+                {event.proposalTxHash != null ? (
+                  <Link
+                    href={`/proposal/${event.proposalTxHash}/${event.proposalIndex ?? 0}`}
+                    className="text-xs leading-snug line-clamp-2 hover:text-primary transition-colors"
+                  >
+                    {formatEventText(event)}
+                  </Link>
+                ) : (
+                  <p className="text-xs leading-snug line-clamp-2">{formatEventText(event)}</p>
+                )}
                 <span className="text-[10px] text-muted-foreground">
                   {formatRelativeTime(event.timestamp)}
                 </span>

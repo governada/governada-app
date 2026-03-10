@@ -11,6 +11,10 @@ import {
   Vote,
   HelpCircle,
   Coins,
+  Shield,
+  UserCheck,
+  DollarSign,
+  BarChart3,
 } from 'lucide-react';
 import {
   useInView,
@@ -318,6 +322,109 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
           ))}
         </motion.div>
       </section>
+
+      {/* ── Glass Window — Personal dashboard preview ────────────── */}
+      <motion.section
+        className="mx-auto w-full max-w-2xl px-4 mt-8"
+        variants={fadeInUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-40px' }}
+        aria-label="Personal governance dashboard preview"
+      >
+        <div className="relative rounded-xl border border-primary/20 bg-card overflow-hidden">
+          {/* Glass overlay with CTA */}
+          <div className="absolute inset-0 backdrop-blur-[3px] bg-card/70 z-10 flex flex-col items-center justify-center gap-3 px-6">
+            <Shield className="h-6 w-6 text-primary" aria-hidden />
+            <div className="text-center space-y-1">
+              <p className="text-sm font-semibold text-foreground">Your Governance Dashboard</p>
+              <p className="text-xs text-muted-foreground max-w-[300px]">
+                Connect your wallet to see your voting power, DRep performance, and personal
+                treasury share
+              </p>
+            </div>
+            <Link
+              href="/match"
+              onClick={() => posthog?.capture('citizen_glass_window_clicked')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2',
+                'text-sm font-semibold text-primary-foreground',
+                'hover:bg-primary/90 transition-colors',
+              )}
+            >
+              <Zap className="h-3.5 w-3.5" />
+              Get Started — 60 Seconds
+            </Link>
+          </div>
+
+          {/* Behind glass: realistic dashboard preview */}
+          <div className="opacity-30 pointer-events-none select-none p-5" aria-hidden="true">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="h-4 w-4 text-primary" />
+              <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                Your Governance Impact
+              </span>
+            </div>
+
+            {/* Stats grid — mirrors GovernanceImpactCard layout */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <Vote className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Voting Power
+                  </span>
+                </div>
+                <p className="text-lg font-bold text-foreground tabular-nums">{'\u20B3'}12,450</p>
+                <p className="text-[11px] text-muted-foreground">0.0023% of governance</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <UserCheck className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Your DRep
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold text-foreground truncate">CardanoMax</span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400">
+                    Gold
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">92% participation</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <DollarSign className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Treasury Share
+                  </span>
+                </div>
+                <p className="text-lg font-bold text-foreground tabular-nums">{'\u20B3'}3,847</p>
+                <p className="text-[11px] text-muted-foreground">Your proportional share</p>
+              </div>
+            </div>
+
+            {/* Epoch activity row */}
+            <div className="border-t border-border mt-4 pt-3">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <BarChart3 className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  This Epoch
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your DRep voted on <strong>12</strong> of{' '}
+                <strong>{pulseData.activeProposals || 14}</strong> proposals &mdash;{' '}
+                <strong>86%</strong> participation
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.section>
 
       {/* ── Social proof strip ──────────────────────────────────────── */}
       <motion.section

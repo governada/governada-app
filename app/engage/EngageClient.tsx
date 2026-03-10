@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Info } from 'lucide-react';
+import { ArrowRight, Info, Sparkles } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { PrioritySignals } from '@/components/engagement/PrioritySignals';
 import { CitizenAssembly } from '@/components/engagement/CitizenAssembly';
@@ -47,8 +47,24 @@ export function EngageClient({ epoch }: EngageClientProps) {
       {/* ── Hero Zone: personal context + community pulse ── */}
       <div className="space-y-6">
         {credibility && <EngagementHero credibility={credibility} epoch={epoch} />}
-        {currentRankings && currentRankings.rankings.length > 0 && (
+        {currentRankings && currentRankings.rankings.length > 0 ? (
           <EpochRecap current={currentRankings} previous={previousRankings ?? null} epoch={epoch} />
+        ) : (
+          <section className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Community priorities refresh each epoch
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Cast your first vote below to shape Epoch {epoch}&apos;s direction
+                </p>
+              </div>
+            </div>
+          </section>
         )}
       </div>
 

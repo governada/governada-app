@@ -111,5 +111,5 @@ export const DELETE = withRouteHandler(
 
     return NextResponse.json({ success: true });
   },
-  { auth: 'required' },
+  { auth: 'required', rateLimit: { max: 20, window: 60 } },
 );

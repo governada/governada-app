@@ -78,6 +78,11 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
         }),
       });
 
+      if (res.status === 429) {
+        throw new Error(
+          "You've been active! You've reached the flag limit for this epoch — resets next epoch.",
+        );
+      }
       if (!res.ok && res.status !== 409) {
         throw new Error('Failed to update flag');
       }

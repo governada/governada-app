@@ -108,6 +108,11 @@ export function ProposalSentiment({ txHash, proposalIndex, isOpen }: ProposalSen
         }),
       });
 
+      if (res.status === 429) {
+        throw new Error(
+          "You've been active! You've reached the vote limit for this epoch — resets next epoch.",
+        );
+      }
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Vote failed');

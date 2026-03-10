@@ -70,6 +70,11 @@ export function ImpactTags({ txHash, proposalIndex }: ImpactTagsProps) {
         }),
       });
 
+      if (res.status === 429) {
+        throw new Error(
+          "You've been active! You've reached the feedback limit for this epoch — resets next epoch.",
+        );
+      }
       if (!res.ok) throw new Error('Failed to submit feedback');
 
       await refetch();

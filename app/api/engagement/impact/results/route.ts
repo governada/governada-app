@@ -58,14 +58,8 @@ export const GET = withRouteHandler(
       ratings[row.rating] = (ratings[row.rating] || 0) + 1;
     }
 
-    const userTag = userId
-      ? rows.find((r) => r.user_id === userId)
-        ? {
-            awareness: rows.find((r) => r.user_id === userId)!.awareness,
-            rating: rows.find((r) => r.user_id === userId)!.rating,
-          }
-        : null
-      : null;
+    const userRow = userId ? rows.find((r) => r.user_id === userId) : null;
+    const userTag = userRow ? { awareness: userRow.awareness, rating: userRow.rating } : null;
 
     return NextResponse.json({
       awareness,

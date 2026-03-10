@@ -79,6 +79,11 @@ export function CitizenAssembly() {
         }),
       });
 
+      if (res.status === 429) {
+        throw new Error(
+          "You've been active! You've reached the vote limit for this epoch — resets next epoch.",
+        );
+      }
       if (!res.ok && res.status !== 409) throw new Error('Failed to cast vote');
 
       await refetch();

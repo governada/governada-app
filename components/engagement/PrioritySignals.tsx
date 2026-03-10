@@ -95,6 +95,11 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
 
       if (!res.ok) {
         setSubmitted(false); // Rollback
+        if (res.status === 429) {
+          throw new Error(
+            "You've been active! You've reached the limit for this epoch — resets next epoch.",
+          );
+        }
         throw new Error('Failed to submit priorities');
       }
 

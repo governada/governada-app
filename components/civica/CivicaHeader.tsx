@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -110,18 +110,33 @@ export function CivicaHeader() {
 
   const isHome = pathname === '/';
 
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 32);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const headerTransparent = isHome && !scrolled;
+
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 hidden sm:block transition-colors',
-        isHome ? 'bg-transparent' : 'border-b border-border/50 bg-background/80 backdrop-blur-xl',
+        'sticky top-0 z-50 hidden sm:block transition-[background-color,border-color,backdrop-filter] duration-300',
+        headerTransparent
+          ? 'bg-transparent'
+          : 'border-b border-border/50 bg-background/80 backdrop-blur-xl',
       )}
     >
       <div className="mx-auto max-w-7xl flex items-center justify-between h-14 px-6">
         <div className="flex items-center gap-1">
           <Link
             href="/"
-            className="font-display text-lg font-bold tracking-tight mr-6 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+            className={cn(
+              'font-display text-lg font-bold tracking-tight mr-6 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+              headerTransparent && 'nav-text-shadow',
+            )}
           >
             governada
           </Link>
@@ -139,6 +154,7 @@ export function CivicaHeader() {
                       'hover:bg-accent hover:text-accent-foreground',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                       active ? 'text-foreground' : 'text-muted-foreground',
+                      headerTransparent && 'nav-text-shadow',
                     )}
                     aria-current={active ? 'page' : undefined}
                   >

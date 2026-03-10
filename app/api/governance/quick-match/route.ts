@@ -21,6 +21,10 @@ import { captureServerEvent } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
 
+/** Minimum thresholds for match quality — below these, results are noise */
+const MIN_MATCH_SCORE = 40;
+const MIN_ENTITY_SCORE = 60;
+
 const DIMENSIONS: AlignmentDimension[] = [
   'treasuryConservative',
   'treasuryGrowth',
@@ -129,6 +133,7 @@ export const POST = withRouteHandler(async (request) => {
         };
       })
       .sort((a, b) => b.matchScore - a.matchScore || b.entityScore - a.entityScore)
+      .filter((r) => r.matchScore >= MIN_MATCH_SCORE && r.entityScore >= MIN_ENTITY_SCORE)
       .slice(0, 5);
 
     const personalityLabel = getPersonalityLabel(userAlignments);
@@ -209,9 +214,13 @@ export const POST = withRouteHandler(async (request) => {
     })
     .sort((a, b) => b.matchScore - a.matchScore || b.drepScore - a.drepScore);
 
+  // Apply quality thresholds before selecting top results
+  const qualified = ranked.filter(
+    (r) => r.matchScore >= MIN_MATCH_SCORE && r.drepScore >= MIN_ENTITY_SCORE,
+  );
   // Prefer named DReps in results; fall back to unnamed if fewer than 3 named
-  const namedRanked = ranked.filter((r) => r.drepName);
-  const topRanked = (namedRanked.length >= 3 ? namedRanked : ranked).slice(0, 5);
+  const namedRanked = qualified.filter((r) => r.drepName);
+  const topRanked = (namedRanked.length >= 3 ? namedRanked : qualified).slice(0, 5);
 
   const personalityLabel = getPersonalityLabel(userAlignments);
   const dominant = getDominantDimension(userAlignments);

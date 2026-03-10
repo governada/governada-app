@@ -796,13 +796,13 @@ function ResultsScreen({
               No {activeTab === 'spo' ? 'SPO' : 'DRep'} matches found
             </p>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Not enough {activeTab === 'spo' ? 'SPOs' : 'DReps'} have governance alignment data
-              yet. Browse all {activeTab === 'spo' ? 'SPOs' : 'DReps'} to find one manually, or
-              check back as more participate in governance.
+              No {activeTab === 'spo' ? 'SPOs' : 'DReps'} currently meet our quality threshold for
+              your preferences. As {activeTab === 'spo' ? 'SPOs' : 'DReps'} improve their governance
+              participation, more matches will appear.
             </p>
             <Button asChild variant="outline" size="sm">
               <Link href={activeTab === 'spo' ? '/discover?tab=spos' : '/discover'}>
-                Browse All {activeTab === 'spo' ? 'SPOs' : 'DReps'}
+                Browse all active {activeTab === 'spo' ? 'SPOs' : 'DReps'}
                 <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
               </Link>
             </Button>

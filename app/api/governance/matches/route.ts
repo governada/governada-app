@@ -23,6 +23,10 @@ import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler'
 
 export const dynamic = 'force-dynamic';
 
+/** Minimum thresholds for match quality — below these, results are noise */
+const MIN_MATCH_SCORE = 40;
+const MIN_DREP_SCORE = 60;
+
 function normalizeVote(vote: string): string {
   return vote.charAt(0).toUpperCase() + vote.slice(1).toLowerCase();
 }
@@ -194,42 +198,45 @@ export const GET = withRouteHandler(
       userProposalTxHashes,
     );
 
-    const matches = filteredIds.map((drepId) => {
-      const info = drepInfoMap.get(drepId);
-      const overlap = overlapMap.get(drepId) || { agreed: 0, total: 0 };
-      const matchScore =
-        matchMethod === 'pca'
-          ? (pcaScoreMap.get(drepId) ??
-            (overlap.total > 0 ? Math.round((overlap.agreed / overlap.total) * 100) : 0))
-          : overlap.total > 0
-            ? Math.round((overlap.agreed / overlap.total) * 100)
-            : 0;
-      const confidence = calculateMatchConfidence(overlap.total);
+    const matches = filteredIds
+      .map((drepId) => {
+        const info = drepInfoMap.get(drepId);
+        const overlap = overlapMap.get(drepId) || { agreed: 0, total: 0 };
+        const matchScore =
+          matchMethod === 'pca'
+            ? (pcaScoreMap.get(drepId) ??
+              (overlap.total > 0 ? Math.round((overlap.agreed / overlap.total) * 100) : 0))
+            : overlap.total > 0
+              ? Math.round((overlap.agreed / overlap.total) * 100)
+              : 0;
+        const confidence = calculateMatchConfidence(overlap.total);
 
-      let dimensionAgreement = undefined;
-      let agreeDimensions = undefined;
-      let differDimensions = undefined;
-      if (userAlignments && info?.alignments) {
-        const dimResult = computeDimensionAgreement(userAlignments, info.alignments);
-        dimensionAgreement = dimResult.dimensionAgreement;
-        agreeDimensions = dimResult.agreeDimensions;
-        differDimensions = dimResult.differDimensions;
-      }
+        let dimensionAgreement = undefined;
+        let agreeDimensions = undefined;
+        let differDimensions = undefined;
+        if (userAlignments && info?.alignments) {
+          const dimResult = computeDimensionAgreement(userAlignments, info.alignments);
+          dimensionAgreement = dimResult.dimensionAgreement;
+          agreeDimensions = dimResult.agreeDimensions;
+          differDimensions = dimResult.differDimensions;
+        }
 
-      return {
-        drepId,
-        drepName: info?.name || null,
-        drepScore: info?.score || 0,
-        matchScore,
-        agreed: overlap.agreed,
-        overlapping: overlap.total,
-        confidence,
-        dimensionAgreement,
-        agreeDimensions,
-        differDimensions,
-        alignments: info?.alignments || null,
-      };
-    });
+        return {
+          drepId,
+          drepName: info?.name || null,
+          drepScore: info?.score || 0,
+          matchScore,
+          agreed: overlap.agreed,
+          overlapping: overlap.total,
+          confidence,
+          dimensionAgreement,
+          agreeDimensions,
+          differDimensions,
+          alignments: info?.alignments || null,
+        };
+      })
+      // Apply quality thresholds — below these, alignment is noise
+      .filter((m) => m.matchScore >= MIN_MATCH_SCORE && m.drepScore >= MIN_DREP_SCORE);
 
     captureServerEvent(
       'governance_matches_calculated',

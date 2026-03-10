@@ -375,7 +375,11 @@ function IntroScreen({
         </p>
         <p className="text-xs text-muted-foreground/80 max-w-md mx-auto">
           DReps vote on governance proposals on your behalf. SPOs secure the network and vote on
-          protocol changes. Your funds stay in your wallet.
+          protocol changes.{' '}
+          <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+            <Shield className="h-3 w-3 inline shrink-0" />
+            Your funds stay in your wallet.
+          </span>
         </p>
       </div>
 

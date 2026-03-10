@@ -13,6 +13,7 @@ import {
   Scale,
   Search,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet-context';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
@@ -24,7 +25,7 @@ interface DiscoverHeroProps {
   spoCount?: number;
 }
 
-/* ── Stat pill shown in the hero ────────────────────────── */
+/* -- Stat pill shown in the hero -------------------------------- */
 function StatPill({
   icon: Icon,
   value,
@@ -47,14 +48,13 @@ function StatPill({
   );
 }
 
-/* ── Segment-aware contextual banner ────────────────────── */
+/* -- Segment-aware contextual banner ----------------------------- */
 function SegmentBanner({ totalDreps }: { totalDreps: number }) {
   const { segment, delegatedDrep, isLoading } = useSegment();
   const { connected } = useWallet();
 
   if (isLoading) return null;
 
-  // Anonymous -- encourage connection
   if (!connected || segment === 'anonymous') {
     return (
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-lg border border-primary/20 bg-card/80 backdrop-blur-sm p-4">
@@ -68,7 +68,7 @@ function SegmentBanner({ totalDreps }: { totalDreps: number }) {
             {totalDreps.toLocaleString()} DReps are shaping Cardano governance
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Find a DRep aligned with your values — it takes 60 seconds to delegate.
+            Find a DRep aligned with your values &mdash; it takes 60 seconds to delegate.
           </p>
         </div>
         <Link
@@ -81,7 +81,6 @@ function SegmentBanner({ totalDreps }: { totalDreps: number }) {
     );
   }
 
-  // Citizen -- delegation context
   if (segment === 'citizen') {
     if (delegatedDrep) {
       return (
@@ -91,7 +90,7 @@ function SegmentBanner({ totalDreps }: { totalDreps: number }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">
-              You&apos;re delegating — explore who else is governing
+              You&apos;re delegating &mdash; explore who else is governing
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Compare DReps, track proposals, and monitor committee members.
@@ -127,7 +126,6 @@ function SegmentBanner({ totalDreps }: { totalDreps: number }) {
     );
   }
 
-  // DRep -- peer context
   if (segment === 'drep') {
     return (
       <div className="flex items-center gap-4 rounded-lg border border-border bg-card/80 backdrop-blur-sm p-4">
@@ -150,7 +148,6 @@ function SegmentBanner({ totalDreps }: { totalDreps: number }) {
     );
   }
 
-  // SPO
   return (
     <div className="flex items-center gap-4 rounded-lg border border-border bg-card/80 backdrop-blur-sm p-4">
       <div className="w-9 h-9 rounded-full bg-sky-500/10 flex items-center justify-center shrink-0">
@@ -172,7 +169,7 @@ function SegmentBanner({ totalDreps }: { totalDreps: number }) {
   );
 }
 
-/* ── Main hero component ────────────────────────────────── */
+/* -- Main hero component ----------------------------------------- */
 export function DiscoverHero({
   totalDreps,
   proposalCount,
@@ -189,15 +186,11 @@ export function DiscoverHero({
       animate="visible"
       className="space-y-4"
     >
-      {/* ── Gradient hero panel ────────────────────────── */}
       <motion.div variants={fadeInUp} className="relative overflow-hidden rounded-2xl">
-        {/* Gradient background */}
         <div
           className="absolute inset-0 bg-gradient-to-br from-primary/8 via-secondary/6 to-primary/4 dark:from-cyan-950/80 dark:via-indigo-950/60 dark:to-violet-950/40"
           aria-hidden="true"
         />
-
-        {/* Decorative grid pattern */}
         <div
           className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
           aria-hidden="true"
@@ -207,8 +200,6 @@ export function DiscoverHero({
             backgroundSize: '40px 40px',
           }}
         />
-
-        {/* Radial glow accents */}
         <div
           className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-primary/10 dark:bg-cyan-500/8 blur-3xl"
           aria-hidden="true"
@@ -218,9 +209,7 @@ export function DiscoverHero({
           aria-hidden="true"
         />
 
-        {/* Content */}
         <div className="relative px-6 py-8 sm:px-8 sm:py-10">
-          {/* Headline */}
           <div className="space-y-2 mb-6">
             <div className="flex items-center gap-2 mb-3">
               <Search className="h-4 w-4 text-primary dark:text-cyan-400" />
@@ -238,28 +227,70 @@ export function DiscoverHero({
           </div>
 
           {/* Live stat pills */}
-          <div className="flex flex-wrap gap-2">
-            <StatPill icon={Users} value={formattedDreps} label="DReps" />
-            {spoCount != null && spoCount > 0 && (
-              <StatPill icon={ShieldCheck} value={spoCount.toString()} label="SPOs" />
-            )}
-            {proposalCount > 0 && (
-              <StatPill icon={FileText} value={proposalCount.toString()} label="Proposals" />
-            )}
-            {ccMemberCount != null && ccMemberCount > 0 && (
-              <StatPill icon={Scale} value={ccMemberCount.toString()} label="CC Members" />
-            )}
-          </div>
+          <TooltipProvider>
+            <div className="flex flex-wrap gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <StatPill icon={Users} value={formattedDreps} label="DReps" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-56">
+                  Delegated Representatives who vote on governance proposals on behalf of ADA
+                  holders
+                </TooltipContent>
+              </Tooltip>
+              {spoCount != null && spoCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <StatPill icon={ShieldCheck} value={spoCount.toString()} label="SPOs" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-56">
+                    Stake Pool Operators who secure the network and participate in protocol
+                    governance
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {proposalCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <StatPill
+                        icon={FileText}
+                        value={proposalCount.toString()}
+                        label="Proposals"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-56">
+                    Active governance proposals open for voting
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {ccMemberCount != null && ccMemberCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <StatPill icon={Scale} value={ccMemberCount.toString()} label="CC Members" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-56">
+                    Constitutional Committee members who assess proposal constitutionality
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </TooltipProvider>
         </div>
 
-        {/* Bottom border glow */}
         <div
           className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 dark:via-cyan-500/20 to-transparent"
           aria-hidden="true"
         />
       </motion.div>
 
-      {/* ── Segment-aware contextual banner ────────────── */}
       <motion.div variants={fadeInUp}>
         <SegmentBanner totalDreps={totalDreps} />
       </motion.div>

@@ -5,13 +5,11 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RotateCcw, LayoutGrid, TableProperties, ChevronRight, Sparkles } from 'lucide-react';
-import { useWallet } from '@/utils/wallet-context';
 import { cn } from '@/lib/utils';
 import { CivicaDRepCard } from '@/components/civica/cards/CivicaDRepCard';
 import { computeTier } from '@/lib/scoring/tiers';
 import { TIER_SCORE_COLOR, TIER_BADGE_BG, tierKey } from '@/components/civica/cards/tierStyles';
 import type { EnrichedDRep } from '@/lib/koios';
-import { ScoreDistribution } from '@/components/civica/charts/ScoreDistribution';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 import {
@@ -22,16 +20,72 @@ import {
 } from '@/lib/matchStore';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 
-const TIER_CHIPS = ['All', 'Emerging', 'Bronze', 'Silver', 'Gold', 'Diamond', 'Legendary'];
+const TIER_CHIPS: { value: string; label: string; tooltip?: string }[] = [
+  { value: 'All', label: 'All' },
+  {
+    value: 'Emerging',
+    label: 'Emerging',
+    tooltip: 'Score 0-29. New DReps building their governance track record.',
+  },
+  {
+    value: 'Bronze',
+    label: 'Bronze',
+    tooltip: 'Score 30-49. DReps with some voting history and engagement.',
+  },
+  {
+    value: 'Silver',
+    label: 'Silver',
+    tooltip: 'Score 50-69. Consistent DReps with solid participation.',
+  },
+  {
+    value: 'Gold',
+    label: 'Gold',
+    tooltip: 'Score 70-84. Active, transparent DReps with strong voting records.',
+  },
+  {
+    value: 'Diamond',
+    label: 'Diamond',
+    tooltip: 'Score 85-94. Top-tier DReps with exceptional governance engagement.',
+  },
+  {
+    value: 'Legendary',
+    label: 'Legendary',
+    tooltip: 'Score 95-100. Elite DReps leading Cardano governance.',
+  },
+];
 
 const ALIGNMENT_OPTIONS = [
   { value: 'all', label: 'Any alignment' },
-  { value: 'treasury_conservative', label: 'Fiscal conservative' },
-  { value: 'treasury_growth', label: 'Growth-oriented' },
-  { value: 'decentralization', label: 'Decentralization' },
-  { value: 'security', label: 'Security-focused' },
-  { value: 'innovation', label: 'Innovation-first' },
-  { value: 'transparency', label: 'Transparency' },
+  {
+    value: 'treasury_conservative',
+    label: 'Fiscal conservative',
+    tooltip: 'Favors careful spending of community treasury funds.',
+  },
+  {
+    value: 'treasury_growth',
+    label: 'Growth-oriented',
+    tooltip: 'Supports bold treasury investment to grow the ecosystem.',
+  },
+  {
+    value: 'decentralization',
+    label: 'Decentralization',
+    tooltip: 'Prioritizes distributing power across the community.',
+  },
+  {
+    value: 'security',
+    label: 'Security-focused',
+    tooltip: 'Values protocol stability and security over rapid change.',
+  },
+  {
+    value: 'innovation',
+    label: 'Innovation-first',
+    tooltip: 'Embraces new ideas and rapid protocol evolution.',
+  },
+  {
+    value: 'transparency',
+    label: 'Transparency',
+    tooltip: 'Demands public explanations for all governance votes.',
+  },
 ];
 
 const ALIGNMENT_FIELD_MAP: Record<string, keyof EnrichedDRep> = {
@@ -68,7 +122,7 @@ interface FilterState {
 const DEFAULT_FILTERS: FilterState = {
   search: '',
   tier: 'All',
-  activeOnly: false,
+  activeOnly: true,
   alignment: 'all',
 };
 
@@ -80,7 +134,8 @@ interface CivicaDRepBrowseProps {
 function DRepTableRow({ drep, rank }: { drep: EnrichedDRep; rank: number }) {
   const score = drep.drepScore ?? 0;
   const tier = tierKey(computeTier(score));
-  const displayName = drep.name || drep.ticker || drep.handle || `${drep.drepId.slice(0, 16)}…`;
+  const displayName =
+    drep.name || drep.ticker || drep.handle || `${drep.drepId.slice(0, 16)}\u2026`;
 
   return (
     <Link
@@ -116,11 +171,10 @@ type SortMode = 'score' | 'match';
 export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
   const searchParams = useSearchParams();
   const contentRef = useRef<HTMLDivElement>(null);
-  const { delegatedDrepId } = useWallet();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode);
-  // Load match profile from localStorage (lazy init — no effect needed)
+  // Load match profile from localStorage (lazy init -- no effect needed)
   const sortParam = searchParams.get('sort');
   const [matchProfile] = useState<StoredMatchProfile | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -144,7 +198,7 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
   const isDefaultFilters =
     filters.search === '' &&
     filters.tier === 'All' &&
-    !filters.activeOnly &&
+    filters.activeOnly &&
     filters.alignment === 'all';
 
   const setFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
@@ -229,29 +283,6 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
     return result;
   }, [dreps, filters, sortMode, matchProfile]);
 
-  const allScores = useMemo(
-    () => dreps.filter((d) => d.isActive).map((d) => d.drepScore ?? 0),
-    [dreps],
-  );
-
-  // Find delegated DRep's score for the ScoreDistribution highlight marker
-  const delegatedDrepScore = useMemo(() => {
-    if (!delegatedDrepId) return undefined;
-    const delegated = dreps.find((d) => d.drepId === delegatedDrepId);
-    return delegated?.drepScore ?? undefined;
-  }, [dreps, delegatedDrepId]);
-
-  // Click a ScoreDistribution bar to filter by tier
-  const handleBinClick = useCallback(
-    (start: number, end: number) => {
-      const midpoint = (start + end) / 2;
-      const tierName = computeTier(midpoint);
-      setFilter('tier', tierName);
-    },
-
-    [],
-  );
-
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
     contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -262,36 +293,15 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
 
   return (
     <div ref={contentRef} className="space-y-4 pt-4">
-      {/* Score distribution overview */}
-      {dreps.length > 10 ? (
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Score Distribution
-          </p>
-          <ScoreDistribution
-            scores={allScores}
-            highlightScore={delegatedDrepScore}
-            onBinClick={handleBinClick}
-          />
-        </div>
-      ) : dreps.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card p-3">
-          <p className="text-xs text-muted-foreground">
-            Score distribution chart available once 10+ DReps are tracked. Currently tracking{' '}
-            {dreps.length} DRep{dreps.length !== 1 ? 's' : ''}.
-          </p>
-        </div>
-      ) : null}
-
       <DiscoverFilterBar
         search={filters.search}
         onSearchChange={(v) => setFilter('search', v)}
-        searchPlaceholder="Search by name, ticker, or ID…"
+        searchPlaceholder="Search by name, ticker, or ID\u2026"
         chipGroups={[
           {
             label: 'Tier',
             value: filters.tier,
-            options: TIER_CHIPS.map((t) => ({ value: t, label: t })),
+            options: TIER_CHIPS,
             onChange: (v) => setFilter('tier', v),
           },
           {

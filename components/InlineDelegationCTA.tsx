@@ -2,10 +2,19 @@
 
 import { useDelegation } from '@/hooks/useDelegation';
 import { Button } from '@/components/ui/button';
-import { Vote, Wallet, CheckCircle, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
+import {
+  Vote,
+  Wallet,
+  CheckCircle,
+  Loader2,
+  ExternalLink,
+  AlertTriangle,
+  Shield,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { DelegationRisksModal } from './InfoModal';
 import { useState } from 'react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const DelegationCeremony = dynamic(
   () => import('./DelegationCeremony').then((m) => m.DelegationCeremony),
@@ -88,7 +97,7 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
     );
   }
 
-  // Success — show delegation ceremony overlay or simple message
+  // Success -- show delegation ceremony overlay or simple message
   if (phase.status === 'success') {
     if (showCeremony) {
       return (
@@ -155,12 +164,26 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
               <span className="font-medium text-foreground">{preflight.estimatedFee}</span>
             </p>
             {preflight.needsDeposit && (
-              <p className="flex items-start gap-1 text-amber-600 dark:text-amber-400">
-                <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                Includes a 2 ADA refundable deposit for stake registration.
-              </p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="flex items-start gap-1 text-amber-600 dark:text-amber-400 cursor-help">
+                      <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      Includes a 2 ADA refundable deposit for stake registration.
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-64">
+                    Cardano requires a one-time 2 ADA deposit to register your stake key on-chain.
+                    This is fully refundable if you ever unregister. Your remaining ADA stays in
+                    your wallet and is never locked.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
-            <p>Your ADA stays in your wallet at all times.</p>
+            <p className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+              <Shield className="h-3 w-3 shrink-0" />
+              Your ADA stays in your wallet at all times.
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -198,7 +221,10 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
         )}
       </Button>
       <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-        <span>Your ADA stays in your wallet.</span>
+        <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+          <Shield className="h-3 w-3 shrink-0" />
+          Your ADA stays in your wallet.
+        </span>
         <DelegationRisksModal />
       </div>
     </div>

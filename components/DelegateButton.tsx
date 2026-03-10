@@ -2,11 +2,20 @@
 
 import { useDelegation } from '@/hooks/useDelegation';
 import { Button } from '@/components/ui/button';
-import { Vote, Wallet, Loader2, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
+import {
+  Vote,
+  Wallet,
+  Loader2,
+  CheckCircle,
+  AlertTriangle,
+  ExternalLink,
+  Shield,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { AlignmentScores } from '@/lib/drepIdentity';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const DelegationCeremony = dynamic(
   () => import('./DelegationCeremony').then((m) => m.DelegationCeremony),
@@ -130,7 +139,7 @@ export function DelegateButton({ drepId, drepName, size = 'sm', className }: Del
     );
   }
 
-  // Confirming — show fee and confirm/cancel
+  // Confirming -- show fee and confirm/cancel
   if (phase.status === 'confirming') {
     return (
       <div className="flex flex-col gap-2 p-3 rounded-lg border border-primary/20 bg-card">
@@ -140,12 +149,26 @@ export function DelegateButton({ drepId, drepName, size = 'sm', className }: Del
             Fee: <span className="font-medium text-foreground">{phase.preflight.estimatedFee}</span>
           </p>
           {phase.preflight.needsDeposit && (
-            <p className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
-              +2 ADA refundable deposit
-            </p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="flex items-center gap-1 text-amber-600 dark:text-amber-400 cursor-help">
+                    <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
+                    +2 ADA refundable deposit
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-64">
+                  Cardano requires a one-time 2 ADA deposit to register your stake key on-chain.
+                  This is fully refundable if you ever unregister. Your remaining ADA stays in your
+                  wallet and is never locked.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
-          <p>Your ADA stays in your wallet.</p>
+          <p className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+            <Shield className="h-2.5 w-2.5 shrink-0" />
+            Your ADA stays in your wallet.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={reset}>

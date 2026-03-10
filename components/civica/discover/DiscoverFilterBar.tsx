@@ -4,11 +4,18 @@ import { Search, X, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+interface ChipOption {
+  value: string;
+  label: string;
+  tooltip?: string;
+}
 
 interface ChipGroup {
   label: string;
   value: string;
-  options: { value: string; label: string }[];
+  options: ChipOption[];
   onChange: (value: string) => void;
 }
 
@@ -27,10 +34,45 @@ interface DiscoverFilterBarProps {
   pageInfo?: string;
 }
 
+function ChipButton({
+  opt,
+  isActive,
+  onClick,
+}: {
+  opt: ChipOption;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  const btn = (
+    <button
+      onClick={onClick}
+      className={cn(
+        'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
+        isActive
+          ? 'bg-primary text-primary-foreground border-primary'
+          : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
+      )}
+    >
+      {opt.label}
+    </button>
+  );
+
+  if (!opt.tooltip) return btn;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{btn}</TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-56">
+        {opt.tooltip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function DiscoverFilterBar({
   search,
   onSearchChange,
-  searchPlaceholder = 'Search…',
+  searchPlaceholder = 'Search\u2026',
   chipGroups,
   toggles,
   resultCount,
@@ -71,37 +113,33 @@ export function DiscoverFilterBar({
 
       {/* Chip groups */}
       {chipGroups?.map((group) => (
-        <div key={group.label} className="flex flex-wrap items-center gap-2">
-          {group.options.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => group.onChange(opt.value)}
-              className={cn(
-                'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
-                group.value === opt.value
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-          {/* Inline toggles after chip group */}
-          {toggles?.map((t) => (
-            <label
-              key={t.label}
-              className="ml-2 flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground select-none"
-            >
-              <input
-                type="checkbox"
-                checked={t.checked}
-                onChange={(e) => t.onChange(e.target.checked)}
-                className="h-3 w-3 rounded accent-primary"
+        <TooltipProvider key={group.label}>
+          <div className="flex flex-wrap items-center gap-2">
+            {group.options.map((opt) => (
+              <ChipButton
+                key={opt.value}
+                opt={opt}
+                isActive={group.value === opt.value}
+                onClick={() => group.onChange(opt.value)}
               />
-              {t.label}
-            </label>
-          ))}
-        </div>
+            ))}
+            {/* Inline toggles after chip group */}
+            {toggles?.map((t) => (
+              <label
+                key={t.label}
+                className="ml-2 flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground select-none"
+              >
+                <input
+                  type="checkbox"
+                  checked={t.checked}
+                  onChange={(e) => t.onChange(e.target.checked)}
+                  className="h-3 w-3 rounded accent-primary"
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+        </TooltipProvider>
       ))}
 
       {/* Results count */}

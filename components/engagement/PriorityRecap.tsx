@@ -3,21 +3,7 @@
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePriorityRankings } from '@/hooks/useEngagement';
-
-const PRIORITY_LABELS: Record<string, string> = {
-  infrastructure: 'Infrastructure',
-  education: 'Education',
-  defi: 'DeFi',
-  marketing: 'Marketing',
-  developer_tooling: 'Developer Tooling',
-  governance_tooling: 'Governance Tooling',
-  identity_dids: 'Identity & DIDs',
-  interoperability: 'Interoperability',
-  security_auditing: 'Security & Auditing',
-  community_hubs: 'Community Hubs',
-  research: 'Research',
-  media_content: 'Media & Content',
-};
+import { PRIORITY_LABEL_MAP } from '@/lib/engagement/labels';
 
 interface PriorityRecapProps {
   currentEpoch: number;
@@ -64,7 +50,7 @@ export function PriorityRecap({ currentEpoch }: PriorityRecapProps) {
 
         <ol className="space-y-2">
           {top5.map((item) => {
-            const label = PRIORITY_LABELS[item.priority] ?? item.priority;
+            const label = PRIORITY_LABEL_MAP[item.priority] ?? item.priority;
             const priorRank = priorRanks.get(item.priority);
             const rankDelta = priorRank != null ? priorRank - item.rank : null;
 

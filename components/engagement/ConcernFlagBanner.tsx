@@ -3,17 +3,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConcernFlags } from '@/hooks/useEngagement';
-
-const FLAG_LABELS: Record<string, string> = {
-  too_expensive: 'Too Expensive',
-  team_unproven: 'Team Unproven',
-  duplicates_existing: 'Duplicates Existing',
-  constitutional_concern: 'Constitutional Concern',
-  insufficient_detail: 'Insufficient Detail',
-  unrealistic_timeline: 'Unrealistic Timeline',
-  conflict_of_interest: 'Conflict of Interest',
-  scope_too_broad: 'Scope Too Broad',
-};
+import { CONCERN_LABEL_MAP } from '@/lib/engagement/labels';
 
 const THRESHOLD = 10;
 
@@ -40,7 +30,7 @@ export function ConcernFlagBanner({ txHash, proposalIndex, outcome }: ConcernFla
   if (significantFlags.length === 0) return null;
 
   const topFlag = significantFlags[0];
-  const topLabel = FLAG_LABELS[topFlag[0]] ?? topFlag[0];
+  const topLabel = CONCERN_LABEL_MAP[topFlag[0]] ?? topFlag[0];
   const topCount = topFlag[1];
 
   const isNegativeOutcome = outcome === 'dropped' || outcome === 'expired';

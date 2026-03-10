@@ -12,18 +12,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertTriangle, Info, Wallet } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
 import { useConcernFlags } from '@/hooks/useEngagement';
+import { CONCERN_FLAG_LABELS } from '@/lib/engagement/labels';
 import type { ConcernFlagType } from '@/lib/api/schemas/engagement';
-
-const FLAG_LABELS: Record<ConcernFlagType, { label: string; emoji: string }> = {
-  too_expensive: { label: 'Too Expensive', emoji: '💰' },
-  team_unproven: { label: 'Team Unproven', emoji: '👤' },
-  duplicates_existing: { label: 'Duplicates Existing', emoji: '🔄' },
-  constitutional_concern: { label: 'Constitutional Concern', emoji: '📜' },
-  insufficient_detail: { label: 'Insufficient Detail', emoji: '📝' },
-  unrealistic_timeline: { label: 'Unrealistic Timeline', emoji: '⏰' },
-  conflict_of_interest: { label: 'Conflict of Interest', emoji: '⚖️' },
-  scope_too_broad: { label: 'Scope Too Broad', emoji: '🔭' },
-};
 
 interface ConcernFlagsProps {
   txHash: string;
@@ -134,7 +124,7 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
   const totalFlags = results?.total ?? 0;
 
   // Sort flags: user's flags first, then by count descending
-  const sortedFlags = (Object.keys(FLAG_LABELS) as ConcernFlagType[]).sort((a, b) => {
+  const sortedFlags = (Object.keys(CONCERN_FLAG_LABELS) as ConcernFlagType[]).sort((a, b) => {
     const aUser = userFlags.includes(a) ? 1 : 0;
     const bUser = userFlags.includes(b) ? 1 : 0;
     if (aUser !== bUser) return bUser - aUser;
@@ -196,7 +186,7 @@ export function ConcernFlags({ txHash, proposalIndex, isOpen }: ConcernFlagsProp
           {sortedFlags.map((flagType) => {
             const count = flags[flagType] || 0;
             const isUserFlag = userFlags.includes(flagType);
-            const { label, emoji } = FLAG_LABELS[flagType];
+            const { label, emoji } = CONCERN_FLAG_LABELS[flagType];
             const isSubmittingThis = submitting === flagType;
 
             return (

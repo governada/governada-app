@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, AlertTriangle, Star, BarChart3 } from 'lucide-react';
+import { CONCERN_LABEL_MAP } from '@/lib/engagement/labels';
 
 interface EngagementSummaryProps {
   txHash: string;
@@ -40,17 +41,6 @@ export function EngagementSummary({ txHash, proposalIndex }: EngagementSummaryPr
   // Find top concern
   const topConcern = concerns ? Object.entries(concerns).sort(([, a], [, b]) => b - a)[0] : null;
 
-  const CONCERN_LABELS: Record<string, string> = {
-    too_expensive: 'Too Expensive',
-    team_unproven: 'Team Unproven',
-    duplicates_existing: 'Duplicates Existing',
-    constitutional_concern: 'Constitutional Concern',
-    insufficient_detail: 'Insufficient Detail',
-    unrealistic_timeline: 'Unrealistic Timeline',
-    conflict_of_interest: 'Conflict of Interest',
-    scope_too_broad: 'Scope Too Broad',
-  };
-
   return (
     <Card className="bg-muted/30" aria-label="Community engagement signals summary">
       <CardContent className="py-3">
@@ -75,7 +65,7 @@ export function EngagementSummary({ txHash, proposalIndex }: EngagementSummaryPr
             >
               <AlertTriangle className="h-3 w-3" />
               {totalConcerns} concern{totalConcerns !== 1 ? 's' : ''} &middot; Top:{' '}
-              {CONCERN_LABELS[topConcern[0]] ?? topConcern[0]}
+              {CONCERN_LABEL_MAP[topConcern[0]] ?? topConcern[0]}
             </Badge>
           )}
 

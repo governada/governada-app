@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,21 +11,7 @@ import { BarChart3, CheckCircle2, Wallet, ArrowUp } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
 import { usePriorityRankings, useUserPrioritySignal } from '@/hooks/useEngagement';
 import { PRIORITY_AREAS, type PriorityArea } from '@/lib/api/schemas/engagement';
-
-const PRIORITY_LABELS: Record<PriorityArea, { label: string; icon: string }> = {
-  infrastructure: { label: 'Infrastructure', icon: '🏗️' },
-  education: { label: 'Education', icon: '📚' },
-  defi: { label: 'DeFi', icon: '💱' },
-  marketing: { label: 'Marketing', icon: '📣' },
-  developer_tooling: { label: 'Developer Tooling', icon: '🛠️' },
-  governance_tooling: { label: 'Governance Tooling', icon: '🏛️' },
-  identity_dids: { label: 'Identity & DIDs', icon: '🪪' },
-  interoperability: { label: 'Interoperability', icon: '🔗' },
-  security_auditing: { label: 'Security & Auditing', icon: '🔒' },
-  community_hubs: { label: 'Community Hubs', icon: '🤝' },
-  research: { label: 'Research', icon: '🔬' },
-  media_content: { label: 'Media & Content', icon: '📰' },
-};
+import { PRIORITY_LABELS } from '@/lib/engagement/labels';
 
 interface PrioritySignalsProps {
   epoch: number;
@@ -44,8 +30,18 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [animated, setAnimated] = useState(false);
 
   const hasSubmitted = !!userSignal || submitted;
+
+  // Staggered bar fill animation — must be before any early returns
+  const rankingData = rankings?.rankings ?? [];
+  useEffect(() => {
+    if (rankingData.length > 0) {
+      const timer = setTimeout(() => setAnimated(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [rankingData.length]);
 
   const togglePriority = useCallback((area: PriorityArea) => {
     hapticLight();
@@ -133,7 +129,6 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
     );
   }
 
-  const rankingData = rankings?.rankings ?? [];
   const totalVoters = rankings?.totalVoters ?? 0;
 
   return (
@@ -162,7 +157,7 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
               {rankingData
                 .filter((r) => r.score > 0)
                 .slice(0, 10)
-                .map((item) => {
+                .map((item, index) => {
                   const maxScore = rankingData[0]?.score || 1;
                   const pct = Math.round((item.score / maxScore) * 100);
                   const info = PRIORITY_LABELS[item.priority as PriorityArea];
@@ -189,8 +184,11 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
                         aria-label={`${info?.label ?? item.priority}: ${pct}%`}
                       >
                         <div
-                          className="h-full rounded-full bg-primary transition-all duration-700"
-                          style={{ width: `${pct}%` }}
+                          className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+                          style={{
+                            width: animated ? `${pct}%` : '0%',
+                            transitionDelay: `${index * 80}ms`,
+                          }}
                         />
                       </div>
                     </div>
@@ -318,12 +316,27 @@ export function PrioritySignals({ epoch }: PrioritySignalsProps) {
       ) : (
         <Card>
           <CardContent className="py-6">
-            <div className="flex items-center gap-2 text-sm text-primary">
-              <CheckCircle2 className="h-5 w-5" />
-              <span className="font-medium">
-                Your priorities have been recorded for Epoch {epoch}. Thanks for making your voice
-                heard!
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="font-medium">
+                  Your priorities have been recorded for Epoch {epoch}. Thanks for making your voice
+                  heard!
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-muted-foreground shrink-0"
+                onClick={() => {
+                  if (userSignal?.rankedPriorities) {
+                    setSelected(userSignal.rankedPriorities as PriorityArea[]);
+                  }
+                  setSubmitted(false);
+                }}
+              >
+                Update
+              </Button>
             </div>
           </CardContent>
         </Card>

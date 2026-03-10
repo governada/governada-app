@@ -1,8 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getStoredSession } from '@/lib/supabaseAuth';
-import type { CredibilityResult } from '@/lib/citizenCredibility';
+import type { CredibilityResult, CredibilityTier } from '@/lib/citizenCredibility';
+import { useSegment } from '@/components/providers/SegmentProvider';
 
 const STALE_30S = 30_000;
 const STALE_60S = 60_000;
@@ -221,10 +223,59 @@ export interface CredibilityWithLevel extends CredibilityResult {
   };
 }
 
+/** Credibility weight per tier (midpoint) for admin simulation */
+const TIER_WEIGHT: Record<CredibilityTier, number> = {
+  standard: 0.3,
+  enhanced: 0.65,
+  full: 0.9,
+};
+
+/**
+ * Fetch citizen credibility + engagement level data.
+ * When admin dimension overrides are active, patches the response so
+ * downstream components (EngagementHero, etc.) render the simulated state.
+ */
 export function useCitizenCredibility() {
-  return useQuery<CredibilityWithLevel>({
+  const { dimensionOverrides } = useSegment();
+  const query = useQuery<CredibilityWithLevel>({
     queryKey: ['citizen-credibility'],
     queryFn: () => fetchJsonWithAuth('/api/engagement/credibility'),
     staleTime: 5 * 60 * 1000,
   });
+
+  const patchedData = useMemo(() => {
+    if (!query.data) return undefined;
+    const hasEngagementOverride = dimensionOverrides.engagementLevel != null;
+    const hasCredibilityOverride = dimensionOverrides.credibilityTier != null;
+    if (!hasEngagementOverride && !hasCredibilityOverride) return query.data;
+
+    const patched = { ...query.data };
+
+    if (hasCredibilityOverride) {
+      const tier = dimensionOverrides.credibilityTier!;
+      patched.tier = tier;
+      patched.weight = TIER_WEIGHT[tier];
+    }
+
+    if (hasEngagementOverride && patched.engagementLevel) {
+      const level = dimensionOverrides.engagementLevel!;
+      patched.engagementLevel = {
+        ...patched.engagementLevel,
+        level,
+        nextLevel:
+          level === 'Champion'
+            ? null
+            : level === 'Engaged'
+              ? 'Champion'
+              : level === 'Informed'
+                ? 'Engaged'
+                : 'Informed',
+        progressToNext: level === 'Champion' ? 100 : 50,
+      };
+    }
+
+    return patched;
+  }, [query.data, dimensionOverrides.engagementLevel, dimensionOverrides.credibilityTier]);
+
+  return { ...query, data: patchedData };
 }

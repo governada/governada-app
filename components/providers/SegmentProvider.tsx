@@ -2,6 +2,10 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useWallet } from '@/utils/wallet-context';
+import type { DimensionOverrides } from '@/lib/admin/viewAsRegistry';
+import type { EngagementLevel } from '@/lib/citizen/engagementLevel';
+import type { CredibilityTier } from '@/lib/citizenCredibility';
+import type { GovernanceLevel } from '@/lib/governanceLevels';
 
 export type UserSegment = 'anonymous' | 'citizen' | 'spo' | 'drep' | 'cc';
 
@@ -25,11 +29,19 @@ export interface SegmentState {
   /** Score tier for DRep/SPO segments (e.g. 'Gold', 'Diamond') */
   tier: string | null;
   setOverride: (override: SegmentOverride | null) => void;
+  /** Cross-cutting dimension overrides (admin only) */
+  dimensionOverrides: DimensionOverrides;
+  setDimensionOverrides: (overrides: DimensionOverrides) => void;
+  /** Convenience: check if a specific dimension is overridden */
+  getEngagementLevelOverride: () => EngagementLevel | null;
+  getCredibilityTierOverride: () => CredibilityTier | null;
+  getGovernanceLevelOverride: () => GovernanceLevel | null;
 }
 
 const STORAGE_KEY = 'civica_segment';
 
 const noop = () => {};
+const noopDimensions = () => {};
 
 const DEFAULT_STATE: SegmentState = {
   segment: 'anonymous',
@@ -42,6 +54,11 @@ const DEFAULT_STATE: SegmentState = {
   delegatedPool: null,
   tier: null,
   setOverride: noop,
+  dimensionOverrides: {},
+  setDimensionOverrides: noopDimensions,
+  getEngagementLevelOverride: () => null,
+  getCredibilityTierOverride: () => null,
+  getGovernanceLevelOverride: () => null,
 };
 
 const SegmentContext = createContext<SegmentState>(DEFAULT_STATE);
@@ -79,7 +96,17 @@ function saveCache(state: CachedSegment, stakeAddress: string) {
 export function SegmentProvider({ children }: { children: ReactNode }) {
   const { connected, isAuthenticated, address } = useWallet();
   const [detected, setDetected] = useState<
-    Omit<SegmentState, 'segment' | 'realSegment' | 'setOverride'>
+    Omit<
+      SegmentState,
+      | 'segment'
+      | 'realSegment'
+      | 'setOverride'
+      | 'dimensionOverrides'
+      | 'setDimensionOverrides'
+      | 'getEngagementLevelOverride'
+      | 'getCredibilityTierOverride'
+      | 'getGovernanceLevelOverride'
+    >
   >({
     isLoading: false,
     stakeAddress: null,
@@ -91,6 +118,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
   });
   const [detectedSegment, setDetectedSegment] = useState<UserSegment>('anonymous');
   const [override, setOverride] = useState<SegmentOverride | null>(null);
+  const [dimensionOverrides, setDimensionOverrides] = useState<DimensionOverrides>({});
 
   const detect = useCallback(async (stakeAddress: string) => {
     const cached = loadCached(stakeAddress);
@@ -149,6 +177,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       });
       setDetectedSegment('anonymous');
       setOverride(null);
+      setDimensionOverrides({});
       return;
     }
     detect(address);
@@ -169,6 +198,11 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
         ? (override.delegatedPool ?? null)
         : detected.delegatedPool,
     setOverride,
+    dimensionOverrides,
+    setDimensionOverrides,
+    getEngagementLevelOverride: () => dimensionOverrides.engagementLevel ?? null,
+    getCredibilityTierOverride: () => dimensionOverrides.credibilityTier ?? null,
+    getGovernanceLevelOverride: () => dimensionOverrides.governanceLevel ?? null,
   };
 
   return <SegmentContext.Provider value={value}>{children}</SegmentContext.Provider>;

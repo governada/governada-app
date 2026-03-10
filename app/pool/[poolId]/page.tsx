@@ -630,24 +630,24 @@ export default async function PoolProfilePage({ params }: PageProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            {pledge != null && (
-              <div>
-                <p className="text-xs text-muted-foreground">Pledge</p>
-                <p className="text-sm font-mono tabular-nums font-medium">
-                  {formatAda(pledge)} \u20B3
-                </p>
-              </div>
-            )}
+            <div>
+              <p className="text-xs text-muted-foreground">Pledge</p>
+              <p className="text-sm font-mono tabular-nums font-medium">
+                {pledge != null && Number(pledge) > 0 ? `${formatAda(pledge)} \u20B3` : '\u2014'}
+              </p>
+            </div>
             <div>
               <p className="text-xs text-muted-foreground">Live Stake</p>
               <p className="text-sm font-mono tabular-nums font-medium">
-                {formatAda(liveStake)} \u20B3
+                {liveStake != null && Number(liveStake) > 0
+                  ? `${formatAda(liveStake)} \u20B3`
+                  : '\u2014'}
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Delegators</p>
               <p className="text-sm font-mono tabular-nums font-medium">
-                {delegatorCount.toLocaleString()}
+                {delegatorCount > 0 ? delegatorCount.toLocaleString() : '\u2014'}
               </p>
             </div>
             <div>

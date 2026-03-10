@@ -780,7 +780,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       </div>
 
       {/* 5. Delegation Power Trend */}
-      {delegationTrend.length >= 2 && (
+      {delegationTrend.length >= 2 ? (
         <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -812,6 +812,15 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
             </span>
             <span>E{delegationTrend[delegationTrend.length - 1].epoch}</span>
           </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border bg-card px-5 py-4">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+            Delegation Trend
+          </span>
+          <p className="text-xs text-muted-foreground">
+            Delegation trend data will appear after 2+ epochs of delegation activity.
+          </p>
         </div>
       )}
 

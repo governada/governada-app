@@ -60,3 +60,19 @@ export function HubCardSkeleton() {
     </div>
   );
 }
+
+/** Error state for a Hub card — shows a brief message with retry affordance */
+export function HubCardError({ message, onRetry }: { message?: string; onRetry?: () => void }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{message ?? 'Unable to load'}</p>
+        {onRetry && (
+          <button onClick={onRetry} className="text-xs text-primary hover:underline shrink-0">
+            Retry
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

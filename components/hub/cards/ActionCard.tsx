@@ -3,7 +3,7 @@
 import { AlertTriangle, Clock, Vote } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useDashboardUrgent } from '@/hooks/queries';
-import { HubCard, HubCardSkeleton, type CardUrgency } from './HubCard';
+import { HubCard, HubCardSkeleton, HubCardError, type CardUrgency } from './HubCard';
 
 interface UrgentProposal {
   txHash: string;
@@ -24,9 +24,11 @@ interface UrgentProposal {
  */
 export function ActionCard() {
   const { drepId } = useSegment();
-  const { data: urgentRaw, isLoading } = useDashboardUrgent(drepId);
+  const { data: urgentRaw, isLoading, isError, refetch } = useDashboardUrgent(drepId);
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError)
+    return <HubCardError message="Couldn't load pending votes" onRetry={() => refetch()} />;
 
   const urgentData = urgentRaw as Record<string, unknown> | undefined;
   const urgentProposals = (urgentData?.urgent as UrgentProposal[]) ?? [];

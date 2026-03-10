@@ -2,7 +2,7 @@
 
 import { Megaphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { HubCard, HubCardSkeleton } from './HubCard';
+import { HubCard, HubCardSkeleton, HubCardError } from './HubCard';
 
 interface ActivePoll {
   txHash: string;
@@ -22,7 +22,12 @@ interface ActivePoll {
  * Links to /engage.
  */
 export function EngagementCard() {
-  const { data: pollsRaw, isLoading } = useQuery({
+  const {
+    data: pollsRaw,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ['active-polls-hub'],
     queryFn: async () => {
       const res = await fetch('/api/governance/pulse');
@@ -33,6 +38,7 @@ export function EngagementCard() {
   });
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError) return <HubCardError message="Couldn't load engagement" onRetry={() => refetch()} />;
 
   const pulse = pollsRaw as Record<string, unknown> | undefined;
   const activePolls = (pulse?.activePolls as ActivePoll[]) ?? [];

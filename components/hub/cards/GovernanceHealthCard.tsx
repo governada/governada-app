@@ -2,7 +2,7 @@
 
 import { Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { HubCard, HubCardSkeleton, type CardUrgency } from './HubCard';
+import { HubCard, HubCardSkeleton, HubCardError, type CardUrgency } from './HubCard';
 
 /**
  * GovernanceHealthCard — GHI one-liner with health band.
@@ -12,7 +12,12 @@ import { HubCard, HubCardSkeleton, type CardUrgency } from './HubCard';
  * Like a credit score — not a dashboard.
  */
 export function GovernanceHealthCard() {
-  const { data: ghiRaw, isLoading } = useQuery({
+  const {
+    data: ghiRaw,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ['ghi-current'],
     queryFn: async () => {
       const res = await fetch('/api/governance/health-index');
@@ -23,6 +28,8 @@ export function GovernanceHealthCard() {
   });
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError)
+    return <HubCardError message="Couldn't load governance health" onRetry={() => refetch()} />;
 
   const ghi = ghiRaw as Record<string, unknown> | undefined;
   const score = (ghi?.score as number) ?? (ghi?.compositeScore as number) ?? 0;

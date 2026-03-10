@@ -8,7 +8,7 @@ import {
   useSPOPoolCompetitive,
   useSPODelegatorTrends,
 } from '@/hooks/queries';
-import { HubCard, HubCardSkeleton } from './HubCard';
+import { HubCard, HubCardSkeleton, HubCardError } from './HubCard';
 
 function TrendIcon({ value }: { value: number }) {
   if (value > 0) return <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />;
@@ -24,9 +24,11 @@ function TrendIcon({ value }: { value: number }) {
  */
 export function DRepDelegatorsCard() {
   const { drepId } = useSegment();
-  const { data: trendsRaw, isLoading } = useDashboardDelegatorTrends(drepId);
+  const { data: trendsRaw, isLoading, isError, refetch } = useDashboardDelegatorTrends(drepId);
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError)
+    return <HubCardError message="Couldn't load delegator data" onRetry={() => refetch()} />;
 
   const trends = trendsRaw as Record<string, unknown> | undefined;
   const currentCount = (trends?.currentCount as number) ?? 0;
@@ -70,9 +72,10 @@ export function DRepDelegatorsCard() {
  */
 export function DRepScoreCard() {
   const { drepId } = useSegment();
-  const { data: reportRaw, isLoading } = useDRepReportCard(drepId);
+  const { data: reportRaw, isLoading, isError, refetch } = useDRepReportCard(drepId);
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError) return <HubCardError message="Couldn't load your score" onRetry={() => refetch()} />;
 
   const report = reportRaw as Record<string, unknown> | undefined;
   const score = Math.round((report?.score as number) ?? 0);
@@ -118,9 +121,11 @@ export function DRepScoreCard() {
  */
 export function SPOGovernanceScoreCard() {
   const { poolId } = useSegment();
-  const { data: competitiveRaw, isLoading } = useSPOPoolCompetitive(poolId);
+  const { data: competitiveRaw, isLoading, isError, refetch } = useSPOPoolCompetitive(poolId);
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError)
+    return <HubCardError message="Couldn't load governance score" onRetry={() => refetch()} />;
 
   const competitive = competitiveRaw as Record<string, unknown> | undefined;
   const pool = competitive?.pool as Record<string, unknown> | undefined;
@@ -172,9 +177,11 @@ export function SPOGovernanceScoreCard() {
  */
 export function SPODelegatorsCard() {
   const { poolId } = useSegment();
-  const { data: trendsRaw, isLoading } = useSPODelegatorTrends(poolId);
+  const { data: trendsRaw, isLoading, isError, refetch } = useSPODelegatorTrends(poolId);
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError)
+    return <HubCardError message="Couldn't load delegator changes" onRetry={() => refetch()} />;
 
   const trends = trendsRaw as Record<string, unknown> | undefined;
   const currentCount = (trends?.totalDelegators as number) ?? 0;

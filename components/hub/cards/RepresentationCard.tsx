@@ -3,7 +3,7 @@
 import { ShieldCheck, ShieldAlert, ShieldX, User } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useGovernanceHolder } from '@/hooks/queries';
-import { HubCard, HubCardSkeleton, type CardUrgency } from './HubCard';
+import { HubCard, HubCardSkeleton, HubCardError, type CardUrgency } from './HubCard';
 
 /**
  * RepresentationCard — THE citizen's primary card.
@@ -16,9 +16,11 @@ import { HubCard, HubCardSkeleton, type CardUrgency } from './HubCard';
  */
 export function RepresentationCard() {
   const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
-  const { data: holderRaw, isLoading } = useGovernanceHolder(stakeAddress);
+  const { data: holderRaw, isLoading, isError, refetch } = useGovernanceHolder(stakeAddress);
 
   if (isLoading) return <HubCardSkeleton />;
+  if (isError)
+    return <HubCardError message="Couldn't load delegation status" onRetry={() => refetch()} />;
 
   const holder = holderRaw as Record<string, unknown> | undefined;
 
@@ -92,9 +94,8 @@ export function RepresentationCard() {
             <User className="h-3.5 w-3.5" />
             Score: {Math.round(drepScore)}
           </span>
-          {delegatedPool && (
-            <span className="text-muted-foreground/60">&middot; Pool delegated</span>
-          )}
+          <span className="text-muted-foreground/60">&middot;</span>
+          <span>{delegatedPool ? 'Full coverage' : 'Partial coverage'}</span>
         </div>
       </div>
     </HubCard>

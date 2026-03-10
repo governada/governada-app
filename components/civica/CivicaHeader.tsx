@@ -21,6 +21,7 @@ import {
   Shield,
   ShieldCheck,
   Scale,
+  Layers,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { useTheme } from 'next-themes';
@@ -42,6 +43,12 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  SEGMENT_MENU_GROUPS,
+  CROSS_CUTTING_DIMENSIONS,
+  getPresetsBySegment,
+  type SegmentPreset,
+} from '@/lib/admin/viewAsRegistry';
 
 const WalletConnectModal = dynamic(
   () => import('@/components/WalletConnectModal').then((mod) => mod.WalletConnectModal),
@@ -77,23 +84,24 @@ export function CivicaHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
-  const { segment, realSegment, stakeAddress, tier, setOverride } = useSegment();
+  const {
+    segment,
+    realSegment,
+    stakeAddress,
+    tier,
+    setOverride,
+    dimensionOverrides,
+    setDimensionOverrides,
+  } = useSegment();
   const { data: adminData } = useAdminCheck(isAuthenticated);
   const isAdmin = adminData?.isAdmin === true;
   const hasOverride = segment !== realSegment;
+  const hasDimensionOverrides = Object.values(dimensionOverrides).some((v) => v != null);
+  const presetsBySegment = getPresetsBySegment();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
   const { resolvedTheme, setTheme } = useTheme();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState<
-    | 'drep'
-    | 'spo'
-    | 'cc'
-    | 'citizen-delegation'
-    | 'drep-claimed'
-    | 'spo-claimed'
-    | 'cc-claimed'
-    | null
-  >(null);
+  const [pickerPreset, setPickerPreset] = useState<SegmentPreset | null>(null);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -188,14 +196,15 @@ export function CivicaHeader() {
                   className={cn(
                     'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full transition-colors cursor-pointer',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                    hasOverride
+                    hasOverride || hasDimensionOverrides
                       ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25'
                       : 'text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground',
                   )}
                   aria-label="User menu"
                 >
                   {(() => {
-                    if (hasOverride) return <Eye className="h-3.5 w-3.5" />;
+                    if (hasOverride || hasDimensionOverrides)
+                      return <Eye className="h-3.5 w-3.5" />;
                     const SegmentIcon = SEGMENT_ICONS[segment];
                     return <SegmentIcon className="h-3.5 w-3.5" />;
                   })()}
@@ -231,110 +240,116 @@ export function CivicaHeader() {
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
                           Simulate segment
                         </DropdownMenuLabel>
-                        {/* Citizen sub-menu */}
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            Citizen
-                            {realSegment === 'citizen' && ' (yours)'}
-                            {segment === 'citizen' && hasOverride && ' ✓'}
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setOverride({ segment: 'citizen', delegatedDrep: null })
-                              }
-                            >
-                              Undelegated
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setPickerMode('citizen-delegation')}>
-                              Delegated to...
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setOverride({
-                                  segment: 'citizen',
-                                  delegatedDrep: 'drep_always_abstain',
-                                })
-                              }
-                            >
-                              Abstainer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setOverride({
-                                  segment: 'citizen',
-                                  delegatedDrep: 'drep_always_no_confidence',
-                                })
-                              }
-                            >
-                              No Confidence
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        {/* DRep sub-menu */}
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            DRep
-                            {realSegment === 'drep' && ' (yours)'}
-                            {segment === 'drep' && hasOverride && ' ✓'}
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem
-                              onClick={() => setOverride({ segment: 'drep', drepId: null })}
-                            >
-                              Unclaimed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setPickerMode('drep-claimed')}>
-                              Claimed (pick DRep)...
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        {/* SPO sub-menu */}
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            SPO
-                            {realSegment === 'spo' && ' (yours)'}
-                            {segment === 'spo' && hasOverride && ' ✓'}
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem
-                              onClick={() => setOverride({ segment: 'spo', poolId: null })}
-                            >
-                              Unclaimed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setPickerMode('spo-claimed')}>
-                              Claimed (pick SPO)...
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        {/* CC Member sub-menu */}
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            CC Member
-                            {realSegment === 'cc' && ' (yours)'}
-                            {segment === 'cc' && hasOverride && ' ✓'}
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem onClick={() => setOverride({ segment: 'cc' })}>
-                              Unclaimed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setPickerMode('cc-claimed')}>
-                              Claimed (pick member)...
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
+                        {/* Data-driven segment sub-menus from registry */}
+                        {SEGMENT_MENU_GROUPS.map((group) => {
+                          const presets = presetsBySegment.get(group.segment) ?? [];
+                          return (
+                            <DropdownMenuSub key={group.segment}>
+                              <DropdownMenuSubTrigger>
+                                {group.label}
+                                {realSegment === group.segment && ' (yours)'}
+                                {segment === group.segment && hasOverride && ' ✓'}
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                {presets.map((preset) => (
+                                  <DropdownMenuItem
+                                    key={preset.id}
+                                    onClick={() => {
+                                      if (preset.requiresPicker) {
+                                        setPickerPreset(preset);
+                                      } else {
+                                        setOverride({
+                                          segment: preset.segment,
+                                          ...preset.overrides,
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {preset.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          );
+                        })}
                         <DropdownMenuSeparator />
                         {/* Anonymous */}
                         <DropdownMenuItem onClick={() => setOverride({ segment: 'anonymous' })}>
                           Anonymous (no wallet)
                           {segment === 'anonymous' && hasOverride && ' ✓'}
                         </DropdownMenuItem>
-                        {hasOverride && (
+                        {/* Cross-cutting dimension overrides */}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <Layers className="h-4 w-4" />
+                            Dimensions{hasDimensionOverrides ? ' ✓' : ''}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">
+                              Override user state dimensions
+                            </DropdownMenuLabel>
+                            {CROSS_CUTTING_DIMENSIONS.map((dim) => (
+                              <DropdownMenuSub key={dim.id}>
+                                <DropdownMenuSubTrigger>
+                                  {dim.label}
+                                  {dimensionOverrides[dim.id as keyof typeof dimensionOverrides] !=
+                                    null && ' ✓'}
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      setDimensionOverrides({
+                                        ...dimensionOverrides,
+                                        [dim.id]: null,
+                                      })
+                                    }
+                                  >
+                                    Auto (computed)
+                                    {dimensionOverrides[
+                                      dim.id as keyof typeof dimensionOverrides
+                                    ] == null && ' ✓'}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {dim.values.map((val) => (
+                                    <DropdownMenuItem
+                                      key={val.key}
+                                      onClick={() =>
+                                        setDimensionOverrides({
+                                          ...dimensionOverrides,
+                                          [dim.id]: val.key,
+                                        })
+                                      }
+                                    >
+                                      {val.label}
+                                      {dimensionOverrides[
+                                        dim.id as keyof typeof dimensionOverrides
+                                      ] === val.key && ' ✓'}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            ))}
+                            {hasDimensionOverrides && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setDimensionOverrides({})}>
+                                  Reset all dimensions
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        {(hasOverride || hasDimensionOverrides) && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setOverride(null)}>
-                              Reset to {SEGMENT_LABELS[realSegment]}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setOverride(null);
+                                setDimensionOverrides({});
+                              }}
+                            >
+                              Reset all overrides
                             </DropdownMenuItem>
                           </>
                         )}
@@ -366,53 +381,28 @@ export function CivicaHeader() {
           )}
         </div>
       </div>
-      {isAdmin && pickerMode && (
+      {isAdmin && pickerPreset?.requiresPicker && (
         <AdminViewAsPicker
-          mode={
-            pickerMode === 'citizen-delegation' || pickerMode === 'drep-claimed'
-              ? 'drep'
-              : pickerMode === 'spo-claimed'
-                ? 'spo'
-                : pickerMode === 'cc-claimed'
-                  ? 'cc'
-                  : (pickerMode as 'drep' | 'spo' | 'cc')
-          }
-          open={!!pickerMode}
+          mode={pickerPreset.requiresPicker}
+          open={!!pickerPreset}
           onOpenChange={(open) => {
-            if (!open) setPickerMode(null);
+            if (!open) setPickerPreset(null);
           }}
           onSelect={(id) => {
-            if (pickerMode === 'citizen-delegation') {
+            const p = pickerPreset;
+            if (!p) return;
+            if (p.segment === 'citizen' && p.requiresPicker === 'drep') {
               setOverride({ segment: 'citizen', delegatedDrep: id });
-            } else if (pickerMode === 'drep-claimed') {
+            } else if (p.segment === 'drep') {
               setOverride({ segment: 'drep', drepId: id });
-            } else if (pickerMode === 'spo-claimed') {
+            } else if (p.segment === 'spo') {
               setOverride({ segment: 'spo', poolId: id });
-            } else if (pickerMode === 'cc-claimed') {
+            } else if (p.segment === 'cc') {
               setOverride({ segment: 'cc' });
             }
           }}
-          {...(pickerMode === 'citizen-delegation'
-            ? {
-                titleOverride: 'Delegate to a DRep',
-                descriptionOverride: 'View the app as a citizen delegated to this DRep.',
-              }
-            : pickerMode === 'drep-claimed'
-              ? {
-                  titleOverride: 'Claim a DRep profile',
-                  descriptionOverride: 'View the app as this DRep.',
-                }
-              : pickerMode === 'spo-claimed'
-                ? {
-                    titleOverride: 'Claim an SPO profile',
-                    descriptionOverride: 'View the app as this pool operator.',
-                  }
-                : pickerMode === 'cc-claimed'
-                  ? {
-                      titleOverride: 'Claim a CC member profile',
-                      descriptionOverride: 'View the app as this committee member.',
-                    }
-                  : {})}
+          titleOverride={pickerPreset.pickerTitle}
+          descriptionOverride={pickerPreset.pickerDescription}
         />
       )}
     </header>

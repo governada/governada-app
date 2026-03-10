@@ -111,17 +111,14 @@ C:\Users\dalto\governada\
 
 ## Audit Commands
 
-| Command                                  | Purpose                                                                             | Cadence                                        |
-| ---------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `/audit [full\|step:N\|area]`            | Product audit against vision (10 dimensions)                                        | Quarterly full, monthly focused                |
-| `/verify-audit`                          | Confirm previous audit gaps were closed                                             | After each build cycle                         |
-| `/audit-sync [type]`                     | Sync pipeline health, performance, self-healing                                     | Monthly, quarterly full                        |
-| `/audit-data [domain]`                   | Data integrity, completeness, consistency                                           | Monthly                                        |
-| `/audit-scoring [system]`                | Scoring methodology, calibration, gaming resistance                                 | Quarterly                                      |
-| `/audit-ux [persona\|surface]`           | UX quality, intelligence surfacing, persona journeys, retention                     | Monthly persona, quarterly full                |
-| `/audit-journeys [persona\|task]`        | End-to-end task flows, friction measurement, edge cases, regression                 | Monthly persona, quarterly full                |
-| `/audit-security [area]`                 | Auth, RLS, API security, data protection, infra hardening, anti-gaming              | Pre-launch full, quarterly, after auth changes |
-| `/audit-all [full\|areas\|steps\|quick]` | Orchestrator: launches all audits as parallel subagents, synthesizes unified report | Quarterly full, monthly quick                  |
+| Command                                          | Purpose                                                                                                        | Cadence                                        |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `/audit [full\|step:N\|area]`                    | Product audit against vision (10 dimensions)                                                                   | Quarterly full, monthly focused                |
+| `/verify-audit`                                  | Confirm previous audit gaps were closed                                                                        | After each build cycle                         |
+| `/audit-experience [persona-state]`              | End-to-end experience audit for one persona (UX + journeys + intelligence + craft)                             | Monthly per persona, quarterly rotation        |
+| `/audit-engine [full\|scoring\|data\|sync]`      | Backend engine: scoring models, data integrity, sync pipeline, calibration                                     | Monthly focused, quarterly full                |
+| `/audit-security [area]`                         | Auth, RLS, API security, data protection, infra hardening, anti-gaming                                         | Pre-launch full, quarterly, after auth changes |
+| `/audit-all [full\|experiences\|systems\|quick]` | Orchestrator: launches experience + engine + security audits as parallel subagents, synthesizes unified report | Quarterly full, monthly quick                  |
 
 ## Build Commands
 

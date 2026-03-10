@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet-context';
 import { ProposalStatusFunnel } from '@/components/civica/charts/ProposalStatusFunnel';
@@ -319,8 +320,18 @@ export function ProposalsBrowse() {
 
       {/* List */}
       {pageItems.length === 0 ? (
-        <div className="py-16 text-center text-muted-foreground text-sm">
-          No proposals match your search.
+        <div className="py-16 text-center space-y-4">
+          <p className="text-muted-foreground text-sm">No proposals match your filters.</p>
+          <div className="flex gap-2 justify-center">
+            {!isDefault && (
+              <Button variant="outline" size="sm" onClick={resetFilters}>
+                Clear Filters
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/match">Try Quick Match &rarr;</Link>
+            </Button>
+          </div>
         </div>
       ) : (
         <div

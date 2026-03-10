@@ -25,9 +25,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GovernanceRadar } from '@/components/GovernanceRadar';
-import { RadarOverlay } from '@/components/matching/RadarOverlay';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
+
+const GovernanceRadar = dynamic(
+  () => import('@/components/GovernanceRadar').then((m) => ({ default: m.GovernanceRadar })),
+  { ssr: false },
+);
+const RadarOverlay = dynamic(
+  () => import('@/components/matching/RadarOverlay').then((m) => ({ default: m.RadarOverlay })),
+  { ssr: false },
+);
 import { usePostHog } from 'posthog-js/react';
 import { DelegateButton } from '@/components/DelegateButton';
 import { getStoredSession } from '@/lib/supabaseAuth';

@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Zap } from 'lucide-react';
+import { ArrowRight, Zap, Share2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { getDominantDimension, getIdentityColor } from '@/lib/drepIdentity';
+import { webShare, canWebShare, copyToClipboard } from '@/lib/share';
 
 interface ShareableProfile {
   personality: string;
@@ -117,6 +118,8 @@ export function MatchResultClient({ encoded }: { encoded: string | undefined }) 
               <p className="text-sm text-foreground/90 leading-relaxed">{profile.narrative}</p>
             </div>
           )}
+
+          <ShareResultButton personality={profile.personality} encoded={encoded!} />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 pb-8">
@@ -135,5 +138,45 @@ export function MatchResultClient({ encoded }: { encoded: string | undefined }) 
         </div>
       </div>
     </div>
+  );
+}
+
+function ShareResultButton({ personality, encoded }: { personality: string; encoded: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    const url = `${window.location.origin}/match/result?profile=${encodeURIComponent(encoded)}`;
+    const text = `I'm "${personality}" on Cardano governance. Find your governance identity:`;
+
+    if (canWebShare()) {
+      const shared = await webShare({
+        title: `I'm ${personality} — Governada`,
+        text,
+        url,
+      });
+      if (shared) return;
+    }
+
+    const ok = await copyToClipboard(url);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [personality, encoded]);
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleShare} className="gap-2">
+      {copied ? (
+        <>
+          <Check className="h-4 w-4" />
+          Link Copied
+        </>
+      ) : (
+        <>
+          <Share2 className="h-4 w-4" />
+          Share This Identity
+        </>
+      )}
+    </Button>
   );
 }

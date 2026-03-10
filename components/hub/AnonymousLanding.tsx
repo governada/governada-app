@@ -86,6 +86,16 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
             </span>
           </div>
         )}
+
+        {/* Secondary discovery link */}
+        <div className="flex justify-center">
+          <Link
+            href="/governance/health"
+            className="text-xs text-muted-foreground/70 hover:text-primary transition-colors"
+          >
+            Is Cardano governance healthy? &rarr;
+          </Link>
+        </div>
       </section>
     </div>
   );

@@ -70,7 +70,8 @@ export const GET = withRouteHandler(
       .from('dreps')
       .select('id, score, info')
       .gt('score', 0)
-      .order('score', { ascending: false });
+      .order('score', { ascending: false })
+      .limit(2500);
 
     const movers = (currentDreps || [])
       .map((d) => {

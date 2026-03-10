@@ -16,19 +16,21 @@ export function ErrorCard({
 }: ErrorCardProps) {
   return (
     <div
+      role="alert"
+      aria-live="assertive"
       className={cn(
         'rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center space-y-3',
         className,
       )}
     >
-      <AlertCircle className="h-5 w-5 text-destructive mx-auto" />
+      <AlertCircle className="h-5 w-5 text-destructive mx-auto" aria-hidden />
       <p className="text-sm text-muted-foreground">{message}</p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
         >
-          <RefreshCw className="h-3 w-3" />
+          <RefreshCw className="h-3 w-3" aria-hidden />
           Try again
         </button>
       )}

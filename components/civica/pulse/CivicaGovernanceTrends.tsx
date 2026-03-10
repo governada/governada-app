@@ -48,6 +48,8 @@ function TrendLine({
       preserveAspectRatio="none"
       className="w-full"
       style={{ height }}
+      role="img"
+      aria-label={`Trend over ${data.length} epochs: ${data[0]?.toFixed(1)} to ${data[data.length - 1]?.toFixed(1)}`}
     >
       <polygon points={areaPts} fill={color} opacity="0.12" />
       <polyline fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" points={pts} />
@@ -73,12 +75,17 @@ function DualLine({ rows, height = 80 }: { rows: SparkRow[]; height?: number }) 
     .map((r, i) => `${xScale(i).toFixed(1)},${yScale(r.rationale_rate).toFixed(1)}`)
     .join(' ');
 
+  const lastP = rows[rows.length - 1]?.participation_rate?.toFixed(1) ?? '?';
+  const lastR = rows[rows.length - 1]?.rationale_rate?.toFixed(1) ?? '?';
+
   return (
     <svg
       viewBox={`0 0 ${W} ${height}`}
       preserveAspectRatio="none"
       className="w-full"
       style={{ height }}
+      role="img"
+      aria-label={`Participation and rationale rates over ${rows.length} epochs. Latest: ${lastP}% participation, ${lastR}% rationale`}
     >
       <polyline fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinejoin="round" points={pPts} />
       <polyline

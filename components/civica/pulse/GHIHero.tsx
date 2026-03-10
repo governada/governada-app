@@ -1,9 +1,12 @@
 'use client';
 
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useGovernanceHealthIndex } from '@/hooks/queries';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorCard } from '@/components/ui/ErrorCard';
+import { spring } from '@/lib/animations';
 
 interface GHICurrent {
   score: number;
@@ -48,8 +51,11 @@ const BAND_STYLES: Record<string, { text: string; ring: string; bg: string; labe
   },
 };
 
+const CIRCUMFERENCE = 2 * Math.PI * 15.5;
+
 export function GHIHero() {
-  const { data: rawGhi, isLoading, isError } = useGovernanceHealthIndex(1);
+  const { data: rawGhi, isLoading, isError, refetch } = useGovernanceHealthIndex(1);
+  const shouldReduceMotion = useReducedMotion();
 
   if (isLoading) {
     return (
@@ -63,7 +69,11 @@ export function GHIHero() {
     );
   }
 
-  if (isError || !rawGhi) return null;
+  if (isError || !rawGhi) {
+    return (
+      <ErrorCard message="Governance Health temporarily unavailable." onRetry={() => refetch()} />
+    );
+  }
 
   const ghi = rawGhi as GHIData;
   const score = ghi.current?.score ?? 0;
@@ -74,6 +84,7 @@ export function GHIHero() {
 
   const style = BAND_STYLES[band] ?? BAND_STYLES.fair;
   const scorePct = Math.min(100, Math.max(0, score));
+  const strokeOffset = CIRCUMFERENCE * (1 - scorePct / 100);
 
   const TrendIcon = direction === 'up' ? TrendingUp : direction === 'down' ? TrendingDown : Minus;
   const trendColor =
@@ -89,7 +100,13 @@ export function GHIHero() {
       : null;
 
   return (
-    <div className="flex items-center gap-5 p-5 rounded-xl border border-border bg-card">
+    <div
+      className={cn(
+        'flex items-center gap-5 p-5 rounded-xl border border-border bg-card',
+        band === 'strong' &&
+          'ring-1 ring-emerald-500/20 shadow-[0_0_15px_-3px] shadow-emerald-500/10',
+      )}
+    >
       {/* Score ring */}
       <div
         className="relative h-20 w-20 shrink-0"
@@ -109,16 +126,22 @@ export function GHIHero() {
             strokeWidth="2.5"
             className="text-muted/30"
           />
-          <circle
+          <motion.circle
             cx="18"
             cy="18"
             r="15.5"
             fill="none"
             stroke={style.ring}
             strokeWidth="2.5"
-            strokeDasharray={`${scorePct} ${100 - scorePct}`}
+            strokeDasharray={CIRCUMFERENCE}
             strokeLinecap="round"
-            className="transition-all duration-1000"
+            initial={{ strokeDashoffset: shouldReduceMotion ? strokeOffset : CIRCUMFERENCE }}
+            animate={{ strokeDashoffset: strokeOffset }}
+            transition={
+              shouldReduceMotion
+                ? { duration: 0 }
+                : { type: 'spring', ...(spring.smooth as object), delay: 0.2 }
+            }
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">

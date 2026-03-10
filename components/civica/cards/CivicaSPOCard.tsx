@@ -4,7 +4,14 @@ import Link from 'next/link';
 import { ShieldCheck, ChevronRight, AlertTriangle, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { computeTier } from '@/lib/scoring/tiers';
-import { TIER_SCORE_COLOR, TIER_BORDER, TIER_BG, TIER_GLOW, tierKey } from './tierStyles';
+import {
+  TIER_SCORE_COLOR,
+  TIER_BORDER,
+  TIER_BG,
+  TIER_GLOW,
+  TIER_LEFT_ACCENT,
+  tierKey,
+} from './tierStyles';
 import { TierBadge } from './TierBadge';
 import { ScoreExplainer } from '@/components/ui/ScoreExplainer';
 
@@ -71,6 +78,7 @@ export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
         TIER_BG[tier],
         TIER_BORDER[tier],
         TIER_GLOW[tier],
+        TIER_LEFT_ACCENT[tier],
       )}
     >
       {/* ── Header ──────────────────────────────────────────── */}

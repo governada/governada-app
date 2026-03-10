@@ -35,7 +35,7 @@ export function SimilarDReps({ drepId }: SimilarDRepsProps) {
       <section className="border-t pt-8 mt-8">
         <h3 className="text-lg font-semibold mb-4">Similar DReps</h3>
         <p className="text-sm text-muted-foreground">
-          No similar DReps found — alignment data may still be computing.
+          Similar DReps will appear as more representatives provide their governance metadata.
         </p>
       </section>
     );

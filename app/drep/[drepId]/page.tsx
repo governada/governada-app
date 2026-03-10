@@ -98,6 +98,7 @@ import { ActivitySideWidget } from '@/components/ActivitySideWidget';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
 import { DRepOutcomeSummary } from '@/components/civica/profiles/DRepOutcomeSummary';
+import { ScoreAnalysisGate } from '@/components/civica/profiles/ScoreAnalysisGate';
 import { getProposalOutcomesBatch } from '@/lib/proposalOutcomes';
 import {
   getDRepById,
@@ -334,71 +335,6 @@ async function getSpoAlignment(votes: VoteRecord[]): Promise<number | null> {
   } catch {
     return null;
   }
-}
-
-/* ─── Delegation Verdict ─── */
-function DelegationVerdict({
-  score,
-  participationRate,
-  rationaleRate,
-  totalVotes,
-  isActive,
-  scoreMomentum,
-}: {
-  score: number;
-  participationRate: number;
-  rationaleRate: number;
-  totalVotes: number;
-  isActive: boolean;
-  scoreMomentum: number | null;
-}) {
-  if (totalVotes === 0) {
-    return (
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-5 py-4">
-        <p className="text-sm font-medium">This DRep hasn&apos;t voted on any proposals yet.</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Check back after they participate in governance to see their track record.
-        </p>
-      </div>
-    );
-  }
-
-  const headline = !isActive
-    ? 'This DRep is currently inactive and not accepting new delegations.'
-    : score >= 80
-      ? 'A highly active and transparent representative with a strong governance track record.'
-      : score >= 60
-        ? 'A solid representative who participates regularly in governance.'
-        : score >= 40
-          ? 'A developing representative — participating but with room to improve.'
-          : 'An early-stage representative. Limited activity so far.';
-
-  const details: string[] = [];
-  if (participationRate >= 80) details.push('votes on most proposals');
-  else if (participationRate >= 50) details.push('votes on about half of proposals');
-  else details.push('votes selectively');
-
-  if (rationaleRate >= 80) details.push('almost always explains their reasoning');
-  else if (rationaleRate >= 50) details.push('explains their reasoning about half the time');
-  else if (rationaleRate > 0) details.push('rarely explains their reasoning');
-  else details.push("hasn't provided vote rationales yet");
-
-  if (scoreMomentum != null && scoreMomentum > 0.5) details.push('trending upward');
-  else if (scoreMomentum != null && scoreMomentum < -0.5) details.push('score declining recently');
-
-  const borderColor =
-    score >= 70
-      ? 'border-emerald-500/20 bg-emerald-500/5'
-      : score >= 40
-        ? 'border-primary/20 bg-primary/5'
-        : 'border-amber-500/20 bg-amber-500/5';
-
-  return (
-    <div className={`rounded-xl border ${borderColor} px-5 py-4`}>
-      <p className="text-sm font-medium">{headline}</p>
-      <p className="text-xs text-muted-foreground mt-1 capitalize">{details.join(' · ')}</p>
-    </div>
-  );
 }
 
 /* ─── Key Facts Strip ─── */
@@ -639,16 +575,6 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </div>
       )}
 
-      {/* 3b. Delegation Verdict */}
-      <DelegationVerdict
-        score={drep.drepScore}
-        participationRate={drep.effectiveParticipation}
-        rationaleRate={drep.rationaleRate}
-        totalVotes={drep.totalVotes}
-        isActive={drep.isActive}
-        scoreMomentum={drep.scoreMomentum}
-      />
-
       {/* 3c. Citizen Sentiment Signal */}
       <DRepCitizenSignals drepId={drep.drepId} />
 
@@ -830,7 +756,19 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       {/* 7. Activity feed */}
       <ActivitySideWidget drepId={drep.drepId} limit={5} />
 
-      {/* 8. Similar DReps */}
+      {/* 8. About & Community (folded from former Community tab into Overview) */}
+      <AboutSection
+        description={drep.description}
+        bio={drep.metadata?.bio}
+        email={drep.metadata?.email}
+        references={drep.metadata?.references as Array<{ uri: string; label?: string }> | undefined}
+      />
+      <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />
+      <Suspense fallback={null}>
+        <DRepDashboardWrapper drepId={drep.drepId} drepName={drepName} isClaimed={isClaimed} />
+      </Suspense>
+
+      {/* 9. Similar DReps */}
       <SimilarDReps drepId={drep.drepId} />
 
       {/* ════════════════════════════════════════════
@@ -849,89 +787,78 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           </div>
         }
         scoreAnalysisContent={
-          <div className="space-y-6">
-            {tierProgress.recommendedAction && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 px-5 py-4 flex items-start gap-3">
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    Recommended Action
-                  </p>
-                  <p className="text-sm font-medium">{tierProgress.recommendedAction}</p>
-                </div>
-                {tierProgress.pointsToNext != null && (
-                  <div className="shrink-0 text-right">
-                    <p className="text-xl font-bold font-display tabular-nums text-primary">
-                      +{tierProgress.pointsToNext}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      pts to {tierProgress.nextTier}
-                    </p>
+          <ScoreAnalysisGate
+            drepId={drep.drepId}
+            isClaimed={isClaimed}
+            ownerContent={
+              <>
+                {tierProgress.recommendedAction && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-5 py-4 flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                        Recommended Action
+                      </p>
+                      <p className="text-sm font-medium">{tierProgress.recommendedAction}</p>
+                    </div>
+                    {tierProgress.pointsToNext != null && (
+                      <div className="shrink-0 text-right">
+                        <p className="text-xl font-bold font-display tabular-nums text-primary">
+                          +{tierProgress.pointsToNext}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                          pts to {tierProgress.nextTier}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-            <ScoreSimulator drepId={drep.drepId} pendingCount={pendingProposalCount} />
-            <ScoreDeepDive
-              score={drep.drepScore}
-              engagementQuality={drep.engagementQuality}
-              engagementQualityRaw={drep.engagementQualityRaw}
-              effectiveParticipation={drep.effectiveParticipationV3}
-              effectiveParticipationRaw={drep.effectiveParticipationV3Raw}
-              reliability={drep.reliabilityV3}
-              reliabilityRaw={drep.reliabilityV3Raw}
-              governanceIdentity={drep.governanceIdentity}
-              governanceIdentityRaw={drep.governanceIdentityRaw}
-              scoreMomentum={drep.scoreMomentum}
-              rationaleRate={drep.rationaleRate}
-              deliberationModifier={drep.deliberationModifier}
-              reliabilityStreak={drep.reliabilityStreak}
-              reliabilityRecency={drep.reliabilityRecency}
-              reliabilityLongestGap={drep.reliabilityLongestGap}
-              reliabilityTenure={drep.reliabilityTenure}
-              profileCompleteness={drep.profileCompleteness}
-              delegatorCount={drep.delegatorCount}
-            />
-            <ScoreCard
-              drep={drep}
-              adjustedRationale={adjustedRationale}
-              pillars={pillars}
-              pillarStatuses={pillarStatuses}
-              quickWin={quickWin}
-              percentile={percentile}
-              participationHint={participationHint}
-              rationaleHint={rationaleHint}
-              reliabilityHint={reliabilityHint}
-              profileHint={profileHint}
-            />
-            <MilestoneBadges drepId={drep.drepId} compact />
-            <ScoreHistoryChart history={scoreHistory} />
-            <ActivityHeatmap drepId={drep.drepId} />
-          </div>
+                <ScoreSimulator drepId={drep.drepId} pendingCount={pendingProposalCount} />
+                <ScoreDeepDive
+                  score={drep.drepScore}
+                  engagementQuality={drep.engagementQuality}
+                  engagementQualityRaw={drep.engagementQualityRaw}
+                  effectiveParticipation={drep.effectiveParticipationV3}
+                  effectiveParticipationRaw={drep.effectiveParticipationV3Raw}
+                  reliability={drep.reliabilityV3}
+                  reliabilityRaw={drep.reliabilityV3Raw}
+                  governanceIdentity={drep.governanceIdentity}
+                  governanceIdentityRaw={drep.governanceIdentityRaw}
+                  scoreMomentum={drep.scoreMomentum}
+                  rationaleRate={drep.rationaleRate}
+                  deliberationModifier={drep.deliberationModifier}
+                  reliabilityStreak={drep.reliabilityStreak}
+                  reliabilityRecency={drep.reliabilityRecency}
+                  reliabilityLongestGap={drep.reliabilityLongestGap}
+                  reliabilityTenure={drep.reliabilityTenure}
+                  profileCompleteness={drep.profileCompleteness}
+                  delegatorCount={drep.delegatorCount}
+                />
+                <ScoreCard
+                  drep={drep}
+                  adjustedRationale={adjustedRationale}
+                  pillars={pillars}
+                  pillarStatuses={pillarStatuses}
+                  quickWin={quickWin}
+                  percentile={percentile}
+                  participationHint={participationHint}
+                  rationaleHint={rationaleHint}
+                  reliabilityHint={reliabilityHint}
+                  profileHint={profileHint}
+                />
+                <MilestoneBadges drepId={drep.drepId} compact />
+              </>
+            }
+            publicContent={
+              <>
+                <ScoreHistoryChart history={scoreHistory} />
+                <ActivityHeatmap drepId={drep.drepId} />
+              </>
+            }
+          />
         }
         trajectoryContent={
           <div className="space-y-6">
             <AlignmentTrajectory drepId={drep.drepId} />
-          </div>
-        }
-        communityContent={
-          <div className="space-y-6">
-            <DRepTreasuryStance drepId={drep.drepId} />
-            <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />
-            <AboutSection
-              description={drep.description}
-              bio={drep.metadata?.bio}
-              email={drep.metadata?.email}
-              references={
-                drep.metadata?.references as Array<{ uri: string; label?: string }> | undefined
-              }
-            />
-            <Suspense fallback={null}>
-              <DRepDashboardWrapper
-                drepId={drep.drepId}
-                drepName={drepName}
-                isClaimed={isClaimed}
-              />
-            </Suspense>
           </div>
         }
       />

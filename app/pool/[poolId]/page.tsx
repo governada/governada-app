@@ -585,6 +585,32 @@ export default async function PoolProfilePage({ params }: PageProps) {
               Inter-body alignment data requires overlapping votes with DReps and CC members.
             </p>
           )}
+          {/* Interpretive narrative */}
+          {totalVotes < 5 && (interBody.drepPct != null || interBody.ccPct != null) && (
+            <p className="text-xs text-muted-foreground/80 italic mt-2">
+              Inter-body alignment requires 5+ overlapping votes to calculate reliably. {totalVotes}{' '}
+              recorded so far.
+            </p>
+          )}
+          {totalVotes >= 5 && (interBody.drepPct != null || interBody.ccPct != null) && (
+            <p className="text-xs text-muted-foreground/80 italic mt-2">
+              {interBody.drepPct != null && interBody.drepPct > 75
+                ? 'This pool consistently votes with the DRep majority.'
+                : interBody.drepPct != null && interBody.drepPct >= 40
+                  ? 'This pool takes independent positions on some proposals.'
+                  : interBody.drepPct != null
+                    ? 'This pool frequently dissents from the DRep majority.'
+                    : ''}
+              {interBody.ccPct != null && interBody.drepPct != null ? ' ' : ''}
+              {interBody.ccPct != null && interBody.ccPct > 75
+                ? 'It consistently aligns with the Constitutional Committee majority.'
+                : interBody.ccPct != null && interBody.ccPct >= 40
+                  ? 'It takes independent positions on some CC decisions.'
+                  : interBody.ccPct != null
+                    ? 'It frequently dissents from the CC majority.'
+                    : ''}
+            </p>
+          )}
         </CardContent>
       </Card>
 

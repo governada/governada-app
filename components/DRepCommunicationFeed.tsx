@@ -350,7 +350,11 @@ export function DRepCommunicationFeed({ drepId }: DRepCommunicationFeedProps) {
 
         {activeTab === 'qa' && (
           <div className="space-y-4">
-            <QuestionForm drepId={drepId} onSubmitted={fetchQuestions} />
+            <QuestionForm
+              drepId={drepId}
+              onSubmitted={fetchQuestions}
+              isFirstQuestion={!qaLoading && questions.length === 0}
+            />
 
             {qaLoading ? (
               <div className="space-y-3">

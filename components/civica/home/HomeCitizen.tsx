@@ -188,9 +188,17 @@ export function HomeCitizen({ pulseData, ssrHolderData, ssrWalletAddress }: Home
   }
 
   return (
-    <div className="flex flex-col pb-16">
-      {/* Epoch Briefing — the citizen's entire home experience */}
-      <section className="mx-auto w-full max-w-2xl px-4 sm:px-6 pt-4 sm:pt-6">
+    <div className="relative flex flex-col">
+      {/* ── Constellation hero (25vh) — visual backdrop for briefing ── */}
+      <section className="relative h-[25vh] min-h-[180px] sm:-mt-14 overflow-hidden">
+        <div className="absolute inset-0">
+          <ConstellationScene className="w-full h-full" interactive={false} />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+      </section>
+
+      {/* Epoch Briefing — overlaps the hero for visual continuity */}
+      <section className="mx-auto w-full max-w-2xl px-4 sm:px-6 -mt-4 pb-16 relative z-10">
         <EpochBriefing wallet={wallet} />
       </section>
     </div>

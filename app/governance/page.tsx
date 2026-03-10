@@ -1,12 +1,19 @@
 export const dynamic = 'force-dynamic';
 
-import { redirect } from 'next/navigation';
+import { GovernanceRedirect } from './GovernanceRedirect';
 
 /**
- * /governance — redirects to persona-default sub-page.
- * For now, defaults to /governance/proposals (the most universal entry point).
- * TODO: make persona-aware (citizens → representatives if undelegated).
+ * /governance — persona-aware redirect to the most relevant sub-page.
+ *
+ * | Persona               | Destination                   |
+ * | --------------------- | ----------------------------- |
+ * | Anonymous             | /governance/proposals          |
+ * | Citizen (undelegated) | /governance/representatives    |
+ * | Citizen (delegated)   | /governance/proposals          |
+ * | DRep                  | /governance/proposals          |
+ * | SPO                   | /governance/pools              |
+ * | CC                    | /governance/proposals          |
  */
 export default function GovernancePage() {
-  redirect('/governance/proposals');
+  return <GovernanceRedirect />;
 }

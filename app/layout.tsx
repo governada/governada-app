@@ -5,9 +5,20 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
 import { BrandedLoader } from '@/components/BrandedLoader';
 import { NavDirectionProvider } from '@/components/NavDirectionProvider';
-import { CommandPalette } from '@/components/CommandPalette';
-import { KeyboardShortcuts } from '@/components/KeyboardShortcuts';
-import { ShortcutsHelpOverlay } from '@/components/ShortcutsHelpOverlay';
+import dynamic from 'next/dynamic';
+
+const CommandPalette = dynamic(
+  () => import('@/components/CommandPalette').then((mod) => mod.CommandPalette),
+  { ssr: false },
+);
+const KeyboardShortcuts = dynamic(
+  () => import('@/components/KeyboardShortcuts').then((mod) => mod.KeyboardShortcuts),
+  { ssr: false },
+);
+const ShortcutsHelpOverlay = dynamic(
+  () => import('@/components/ShortcutsHelpOverlay').then((mod) => mod.ShortcutsHelpOverlay),
+  { ssr: false },
+);
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { CivicaShell } from '@/components/civica/CivicaShell';

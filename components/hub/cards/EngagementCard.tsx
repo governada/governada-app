@@ -19,7 +19,7 @@ interface ActivePoll {
  * Shows the single most relevant engagement opportunity.
  *
  * JTBD: "Is there something I can weigh in on?"
- * Links to /engage.
+ * Links to /governance/proposals.
  */
 export function EngagementCard() {
   const {
@@ -51,7 +51,7 @@ export function EngagementCard() {
 
   return (
     <HubCard
-      href="/engage"
+      href="/governance/proposals"
       urgency="default"
       label={activePoll ? `Poll: ${activePoll.title}` : `${activeProposals} active proposals`}
     >

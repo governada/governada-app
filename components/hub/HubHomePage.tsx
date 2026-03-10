@@ -3,6 +3,7 @@
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { HubCardRenderer } from './HubCardRenderer';
 import { AnonymousLanding } from './AnonymousLanding';
+import { HubCardSkeleton } from './cards/HubCard';
 
 interface PulseData {
   totalAdaGoverned: string;
@@ -31,8 +32,19 @@ interface HubHomePageProps {
 export function HubHomePage({ pulseData }: HubHomePageProps) {
   const { segment, isLoading } = useSegment();
 
-  // While detecting segment, show anonymous landing (avoids layout shift)
-  if (isLoading || segment === 'anonymous') {
+  // While detecting segment, show skeleton cards to prevent CLS flash
+  if (isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-2xl space-y-3 px-4 py-6">
+        <HubCardSkeleton />
+        <HubCardSkeleton />
+        <HubCardSkeleton />
+        <HubCardSkeleton />
+      </div>
+    );
+  }
+
+  if (segment === 'anonymous') {
     return <AnonymousLanding pulseData={pulseData} />;
   }
 

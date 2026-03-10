@@ -18,6 +18,16 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useGovernanceHolder, useSPOSummary } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { computeTier, type TierName } from '@/lib/scoring/tiers';
+
+const TIER_NARRATIVES: Record<TierName, string> = {
+  Emerging: 'Early-stage representative',
+  Bronze: 'Developing governance track record',
+  Silver: 'Solid governance participation',
+  Gold: 'Strong governance track record',
+  Diamond: 'Exceptional governance quality',
+  Legendary: 'Elite governance standard',
+};
 
 function TrendArrow({ value }: { value: number }) {
   if (value > 0) return <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />;
@@ -63,7 +73,7 @@ function DRepSection() {
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <Link href="/discover">Browse DReps</Link>
+            <Link href="/governance/representatives">Browse DReps</Link>
           </Button>
         </div>
       </div>
@@ -104,6 +114,7 @@ function DRepSection() {
         </div>
         <div className="text-right">
           <span className="text-3xl font-bold tabular-nums text-foreground">{drepScore}</span>
+          <p className="text-xs font-medium text-muted-foreground">{computeTier(drepScore)}</p>
           <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
             <TrendArrow value={scoreChange} />
             <span className="tabular-nums">
@@ -111,6 +122,9 @@ function DRepSection() {
               {scoreChange.toFixed(1)}
             </span>
           </div>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            {TIER_NARRATIVES[computeTier(drepScore)]}
+          </p>
         </div>
       </div>
 
@@ -339,7 +353,7 @@ export function DelegationPage() {
             <Link href="/match">Find a DRep</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/discover">Browse Governance</Link>
+            <Link href="/governance">Browse Governance</Link>
           </Button>
         </div>
       </div>

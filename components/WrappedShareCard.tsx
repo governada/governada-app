@@ -93,7 +93,7 @@ export function WrappedShareCard({
           url={profileUrl}
           text={shareText}
           imageUrl={imageUrl}
-          imageFilename={`drepscore-${variant}-${drepName.replace(/\s+/g, '-').toLowerCase()}.png`}
+          imageFilename={`governada-${variant}-${drepName.replace(/\s+/g, '-').toLowerCase()}.png`}
           surface={`wrapped_${variant}`}
           metadata={{ drep_id: drepId, score }}
         />

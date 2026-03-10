@@ -15,11 +15,11 @@ export function BrandedLoader() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const seen = sessionStorage.getItem('drepscore-intro-seen');
+    const seen = sessionStorage.getItem('governada-intro-seen');
     if (seen) return;
 
     setVisible(true);
-    sessionStorage.setItem('drepscore-intro-seen', '1');
+    sessionStorage.setItem('governada-intro-seen', '1');
 
     const fadeTimer = setTimeout(() => setFading(true), 1400);
     const hideTimer = setTimeout(() => setVisible(false), 2000);
@@ -127,7 +127,7 @@ export function BrandedLoader() {
 
       {/* Brand text */}
       <div className="text-center animate-fade-in-up">
-        <p className="text-2xl font-bold text-primary tracking-tight font-sans">$drepscore</p>
+        <p className="text-2xl font-bold text-primary tracking-tight font-sans">$governada</p>
         <p className="text-sm text-muted-foreground mt-1 tracking-wide">
           Observing Cardano Governance
         </p>

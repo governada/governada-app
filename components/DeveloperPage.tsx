@@ -54,7 +54,7 @@ const EMBED_CODE = {
   style="border-radius: 12px; overflow: hidden;"
 ></iframe>`,
   javascript: `<!-- Or use the script loader -->
-<div id="drepscore-widget"></div>
+<div id="governada-widget"></div>
 <script
   src="https://governada.io/embed.js"
   data-type="drep"

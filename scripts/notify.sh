@@ -111,7 +111,7 @@ payload = {
     'embeds': [{
         'title': '$EMOJI $TITLE',
         'color': $COLOR,
-        'footer': {'text': 'Civica Agent \u2022 $TIMESTAMP'},
+        'footer': {'text': 'Governada Agent \u2022 $TIMESTAMP'},
         'fields': json.loads('''$FIELDS''')
     }]
 }
@@ -147,7 +147,7 @@ $DETAILS"
 
 _Next: $ACTION_
 
-_Civica Agent \u2022 $TIMESTAMP_"
+_Governada Agent \u2022 $TIMESTAMP_"
 
   HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \

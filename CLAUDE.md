@@ -1,4 +1,4 @@
-# Governada (formerly DRepScore)
+# Governada
 
 Governance intelligence for the Cardano Nation.
 

@@ -61,7 +61,7 @@ export function DRepReportCard({
           url={url}
           text={shareText}
           imageUrl={ogImageUrl}
-          imageFilename={`drepscore-${name.replace(/\s+/g, '-').toLowerCase()}.png`}
+          imageFilename={`governada-${name.replace(/\s+/g, '-').toLowerCase()}.png`}
           surface="report_card"
           metadata={{ drep_id: drepId, score }}
         />

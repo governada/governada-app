@@ -198,7 +198,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-2xl font-bold text-primary dark:drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.3)]">
-              $drepscore
+              $governada
             </span>
           </Link>
           <GovernanceHeartbeat />

@@ -155,7 +155,7 @@ Instructions:
 1. Check `app/layout.tsx` for site title, description, metadata, OG defaults
 2. Check `public/` for logo files, favicon (all sizes), apple-touch-icon, OG images
 3. Check `app/api/og/` for dynamic OG image generation — are all entity types covered?
-4. Verify brand consistency: is it "Governada" everywhere or does "DRepScore" still appear in user-facing text?
+4. Verify brand consistency: is it "Governada" everywhere or does "DRepScore" or "Civica" still appear in user-facing text?
 5. Check footer component for social links, branding, copyright
 6. Check for a custom 404 page and error pages
 7. Search for any placeholder text ("Lorem ipsum", "TODO", "Coming soon", "TBD") in user-facing components
@@ -168,7 +168,7 @@ IDENTITY:
 - Meta description: [what it says]
 - Favicon: [present/missing, all sizes?]
 - OG images: [default + dynamic coverage]
-- Brand name consistency: [Governada everywhere? / lingering "DRepScore" references]
+- Brand name consistency: [Governada everywhere? / lingering "DRepScore" or "Civica" references]
 
 POLISH:
 - Custom 404: [yes/no]
@@ -464,7 +464,7 @@ Regardless of verdict, outline the first week after launch:
 
 ## Rules
 
-- **Business ops are NOT optional.** A technically perfect app that has no privacy policy, broken OG images, or "DRepScore" in the title will damage credibility at launch. These are real blockers.
+- **Business ops are NOT optional.** A technically perfect app that has no privacy policy, broken OG images, or "DRepScore"/"Civica" in the title will damage credibility at launch. These are real blockers.
 - **Monetization is NOT a launch blocker.** You can launch pre-revenue. But the readiness assessment should be honest about what's ready vs not.
 - **Legal items ARE potential blockers.** No privacy policy = potential legal liability on day one. Flag these as blockers.
 - **The founder action items are key output.** Some launch readiness items can't be fixed by agents (social accounts, legal review, community setup). Surface these clearly.

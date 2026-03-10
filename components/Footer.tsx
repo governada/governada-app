@@ -5,21 +5,21 @@ import Link from 'next/link';
 import { Heart, Copy, Check, ExternalLink } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const DREPSCORE_HANDLE = '$drepscore';
-const DREPSCORE_STAKE_ADDRESS = 'stake1u88sq2fanqmq0nuu7l4fjx353k99ngwmus67qr9g5jks2jgznfqnh';
-const CARDANOSCAN_URL = `https://cardanoscan.io/stakekey/${DREPSCORE_STAKE_ADDRESS}`;
+const GOVERNADA_HANDLE = '$governada';
+const GOVERNADA_STAKE_ADDRESS = 'stake1u88sq2fanqmq0nuu7l4fjx353k99ngwmus67qr9g5jks2jgznfqnh';
+const CARDANOSCAN_URL = `https://cardanoscan.io/stakekey/${GOVERNADA_STAKE_ADDRESS}`;
 
 export function Footer() {
   const [copied, setCopied] = useState(false);
 
   const copyAddress = async () => {
-    await navigator.clipboard.writeText(DREPSCORE_STAKE_ADDRESS);
+    await navigator.clipboard.writeText(GOVERNADA_STAKE_ADDRESS);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     import('@/lib/posthog')
       .then(({ posthog }) => {
         posthog.capture('donation_address_copied', {
-          handle: DREPSCORE_HANDLE,
+          handle: GOVERNADA_HANDLE,
           source: 'footer',
         });
       })
@@ -32,7 +32,7 @@ export function Footer() {
         posthog.capture('footer_link_clicked', {
           destination: 'cardanoscan',
           url: CARDANOSCAN_URL,
-          label: DREPSCORE_HANDLE,
+          label: GOVERNADA_HANDLE,
         });
       })
       .catch(() => {});
@@ -45,7 +45,7 @@ export function Footer() {
           {/* Left: Brand identity */}
           <div className="flex flex-col items-center md:items-start gap-2">
             <Link href="/" className="text-lg font-bold text-primary">
-              $drepscore
+              $governada
             </Link>
             <p className="text-xs text-muted-foreground">
               Cardano governance accountability, scored.
@@ -67,7 +67,7 @@ export function Footer() {
               onClick={handleCardanoScanClick}
               className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
             >
-              {DREPSCORE_HANDLE}
+              {GOVERNADA_HANDLE}
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
@@ -84,7 +84,7 @@ export function Footer() {
                       onClick={copyAddress}
                       className="inline-flex items-center gap-1 font-mono text-xs bg-muted px-2 py-0.5 rounded hover:bg-muted-foreground/20 transition-colors"
                     >
-                      {DREPSCORE_HANDLE}
+                      {GOVERNADA_HANDLE}
                       {copied ? (
                         <Check className="h-3 w-3 text-green-500" />
                       ) : (

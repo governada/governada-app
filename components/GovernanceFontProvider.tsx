@@ -8,7 +8,7 @@ import { useFeatureFlag } from '@/components/FeatureGate';
  *
  * When the `governance_font` flag is enabled, sets a `data-font="governance"`
  * attribute on <body>. CSS in globals.css uses this to swap
- * --font-civica-display from Geist Sans to Space Grotesk.
+ * --font-governada-display from Geist Sans to Space Grotesk.
  *
  * Toggle via /admin/flags or env var FF_GOVERNANCE_FONT=true.
  */

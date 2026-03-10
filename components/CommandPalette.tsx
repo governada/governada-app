@@ -242,7 +242,7 @@ export function CommandPalette() {
               <kbd className="font-mono">↑↓</kbd> navigate <kbd className="font-mono">↵</kbd> select{' '}
               <kbd className="font-mono">esc</kbd> close
             </span>
-            <span className="font-mono text-primary/60">$drepscore</span>
+            <span className="font-mono text-primary/60">$governada</span>
           </div>
         </div>
       </div>

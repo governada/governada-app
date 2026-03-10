@@ -2,7 +2,7 @@
 
 **Governance Intelligence for Cardano**
 
-Governada (formerly DRepScore) is the governance intelligence platform for Cardano. It serves every participant in the ecosystem — citizens (ADA holders), DReps, SPOs, Constitutional Committee, treasury proposal teams, and governance researchers — through one interconnected data engine.
+Governada is the governance intelligence platform for Cardano. It serves every participant in the ecosystem — citizens (ADA holders), DReps, SPOs, Constitutional Committee, treasury proposal teams, and governance researchers — through one interconnected data engine.
 
 ## What It Does
 

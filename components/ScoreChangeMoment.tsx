@@ -70,7 +70,7 @@ export function ScoreChangeMoment({ drepId, drepName, currentScore }: ScoreChang
           url={shareUrl}
           text={shareText}
           imageUrl={imageUrl}
-          imageFilename={`drepscore-change-${drepName.replace(/\s+/g, '-').toLowerCase()}.png`}
+          imageFilename={`governada-change-${drepName.replace(/\s+/g, '-').toLowerCase()}.png`}
           surface="score_change_moment"
           metadata={{ drep_id: drepId, delta: change.delta }}
           variant="compact"

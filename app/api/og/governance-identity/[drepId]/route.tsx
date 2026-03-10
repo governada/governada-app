@@ -258,7 +258,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ drep
             </div>
           </div>
         </div>
-        <OGFooter left="$drepscore" right={shortenDRepId(drepId)} />
+        <OGFooter left="$governada" right={shortenDRepId(drepId)} />
       </OGBackground>,
       {
         width: 1200,

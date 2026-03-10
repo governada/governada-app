@@ -90,7 +90,7 @@ export function MobileNav({
           className="w-72 overflow-y-auto !bg-[#0a0b14]/85 backdrop-blur-xl border-l-white/5"
         >
           <SheetHeader className="pb-2">
-            <SheetTitle className="text-left text-lg font-bold text-primary">$drepscore</SheetTitle>
+            <SheetTitle className="text-left text-lg font-bold text-primary">$governada</SheetTitle>
           </SheetHeader>
 
           <nav className="flex flex-col gap-1 px-2">

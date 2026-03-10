@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase';
-import { validateSessionToken } from '@/lib/supabaseAuth';
 import { PageViewTracker } from '@/components/PageViewTracker';
-import { CivicaHomePage } from '@/components/civica/CivicaHomePage';
+import { HubHomePage } from '@/components/hub/HubHomePage';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,155 +22,47 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Lightweight SSR pulse data for the anonymous landing page.
+ * Authenticated users get their data client-side via Hub cards + TanStack Query.
+ */
 async function getGovernancePulse() {
   const supabase = createClient();
-  const oneWeekAgoBlockTime = Math.floor(Date.now() / 1000) - 604800;
 
-  const [
-    drepsResult,
-    drepsCountResult,
-    proposalsResult,
-    votesResult,
-    claimedResult,
-    spoResult,
-    ccResult,
-  ] = await Promise.all([
-    supabase
-      .from('dreps')
-      .select('score, participation_rate, rationale_rate, effective_participation, info, size_tier')
-      .range(0, 9999),
-    supabase.from('dreps').select('id', { count: 'exact', head: true }),
+  const [drepsResult, proposalsResult] = await Promise.all([
+    supabase.from('dreps').select('info', { count: 'exact' }).range(0, 9999),
     supabase
       .from('proposals')
-      .select(
-        'tx_hash, proposal_index, proposal_type, title, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
-      ),
-    supabase
-      .from('drep_votes')
-      .select('vote_tx_hash', { count: 'exact', head: true })
-      .gt('block_time', oneWeekAgoBlockTime),
-    supabase
-      .from('users')
-      .select('wallet_address', { count: 'exact', head: true })
-      .not('claimed_drep_id', 'is', null),
-    supabase.from('pools').select('pool_id', { count: 'exact', head: true }).gt('vote_count', 0),
-    supabase.from('cc_members').select('cc_hot_id, status'),
+      .select('tx_hash, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch'),
   ]);
 
   const dreps = drepsResult.data || [];
   const proposals = proposalsResult.data || [];
   const activeDReps = dreps.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
 
-  const totalLovelace = activeDReps.reduce((sum: number, d) => {
-    const info = d.info as Record<string, unknown> | null;
-    const lv = parseInt((info?.votingPowerLovelace as string) || '0', 10);
-    return sum + (isNaN(lv) ? 0 : lv);
-  }, 0);
-  const totalAda = totalLovelace / 1_000_000;
-  const formattedAda =
-    totalAda >= 1_000_000_000
-      ? `${(totalAda / 1_000_000_000).toFixed(1)}B`
-      : totalAda >= 1_000_000
-        ? `${(totalAda / 1_000_000).toFixed(1)}M`
-        : `${Math.round(totalAda).toLocaleString()}`;
-
   const openProposals = proposals.filter(
     (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
   );
 
-  const ccMemberRows = (ccResult.data || []).filter(
-    (m) => m.status?.toLowerCase() === 'authorized',
-  );
-
   return {
-    totalAdaGoverned: formattedAda,
+    totalAdaGoverned: '',
     activeProposals: openProposals.length,
     activeDReps: activeDReps.length,
-    totalDReps: drepsCountResult.count ?? dreps.length,
-    votesThisWeek: votesResult.count || 0,
-    claimedDReps: claimedResult.count || 0,
-    activeSpOs: spoResult.count ?? 0,
-    ccMembers: ccMemberRows.length,
+    totalDReps: drepsResult.count ?? dreps.length,
+    votesThisWeek: 0,
+    claimedDReps: 0,
+    activeSpOs: 0,
+    ccMembers: 0,
   };
 }
 
-async function getSSRHolderData(): Promise<{
-  data: Record<string, unknown>;
-  walletAddress: string;
-} | null> {
-  try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('drepscore_session');
-    if (!sessionCookie?.value) return null;
-
-    const session = await validateSessionToken(sessionCookie.value);
-    if (!session) return null;
-
-    const supabase = createClient();
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('delegated_drep_id, claimed_drep_id, visit_streak')
-      .eq('wallet_address', session.walletAddress)
-      .single();
-
-    if (!userData) return null;
-
-    const drepId = userData.delegated_drep_id;
-    let delegationHealth = null;
-
-    if (drepId) {
-      const { data: drep } = await supabase
-        .from('dreps')
-        .select('id, score, effective_participation, info')
-        .eq('id', drepId)
-        .single();
-
-      if (drep) {
-        const openProposals = await supabase
-          .from('proposals')
-          .select('tx_hash', { count: 'exact', head: true })
-          .is('ratified_epoch', null)
-          .is('enacted_epoch', null)
-          .is('dropped_epoch', null)
-          .is('expired_epoch', null);
-
-        delegationHealth = {
-          drepId: drep.id,
-          drepName: drep.info?.name || drep.info?.ticker || drep.info?.handle || null,
-          drepScore: drep.score || 0,
-          participationRate: drep.effective_participation || 0,
-          openProposalCount: openProposals.count || 0,
-        };
-      }
-    }
-
-    return {
-      data: {
-        delegationHealth,
-        representationScore: { score: null },
-        activeProposals: [],
-        repScoreDelta: null,
-        visitStreak: userData?.visit_streak ?? 0,
-      },
-      walletAddress: session.walletAddress,
-    };
-  } catch {
-    return null;
-  }
-}
-
 export default async function HomePage() {
-  const [pulseData, ssrAuth] = await Promise.all([getGovernancePulse(), getSSRHolderData()]);
+  const pulseData = await getGovernancePulse();
 
   return (
     <>
       <PageViewTracker event="homepage_viewed" />
-      <CivicaHomePage
-        pulseData={pulseData}
-        ssrHolderData={ssrAuth?.data || undefined}
-        ssrWalletAddress={ssrAuth?.walletAddress || null}
-      />
+      <HubHomePage pulseData={pulseData} />
     </>
   );
 }

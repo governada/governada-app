@@ -45,7 +45,7 @@ export function EngageClient({ epoch }: EngageClientProps) {
       />
 
       {/* ── Hero Zone: personal context + community pulse ── */}
-      <div className="space-y-6">
+      <div className="space-y-6 motion-safe:animate-fade-in-up">
         {credibility && <EngagementHero credibility={credibility} epoch={epoch} />}
         {currentRankings && currentRankings.rankings.length > 0 ? (
           <EpochRecap current={currentRankings} previous={previousRankings ?? null} epoch={epoch} />
@@ -69,7 +69,10 @@ export function EngageClient({ epoch }: EngageClientProps) {
       </div>
 
       {/* ── Action Zone: interactive participation ── */}
-      <div className="space-y-6 pt-2">
+      <div className="space-y-6 pt-2 motion-safe:animate-fade-in-up animation-delay-200">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          Participate
+        </p>
         <section>
           <CitizenAssembly />
         </section>
@@ -79,7 +82,10 @@ export function EngageClient({ epoch }: EngageClientProps) {
       </div>
 
       {/* ── Reflection Zone: see what happened ── */}
-      <div className="space-y-6 pt-2 opacity-[0.92]">
+      <div className="space-y-6 pt-2 opacity-[0.92] motion-safe:animate-fade-in-up animation-delay-400">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          Your Impact
+        </p>
         {citizenVoice && (
           <section>
             <CitizenVoiceSection data={citizenVoice} />
@@ -143,10 +149,14 @@ function EpochRecap({
       </div>
 
       <div className="space-y-2">
-        {top3.map((r) => {
+        {top3.map((r, idx) => {
           const change = rankChanges.get(r.priority);
           return (
-            <div key={r.priority} className="flex items-center justify-between text-sm">
+            <div
+              key={r.priority}
+              className="flex items-center justify-between text-sm motion-safe:animate-fade-in-up"
+              style={{ animationDelay: `${idx * 100}ms` }}
+            >
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-primary font-bold w-5 text-center tabular-nums">
                   {r.rank}

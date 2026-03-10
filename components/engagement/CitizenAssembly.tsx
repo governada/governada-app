@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,16 @@ export function CitizenAssembly() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Stagger result bar animation
+  const hasResults = !!assembly && (!!assembly.userVote || assembly.totalVotes > 0);
+  const [barsVisible, setBarsVisible] = useState(false);
+  useEffect(() => {
+    if (hasResults) {
+      const t = setTimeout(() => setBarsVisible(true), 100);
+      return () => clearTimeout(t);
+    }
+  }, [hasResults]);
 
   if (isLoading) {
     return (
@@ -132,7 +142,7 @@ export function CitizenAssembly() {
         {/* Show results if user has voted or assembly results exist */}
         {(hasVoted || assembly.totalVotes > 0) && (
           <div className="space-y-2">
-            {assembly.results?.map((opt) => {
+            {assembly.results?.map((opt, idx) => {
               const isUserChoice = assembly.userVote === opt.key;
               return (
                 <div key={opt.key} className="space-y-1">
@@ -140,7 +150,7 @@ export function CitizenAssembly() {
                     <span className={isUserChoice ? 'font-semibold' : ''}>
                       {opt.label}
                       {isUserChoice && (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-primary inline ml-1.5" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary inline ml-1.5 motion-safe:animate-scale-in" />
                       )}
                     </span>
                     <span className="tabular-nums text-muted-foreground">
@@ -149,10 +159,13 @@ export function CitizenAssembly() {
                   </div>
                   <div className="h-2.5 rounded-full bg-muted overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ${
+                      className={`h-full rounded-full transition-all duration-700 ease-out ${
                         isUserChoice ? 'bg-primary' : 'bg-primary/40'
                       }`}
-                      style={{ width: `${opt.percentage}%` }}
+                      style={{
+                        width: barsVisible ? `${opt.percentage}%` : '0%',
+                        transitionDelay: `${idx * 120}ms`,
+                      }}
                     />
                   </div>
                 </div>

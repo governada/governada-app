@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CopyableAddress } from '@/components/CopyableAddress';
 import { ChevronDown, ChevronUp, Users, Server, ShieldCheck } from 'lucide-react';
+import { type ProposalStatus, STATUS_STYLES } from '@/utils/proposalPriority';
 
 type Tab = 'dreps' | 'spos' | 'cc';
 
@@ -16,6 +17,7 @@ interface ProposalVoterTabsProps {
   votes: ProposalVoteDetail[];
   txHash: string;
   proposalIndex: number;
+  status?: ProposalStatus;
 }
 
 function VoteBadge({ vote }: { vote: string }) {
@@ -129,7 +131,12 @@ function CcVotersList({ txHash, proposalIndex }: { txHash: string; proposalIndex
   );
 }
 
-export function ProposalVoterTabs({ votes, txHash, proposalIndex }: ProposalVoterTabsProps) {
+export function ProposalVoterTabs({
+  votes,
+  txHash,
+  proposalIndex,
+  status,
+}: ProposalVoterTabsProps) {
   const [tab, setTab] = useState<Tab>('dreps');
 
   const tabs: { key: Tab; label: string; icon: typeof Users; count?: number }[] = useMemo(
@@ -141,22 +148,31 @@ export function ProposalVoterTabs({ votes, txHash, proposalIndex }: ProposalVote
     [votes.length],
   );
 
+  const statusStyle = status ? STATUS_STYLES[status] : null;
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 border-b pb-2">
-        {tabs.map(({ key, label, icon: Icon, count }) => (
-          <Button
-            key={key}
-            variant={tab === key ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setTab(key)}
-            className="gap-1.5"
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-            {count != null && <span className="text-xs opacity-70">({count})</span>}
-          </Button>
-        ))}
+      <div className="flex items-center gap-2 border-b pb-2">
+        <div className="flex gap-2 flex-1">
+          {tabs.map(({ key, label, icon: Icon, count }) => (
+            <Button
+              key={key}
+              variant={tab === key ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setTab(key)}
+              className="gap-1.5"
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+              {count != null && <span className="text-xs opacity-70">({count})</span>}
+            </Button>
+          ))}
+        </div>
+        {statusStyle && (
+          <Badge variant="outline" className={`text-xs ${statusStyle.className}`}>
+            {statusStyle.label}
+          </Badge>
+        )}
       </div>
 
       {tab === 'dreps' && <ProposalVotersWithContext votes={votes} />}

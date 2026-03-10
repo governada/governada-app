@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProposalDescription } from '@/components/ProposalDescription';
 import { ProposalAiSummary } from '@/components/ProposalAiSummary';
 import { ThresholdMeter } from '@/components/ThresholdMeter';
-import { VoteTimeline } from '@/components/VoteTimeline';
 import { ArrowLeft } from 'lucide-react';
 import { getProposalStatus } from '@/utils/proposalPriority';
 import { ProposalOutcomeSection } from '@/components/ProposalOutcomeSection';
@@ -22,11 +21,9 @@ import { ProposalDimensionTags } from '@/components/civica/proposals/ProposalDim
 import { ProposalTopRationales } from '@/components/civica/proposals/ProposalTopRationales';
 import { ProposalLifecycleTimeline } from '@/components/civica/proposals/ProposalLifecycleTimeline';
 import { ParamChangesCard } from '@/components/civica/proposals/ParamChangesCard';
-import { AlignmentCohortBreakdown } from '@/components/civica/proposals/AlignmentCohortBreakdown';
 import { VoteRationaleFlow } from '@/components/civica/proposals/VoteRationaleFlow';
 import { ConstitutionalAlignmentCard } from '@/components/ConstitutionalAlignmentCard';
-import { ProposalSentiment } from '@/components/engagement/ProposalSentiment';
-import { ConcernFlags } from '@/components/engagement/ConcernFlags';
+import { CitizenVoiceCard } from '@/components/engagement/CitizenVoiceCard';
 import { ImpactTags } from '@/components/engagement/ImpactTags';
 import { AskYourDRep } from '@/components/engagement/AskYourDRep';
 import { EngagementSummary } from '@/components/engagement/EngagementSummary';
@@ -67,13 +64,6 @@ export default async function ProposalDetailPage({ params }: PageProps) {
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
   const status = getProposalStatus(proposal);
   const isOpen = status === 'open';
-
-  const timelineVotes = votes.map((v) => ({
-    drepName: v.drepName,
-    drepId: v.drepId,
-    vote: v.vote,
-    blockTime: v.blockTime,
-  }));
 
   // Aggregate votes by epoch for adoption curve
   const votesByEpoch = new Map<number, { yes: number; no: number; abstain: number }>();
@@ -123,7 +113,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         </Button>
       </Link>
 
-      {/* VP1 Hero */}
+      {/* 1. Hero */}
       <ProposalHeroV1
         txHash={txHash}
         proposalIndex={proposalIndex}
@@ -144,10 +134,9 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         blockTime={proposal.blockTime}
       />
 
-      {/* Community engagement signals summary */}
+      {/* 2. Engagement Summary + Concern Banner + Dimension Tags */}
       <EngagementSummary txHash={txHash} proposalIndex={proposalIndex} />
 
-      {/* Concern flag impact banner (shown when flags exceed threshold) */}
       <ConcernFlagBanner
         txHash={txHash}
         proposalIndex={proposalIndex}
@@ -162,10 +151,9 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         }
       />
 
-      {/* Governance dimension tags */}
       <ProposalDimensionTags relevantPrefs={proposal.relevantPrefs} />
 
-      {/* Lifecycle Timeline */}
+      {/* 3. Lifecycle Timeline */}
       <ProposalLifecycleTimeline
         proposedEpoch={proposal.proposedEpoch}
         expirationEpoch={proposal.expirationEpoch}
@@ -176,10 +164,22 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         currentEpoch={currentEpoch}
       />
 
-      {/* Parameter Changes (ParameterChange proposals only) */}
+      {/* 4. Constitutional Alignment (elevated position) */}
+      <ConstitutionalAlignmentCard txHash={txHash} proposalIndex={proposalIndex} />
+
+      {/* 5. Citizen Voice (combined sentiment + concerns) */}
+      <CitizenVoiceCard txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
+
+      {/* 6. AI Summary */}
+      <ProposalAiSummary summary={proposal.aiSummary} />
+
+      {/* 7. Parameter Changes (ParameterChange proposals only) */}
       {proposal.proposalType === 'ParameterChange' && proposal.paramChanges && (
         <ParamChangesCard paramChanges={proposal.paramChanges} />
       )}
+
+      {/* 8. Full Description */}
+      <ProposalDescription aiSummary={null} abstract={proposal.abstract} />
 
       {/* Vote + Rationale Flow (DReps, SPOs, CC — open proposals only) */}
       <VoteRationaleFlow
@@ -192,25 +192,12 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         aiSummary={proposal.aiSummary}
       />
 
-      {/* Community Engagement Layer */}
-      <ProposalSentiment txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
-      {isOpen && <ConcernFlags txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />}
+      {/* Ask Your DRep (open proposals only) */}
       {isOpen && (
         <AskYourDRep txHash={txHash} proposalIndex={proposalIndex} proposalTitle={title} />
       )}
 
-      {/* VP2 stack */}
-
-      {/* 1. AI Summary */}
-      <ProposalAiSummary summary={proposal.aiSummary} />
-
-      {/* 1b. Constitutional Alignment */}
-      <ConstitutionalAlignmentCard txHash={txHash} proposalIndex={proposalIndex} />
-
-      {/* 2. Full Description */}
-      <ProposalDescription aiSummary={null} abstract={proposal.abstract} />
-
-      {/* 3. Threshold Meter */}
+      {/* 9. Voting Power */}
       <Card>
         <CardHeader>
           <CardTitle>DRep Voting Power</CardTitle>
@@ -233,7 +220,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         </CardContent>
       </Card>
 
-      {/* 3b. Vote Adoption Curve */}
+      {/* 10. Vote Adoption Curve */}
       {adoptionData.length > 1 && (
         <Card>
           <CardHeader>
@@ -245,32 +232,21 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         </Card>
       )}
 
-      {/* 4. Alignment Cohort Breakdown */}
-      <AlignmentCohortBreakdown votes={votes} />
-
-      {/* 5. What Representatives Are Saying (real rationales) */}
-      <ProposalTopRationales rationales={rationaleEntries} />
-
-      {/* 6. Vote Timeline */}
-      <VoteTimeline
-        votes={timelineVotes}
-        proposalBlockTime={proposal.blockTime || 0}
-        expirationEpoch={proposal.expirationEpoch}
-        currentEpoch={currentEpoch}
+      {/* 11. Voter Tabs (DRep/SPO/CC) with status badge */}
+      <ProposalVoterTabs
+        votes={votes}
+        txHash={txHash}
+        proposalIndex={proposalIndex}
+        status={status}
       />
 
-      {/* 7. Voter Tabs */}
-      <ProposalVoterTabs votes={votes} txHash={txHash} proposalIndex={proposalIndex} />
+      {/* 12. Top Rationales */}
+      <ProposalTopRationales rationales={rationaleEntries} />
 
-      {/* 8. Similar Proposals */}
+      {/* 13. Similar Proposals */}
       <SimilarProposals txHash={txHash} proposalIndex={proposalIndex} />
 
-      {/* 9. Citizen Impact Feedback (enacted/ratified proposals) */}
-      {(status === 'enacted' || status === 'ratified') && (
-        <ImpactTags txHash={txHash} proposalIndex={proposalIndex} />
-      )}
-
-      {/* 10. Outcome (closed proposals only) */}
+      {/* 14. Outcome (closed proposals only) */}
       {!isOpen && (
         <ProposalOutcomeSection
           proposal={{
@@ -290,6 +266,11 @@ export default async function ProposalDetailPage({ params }: PageProps) {
                 : 'Abstain'
           }
         />
+      )}
+
+      {/* Citizen Impact Feedback (enacted/ratified proposals) */}
+      {(status === 'enacted' || status === 'ratified') && (
+        <ImpactTags txHash={txHash} proposalIndex={proposalIndex} />
       )}
     </div>
   );

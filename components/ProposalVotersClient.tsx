@@ -152,17 +152,32 @@ export function ProposalVotersClient({
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {v.alignments && (
-                        <GovernanceRadar
-                          alignments={{
-                            treasuryConservative: v.alignments.treasuryConservative,
-                            treasuryGrowth: v.alignments.treasuryGrowth,
-                            decentralization: v.alignments.decentralization,
-                            security: v.alignments.security,
-                            innovation: v.alignments.innovation,
-                            transparency: v.alignments.transparency,
-                          }}
-                          size="mini"
-                        />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <GovernanceRadar
+                                  alignments={{
+                                    treasuryConservative: v.alignments.treasuryConservative,
+                                    treasuryGrowth: v.alignments.treasuryGrowth,
+                                    decentralization: v.alignments.decentralization,
+                                    security: v.alignments.security,
+                                    innovation: v.alignments.innovation,
+                                    transparency: v.alignments.transparency,
+                                  }}
+                                  size="mini"
+                                />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[280px]">
+                              <p className="text-xs">
+                                Governance alignment radar — shows voting alignment across 6
+                                dimensions: Treasury Conservative, Treasury Growth,
+                                Decentralization, Security, Innovation, Transparency
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       <Badge
                         variant={

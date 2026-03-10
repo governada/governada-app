@@ -4,6 +4,26 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, CheckCircle2, XCircle, AlertTriangle, Hourglass } from 'lucide-react';
 
+/**
+ * Convert a Cardano epoch number to an approximate date.
+ * Shelley genesis: epoch 209 started at Unix 1596491091.
+ * Each epoch = 5 days (432000 seconds).
+ */
+function epochToDate(epoch: number): Date {
+  const SHELLEY_GENESIS_TIMESTAMP = 1596491091;
+  const EPOCH_LENGTH_SECONDS = 432000;
+  const SHELLEY_BASE_EPOCH = 209;
+  const timestamp = SHELLEY_GENESIS_TIMESTAMP + (epoch - SHELLEY_BASE_EPOCH) * EPOCH_LENGTH_SECONDS;
+  return new Date(timestamp * 1000);
+}
+
+function formatEpochLabel(epoch: number): string {
+  const date = epochToDate(epoch);
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day = date.getDate();
+  return `E${epoch} \u00B7 ${month} ${day}`;
+}
+
 interface TimelineEvent {
   epoch: number;
   label: string;
@@ -144,15 +164,19 @@ export function ProposalLifecycleTimeline({
           )}
         </div>
 
-        {/* Event dots + labels */}
-        <div className="relative" style={{ height: '3rem' }}>
-          {events.map((event) => {
+        {/* Event dots + labels — alternate above/below for dense timelines */}
+        <div className="relative" style={{ height: '5rem' }}>
+          {events.map((event, idx) => {
             const pct = ((event.epoch - minEpoch) / range) * 100;
             const Icon = event.icon;
+            const isBelow = idx % 2 === 0;
             return (
               <div
                 key={`${event.label}-${event.epoch}`}
-                className="absolute flex flex-col items-center -translate-x-1/2"
+                className={cn(
+                  'absolute flex items-center -translate-x-1/2',
+                  isBelow ? 'flex-col top-[1.25rem]' : 'flex-col-reverse bottom-[1.25rem]',
+                )}
                 style={{ left: `${pct}%` }}
               >
                 <div
@@ -169,14 +193,16 @@ export function ProposalLifecycleTimeline({
                 </div>
                 <span
                   className={cn(
-                    'text-[10px] mt-1 whitespace-nowrap font-medium tabular-nums',
+                    'text-[9px] mt-1 whitespace-nowrap font-medium tabular-nums leading-tight text-center',
                     event.status === 'future'
                       ? 'text-muted-foreground/50'
                       : 'text-muted-foreground',
+                    !isBelow && 'mb-1 mt-0',
                   )}
                 >
                   {event.label}
-                  <span className="opacity-60 ml-0.5">E{event.epoch}</span>
+                  <br />
+                  <span className="opacity-60">{formatEpochLabel(event.epoch)}</span>
                 </span>
               </div>
             );

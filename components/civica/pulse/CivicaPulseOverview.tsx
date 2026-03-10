@@ -33,6 +33,7 @@ import { ActivityTicker } from '@/components/ActivityTicker';
 import { useGovernanceHealthIndex } from '@/hooks/queries';
 import { EmptyState } from './EmptyState';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
+import { AnonymousNudge } from '@/components/civica/shared/AnonymousNudge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type {
   TreasuryData,
@@ -265,6 +266,7 @@ export function CivicaPulseOverview() {
         pageKey="pulse"
         message="The big picture. How healthy is Cardano governance right now? Track participation, treasury, and trends over time."
       />
+      <AnonymousNudge variant="health" />
       {/* ── Tab bar ─────────────────────────────────────────── */}
       <div
         className="flex gap-1 border-b border-border -mb-2 overflow-x-auto"
@@ -383,7 +385,7 @@ export function CivicaPulseOverview() {
                 }
                 icon={Vote}
                 accent={(pulse?.criticalProposals ?? 0) > 0 ? 'warning' : 'success'}
-                href="/discover"
+                href="/governance/proposals"
               />
               <StatCard
                 label="Active DReps"
@@ -391,7 +393,7 @@ export function CivicaPulseOverview() {
                 sub={pulse?.totalDReps ? `of ${pulse.totalDReps} total` : undefined}
                 icon={Users}
                 accent="default"
-                href="/discover"
+                href="/governance/representatives"
                 trend={
                   pulse?.deltas?.activeDRepsDelta != null
                     ? pulse.deltas.activeDRepsDelta > 0
@@ -776,7 +778,7 @@ export function CivicaPulseOverview() {
                 </p>
               </div>
               <Link
-                href="/discover"
+                href="/governance/representatives"
                 className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-0.5"
               >
                 Browse DReps <ChevronRight className="h-3.5 w-3.5" />

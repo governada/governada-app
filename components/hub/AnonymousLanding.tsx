@@ -65,7 +65,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="flex-1 gap-2">
-            <Link href="/discover">
+            <Link href="/governance">
               Explore Governance
               <ArrowRight className="h-4 w-4" />
             </Link>

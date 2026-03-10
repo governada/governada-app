@@ -161,7 +161,7 @@ function PollHistorySection({ history }: { history: DashboardData['pollHistory']
             You haven&apos;t voted in any polls yet. Head to the proposals page to share your
             opinion.
           </p>
-          <Link href="/discover" className="mt-3 inline-block">
+          <Link href="/governance/proposals" className="mt-3 inline-block">
             <Button
               variant="outline"
               size="sm"

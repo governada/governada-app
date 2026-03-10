@@ -319,7 +319,7 @@ function generateHolderBriefTemplate(ctx: HolderBriefContext): GeneratedBrief {
     greeting: "Here's your weekly governance roundup from Governada.",
     sections,
     ctaText: 'Explore DReps',
-    ctaUrl: '/discover',
+    ctaUrl: '/governance/representatives',
   };
 }
 

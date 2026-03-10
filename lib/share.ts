@@ -68,7 +68,11 @@ export function buildCompareUrl(drepIds: string[]): string {
 }
 
 export function buildPulseUrl(): string {
-  return `${SITE_URL}/pulse`;
+  return `${SITE_URL}/governance/health`;
+}
+
+export function buildMatchResultUrl(encodedProfile: string): string {
+  return `${SITE_URL}/match/result?profile=${encodeURIComponent(encodedProfile)}`;
 }
 
 export function trackShare(

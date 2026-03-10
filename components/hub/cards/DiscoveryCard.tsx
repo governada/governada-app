@@ -31,7 +31,7 @@ export function DiscoveryMatchCard() {
 
 export function DiscoveryExploreCard() {
   return (
-    <HubCard href="/discover" urgency="default" label="Explore Cardano governance">
+    <HubCard href="/governance" urgency="default" label="Explore Cardano governance">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 text-muted-foreground" />

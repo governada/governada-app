@@ -30,10 +30,10 @@ export function KeyboardShortcuts() {
           router.push('/');
           break;
         case 'd':
-          router.push('/discover');
+          router.push('/governance');
           break;
         case 'p':
-          router.push('/discover');
+          router.push('/governance/proposals');
           break;
         case 'g':
           router.push('/my-gov');

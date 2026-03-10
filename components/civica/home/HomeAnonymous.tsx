@@ -211,7 +211,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
 
           {/* Path 2: Stake — Pool Discovery */}
           <Link
-            href="/discover?tab=pools"
+            href="/governance/pools"
             onClick={() => posthog?.capture('citizen_path_clicked', { path: 'stake' })}
             className={cn(
               'group relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6',

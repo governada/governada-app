@@ -193,7 +193,7 @@ function getNextAction(
           type: 'vote_proposals',
           label: 'Vote on governance proposals',
           description: `Vote on ${TARGETS.pollVotes - inputs.pollVoteCount} more real proposals to strengthen your governance profile.`,
-          href: '/discover?tab=proposals',
+          href: '/governance/proposals',
           potentialGain: gap,
         });
         break;
@@ -203,7 +203,7 @@ function getNextAction(
           label: 'Vote on different proposal types',
           description:
             'Broaden your profile by voting on treasury, protocol, and governance proposals.',
-          href: '/discover',
+          href: '/governance/proposals',
           potentialGain: gap,
         });
         break;
@@ -222,7 +222,7 @@ function getNextAction(
           type: 'delegate',
           label: 'Delegate to a DRep',
           description: 'Confirm your governance values by delegating to a DRep who represents you.',
-          href: '/discover?sort=match',
+          href: '/governance/representatives',
           potentialGain: gap,
         });
         break;

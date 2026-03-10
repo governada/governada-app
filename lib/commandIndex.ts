@@ -37,7 +37,7 @@ export const PAGE_COMMANDS: CommandItem[] = [
     sublabel: 'Browse governance representatives',
     group: 'pages',
     icon: Compass,
-    href: '/discover',
+    href: '/governance',
     shortcut: 'D',
   },
   {
@@ -46,7 +46,7 @@ export const PAGE_COMMANDS: CommandItem[] = [
     sublabel: 'Browse active governance proposals',
     group: 'pages',
     icon: ScrollText,
-    href: '/discover',
+    href: '/governance/proposals',
     shortcut: 'P',
   },
   {
@@ -80,7 +80,7 @@ export const PAGE_COMMANDS: CommandItem[] = [
     sublabel: 'State of Cardano governance',
     group: 'pages',
     icon: BarChart3,
-    href: '/pulse',
+    href: '/governance/health',
   },
   {
     id: 'page-dashboard-drep',
@@ -96,7 +96,7 @@ export const PAGE_COMMANDS: CommandItem[] = [
     sublabel: 'CC member transparency scores and voting records',
     group: 'pages',
     icon: Landmark,
-    href: '/discover/committee',
+    href: '/governance/committee',
   },
   {
     id: 'page-developers',

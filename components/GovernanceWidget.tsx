@@ -37,7 +37,7 @@ export function GovernanceWidget() {
       : 'border-l-primary';
 
   return (
-    <Link href="/discover">
+    <Link href="/governance/proposals">
       <div
         className={`flex items-center gap-3 px-4 py-3 rounded-lg border border-border/50 bg-card hover:bg-muted/30 transition-colors cursor-pointer border-l-4 ${borderColor}`}
       >

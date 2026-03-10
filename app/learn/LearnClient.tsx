@@ -2,18 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import {
-  BookOpen,
-  ChevronRight,
-  Users,
-  Vote,
-  Shield,
-  Landmark,
-  Scale,
-  Zap,
-  Search,
-  X,
-} from 'lucide-react';
+import { BookOpen, ChevronRight, Users, Vote, Shield, Scale, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { GOV_TERMS, type GovTermDef } from '@/lib/microcopy';
@@ -26,7 +15,7 @@ const GETTING_STARTED = [
       'Cardano uses on-chain governance where ADA holders can vote on protocol changes, treasury spending, and constitutional amendments through elected representatives.',
     icon: Scale,
     color: 'text-violet-400 bg-violet-500/10',
-    link: '/discover',
+    link: '/governance',
     linkLabel: 'Explore representatives',
   },
   {
@@ -44,7 +33,7 @@ const GETTING_STARTED = [
       'Governance actions include treasury withdrawals, parameter changes, hard forks, and constitutional updates. Each requires approval from DReps, stake pools, and the Constitutional Committee.',
     icon: Vote,
     color: 'text-sky-400 bg-sky-500/10',
-    link: '/discover?tab=proposals',
+    link: '/governance/proposals',
     linkLabel: 'Browse proposals',
   },
   {
@@ -53,26 +42,8 @@ const GETTING_STARTED = [
       'Cardano governance has three pillars: DReps (citizen representatives), SPOs (stake pool operators), and the Constitutional Committee. Major decisions need approval from multiple bodies.',
     icon: Shield,
     color: 'text-amber-400 bg-amber-500/10',
-    link: '/discover?tab=committee',
+    link: '/governance/committee',
     linkLabel: 'View the Committee',
-  },
-  {
-    title: 'Treasury & funding',
-    description:
-      "The Cardano treasury is funded by transaction fees and monetary expansion. Governance proposals can request treasury withdrawals to fund ecosystem projects — your DRep's vote decides.",
-    icon: Landmark,
-    color: 'text-rose-400 bg-rose-500/10',
-    link: '/pulse',
-    linkLabel: 'See the Pulse',
-  },
-  {
-    title: 'Why your participation matters',
-    description:
-      'Governance quorum requirements mean your delegation matters. Without enough active participation, critical proposals can stall. Every delegated ADA strengthens the system.',
-    icon: Zap,
-    color: 'text-primary bg-primary/10',
-    link: '/match',
-    linkLabel: 'Get started',
   },
 ];
 
@@ -103,7 +74,7 @@ export function LearnClient() {
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">Learn</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Help</h1>
         </div>
         <p className="text-sm text-muted-foreground">
           Everything you need to understand Cardano governance — from delegation to treasury.

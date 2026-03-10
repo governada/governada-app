@@ -149,6 +149,18 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 - [x] 5-second test heading on proposals browse | PR #257
 - [x] CDN cache headers on proposals API | PR #257
 
+### 1f: Citizen-Anonymous UX Polish
+
+- [x] Stale `/discover` route references purged (46 files) — all internal links now point to `/governance/*` routes directly
+- [x] Match results "Browse All DReps/SPOs" links fixed → `/governance/representatives` and `/governance/pools`
+- [x] Help page: heading "Learn" → "Help", stale links fixed, cards reduced from 6 to 4 (per UX constraints)
+- [x] Score narratives surfaced on DRep browse cards — `getScoreNarrative()` rendered as subtitle on `CivicaDRepCard`
+- [x] Landing page SSR optimized — heavy `info` JSONB fetch replaced with count-only queries (`head: true`)
+- [x] BrandedLoader "$governada" → "Governada", tagline → "Governance Intelligence for Cardano"
+- [x] `/governance` anonymous redirect moved to middleware (server-side, no client-side skeleton flash)
+- [x] AnonymousNudge conversion CTAs on proposals, representatives, and health pages — dismissible, localStorage-persisted
+- [x] Shareable match results — `/match/result?profile=<base64>` page, OG image generation with radar chart, share button with `navigator.share()` + clipboard fallback
+
 ### Remaining
 
 - [ ] `/you/inbox` notifications — page exists but notification pipeline not wired to real events
@@ -285,3 +297,4 @@ Tracked in `docs/strategy/world-class-packages.md`. 13 QPs targeting 84->95+ sco
 | Date       | Persona-State     | E1 JTBD | E2 Friction | E3 Intel | E4 Emotion | E5 Craft | E6 Vision | Total | PR   |
 | ---------- | ----------------- | ------- | ----------- | -------- | ---------- | -------- | --------- | ----- | ---- |
 | 2026-03-10 | citizen-delegated | 7/10    | 6/10        | 6/10     | 6/10       | 7/10     | 6/10      | 38/60 | #257 |
+| 2026-03-10 | citizen-anonymous | 6/10    | 5/10        | 7/10     | 6/10       | 7/10     | 5/10      | 36/60 | —    |

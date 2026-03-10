@@ -97,7 +97,7 @@ export function DelegationIntelligence({
             your views against DReps.
           </p>
           <Link
-            href="/discover"
+            href="/governance/proposals"
             className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
           >
             <Vote className="h-3.5 w-3.5" />

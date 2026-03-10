@@ -108,7 +108,7 @@ function UndelegatedHome({ pulseData }: { pulseData: PulseData }) {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="flex-1">
-              <Link href="/discover">Browse all DReps</Link>
+              <Link href="/governance/representatives">Browse all DReps</Link>
             </Button>
           </div>
         </div>

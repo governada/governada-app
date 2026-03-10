@@ -301,7 +301,7 @@ export default async function PoolProfilePage({ params }: PageProps) {
         <Breadcrumb
           items={[
             { label: 'Governance', href: '/' },
-            { label: 'Pools', href: '/discover' },
+            { label: 'Pools', href: '/governance/pools' },
             { label: poolId.slice(0, 16) + '\u2026' },
           ]}
         />
@@ -790,7 +790,7 @@ export default async function PoolProfilePage({ params }: PageProps) {
         <Breadcrumb
           items={[
             { label: 'Governance', href: '/' },
-            { label: 'Pools', href: '/discover' },
+            { label: 'Pools', href: '/governance/pools' },
             { label: ticker ? `${displayName} [${ticker}]` : displayName },
           ]}
         />

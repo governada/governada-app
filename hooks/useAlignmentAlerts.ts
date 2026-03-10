@@ -405,7 +405,7 @@ export function useAlignmentAlerts() {
         type: 'new-proposals',
         title: `${newProposalCount} new proposal${newProposalCount !== 1 ? 's' : ''}`,
         description: `${newProposalCount} new governance proposal${newProposalCount !== 1 ? 's' : ''} since your last visit.`,
-        link: '/discover',
+        link: '/governance/proposals',
         timestamp: now,
         read: false,
       });
@@ -508,7 +508,7 @@ export function useAlignmentAlerts() {
           title: `${govSummary.criticalOpenCount} critical proposal${govSummary.criticalOpenCount !== 1 ? 's' : ''} open`,
           description:
             'A high-impact governance proposal (Hard Fork, No Confidence, or Constitution change) is currently open for voting.',
-          link: '/discover',
+          link: '/governance/proposals',
           timestamp: now,
           read: false,
           metadata: { criticalCount: govSummary.criticalOpenCount },

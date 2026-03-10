@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
             Find your Governance DNA at governada.io
           </div>
 
-          <OGFooter left="$governada" right="governada.io/discover" />
+          <OGFooter left="$governada" right="governada.io/governance" />
         </div>
       </OGBackground>,
       {

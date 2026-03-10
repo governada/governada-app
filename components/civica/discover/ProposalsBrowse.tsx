@@ -40,6 +40,7 @@ interface BrowseProposal {
 }
 import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
 import type { DeliveryStatus } from '@/lib/proposalOutcomes';
+import { AnonymousNudge } from '@/components/civica/shared/AnonymousNudge';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 
@@ -277,6 +278,8 @@ export function ProposalsBrowse() {
             : 'Active governance proposals in Cardano'}
         </p>
       </div>
+
+      <AnonymousNudge variant="proposals" />
 
       {/* Status pipeline overview */}
       {statusCounts.length > 1 && (

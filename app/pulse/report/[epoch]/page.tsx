@@ -95,10 +95,10 @@ export default async function StateOfGovernancePage({ params }: Props) {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
       <Link
-        href="/pulse"
+        href="/governance/health"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to Pulse
+        <ArrowLeft className="h-4 w-4" /> Back to Governance Health
       </Link>
 
       {/* Hero */}

@@ -169,14 +169,14 @@ export function CivicaEpochReport() {
               count={activeProposals}
               color={criticalProposals > 0 ? 'text-amber-400' : 'text-primary'}
               icon={Vote}
-              href="/discover"
+              href="/governance/proposals"
             />
             <PipelineStep
               label="Critical"
               count={criticalProposals}
               color={criticalProposals > 0 ? 'text-rose-400' : 'text-muted-foreground'}
               icon={AlertCircle}
-              href={criticalProposals > 0 ? '/discover' : undefined}
+              href={criticalProposals > 0 ? '/governance/proposals' : undefined}
             />
             <PipelineStep
               label="Votes/week"

@@ -49,7 +49,7 @@ export function GovernanceHeartbeat() {
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
-            href="/pulse"
+            href="/governance/health"
             className="relative flex items-center justify-center w-5 h-5"
             aria-label={labels[level]}
           >

@@ -497,7 +497,7 @@ export function CitizenCommandCenter({
           </Link>
           <p className="text-xs text-muted-foreground">
             Or{' '}
-            <Link href="/discover" className="text-primary hover:underline">
+            <Link href="/governance/representatives" className="text-primary hover:underline">
               browse all DReps
             </Link>
           </p>
@@ -564,7 +564,7 @@ export function CitizenCommandCenter({
 
       {/* Open proposals callout */}
       {!pulseLoading && activeProposals > 0 && (
-        <Link href="/discover" className="block group">
+        <Link href="/governance/proposals" className="block group">
           <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between hover:border-primary/30 transition-colors">
             <div className="flex items-center gap-3">
               <Vote className="h-4 w-4 text-muted-foreground" />
@@ -590,7 +590,7 @@ export function CitizenCommandCenter({
               Recent DRep Votes
             </p>
             <Link
-              href={delegatedDrep ? `/drep/${delegatedDrep}` : '/discover'}
+              href={delegatedDrep ? `/drep/${delegatedDrep}` : '/governance/representatives'}
               className="text-xs text-muted-foreground hover:text-primary transition-colors"
             >
               See all

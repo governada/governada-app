@@ -10,6 +10,7 @@ import { CivicaDRepCard } from '@/components/civica/cards/CivicaDRepCard';
 import { computeTier } from '@/lib/scoring/tiers';
 import { TIER_SCORE_COLOR, TIER_BADGE_BG, tierKey } from '@/components/civica/cards/tierStyles';
 import type { EnrichedDRep } from '@/lib/koios';
+import { AnonymousNudge } from '@/components/civica/shared/AnonymousNudge';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 import {
@@ -293,6 +294,7 @@ export function CivicaDRepBrowse({ dreps }: CivicaDRepBrowseProps) {
 
   return (
     <div ref={contentRef} className="space-y-4 pt-4">
+      <AnonymousNudge variant="representatives" />
       <DiscoverFilterBar
         search={filters.search}
         onSearchChange={(v) => setFilter('search', v)}

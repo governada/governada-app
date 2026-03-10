@@ -384,7 +384,7 @@ function QuickMatchResults({ result }: { result: QuickMatchResult }) {
             These matches are based on your values. The DNA Quiz votes on real proposals for higher
             accuracy.
           </p>
-          <Link href="/discover">
+          <Link href="/governance/representatives">
             <Button className="gap-2">
               Take the DNA Quiz <ArrowRight className="h-4 w-4" />
             </Button>
@@ -461,7 +461,7 @@ function QuickMatchPoolResults({ result }: { result: QuickMatchPoolResult }) {
           <p className="text-sm text-muted-foreground">
             Browse governance-active stake pools and compare their voting records.
           </p>
-          <Link href="/discover?tab=spos">
+          <Link href="/governance/pools">
             <Button
               variant="outline"
               className="gap-2 border-cyan-500/40 text-cyan-600 hover:bg-cyan-500/10"

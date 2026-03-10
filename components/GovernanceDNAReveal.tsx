@@ -196,7 +196,7 @@ export function GovernanceDNAReveal({ result, onRetake }: GovernanceDNARevealPro
                   <RefreshCw className="h-3.5 w-3.5" />
                   Retake Quiz
                 </Button>
-                <Link href="/discover">
+                <Link href="/governance/proposals">
                   <Button variant="ghost" size="sm" className="gap-1.5">
                     <Vote className="h-3.5 w-3.5" />
                     Vote on Proposals
@@ -227,7 +227,7 @@ export function GovernanceDNAReveal({ result, onRetake }: GovernanceDNARevealPro
                 {result.topMatches[0].matchScore}%)
               </p>
               <ShareActions
-                url="https://governada.io/discover"
+                url="https://governada.io/governance"
                 text={`I took the Governance DNA Quiz on @GovernadaIO! My top match: ${result.topMatches[0].name} (${result.topMatches[0].matchScore}%). Find your ideal DRep:`}
                 imageUrl={`/api/og/governance-dna?votes=${result.votesCount}${result.topMatches
                   .slice(0, 3)

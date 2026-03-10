@@ -107,7 +107,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       <Breadcrumb
         items={[
           { label: 'Governance', href: '/' },
-          { label: 'Proposals', href: '/discover' },
+          { label: 'Proposals', href: '/governance/proposals' },
           { label: title },
         ]}
       />

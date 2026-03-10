@@ -679,7 +679,7 @@ function EpochBriefingContent({
           Where your money goes
         </p>
         <Link
-          href="/pulse"
+          href="/governance/health"
           className="text-xs text-primary hover:underline inline-flex items-center gap-1 min-h-[44px] sm:min-h-0"
         >
           Full details
@@ -759,7 +759,7 @@ function EpochBriefingContent({
             )}
           </div>
           <Link
-            href="/discover"
+            href="/governance/proposals"
             className="shrink-0 text-sm font-medium text-primary hover:underline inline-flex items-center gap-1 min-h-[44px]"
           >
             View

@@ -16,7 +16,7 @@ export function CivicaErrorState({
   variant,
   entityType = 'DRep',
   lastKnownEpoch,
-  backHref = '/discover',
+  backHref = '/governance',
 }: CivicaErrorStateProps) {
   if (variant === 'data-lag') {
     return (

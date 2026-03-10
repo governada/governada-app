@@ -33,8 +33,8 @@ interface MobileNavProps {
 }
 
 const PRIMARY_NAV_ITEMS = [
-  { href: '/discover', label: 'Discover', icon: Compass },
-  { href: '/pulse', label: 'Pulse', icon: Activity },
+  { href: '/governance', label: 'Governance', icon: Compass },
+  { href: '/governance/health', label: 'Health', icon: Activity },
 ];
 
 const AUTH_NAV_ITEM = { href: '/my-gov', label: 'My Governance', icon: Vote };

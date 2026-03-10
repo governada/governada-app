@@ -96,7 +96,7 @@ export async function GET() {
             })}
           </div>
 
-          <OGFooter left="$governada" right="governada.io/pulse#leaderboard" />
+          <OGFooter left="$governada" right="governada.io/governance/health#leaderboard" />
         </div>
       </OGBackground>,
       {

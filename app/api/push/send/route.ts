@@ -46,7 +46,7 @@ export const POST = withRouteHandler(
             body: proposalTitle
               ? `"${proposalTitle}" is open for voting. This is a high-impact proposal.`
               : 'A critical governance proposal is now open for voting.',
-            url: txHash ? `/proposal/${txHash}/${index || 0}` : '/discover',
+            url: txHash ? `/proposal/${txHash}/${index || 0}` : '/governance/proposals',
           },
         };
         break;

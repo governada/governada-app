@@ -195,7 +195,7 @@ function EpochRecap({
 
       <div className="pt-1">
         <Link
-          href="/pulse"
+          href="/governance/health"
           className="text-xs text-primary hover:underline inline-flex items-center gap-1"
         >
           Full governance health

@@ -327,7 +327,7 @@ function buildSystemNotifications(
       bgColor: 'bg-sky-950/10',
       title: `${activeProposals} governance proposal${activeProposals > 1 ? 's' : ''} in progress`,
       description: 'Some proposals may require SPO votes. Check for pending actions.',
-      href: '/discover?tab=proposals',
+      href: '/governance/proposals',
       cta: 'View',
       priority: 3,
     });
@@ -349,7 +349,7 @@ function buildSystemNotifications(
       bgColor: 'bg-card',
       title: `Governance health: ${ghiScore.toFixed(0)}${ghiDelta != null ? ` (${ghiDelta > 0 ? '+' : ''}${ghiDelta.toFixed(1)} this epoch)` : ''}`,
       description: 'The Governance Health Index reflects current ecosystem health.',
-      href: '/pulse',
+      href: '/governance/health',
       cta: 'See Pulse',
       priority: 3,
     });
@@ -452,7 +452,7 @@ export function SPOInbox() {
       bgColor: 'bg-rose-950/10',
       title: `${inbox.criticalCount} critical proposal${inbox.criticalCount > 1 ? 's' : ''} need your vote`,
       description: 'These proposals affect core protocol parameters or governance structure.',
-      href: '/discover?tab=proposals',
+      href: '/governance/proposals',
       cta: 'Review',
       priority: 1,
     });
@@ -472,7 +472,7 @@ export function SPOInbox() {
       bgColor: 'bg-amber-950/10',
       title: `${inbox.urgentCount} proposal${inbox.urgentCount > 1 ? 's' : ''} expiring soon`,
       description: 'Vote before these proposals expire to maintain your participation score.',
-      href: '/discover?tab=proposals',
+      href: '/governance/proposals',
       cta: 'Vote Now',
       priority: 2,
     });
@@ -720,7 +720,7 @@ export function SPOInbox() {
           </div>
           {inbox.pendingProposals.length > 5 && (
             <Link
-              href="/discover?tab=proposals"
+              href="/governance/proposals"
               className="block text-center text-xs text-muted-foreground hover:text-primary transition-colors py-1"
             >
               View all {inbox.pendingCount ?? 0} pending proposals

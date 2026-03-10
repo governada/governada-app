@@ -22,10 +22,10 @@ export default async function PulseHistoryPage() {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">
       <Link
-        href="/pulse"
+        href="/governance/health"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to Pulse
+        <ArrowLeft className="h-4 w-4" /> Back to Governance Health
       </Link>
 
       <h1 className="text-2xl font-bold mb-2">Epoch Recaps</h1>

@@ -127,7 +127,7 @@ function DelegatedCard({ data }: { data: DelegatedData }) {
             My Governance
           </Link>
           <Link
-            href="/discover"
+            href="/governance/proposals"
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-accent transition-colors"
           >
             View Proposals <ArrowRight className="h-3.5 w-3.5" />
@@ -150,7 +150,7 @@ function UndelegatedCard({ data }: { data: UndelegatedData }) {
           Delegation is free, non-custodial, and takes 30 seconds.
         </p>
         <Link
-          href="/discover"
+          href="/governance/representatives"
           className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           Find Your Representative <ArrowRight className="h-4 w-4" />
@@ -217,7 +217,7 @@ function DRepCard({ data }: { data: DRepData }) {
             Open Dashboard
           </Link>
           <Link
-            href="/discover"
+            href="/governance/proposals"
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-accent transition-colors"
           >
             View Proposals <ArrowRight className="h-3.5 w-3.5" />

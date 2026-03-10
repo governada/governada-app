@@ -51,7 +51,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
   const { dreps: drepsParam } = await searchParams;
 
   if (!drepsParam) {
-    redirect('/discover');
+    redirect('/governance');
   }
 
   const ids = drepsParam
@@ -61,7 +61,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
     .slice(0, 3);
 
   if (ids.length < 2) {
-    redirect('/discover');
+    redirect('/governance');
   }
 
   // Fetch all DReps in parallel

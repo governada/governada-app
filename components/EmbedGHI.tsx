@@ -106,7 +106,7 @@ export function EmbedGHI({ theme }: EmbedGHIProps) {
 
       <div className="mt-2 flex justify-between items-center">
         <a
-          href="https://governada.io/pulse"
+          href="https://governada.io/governance/health"
           target="_blank"
           rel="noopener noreferrer"
           className="text-[10px] font-medium hover:underline"

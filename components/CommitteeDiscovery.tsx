@@ -137,7 +137,7 @@ export function CommitteeDiscovery() {
 
       {/* Link to full transparency page */}
       <div className="flex items-center justify-end">
-        <Link href="/discover/committee" className="text-xs text-primary hover:underline">
+        <Link href="/governance/committee" className="text-xs text-primary hover:underline">
           View full Transparency Index →
         </Link>
       </div>

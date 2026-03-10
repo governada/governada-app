@@ -354,7 +354,7 @@ function buildSystemNotifications(pulse: Record<string, unknown> | undefined): N
       bgColor: 'bg-card',
       title: `Governance health: ${ghiScore.toFixed(0)}${ghiDelta != null ? ` (${ghiDelta > 0 ? '+' : ''}${ghiDelta.toFixed(1)} this epoch)` : ''}`,
       description: 'The Governance Health Index reflects current ecosystem health.',
-      href: '/pulse',
+      href: '/governance/health',
       cta: 'See Pulse',
       priority: 3,
     });

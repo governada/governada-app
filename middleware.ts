@@ -49,6 +49,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // ── Anonymous /governance redirect (server-side for faster nav) ──
+  if (pathname === '/governance') {
+    const session = request.cookies.get('drepscore_session');
+    if (!session?.value) {
+      return NextResponse.redirect(new URL('/governance/proposals', request.url));
+    }
+  }
+
   // ── Auth gate ─────────────────────────────────────────────────────
   if (AUTH_REQUIRED_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     const session = request.cookies.get('drepscore_session');
@@ -85,6 +93,7 @@ export const config = {
   matcher: [
     '/api/v1/:path*',
     '/discover',
+    '/governance',
     '/pulse',
     '/workspace/:path*',
     '/you/:path*',

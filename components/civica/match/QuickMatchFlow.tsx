@@ -19,6 +19,8 @@ import {
   History,
   Server,
   Users,
+  Share2,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,6 +37,13 @@ import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
 import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
 import { saveMatchProfile, loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
+import {
+  webShare,
+  canWebShare,
+  copyToClipboard,
+  trackShare,
+  buildMatchResultUrl,
+} from '@/lib/share';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -596,6 +605,69 @@ function getMatchNarrative(match: MatchResult): string {
   return `${strength} alignment across your governance values.`;
 }
 
+function buildShareableUrl(results: QuickMatchResponse): string {
+  const profile = {
+    personality: results.personalityLabel,
+    dimensions: results.userAlignments,
+    narrative: getValuesNarrative(results.userAlignments),
+  };
+  const encoded = btoa(JSON.stringify(profile));
+  return buildMatchResultUrl(encoded);
+}
+
+function ShareButton({ results }: { results: QuickMatchResponse }) {
+  const [copied, setCopied] = useState(false);
+  const posthog = usePostHog();
+
+  const handleShare = useCallback(async () => {
+    const url = buildShareableUrl(results);
+    const shareText = `I'm "${results.personalityLabel}" on Cardano governance. Find your governance identity:`;
+
+    trackShare('quick_match', 'share_button', { personality: results.personalityLabel });
+    posthog?.capture('match_shared', { personality: results.personalityLabel });
+
+    if (canWebShare()) {
+      const shared = await webShare({
+        title: `I'm ${results.personalityLabel} — Governada`,
+        text: shareText,
+        url,
+      });
+      if (shared) {
+        trackShare(
+          'quick_match',
+          'native_share',
+          { personality: results.personalityLabel },
+          'success',
+        );
+        return;
+      }
+    }
+
+    const ok = await copyToClipboard(url);
+    if (ok) {
+      setCopied(true);
+      trackShare('quick_match', 'clipboard', { personality: results.personalityLabel }, 'success');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [results, posthog]);
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleShare} className="gap-2">
+      {copied ? (
+        <>
+          <Check className="h-4 w-4" />
+          Link Copied
+        </>
+      ) : (
+        <>
+          <Share2 className="h-4 w-4" />
+          Share Your Identity
+        </>
+      )}
+    </Button>
+  );
+}
+
 function ResultsScreen({
   drepResults,
   spoResults,
@@ -641,6 +713,8 @@ function ResultsScreen({
             {getValuesNarrative(drepResults.userAlignments)}
           </p>
         </div>
+
+        <ShareButton results={drepResults} />
       </div>
 
       {/* Tab toggle */}
@@ -801,7 +875,9 @@ function ResultsScreen({
               participation, more matches will appear.
             </p>
             <Button asChild variant="outline" size="sm">
-              <Link href={activeTab === 'spo' ? '/discover?tab=spos' : '/discover'}>
+              <Link
+                href={activeTab === 'spo' ? '/governance/pools' : '/governance/representatives'}
+              >
                 Browse all active {activeTab === 'spo' ? 'SPOs' : 'DReps'}
                 <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
               </Link>
@@ -818,7 +894,7 @@ function ResultsScreen({
       {/* CTAs */}
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2 pb-8">
         <Button asChild size="lg">
-          <Link href={activeTab === 'spo' ? '/discover?tab=spos' : '/discover?sort=match'}>
+          <Link href={activeTab === 'spo' ? '/governance/pools' : '/governance/representatives'}>
             Browse All {activeTab === 'spo' ? 'SPOs' : 'DReps'}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

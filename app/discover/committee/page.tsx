@@ -192,11 +192,11 @@ export default async function CommitteeTransparencyPage() {
       <PageViewTracker event="civica_committee_page_viewed" />
 
       <Link
-        href="/discover"
+        href="/governance"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Back to Discover
+        Back to Governance
       </Link>
 
       <div className="space-y-1">

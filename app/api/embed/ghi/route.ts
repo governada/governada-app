@@ -50,7 +50,7 @@ export async function GET() {
       <path d="${sparkPath}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <div style="color:#64748b;font-size:11px;margin-top:4px">Last 12 epochs</div>
-    <a href="https://governada.io/pulse" target="_blank" class="cta">View on Governada \u2197</a>
+    <a href="https://governada.io/governance/health" target="_blank" class="cta">View on Governada \u2197</a>
   </div>
 </body>
 </html>`;

@@ -127,9 +127,9 @@ export function BrandedLoader() {
 
       {/* Brand text */}
       <div className="text-center animate-fade-in-up">
-        <p className="text-2xl font-bold text-primary tracking-tight font-sans">$governada</p>
+        <p className="text-2xl font-bold text-primary tracking-tight font-sans">Governada</p>
         <p className="text-sm text-muted-foreground mt-1 tracking-wide">
-          Observing Cardano Governance
+          Governance Intelligence for Cardano
         </p>
       </div>
     </div>

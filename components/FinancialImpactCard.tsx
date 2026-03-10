@@ -99,7 +99,7 @@ export function FinancialImpactCard({
         </div>
 
         <Link
-          href="/pulse"
+          href="/governance/health"
           className="flex items-center gap-1 text-xs text-primary hover:underline mt-1"
         >
           View full treasury dashboard <ArrowRight className="h-3 w-3" />

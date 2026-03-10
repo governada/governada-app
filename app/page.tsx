@@ -29,26 +29,26 @@ export const metadata: Metadata = {
 async function getGovernancePulse() {
   const supabase = createClient();
 
-  const [drepsResult, proposalsResult] = await Promise.all([
-    supabase.from('dreps').select('info', { count: 'exact' }).range(0, 9999),
+  const [activeDRepsResult, totalDRepsResult, openProposalsResult] = await Promise.all([
+    supabase
+      .from('dreps')
+      .select('id', { count: 'exact', head: true })
+      .eq('info->>isActive', 'true'),
+    supabase.from('dreps').select('id', { count: 'exact', head: true }),
     supabase
       .from('proposals')
-      .select('tx_hash, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch'),
+      .select('tx_hash', { count: 'exact', head: true })
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
   ]);
-
-  const dreps = drepsResult.data || [];
-  const proposals = proposalsResult.data || [];
-  const activeDReps = dreps.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
-
-  const openProposals = proposals.filter(
-    (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
-  );
 
   return {
     totalAdaGoverned: '',
-    activeProposals: openProposals.length,
-    activeDReps: activeDReps.length,
-    totalDReps: drepsResult.count ?? dreps.length,
+    activeProposals: openProposalsResult.count ?? 0,
+    activeDReps: activeDRepsResult.count ?? 0,
+    totalDReps: totalDRepsResult.count ?? 0,
     votesThisWeek: 0,
     claimedDReps: 0,
     activeSpOs: 0,

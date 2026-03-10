@@ -322,7 +322,7 @@ export function CivicaGovernanceCalendar() {
       {/* Active proposals context */}
       {((pulse?.activeProposals as number | undefined) ?? 0) > 0 && (
         <Link
-          href="/discover"
+          href="/governance/proposals"
           className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors group"
         >
           <div>

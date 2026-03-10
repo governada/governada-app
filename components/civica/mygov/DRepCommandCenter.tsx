@@ -473,7 +473,7 @@ export function DRepCommandCenter({ drepId }: { drepId: string }) {
             </div>
             {pendingCount > 5 && (
               <Link
-                href="/discover"
+                href="/governance/proposals"
                 className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
               >
                 View all

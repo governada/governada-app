@@ -128,7 +128,7 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'discovery',
     priority: 2,
     conditional: false,
-    href: '/discover',
+    href: '/governance',
   },
 };
 

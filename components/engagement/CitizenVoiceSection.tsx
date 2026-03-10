@@ -76,7 +76,7 @@ export function CitizenVoiceSection({ data }: CitizenVoiceSectionProps) {
         <p className="text-xs text-muted-foreground">
           Your DRep voted differently on {summary.drepDiverged} proposal
           {summary.drepDiverged !== 1 ? 's' : ''}.{' '}
-          <Link href="/discover?tab=dreps" className="text-primary hover:underline">
+          <Link href="/governance/representatives" className="text-primary hover:underline">
             Explore other DReps
           </Link>
         </p>

@@ -342,7 +342,7 @@ export function DeveloperPage() {
               <a href="#explorer">API Explorer</a>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/pulse">View Governance Pulse</Link>
+              <Link href="/governance/health">View Governance Health</Link>
             </Button>
           </div>
         </div>

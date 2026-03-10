@@ -212,7 +212,7 @@ export function DelegationHealthCard({
             You haven&apos;t delegated to a DRep yet. Find one aligned with your values to
             participate in governance.
           </p>
-          <Link href="/discover">
+          <Link href="/governance/representatives">
             <Button size="sm" className="gap-2">
               Find a DRep
               <ArrowRight className="h-3.5 w-3.5" />
@@ -325,7 +325,7 @@ export function RepresentationScoreCard({ rep }: { rep: RepresentationData }) {
             Vote on proposals to see how well your DRep represents your views. Each poll vote you
             cast builds this score.
           </p>
-          <Link href="/discover">
+          <Link href="/governance/proposals">
             <Button
               variant="outline"
               size="sm"
@@ -428,7 +428,7 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
             icon={ScrollText}
             title="All Quiet on the Governance Front"
             message="No proposals are open right now. Check back next epoch, or review recent outcomes."
-            action={{ label: 'View Past Proposals', href: '/discover' }}
+            action={{ label: 'View Past Proposals', href: '/governance/proposals' }}
             compact
             component="ActiveProposals"
           />
@@ -544,7 +544,7 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
         </TooltipProvider>
 
         <div className="mt-3 pt-3 border-t">
-          <Link href="/discover">
+          <Link href="/governance/proposals">
             <Button
               variant="outline"
               size="sm"

@@ -110,7 +110,7 @@ export function EmbedCrossChain({ theme }: EmbedCrossChainProps) {
 
       <div className="mt-3 flex items-center justify-between">
         <a
-          href="https://governada.io/pulse"
+          href="https://governada.io/governance/health"
           target="_blank"
           rel="noopener noreferrer"
           className="text-[10px] font-medium hover:underline"

@@ -14,7 +14,7 @@ function pathDepth(p: string) {
   return p.split('/').filter(Boolean).length;
 }
 
-const GOVERNANCE_ROUTES = new Set(['/pulse', '/discover', '/my-gov']);
+const GOVERNANCE_ROUTES = new Set(['/governance/health', '/governance', '/my-gov']);
 
 function inferDirection(prev: string, next: string): NavDirection {
   if (!prev || prev === next) return 'neutral';

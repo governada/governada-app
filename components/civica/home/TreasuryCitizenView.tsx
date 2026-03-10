@@ -92,7 +92,7 @@ export function TreasuryCitizenView({ className }: { className?: string }) {
             <p className="text-sm font-semibold text-foreground">Where Your Money Goes</p>
           </div>
           <Link
-            href="/pulse"
+            href="/governance/health"
             className="text-xs text-primary hover:underline inline-flex items-center gap-1"
           >
             Full details

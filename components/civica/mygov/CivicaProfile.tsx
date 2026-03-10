@@ -334,7 +334,7 @@ export function CivicaProfile() {
             <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
           </Link>
           <Link
-            href="/discover"
+            href="/governance/representatives"
             className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3 hover:border-primary/30 transition-colors group"
           >
             <div>

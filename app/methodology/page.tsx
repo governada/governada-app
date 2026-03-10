@@ -684,7 +684,7 @@ export default function MethodologyPage() {
               <p className="text-xs font-semibold text-foreground">GHI reference</p>
               <code className="block text-[11px] text-muted-foreground font-mono bg-muted p-2 rounded">
                 &ldquo;Cardano governance health stands at [X]/100 ([Band]) per the Governada
-                Governance Health Index, epoch [N]. Source: governada.io/pulse&rdquo;
+                Governance Health Index, epoch [N]. Source: governada.io/governance/health&rdquo;
               </code>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 space-y-2">

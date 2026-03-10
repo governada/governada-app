@@ -101,7 +101,7 @@ export async function GET() {
             ))}
           </div>
 
-          <OGFooter left="$governada" right="governada.io/pulse" />
+          <OGFooter left="$governada" right="governada.io/governance/health" />
         </div>
       </OGBackground>,
       {
@@ -130,7 +130,7 @@ export async function GET() {
           <div
             style={{ display: 'flex', fontSize: '24px', color: OG.textMuted, marginTop: '16px' }}
           >
-            governada.io/pulse
+            governada.io/governance/health
           </div>
         </div>
       </OGBackground>,

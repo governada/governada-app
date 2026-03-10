@@ -199,7 +199,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
       <Breadcrumb
         items={[
           { label: 'Governance', href: '/' },
-          { label: 'Committee', href: '/discover/committee' },
+          { label: 'Committee', href: '/governance/committee' },
           { label: authorName ?? `CC ${decodedId.slice(0, 12)}\u2026` },
         ]}
       />

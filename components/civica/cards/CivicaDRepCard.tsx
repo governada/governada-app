@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { computeTier } from '@/lib/scoring/tiers';
+import { getScoreNarrative } from '@/lib/scoring/scoreNarratives';
 import { TIER_SCORE_COLOR, TIER_BORDER, TIER_BG, TIER_GLOW, tierKey } from './tierStyles';
 import { TierBadge } from './TierBadge';
 import type { EnrichedDRep } from '@/lib/koios';
@@ -50,6 +51,7 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
 
   const recency = formatRecency(drep.lastVoteTime);
   const rationaleRate = Math.round(drep.rationaleRate ?? 0);
+  const scoreNarrative = getScoreNarrative({ score, percentile: 0 });
 
   return (
     <Link
@@ -126,6 +128,9 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
           )}
         </div>
       </div>
+
+      {/* ── Score narrative ──────────────────────────────────── */}
+      <p className="text-xs text-muted-foreground mb-2">{scoreNarrative}</p>
 
       {/* ── Governance identity ───────────────────────────────── */}
       {(personalityLabel || traitTags.length > 0) && (

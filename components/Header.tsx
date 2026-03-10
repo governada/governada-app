@@ -205,13 +205,13 @@ export function Header() {
         </div>
 
         <nav className="flex items-center space-x-2 sm:space-x-4">
-          <Link href="/discover" className={navLinkClass('/discover')}>
+          <Link href="/governance" className={navLinkClass('/governance')}>
             <Compass className="h-4 w-4" />
-            <span>Discover</span>
+            <span>Governance</span>
           </Link>
-          <Link href="/pulse" className={navLinkClass('/pulse')}>
+          <Link href="/governance/health" className={navLinkClass('/governance/health')}>
             <Activity className="h-4 w-4" />
-            <span>Pulse</span>
+            <span>Health</span>
           </Link>
           {isAuthenticated && (
             <Link href="/my-gov" prefetch={false} className={navLinkClass('/my-gov')}>

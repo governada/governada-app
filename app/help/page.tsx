@@ -1,19 +1,23 @@
 import type { Metadata } from 'next';
+import { PageViewTracker } from '@/components/PageViewTracker';
+import { LearnClient } from '@/app/learn/LearnClient';
 
 export const metadata: Metadata = {
   title: 'Governada — Help',
-  description: 'Find answers to governance questions. FAQ, glossary, methodology, and support.',
+  description:
+    'Understand Cardano governance: DReps, delegation, proposals, treasury, and how your voice shapes the network.',
+  openGraph: {
+    title: 'Governada — Help',
+    description: 'Everything you need to understand Cardano on-chain governance.',
+    type: 'website',
+  },
 };
 
-/**
- * /help — Help center.
- * Will be populated with FAQ + search + quick links.
- */
 export default function HelpPage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Help</h1>
-      <p className="text-muted-foreground">FAQ and help center will appear here.</p>
+      <PageViewTracker event="help_page_viewed" />
+      <LearnClient />
     </div>
   );
 }

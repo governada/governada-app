@@ -1,21 +1,17 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
+import { CivicaInbox } from '@/components/civica/mygov/CivicaInbox';
 
 export const metadata: Metadata = {
   title: 'Governada — Inbox',
-  description: 'Your governance notifications and alerts.',
+  description: 'Your governance notifications and action items.',
 };
 
-/**
- * /you/inbox — placeholder.
- * Will be populated with content migrated from /my-gov/inbox.
- */
 export default function InboxPage() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Inbox</h1>
-      <p className="text-muted-foreground">Notification history will appear here.</p>
+    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
+      <CivicaInbox />
     </div>
   );
 }

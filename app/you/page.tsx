@@ -1,23 +1,23 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
+import { CivicIdentityProfile } from '@/components/civica/identity/CivicIdentityProfile';
 
 export const metadata: Metadata = {
   title: 'Governada — You',
-  description: 'Your governance identity card. See and share your civic profile.',
+  description:
+    'Your governance identity — delegation history, governance footprint, milestones, and engagement stats.',
+  openGraph: {
+    title: 'Governada — Your Governance Identity',
+    description: 'Your civic identity on Cardano governance.',
+    type: 'website',
+  },
 };
 
-/**
- * /you — Governance ID summary.
- * Will be populated with shareable governance identity card.
- */
 export default function YouPage() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Governance Identity</h1>
-      <p className="text-muted-foreground">
-        Your shareable governance identity card will appear here.
-      </p>
+    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
+      <CivicIdentityProfile />
     </div>
   );
 }

@@ -1,21 +1,23 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
+import { CivicIdentityProfile } from '@/components/civica/identity/CivicIdentityProfile';
 
 export const metadata: Metadata = {
-  title: 'Governada — Identity',
-  description: 'Connected wallets, credentials, and verification status.',
+  title: 'Governada — Civic Identity',
+  description:
+    'Your civic identity — delegation history, governance footprint, milestones, and engagement stats.',
+  openGraph: {
+    title: 'Governada — Civic Identity',
+    description: 'Your civic identity on Cardano governance.',
+    type: 'website',
+  },
 };
 
-/**
- * /you/identity — placeholder.
- * Will be populated with content migrated from /my-gov/identity.
- */
 export default function IdentityPage() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Identity</h1>
-      <p className="text-muted-foreground">Wallet and credential management will appear here.</p>
+    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
+      <CivicIdentityProfile />
     </div>
   );
 }

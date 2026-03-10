@@ -98,14 +98,16 @@ C:\Users\dalto\governada\
 
 ## Context Files (Agent-Optimized)
 
-| Need                                      | File                                             | Lines |
-| ----------------------------------------- | ------------------------------------------------ | ----- |
-| Build status / audit checklist            | `docs/strategy/context/build-manifest.md`        | ~170  |
-| Persona quick reference                   | `docs/strategy/context/persona-quick-ref.md`     | ~60   |
-| Audit scoring rubric & benchmarks         | `docs/strategy/context/audit-rubric.md`          | ~180  |
-| Work plan template (parallel agents)      | `docs/strategy/context/work-plan-template.md`    | ~80   |
-| Competitive landscape (updated by audits) | `docs/strategy/context/competitive-landscape.md` | ~150  |
-| Full vision (strategic audits only)       | `docs/strategy/ultimate-vision.md`               | ~950  |
+| Need                                      | File                                               | Lines |
+| ----------------------------------------- | -------------------------------------------------- | ----- |
+| Build status / audit checklist            | `docs/strategy/context/build-manifest.md`          | ~250  |
+| Navigation architecture spec              | `docs/strategy/context/navigation-architecture.md` | ~530  |
+| UX constraints (per-page JTBD)            | `docs/strategy/context/ux-constraints.md`          | ~220  |
+| Persona quick reference                   | `docs/strategy/context/persona-quick-ref.md`       | ~80   |
+| Audit scoring rubric & benchmarks         | `docs/strategy/context/audit-rubric.md`            | ~180  |
+| Work plan template (parallel agents)      | `docs/strategy/context/work-plan-template.md`      | ~80   |
+| Competitive landscape (updated by audits) | `docs/strategy/context/competitive-landscape.md`   | ~150  |
+| Full vision (strategic audits only)       | `docs/strategy/ultimate-vision.md`                 | ~730  |
 
 ## Audit Commands
 
@@ -123,13 +125,13 @@ C:\Users\dalto\governada\
 
 ## Build Commands
 
-| Command                                                        | Purpose                                                                                                                             |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `/build-step N`                                                | End-to-end step builder: vision research → architecture → decision gate → parallel execution → autonomous deploy → post-build audit |
-| `/fix-audit [last\|area\|all]`                                 | Takes audit findings, plans fixes, executes in parallel, deploys, re-audits to verify scores improved                               |
-| `/launch-readiness [full\|technical\|business\|blocker-check]` | Pre-launch go/no-go: security blockers, journey regression, performance, brand, legal, monetization, community, SEO                 |
-| `/ship`                                                        | Full deploy pipeline for a single PR (preflight → CI → merge → deploy → verify)                                                     |
-| `/hotfix`                                                      | Single-commit fix directly on main                                                                                                  |
+| Command                                                        | Purpose                                                                                                                              |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `/build-step N` (or `/build-phase N`)                          | End-to-end phase builder: vision research → architecture → decision gate → parallel execution → autonomous deploy → post-build audit |
+| `/fix-audit [last\|area\|all]`                                 | Takes audit findings, plans fixes, executes in parallel, deploys, re-audits to verify scores improved                                |
+| `/launch-readiness [full\|technical\|business\|blocker-check]` | Pre-launch go/no-go: security blockers, journey regression, performance, brand, legal, monetization, community, SEO                  |
+| `/ship`                                                        | Full deploy pipeline for a single PR (preflight → CI → merge → deploy → verify)                                                      |
+| `/hotfix`                                                      | Single-commit fix directly on main                                                                                                   |
 
 ## Path-Scoped Rules
 

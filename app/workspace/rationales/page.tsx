@@ -1,17 +1,19 @@
+import type { Metadata } from 'next';
+import { PageViewTracker } from '@/components/PageViewTracker';
+import { WorkspaceRationalesPage } from '@/components/hub/WorkspaceRationalesPage';
+
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
-
 export const metadata: Metadata = {
-  title: 'Governada — Rationales',
+  title: 'Rationales — Governada',
   description: 'Your published governance rationales and their reception.',
 };
 
-export default function RationalesPage() {
+export default function WorkspaceRationales() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-2xl font-bold mb-4">Rationales</h1>
-      <p className="text-muted-foreground">Your published rationales will appear here.</p>
-    </div>
+    <>
+      <PageViewTracker event="workspace_rationales_viewed" />
+      <WorkspaceRationalesPage />
+    </>
   );
 }

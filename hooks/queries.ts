@@ -127,6 +127,14 @@ export function useDRepVotes(drepId: string | null | undefined) {
   });
 }
 
+export function useDRepRationales(drepId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['drep-rationales', drepId],
+    queryFn: () => fetchJson(`/api/drep/${drepId}/rationales`),
+    enabled: !!drepId,
+  });
+}
+
 export function useDRepTrajectory(drepId: string | null | undefined) {
   return useQuery({
     queryKey: ['drep-trajectory', drepId],

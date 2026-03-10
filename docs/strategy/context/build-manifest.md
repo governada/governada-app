@@ -129,16 +129,16 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 ### 1c: Workspace recomposition
 
 - [ ] DRep: action queue with vote casting + CIP-100 flow
-- [ ] DRep: voting record, rationales, delegators, performance sub-pages
+- [x] DRep: voting record, rationales, delegators, performance sub-pages | PR #255
 - [ ] SPO: gov score dashboard, pool profile, delegators, position sub-pages
-- [ ] DRep+SPO: both sets grouped by role header in sidebar
+- [x] DRep+SPO: both sets grouped by role header in sidebar | PR #254
 
 ### 1d: Governance Coverage (NEW)
 
-- [ ] Coverage calculation (DRep + SPO action type coverage per epoch)
-- [ ] Hub status card: "Your governance coverage: X%"
+- [x] Coverage calculation (DRep + SPO action type coverage per epoch) | PR #255
+- [x] Hub status card: "Your governance coverage: X%" | PR #255
 - [ ] Delegation page: detailed breakdown by action type
-- [ ] Gap/conflict alerts
+- [x] Gap/conflict alerts | PR #255
 
 ### Flywheels activated: Accountability, Content/Discourse
 

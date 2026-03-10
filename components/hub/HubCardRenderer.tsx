@@ -16,11 +16,13 @@ import {
   SPOGovernanceScoreCard,
   SPODelegatorsCard,
 } from './cards/StatusCard';
+import { CoverageCard } from './cards/CoverageCard';
 
 /** Map card IDs to their React components */
 const CARD_COMPONENTS: Record<CardId, React.ComponentType> = {
   representation: RepresentationCard,
   'governance-health': GovernanceHealthCard,
+  coverage: CoverageCard,
   alert: AlertCard,
   engagement: EngagementCard,
   'drep-action-queue': ActionCard,

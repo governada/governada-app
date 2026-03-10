@@ -14,7 +14,26 @@ export function DRepOutcomeSummary({ drepId }: Props) {
   const { data: raw, isLoading } = useDRepOutcomeSummary(drepId);
   const summary = raw as DRepOutcomeSummaryType | undefined;
 
-  if (isLoading || !summary || summary.enactedProposals === 0) return null;
+  if (isLoading) return null;
+
+  if (!summary || summary.enactedProposals === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            Treasury Track Record
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">
+            Treasury track record builds as this DRep votes on treasury proposals and outcomes are
+            recorded.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const totalResolved = summary.deliveredCount + summary.partialCount + summary.notDeliveredCount;
 

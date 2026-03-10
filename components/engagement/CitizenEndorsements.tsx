@@ -28,12 +28,38 @@ const ENDORSEMENT_CONFIG: {
   type: EndorsementType;
   label: string;
   icon: typeof Heart;
+  tooltip: string;
 }[] = [
-  { type: 'general', label: 'General', icon: Heart },
-  { type: 'treasury_oversight', label: 'Treasury', icon: Landmark },
-  { type: 'technical_expertise', label: 'Technical', icon: Code2 },
-  { type: 'communication', label: 'Communication', icon: MessageSquare },
-  { type: 'community_leadership', label: 'Community', icon: Users },
+  {
+    type: 'general',
+    label: 'General',
+    icon: Heart,
+    tooltip: 'Overall trust and confidence in this representative',
+  },
+  {
+    type: 'treasury_oversight',
+    label: 'Treasury',
+    icon: Landmark,
+    tooltip: 'Trust in their judgment on treasury spending proposals',
+  },
+  {
+    type: 'technical_expertise',
+    label: 'Technical',
+    icon: Code2,
+    tooltip: 'Trust in their ability to evaluate technical protocol changes',
+  },
+  {
+    type: 'communication',
+    label: 'Communication',
+    icon: MessageSquare,
+    tooltip: 'Recognition of clear, consistent communication with delegators',
+  },
+  {
+    type: 'community_leadership',
+    label: 'Community',
+    icon: Users,
+    tooltip: 'Recognition of community engagement and accessibility',
+  },
 ];
 
 interface CitizenEndorsementsProps {
@@ -180,6 +206,12 @@ export function CitizenEndorsements({ entityType, entityId }: CitizenEndorsement
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {/* Intro line */}
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Endorsements signal trust in specific governance competencies, complementing the
+          algorithmic score with social proof.
+        </p>
+
         {/* Summary line */}
         {total > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -203,37 +235,47 @@ export function CitizenEndorsements({ entityType, entityId }: CitizenEndorsement
             role="group"
             aria-label={`Endorse this ${entityType === 'drep' ? 'DRep' : 'SPO'}`}
           >
-            {ENDORSEMENT_CONFIG.map(({ type, label, icon: Icon }) => {
+            {ENDORSEMENT_CONFIG.map(({ type, label, icon: Icon, tooltip }) => {
               const isActive = userEndorsements.has(type);
               const count = byType[type] || 0;
               const isCurrentlyToggling = toggling === type;
 
               return (
-                <button
-                  key={type}
-                  onClick={() => toggleEndorsement(type)}
-                  disabled={toggling !== null}
-                  aria-pressed={isActive}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all duration-150 border
-                    motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.97]
-                    ${
-                      isActive
-                        ? 'bg-primary/10 border-primary/30 text-primary'
-                        : 'bg-transparent border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                    }
-                    ${toggling !== null && !isCurrentlyToggling ? 'opacity-50' : ''}
-                  `}
-                >
-                  {isCurrentlyToggling ? (
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                  ) : isActive ? (
-                    <Check className="h-3 w-3" />
-                  ) : (
-                    <Icon className="h-3 w-3" />
-                  )}
-                  {label}
-                  {count > 0 && <span className="ml-0.5 tabular-nums opacity-70">{count}</span>}
-                </button>
+                <TooltipProvider key={type}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => toggleEndorsement(type)}
+                        disabled={toggling !== null}
+                        aria-pressed={isActive}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all duration-150 border
+                          motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.97]
+                          ${
+                            isActive
+                              ? 'bg-primary/10 border-primary/30 text-primary'
+                              : 'bg-transparent border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                          }
+                          ${toggling !== null && !isCurrentlyToggling ? 'opacity-50' : ''}
+                        `}
+                      >
+                        {isCurrentlyToggling ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : isActive ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Icon className="h-3 w-3" />
+                        )}
+                        {label}
+                        {count > 0 && (
+                          <span className="ml-0.5 tabular-nums opacity-70">{count}</span>
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[220px]">
+                      <p className="text-xs">{tooltip}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               );
             })}
           </div>

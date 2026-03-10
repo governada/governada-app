@@ -70,14 +70,13 @@ export const GET = withRouteHandler(async (request) => {
     }
   }
 
-  // Filter to DReps with metadata names for quality results
+  // Only return DReps with metadata names — no raw DRepID fallback
   const namedSimilarities = similarities.filter((s) => {
     const info = infoMap.get(s.drepId);
     return info?.name != null;
   });
-  const finalSimilarities = namedSimilarities.length >= 3 ? namedSimilarities : similarities;
 
-  const similar = finalSimilarities.map((s) => {
+  const similar = namedSimilarities.map((s) => {
     const info = infoMap.get(s.drepId);
     return {
       drepId: s.drepId,

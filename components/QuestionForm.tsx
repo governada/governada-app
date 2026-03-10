@@ -11,9 +11,11 @@ import { posthog } from '@/lib/posthog';
 interface QuestionFormProps {
   drepId: string;
   onSubmitted: () => void;
+  /** When true, shows a prompt encouraging the user to be the first to ask */
+  isFirstQuestion?: boolean;
 }
 
-export function QuestionForm({ drepId, onSubmitted }: QuestionFormProps) {
+export function QuestionForm({ drepId, onSubmitted, isFirstQuestion }: QuestionFormProps) {
   const { isAuthenticated } = useWallet();
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +72,11 @@ export function QuestionForm({ drepId, onSubmitted }: QuestionFormProps) {
 
   return (
     <div className="space-y-2">
+      {isFirstQuestion && (
+        <p className="text-xs text-muted-foreground">
+          Be the first to ask this DRep a question about their governance positions.
+        </p>
+      )}
       <Textarea
         placeholder="Ask this DRep a question about their governance stance..."
         value={text}

@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatedTabs, type TabDefinition } from '@/components/AnimatedTabs';
-import { Vote, BarChart3, TrendingUp, Users, MessageSquare } from 'lucide-react';
+import { Vote, BarChart3, TrendingUp, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -11,11 +11,12 @@ interface DRepProfileTabsV2Props {
   votingRecordContent: ReactNode;
   scoreAnalysisContent: ReactNode;
   trajectoryContent: ReactNode;
-  communityContent: ReactNode;
+  /** @deprecated Community content has been folded into the Overview section */
+  communityContent?: ReactNode;
   /** Pass statementsContent to show the Statements tab (only when drep_communication flag is on) */
   statementsContent?: ReactNode;
   /**
-   * When set (and this DRep is viewing their own profile), shows a "Wrapped ✨" badge
+   * When set (and this DRep is viewing their own profile), shows a "Wrapped" badge
    * near the Voting Record tab header linking to /my-gov/wrapped/[period].
    */
   wrappedAvailablePeriod?: string;
@@ -24,13 +25,13 @@ interface DRepProfileTabsV2Props {
 /**
  * Governada VP2 tabs — same as DRepProfileTabs but with Phase B "Statements" tab scaffold.
  * The Statements tab is conditionally rendered (caller gates it with drep_communication flag).
+ * Community tab has been removed — content folded into Overview section.
  */
 export function DRepProfileTabsV2({
   drepId,
   votingRecordContent,
   scoreAnalysisContent,
   trajectoryContent,
-  communityContent,
   statementsContent,
   wrappedAvailablePeriod,
 }: DRepProfileTabsV2Props) {
@@ -42,7 +43,7 @@ export function DRepProfileTabsV2({
           variant="outline"
           className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-400 bg-amber-950/20 hover:bg-amber-950/40 transition-colors"
         >
-          Wrapped ✨
+          Wrapped
         </Badge>
       </Link>
     </span>
@@ -68,12 +69,6 @@ export function DRepProfileTabsV2({
       label: 'Trajectory',
       icon: TrendingUp,
       content: trajectoryContent,
-    },
-    {
-      id: 'community',
-      label: 'Community',
-      icon: Users,
-      content: communityContent,
     },
     // Phase B scaffold: only shown when drep_communication flag is on
     ...(statementsContent != null

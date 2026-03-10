@@ -42,6 +42,15 @@ export const TIER_GLOW: Record<TierKey, string> = {
   Legendary: 'hover:shadow-violet-200/50 dark:hover:shadow-violet-900/40',
 };
 
+export const TIER_LEFT_ACCENT: Record<TierKey, string> = {
+  Emerging: 'border-l-2 border-l-border',
+  Bronze: 'border-l-2 border-l-amber-500/60 dark:border-l-amber-600/50',
+  Silver: 'border-l-2 border-l-slate-400/60 dark:border-l-slate-500/50',
+  Gold: 'border-l-2 border-l-yellow-500/70 dark:border-l-yellow-500/60',
+  Diamond: 'border-l-2 border-l-cyan-500/70 dark:border-l-cyan-400/60',
+  Legendary: 'border-l-2 border-l-violet-500/70 dark:border-l-violet-400/60',
+};
+
 export const TIER_BADGE_BG: Record<TierKey, string> = {
   Emerging: 'bg-muted text-muted-foreground',
   Bronze:

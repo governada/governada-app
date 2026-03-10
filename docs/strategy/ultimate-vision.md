@@ -1,11 +1,11 @@
-# Governada: The Definitive Product Vision (V2)
+# Governada: The Definitive Product Vision (V3)
 
 > **Status:** Active north star -- all build decisions, monetization timing, and architecture choices should align with this document.
 > **Created:** March 2026
-> **Version:** 2.3
-> **Last updated:** 2026-03-07 (V2.3: Step 6 Community Engagement Layer shipped -- 6 mechanisms, /engage page, precompute-engagement-signals Inngest, generate-citizen-assembly AI function, stake-weighted sentiment for DReps)
-> **Supersedes:** V1 of this document. Persona deep dives live in `docs/strategy/personas/`.
-> **Living document:** Agents should update status markers, progress annotations, and minor refinements as work proceeds. Log changes in `docs/strategy/vision-changelog.md`. Increment minor version (2.1, 2.2...) for progress updates; reserve major version (3.0) for strategic pivots.
+> **Version:** 3.0
+> **Last updated:** 2026-03-10 (V3.0: Strategic pivot to flywheel-oriented build phases, navigation architecture reset, UX philosophy overhaul)
+> **Supersedes:** V2.3. Persona deep dives live in `docs/strategy/personas/`.
+> **Living document:** Agents should update status markers and progress annotations as work proceeds. Log changes in `docs/strategy/vision-changelog.md`. Increment minor version (3.1, 3.2...) for progress updates; reserve major version (4.0) for strategic pivots.
 
 ---
 
@@ -31,27 +31,49 @@ Cardano has a ratified constitution, a treasury worth billions of ADA, elected r
 
 ---
 
+## UX Philosophy
+
+### Restraint as Craft
+
+The most important UX decision in Governada's history: **showing less, not more.** The platform has deep intelligence -- 4-pillar DRep scores, 6D alignment, GHI with 7 EDI metrics, 7 engagement mechanisms, treasury analytics, inter-body dynamics. The temptation is to surface it all. The craft is in choosing what NOT to show.
+
+**Core rules:**
+
+- **One job per page.** Every page has a single JTBD in <8 words. Everything on the page serves that job.
+- **Conclusions first, data behind interactions.** "Your DRep is doing well" is the surface. The score breakdown is one click deeper.
+- **Information budget is zero-sum.** Adding content to a page requires removing or collapsing something else.
+- **Match density to readiness.** First-time visitors see less than returning users. Anonymous users see less than authenticated users. Progressive disclosure, not artificial restriction.
+- **Intelligence over data.** "72" is not intelligence. "Solid governance, but 3 missed votes" is. Every number must answer "so what?"
+
+See `docs/strategy/context/ux-constraints.md` for per-page constraints.
+
+### JTBD-Driven Navigation
+
+Navigation is organized around what users DO, not what data types exist. There is no "browse entities" section. There is "understand governance" (Governance section), "do my governance job" (Workspace), and "check what needs my attention" (Hub). See `docs/strategy/context/navigation-architecture.md` for the definitive nav spec.
+
+---
+
 ## Personas
 
-Governada serves six distinct personas. Each sees a product tailored to their needs, all powered by the same interconnected data and intelligence engine. The Citizen is the anchor -- every other persona either serves citizens or is accountable to them.
+Governada serves seven distinct personas. Each sees a product tailored to their needs, all powered by the same interconnected data and intelligence engine. The Citizen is the anchor -- every other persona either serves citizens or is accountable to them.
 
-> **Detailed persona documents** live in `docs/strategy/personas/`. Each document covers: who they are, what they want, their complete product experience, free vs. paid boundaries, connections to other personas, and success metrics. The summaries below provide the essential frame; the persona docs are the authoritative reference for product decisions.
+> **Detailed persona documents** live in `docs/strategy/personas/`. The summaries below provide the essential frame; the persona docs are the authoritative reference for product decisions.
 
-| Persona                  | Role in Ecosystem                                                  | Governada Experience                                                                                                                                                    | Monetization                                                      | Persona Doc                                               |
-| ------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
-| **Citizen** (ADA Holder) | The foundation. 80%+ of users.                                     | Civic hub: epoch briefing, treasury transparency, civic identity, community engagement, smart alerts. Summary intelligence, not analytics.                              | Free core. Premium Delegator (Step 6).                            | [citizen.md](personas/citizen.md)                         |
-| **DRep**                 | Elected governance representatives (~700). Supply side.            | Governance workspace: vote casting, rationale submission, proposal analysis, reputation management, delegator communication. Citizens first, professional layer on top. | Free governance operations. DRep Pro for analytics + growth.      | [drep.md](personas/drep.md)                               |
-| **SPO**                  | Infrastructure operators (~3,000). Staking-governance bridge.      | Identity platform: governance reputation, rich pool profile, delegator communication, governance-based discovery. The competitive dimension nobody else measures.       | Free governance + basic identity. SPO Pro for growth + analytics. | [spo.md](personas/spo.md)                                 |
-| **CC Member**            | Constitutional guardians (~7-10). Highest authority.               | 80% public accountability surface, 20% optional tooling. Transparency Index, voting record, inter-body dynamics. Not a user product -- an ecosystem trust layer.        | Free (no Pro tier).                                               | [cc-member.md](personas/cc-member.md)                     |
-| **Treasury Team**        | Builders who seek governance funding. Accountability subjects.     | Mutual benefit: proposer reputation, pre-proposal validation, milestone tracking, citizen impact reports. Accountability as competitive advantage.                      | Verified Project badge ($10-25/project).                          | [treasury-team.md](personas/treasury-team.md)             |
-| **Researcher**           | Governance scholars, analysts, data journalists.                   | API-first data platform: historical datasets, methodology docs, bulk exports, versioned data. Credibility flows back to all personas.                                   | Research API subscriptions ($50-200/mo).                          | [researcher.md](personas/researcher.md)                   |
-| **Integration Partner**  | Wallets, exchanges, pool tools, DeFi, explorers. B2B distribution. | Governance intelligence engine via API + embeddable widgets. Every integration extends Governada's reach without acquisition cost.                                      | API tiers ($50-200/mo). Widgets + deep integrations custom.       | [integration-partner.md](personas/integration-partner.md) |
+| Persona                  | Role in Ecosystem                                             | Governada Experience                                                                                                                         | Monetization                                     |
+| ------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **Citizen** (ADA Holder) | The foundation. 80%+ of users.                                | Hub: delegation health, governance coverage, epoch briefing, treasury transparency, engagement actions. Summary intelligence, not analytics. | Free core. Premium Delegator ($5-10/mo).         |
+| **DRep**                 | Elected representatives (~700). Supply side.                  | Hub + Workspace: vote casting, rationale submission, proposal analysis, reputation management, delegator communication.                      | Free governance ops. DRep Pro ($15-25/mo).       |
+| **SPO**                  | Infrastructure operators (~3,000). Staking-governance bridge. | Hub + Workspace: governance reputation, pool profile, delegator communication, governance-based discovery.                                   | Free governance + identity. SPO Pro ($15-25/mo). |
+| **CC Member**            | Constitutional guardians (~7-10). Highest authority.          | 80% public accountability surface, 20% optional tooling. Transparency Index, voting record, inter-body dynamics.                             | Free (no Pro tier).                              |
+| **Treasury Team**        | Builders seeking governance funding.                          | Proposer reputation, pre-proposal validation, milestone tracking, citizen impact reports. Accountability as competitive advantage.           | Verified Project ($10-25/project).               |
+| **Researcher**           | Governance scholars, analysts, data journalists.              | API-first data platform: historical datasets, methodology docs, bulk exports, versioned data.                                                | Research API ($50-200/mo).                       |
+| **Integration Partner**  | Wallets, exchanges, pool tools (B2B).                         | Governance intelligence via API + embeddable widgets. Every integration extends reach.                                                       | API tiers ($50-200/mo).                          |
 
 ### Citizen-Centric Architecture
 
 The Citizen is not one persona among seven -- they are the anchor that gives every other persona meaning:
 
-- **DReps** exist to represent citizens. Their scores, profiles, and accountability are measured by how well they serve citizen interests.
+- **DReps** exist to represent citizens. Their scores and profiles are measured by how well they serve citizen interests.
 - **SPOs** operate infrastructure citizens stake with. Their governance reputation helps citizens make informed staking decisions.
 - **CC Members** guard the constitution on citizens' behalf. The transparency surface exists so citizens can trust them.
 - **Treasury Teams** spend citizens' collective ADA. Accountability mechanisms ensure citizens see where the money goes.
@@ -62,181 +84,287 @@ Every feature decision should pass the citizen test: **"Does this ultimately mak
 
 ### Segment Fluidity
 
-Most governance participants span multiple personas simultaneously. A DRep is also a citizen. An SPO may also be a DRep. A CC member has personal delegation and may operate a pool. A treasury team member is also an ADA holder tracking their own governance health.
+Most governance participants span multiple personas simultaneously. Governada treats segments as **additive facets of one identity**, not separate user types. The product adapts to the union of all segments detected across a user's linked wallets. A DRep sees the citizen experience PLUS the governance workspace. Nobody loses the citizen layer; personas add professional capabilities on top.
 
-Governada treats segments as **additive facets of one identity**, not separate user types. The product adapts to the union of all segments detected across a user's linked wallets. A DRep sees the citizen experience PLUS the governance workspace. An SPO sees the citizen experience PLUS pool identity management. Nobody loses the citizen layer; personas add professional capabilities on top.
+**Navigation adaptation is aggressive.** Different personas see different bottom bar items, different sidebar sections, different Hub cards, and different Workspace tools. This is not one product with conditional elements -- it's different products sharing an engine.
 
-See [Multi-Wallet Identity & Unified Experience](#multi-wallet-identity--unified-experience) and [ADR 007](../adr/007-multi-wallet-identity.md) for the technical model.
+See [Multi-Wallet Identity](#multi-wallet-identity--unified-experience) and the navigation architecture spec for details.
+
+---
+
+## Navigation Architecture
+
+The product is organized into 7 sections, each serving a distinct JTBD:
+
+| Section        | Route         | JTBD                        | Who Sees It                                   |
+| -------------- | ------------- | --------------------------- | --------------------------------------------- |
+| **Hub**        | `/`           | What needs my attention?    | Everyone (content adapts per persona + state) |
+| **Workspace**  | `/workspace`  | Do my governance job        | DRep, SPO only                                |
+| **Governance** | `/governance` | Understand what's happening | Everyone                                      |
+| **Delegation** | `/delegation` | Monitor my governance team  | Authenticated with delegation                 |
+| **Match**      | `/match`      | Find my representatives     | Primarily anonymous/undelegated               |
+| **You**        | `/you`        | My identity and settings    | Authenticated                                 |
+| **Help**       | `/help`       | FAQ, glossary, methodology  | Everyone                                      |
+
+**Core principles:**
+
+1. **Hub-first.** The Home page is every persona's control center. Most navigation starts from Hub cards that link deeper. The nav bar is a safety net, not the primary navigation surface.
+2. **Aggressive persona adaptation.** Different personas see different nav items, Hub content, and defaults.
+3. **Three navigation tiers.** Global nav (top/bottom bar), section nav (sidebar/pill bar), contextual nav (tabs within entity pages).
+4. **Engagement is a layer, not a section.** Engagement surfaces through Hub cards and contextual prompts. There is no `/engage` destination.
+
+See `docs/strategy/context/navigation-architecture.md` for the complete spec including route migration map, bottom bar configs, sidebar structure, and implementation notes.
+
+---
+
+## Five Flywheels
+
+The product strategy is organized around five self-reinforcing flywheels. Each creates compounding value over time. The build sequence is designed to activate them in order of lowest activation energy to highest.
+
+### Flywheel 1: Accountability
+
+```
+Governada scores governance behavior
+  -> DReps/SPOs care about scores (public reputation)
+    -> They vote more, write rationales, respond to citizens
+      -> Governance quality improves
+        -> Citizens see governance working -> more participation
+          -> More data to score -> scores become more authoritative
+```
+
+**Moat:** Methodology credibility + historical depth. Anyone can scrape on-chain data, but a trusted, transparent, community-validated scoring methodology with 100+ epochs of history is extremely hard to replicate.
+
+**Activation energy:** LOW. The scoring engine (Steps 0-2.5) is complete. This flywheel activates by surfacing scores brilliantly in the new architecture.
+
+### Flywheel 2: Engagement
+
+```
+Citizen connects wallet
+  -> Hub shows delegation health + governance coverage
+    -> Coverage gap motivates finding DRep/SPO
+      -> Citizen engages (sentiment, priorities, questions, endorsements)
+        -> Engagement data feeds DRep/SPO intelligence
+          -> Representatives respond (rationales, answers, updates)
+            -> Citizen gets richer briefings -> returns next epoch
+```
+
+**Moat:** Citizen preference data (governance profiles, priority signals, sentiment) + structured civic opinion at scale. No competitor collects this because no competitor has built the civic hub where citizens participate.
+
+**Activation energy:** MEDIUM. Engagement mechanisms exist (Step 6 shipped). Need recomposition from dead `/engage` page into Hub cards and contextual prompts.
+
+### Flywheel 3: Content/Discourse
+
+```
+DReps publish rationales + epoch updates on Governada
+  -> Citizens read them (only place with structured governance discourse)
+    -> Citizens respond (questions, endorsements, sentiment)
+      -> Governada becomes WHERE governance conversation happens
+        -> More DReps publish there (audience is there)
+          -> Richer content -> more citizen engagement
+```
+
+**Moat:** CIP-100 authoring infrastructure. If Governada is the best authoring experience for CIP-100 rationales, it captures governance discourse at creation.
+
+**Activation energy:** LOW-MEDIUM. CIP-100 infrastructure exists (Step 5 shipped). Workspace routing in new architecture connects creation to consumption.
+
+### Flywheel 4: Viral/Identity
+
+```
+Citizen earns governance milestones
+  -> Shareable civic identity (wrapped, share cards, OG images)
+    -> Social media visibility
+      -> Others discover Governada -> connect wallets
+        -> They earn milestones -> they share
+          -> Governance participation becomes visible social identity
+```
+
+**Moat:** Emotional attachment to governance identity. Citizens who see their 100-epoch history don't casually abandon the product.
+
+**Activation energy:** MEDIUM. Wrapped and OG image infrastructure exist (Step 7 partial). Needs Impact Score, milestone sharing, better identity surfaces.
+
+### Flywheel 5: Integration/Distribution
+
+```
+Governada builds governance intelligence
+  -> Wallets/tools want governance data for their users
+    -> They integrate via API/embeds
+      -> Their users discover Governada
+        -> More data -> better intelligence -> more integration demand
+```
+
+**Moat:** Network effects of integration. Each wallet showing Governada scores validates the system and drives traffic.
+
+**Activation energy:** HIGH. Needs stable product + API v2 + business development. Premature until flywheels 1-3 are running.
+
+### How Flywheels Compound
+
+- **Engagement** generates the data that makes **Accountability** scores credible
+- **Accountability** pressure drives DReps to create **Content** on the platform
+- **Content** gives citizens reasons to engage, feeding **Engagement**
+- **Integration** distributes scores from **Accountability** to wider audiences
+- **Viral/Identity** brings new users who feed all other flywheels
+
+The single biggest risk: **cold start.** Every flywheel needs minimum critical mass. The MLE approach directly addresses this -- by making each persona's first experience brilliant, we maximize retention of early users.
 
 ---
 
 ## The Civic Hub: Three Product Pillars
 
-The civic hub rests on three pillars that together make Governada a destination citizens return to every epoch. Each pillar is described in detail in the [Citizen persona doc](personas/citizen.md). The summaries below establish the concepts that all persona experiences build on.
+The civic hub rests on three pillars that together make Governada a destination citizens return to every epoch. Each pillar is described in detail in the [Citizen persona doc](personas/citizen.md).
 
 ### Pillar 1: The Briefing (Summary Intelligence)
 
-A personalized, plain-English digest updated every epoch (~5 days). The core return driver.
+A personalized, plain-English digest updated every epoch (~5 days). The core return driver. Surfaces through Hub status cards, not a separate page.
 
-- **Personal status:** Delegation health (green/yellow/red), staking rewards, alerts. Usually: "Everything's fine."
+- **Personal status:** Delegation health (green/yellow/red), governance coverage, alerts. Usually: "Everything's fine."
 - **What happened:** 2-4 headline cards summarizing governance activity. Written like news, not data.
 - **Treasury update:** What was spent, on what, treasury balance. "Your proportional share: X ADA."
 - **Your DRep this epoch:** How your representative performed. One-line verdict.
 - **What's coming:** Active proposals, upcoming deadlines.
 
-**Design rule:** If a citizen reads their briefing in 30 seconds and closes the app feeling informed, the product succeeded.
-
-**What it is NOT:** A dashboard with charts. An analytics view with filters. A firehose of governance actions.
+**Design rule:** If a citizen reads their Hub in 30 seconds and closes the app feeling informed, the product succeeded.
 
 ### Pillar 2: Civic Identity
 
-A persistent, growing profile that represents the citizen's relationship with the Cardano network:
+A persistent, growing profile that represents the citizen's relationship with the Cardano network. Lives at `/you/identity`.
 
 - Citizen since (epoch + date). Delegation streak. Representation summary.
 - Governance alignment profile (from Quick Match). Governance footprint.
 - Milestones that accumulate passively: "100 epochs delegated," "Your DRep voted on 200 proposals on your behalf."
+- Governance Coverage analysis (see below).
 
-Identity creates attachment (citizens who see their history don't casually abandon the product), enables Wrapped (shareable civic moments), and compounds the data flywheel (every citizen's profile enriches matching and intelligence).
+Identity creates attachment, enables Wrapped, and compounds the data flywheel.
 
 ### Pillar 3: Community Engagement (Structured Civic Participation)
 
-The layer that gives every citizen a voice without creating a forum. Seven mechanisms, all structured, all analyzable, all feeding the intelligence engine:
+The layer that gives every citizen a voice without creating a forum. Seven mechanisms, all structured, all analyzable, all feeding the intelligence engine. Surfaces through Hub engagement cards and contextual prompts on entity pages -- NOT a separate destination.
 
-1. **Proposal Sentiment:** "Do you support this? Yes / No / Not sure." Aggregate shown publicly. Divergence with DRep votes highlighted.
+1. **Proposal Sentiment:** Support / Oppose / Not sure. Aggregate shown publicly. DRep divergence highlighted.
 2. **Priority Signals:** "What should governance focus on?" Aggregate becomes the Citizen Mandate.
-3. **Concern Flags:** Structured risk flags on proposals (too expensive, unclear deliverables, conflicts of interest). Threshold-based surfacing.
+3. **Concern Flags:** Structured risk flags on proposals. Threshold-based surfacing.
 4. **Impact Tags:** On funded projects: "I use this" / "essential" / "disappointing." Crowdsourced accountability.
-5. **Citizen Endorsements:** Endorse DReps, SPOs, or projects. Optional domain-specific trust signals. Social proof alongside algorithmic scores.
-6. **Citizen Questions:** Structured questions to DReps about specific votes. Aggregated and merged. DReps respond once, publicly.
-7. **Citizen Assemblies:** Periodic invitations to random citizen samples for deeper deliberation on major proposals. Digital sortition.
+5. **Citizen Endorsements:** Endorse DReps, SPOs, or projects. Social proof alongside algorithmic scores.
+6. **Citizen Questions:** Structured questions to DReps about specific votes. Aggregated and merged.
+7. **Citizen Assemblies:** Periodic invitations to random citizen samples for deeper deliberation.
 
-**Anti-forum principle:** None of these create threads, conversations, or debate spaces. They create _signals_ -- structured, aggregatable data that feeds the intelligence engine while giving citizens meaningful agency. No moderation required because there is nothing to moderate.
+**Anti-forum principle:** No threads, no conversations, no debate spaces. Structured signals that feed the intelligence engine while giving citizens meaningful agency.
 
-**New flywheel input:** Citizen engagement data is a new data source that no competitor collects. It enriches every surface: DRep profiles show citizen trust alongside scores, proposals show community sentiment alongside votes, treasury tracking shows citizen impact alongside spending data.
+**Anonymous engagement policy (Option C):** Anonymous users see engagement results (sentiment bars, endorsement counts, priority rankings) but cannot participate. Results are displayed as conversion motivation: "Citizens rated this proposal 73% positive -- connect to add your voice." This preserves data integrity while maximizing conversion.
+
+---
+
+## Governance Coverage (New Concept)
+
+Citizens need BOTH a good DRep AND a governance-active pool to be fully represented. This is a key Governada differentiator -- no competitor measures this.
+
+**How it works:**
+
+- DReps vote on: treasury withdrawals, parameter changes, hard forks, constitution changes, committee elections, info actions
+- SPOs vote on: hard fork initiation, certain parameter changes, no-confidence motions
+- Together, they cover all governance action types
+- **Governance Coverage %** = (action types where at least one representative voted) / (total action types with votes this epoch)
+
+**Where it surfaces:**
+
+- Hub status card: "Your governance coverage: 85%"
+- Delegation page: detailed breakdown by action type with DRep card + Pool card
+- Match flow: "Complete your governance team" when only DRep or only pool is delegated
+- Alerts: "Your pool hasn't voted on any governance action this epoch -- your coverage dropped to 60%"
+- Conflict detection: DRep and pool voted opposite ways
+- Improvement suggestions: pools/DReps that would increase coverage
 
 ---
 
 ## Treasury Accountability
 
-Treasury transparency is elevated to a first-class product pillar, not just a data layer. The Cardano treasury holds billions of ADA -- citizens' collective wealth -- and the governance process allocates it. Governada makes every aspect of that process visible, understandable, and accountable.
+Treasury transparency is a first-class product pillar. The Cardano treasury holds billions of ADA -- citizens' collective wealth -- and the governance process allocates it.
 
-**For citizens:**
+**For citizens (via Hub + `/governance/treasury`):**
 
 - Treasury balance and trend. Spending by category. "Your proportional share."
 - What got funded: plain-English descriptions with delivery status.
 - Project accountability: citizen impact tags, milestone tracking, delivery scores.
-- Who voted for what: connect spending decisions to specific DReps (accountability trail).
+- Who voted for what: connect spending decisions to specific DReps.
 
-**For DReps and SPOs:**
+**For DReps and SPOs (via Workspace + proposal pages):**
 
-- Treasury impact analysis in the proposal workspace: amount, % of treasury, category, historical comparison.
+- Treasury impact analysis: amount, % of treasury, category, historical comparison.
 - Proposer track record: did this team deliver on past funded proposals?
 - Similar past proposals: what worked, what didn't.
 
 **For Treasury Teams:**
 
-- Proposer reputation that compounds: delivery scores, citizen impact, milestone completion across all projects.
-- Pre-proposal validation: test concepts with citizen interest and DRep support signals before investing in a full proposal.
-- Impact amplification: when funded projects ship, Governada surfaces them to citizens.
-- The trust ladder: anonymous -> registered -> active -> verified -> established. Each step voluntary, each step advantageous.
-
-See [Treasury Team persona doc](personas/treasury-team.md) for the full mutual benefit model.
+- Proposer reputation that compounds. Pre-proposal validation. Impact amplification.
+- The trust ladder: anonymous -> registered -> active -> verified -> established.
 
 ---
 
 ## The Governance Workspace
 
-Governada is not just where governance is observed -- it is **where governance happens.** DReps, SPOs, and CC members can perform their core governance operations directly within Governada, eliminating the fragmented multi-tool workflow that characterizes governance today.
+Governada is where governance HAPPENS, not just where it is observed. DReps, SPOs, and CC members perform core governance operations directly within the Workspace (`/workspace`).
 
 ### Vote Casting
 
-DReps, SPOs, and CC members cast votes directly from Governada via MeshJS (CIP-95). The vote is cast from the same page where they reviewed the proposal analysis -- AI summary, treasury impact, citizen sentiment, inter-body context, constitutional alignment. No context switch. The analysis feeds directly into the action.
+DReps, SPOs, and CC members cast votes via MeshJS (CIP-95). The vote is cast from the same page where they reviewed proposal analysis -- AI summary, treasury impact, citizen sentiment, constitutional alignment. No context switch.
 
 ### Rationale Submission (The Killer Feature)
 
-The single most impactful capability Governada can offer. Today, CIP-100 rationale submission requires manual JSON creation, self-hosting, and anchor hash submission. Most governance participants skip it because the friction is too high.
+CIP-100 rationale submission reduces friction from "manual JSON creation + self-hosting" to "rich-text editor + one-click submit." AI-assisted first draft from proposal + voting history + governance philosophy. Effects cascade: more rationales on-chain, higher scores, better citizen experience, more training data, improved governance transparency.
 
-Governada's flow:
+### Workspace Structure
 
-1. Rich-text editor for writing the rationale (or AI-assisted first draft from proposal + voting history + governance philosophy)
-2. Auto-format to CIP-100 compliant JSON behind the scenes
-3. Host the document (Supabase Storage or IPFS)
-4. Bundle the metadata anchor with the vote transaction -- one submission: vote + rationale together
+DRep Workspace:
 
-Effects cascade across every persona:
+- Action Queue (`/workspace`) -- proposals needing votes, sorted by deadline
+- Voting Record (`/workspace/votes`) -- your votes with rationale status
+- Rationales (`/workspace/rationales`) -- your published rationales
+- Delegators (`/workspace/delegators`) -- who trusts you, communication
+- Performance (`/workspace/performance`) -- score breakdown, competitive position
 
-- More rationales on-chain (better for Cardano governance)
-- DReps/SPOs who use Governada score higher (rationale quality is a scoring factor)
-- Citizens see WHY their representative voted a certain way (better citizen experience)
-- AI gets more training data (better governance intelligence)
-- Governance transparency improves measurably (better for Cardano's reputation)
+SPO Workspace:
 
-### Proposal Workspace
+- Gov Score (`/workspace`) -- governance score with improvement suggestions
+- Pool Profile (`/workspace/pool-profile`) -- your pool's governance identity
+- Delegators (`/workspace/delegators`) -- staker communication
+- Position (`/workspace/position`) -- competitive landscape
 
-The analysis environment for governance participants, covering everything needed to make an informed vote:
-
-- AI-generated plain-English proposal summary
-- Treasury impact: amount, % of treasury, spending category
-- Similar past proposals and their outcomes (delivered, partial, failed)
-- Citizen sentiment from the community engagement layer
-- Citizen questions: aggregated asks from the community
-- Inter-body context: how the other governance bodies are leaning
-- Constitutional alignment: AI analysis against the ratified constitution
-- Proposal author track record: delivery history on past funded proposals
+DRep+SPO: Both sets of sub-pages appear in sidebar, grouped by role header.
 
 ### Delegator Communication
 
-Structured governance communication for DReps and SPOs -- not a blog, not a forum:
+Structured governance communication -- not a blog, not a forum:
 
-- Vote explanations automatically visible in citizen briefings
-- Position statements attached to governance profiles
-- Epoch updates (optional, AI-assisted)
-- Citizen question responses (one response per aggregated question cluster, publicly visible)
-- Governance philosophy (persistent profile section -- the "campaign page")
-- SPO pool updates: maintenance announcements, community news, governance priorities
-
-See [DRep persona doc](personas/drep.md) and [SPO persona doc](personas/spo.md) for full workspace specifications.
+- Vote explanations visible in citizen briefings
+- Governance philosophy on profiles
+- Epoch updates (AI-assisted)
+- Citizen question responses
 
 ---
 
 ## Multi-Wallet Identity & Unified Experience
 
-Cardano governance participants routinely operate multiple wallets: cold storage for ADA holdings, an operational wallet for daily use, a governance key for DRep registration, a pool operator wallet. Under a single-wallet identity model, each wallet is a separate user -- fragmenting watchlists, engagement history, governance profiles, Wrapped summaries, and AI advisor context. This directly undermines the intelligence layer.
+**One human = one profile**, anchored by a stable UUID, with many wallets linked via `user_wallets`. Each wallet contributes segments -- the user's effective segments are the union across all linked wallets. Wallet linking is opt-in with clear privacy controls.
 
-### The Design
+**Unified Experience:**
 
-- **One human = one profile**, anchored by a stable UUID, with many wallets linked via `user_wallets`
-- Each wallet contributes **segments** (DRep, SPO, Citizen) -- the user's effective segments are the union across all linked wallets
-- Wallet linking is **opt-in** with clear privacy controls: link anytime, unlink anytime, no on-chain footprint
+- Hub adapts: DRep+SPO sees both scores, both inboxes, unified action items
+- Matching adapts: if you're already a DRep, matching focuses on "find an SPO aligned with your governance values"
+- Wrapped spans all roles: one shareable identity, not three cards
+- Navigation surfaces role-specific Workspace sections from a unified top level
 
-### Unified Experience Principles
+**Cross-Segment Intelligence:**
 
-The product does not require mode-switching. All governance roles surface in one view, and the UI adapts to whatever segments the user's linked wallets reveal:
+- Personal inter-body alignment: "As a DRep, you voted Yes. As an SPO, your pool voted No."
+- Aggregated governance footprint across all wallets and roles
+- Conflict detection between your different governance roles
 
-- **Home screen adapts:** A DRep+SPO sees both scores, both inboxes, unified action items. A pure citizen sees the briefing and delegation health. The same page, different facets.
-- **Matching adapts:** If you are already a DRep, the product surfaces "find an SPO aligned with your governance values" rather than "find your DRep." If you are both, matching focuses on delegation health.
-- **Wrapped spans all roles:** "As a DRep you voted on 47 proposals; as an SPO your pool participated in 40; as a citizen your delegation health stayed green." One shareable identity, not three separate cards.
-- **AI Advisor sees everything:** Cross-role insights that no single-wallet system can generate.
-- **Navigation surfaces role-specific deep dives** from a unified top level. The citizen layer is always present; DRep and SPO workspaces are additive deep dives.
-
-### Cross-Segment Intelligence
-
-Multi-wallet identity unlocks intelligence impossible when each wallet is an island:
-
-- **Personal inter-body alignment:** "As a DRep, you voted Yes on Proposal X. As an SPO, your pool voted No. Here is why that is interesting."
-- **Aggregated governance footprint:** Total ADA governed across all wallets, total proposals touched across all roles.
-- **Conflict detection:** "Your DRep delegation and your SPO operation have diverging alignment on treasury proposals."
-- **Unified governance profile:** The PCA-based profile incorporates signal from all roles.
-
-### Privacy
-
-Wallet linking creates a server-side association between addresses. Privacy-sensitive users can choose to operate with a single wallet and lose nothing. Linking is purely additive. Unlinking removes the association completely. There is no on-chain record of linked wallets.
+See [ADR 007](../adr/007-multi-wallet-identity.md) for the technical model.
 
 ---
 
 ## The Data Flywheel
 
-This is the core engine. Every user action -- on-chain and off-chain -- generates data that improves every surface in the product:
+Every user action -- on-chain and off-chain -- generates data that improves every surface in the product:
 
 ```mermaid
 flowchart TB
@@ -250,7 +378,7 @@ flowchart TB
     Treasury["Treasury withdrawals"]
   end
 
-  subgraph civic [Civic Engagement - NEW]
+  subgraph civic [Civic Engagement]
     Sentiment["Proposal Sentiment"]
     PrioritySignals["Priority Signals"]
     ConcernFlags["Concern Flags"]
@@ -268,7 +396,7 @@ flowchart TB
     TreasuryIntel["Treasury Intelligence"]
     ProposalAI["Proposal Classification + Similarity"]
     Trends["Proposal Trends"]
-    CitizenIntel["Citizen Intelligence - NEW"]
+    CitizenIntel["Citizen Intelligence"]
   end
 
   subgraph personal [Personal Layer]
@@ -278,22 +406,17 @@ flowchart TB
     Footprint["Wallet Governance Footprint"]
     Alerts["Smart Notifications"]
     Wrapped["Governance Wrapped"]
-    CivicIdentity["Civic Identity - NEW"]
+    CivicIdentity["Civic Identity"]
+    Coverage["Governance Coverage"]
   end
 
   subgraph surfaces [User Surfaces]
-    Briefing["Epoch Briefing - NEW"]
-    TreasuryPage["Treasury Transparency - NEW"]
-    Constellation["Constellation"]
-    DRepDiscover["DRep Discovery"]
-    SPODiscover["SPO Discovery"]
-    DRepProfiles["DRep Profiles"]
-    SPOProfiles["SPO Profiles"]
-    CCPage["Committee Page"]
-    Calendar["Governance Calendar"]
-    Observatory["Cross-Chain Observatory"]
-    Pulse["Governance Pulse"]
-    GovWorkspace["Governance Workspace - NEW"]
+    Hub["Hub (persona-adaptive)"]
+    Workspace["Governance Workspace"]
+    GovSection["Governance Section"]
+    DelegationPage["Delegation Page"]
+    EntityProfiles["DRep/SPO/CC Profiles"]
+    TreasuryPage["Treasury Transparency"]
   end
 
   DRepVote --> Alignment & DRepScore & InterBody & TreasuryIntel
@@ -301,7 +424,7 @@ flowchart TB
   CCVote --> InterBody
   DRepDelegation --> DRepScore & Footprint
   StakeDelegation --> SPOScore & Footprint
-  Proposals --> ProposalAI & TreasuryIntel & Calendar & GHI
+  Proposals --> ProposalAI & TreasuryIntel & GHI
   Treasury --> TreasuryIntel & GHI
 
   Sentiment --> CitizenIntel & ProposalAI
@@ -311,600 +434,281 @@ flowchart TB
   Endorsements --> DRepScore & SPOScore & CitizenIntel
   CitizenQuestions --> CitizenIntel
 
-  Alignment --> DRepMatch & SPOMatch & Constellation & DRepProfiles & SPOProfiles & DRepDiscover & SPODiscover
-  DRepScore --> DRepProfiles & DRepDiscover & Alerts & Wrapped
-  SPOScore --> SPOProfiles & SPODiscover & Alerts & Wrapped
-  GHI --> Pulse & Observatory & Calendar
-  InterBody --> DRepProfiles & SPOProfiles & CCPage & Pulse & Calendar
-  TreasuryIntel --> DRepProfiles & SPOProfiles & Pulse & Wrapped & TreasuryPage & Briefing
-  ProposalAI --> DRepMatch & SPOMatch & DRepDiscover & Calendar & Trends & GovWorkspace
-  Trends --> Calendar & Pulse & Briefing
-  CitizenIntel --> DRepProfiles & SPOProfiles & GovWorkspace & Briefing & TreasuryPage
+  Alignment --> DRepMatch & SPOMatch & EntityProfiles & GovSection
+  DRepScore --> EntityProfiles & GovSection & Alerts & Wrapped
+  SPOScore --> EntityProfiles & GovSection & Alerts & Wrapped
+  GHI --> GovSection & Hub
+  InterBody --> EntityProfiles & GovSection
+  TreasuryIntel --> EntityProfiles & TreasuryPage & Hub
+  ProposalAI --> DRepMatch & SPOMatch & GovSection & Workspace
+  Trends --> GovSection & Hub
+  CitizenIntel --> EntityProfiles & Workspace & Hub & TreasuryPage
 
   WalletUnion --> Footprint & DRepMatch & SPOMatch & Wrapped & Alerts
-  DRepMatch --> Footprint & DRepDiscover
-  SPOMatch --> Footprint & SPODiscover
+  DRepMatch --> Footprint & GovSection
+  SPOMatch --> Footprint & GovSection
   Footprint --> Wrapped & Alerts & CivicIdentity
-  CivicIdentity --> Wrapped & Briefing
+  CivicIdentity --> Wrapped & Hub
+  Coverage --> Hub & DelegationPage & Alerts
 ```
 
-**Every new data source multiplies the value of every existing surface.** The V2 flywheel adds civic engagement as a new input category: citizen sentiment enriches proposal intelligence, priority signals shape trend analysis, impact tags strengthen treasury accountability, endorsements complement algorithmic scores. This is data no competitor collects because no competitor has the civic hub where citizens engage.
+**Every new data source multiplies the value of every existing surface.** The five flywheels are the strategic lens; the data flywheel is the technical engine that powers all of them.
 
 ---
 
 ## Distribution Strategy
 
-Growth comes from three channels, operating in parallel:
+Growth comes from three channels plus flywheel-driven organic growth:
 
 ### 1. Direct Acquisition (Citizens Come to Governada)
 
-- Simplified anonymous experience: two paths in (Stake / Govern), education woven in, gentle wallet connect prompts
-- Quick Match as primary conversion funnel: 3 questions, 60 seconds, delegation
-- Epoch briefing as retention driver: fresh content every ~5 days
+- Two-path anonymous landing: "Find Your Representative" (Match) + "Explore Governance"
+- Match as primary conversion funnel: quiz -> results -> "connect wallet to delegate" -> citizen
+- Hub as retention driver: fresh content every ~5 days at epoch boundary
 - Civic identity as attachment mechanism: growing footprint creates switching cost
+- Governance Coverage as differentiated hook: "Are you fully represented?"
 
 ### 2. Viral Distribution (Personas Share Governada)
 
 - DReps share scores, profiles, and Wrapped to attract delegation
 - SPOs share governance reputation to differentiate their pools
-- Citizens share civic identity, Wrapped, and governance footprint
-- Every share is a billboard. DReps and SPOs are the unpaid sales force (Principle #5).
-- Wrapped (Step 4) is the dedicated viral engine
+- Citizens share civic identity, Wrapped, and governance coverage
+- Every share is a billboard. DReps and SPOs are the unpaid sales force.
+- Milestone share cards + Governance Wrapped are the dedicated viral engines
 
 ### 3. B2B Distribution (Partners Embed Governada)
 
 - Wallet providers embed Quick Match, DRep scores, delegation health
 - Pool comparison tools add SPO governance scores as a new column
 - Exchanges display governance data for custodied ADA
-- Block explorers add intelligence layer to raw governance data
 - "Powered by Governada" brand touchpoints across every integration
-- See [Integration Partner persona doc](personas/integration-partner.md) for full strategy
+- Integration priority: Eternl -> Lace -> PoolTool -> Vespr -> CardanoScan -> ADApools -> Exchanges
 
-**B2B distribution should begin before Step 7.** Early API access and widget prototypes for high-value partners (Eternl, PoolTool) can start as soon as the data is trustworthy (after Steps 0-2.5). The formal API product (Step 7) is the scalable version, but partnerships should not wait.
+### 4. Flywheel-Driven Organic Growth
 
----
+- Accountability flywheel: DReps optimize for Governada scores -> they share -> their delegators discover the platform
+- Content flywheel: governance discourse centralizes on Governada -> becomes the canonical governance reference
+- Engagement flywheel: citizen voice mechanisms create data no competitor has -> attracts researchers and partners
 
-## Build Sequence (V2)
-
-> **Rewritten March 2026** to reflect the V2 persona-centric vision and the current state of the codebase. Steps 0-3 summarize the completed foundation. Steps 4-11 define the forward path with specific references to existing infrastructure that can be reused or extended.
-
-Each step assumes the previous steps are complete. For each forward step, we specify: what gets built, what already exists (reuse/modify), what is net-new, and which personas are served.
-
-### Foundation: Steps 0-3 (COMPLETE)
-
-The backend intelligence engine and core frontend are production-grade. This foundation includes:
-
-- **Step 0: Governance Intelligence Engine** -- DRep Score V3 (4-pillar: Engagement Quality 35%, Effective Participation 25%, Reliability 25%, Governance Identity 15%), percentile normalization, momentum tracking. 6D PCA alignment system with AI proposal classification. GHI with 6 calibrated components + 7 EDI metrics. All scores snapshot daily. `lib/scoring/`, `lib/alignment/`, `lib/ghi/`.
-- **Step 1: Matching & Personalization** -- PCA-based Quick Match (`/match`), user governance profiles with progressive confidence, dimension-level agreement, persona-agnostic matching engine (`match_type` parameter). `lib/matching/`.
-- **Step 2: Cross-Body Intelligence** -- Treasury intelligence (spending effectiveness, DRep track records, similar proposals). SPO + CC vote fetching, storage, sync. Inter-body alignment. Governance calendar with AI epoch recaps. Proposal semantic classification. Wallet governance footprint.
-- **Step 2.5: SPO Governance Layer** -- SPO 4-pillar scoring (`lib/scoring/spoScore.ts`), SPO 6D alignment, SPO matching, CC Transparency Index. SPO score and alignment snapshots from day one.
-- **Step 3: Core Frontend** -- 33 page routes, 269+ components, 145 API endpoints, 24 Inngest sync functions, 75+ database tables. Persona-aware homes (HomeCitizen, HomeDRep, HomeSPO), Discover (DRep/SPO/proposal browse), DRep/SPO/CC profiles with two-viewport structure, Pulse observatory, My Gov command centers, admin dashboard, embed routes, Quick Match flow, delegation ceremony, wallet connection.
-
-**Existing infrastructure the forward steps build on:**
-
-| Domain            | Key Components & APIs                                                                                                                                                                                                                                                                                    |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DRep Profiles     | DRepProfileHero, DRepProfileTabsV2, GovernanceRadar, ScoreHistoryChart, AlignmentTrajectory, SimilarDReps, VoteDetailSheet                                                                                                                                                                               |
-| SPO Profiles      | SpoProfileHero, SpoProfileTabsV1, SPOCommandCenter, SPOClaimHero, CivicaSPOCard                                                                                                                                                                                                                          |
-| Proposals         | ProposalHeroV1, ProposalLifecycleTimeline, ProposalVotersClient, ProposalTopRationales, ProposalDimensionTags, AlignmentCohortBreakdown, ProposalsBrowse                                                                                                                                                 |
-| My Gov            | DRepCommandCenter (24KB), CitizenCommandCenter (25KB), SPOCommandCenter (13.5KB), CivicaProfile, CivicaInbox (16KB)                                                                                                                                                                                      |
-| Pulse             | CivicaPulseOverview (23KB), CivicaObservatory (19.9KB), StateOfGovernance, CivicaEpochReport, CivicaGovernanceCalendar, CivicaTreasury                                                                                                                                                                   |
-| Charts            | GovernanceRadar, DelegationGraph, VotingHistoryChart, TreasuryCharts, ScoreDistribution, VotingPowerTreemap, GovernanceHealthGauge, ProposalStatusFunnel                                                                                                                                                 |
-| Matching          | QuickMatchFlow (23.5KB), MatchCard, GovernanceIdentityCard, ConfidenceBar, RadarOverlay                                                                                                                                                                                                                  |
-| Delegation        | DelegateButton, DelegationCeremony, DelegationIntelligence, DelegatorAnalytics                                                                                                                                                                                                                           |
-| Communication     | StatementComposer, SPOStatementComposer, VoteExplanationEditor, RationaleAssistant, DRepCommunicationFeed, DRepQuestionsInbox                                                                                                                                                                            |
-| Engagement        | SentimentPoll (12.8KB), PollFeedback, TreasuryAccountabilityPoll                                                                                                                                                                                                                                         |
-| Sharing           | WrappedShareCard, ShareActions, ShareModal, OG image generation                                                                                                                                                                                                                                          |
-| Admin             | AdminAuthGate, AdminSidebar, FeatureFlagAdmin, IntegrityDashboard                                                                                                                                                                                                                                        |
-| Infrastructure    | BrandedLoader, LoadingSkeleton, EmptyState, ErrorBanner, FeatureGate, CommandPalette, WalletConnectModal, Providers                                                                                                                                                                                      |
-| Backend APIs      | 8 treasury routes, 39 governance routes, 8 DRep routes, 11 v1 public routes, epoch-recap, briefs, alignment-drift detection, polls                                                                                                                                                                       |
-| Inngest Functions | 24 durable functions: sync (DReps, votes, proposals, scores, alignment, SPO scores, secondary, slow), intelligence (GHI, treasury, benchmarks, drift detection, data moat), notifications (epoch summary, weekly digest, wrapped, state of governance), maintenance (health, integrity, freshness guard) |
+**Anonymous-to-citizen funnel (Option C):** Anonymous users see rich governance data and engagement results but cannot participate in engagement. Engagement results serve as conversion motivation. Wallet connect prompts appear at the moment of intent, not on arrival.
 
 ---
 
-### Step 4: Citizen Experience & Acquisition Funnel (MEDIUM complexity)
+## Build Phases (V3)
 
-> **Status: FOUNDATIONS SHIPPED** -- Core components (EpochBriefing, CivicIdentityCard, TreasuryCitizenView) already built in Step 3. Step 4 infrastructure complete: `citizen_milestones` table, `simplified_onboarding` flag, `generate-citizen-briefings` Inngest function, PostHog conversion funnel wired. UX refinement and A/B testing remain.
-> **Primary persona:** Citizen (ADA Holder)
-> **Secondary impact:** All personas (improved onboarding benefits everyone)
+> **Rewritten March 2026** to replace the linear Steps 0-11 build sequence with flywheel-oriented phases. The backend intelligence engine (old Steps 0-2.5) remains the foundation. The frontend is being reset to a new architecture. Forward phases are organized by which flywheel they activate.
 
-The on-ramp. Without a clear, unintimidating path from "I hold ADA" to "I'm a Cardano citizen," the product's intelligence goes to waste. The backend data for everything in this step already exists -- this is purely a UX/presentation layer that makes existing intelligence accessible to citizens. Highest impact-to-effort ratio in the entire forward roadmap.
+### Foundation (COMPLETE)
 
-**What gets built:**
+The backend intelligence engine is production-grade and unchanged by the architecture reset:
 
-1. **Simplified anonymous experience:** Reduced nav surface for unconnected visitors (Explore, Match, Learn, Connect). Two-path entry: Stake (SPO discovery) and Govern (Quick Match). Education woven into every surface, not a separate destination. Messaging: "Your ADA gives you a voice. 60 seconds. Funds stay safe."
+- **Governance Intelligence Engine** -- DRep Score V3 (4-pillar), percentile normalization, momentum tracking. 6D PCA alignment with AI proposal classification. GHI with 6 components + 7 EDI metrics. Daily snapshots. `lib/scoring/`, `lib/alignment/`, `lib/ghi/`.
+- **Matching & Personalization** -- PCA-based Quick Match, user governance profiles, dimension-level agreement, persona-agnostic matching engine. `lib/matching/`.
+- **Cross-Body Intelligence** -- Treasury intelligence (8 API routes), SPO + CC vote sync, inter-body alignment, governance calendar with AI epoch recaps, proposal semantic classification, wallet governance footprint.
+- **SPO Governance Layer** -- SPO 4-pillar scoring, SPO 6D alignment, SPO matching, CC Transparency Index.
 
-2. **Epoch Briefing:** Personalized, plain-English governance digest (every ~5 days at epoch boundary). Sections: personal status, what happened, treasury update, DRep performance, upcoming activity. AI-generated via Claude, citizen-appropriate language. The citizen's primary surface -- replaces the dashboard paradigm.
+**Additionally shipped (needs recomposition, not rebuilding):**
 
-3. **Treasury Transparency ("Where Your Money Goes"):** Citizen-facing treasury surface. "Your proportional share" framing. Spending by category, project accountability cards, citizen impact highlights, spending trends over time. Every treasury ADA traceable from proposal to vote to delivery.
+- Citizen experience components: EpochBriefing, CivicIdentityCard, TreasuryCitizenView, milestone detection, citizen briefing generation
+- Governance workspace: vote casting (CIP-95/MeshJS), rationale submission (CIP-100), governance statements, constitutional alignment, DRep/SPO epoch updates
+- Community engagement: 7 mechanisms (sentiment, priorities, concern flags, impact tags, questions, assemblies, endorsements), integrity system, precompute pipeline
+- Viral infrastructure: Wrapped generation, OG image generation, civic identity OG images
 
-4. **Civic Identity:** Citizen-since dating, delegation streaks, representation summaries, governance footprint, milestones (first vote influence, first epoch delegation, 10-epoch streak). Progressive profile that grows with participation.
+### Phase 0: Architecture Reset [IN PROGRESS]
 
-5. **Smart Alerts:** Low-frequency, high-signal. Default quiet. Every alert connects to an action. Triggers: DRep score drop, alignment drift, new proposal matching interests, delegation anniversary, treasury milestone.
+_Rebuild the frontend skeleton around the new navigation architecture and MLE approach._
 
-6. **PostHog conversion funnel:** landing → path_selected → quick_match_started → completed → wallet_prompted → connected → delegated. Measure before optimizing.
+**Delivers:**
 
-**What exists (reuse/modify):**
+- New route structure: Hub, Workspace, Governance, You, Delegation, Match, Help
+- Shell with persona-adaptive sidebar (desktop), bottom bar (mobile), pill bars
+- Hub card system: Action, Status, Engagement, Discovery cards sorted by urgency
+- Citizen MLE: Hub with 3-4 cards, Delegation page with dual-representative view
+- DRep MLE: Workspace action queue with deadline-sorted proposals
+- SPO MLE: Workspace governance score with improvement suggestions
+- Anonymous landing: value prop + two CTAs ("Find Your Representative" + "Explore Governance")
+- Route redirects from old architecture (301s for `/discover`, `/pulse`, `/my-gov`, `/engage`, `/learn`)
 
-| Asset                                               | Action                                                             |
-| --------------------------------------------------- | ------------------------------------------------------------------ |
-| `HomeCitizen.tsx` (16.6KB)                          | **Modify** -- restructure around Epoch Briefing as primary surface |
-| `HomeAnonymous.tsx`                                 | **Modify** -- simplify to two-path entry                           |
-| `CitizenCommandCenter.tsx` (25KB)                   | **Modify** -- integrate briefing, civic identity, alerts           |
-| `CivicaTreasury.tsx`                                | **Modify** -- add citizen "your share" framing                     |
-| `TreasuryCharts.tsx` (14.5KB)                       | **Reuse** -- spending visualizations                               |
-| `/api/treasury/*` (8 routes)                        | **Reuse** -- accountability, effectiveness, history                |
-| `/api/governance/epoch-recap`                       | **Reuse** -- epoch summary data                                    |
-| `/api/briefs/generate`                              | **Reuse** -- AI brief generation                                   |
-| `GovernanceFootprintCard.tsx`                       | **Modify** -- integrate into civic identity                        |
-| `DelegationAnniversaryCard.tsx`                     | **Reuse** -- milestone celebrations                                |
-| `PersonalizedStatsStrip.tsx`                        | **Modify** -- citizen-tuned stats                                  |
-| `SinceLastVisit.tsx`                                | **Reuse** -- returning user context                                |
-| Notification system (`check-notifications` Inngest) | **Modify** -- add citizen alert triggers                           |
-| `detect-alignment-drift` Inngest function           | **Reuse** -- drift detection for alerts                            |
+**Definition of done:** Each persona can complete their #1 JTBD in under 60 seconds.
 
-**Already built (moved from net-new):**
+**Flywheel impact:** Sets the stage. No flywheel spins yet, but the architecture enables all of them.
 
-| What                                          | Status                                                                                                     |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `EpochBriefing.tsx`                           | **EXISTS** -- `components/civica/home/EpochBriefing.tsx`, uses `/api/briefing/citizen`                     |
-| `CivicIdentityCard.tsx`                       | **EXISTS** -- `components/civica/shared/CivicIdentityCard.tsx`, uses footprint API                         |
-| `TreasuryCitizenView.tsx`                     | **EXISTS** -- `components/civica/home/TreasuryCitizenView.tsx`                                             |
-| `citizen_milestones` table                    | **SHIPPED** -- migration 051, tracks per-user milestone achievements                                       |
-| `simplified_onboarding` feature flag          | **SHIPPED** -- migration 051, ready for A/B testing                                                        |
-| `generate-citizen-briefings` Inngest function | **SHIPPED** -- triggered by `drepscore/epoch.transition`, batch-generates per user                         |
-| PostHog conversion funnel                     | **WIRED** -- full funnel: path_clicked → match_started → completed → wallet_opened → connected → delegated |
+### Phase 1: Recompose & Activate [Accountability + Content flywheels]
 
-**Remaining net-new:**
+_Take existing components (300+) and place them correctly in the new architecture. Recomposition, not rebuilding._
 
-| What                                    | Purpose                                                          |
-| --------------------------------------- | ---------------------------------------------------------------- |
-| `SmartAlertManager.tsx`                 | Alert routing: detect triggers → filter by preference → deliver  |
-| Citizen milestone detection logic       | Detect and award milestones (delegation streaks, vote influence) |
-| Treasury "your proportional share" calc | Personalized share framing in TreasuryCitizenView                |
-| UX copy optimization + A/B testing      | Simplified onboarding messaging variants                         |
+**1a: Entity profiles in new architecture** -- DRep, SPO, CC, Proposal pages with proper breadcrumbs from Governance section. Entity page tabs work as real routes, not query params.
 
-**Persona-appropriate surfaces:** After wallet connection, the citizen sees the briefing (not a dashboard). DReps see their governance inbox. SPOs see their pool identity. Each persona's "home" is designed for them.
+**1b: Governance section** -- Proposals, Representatives, Pools, Committee, Treasury, Health sub-pages populated with existing components. Persona-aware default landing per sub-page.
 
----
+**1c: Workspace recomposition** -- DRep action queue with vote casting + CIP-100 flow. SPO gov score with pool profile. Delegator communication tools. All wired into Workspace routing.
 
-### Step 5: Governance Workspace (MEDIUM-HIGH complexity)
+**1d: Governance Coverage (NEW)** -- Coverage calculation, Hub status card, Delegation page breakdown, gap/conflict alerts.
 
-> **Status: SHIPPED** -- 5a Vote Casting (PR #143), 5b Rationale Submission (PR #145), 5c Governance Statement (PR #148), 5d Constitutional Alignment + 5e DRep Epoch Updates (PR #150). Remaining: citizen sentiment (Step 6 dep), SPO pool updates (lower priority).
-> **Primary persona:** DRep, SPO
-> **Secondary impact:** Citizen (more rationales = better transparency), Researcher (richer data)
+**Flywheel activation:**
 
-The capability that makes Governada indispensable: governance operations happen here, not somewhere else. Citizens are now using the platform (Step 4). DReps and SPOs need a reason to make it their daily tool.
+- **Accountability** starts -- scores surfaced prominently, profiles easy to find, competitive pressure loop begins
+- **Content/Discourse** starts -- Workspace makes CIP-100 authoring frictionless, rationales visible on profiles
 
-**What gets built:**
+### Phase 2: Engagement Flywheel Activation
 
-1. **Vote casting:** MeshJS/CIP-95 governance transaction construction, wallet signing, on-chain submission. Vote from the same page where you analyzed the proposal. Support for DRep votes (VotingProcedure) and SPO votes. Transaction building, fee estimation, confirmation UX, submission tracking, on-chain verification.
+_Recompose engagement mechanisms from dead `/engage` page into the living architecture._
 
-2. **Rationale authoring + CIP-100 submission:** Rich-text editor with AI assist (Claude drafts from: proposal summary + voting history + governance philosophy + alignment dimensions). CIP-100 JSON-LD schema generation. Document hosting on Supabase Storage (with IPFS option). Metadata anchor bundling with vote transaction. Two-minute flow: analyze → draft → review → submit (vote + rationale in one transaction).
+**2a: Hub engagement cards** -- Active sentiment polls, priority signals, assemblies as Hub cards. "Glass window" for anonymous users (see results, can't participate).
 
-3. **Governance statement setup:** Guided flow for DReps and SPOs to publish governance philosophy. CIP-100 compliant. AI-assisted drafting from voting record analysis. Published on-chain as metadata anchor. Displayed on profiles.
+**2b: Contextual prompts** -- "How do you feel about this?" on proposals. "Endorse this DRep" on profiles. Impact tags on funded projects. Concern flags inline on proposals.
 
-4. **Proposal workspace enhancements:** Constitutional alignment analysis surfaced alongside proposal, citizen sentiment integration (from Step 6), citizen question surfacing, information request system for proposal authors.
+**2c: Engagement -> intelligence feedback** -- Citizen sentiment visible in DRep Workspace. Engagement metrics in briefings. Endorsement counts on discovery cards. Priority signals shape governance health narrative.
 
-5. **Delegator communication tools:** Vote explanations (post-vote, AI-assisted), position statements, epoch updates (AI-drafted from actual voting record), citizen question response interface, SPO pool update channel.
+**Flywheel activation:**
 
-**What exists (reuse/modify):**
+- **Engagement** starts -- citizens engage, data feeds intelligence, better intelligence brings citizens back
+- **Accountability** accelerates -- DReps see citizen sentiment, respond with better rationales
 
-| Asset                                     | Action                                                            |
-| ----------------------------------------- | ----------------------------------------------------------------- |
-| `VoteExplanationEditor.tsx`               | **Modify** -- integrate into post-vote rationale flow             |
-| `RationaleAssistant.tsx`                  | **Modify** -- enhanced AI drafting with CIP-100 output            |
-| `DRepCommandCenter.tsx` (24.6KB)          | **Modify** -- add "Pending Votes" action queue with inline voting |
-| `ProposalHeroV1.tsx`                      | **Modify** -- add "Cast Vote" action panel                        |
-| `StatementComposer.tsx`                   | **Modify** -- CIP-100 compliance, governance statement flow       |
-| `SPOStatementComposer.tsx`                | **Modify** -- CIP-100 compliance                                  |
-| `DRepCommunicationFeed.tsx` (12.8KB)      | **Modify** -- structured update templates                         |
-| `DRepQuestionsInbox.tsx` (11KB)           | **Modify** -- response workflow integration                       |
-| `/api/rationale` + `/api/rationale/draft` | **Reuse** -- rationale storage and AI drafting                    |
-| `/api/drep/[drepId]/positions`            | **Reuse** -- position statement storage                           |
-| `/api/drep/[drepId]/philosophy`           | **Reuse** -- governance philosophy                                |
-| `getOpenProposalsForDRep()` in data.ts    | **Reuse** -- pending vote detection                               |
-| `vote_rationales` table                   | **Reuse** -- rationale storage                                    |
+### Phase 3: Anonymous Funnel + Coverage Polish
 
-**Net-new:**
+_Optimize conversion from visitor to citizen. Make Governance Coverage a headline feature._
 
-| What                                | Purpose                                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------------------- |
-| `VoteCaster.tsx`                    | MeshJS/CIP-95 vote transaction builder + wallet signer + confirmation UX               |
-| `RationaleFlow.tsx`                 | Full CIP-100 rationale creation pipeline (editor → AI draft → JSON-LD → host → anchor) |
-| `GovernanceStatementWizard.tsx`     | Step-by-step philosophy/statement setup with AI assist                                 |
-| `lib/cip100.ts`                     | CIP-100 JSON-LD document construction and validation                                   |
-| `lib/metadataAnchor.ts`             | Document hosting (Supabase Storage) + URI generation                                   |
-| MeshJS + `@meshsdk/core` dependency | Wallet interaction for governance transactions                                         |
-| `governance_actions` table          | Track votes cast through Governada (analytics + verification)                          |
-| `rationale_documents` table         | Hosted CIP-100 documents with URIs and on-chain anchors                                |
+**3a: Funnel optimization** -- Two-path landing with clear value props. Match flow expanded to cover DRep + Pool ("governance team" assembly). Inline education, not a Learn section. Wallet connect at moment of intent. PostHog funnel measurement + iteration.
 
-**Key metric:** If Governada 2x's the ecosystem rationale rate for its users, the value proposition is proven.
+**3b: Coverage as differentiator** -- Coverage % prominent on Hub and Delegation. "Complete your governance team" CTA. Coverage trend over time. Improvement suggestions. Shareable coverage card.
 
----
+**Flywheel activation:** All flywheels benefit from more users entering. Coverage concept creates word-of-mouth (unique -- no competitor measures this).
 
-### Step 6: Community Engagement Layer (MEDIUM complexity)
+### Phase 4: Viral/Identity Flywheel Activation
 
-> **Status: SHIPPED** -- 6 of 7 mechanisms built (Endorsements deferred). Proposal Sentiment with stake-weighted DRep view, Concern Flags, Impact Tags, Priority Signals (ranked-choice), Citizen Questions (proposal-linked), Citizen Assemblies (AI-generated). Precompute Inngest function + /engage page live. Feature flag `citizen_assembly_ai_generation` controls AI draft generation.
-> **Primary persona:** Citizen
-> **Secondary impact:** DRep (citizen signal), Treasury Team (validation + impact), Researcher (analyzable data)
+_Make governance participation something worth showing off._
 
-The structured signal layer. Civic engagement generates analyzable data, not noise. No forums, no threads, no moderation burden. Each mechanism took inspiration from successful structured civic engagement patterns.
+**4a: Governance Impact Score** -- Personal gamified score: delegation duration x DRep activity x engagement depth x coverage. Progressive, shareable.
 
-**What gets built:**
+**4b: Milestone share cards** -- Beautiful, branded OG images for: first delegation, DRep milestones, coverage streaks, epoch anniversaries.
 
-Seven engagement mechanisms, each producing structured data that feeds the intelligence engine:
+**4c: Enhanced Wrapped** -- Multi-role support, engagement stats, coverage data, all five flywheels' data in the narrative.
 
-1. **Proposal Sentiment:** Simple directional signal on active proposals (Support / Oppose / Unsure). Anonymous until wallet connected. Aggregated on proposal pages. DReps see citizen sentiment as input to voting decisions.
+**Flywheel activation:** **Viral/Identity** starts -- users share -> others discover -> they connect -> they share. Top-of-funnel growth.
 
-2. **Priority Signals:** "What should governance focus on?" Citizens vote on priority areas (infrastructure, education, marketing, DeFi, etc.). Aggregated into community priority dashboard. Treasury teams use to validate concepts before proposing.
+### Phase 5: Monetization Layer
 
-3. **Concern Flags:** Structured flags on proposals: "too expensive," "team unproven," "duplicates existing project," "constitutional concern." Aggregated counts surface systemic concerns without moderation.
+_Flywheels 1-4 running, user base growing. Premium is a natural upsell, not a gate._
 
-4. **Impact Tags:** Post-delivery citizen feedback on funded projects: "I use this" / "I tried it" / "I didn't know about it." Usage rating: essential / useful / okay / disappointing. Feeds treasury accountability.
+**5a: Subscription infrastructure** -- Stripe (ADA-native later), subscriptions table, ProGate component, entitlement checks.
 
-5. **Citizen Endorsements:** Citizens endorse DReps beyond delegation. "I trust this DRep on treasury matters" or "This DRep's rationales help me understand governance." Lightweight, structured, analyzable.
+**5b: DRep Pro ($15-25/mo)** -- Delegation analytics, score simulator, competitive intelligence, AI-enhanced rationale drafting, advanced inbox prioritization.
 
-6. **Citizen Questions:** Directed questions to DReps about specific proposals or positions. Structured format, delivered to DRep inbox, answered asynchronously. Not a chat -- a query/response system.
+**5c: SPO Pro ($15-25/mo)** -- Governance reputation analytics, competitive landscape, growth coaching, rich pool profile customization.
 
-7. **Citizen Assemblies (lightweight):** Time-bounded structured consultations. "Should governance prioritize X or Y this quarter?" Multiple-choice, 1-week duration, results published. 1-2 per epoch, curated by Governada.
+**5d: Premium Delegator ($5-10/mo)** -- AI Governance Advisor (deeper than free briefing), advanced alerts, portfolio delegation management, enhanced Wrapped.
 
-**What exists (reuse/modify):**
+**5e: Verified Project ($10-25/project)** -- Identity verification, enhanced project page, milestone management, proposal drafting intelligence.
 
-| Asset                                    | Action                                                   |
-| ---------------------------------------- | -------------------------------------------------------- |
-| `SentimentPoll.tsx` (12.8KB)             | **Modify** -- adapt for proposal sentiment               |
-| `PollFeedback.tsx`                       | **Modify** -- adapt for priority signals                 |
-| `TreasuryAccountabilityPoll.tsx`         | **Modify** -- adapt for impact tags                      |
-| `/api/polls/vote` + `/api/polls/results` | **Modify** -- generalize for all 7 mechanisms            |
-| `/api/governance/questions` + `/respond` | **Reuse** -- citizen question delivery                   |
-| `DRepQuestionsInbox.tsx`                 | **Reuse** -- question response interface                 |
-| `CivicaInbox.tsx` (16KB)                 | **Modify** -- surface citizen questions prominently      |
-| `poll_responses` table                   | **Modify** -- extend schema for sentiment/priority/flags |
+**Free/Pro boundary:** Free = everything needed to govern effectively (voting, rationale, proposal workspace, basic stats, basic identity, all engagement). Pro = competitive advantage, growth analytics, AI-powered efficiency. Never gate essential governance operations.
 
-**Net-new:**
+### Phase 6: Integration Flywheel Activation
 
-| What                                             | Purpose                                              |
-| ------------------------------------------------ | ---------------------------------------------------- |
-| `ProposalSentiment.tsx`                          | Inline sentiment voting on proposal pages            |
-| `PrioritySignals.tsx`                            | Priority area voting dashboard                       |
-| `ConcernFlags.tsx`                               | Structured concern flagging on proposals             |
-| `ImpactTags.tsx`                                 | Post-delivery citizen feedback on funded projects    |
-| `CitizenEndorsements.tsx`                        | DRep endorsement beyond delegation                   |
-| `CitizenAssembly.tsx`                            | Time-bounded consultation component                  |
-| `citizen_sentiment` table                        | Proposal sentiment votes                             |
-| `citizen_priority_signals` table                 | Priority area votes                                  |
-| `citizen_concern_flags` table                    | Proposal concern flags                               |
-| `citizen_impact_tags` table                      | Project impact feedback                              |
-| `citizen_endorsements` table                     | DRep endorsements                                    |
-| `citizen_assembly_responses` table               | Assembly consultation votes                          |
-| `precompute-engagement-signals` Inngest function | Aggregate engagement data for all consuming surfaces |
+_Stable product, proven flywheels, ready for B2B distribution._
 
-**Why this order:** Citizens are using the platform (Step 4), DReps are doing governance work (Step 5). Now citizens need channels to express preferences that feed back into the intelligence layer. This creates the data flywheel's newest input stream -- community engagement signals that no competitor collects because no competitor has built the civic hub where citizens participate.
+**6a: API v2** -- Full entity, governance, scoring, matching, alignment, bulk export endpoints. OpenAPI spec + SDK generation. Rate limiting tiers.
+
+**6b: Embeddable widgets** -- Quick Match, DRep Score card, SPO Governance badge, GHI gauge, Delegation Health indicator. Themeable, "Powered by Governada."
+
+**6c: Partner integrations** -- Eternl -> Lace -> PoolTool -> Vespr (priority order).
+
+**Flywheel activation:** **Integration** starts -- wallets show Governada data -> users discover platform -> more data -> better intelligence -> more integration demand.
+
+### Phase 7+: Advanced Intelligence & New Products
+
+**7a: Delegation Network Graph + Influence Mapping** -- Delegation flow visualization, power concentration analysis, governance factions, historical delegation migration. R3F/WebGL visualization.
+
+**7b: Governance Simulation Engine** -- "What if" analysis: simulate governance outcomes under different delegation distributions, score projections, staking governance simulation.
+
+**7c: Catalyst Score** -- Accountability framework for Project Catalyst. Separate product surface, shared infrastructure.
+
+**7d: Cross-Ecosystem Governance Identity** -- Governance passport, verifiable credentials, cross-chain reputation bridging, DID integration.
+
+### Phase Overlap Opportunities
+
+Phases 1-3 can partially overlap:
+
+- Phase 1 (recompose) is chunked by section -- Governance section can ship before Workspace is complete
+- Phase 2 (engagement) can start as soon as Hub cards exist (Phase 0 output)
+- Phase 3 (funnel) can start as soon as Governance section exists (Phase 1b output)
+
+Compressed timeline for Phases 1-3: ~4-5 weeks with parallel agents vs. 6+ weeks sequential.
 
 ---
 
-### Step 7: Viral Growth & Shareable Moments (LOW-MEDIUM complexity)
-
-> **Status: PARTIALLY COMPLETE** -- Wrapped generation and OG images live for all entity types.
-> **Primary persona:** All personas (distribution channel)
-
-Every data layer now exists. The workspace generates rich participation records. Community engagement creates citizen-specific content. Wrapped transforms it all into acquisition.
-
-**What gets built:**
-
-1. **Governance Wrapped:** Epoch and annual summaries for citizens (governance impact, delegation, engagement), DReps (voting record, score trajectory, delegator growth), SPOs (governance reputation, pool governance comparison).
-
-2. **Shareable OG image generation:** Match results, score milestones, governance footprint, civic identity achievements, delegation anniversaries, community engagement stats.
-
-3. **Civic identity shareable moments:** "I've been a Cardano citizen for 100 epochs," "My DRep scored in the top 10%," "I've influenced 3 proposals through my delegation."
-
-4. **Multi-role Wrapped:** For users who are both DReps and SPOs, or citizens with multiple wallets.
-
-5. **Citizen Governance Impact Score:** Personal gamified score for delegators: delegation duration × DRep activity × quiz participation × engagement depth. Shareable return driver.
-
-**What exists (reuse/modify):**
-
-| Asset                                 | Action                                                     |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `WrappedShareCard.tsx`                | **Modify** -- add civic identity moments, engagement stats |
-| `ShareActions.tsx` + `ShareModal.tsx` | **Reuse** -- sharing infrastructure                        |
-| `/api/my-gov/wrapped/[period]`        | **Reuse** -- wrapped data API                              |
-| `generate-governance-wrapped` Inngest | **Modify** -- enrich with workspace + engagement data      |
-| OG image generation                   | **Reuse** -- existing infrastructure                       |
-| `DelegationCeremony.tsx`              | **Reuse** -- celebration UX                                |
-| `MilestoneCelebration.tsx`            | **Reuse** -- milestone celebrations                        |
-| `CelebrationOverlay.tsx`              | **Reuse** -- animation framework                           |
-
-**Net-new:**
-
-| What                              | Purpose                                       |
-| --------------------------------- | --------------------------------------------- |
-| `GovernanceImpactScore.tsx`       | Citizen impact score calculation + display    |
-| `CivicMilestoneShare.tsx`         | Shareable civic identity moment cards         |
-| Animated share preview generation | Motion-based OG previews for social platforms |
-| `citizen_impact_scores` table     | Stored citizen impact calculations            |
-
----
-
-### Step 8: Monetization (MEDIUM complexity)
-
-> **Status: NOT STARTED**
-> **Primary persona:** DRep, SPO, Citizen (premium), Treasury Team
-
-DReps and SPOs are now using the free workspace daily. Community is engaged. Pro tiers are a natural upsell for competitive advantage on top of indispensable free tools.
-
-**What gets built:**
-
-1. **Subscription infrastructure:** ADA-native payments (or Stripe fallback), subscription table, entitlement checks, billing management.
-
-2. **DRep Pro ($15-25/mo):** Delegation analytics (who delegated, who left, why), AI rationale drafting (enhanced), score simulator (what-if voting), competitive intelligence (vs similar DReps), advanced inbox prioritization, campaign tools, custom alerts, performance coaching.
-
-3. **SPO Pro ($15-25/mo):** Delegation analytics, competitive intelligence, growth coaching, AI governance statement drafting, rich pool profile with custom branding, advanced communication tools, campaign tools.
-
-4. **Premium Delegator ($5-10/mo):** AI Governance Advisor (enhanced briefings beyond the free Epoch Briefing), advanced alerts (score drops, alignment shifts, unusual patterns), portfolio delegation management, governance participation tracking + exportable records, enhanced Wrapped.
-
-5. **Verified Project ($10-25/project):** Identity verification, enhanced project page, milestone management suite, spending transparency tools, proposal drafting intelligence, pre-proposal validation, priority visibility, verified badge.
-
-**What exists (reuse/modify):**
-
-| Asset                    | Action                                      |
-| ------------------------ | ------------------------------------------- |
-| `ScoreSimulator.tsx`     | **Gate** -- move behind DRep Pro            |
-| `DelegatorAnalytics.tsx` | **Gate** -- enhanced version behind Pro     |
-| `CompetitiveContext.tsx` | **Gate** -- detailed competitive behind Pro |
-| Feature flag system      | **Reuse** -- entitlement-based gating       |
-| `RationaleAssistant.tsx` | **Gate** -- AI enhanced drafting behind Pro |
-
-**Net-new:**
-
-| What                                       | Purpose                                                       |
-| ------------------------------------------ | ------------------------------------------------------------- |
-| Subscription system (Stripe or ADA-native) | Payment processing, plan management, entitlements             |
-| `ProGate.tsx`                              | Paywall component with upgrade CTA                            |
-| `SubscriptionManager.tsx`                  | Billing and plan management UI                                |
-| `AIGovernanceAdvisor.tsx`                  | Premium citizen AI briefing (upsell from free Epoch Briefing) |
-| `ProposalDraftingIntelligence.tsx`         | AI-powered proposal guidance for treasury teams               |
-| `subscriptions` table                      | User subscription state                                       |
-| `subscription_events` table                | Payment history and audit trail                               |
-
-**Free/Pro boundary:** Free = everything needed to govern effectively (voting, rationale, proposal workspace, basic stats, basic identity). Pro = competitive advantage, growth analytics, AI-powered efficiency. Never gate essential governance operations.
-
-**Monetization target:** $4,000-10,000/mo combined from all tiers.
-
----
-
-### Step 9: API Platform & B2B Distribution (MEDIUM complexity)
-
-> **Status: V1 API EXISTS** (11 public routes at `/api/v1/`)
-> **Primary persona:** Integration Partner, Researcher
-
-> **Note:** Informal partner relationships and early API access should begin much earlier (post-Step 3). This step formalizes and scales the integration infrastructure.
-
-**What gets built:**
-
-1. **API v2 expansion:** Full entity, governance system, proposal, treasury, matching, alignment, and bulk export endpoints (see [researcher.md](personas/researcher.md) for complete API surface specification).
-
-2. **Rate limiting tiers:** Free (100/day), Basic ($50/mo, 10K/day), Pro ($200/mo, 100K/day), Enterprise (custom).
-
-3. **Research tier:** Academic pricing ($50-100/mo), bulk exports (CSV/JSON), versioned datasets, methodology documentation.
-
-4. **Embeddable widgets:** Quick Match, DRep Score card, SPO Governance badge, Governance Health gauge, Delegation Health indicator. Themeable, "Powered by Governada" attribution.
-
-5. **Developer experience:** OpenAPI spec, SDK generation (TypeScript, Python), interactive API explorer, sandbox environment, webhook system for real-time partner notifications.
-
-**What exists (reuse/modify):**
-
-| Asset                               | Action                                         |
-| ----------------------------------- | ---------------------------------------------- |
-| `/api/v1/*` (11 routes)             | **Keep** -- maintain backward compatibility    |
-| `DeveloperPage.tsx` (14.5KB)        | **Modify** -- v2 docs and explorer             |
-| `ApiExplorer.tsx` (12KB)            | **Modify** -- v2 endpoints                     |
-| Embed routes (`/embed/*`)           | **Expand** -- add widget endpoints             |
-| `EmbedDRepCard.tsx`, `EmbedGHI.tsx` | **Modify** -- themeable, attribution framework |
-| Upstash Redis rate limiting         | **Reuse** -- scale for API tiers               |
-
-**Integration priority:** Eternl → Lace → PoolTool → Vespr → CardanoScan → ADApools → Exchanges.
-
-**Monetization target:** $1,500-4,000/mo from API subscriptions + widget licensing.
-
-See [Integration Partner persona doc](personas/integration-partner.md) for full integration model.
-
----
-
-### Step 10: Advanced Intelligence (HIGH complexity)
-
-> **Status: NOT STARTED**
-> **Primary persona:** All (consumer wow), Integration Partner + Researcher (B2B analytics)
-
-Two major features that require the full data picture:
-
-**10a: Delegation Network Graph + Influence Mapping**
-
-- Delegation flow visualization: power concentration, "kingmaker" wallets, governance factions
-- DRep influence scoring: how much does a vote swing outcomes (weighted by voting power + proposal margins)
-- Delegation cluster detection: groups of wallets delegating to similar DReps (governance factions)
-- Historical delegation migration: where do delegators go when they re-delegate?
-- R3F/WebGL visualization using existing Constellation architecture
-- "Power map" -- system-wide governance power distribution
-- SPO-delegator relationships alongside DRep delegation flows
-
-**10b: Governance Simulation Engine**
-
-- "What if" analysis: simulate governance outcomes under different delegation distributions
-  - "What if the top 10 DReps had 20% less power?"
-  - "What if DRep X voted No on this treasury proposal?"
-  - "What if you re-delegated to DRep Y?"
-- Monte Carlo simulation of proposal outcomes based on current voting patterns + alignment distributions
-- Impact modeling for delegation changes: "if you delegate here, the decentralization index improves by X"
-- DRep/SPO score projection: "if you provide rationales for the next 5 proposals, your score will reach X"
-- Staking governance simulation: "what if you moved your stake to SPO Y -- how does their governance alignment compare?"
-
-**What exists (reuse/modify):**
-
-| Asset                                 | Action                                    |
-| ------------------------------------- | ----------------------------------------- |
-| `DelegationGraph.tsx` (12.5KB)        | **Extend** -- full network visualization  |
-| `GlobeConstellation.tsx` (24.4KB)     | **Reuse** -- 3D rendering infrastructure  |
-| `GovernanceConstellation.tsx` (24KB)  | **Reuse** -- node visualization framework |
-| `TreasurySimulator.tsx` (15.8KB)      | **Extend** -- governance simulation       |
-| `ScoreSimulator.tsx`                  | **Extend** -- score projection            |
-| `delegation_snapshots` infrastructure | **Extend** -- per-epoch tracking          |
-
-**Data modeling milestone:** `delegation_snapshots(wallet_address, drep_id, epoch, voting_power)` per epoch. Net-new data collection enabling delegation migration analysis.
-
-**Monetization angle:** Both a consumer "wow" feature and a B2B analytics product. Institutional delegators and governance researchers will pay for this data.
-
----
-
-### Step 11: New Product Lines (HIGH complexity, speculative)
-
-> **Status: NOT STARTED**
-> **Primary persona:** New audiences beyond core Cardano governance
-
-**11a: Catalyst Score**
-
-- Accountability framework applied to Project Catalyst:
-  - Proposal reviewer scoring (accountability for reviewers)
-  - Funded project completion tracking (did they deliver?)
-  - Fund allocation analytics and ROI tracking
-  - Proposer reputation scores
-- Shared infrastructure: same scoring/alignment engine, same UI components
-- Cross-pollination: DReps who vote on treasury proposals that fund Catalyst can be evaluated on those outcomes
-- Proposer reputation from treasury project profiles (Step 8) carries forward
-
-**Why here (not earlier):** Catalyst distributes tens of millions in ADA per fund. The accountability need is enormous. But it is a separate product surface with different data sources and different users. Only tackle it after the core governance product is world-class and generating revenue. The infrastructure transfers directly.
-
-**Monetization target:** Separate Catalyst funding proposal + its own SaaS tier.
-
-**11b: Cross-Ecosystem Governance Identity**
-
-- Portable governance reputation: a "governance passport" that proves participation
-  - Verifiable credentials for governance actions (votes, delegation, participation streaks)
-  - Cross-chain reputation bridging: active Cardano governance participation travels
-  - Integration with DID (Decentralized Identity) standards
-- Privacy-preserving governance verification (Midnight partnership opportunity):
-  - ZK proofs that a DRep voted without revealing how
-  - Anonymous governance reputation
-  - Confidential delegation analytics
-- ENS/.ada integration for governance identity
-
-**Why last:** Genuinely novel and depends on protocol-level support (Midnight, DID standards, cross-chain bridges). The value is enormous but the execution risk is highest. By this point, Governada's reputation and data moat make it the natural home for governance identity.
-
-**Monetization angle:** The "Stripe for blockchain governance" play -- other chains and protocols pay to access governance reputation data.
-
----
-
-## Monetization Roadmap (Aligned to Build Sequence)
-
-| After Step | Revenue Stream                                                         | Persona Served         | Target                |
-| ---------- | ---------------------------------------------------------------------- | ---------------------- | --------------------- |
-| 0-4        | **Free forever** -- build userbase, prove value, secure Catalyst grant | All                    | $0/mo + $30-75K grant |
-| 7          | **Wrapped virality** -- organic growth, ecosystem sponsor placements   | Citizens, DReps, SPOs  | $200-500/mo sponsors  |
-| 8          | **DRep Pro** -- competitive analytics + growth tools                   | DReps                  | $1,000-2,500/mo       |
-| 8          | **SPO Pro** -- delegation growth + competitive intelligence            | SPOs                   | $1,000-2,500/mo       |
-| 8          | **Verified Projects** -- identity verification + accountability tools  | Treasury Teams         | $200-500/mo           |
-| 8          | **Premium Delegator** -- AI governance advisor + advanced tracking     | Citizens (power users) | $750-2,000/mo         |
-| 9          | **API/B2B** -- wallet integrations, exchanges, pool tools              | Integration Partners   | $1,500-4,000/mo       |
-| 9          | **Research Subscriptions** -- academic + professional data access      | Researchers            | $200-1,000/mo         |
-| 10         | **Enterprise** -- institutional delegation advisory, custom reporting  | Integration Partners   | $2,000-5,000/mo       |
-| 11a        | **Catalyst Score** -- separate product line with own funding           | New persona            | $2,000+/mo            |
-| 11b        | **Governance-as-a-Service** -- platform play                           | Cross-ecosystem        | TBD                   |
-
-**Cumulative target at full maturity: $12,000-25,000+/mo** -- enough to replace full-time income and build a small team.
-
-**Catalyst funding strategy:** Apply to Fund 16 with Steps 0-3 live. "We built the most sophisticated governance intelligence platform in crypto. Fund us to make it accessible to every ADA holder." Target $75-150K ADA.
-
----
-
-## The "100/100 Wow" Framework
-
-The wow score is an emergent property of how well these systems connect. Here is how each capability contributes:
-
-**A citizen who gets it in 30 seconds:** A new visitor sees two paths: Stake or Govern. They choose Govern, answer 3 questions, see a radar chart form in real-time, match with a DRep who shares their values, and delegate. 90 seconds from stranger to citizen. The next epoch, they open Governada and see: "Your DRep voted Yes on a developer toolkit proposal. Everything's healthy." They close the app, informed and confident. That is the entire citizen product, and it is enough. (Foundation + Step 4)
-
-**Scores that matter (not a vibe):** A DRep profile shows a score reflecting actual governance behavior -- rationale quality assessed by AI, voting patterns weighted by importance, reliability measured by responsiveness. The user trusts this score because it means something specific and defensible. (Foundation)
-
-**A governance workspace that eliminates context switching:** A DRep reads the AI proposal summary, checks citizen sentiment ("72% support, 31 citizens flagged unclear deliverables"), reviews similar past proposals, writes a rationale (starting from an AI draft), and casts their vote. All on one page. Two minutes, start to finish. No other tool does this. (Steps 5+6)
-
-**Treasury spending you can trace from ADA to impact:** A citizen checks the treasury page: "4M ADA funded Project X. Milestone 3 of 5 complete. 89 citizens use it, 71% say essential. DRep Y voted Yes." Every treasury dollar is traceable from proposal to vote to delivery to citizen impact. (Foundation + Steps 4+6+8)
-
-**Proposal cards that connect everything:** A treasury proposal card shows: "4.2M ADA (0.12% of treasury) -- Your DRep voted Yes -- SPOs voted 60% No -- Citizens 73% support -- Similar to 3 past proposals (2 delivered, 1 partial) -- Expires in 2 epochs." Every fact from a different system, unified into one glanceable card. (Foundation + Steps 4+6)
-
-**An epoch that tells a story:** "Epoch 523: 4 proposals ratified, 12M ADA withdrawn, governance decentralization improved by 3%. Your DRep voted on all 4 and provided rationales for 3." Personal, contextual, narrative. (Foundation + Steps 4+7)
-
-**A DRep profile that reads like a person:** Hero: name, HexScore, Governance Radar, personality narrative, key facts, citizen endorsement count. Below: voting record, treasury track record, inter-body alignment, alignment trajectory. Citizen trust alongside algorithmic score. (Foundation + Steps 4+6)
-
-**A system view that inspires confidence:** Pulse: GHI at 72 (up 3), 7 EDI metrics, proposal trends, inter-body alignment map, cross-chain comparison, AI State of Governance narrative. The entire ecosystem, one page. (Foundation)
-
-**SPOs with a governance reputation:** A stake pool profile shows: SPO Score 88, governance radar, inter-body alignment, pool mission, team, delegator communication channel. Pool delegators choose based on governance values, not just ROI. No pool comparison tool shows this. (Foundation + Step 4)
-
-**The full governance picture:** A proposal page shows three bodies side by side: "DReps: 72% Yes. SPOs: 45% Yes. CC: 100% Yes." Plus citizen sentiment: "73% support, 48 flagged 'too expensive'." The AI explains the tension. No other tool shows governance from all angles simultaneously. (Foundation + Step 6)
-
-**One identity, every role:** You link your second wallet. Your SPO score appears alongside your DRep score. Your Wrapped now includes pool governance. The AI advisor spots your DRep and SPO votes diverge on treasury proposals. You set nothing up. The product understood and adapted. (Multi-Wallet + Steps 4-8)
-
-**An identity you want to share:** Governance Wrapped: "You've been a Cardano citizen for 100 epochs. Your DRep voted on 47 proposals, approved 15M ADA in treasury spending -- 90% rated as delivered. Your SPO voted on 40 proposals." This is a badge of honor. Users share it unprompted. (Step 7)
-
-**Citizens with a voice:** A citizen votes on proposal sentiment, flags a concern about unclear deliverables, endorses their DRep for treasury oversight, and reports that a funded project they use is essential. Each action took 5 seconds. Each generated data that improved the intelligence engine. The citizen feels heard without writing a single forum post. (Step 6)
+## Monetization Roadmap (Aligned to Phases)
+
+| After Phase | Revenue Stream                                                         | Target                |
+| ----------- | ---------------------------------------------------------------------- | --------------------- |
+| 0-3         | **Free forever** -- build userbase, prove value, secure Catalyst grant | $0/mo + $30-75K grant |
+| 4           | **Wrapped virality** -- organic growth, ecosystem sponsor placements   | $200-500/mo sponsors  |
+| 5           | **DRep Pro** -- competitive analytics + growth tools                   | $1,000-2,500/mo       |
+| 5           | **SPO Pro** -- delegation growth + competitive intelligence            | $1,000-2,500/mo       |
+| 5           | **Verified Projects** -- identity verification + accountability tools  | $200-500/mo           |
+| 5           | **Premium Delegator** -- AI governance advisor + advanced tracking     | $750-2,000/mo         |
+| 6           | **API/B2B** -- wallet integrations, exchanges, pool tools              | $1,500-4,000/mo       |
+| 6           | **Research Subscriptions** -- academic + professional data access      | $200-1,000/mo         |
+| 7           | **Enterprise** -- institutional delegation advisory, custom reporting  | $2,000-5,000/mo       |
+| 7+          | **Catalyst Score** -- separate product line                            | $2,000+/mo            |
+| 7+          | **Governance-as-a-Service** -- platform play                           | TBD                   |
+
+**Cumulative target at full maturity: $12,000-25,000+/mo.**
+
+**Catalyst funding strategy:** Apply to Fund 16 with production platform live. Target $75-150K ADA.
 
 ---
 
 ## Data Compounding Schedule
 
-This is the silent engine. Every day the product runs, the moat deepens.
+Every day the product runs, the moat deepens.
 
-| Snapshot                     | Frequency        | Created At | Compounds Into                                                |
-| ---------------------------- | ---------------- | ---------- | ------------------------------------------------------------- |
-| `drep_score_snapshots`       | Per score change | Foundation | Score history, momentum, Wrapped, alerts                      |
-| `alignment_snapshots`        | Daily per epoch  | Foundation | Temporal trajectories, shift detection, Wrapped               |
-| `ghi_snapshots`              | Daily            | Foundation | GHI trends, epoch recaps, State of Gov                        |
-| `edi_snapshots`              | Daily            | Foundation | Decentralization dashboard, cross-chain comparison            |
-| `treasury_snapshots`         | Daily            | Foundation | Treasury health, runway, epoch recaps                         |
-| `pools`                      | Per sync         | Foundation | SPO profiles, SPO discovery, pool comparison                  |
-| `inter_body_alignment`       | Per sync         | Foundation | Proposal pages, DRep/SPO profiles, governance dynamics        |
-| `proposal_similarity_cache`  | Per sync         | Foundation | Related proposals, trend detection                            |
-| `epoch_recaps`               | Per epoch        | Foundation | Calendar, Wrapped, AI advisor, **Briefing**                   |
-| `governance_events`          | Per event        | Foundation | Footprint, timeline, Wrapped, notifications                   |
-| `spo_score_snapshots`        | Per score change | Foundation | SPO score history, momentum, SPO Wrapped, alerts              |
-| `spo_alignment_snapshots`    | Daily per epoch  | Foundation | SPO temporal trajectories, shift detection, SPO Wrapped       |
-| `user_governance_profiles`   | Per vote/quiz    | Foundation | Matching (DRep + SPO), AI advisor, Premium features           |
-| `user_wallets`               | Per link event   | Foundation | Segment detection, cross-role intelligence, unified footprint |
-| `citizen_milestones`         | Per milestone    | Step 4     | Civic identity, shareable moments, Wrapped                    |
-| `citizen_briefings`          | Per epoch        | Step 4     | Epoch Briefing, returning user context                        |
-| `governance_actions`         | Per vote cast    | Step 5     | Workspace analytics, rationale tracking, Wrapped              |
-| `rationale_documents`        | Per submission   | Step 5     | CIP-100 rationale hosting, methodology validation             |
-| `citizen_sentiment`          | Per vote         | Step 6     | Proposal intelligence, DRep accountability, briefing          |
-| `citizen_priority_signals`   | Per signal       | Step 6     | Citizen Mandate, trend analysis, proposal relevance           |
-| `citizen_endorsements`       | Per endorsement  | Step 6     | DRep/SPO trust scores, discovery ranking, matching            |
-| `citizen_impact_tags`        | Per tag          | Step 6     | Treasury accountability, project scoring, proposer reputation |
-| `citizen_concern_flags`      | Per flag         | Step 6     | Proposal intelligence, systemic concern detection             |
-| `citizen_assembly_responses` | Per assembly     | Step 6     | Community consensus, governance direction                     |
-| `proposer_profiles`          | Per project      | Step 8     | Treasury team reputation, DRep voting context                 |
-| `citizen_impact_scores`      | Per epoch        | Step 7     | Gamified engagement, shareable moments, retention             |
-| `delegation_snapshots`       | Per epoch        | Step 10    | Network graph, migration analysis, influence                  |
+| Snapshot                     | Frequency        | Created At | Compounds Into                                     |
+| ---------------------------- | ---------------- | ---------- | -------------------------------------------------- |
+| `drep_score_snapshots`       | Per score change | Foundation | Score history, momentum, Wrapped, alerts           |
+| `alignment_snapshots`        | Daily per epoch  | Foundation | Temporal trajectories, shift detection, Wrapped    |
+| `ghi_snapshots`              | Daily            | Foundation | GHI trends, epoch recaps, State of Gov             |
+| `edi_snapshots`              | Daily            | Foundation | Decentralization dashboard, cross-chain comparison |
+| `treasury_snapshots`         | Daily            | Foundation | Treasury health, runway, epoch recaps              |
+| `pools`                      | Per sync         | Foundation | SPO profiles, SPO discovery, pool comparison       |
+| `inter_body_alignment`       | Per sync         | Foundation | Proposal pages, profiles, governance dynamics      |
+| `proposal_similarity_cache`  | Per sync         | Foundation | Related proposals, trend detection                 |
+| `epoch_recaps`               | Per epoch        | Foundation | Calendar, Wrapped, AI advisor, Hub briefing        |
+| `governance_events`          | Per event        | Foundation | Footprint, timeline, Wrapped, notifications        |
+| `spo_score_snapshots`        | Per score change | Foundation | SPO score history, momentum, alerts                |
+| `spo_alignment_snapshots`    | Daily per epoch  | Foundation | SPO trajectories, shift detection                  |
+| `user_governance_profiles`   | Per vote/quiz    | Foundation | Matching, AI advisor, Premium features             |
+| `user_wallets`               | Per link event   | Foundation | Segment detection, cross-role intelligence         |
+| `citizen_milestones`         | Per milestone    | Foundation | Civic identity, shareable moments, Wrapped         |
+| `citizen_briefings`          | Per epoch        | Foundation | Hub briefing, returning user context               |
+| `governance_actions`         | Per vote cast    | Foundation | Workspace analytics, rationale tracking            |
+| `rationale_documents`        | Per submission   | Foundation | CIP-100 hosting, methodology validation            |
+| `citizen_sentiment`          | Per vote         | Foundation | Proposal intelligence, accountability, briefing    |
+| `citizen_priority_signals`   | Per signal       | Foundation | Citizen Mandate, trend analysis                    |
+| `citizen_endorsements`       | Per endorsement  | Foundation | Trust scores, discovery ranking, matching          |
+| `citizen_impact_tags`        | Per tag          | Foundation | Treasury accountability, project scoring           |
+| `citizen_concern_flags`      | Per flag         | Foundation | Proposal intelligence, concern detection           |
+| `citizen_assembly_responses` | Per assembly     | Foundation | Community consensus, governance direction          |
+| `citizen_impact_scores`      | Per epoch        | Phase 4    | Gamified engagement, shareable moments             |
+| `proposer_profiles`          | Per project      | Phase 5    | Treasury team reputation, DRep voting context      |
+| `delegation_snapshots`       | Per epoch        | Phase 7    | Network graph, migration analysis, influence       |
 
-**The compounding insight:** A DRep who has been scored for 50 epochs has a richer profile than one scored for 5. A treasury team with three delivered projects has a track record no newcomer can match. A citizen assembly with 20 verdicts creates a precedent library. Time is our advantage. Every day a competitor does NOT collect this data is a day they can never get back.
+**The compounding insight:** A DRep who has been scored for 50 epochs has a richer profile than one scored for 5. A treasury team with three delivered projects has a track record no newcomer can match. Time is our advantage. Every day a competitor does NOT collect this data is a day they can never get back.
 
 ---
 
-## New Integration Opportunities (Beyond Koios)
+## Integration Opportunities (Beyond Koios)
 
-| Integration                            | What It Unlocks                                              | When                |
-| -------------------------------------- | ------------------------------------------------------------ | ------------------- |
-| **Koios `/vote_list` SPO+CC**          | Tri-body alignment, full governance picture                  | Foundation (done)   |
-| **Koios `/pool_list`**                 | Full SPO registry, pool discovery                            | Foundation (done)   |
-| **Koios `/pool_info`**                 | Pool metadata, pledge, margin, governance statements         | Foundation (done)   |
-| **Koios `/pool_metadata`**             | Extended pool metadata, off-chain references                 | Foundation (done)   |
-| **Koios `/pool_delegators`**           | SPO delegator count, staking governance footprint            | Foundation (done)   |
-| **Koios `/pool_voting_power_history`** | SPO governance power over time                               | Foundation (done)   |
-| **Koios `account_info` full**          | ADA balance, rewards, wallet footprint                       | Foundation (done)   |
-| **MeshJS CIP-95**                      | Vote casting, governance transactions                        | Step 5              |
-| **CIP-100 metadata**                   | Rationale retrieval, hash verification, rationale submission | Foundation + Step 5 |
-| **Tally API (enhanced)**               | Ethereum delegate power for EDI comparison                   | Foundation (done)   |
-| **SubSquare API (enhanced)**           | Polkadot validator power for EDI comparison                  | Foundation (done)   |
-| **Catalyst/IdeaScale**                 | Funded project tracking, reviewer scoring                    | Step 11a            |
-| **Midnight SDK**                       | ZK governance proofs, privacy features                       | Step 11b            |
-| **Cardano DB Sync (optional)**         | Deep historical chain data, delegation history               | Step 10             |
+| Integration            | What It Unlocks                                      | When              |
+| ---------------------- | ---------------------------------------------------- | ----------------- |
+| **Koios (full suite)** | On-chain governance data, pool data, delegation data | Foundation (done) |
+| **MeshJS CIP-95**      | Vote casting, governance transactions                | Foundation (done) |
+| **CIP-100 metadata**   | Rationale retrieval, hash verification, submission   | Foundation (done) |
+| **Tally API**          | Ethereum delegate power for EDI comparison           | Foundation (done) |
+| **SubSquare API**      | Polkadot validator power for EDI comparison          | Foundation (done) |
+| **Catalyst/IdeaScale** | Funded project tracking, reviewer scoring            | Phase 7+          |
+| **Midnight SDK**       | ZK governance proofs, privacy features               | Phase 7+          |
+| **Cardano DB Sync**    | Deep historical chain data, delegation history       | Phase 7           |
 
 ---
 
@@ -914,39 +718,31 @@ No governance product in crypto does what Governada does -- and no competitor CA
 
 The closest comparators:
 
-- **Tally (Ethereum):** Proposal voting interface. No scoring, no matching, no intelligence, no community engagement, no cross-chain. Single governance body only.
-- **SubSquare (Polkadot):** Referendum tracking. Basic analytics. No reputation system. No multi-body analysis. No civic engagement layer.
-- **Snapshot:** Off-chain voting tool. No accountability, no intelligence layer. No on-chain governance data. No citizen experience.
-- **DRep.tools:** Basic Cardano DRep listing. No scoring, no matching, no AI, no analytics. DReps only.
-- **PoolTool / ADApools:** Stake pool metrics (uptime, rewards, fees). Zero governance data. The SPO governance layer is a completely untapped opportunity.
-- **GovTool:** Cardano's official governance tool. Handles voting mechanics but has no intelligence layer, no scoring, no matching, no citizen experience, no community engagement. Complementary infrastructure, not a competitor.
+- **Tally (Ethereum):** Proposal voting interface. No scoring, no matching, no intelligence, no engagement, no cross-chain.
+- **SubSquare (Polkadot):** Referendum tracking. Basic analytics. No reputation system.
+- **Snapshot:** Off-chain voting tool. No accountability, no intelligence layer.
+- **DRep.tools:** Basic Cardano DRep listing. No scoring, no matching, no AI, no analytics.
+- **PoolTool / ADApools:** Stake pool metrics (uptime, rewards, fees). Zero governance data.
+- **GovTool:** Cardano's official governance tool. Handles voting mechanics but no intelligence layer. Complementary, not competitive.
 
-Governada's advantage is not any single feature -- it is the system. The scoring engine feeds the matching engine feeds the intelligence engine feeds the community engagement engine feeds the notification engine feeds the growth engine. Six personas served by one interconnected data flywheel, powered by community engagement data no competitor collects. No one can replicate this by copying one feature.
+Governada's advantage is the system, not any single feature. Six personas served by one interconnected data flywheel, powered by community engagement data no competitor collects. Five self-reinforcing flywheels that compound over time.
 
-**The civic hub moat:** Even if a competitor replicated every algorithm, they would still lack: (a) the compounding historical dataset, (b) the citizen engagement data, (c) the proposer reputation records, (d) the integration partner ecosystem, and (e) the governance workspace adoption. The moat is not code -- it is the system operating over time.
+**The civic hub moat:** Even if a competitor replicated every algorithm, they would still lack: (a) the compounding historical dataset, (b) the citizen engagement data, (c) the proposer reputation records, (d) the integration partner ecosystem, (e) the governance workspace adoption, and (f) the governance coverage analysis. The moat is not code -- it is the system operating over time.
 
 ---
 
 ## Principles (Non-Negotiable)
 
-1. **Citizens first.** Every feature, every surface, every data point ultimately serves the Cardano citizen. Other personas either serve citizens or are accountable to them. When in doubt, ask: "Does this make a citizen's life better?"
-
-2. **Free core, paid power tools.** Never gate: discovery, basic scores, delegation, Quick Match, basic alerts, essential governance operations (voting, rationale submission). These are the growth engine and the mission. Monetize competitive advantage, growth analytics, and AI-powered efficiency -- not core governance.
-
-3. **Data is the product.** Open methodology builds trust. Proprietary historical data builds revenue. Citizen engagement data builds the moat no competitor can cross. Never stop collecting.
-
-4. **Persona-appropriate depth.** Citizens get summary intelligence. DReps get a workspace. SPOs get an identity platform. CC members get a transparency surface. Each persona's primary experience must be emotionally complete for their needs. Different personas need different products, not different depths of the same product.
-
-5. **Intelligence demands action.** Every insight must connect to something the user can do. A score without a delegation button is just a number. A health warning without a "fix this" CTA is just anxiety. A proposal without a vote button is a missed opportunity. Governada is where governance HAPPENS, not just where it is observed.
-
-6. **Accountability is advantage.** Transparency is not imposed -- it is rewarded. DReps who provide rationales score higher. SPOs who participate in governance get discovered. Treasury teams who deliver build reputation. The system creates natural incentives for good governance behavior.
-
-7. **Structured signal over open discourse.** Civic engagement generates analyzable data, not noise. Every citizen interaction feeds the intelligence engine. No forums, no threads, no moderation burden. Structure prevents abuse while preserving meaningful agency.
-
-8. **DReps, SPOs, and Integration Partners are the sales force.** Every DRep who shares their score, every SPO who shares their governance reputation, every wallet that embeds Quick Match is marketing. Make sharing effortless, embedding simple, and attribution clear.
-
-9. **Ship fast, iterate faster.** AI-assisted development means we move at speeds that make traditional teams look glacial. Every step above is achievable, not aspirational.
-
-10. **Vertical depth over horizontal breadth.** Be THE indispensable civic hub for Cardano governance. Depth wins. Do not expand to other chains until Cardano is completely served.
-
-11. **Build in public.** Share the roadmap, the methodology, the decisions. Governance participants value transparency. A governance intelligence platform that is not itself transparent has no credibility.
+1. **Citizens first.** Every feature ultimately serves the Cardano citizen. Decision filter: "Does this make a citizen's life better?"
+2. **Free core, paid power tools.** Never gate: discovery, basic scores, delegation, Quick Match, basic alerts, essential governance operations. Monetize competitive advantage, growth analytics, and AI-powered efficiency.
+3. **Data is the product.** Open methodology builds trust. Historical data builds revenue. Citizen engagement data builds the moat no competitor can cross.
+4. **Persona-appropriate depth.** Citizens get summary intelligence. DReps get a workspace. SPOs get an identity platform. Different personas need different products, not different depths of the same product.
+5. **Intelligence demands action.** Every insight connects to something the user can do. Governada is where governance HAPPENS, not just where it is observed.
+6. **Accountability is advantage.** Transparency is rewarded, not imposed. DReps who provide rationales score higher. SPOs who participate get discovered.
+7. **Structured signal over open discourse.** Civic engagement generates analyzable data, not noise. No forums, no threads, no moderation burden.
+8. **DReps, SPOs, and Partners are the sales force.** Every shared score, every embedded widget is marketing. Make sharing effortless.
+9. **Ship fast, iterate faster.** AI-assisted development. Every phase is achievable, not aspirational.
+10. **Vertical depth over horizontal breadth.** Be THE indispensable civic hub for Cardano governance before expanding.
+11. **Build in public.** Share roadmap, methodology, decisions. A governance platform that isn't itself transparent has no credibility.
+12. **Restraint is craft.** Showing less is harder than showing more. Every number must answer "so what?" Every addition must displace something. The information budget is zero-sum.
+13. **JTBD-driven navigation.** Organize around what users do, not what data types exist. Hub-first. Engagement as a layer. Persona-adaptive.

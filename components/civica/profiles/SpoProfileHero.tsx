@@ -3,7 +3,6 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
-import { HexScore } from '@/components/HexScore';
 import { AccentProvider } from '@/components/AccentProvider';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -15,7 +14,7 @@ import {
 } from '@/lib/drepIdentity';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { cn } from '@/lib/utils';
-import { Users, TrendingUp, Award, Server, Clock, Archive, ShieldCheck } from 'lucide-react';
+import { Users, Award, Archive, ShieldCheck } from 'lucide-react';
 import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/civica/cards/tierStyles';
 import type { TierName } from '@/lib/scoring/tiers';
 
@@ -26,22 +25,13 @@ interface SpoProfileHeroProps {
   tier: TierName;
   rank: number | null;
   delegatorCount: number;
-  liveStakeFormatted: string;
-  voteCount: number;
   participationRate: number;
   alignments: AlignmentScores;
   narrative: string | null;
-  scoreMomentum: number | null;
-  lastVotedText: string | null;
   isRetired?: boolean;
   isRetiring?: boolean;
   isClaimed?: boolean;
   children?: React.ReactNode;
-}
-
-function formatMomentum(m: number): string {
-  const prefix = m > 0 ? '+' : '';
-  return `${prefix}${m.toFixed(1)} pts/epoch`;
 }
 
 export function SpoProfileHero({
@@ -51,13 +41,9 @@ export function SpoProfileHero({
   tier,
   rank,
   delegatorCount,
-  liveStakeFormatted,
-  voteCount,
   participationRate,
   alignments,
   narrative,
-  scoreMomentum,
-  lastVotedText,
   isRetired,
   isRetiring,
   isClaimed,
@@ -156,7 +142,7 @@ export function SpoProfileHero({
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">{narrative}</p>
           )}
 
-          {/* Key stats */}
+          {/* Key stats — 3 only: rank, participation %, delegators */}
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground pt-2">
             {rank !== null && (
               <span className="flex items-center gap-1.5">
@@ -169,57 +155,35 @@ export function SpoProfileHero({
               </span>
             )}
             <span className="flex items-center gap-1.5">
+              <span
+                className="h-4 w-4 inline-flex items-center justify-center text-[11px] font-bold"
+                style={{ color: identityColor?.hex ?? 'currentColor' }}
+              >
+                %
+              </span>
+              <span className="font-mono font-medium text-foreground">{participationRate}%</span>
+              participation
+            </span>
+            <span className="flex items-center gap-1.5">
               <Users className="h-4 w-4" style={{ color: identityColor?.hex ?? 'currentColor' }} />
               <span className="font-mono font-medium text-foreground">
                 {delegatorCount.toLocaleString()}
               </span>
               delegators
             </span>
-            <span className="flex items-center gap-1.5">
-              <TrendingUp
-                className="h-4 w-4"
-                style={{ color: identityColor?.hex ?? 'currentColor' }}
-              />
-              <span className="font-mono font-medium text-foreground">{liveStakeFormatted}</span>
-              ADA
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Server className="h-4 w-4" style={{ color: identityColor?.hex ?? 'currentColor' }} />
-              <span className="font-mono font-medium text-foreground">{voteCount}</span>
-              votes ({participationRate}%)
-            </span>
-            {scoreMomentum != null && scoreMomentum !== 0 && (
-              <span
-                className={cn(
-                  'flex items-center gap-1 text-xs font-medium tabular-nums',
-                  scoreMomentum > 0 ? 'text-emerald-400' : 'text-rose-400',
-                )}
-              >
-                {formatMomentum(scoreMomentum)}
-              </span>
-            )}
-            {lastVotedText && (
-              <span className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs">{lastVotedText}</span>
-              </span>
-            )}
           </div>
 
           {/* Actions slot */}
           {children && <div className="pt-2 flex flex-wrap gap-2">{children}</div>}
         </motion.div>
 
-        {/* Right: Signature visuals */}
+        {/* Right: Signature visual — GovernanceRadar only */}
         {hasAlignment && (
           <motion.div
-            className="flex items-center gap-6 lg:gap-4 justify-center lg:justify-end"
+            className="flex items-center justify-center lg:justify-end"
             variants={fadeInUp}
           >
             <GovernanceRadar alignments={alignments} size="full" />
-            <div className="hidden sm:block">
-              <HexScore score={score} alignments={alignments} size="hero" />
-            </div>
           </motion.div>
         )}
 

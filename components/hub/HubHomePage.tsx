@@ -56,8 +56,8 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
   if (bgMode === 'globe') {
     return (
       <div className="relative min-h-[calc(100vh-4rem)]">
-        {/* Subtle globe behind cards */}
-        <div className="fixed inset-0 top-14 pointer-events-none opacity-25">
+        {/* Globe offset past sidebar: left-0 mobile, left-60 desktop (sidebar w-60) */}
+        <div className="fixed top-14 bottom-0 left-0 right-0 sm:left-60 pointer-events-none opacity-25">
           <ConstellationScene className="w-full h-full" interactive={false} />
         </div>
         <div className="relative z-10">
@@ -70,12 +70,12 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
   if (bgMode === 'gradient') {
     return (
       <div className="relative min-h-[calc(100vh-4rem)]">
-        {/* Ambient aurora gradient */}
-        <div className="fixed inset-0 top-14 pointer-events-none overflow-hidden">
-          <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-[spin_120s_linear_infinite]">
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-primary/20 blur-[120px]" />
-            <div className="absolute top-1/3 right-1/4 w-80 h-80 rounded-full bg-emerald-500/15 blur-[100px]" />
-            <div className="absolute bottom-1/4 left-1/3 w-72 h-72 rounded-full bg-violet-500/12 blur-[100px]" />
+        {/* Aurora gradient offset past sidebar */}
+        <div className="fixed top-14 bottom-0 left-0 right-0 sm:left-60 pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 animate-[spin_120s_linear_infinite]">
+            <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] rounded-full bg-primary/30 blur-[150px]" />
+            <div className="absolute top-[40%] right-[10%] w-[450px] h-[450px] rounded-full bg-emerald-500/25 blur-[130px]" />
+            <div className="absolute bottom-[5%] left-[30%] w-[400px] h-[400px] rounded-full bg-violet-500/20 blur-[130px]" />
           </div>
         </div>
         <div className="relative z-10">

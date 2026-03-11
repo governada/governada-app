@@ -10,21 +10,11 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import {
-  ExternalLink,
-  Copy,
-  Check,
-  Shield,
-  Zap,
-  Landmark,
-  Eye,
-  Scale,
-  ArrowRight,
-  Sparkles,
-} from 'lucide-react';
+import { ExternalLink, Copy, Check, ArrowRight, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { MarkdownContent } from '@/components/MarkdownContent';
+import { getProposalTheme } from '@/components/civica/proposals/proposal-theme';
 import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
 
 interface VoteDetailSheetProps {
@@ -33,18 +23,6 @@ interface VoteDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   userPrefs?: UserPrefKey[];
 }
-
-const PROPOSAL_TYPE_LABELS: Record<string, { label: string; icon: typeof Landmark }> = {
-  TreasuryWithdrawals: { label: 'Treasury', icon: Landmark },
-  ParameterChange: { label: 'Parameter Change', icon: Shield },
-  HardForkInitiation: { label: 'Hard Fork', icon: Zap },
-  InfoAction: { label: 'Info Action', icon: Eye },
-  NoConfidence: { label: 'No Confidence', icon: Scale },
-  NewCommittee: { label: 'Constitutional Committee', icon: Scale },
-  NewConstitutionalCommittee: { label: 'Constitutional Committee', icon: Scale },
-  NewConstitution: { label: 'Constitution', icon: Scale },
-  UpdateConstitution: { label: 'Constitution', icon: Scale },
-};
 
 const TREASURY_TIER_LABELS: Record<string, string> = {
   routine: '< 1M ADA',
@@ -106,7 +84,7 @@ export function VoteDetailSheet({
     userPrefs,
   );
 
-  const typeInfo = vote.proposalType ? PROPOSAL_TYPE_LABELS[vote.proposalType] : null;
+  const typeInfo = vote.proposalType ? getProposalTheme(vote.proposalType) : null;
   const TypeIcon = typeInfo?.icon;
 
   return (

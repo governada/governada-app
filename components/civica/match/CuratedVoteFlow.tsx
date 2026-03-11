@@ -31,6 +31,7 @@ import {
   type ConfidenceBreakdown,
 } from '@/lib/matching/confidence';
 import { usePostHog } from 'posthog-js/react';
+import { getProposalTheme } from '@/components/civica/proposals/proposal-theme';
 
 /* ─── Types ────────────────────────────────────────────── */
 
@@ -83,16 +84,6 @@ const TYPE_COLORS: Record<string, string> = {
   NewConstitution: '#10b981',
   NoConfidence: '#f43f5e',
   UpdateCommittee: '#06b6d4',
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  InfoAction: 'Info',
-  TreasuryWithdrawals: 'Treasury',
-  ParameterChange: 'Parameter',
-  HardForkInitiation: 'Hard Fork',
-  NewConstitution: 'Constitution',
-  NoConfidence: 'No Confidence',
-  UpdateCommittee: 'Committee',
 };
 
 const DIMENSION_LABELS: Record<keyof DimensionScores, string> = {
@@ -427,7 +418,7 @@ export function CuratedVoteFlow() {
     ? (TYPE_COLORS[currentProposal.type] ?? '#6b7280')
     : '#6b7280';
   const typeLabel = currentProposal?.type
-    ? (TYPE_LABELS[currentProposal.type] ?? currentProposal.type)
+    ? (getProposalTheme(currentProposal.type).label ?? currentProposal.type)
     : 'Proposal';
   const epochsLeft =
     currentProposal?.expirationEpoch && data.currentEpoch

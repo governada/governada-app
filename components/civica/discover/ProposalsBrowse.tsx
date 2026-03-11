@@ -42,18 +42,9 @@ interface BrowseProposal {
 import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
 import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 import { AnonymousNudge } from '@/components/civica/shared/AnonymousNudge';
+import { getProposalTheme } from '@/components/civica/proposals/proposal-theme';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
-
-const TYPE_COLORS: Record<string, string> = {
-  ParameterChange: 'bg-blue-950/30 text-blue-400 border-blue-800/30',
-  HardForkInitiation: 'bg-orange-950/30 text-orange-400 border-orange-800/30',
-  TreasuryWithdrawals: 'bg-emerald-950/30 text-emerald-400 border-emerald-800/30',
-  NewConstitution: 'bg-purple-950/30 text-purple-400 border-purple-800/30',
-  NoConfidence: 'bg-rose-950/30 text-rose-400 border-rose-800/30',
-  UpdateCommittee: 'bg-violet-950/30 text-violet-400 border-violet-800/30',
-  InfoAction: 'bg-muted text-muted-foreground',
-};
 
 const STATUS_COLORS: Record<string, string> = {
   Open: 'text-emerald-400',
@@ -74,11 +65,6 @@ const TYPE_FILTERS = [
   { value: 'UpdateCommittee', label: 'Committee' },
   { value: 'InfoAction', label: 'Info' },
 ];
-
-function typeLabel(type: string): string {
-  const found = TYPE_FILTERS.find((t) => t.value === type);
-  return found?.label ?? type;
-}
 
 const VOTE_PILL: Record<string, { label: string; color: string }> = {
   Yes: { label: 'Yes', color: 'text-green-500 bg-green-500/10 border-green-500/20' },
@@ -351,8 +337,11 @@ export function ProposalsBrowse() {
               <Link
                 key={`${p.txHash}-${p.index}`}
                 href={`/proposal/${p.txHash}/${p.index}`}
-                className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30 transition-colors group animate-in fade-in duration-200 fill-mode-backwards"
-                style={{ animationDelay: `${Math.min(i, 14) * 20}ms` }}
+                className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/30 transition-colors group animate-in fade-in duration-200 fill-mode-backwards border-l-2"
+                style={{
+                  animationDelay: `${Math.min(i, 14) * 20}ms`,
+                  borderLeftColor: p.type ? getProposalTheme(p.type).rowAccent : 'transparent',
+                }}
               >
                 {/* Row 1: Type + Title + Status */}
                 <div className="flex items-center gap-3">
@@ -360,10 +349,10 @@ export function ProposalsBrowse() {
                     <span
                       className={cn(
                         'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0',
-                        TYPE_COLORS[p.type] ?? 'bg-muted text-muted-foreground',
+                        getProposalTheme(p.type).browseBadgeClass,
                       )}
                     >
-                      {typeLabel(p.type)}
+                      {getProposalTheme(p.type).label}
                     </span>
                   )}
                   <span className="flex-1 text-sm text-foreground truncate min-w-0">

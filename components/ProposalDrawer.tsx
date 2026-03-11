@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ExternalLink, TrendingUp, Clock, FileText, Users, Vote } from 'lucide-react';
 import { RationaleAssistant } from '@/components/RationaleAssistant';
 import { DelegatorPulse } from '@/components/DelegatorPulse';
+import { getProposalTheme } from '@/components/civica/proposals/proposal-theme';
 
 interface ProposalDrawerProps {
   open: boolean;
@@ -55,18 +56,6 @@ const PRIORITY_LABELS = {
   },
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  TreasuryWithdrawals: 'Treasury Withdrawal',
-  ParameterChange: 'Parameter Change',
-  HardForkInitiation: 'Hard Fork',
-  InfoAction: 'Info Action',
-  NoConfidence: 'No Confidence',
-  NewCommittee: 'New Committee',
-  NewConstitutionalCommittee: 'New Constitutional Committee',
-  NewConstitution: 'New Constitution',
-  UpdateConstitution: 'Constitution Update',
-};
-
 export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: ProposalDrawerProps) {
   useEffect(() => {
     if (open && proposal) {
@@ -101,7 +90,7 @@ export function ProposalDrawer({ open, onOpenChange, proposal, drepId }: Proposa
               {priorityConfig.label}
             </Badge>
             <Badge variant="outline" className="text-[10px]">
-              {TYPE_LABELS[proposal.proposalType] || proposal.proposalType}
+              {getProposalTheme(proposal.proposalType).label || proposal.proposalType}
             </Badge>
             {proposal.epochsRemaining != null && (
               <Badge

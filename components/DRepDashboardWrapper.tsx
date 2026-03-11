@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@/utils/wallet';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight, Wallet, Share2, Check } from 'lucide-react';
 
@@ -14,6 +15,7 @@ interface DRepDashboardWrapperProps {
 
 export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashboardWrapperProps) {
   const { isAuthenticated, ownDRepId } = useWallet();
+  const { segment } = useSegment();
   const [copied, setCopied] = useState(false);
 
   const isOwner = isAuthenticated && ownDRepId === drepId;
@@ -67,7 +69,7 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
     );
   }
 
-  if (!isClaimed) {
+  if (!isClaimed && segment !== 'anonymous' && segment !== 'citizen') {
     return (
       <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-muted-foreground/25 px-4 py-2.5">
         <div className="flex items-center gap-2 min-w-0">

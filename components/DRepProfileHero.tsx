@@ -16,6 +16,7 @@ import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { cn } from '@/lib/utils';
 import { Users, TrendingUp, Award } from 'lucide-react';
 import { MatchContextBadge } from '@/components/matching/MatchContextBadge';
+import { useSegment } from '@/components/providers/SegmentProvider';
 
 interface DRepProfileHeroProps {
   name: string;
@@ -42,6 +43,9 @@ export function DRepProfileHero({
   matchScore,
   children,
 }: DRepProfileHeroProps) {
+  const { segment } = useSegment();
+  const isGovernanceParticipant = segment === 'drep' || segment === 'spo' || segment === 'cc';
+
   const dominant = getDominantDimension(alignments);
   const identityColor = getIdentityColor(dominant);
   const gradient = getIdentityGradient(dominant);
@@ -80,17 +84,18 @@ export function DRepProfileHero({
               )}
             </div>
 
-            {/* Trait tags + match context */}
+            {/* Trait tags + match context — full tags for governance participants only */}
             <div className="flex flex-wrap gap-2">
-              {traitTags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="outline"
-                  className={cn('text-xs', 'dark:border-border/60 dark:bg-card/50')}
-                >
-                  {tag}
-                </Badge>
-              ))}
+              {isGovernanceParticipant &&
+                traitTags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className={cn('text-xs', 'dark:border-border/60 dark:bg-card/50')}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
               {!isActive && (
                 <Badge variant="secondary" className="text-xs">
                   Inactive
@@ -128,12 +133,25 @@ export function DRepProfileHero({
             {children && <div className="pt-2 flex flex-wrap gap-2">{children}</div>}
           </motion.div>
 
-          {/* Right: Signature visuals */}
+          {/* Right: Signature visuals — radar for governance participants, score for others */}
           <motion.div
             className="flex items-center justify-center lg:justify-end"
             variants={fadeInUp}
           >
-            <GovernanceRadar alignments={alignments} size="full" centerScore={score} />
+            {isGovernanceParticipant ? (
+              <GovernanceRadar alignments={alignments} size="full" centerScore={score} />
+            ) : (
+              <div className="flex flex-col items-center justify-center px-6">
+                <div
+                  className="text-6xl font-bold font-mono tabular-nums"
+                  style={{ color: identityColor.hex }}
+                >
+                  {score}
+                </div>
+                <span className="text-sm text-muted-foreground mt-1">/ 100</span>
+                <span className="text-xs text-muted-foreground mt-0.5">Governance Score</span>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       </div>

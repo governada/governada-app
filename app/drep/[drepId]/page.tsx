@@ -1,7 +1,14 @@
 /**
- * DRep Detail Page — Two-viewport progressive reveal.
- * VP1 ("The Story"): Hero, narrative, key facts, radar, CTA, treasury stance.
- * VP2 ("The Record"): Tabbed voting record, score analysis, trajectory, community.
+ * DRep Detail Page — Persona-aware progressive disclosure.
+ *
+ * VP1 ("The Story"): Hero, narrative, key facts, about. Density adapts per persona:
+ *   - Anonymous: Name, score, personality, narrative, delegate CTA (MLE)
+ *   - Citizen: + trust indicators (votes cast, explains votes), about, dashboard
+ *   - Governance (DRep/SPO/CC): + radar, traits, tier progress, metadata, all facts
+ *
+ * VP2 ("The Record"): Treasury stance, philosophy, delegation trend, tabbed analysis.
+ *   - Citizens: collapsed behind "Show detailed analysis" toggle.
+ *   - Governance participants: expanded by default.
  */
 
 import { notFound } from 'next/navigation';
@@ -117,6 +124,7 @@ import {
 import { createClient } from '@/lib/supabase';
 import { BASE_URL } from '@/lib/constants';
 import { Suspense } from 'react';
+import { SegmentGate } from '@/components/shared/SegmentGate';
 
 interface DRepDetailPageProps {
   params: Promise<{ drepId: string }>;
@@ -562,45 +570,52 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         accentColor={getIdentityColor(getDominantDimension(alignments)).hex}
       />
 
-      {/* 3. Tier Progress + Momentum */}
+      {/* 3. Tier Progress + Momentum — governance participants only */}
       {isViewerAuthenticated && tierProgress.pointsToNext != null && (
-        <div className="flex items-center justify-between rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-3">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">
-              {tierProgress.pointsToNext} pts to{' '}
-              <span className="text-primary font-bold">{tierProgress.nextTier}</span>
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {drep.scoreMomentum != null && drep.scoreMomentum !== 0 && (
-              <span
-                className={`text-xs font-medium tabular-nums ${drep.scoreMomentum > 0 ? 'text-emerald-400' : 'text-rose-400'}`}
-              >
-                {drep.scoreMomentum > 0 ? '+' : ''}
-                {drep.scoreMomentum.toFixed(1)} pts/day
+        <SegmentGate show={['drep', 'spo', 'cc']}>
+          <div className="flex items-center justify-between rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {tierProgress.pointsToNext} pts to{' '}
+                <span className="text-primary font-bold">{tierProgress.nextTier}</span>
               </span>
-            )}
-            <div className="w-24 h-1.5 bg-border rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${tierProgress.percentWithinTier}%` }}
-              />
+              <span className="text-xs text-muted-foreground">
+                {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {drep.scoreMomentum != null && drep.scoreMomentum !== 0 && (
+                <span
+                  className={`text-xs font-medium tabular-nums ${drep.scoreMomentum > 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                >
+                  {drep.scoreMomentum > 0 ? '+' : ''}
+                  {drep.scoreMomentum.toFixed(1)} pts/day
+                </span>
+              )}
+              <div className="w-24 h-1.5 bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${tierProgress.percentWithinTier}%` }}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        </SegmentGate>
       )}
 
-      {/* 3c. Citizen Sentiment Signal */}
-      <DRepCitizenSignals drepId={drep.drepId} />
+      {/* 3c. Citizen Sentiment Signal — hidden for anonymous */}
+      <SegmentGate hide={['anonymous']}>
+        <DRepCitizenSignals drepId={drep.drepId} />
+      </SegmentGate>
 
-      {/* 3d. Citizen Endorsements (social proof alongside algorithmic score) */}
-      <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
+      {/* 3d. Citizen Endorsements — hidden for anonymous */}
+      <SegmentGate hide={['anonymous']}>
+        <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
+      </SegmentGate>
 
-      {/* 4. Key Facts Strip */}
+      {/* 4. Key Facts Strip — progressive: core (all) → trust (citizen+) → detailed (governance) */}
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 border-y border-border">
+        {/* Core facts — visible to everyone */}
         <KeyFact
           label="Governance Score"
           value={`${drep.drepScore}/100`}
@@ -609,141 +624,151 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           narrative={getScoreNarrative({ score: drep.drepScore, percentile })}
         />
         <KeyFact
-          label="Votes Cast"
-          value={`${drep.effectiveParticipation}%`}
-          tooltip="How often this DRep votes on proposals, adjusted for voting pattern diversity"
-          narrative={getParticipationNarrative(drep.effectiveParticipation)}
-        />
-        <KeyFact
-          label="Explains Votes"
-          value={`${drep.rationaleRate}%`}
-          tooltip="How often this DRep provides written reasoning for their votes"
-          narrative={getRationaleNarrative(drep.rationaleRate)}
-        />
-        <KeyFact
           label="Governance Style"
           value={identityLabel}
           tooltip="Dominant governance philosophy based on voting patterns across 6 dimensions"
           narrative={getGovernanceStyleNarrative(identityLabel)}
         />
-        {spoAlignPct !== null && (
+
+        {/* Trust indicators — citizen and above */}
+        <SegmentGate hide={['anonymous']}>
           <KeyFact
-            label="Agrees with SPOs"
-            value={`${spoAlignPct}%`}
-            subtext="of the time"
-            tooltip="How often this DRep votes the same way as the SPO majority"
+            label="Votes Cast"
+            value={`${drep.effectiveParticipation}%`}
+            tooltip="How often this DRep votes on proposals, adjusted for voting pattern diversity"
+            narrative={getParticipationNarrative(drep.effectiveParticipation)}
           />
-        )}
-        {endorsementCount > 0 && (
           <KeyFact
-            label="Citizen Endorsements"
-            value={endorsementCount.toLocaleString()}
-            tooltip="Number of citizens who have endorsed this DRep across governance competencies like treasury oversight, technical expertise, and communication"
+            label="Explains Votes"
+            value={`${drep.rationaleRate}%`}
+            tooltip="How often this DRep provides written reasoning for their votes"
+            narrative={getRationaleNarrative(drep.rationaleRate)}
           />
-        )}
-        {drep.totalVotes > 0 && (
-          <div className="flex flex-col items-center text-center min-w-[100px]">
-            <span className="text-xs text-muted-foreground">Voting Pattern</span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <div className="flex h-1.5 w-16 rounded-full overflow-hidden bg-border">
-                {drep.yesVotes > 0 && (
-                  <div
-                    className="h-full bg-emerald-500"
-                    style={{ width: `${(drep.yesVotes / drep.totalVotes) * 100}%` }}
-                  />
-                )}
-                {drep.noVotes > 0 && (
-                  <div
-                    className="h-full bg-rose-500"
-                    style={{ width: `${(drep.noVotes / drep.totalVotes) * 100}%` }}
-                  />
-                )}
-                {drep.abstainVotes > 0 && (
-                  <div
-                    className="h-full bg-muted-foreground/40"
-                    style={{ width: `${(drep.abstainVotes / drep.totalVotes) * 100}%` }}
-                  />
-                )}
+        </SegmentGate>
+
+        {/* Detailed analysis facts — governance participants only */}
+        <SegmentGate show={['drep', 'spo', 'cc']}>
+          {spoAlignPct !== null && (
+            <KeyFact
+              label="Agrees with SPOs"
+              value={`${spoAlignPct}%`}
+              subtext="of the time"
+              tooltip="How often this DRep votes the same way as the SPO majority"
+            />
+          )}
+          {endorsementCount > 0 && (
+            <KeyFact
+              label="Citizen Endorsements"
+              value={endorsementCount.toLocaleString()}
+              tooltip="Number of citizens who have endorsed this DRep across governance competencies like treasury oversight, technical expertise, and communication"
+            />
+          )}
+          {drep.totalVotes > 0 && (
+            <div className="flex flex-col items-center text-center min-w-[100px]">
+              <span className="text-xs text-muted-foreground">Voting Pattern</span>
+              <div className="flex items-center gap-1 mt-0.5">
+                <div className="flex h-1.5 w-16 rounded-full overflow-hidden bg-border">
+                  {drep.yesVotes > 0 && (
+                    <div
+                      className="h-full bg-emerald-500"
+                      style={{ width: `${(drep.yesVotes / drep.totalVotes) * 100}%` }}
+                    />
+                  )}
+                  {drep.noVotes > 0 && (
+                    <div
+                      className="h-full bg-rose-500"
+                      style={{ width: `${(drep.noVotes / drep.totalVotes) * 100}%` }}
+                    />
+                  )}
+                  {drep.abstainVotes > 0 && (
+                    <div
+                      className="h-full bg-muted-foreground/40"
+                      style={{ width: `${(drep.abstainVotes / drep.totalVotes) * 100}%` }}
+                    />
+                  )}
+                </div>
               </div>
+              <span className="text-[10px] text-muted-foreground">
+                {drep.yesVotes}Y {drep.noVotes}N {drep.abstainVotes}A
+              </span>
             </div>
-            <span className="text-[10px] text-muted-foreground">
-              {drep.yesVotes}Y {drep.noVotes}N {drep.abstainVotes}A
-            </span>
-          </div>
-        )}
+          )}
+        </SegmentGate>
       </div>
 
-      {/* 4. Identity metadata row */}
-      <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
-        {drep.ticker && (
-          <Badge variant="outline" className="text-sm px-2 py-0.5">
-            {drep.ticker.toUpperCase()}
-          </Badge>
-        )}
-        {drep.handle && (
-          <a
-            href={`https://cardanoscan.io/token/${drep.handle.replace('$', '')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Badge
-              variant="secondary"
-              className="text-sm px-2 py-0.5 font-mono hover:bg-primary/10 transition-colors"
-            >
-              {drep.handle}
+      {/* 5. Identity metadata row — governance participants only */}
+      <SegmentGate show={['drep', 'spo', 'cc']}>
+        <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
+          {drep.ticker && (
+            <Badge variant="outline" className="text-sm px-2 py-0.5">
+              {drep.ticker.toUpperCase()}
             </Badge>
-          </a>
-        )}
-        <Badge variant={drep.isActive ? 'default' : 'secondary'}>
-          {drep.isActive ? 'Active' : 'Inactive'}
-        </Badge>
-        <Badge variant="outline" className={getSizeBadgeClass(drep.sizeTier)}>
-          {drep.sizeTier}
-        </Badge>
-        {drep.metadataHashVerified === true && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ShieldCheck className="h-4 w-4 text-green-500" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Metadata verified against on-chain hash</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        {drep.metadataHashVerified === false && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ShieldAlert className="h-4 w-4 text-amber-500" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Metadata doesn&apos;t match on-chain hash</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        <SocialIconsLarge metadata={drep.metadata} brokenLinks={brokenLinks} />
-        <CopyableAddress address={drep.drepId} className="text-xs" />
-        <ProfileViewStats drepId={drep.drepId} />
-        <SocialProofBadge drepId={drep.drepId} variant="views" />
-      </div>
+          )}
+          {drep.handle && (
+            <a
+              href={`https://cardanoscan.io/token/${drep.handle.replace('$', '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Badge
+                variant="secondary"
+                className="text-sm px-2 py-0.5 font-mono hover:bg-primary/10 transition-colors"
+              >
+                {drep.handle}
+              </Badge>
+            </a>
+          )}
+          <Badge variant={drep.isActive ? 'default' : 'secondary'}>
+            {drep.isActive ? 'Active' : 'Inactive'}
+          </Badge>
+          <Badge variant="outline" className={getSizeBadgeClass(drep.sizeTier)}>
+            {drep.sizeTier}
+          </Badge>
+          {drep.metadataHashVerified === true && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ShieldCheck className="h-4 w-4 text-green-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Metadata verified against on-chain hash</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {drep.metadataHashVerified === false && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ShieldAlert className="h-4 w-4 text-amber-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Metadata doesn&apos;t match on-chain hash</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <SocialIconsLarge metadata={drep.metadata} brokenLinks={brokenLinks} />
+          <CopyableAddress address={drep.drepId} className="text-xs" />
+          <ProfileViewStats drepId={drep.drepId} />
+          <SocialProofBadge drepId={drep.drepId} variant="views" />
+        </div>
+      </SegmentGate>
 
-      {/* 5. Treasury Stance (compact in VP1) */}
-      <DRepTreasuryStance drepId={drep.drepId} compact />
-
-      {/* 6. About & Governance Statements */}
+      {/* 6. About — visible to all (helps delegation decisions) */}
       <AboutSection
         description={drep.description}
         bio={drep.metadata?.bio}
         email={drep.metadata?.email}
         references={drep.metadata?.references as Array<{ uri: string; label?: string }> | undefined}
       />
-      <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />
-      <Suspense fallback={null}>
-        <DRepDashboardWrapper drepId={drep.drepId} drepName={drepName} isClaimed={isClaimed} />
-      </Suspense>
+
+      {/* 7. Dashboard wrapper — hidden for anonymous (claim prompt confuses non-DReps) */}
+      <SegmentGate hide={['anonymous']}>
+        <Suspense fallback={null}>
+          <DRepDashboardWrapper drepId={drep.drepId} drepName={drepName} isClaimed={isClaimed} />
+        </Suspense>
+      </SegmentGate>
 
       {/* ════════════════════════════════════════════
           Detailed Analysis — gated for citizens/anonymous.
@@ -751,6 +776,12 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           Citizens see a "Show detailed analysis" toggle.
           ════════════════════════════════════════════ */}
       <DRepDetailedAnalysis>
+        {/* Treasury Stance — moved from VP1, too specialized for citizens */}
+        <DRepTreasuryStance drepId={drep.drepId} compact />
+
+        {/* Governance Philosophy — deep content for governance participants */}
+        <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />
+
         {/* Delegation Power Trend */}
         {delegationTrend.length >= 2 ? (
           <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-4 space-y-2">

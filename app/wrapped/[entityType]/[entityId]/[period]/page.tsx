@@ -57,7 +57,7 @@ export async function generateMetadata({
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card p-5 text-center">
+    <div className="flex flex-col items-center gap-1 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 text-center">
       <p className="text-3xl font-bold text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
@@ -80,7 +80,7 @@ function ScoreProgression({
       ? 'text-rose-400'
       : 'text-muted-foreground';
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+    <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3">
       <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium text-center">
         Score Progression
       </p>
@@ -211,7 +211,7 @@ export default async function PublicWrappedPage({ params }: { params: Promise<Pa
   const label = entityLabel(entityType, entityId);
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen">
       <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">

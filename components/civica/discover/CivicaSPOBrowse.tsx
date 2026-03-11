@@ -103,28 +103,31 @@ export function CivicaSPOBrowse() {
 
   return (
     <div ref={contentRef} className="space-y-4 pt-4">
-      <DiscoverFilterBar
-        search={search}
-        onSearchChange={setFilter(setSearch)}
-        searchPlaceholder="Search ticker, pool name, or ID…"
-        chipGroups={[
-          {
-            label: 'Tier',
-            value: tier,
-            options: TIER_CHIPS.map((t) => ({ value: t, label: t })),
-            onChange: setFilter(setTier),
-          },
-        ]}
-        toggles={[
-          { label: 'Claimed only', checked: claimedOnly, onChange: setFilter(setClaimedOnly) },
-        ]}
-        resultCount={filtered.length}
-        totalCount={pools.length}
-        entityLabel="pools"
-        isFiltered={!isDefault}
-        onReset={resetFilters}
-        pageInfo={totalPages > 1 ? `Page ${page + 1} / ${totalPages}` : undefined}
-      />
+      {/* ── Sticky filter bar ────────────────────────────────────── */}
+      <div className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-card/60 backdrop-blur-xl border-b border-border/30">
+        <DiscoverFilterBar
+          search={search}
+          onSearchChange={setFilter(setSearch)}
+          searchPlaceholder="Search ticker, pool name, or ID…"
+          chipGroups={[
+            {
+              label: 'Tier',
+              value: tier,
+              options: TIER_CHIPS.map((t) => ({ value: t, label: t })),
+              onChange: setFilter(setTier),
+            },
+          ]}
+          toggles={[
+            { label: 'Claimed only', checked: claimedOnly, onChange: setFilter(setClaimedOnly) },
+          ]}
+          resultCount={filtered.length}
+          totalCount={pools.length}
+          entityLabel="pools"
+          isFiltered={!isDefault}
+          onReset={resetFilters}
+          pageInfo={totalPages > 1 ? `Page ${page + 1} / ${totalPages}` : undefined}
+        />
+      </div>
 
       {/* Card grid */}
       {pageItems.length === 0 ? (

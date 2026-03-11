@@ -32,7 +32,10 @@ function PulseFallback() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2">
+          <div
+            key={i}
+            className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2"
+          >
             <Skeleton className="h-3 w-24" />
             <Skeleton className="h-8 w-16" />
             <Skeleton className="h-2.5 w-32" />

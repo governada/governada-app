@@ -129,7 +129,7 @@ const TIER_DESCRIPTIONS: Record<string, string> = {
 
 export default function MethodologyPage() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-16">
         <div className="space-y-4">
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
@@ -167,7 +167,7 @@ export default function MethodologyPage() {
 
         <section className="space-y-6">
           <h2 className="text-xl font-bold">DRep Score V3</h2>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
             <code className="block text-xs text-muted-foreground font-mono">
               Score = (Engagement Quality x 0.35) + (Effective Participation x 0.25) + (Reliability
               x 0.25) + (Governance Identity x 0.15)
@@ -175,7 +175,10 @@ export default function MethodologyPage() {
           </div>
           <div className="space-y-4">
             {DREP_PILLARS.map((p) => (
-              <div key={p.name} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div
+                key={p.name}
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn('h-3 w-3 rounded-full', p.color)} />
@@ -233,7 +236,7 @@ export default function MethodologyPage() {
 
         <section className="space-y-6">
           <h2 className="text-xl font-bold">SPO Governance Score V3</h2>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
             <code className="block text-xs text-muted-foreground font-mono">
               Score = (Participation x 0.35) + (Deliberation Quality x 0.25) + (Reliability x 0.25)
               + (Governance Identity x 0.15)
@@ -241,7 +244,10 @@ export default function MethodologyPage() {
           </div>
           <div className="space-y-4">
             {SPO_PILLARS.map((p) => (
-              <div key={p.name} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div
+                key={p.name}
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn('h-3 w-3 rounded-full', p.color)} />

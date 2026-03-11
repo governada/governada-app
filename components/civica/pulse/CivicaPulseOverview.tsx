@@ -127,7 +127,7 @@ function StatCard({
     <Wrap
       href={href as string}
       className={cn(
-        'rounded-xl border border-border bg-card p-4 space-y-2 transition-colors',
+        'rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2 transition-colors',
         href &&
           'hover:border-primary/30 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
       )}
@@ -168,7 +168,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+    <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
       <Skeleton className="h-3 w-24" />
       <Skeleton className="h-8 w-16" />
       <Skeleton className="h-2.5 w-32" />
@@ -269,7 +269,7 @@ export function CivicaPulseOverview() {
       <AnonymousNudge variant="health" />
       {/* ── Tab bar ─────────────────────────────────────────── */}
       <div
-        className="flex gap-1 border-b border-border -mb-2 overflow-x-auto"
+        className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 flex gap-1 border-b border-border/30 -mb-2 overflow-x-auto bg-card/60 backdrop-blur-xl"
         role="tablist"
         aria-label="Pulse view"
       >
@@ -542,7 +542,7 @@ export function CivicaPulseOverview() {
 
           {/* ── Community vs DRep Sentiment Gap ─────────────────── */}
           {(pulse?.communityGap?.length ?? 0) > 0 && (
-            <div className="rounded-xl border-l-2 border-l-primary border border-border bg-card p-4 space-y-3">
+            <div className="rounded-xl border-l-2 border-l-primary border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold">Where Citizens & DReps Diverge</h3>
                 <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
@@ -719,7 +719,7 @@ export function CivicaPulseOverview() {
                     {components.map((c: TreasuryHealthComponent) => (
                       <div
                         key={c.name ?? c.label}
-                        className="rounded-xl border border-border bg-card px-4 py-3 space-y-1.5"
+                        className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-4 py-3 space-y-1.5"
                       >
                         <div className="flex items-center justify-between">
                           <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium truncate">

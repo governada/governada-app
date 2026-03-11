@@ -457,7 +457,7 @@ export function CivicaDRepBrowse(_props: CivicaDRepBrowseProps) {
       <AnonymousNudge variant="representatives" />
 
       {/* ── Sticky filter bar ────────────────────────────────────── */}
-      <div className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-background/90 backdrop-blur-xl border-b border-border/30">
+      <div className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-card/60 backdrop-blur-xl border-b border-border/30">
         <DiscoverFilterBar
           search={filters.search}
           onSearchChange={(v) => setFilter('search', v)}
@@ -630,9 +630,9 @@ export function CivicaDRepBrowse(_props: CivicaDRepBrowseProps) {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden">
+        <div className="rounded-xl border border-border/50 divide-y divide-border/50 overflow-hidden bg-card/40 backdrop-blur-md">
           {/* Table header */}
-          <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="flex items-center gap-3 px-4 py-2 bg-muted/20 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
             <span className="w-6 text-right shrink-0">#</span>
             <span className="w-10 text-center shrink-0">Score</span>
             <span className="flex-1">Representative</span>

@@ -288,7 +288,7 @@ function TableOfContents() {
   ];
 
   return (
-    <nav className="rounded-xl border border-border bg-card p-4">
+    <nav className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
         On this page
       </p>
@@ -310,7 +310,7 @@ function TableOfContents() {
 
 export default function MethodologyPage() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-16">
         {/* Hero */}
         <div className="space-y-4">
@@ -374,7 +374,7 @@ export default function MethodologyPage() {
             pillars. Each pillar is percentile-normalized across all active DReps, ensuring the
             score reflects relative standing. The composite formula:
           </p>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
             <code className="block text-xs text-muted-foreground font-mono">
               Score = (Engagement Quality x 0.35) + (Effective Participation x 0.25) + (Reliability
               x 0.25) + (Governance Identity x 0.15)
@@ -383,7 +383,10 @@ export default function MethodologyPage() {
 
           <div className="space-y-4">
             {DREP_PILLARS.map((p) => (
-              <div key={p.name} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div
+                key={p.name}
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn('h-3 w-3 rounded-full', p.color)} />
@@ -455,7 +458,7 @@ export default function MethodologyPage() {
             system as DReps. The four pillars are tailored to SPO governance behavior, with
             confidence-weighted percentile normalization and a 30-day momentum window.
           </p>
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
             <code className="block text-xs text-muted-foreground font-mono">
               Score = (Participation x 0.35) + (Deliberation Quality x 0.25) + (Reliability x 0.25)
               + (Governance Identity x 0.15)
@@ -464,7 +467,10 @@ export default function MethodologyPage() {
 
           <div className="space-y-4">
             {SPO_PILLARS.map((p) => (
-              <div key={p.name} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div
+                key={p.name}
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn('h-3 w-3 rounded-full', p.color)} />
@@ -511,7 +517,7 @@ export default function MethodologyPage() {
             {CC_PILLARS.map((p) => (
               <div
                 key={p.name}
-                className="flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3"
+                className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/70 backdrop-blur-md px-4 py-3"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{p.name}</p>
@@ -545,7 +551,7 @@ export default function MethodologyPage() {
             {ALIGNMENT_DIMENSIONS.map((d) => (
               <div
                 key={d.name}
-                className="rounded-lg border border-border bg-card px-4 py-3 space-y-1"
+                className="rounded-lg border border-border/50 bg-card/70 backdrop-blur-md px-4 py-3 space-y-1"
               >
                 <div className="flex items-center gap-2">
                   <div
@@ -585,7 +591,7 @@ export default function MethodologyPage() {
                 {GHI_COMPONENTS.filter((c) => c.category === category).map((c) => (
                   <div
                     key={c.name}
-                    className="flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3"
+                    className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/70 backdrop-blur-md px-4 py-3"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{c.name}</p>
@@ -628,7 +634,7 @@ export default function MethodologyPage() {
               , a community-maintained, open-source query layer for Cardano. Governada does not run
               its own indexer — we consume the same public data available to every researcher.
             </p>
-            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
               <p className="text-xs font-semibold text-foreground">Sync pipeline</p>
               <ul className="space-y-1 text-[11px]">
                 <li className="pl-3 border-l-2 border-border">
@@ -673,21 +679,21 @@ export default function MethodologyPage() {
             scores in their work. We suggest the following formats:
           </p>
           <div className="space-y-3">
-            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
               <p className="text-xs font-semibold text-foreground">Individual DRep score</p>
               <code className="block text-[11px] text-muted-foreground font-mono bg-muted p-2 rounded">
                 &ldquo;[DRep Name] holds a Governada DRep Score of [X]/100 ([Tier] tier) as of epoch
                 [N]. Source: governada.io/drep/[drep_id]&rdquo;
               </code>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
               <p className="text-xs font-semibold text-foreground">GHI reference</p>
               <code className="block text-[11px] text-muted-foreground font-mono bg-muted p-2 rounded">
                 &ldquo;Cardano governance health stands at [X]/100 ([Band]) per the Governada
                 Governance Health Index, epoch [N]. Source: governada.io/governance/health&rdquo;
               </code>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
               <p className="text-xs font-semibold text-foreground">Academic citation</p>
               <code className="block text-[11px] text-muted-foreground font-mono bg-muted p-2 rounded whitespace-pre-wrap">
                 Governada. (2026). Scoring Methodology: DRep Score V3, SPO Governance Score V3, CC

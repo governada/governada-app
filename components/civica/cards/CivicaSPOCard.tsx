@@ -72,7 +72,7 @@ export function CivicaSPOCard({ pool, rank }: CivicaSPOCardProps) {
       href={`/pool/${pool.poolId}`}
       aria-label={`${pool.ticker || pool.poolName || pool.poolId.slice(0, 16)}, governance score ${score}, ${tier} tier`}
       className={cn(
-        'group relative flex flex-col rounded-xl border p-4 transition-all duration-200',
+        'group relative flex flex-col rounded-xl border p-4 transition-all duration-200 backdrop-blur-md',
         'hover:shadow-lg hover:-translate-y-0.5',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         TIER_BG[tier],

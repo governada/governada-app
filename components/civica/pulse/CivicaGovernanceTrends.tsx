@@ -220,7 +220,7 @@ export function CivicaGovernanceTrends() {
   return (
     <div className="space-y-6">
       {/* Participation + rationale dual-line */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold">Participation & Rationale Rate</p>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
@@ -264,7 +264,7 @@ export function CivicaGovernanceTrends() {
       </div>
 
       {/* GHI gauge + sparkline */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3">
         <p className="text-sm font-semibold">Governance Health Index</p>
 
         {isLoading ? (
@@ -308,7 +308,7 @@ export function CivicaGovernanceTrends() {
       </div>
 
       {/* Tier distribution */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-4">
         <p className="text-sm font-semibold">DRep Tier Distribution</p>
         {dreps.length > 0 ? (
           <TierDistribution dreps={dreps} />
@@ -331,7 +331,7 @@ export function CivicaGovernanceTrends() {
 
       {/* Participation heatmap */}
       {participationRows.length > 4 && (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3">
           <p className="text-sm font-semibold">Participation Activity</p>
           <p className="text-xs text-muted-foreground">
             Epoch-by-epoch DRep participation rate — darker = higher engagement.

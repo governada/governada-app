@@ -131,7 +131,7 @@ function EpochRecapCard({ recap }: { recap: Record<string, unknown> }) {
     | undefined;
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors text-left"
@@ -242,7 +242,7 @@ export function CivicaGovernanceCalendar() {
 
       {/* Current epoch hero */}
       {calendarLoading ? (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3">
           <Skeleton className="h-8 w-20" />
           <Skeleton className="h-3 w-full" />
         </div>
@@ -252,7 +252,7 @@ export function CivicaGovernanceCalendar() {
 
       {/* Participation trend mini-chart */}
       {participationRows.length >= 4 && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
               Participation Trend
@@ -311,7 +311,7 @@ export function CivicaGovernanceCalendar() {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Upcoming Deadlines
           </p>
-          <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md divide-y divide-border overflow-hidden">
             {calendar.upcoming.map((p) => (
               <ProposalDeadline key={`${p.txHash}-${p.index}`} proposal={p} />
             ))}
@@ -323,7 +323,7 @@ export function CivicaGovernanceCalendar() {
       {((pulse?.activeProposals as number | undefined) ?? 0) > 0 && (
         <Link
           href="/governance/proposals"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors group"
+          className="flex items-center justify-between rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 hover:border-primary/30 transition-colors group"
         >
           <div>
             <p className="text-sm font-medium">

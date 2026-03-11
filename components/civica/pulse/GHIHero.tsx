@@ -66,7 +66,7 @@ export function GHIHero() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-5 p-5 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-5 p-5 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md">
         <Skeleton className="h-20 w-20 rounded-full shrink-0" />
         <div className="space-y-2 flex-1">
           <Skeleton className="h-5 w-40" />
@@ -109,7 +109,7 @@ export function GHIHero() {
   return (
     <div
       className={cn(
-        'flex items-center gap-5 p-5 rounded-xl border border-border bg-card',
+        'flex items-center gap-5 p-5 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md',
         band === 'strong' &&
           'ring-1 ring-emerald-500/20 shadow-[0_0_15px_-3px] shadow-emerald-500/10',
       )}

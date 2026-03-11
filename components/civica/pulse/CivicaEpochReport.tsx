@@ -109,7 +109,7 @@ export function CivicaEpochReport() {
   return (
     <div className="space-y-6">
       {/* Epoch progress */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
@@ -155,7 +155,10 @@ export function CivicaEpochReport() {
         {isLoading ? (
           <div className="flex gap-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex-1 rounded-xl border border-border bg-card p-3">
+              <div
+                key={i}
+                className="flex-1 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-3"
+              >
                 <Skeleton className="h-4 w-4 mx-auto mb-2" />
                 <Skeleton className="h-6 w-8 mx-auto mb-1" />
                 <Skeleton className="h-2.5 w-16 mx-auto" />
@@ -189,7 +192,7 @@ export function CivicaEpochReport() {
       </div>
 
       {/* DRep participation */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold">DRep Participation</p>

@@ -182,7 +182,7 @@ export function GHIExplorer({
                 <motion.div
                   key={comp.name}
                   variants={fadeInUp}
-                  className="rounded-lg border border-border bg-card p-3 space-y-2"
+                  className="rounded-lg border border-border/50 bg-card/70 backdrop-blur-md p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     {tooltipText ? (

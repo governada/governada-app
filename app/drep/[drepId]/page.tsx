@@ -564,7 +564,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
       {/* 3. Tier Progress + Momentum */}
       {isViewerAuthenticated && tierProgress.pointsToNext != null && (
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-5 py-3">
+        <div className="flex items-center justify-between rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium">
               {tierProgress.pointsToNext} pts to{' '}
@@ -753,7 +753,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       <DRepDetailedAnalysis>
         {/* Delegation Power Trend */}
         {delegationTrend.length >= 2 ? (
-          <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-2">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Delegation Trend
@@ -788,7 +788,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-border bg-card px-5 py-4">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-4">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
               Delegation Trend
             </span>

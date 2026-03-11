@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils';
 export type CardUrgency = 'default' | 'success' | 'warning' | 'critical';
 
 const URGENCY_STYLES: Record<CardUrgency, string> = {
-  default: 'border-border/60 bg-card/60 backdrop-blur-sm',
-  success: 'border-emerald-500/30 bg-emerald-500/8 backdrop-blur-sm',
-  warning: 'border-amber-500/30 bg-amber-500/8 backdrop-blur-sm',
-  critical: 'border-red-500/30 bg-red-500/8 backdrop-blur-sm',
+  default: 'border-border/40 bg-card/15 backdrop-blur-md',
+  success: 'border-emerald-500/30 bg-emerald-500/8 backdrop-blur-md',
+  warning: 'border-amber-500/30 bg-amber-500/8 backdrop-blur-md',
+  critical: 'border-red-500/30 bg-red-500/8 backdrop-blur-md',
 };
 
 interface HubCardProps {
@@ -54,7 +54,7 @@ export function HubCard({ href, urgency = 'default', className, children, label 
 /** Skeleton placeholder for a loading Hub card */
 export function HubCardSkeleton() {
   return (
-    <div className="min-h-[6.5rem] rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-4 sm:p-5 animate-pulse">
+    <div className="min-h-[6.5rem] rounded-2xl border border-border/40 bg-card/15 backdrop-blur-md p-4 sm:p-5 animate-pulse">
       <div className="space-y-3">
         <div className="h-4 w-24 rounded bg-muted" />
         <div className="h-6 w-48 rounded bg-muted" />
@@ -67,7 +67,7 @@ export function HubCardSkeleton() {
 /** Error state for a Hub card — shows a brief message with retry affordance */
 export function HubCardError({ message, onRetry }: { message?: string; onRetry?: () => void }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-4 sm:p-5">
+    <div className="rounded-2xl border border-border/40 bg-card/15 backdrop-blur-md p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{message ?? 'Unable to load'}</p>
         {onRetry && (

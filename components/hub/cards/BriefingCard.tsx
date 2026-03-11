@@ -78,7 +78,7 @@ export function BriefingCard() {
         'group block min-h-[6.5rem] rounded-2xl border p-4 sm:p-5',
         'transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-        'border-border/60 bg-card/60 backdrop-blur-sm',
+        'border-border/40 bg-card/15 backdrop-blur-md',
       )}
     >
       {/* Header row — always a link to the full briefing */}

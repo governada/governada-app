@@ -66,6 +66,13 @@ interface MatchResult {
   alignments: AlignmentScores;
   agreeDimensions: string[];
   differDimensions: string[];
+  // Enriched behavioral data
+  voteCount?: number;
+  participationPct?: number;
+  rationaleRate?: number;
+  delegatorCount?: number;
+  tier?: string | null;
+  signatureInsight?: string | null;
 }
 
 interface QuickMatchResponse {
@@ -797,7 +804,7 @@ function ResultsScreen({
             {/* Hero: #1 match */}
             {(() => {
               const heroMatch = activeResults.matches[0];
-              const heroName = heroMatch.drepName || heroMatch.drepId.slice(0, 16) + '...';
+              const heroName = formatEntityName(heroMatch, activeTab);
               const heroIsSPO = activeTab === 'spo';
               const heroProfilePath = heroIsSPO
                 ? `/pool/${encodeURIComponent(heroMatch.drepId)}`
@@ -807,7 +814,12 @@ function ResultsScreen({
                   <p className="text-xs font-medium text-primary text-center tracking-wide uppercase">
                     Your Top Match
                   </p>
-                  <Card className="overflow-hidden border-primary/20 bg-primary/[0.02]">
+                  <Card
+                    className="overflow-hidden border-primary/20"
+                    style={{
+                      background: `linear-gradient(135deg, ${heroMatch.identityColor}08 0%, transparent 60%)`,
+                    }}
+                  >
                     <CardContent className="p-5 space-y-4">
                       <div className="flex justify-center" aria-hidden="true">
                         <RadarOverlay
@@ -831,9 +843,27 @@ function ResultsScreen({
                             {heroMatch.matchScore}%
                           </Badge>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {heroMatch.personalityLabel}
-                        </Badge>
+                        <div className="flex items-center justify-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {heroMatch.personalityLabel}
+                          </Badge>
+                          {heroMatch.signatureInsight && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs"
+                              style={{
+                                color: heroMatch.identityColor,
+                                borderColor: heroMatch.identityColor + '40',
+                                backgroundColor: heroMatch.identityColor + '08',
+                              }}
+                            >
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              {heroMatch.signatureInsight}
+                            </Badge>
+                          )}
+                        </div>
+                        {/* Activity signals */}
+                        <ActivitySignals match={heroMatch} matchType={activeTab} />
                         {(heroMatch.agreeDimensions.length > 0 ||
                           heroMatch.differDimensions.length > 0) && (
                           <div className="flex items-center gap-1.5 flex-wrap justify-center">
@@ -1013,6 +1043,57 @@ function EmptyMatchState({
   );
 }
 
+/* ─── Helpers for enriched cards ────────────────────────── */
+
+function formatEntityName(match: MatchResult, matchType: MatchType): string {
+  if (match.drepName) return match.drepName;
+  // For SPOs without a name, show a formatted pool ID prefix
+  if (matchType === 'spo') {
+    const id = match.drepId;
+    // Show "pool1abc...xyz" format — first 8 + last 4 chars
+    if (id.startsWith('pool1') && id.length > 16) {
+      return `${id.slice(0, 9)}...${id.slice(-4)}`;
+    }
+  }
+  return match.drepId.slice(0, 16) + '...';
+}
+
+function ActivitySignals({ match, matchType }: { match: MatchResult; matchType: MatchType }) {
+  const signals: Array<{ icon: typeof Check; label: string }> = [];
+
+  if (matchType === 'spo') {
+    if (match.voteCount && match.voteCount > 0) {
+      signals.push({ icon: Check, label: `${match.voteCount} governance votes` });
+    }
+    if (match.delegatorCount && match.delegatorCount > 0) {
+      signals.push({
+        icon: Users,
+        label: `${match.delegatorCount.toLocaleString()} delegators`,
+      });
+    }
+  } else {
+    if (match.participationPct && match.participationPct > 0) {
+      signals.push({ icon: Check, label: `${match.participationPct}% participation` });
+    }
+    if (match.rationaleRate && match.rationaleRate > 0) {
+      signals.push({ icon: Lightbulb, label: `${match.rationaleRate}% rationale rate` });
+    }
+  }
+
+  if (signals.length === 0) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+      {signals.slice(0, 2).map((s, i) => (
+        <span key={i} className="flex items-center gap-1">
+          <s.icon className="h-3 w-3" />
+          {s.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Result card ───────────────────────────────────────── */
 
 function QuickMatchResultCard({
@@ -1028,7 +1109,7 @@ function QuickMatchResultCard({
   matchType?: MatchType;
   isNearMiss?: boolean;
 }) {
-  const displayName = match.drepName || match.drepId.slice(0, 16) + '...';
+  const displayName = formatEntityName(match, matchType);
   const isSPO = matchType === 'spo';
   const profilePath = isSPO
     ? `/pool/${encodeURIComponent(match.drepId)}`
@@ -1042,6 +1123,11 @@ function QuickMatchResultCard({
           ? 'border-amber-500/20 hover:border-amber-500/40 bg-amber-500/[0.02]'
           : 'hover:border-primary/30',
       )}
+      style={
+        !isNearMiss
+          ? { background: `linear-gradient(135deg, ${match.identityColor}06 0%, transparent 50%)` }
+          : undefined
+      }
       aria-label={`${isNearMiss ? 'Near miss ' : ''}Rank ${rank}: ${displayName}, ${match.matchScore}% match`}
     >
       <CardContent className="p-4">
@@ -1092,11 +1178,24 @@ function QuickMatchResultCard({
               </Badge>
             </div>
 
-            {/* Personality + near-miss indicator */}
+            {/* Personality + signature insight */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <Badge variant="secondary" className="text-[10px]">
                 {match.personalityLabel}
               </Badge>
+              {match.signatureInsight && !isNearMiss && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px]"
+                  style={{
+                    color: match.identityColor,
+                    borderColor: match.identityColor + '40',
+                    backgroundColor: match.identityColor + '08',
+                  }}
+                >
+                  {match.signatureInsight}
+                </Badge>
+              )}
               {isNearMiss && (
                 <Badge
                   variant="outline"
@@ -1106,6 +1205,9 @@ function QuickMatchResultCard({
                 </Badge>
               )}
             </div>
+
+            {/* Activity signals */}
+            <ActivitySignals match={match} matchType={matchType} />
 
             {/* Alignment dimension badges */}
             {(match.agreeDimensions.length > 0 || match.differDimensions.length > 0) && (

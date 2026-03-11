@@ -1,7 +1,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import { alignmentsToArray, getDimensionOrder, getDimensionLabel } from '@/lib/drepIdentity';
+import {
+  alignmentsToArray,
+  getDimensionOrder,
+  getDimensionLabel,
+  getDominantDimension,
+  getIdentityColor,
+} from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +56,20 @@ export function RadarOverlay({
   const drepScores = useMemo(() => alignmentsToArray(safeDrep), [safeDrep]);
   const dimensions = getDimensionOrder();
 
+  // Derive identity colors from alignment data
+  const userColor = useMemo(() => {
+    if (!userAlignments) return { hex: '#3b82f6', rgb: [59, 130, 246] as [number, number, number] };
+    return getIdentityColor(getDominantDimension(userAlignments));
+  }, [userAlignments]);
+
+  const entityColor = useMemo(() => {
+    if (!drepAlignments) return { hex: '#a855f7', rgb: [168, 85, 247] as [number, number, number] };
+    return getIdentityColor(getDominantDimension(drepAlignments));
+  }, [drepAlignments]);
+
+  // eslint-disable-next-line react-hooks/purity -- stable SVG gradient ID
+  const uid = useMemo(() => `ro-${Math.random().toString(36).slice(2, 6)}`, []);
+
   // If both alignments are missing, show placeholder text
   if (!userAlignments && !drepAlignments) {
     return (
@@ -77,6 +97,7 @@ export function RadarOverlay({
   const drepPoints = getPolygonPoints(drepScores, cx, cy, maxR);
 
   const rings = [0.25, 0.5, 0.75, 1];
+  const showLabels = size >= 140;
 
   return (
     <svg
@@ -85,7 +106,21 @@ export function RadarOverlay({
       viewBox={`0 0 ${size} ${size}`}
       className={cn('shrink-0', className)}
     >
-      {/* Grid */}
+      <defs>
+        <radialGradient id={`${uid}-entity`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={entityColor.hex} stopOpacity={0.3} />
+          <stop offset="100%" stopColor={entityColor.hex} stopOpacity={0.05} />
+        </radialGradient>
+        <radialGradient id={`${uid}-user`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={userColor.hex} stopOpacity={0.35} />
+          <stop offset="100%" stopColor={userColor.hex} stopOpacity={0.08} />
+        </radialGradient>
+        <filter id={`${uid}-glow`} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation={2} />
+        </filter>
+      </defs>
+
+      {/* Grid rings */}
       {rings.map((r) => (
         <polygon
           key={r}
@@ -96,68 +131,122 @@ export function RadarOverlay({
           }).join(' ')}
           fill="none"
           stroke="currentColor"
-          strokeOpacity={0.08}
-          strokeWidth={0.5}
+          strokeOpacity={r === 1 ? 0.15 : 0.08}
+          strokeWidth={r === 1 ? 0.8 : 0.5}
         />
       ))}
 
-      {/* Axis lines */}
-      {dimensions.map((_, i) => {
+      {/* Axis lines with dimension-colored tips */}
+      {dimensions.map((dim, i) => {
         const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+        const dimColor = getIdentityColor(dim);
         return (
-          <line
-            key={i}
-            x1={cx}
-            y1={cy}
-            x2={cx + maxR * Math.cos(angle)}
-            y2={cy + maxR * Math.sin(angle)}
-            stroke="currentColor"
-            strokeOpacity={0.08}
-            strokeWidth={0.5}
+          <g key={i}>
+            <line
+              x1={cx}
+              y1={cy}
+              x2={cx + maxR * Math.cos(angle)}
+              y2={cy + maxR * Math.sin(angle)}
+              stroke="currentColor"
+              strokeOpacity={0.1}
+              strokeWidth={0.5}
+            />
+            <circle
+              cx={cx + maxR * Math.cos(angle)}
+              cy={cy + maxR * Math.sin(angle)}
+              r={size >= 140 ? 2 : 1.5}
+              fill={dimColor.hex}
+              opacity={0.5}
+            />
+          </g>
+        );
+      })}
+
+      {/* Entity shape (background) — with gradient fill and glow */}
+      <polygon
+        points={drepPoints}
+        fill={`url(#${uid}-entity)`}
+        stroke={entityColor.hex}
+        strokeWidth={1.5}
+        strokeOpacity={0.6}
+        strokeLinejoin="round"
+        filter={`url(#${uid}-glow)`}
+      />
+      <polygon
+        points={drepPoints}
+        fill={`url(#${uid}-entity)`}
+        stroke={entityColor.hex}
+        strokeWidth={1.5}
+        strokeOpacity={0.7}
+        strokeLinejoin="round"
+      />
+
+      {/* User shape (foreground) — with gradient fill */}
+      <polygon
+        points={userPoints}
+        fill={`url(#${uid}-user)`}
+        stroke={userColor.hex}
+        strokeWidth={1.5}
+        strokeOpacity={0.8}
+        strokeLinejoin="round"
+      />
+
+      {/* Vertex dots for entity */}
+      {drepScores.map((score, i) => {
+        const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+        const r = maxR * (score / 100);
+        return (
+          <circle
+            key={`e-${i}`}
+            cx={cx + r * Math.cos(angle)}
+            cy={cy + r * Math.sin(angle)}
+            r={1.5}
+            fill={entityColor.hex}
+            opacity={0.7}
           />
         );
       })}
 
-      {/* DRep shape (background) */}
-      <polygon
-        points={drepPoints}
-        fill="hsl(var(--primary))"
-        fillOpacity={0.1}
-        stroke="hsl(var(--primary))"
-        strokeOpacity={0.4}
-        strokeWidth={1.5}
-      />
-
-      {/* User shape (foreground) */}
-      <polygon
-        points={userPoints}
-        fill="hsl(var(--chart-2))"
-        fillOpacity={0.15}
-        stroke="hsl(var(--chart-2))"
-        strokeOpacity={0.7}
-        strokeWidth={1.5}
-      />
-
-      {/* Dimension labels */}
-      {dimensions.map((dim, i) => {
+      {/* Vertex dots for user */}
+      {userScores.map((score, i) => {
         const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
-        const labelR = maxR + 12;
-        const x = cx + labelR * Math.cos(angle);
-        const y = cy + labelR * Math.sin(angle);
+        const r = maxR * (score / 100);
         return (
-          <text
-            key={dim}
-            x={x}
-            y={y}
-            textAnchor="middle"
-            dominantBaseline="central"
-            className="fill-muted-foreground"
-            fontSize={7}
-          >
-            {getDimensionLabel(dim).replace('Treasury ', '')}
-          </text>
+          <circle
+            key={`u-${i}`}
+            cx={cx + r * Math.cos(angle)}
+            cy={cy + r * Math.sin(angle)}
+            r={1.5}
+            fill={userColor.hex}
+            opacity={0.8}
+          />
         );
       })}
+
+      {/* Dimension labels — only on larger sizes */}
+      {showLabels &&
+        dimensions.map((dim, i) => {
+          const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+          const dimColor = getIdentityColor(dim);
+          const labelR = maxR + 10;
+          const x = cx + labelR * Math.cos(angle);
+          const y = cy + labelR * Math.sin(angle);
+          return (
+            <text
+              key={dim}
+              x={x}
+              y={y}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill={dimColor.hex}
+              fontSize={6.5}
+              fontWeight={500}
+              opacity={0.7}
+            >
+              {getDimensionLabel(dim).replace('Treasury ', '')}
+            </text>
+          );
+        })}
     </svg>
   );
 }

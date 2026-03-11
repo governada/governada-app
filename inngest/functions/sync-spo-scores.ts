@@ -557,55 +557,89 @@ export const syncSpoScores = inngest.createFunction(
 
     await step.run('fetch-koios-metadata', async () => {
       const supabase = getSupabaseAdmin();
-      const { data: poolsNeedingMeta } = await supabase.from('pools').select('pool_id').limit(100);
+      // Fetch ALL pools that are missing metadata (ticker IS NULL)
+      const { data: poolsNeedingMeta } = await supabase
+        .from('pools')
+        .select('pool_id')
+        .is('ticker', null);
 
-      if (!poolsNeedingMeta?.length) return { fetched: 0 };
-
-      const poolIds = poolsNeedingMeta.map((p: { pool_id: string }) => p.pool_id);
-
-      try {
-        const res = await fetch(`${KOIOS_BASE}/pool_info`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ _pool_bech32_ids: poolIds }),
-          signal: AbortSignal.timeout(15_000),
-        });
-
-        if (!res.ok) {
-          logger.warn('[sync-spo-scores] Koios pool_info failed', { status: res.status });
-          return { fetched: 0, error: res.status };
-        }
-
-        const data = (await res.json()) as KoiosPoolInfo[];
-        const metaByPool = new Map<string, Record<string, unknown>>();
-        for (const p of data) {
-          if (!p.pool_id_bech32) continue;
-          metaByPool.set(p.pool_id_bech32, {
-            ticker: p.ticker ?? null,
-            pool_name: p.meta_json?.name ?? p.ticker ?? null,
-            pledge_lovelace: p.pledge ?? 0,
-            margin: p.margin ?? 0,
-            fixed_cost_lovelace: p.fixed_cost ?? 0,
-            delegator_count: p.live_delegators ?? 0,
-            live_stake_lovelace: p.live_stake ?? 0,
-            homepage_url: p.meta_json?.homepage ?? null,
-            pool_status: p.pool_status ?? 'registered',
-            retiring_epoch: p.retiring_epoch ?? null,
-          });
-        }
-
-        let updated = 0;
-        for (const poolId of poolIds) {
-          const meta = metaByPool.get(poolId);
-          if (!meta) continue;
-          const { error } = await supabase.from('pools').update(meta).eq('pool_id', poolId);
-          if (!error) updated++;
-        }
-        return { fetched: updated };
-      } catch (err) {
-        logger.warn('[sync-spo-scores] Koios metadata fetch failed', { error: err });
-        return { fetched: 0, error: errMsg(err) };
+      if (!poolsNeedingMeta?.length) {
+        logger.info('[sync-spo-scores] All pools already have metadata');
+        return { fetched: 0, needed: 0 };
       }
+
+      logger.info('[sync-spo-scores] Pools needing metadata', { count: poolsNeedingMeta.length });
+
+      const allPoolIds = poolsNeedingMeta.map((p: { pool_id: string }) => p.pool_id);
+      const BATCH = 50; // Koios recommends batches of ~50
+      let totalUpdated = 0;
+      let totalErrors = 0;
+
+      for (let i = 0; i < allPoolIds.length; i += BATCH) {
+        const batchIds = allPoolIds.slice(i, i + BATCH);
+
+        try {
+          const res = await fetch(`${KOIOS_BASE}/pool_info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ _pool_bech32_ids: batchIds }),
+            signal: AbortSignal.timeout(20_000),
+          });
+
+          if (!res.ok) {
+            logger.warn('[sync-spo-scores] Koios pool_info batch failed', {
+              status: res.status,
+              batch: i / BATCH + 1,
+            });
+            totalErrors += batchIds.length;
+            continue;
+          }
+
+          const data = (await res.json()) as KoiosPoolInfo[];
+          const metaByPool = new Map<string, Record<string, unknown>>();
+          for (const p of data) {
+            if (!p.pool_id_bech32) continue;
+            metaByPool.set(p.pool_id_bech32, {
+              ticker: p.ticker ?? null,
+              pool_name: p.meta_json?.name ?? p.ticker ?? null,
+              pledge_lovelace: p.pledge ?? 0,
+              margin: p.margin ?? 0,
+              fixed_cost_lovelace: p.fixed_cost ?? 0,
+              delegator_count: p.live_delegators ?? 0,
+              live_stake_lovelace: p.live_stake ?? 0,
+              homepage_url: p.meta_json?.homepage ?? null,
+              pool_status: p.pool_status ?? 'registered',
+              retiring_epoch: p.retiring_epoch ?? null,
+            });
+          }
+
+          for (const poolId of batchIds) {
+            const meta = metaByPool.get(poolId);
+            if (!meta) continue;
+            const { error } = await supabase.from('pools').update(meta).eq('pool_id', poolId);
+            if (!error) totalUpdated++;
+          }
+
+          logger.info('[sync-spo-scores] Metadata batch complete', {
+            batch: i / BATCH + 1,
+            koiosReturned: data.length,
+            updated: totalUpdated,
+          });
+        } catch (err) {
+          logger.warn('[sync-spo-scores] Koios metadata batch failed', {
+            batch: i / BATCH + 1,
+            error: errMsg(err),
+          });
+          totalErrors += batchIds.length;
+        }
+      }
+
+      logger.info('[sync-spo-scores] Metadata fetch complete', {
+        needed: allPoolIds.length,
+        updated: totalUpdated,
+        errors: totalErrors,
+      });
+      return { fetched: totalUpdated, needed: allPoolIds.length, errors: totalErrors };
     });
 
     // Refresh delegator_count + live_stake for ALL pools that already have metadata

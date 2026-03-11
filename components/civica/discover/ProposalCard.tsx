@@ -169,7 +169,7 @@ export function ProposalCard({
     return (
       <Link
         href={href}
-        className="group flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border/40 bg-card/30 hover:bg-muted/30 transition-all animate-in fade-in duration-200 fill-mode-backwards"
+        className="group flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border/40 bg-card/30 hover:bg-muted/40 hover:border-border/70 hover:shadow-sm transition-all duration-200 animate-in fade-in fill-mode-backwards"
         style={{ animationDelay: `${animationDelay}ms` }}
       >
         {TypeIcon && <TypeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />}
@@ -196,7 +196,7 @@ export function ProposalCard({
         >
           {verdict.label}
         </span>
-        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 transition-colors" />
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5 transition-all duration-200" />
       </Link>
     );
   }
@@ -207,8 +207,8 @@ export function ProposalCard({
     <Link
       href={href}
       className={cn(
-        'group block rounded-xl border bg-card transition-all animate-in fade-in duration-300 fill-mode-backwards overflow-hidden',
-        'hover:shadow-md hover:border-border',
+        'group block rounded-xl border bg-card transition-all duration-200 animate-in fade-in fill-mode-backwards overflow-hidden',
+        'hover:shadow-lg hover:-translate-y-0.5 hover:border-border',
         isUrgent
           ? 'border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.06)]'
           : needsVote
@@ -330,7 +330,7 @@ export function ProposalCard({
                   </span>
                 );
               })}
-            <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 transition-colors" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5 transition-all duration-200" />
           </div>
         </div>
       </div>

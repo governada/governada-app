@@ -459,7 +459,6 @@ export async function phasePostSync(
             .from('delegation_snapshots')
             .upsert(batch as unknown as Record<string, unknown>[], {
               onConflict: 'epoch,drep_id',
-              ignoreDuplicates: true,
             });
           if (!error) inserted += batch.length;
         }

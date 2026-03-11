@@ -193,7 +193,7 @@ function getNextAction(
           type: 'vote_proposals',
           label: 'Vote on governance proposals',
           description: `Vote on ${TARGETS.pollVotes - inputs.pollVoteCount} more real proposals to strengthen your governance profile.`,
-          href: '/governance/proposals',
+          href: '/match/vote',
           potentialGain: gap,
         });
         break;
@@ -203,7 +203,7 @@ function getNextAction(
           label: 'Vote on different proposal types',
           description:
             'Broaden your profile by voting on treasury, protocol, and governance proposals.',
-          href: '/governance/proposals',
+          href: '/match/vote',
           potentialGain: gap,
         });
         break;

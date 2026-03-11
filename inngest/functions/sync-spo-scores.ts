@@ -553,8 +553,8 @@ export const syncSpoScores = inngest.createFunction(
       }
     });
 
-    if ('skipped' in computeResult && computeResult.skipped) return computeResult;
-
+    // Always run metadata + enrichment steps even if scoring was skipped —
+    // pools may still be missing tickers, names, delegator counts, etc.
     await step.run('fetch-koios-metadata', async () => {
       const supabase = getSupabaseAdmin();
       // Fetch ALL pools that are missing metadata (ticker IS NULL)

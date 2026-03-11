@@ -12,11 +12,10 @@ export const GET = withRouteHandler(async () => {
     const { data: poolRows } = await supabase
       .from('pools')
       .select(
-        'pool_id, ticker, pool_name, governance_score, vote_count, participation_pct, consistency_pct, reliability_pct, deliberation_pct, governance_identity_pct, confidence, current_tier, delegator_count, live_stake_lovelace, claimed_by, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, governance_statement, pool_status',
+        'pool_id, ticker, pool_name, governance_score, vote_count, participation_pct, consistency_pct, reliability_pct, deliberation_pct, governance_identity_pct, confidence, current_tier, delegator_count, live_stake_lovelace, claimed_by, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, governance_statement, pool_status, score_momentum',
       )
       .gt('vote_count', 0)
-      .order('governance_score', { ascending: false, nullsFirst: false })
-      .limit(200);
+      .order('governance_score', { ascending: false, nullsFirst: false });
 
     if (poolRows?.length) {
       const pools = poolRows.map((p) => ({
@@ -40,6 +39,7 @@ export const GET = withRouteHandler(async () => {
         claimedBy: p.claimed_by ?? null,
         governanceStatement: p.governance_statement ?? null,
         poolStatus: p.pool_status ?? 'registered',
+        scoreMomentum: p.score_momentum ?? null,
       }));
       return { pools };
     }

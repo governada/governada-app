@@ -37,12 +37,16 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 const TIER_BG: Record<string, string> = {
-  Emerging: 'bg-card border-border',
-  Bronze: 'bg-amber-50 dark:bg-amber-950/20 border-amber-300/40 dark:border-amber-800/25',
-  Silver: 'bg-slate-50 dark:bg-slate-900/30 border-slate-300/40 dark:border-slate-700/25',
-  Gold: 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300/50 dark:border-yellow-800/25',
-  Diamond: 'bg-cyan-50 dark:bg-cyan-950/20 border-cyan-300/50 dark:border-cyan-800/25',
-  Legendary: 'bg-violet-50 dark:bg-violet-950/20 border-violet-300/50 dark:border-violet-800/25',
+  Emerging: 'bg-card/70 border-border/50 backdrop-blur-md',
+  Bronze:
+    'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300/40 dark:border-amber-800/25 backdrop-blur-md',
+  Silver:
+    'bg-slate-50/70 dark:bg-slate-900/30 border-slate-300/40 dark:border-slate-700/25 backdrop-blur-md',
+  Gold: 'bg-yellow-50/70 dark:bg-yellow-950/20 border-yellow-300/50 dark:border-yellow-800/25 backdrop-blur-md',
+  Diamond:
+    'bg-cyan-50/70 dark:bg-cyan-950/20 border-cyan-300/50 dark:border-cyan-800/25 backdrop-blur-md',
+  Legendary:
+    'bg-violet-50/70 dark:bg-violet-950/20 border-violet-300/50 dark:border-violet-800/25 backdrop-blur-md',
 };
 
 /* White-on-constellation tier colors for the hero overlay */
@@ -230,7 +234,7 @@ export function HomeDRep() {
         <div
           className={cn(
             'rounded-2xl border p-6 space-y-4',
-            TIER_BG[tier] ?? 'bg-card border-border',
+            TIER_BG[tier] ?? 'bg-card/70 border-border/50 backdrop-blur-md',
           )}
         >
           <div className="flex items-start justify-between gap-3">

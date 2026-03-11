@@ -158,7 +158,7 @@ export function CivicaTreasury() {
   return (
     <div className="space-y-6">
       {/* Balance + sparkline */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md overflow-hidden">
         <div className="p-5 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
             Treasury Balance
@@ -201,7 +201,7 @@ export function CivicaTreasury() {
 
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+        <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider font-medium">
             <Clock className="h-3.5 w-3.5" />
             Runway
@@ -231,7 +231,7 @@ export function CivicaTreasury() {
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+        <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider font-medium">
             <DollarSign className="h-3.5 w-3.5" />
             Withdrawals
@@ -258,7 +258,7 @@ export function CivicaTreasury() {
 
       {/* Health score */}
       {treasury?.healthScore != null && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
               Treasury Health Score
@@ -298,7 +298,7 @@ export function CivicaTreasury() {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Pending Withdrawals
           </p>
-          <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md divide-y divide-border overflow-hidden">
             {pendingItems.map((item, idx: number) => (
               <div key={idx} className="flex items-center justify-between px-4 py-3">
                 <div className="min-w-0">

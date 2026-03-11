@@ -152,7 +152,7 @@ export function ProposalsBrowse() {
 
       {/* Status pipeline overview */}
       {statusCounts.length > 1 && (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border/50 bg-card/60 backdrop-blur-md p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Governance Pipeline
           </p>
@@ -160,7 +160,7 @@ export function ProposalsBrowse() {
         </div>
       )}
 
-      <div className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-background/90 backdrop-blur-xl border-b border-border/30">
+      <div className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-card/60 backdrop-blur-xl border-b border-border/30">
         <DiscoverFilterBar
           search={search}
           onSearchChange={setFilter(setSearch)}

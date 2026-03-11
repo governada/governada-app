@@ -116,7 +116,7 @@ export function CivicaSidebar({ collapsed, onToggle }: CivicaSidebarProps) {
   return (
     <aside
       className={cn(
-        'hidden lg:flex flex-col fixed left-0 top-14 bottom-0 z-30 border-r border-border/50 bg-background transition-[width] duration-200',
+        'hidden lg:flex flex-col fixed left-0 top-14 bottom-0 z-30 border-r border-border/30 bg-background/80 backdrop-blur-xl transition-[width] duration-200',
         collapsed ? 'w-16' : 'w-60',
       )}
     >

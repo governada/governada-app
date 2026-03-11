@@ -25,12 +25,12 @@ export const TIER_BORDER: Record<TierKey, string> = {
 };
 
 export const TIER_BG: Record<TierKey, string> = {
-  Emerging: 'bg-card',
-  Bronze: 'bg-amber-50 dark:bg-amber-950/15',
-  Silver: 'bg-slate-50 dark:bg-slate-900/20',
-  Gold: 'bg-yellow-50 dark:bg-yellow-950/15',
-  Diamond: 'bg-cyan-50 dark:bg-cyan-950/15',
-  Legendary: 'bg-violet-50 dark:bg-violet-950/20',
+  Emerging: 'bg-card/70',
+  Bronze: 'bg-amber-50/70 dark:bg-amber-950/15',
+  Silver: 'bg-slate-50/70 dark:bg-slate-900/20',
+  Gold: 'bg-yellow-50/70 dark:bg-yellow-950/15',
+  Diamond: 'bg-cyan-50/70 dark:bg-cyan-950/15',
+  Legendary: 'bg-violet-50/70 dark:bg-violet-950/20',
 };
 
 export const TIER_GLOW: Record<TierKey, string> = {

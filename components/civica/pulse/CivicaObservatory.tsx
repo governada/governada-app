@@ -135,7 +135,7 @@ function EDICard({ metric }: { metric: EDIMetric }) {
         : 'text-muted-foreground';
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-2 group relative">
+    <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2 group relative">
       <div className="flex items-center justify-between">
         <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
           {metric.label}
@@ -219,7 +219,10 @@ function DecentralizationTrends({ history }: { history: Record<string, unknown>[
         const prev = values[values.length - 2];
         const delta = latest - prev;
         return (
-          <div key={m.key} className="rounded-xl border border-border bg-card p-3 space-y-1.5">
+          <div
+            key={m.key}
+            className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-3 space-y-1.5"
+          >
             <div className="flex items-center justify-between">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
                 {m.label}
@@ -272,7 +275,10 @@ function InterBodySummary({ interBody }: { interBody: InterBodyRecord }) {
           const pct = Math.round(p.value!);
 
           return (
-            <div key={p.label} className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div
+              key={p.label}
+              className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2"
+            >
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
                 {p.label}
               </p>
@@ -446,7 +452,10 @@ export function CivicaObservatory() {
         {loading ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div
+                key={i}
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2"
+              >
                 <Skeleton className="h-3 w-28" />
                 <Skeleton className="h-7 w-14" />
               </div>
@@ -492,7 +501,10 @@ export function CivicaObservatory() {
         {benchLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div
+                key={i}
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2"
+              >
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-2 w-3/4" />
@@ -502,7 +514,7 @@ export function CivicaObservatory() {
         ) : benchmarks.length > 0 ? (
           <div className="space-y-4">
             {/* Radar chart */}
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
               <CrossChainRadar
                 chains={benchmarks.map((b) => ({
                   chain: b.chain,
@@ -543,7 +555,10 @@ export function CivicaObservatory() {
                 </div>
               )}
               {otherBenchmarks.map((b) => (
-                <div key={b.chain} className="rounded-xl border border-border bg-card p-4">
+                <div
+                  key={b.chain}
+                  className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4"
+                >
                   <ChainComparisonBar chain={b.chain} benchmark={b} />
                 </div>
               ))}

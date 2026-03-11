@@ -90,7 +90,7 @@ export function LearnClient() {
             return (
               <div
                 key={item.title}
-                className="rounded-xl border border-border bg-card p-5 space-y-3"
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3"
               >
                 <div className="flex items-center gap-3">
                   <div

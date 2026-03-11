@@ -169,7 +169,7 @@ export function ProposalCard({
     return (
       <Link
         href={href}
-        className="group flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border/40 bg-card/30 hover:bg-muted/40 hover:border-border/70 hover:shadow-sm transition-all duration-200 animate-in fade-in fill-mode-backwards"
+        className="group flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border/40 bg-card/30 backdrop-blur-sm hover:bg-muted/40 hover:border-border/70 hover:shadow-sm transition-all duration-200 animate-in fade-in fill-mode-backwards"
         style={{ animationDelay: `${animationDelay}ms` }}
       >
         {TypeIcon && <TypeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />}
@@ -209,7 +209,7 @@ export function ProposalCard({
     <Link
       href={href}
       className={cn(
-        'group block rounded-xl border bg-card/80 transition-all duration-200 animate-in fade-in fill-mode-backwards overflow-hidden',
+        'group block rounded-xl border bg-card/70 backdrop-blur-md transition-all duration-200 animate-in fade-in fill-mode-backwards overflow-hidden',
         'hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30',
         isUrgent
           ? 'border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.06)]'

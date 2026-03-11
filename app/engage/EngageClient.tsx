@@ -50,7 +50,7 @@ export function EngageClient({ epoch }: EngageClientProps) {
         {currentRankings && currentRankings.rankings.length > 0 ? (
           <EpochRecap current={currentRankings} previous={previousRankings ?? null} epoch={epoch} />
         ) : (
-          <section className="rounded-xl border border-border bg-card p-5">
+          <section className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
                 <Sparkles className="h-4 w-4 text-primary" />
@@ -135,7 +135,7 @@ function EpochRecap({
   const isStreak = top1 && previousTop1 && top1.priority === previousTop1.priority;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5 space-y-3">
+    <section className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 text-primary" />

@@ -166,7 +166,7 @@ export default async function EpochReportPage({ params }: Props) {
       </header>
 
       {/* Key Takeaways */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-3">
         <h3 className="text-sm font-bold">Key Takeaways</h3>
         <ul className="space-y-1.5 text-sm text-muted-foreground list-disc list-inside">
           {data.stats.activeDReps > 0 && (
@@ -271,7 +271,7 @@ function DeltaCard({
 }) {
   const delta = Math.round((current - previous) * 10) / 10;
   return (
-    <div className="rounded-lg border border-border bg-card p-3 text-center">
+    <div className="rounded-lg border border-border/50 bg-card/70 backdrop-blur-md p-3 text-center">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-lg font-semibold tabular-nums">
         {current}

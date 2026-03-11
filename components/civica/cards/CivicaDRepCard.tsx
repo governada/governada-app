@@ -57,7 +57,7 @@ export function CivicaDRepCard({ drep, rank, matchScore }: CivicaDRepCardProps) 
       href={`/drep/${drep.drepId}`}
       aria-label={`${displayName}, DRep score ${score}, ${tier} tier${matchScore != null ? `, ${matchScore}% match` : ''}`}
       className={cn(
-        'group relative flex flex-col rounded-xl border overflow-hidden transition-all duration-200',
+        'group relative flex flex-col rounded-xl border overflow-hidden transition-all duration-200 backdrop-blur-md',
         'hover:shadow-lg hover:-translate-y-0.5',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         TIER_BG[tier],

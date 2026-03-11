@@ -151,7 +151,7 @@ export function CivicIdentityProfile() {
 
   if (segment === 'anonymous' && !segmentLoading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-8 text-center space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-8 text-center space-y-4">
         <Shield className="h-8 w-8 text-primary mx-auto" />
         <p className="text-lg font-bold">Your Civic Identity</p>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">

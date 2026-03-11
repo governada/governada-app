@@ -1,14 +1,14 @@
 /**
- * DRep Detail Page — Persona-aware progressive disclosure.
+ * DRep Detail Page — Chapter-based progressive disclosure.
  *
- * VP1 ("The Story"): Hero, narrative, key facts, about. Density adapts per persona:
- *   - Anonymous: Name, score, personality, narrative, delegate CTA (MLE)
- *   - Citizen: + trust indicators (votes cast, explains votes), about, dashboard
- *   - Governance (DRep/SPO/CC): + radar, traits, tier progress, metadata, all facts
+ * Ch1 "The Story" (Hero): Name, score, personality, AI narrative (above fold).
+ * Ch2 "Trust at a Glance" (TrustCard): Unified trust metrics, citizen sentiment.
+ * Ch3 "The Record" (RecordSummaryCard): Treasury track record + delivery outcomes.
+ * Ch4 "Trajectory" (TrajectoryCard): Score evolution + delegation momentum.
+ * Ch5 "Detailed Analysis" (DRepDetailedAnalysis): Gated deep-dive — treasury stance,
+ *      philosophy, endorsements, similar DReps, tabbed analysis.
  *
- * VP2 ("The Record"): Treasury stance, philosophy, delegation trend, tabbed analysis.
- *   - Citizens: collapsed behind "Show detailed analysis" toggle.
- *   - Governance participants: expanded by default.
+ * Anonymous: Ch1 + Ch2 (core only). Citizen+: All chapters. Governance: Ch5 expanded.
  */
 
 import { notFound } from 'next/navigation';
@@ -66,7 +66,9 @@ import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
-import { DRepCitizenSignals } from '@/components/DRepCitizenSignals';
+import { TrustCard } from '@/components/civica/profiles/TrustCard';
+import { RecordSummaryCard } from '@/components/civica/profiles/RecordSummaryCard';
+import { TrajectoryCard } from '@/components/civica/profiles/TrajectoryCard';
 const CitizenEndorsements = nextDynamic(
   () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
   { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
@@ -85,12 +87,6 @@ import {
   getPersonalityLabelWithHysteresis,
 } from '@/lib/drepIdentity';
 import { computeTierProgress } from '@/lib/scoring/tiers';
-import {
-  getScoreNarrative,
-  getParticipationNarrative,
-  getRationaleNarrative,
-  getGovernanceStyleNarrative,
-} from '@/lib/scoring/scoreNarratives';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { DRepProfileTabsV2 } from '@/components/civica/profiles/DRepProfileTabsV2';
 const DRepStatementsTab = nextDynamic(
@@ -100,8 +96,6 @@ const DRepStatementsTab = nextDynamic(
 import { getDRepTraitTags } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
 import { generateDRepNarrative } from '@/lib/narratives';
-import { NarrativeSummary } from '@/components/NarrativeSummary';
-import { ActivitySideWidget } from '@/components/ActivitySideWidget';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
 import { DRepOutcomeSummary } from '@/components/civica/profiles/DRepOutcomeSummary';
@@ -346,49 +340,6 @@ async function getSpoAlignment(votes: VoteRecord[]): Promise<number | null> {
   }
 }
 
-/* ─── Key Facts Strip ─── */
-function KeyFact({
-  label,
-  value,
-  subtext,
-  tooltip,
-  narrative,
-}: {
-  label: string;
-  value: string;
-  subtext?: string;
-  tooltip?: string;
-  narrative?: string;
-}) {
-  const content = (
-    <div className="flex flex-col items-center text-center min-w-[80px]">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold font-mono tabular-nums">{value}</span>
-      {subtext && <span className="text-[10px] text-muted-foreground">{subtext}</span>}
-      {narrative && (
-        <span className="text-[10px] text-muted-foreground/80 italic max-w-[140px] leading-tight">
-          {narrative}
-        </span>
-      )}
-    </div>
-  );
-
-  if (!tooltip) return content;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="cursor-help">{content}</div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-xs max-w-[200px]">{tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
 export default async function DRepDetailPage({ params, searchParams }: DRepDetailPageProps) {
   const { drepId } = await params;
   const { match } = await searchParams;
@@ -536,7 +487,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           VP1 — "The Story" (above fold)
           ════════════════════════════════════════════ */}
 
-      {/* 1. Hero */}
+      {/* ── Chapter 1: The Story (Hero) ── */}
       <DRepProfileHero
         name={drepName}
         score={drep.drepScore}
@@ -547,14 +498,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         traitTags={traitTags}
         isActive={drep.isActive}
         matchScore={matchScore}
-      >
-        <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
-        <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
-      </DRepProfileHero>
-
-      {/* 2. Narrative summary */}
-      <NarrativeSummary
-        text={generateDRepNarrative({
+        narrative={generateDRepNarrative({
           name: drepName,
           participationRate: drep.effectiveParticipation,
           rationaleRate: drep.rationaleRate,
@@ -567,8 +511,11 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           totalVotes: drep.totalVotes,
           sizeTier: drep.sizeTier,
         })}
-        accentColor={getIdentityColor(getDominantDimension(alignments)).hex}
-      />
+        narrativeAccentColor={getIdentityColor(getDominantDimension(alignments)).hex}
+      >
+        <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
+        <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
+      </DRepProfileHero>
 
       {/* 3. Tier Progress + Momentum — governance participants only */}
       {isViewerAuthenticated && tierProgress.pointsToNext != null && (
@@ -603,98 +550,21 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </SegmentGate>
       )}
 
-      {/* 3c. Citizen Sentiment Signal — hidden for anonymous */}
-      <SegmentGate hide={['anonymous']}>
-        <DRepCitizenSignals drepId={drep.drepId} />
-      </SegmentGate>
-
-      {/* 3d. Citizen Endorsements — hidden for anonymous */}
-      <SegmentGate hide={['anonymous']}>
-        <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
-      </SegmentGate>
-
-      {/* 4. Key Facts Strip — progressive: core (all) → trust (citizen+) → detailed (governance) */}
-      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 border-y border-border">
-        {/* Core facts — visible to everyone */}
-        <KeyFact
-          label="Governance Score"
-          value={`${drep.drepScore}/100`}
-          subtext={percentile > 0 ? `Top ${100 - percentile}%` : undefined}
-          tooltip="Overall quality score based on participation, rationale, reliability, and profile completeness"
-          narrative={getScoreNarrative({ score: drep.drepScore, percentile })}
-        />
-        <KeyFact
-          label="Governance Style"
-          value={identityLabel}
-          tooltip="Dominant governance philosophy based on voting patterns across 6 dimensions"
-          narrative={getGovernanceStyleNarrative(identityLabel)}
-        />
-
-        {/* Trust indicators — citizen and above */}
-        <SegmentGate hide={['anonymous']}>
-          <KeyFact
-            label="Votes Cast"
-            value={`${drep.effectiveParticipation}%`}
-            tooltip="How often this DRep votes on proposals, adjusted for voting pattern diversity"
-            narrative={getParticipationNarrative(drep.effectiveParticipation)}
-          />
-          <KeyFact
-            label="Explains Votes"
-            value={`${drep.rationaleRate}%`}
-            tooltip="How often this DRep provides written reasoning for their votes"
-            narrative={getRationaleNarrative(drep.rationaleRate)}
-          />
-        </SegmentGate>
-
-        {/* Detailed analysis facts — governance participants only */}
-        <SegmentGate show={['drep', 'spo', 'cc']}>
-          {spoAlignPct !== null && (
-            <KeyFact
-              label="Agrees with SPOs"
-              value={`${spoAlignPct}%`}
-              subtext="of the time"
-              tooltip="How often this DRep votes the same way as the SPO majority"
-            />
-          )}
-          {endorsementCount > 0 && (
-            <KeyFact
-              label="Citizen Endorsements"
-              value={endorsementCount.toLocaleString()}
-              tooltip="Number of citizens who have endorsed this DRep across governance competencies like treasury oversight, technical expertise, and communication"
-            />
-          )}
-          {drep.totalVotes > 0 && (
-            <div className="flex flex-col items-center text-center min-w-[100px]">
-              <span className="text-xs text-muted-foreground">Voting Pattern</span>
-              <div className="flex items-center gap-1 mt-0.5">
-                <div className="flex h-1.5 w-16 rounded-full overflow-hidden bg-border">
-                  {drep.yesVotes > 0 && (
-                    <div
-                      className="h-full bg-emerald-500"
-                      style={{ width: `${(drep.yesVotes / drep.totalVotes) * 100}%` }}
-                    />
-                  )}
-                  {drep.noVotes > 0 && (
-                    <div
-                      className="h-full bg-rose-500"
-                      style={{ width: `${(drep.noVotes / drep.totalVotes) * 100}%` }}
-                    />
-                  )}
-                  {drep.abstainVotes > 0 && (
-                    <div
-                      className="h-full bg-muted-foreground/40"
-                      style={{ width: `${(drep.abstainVotes / drep.totalVotes) * 100}%` }}
-                    />
-                  )}
-                </div>
-              </div>
-              <span className="text-[10px] text-muted-foreground">
-                {drep.yesVotes}Y {drep.noVotes}N {drep.abstainVotes}A
-              </span>
-            </div>
-          )}
-        </SegmentGate>
-      </div>
+      {/* ── Chapter 2: Trust at a Glance ── */}
+      <TrustCard
+        score={drep.drepScore}
+        percentile={percentile}
+        identityLabel={identityLabel}
+        participationRate={drep.effectiveParticipation}
+        rationaleRate={drep.rationaleRate}
+        spoAlignPct={spoAlignPct}
+        endorsementCount={endorsementCount}
+        totalVotes={drep.totalVotes}
+        yesVotes={drep.yesVotes}
+        noVotes={drep.noVotes}
+        abstainVotes={drep.abstainVotes}
+        drepId={drep.drepId}
+      />
 
       {/* 5. Identity metadata row — governance participants only */}
       <SegmentGate show={['drep', 'spo', 'cc']}>
@@ -755,7 +625,29 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </div>
       </SegmentGate>
 
-      {/* 6. About — visible to all (helps delegation decisions) */}
+      {/* ── Chapter 3: The Record — hidden for anonymous ── */}
+      <SegmentGate hide={['anonymous']}>
+        <RecordSummaryCard
+          drepId={drep.drepId}
+          totalVotes={drep.totalVotes}
+          participationRate={drep.effectiveParticipation}
+          rationaleRate={drep.rationaleRate}
+        />
+      </SegmentGate>
+
+      {/* ── Chapter 4: Trajectory — hidden for anonymous ── */}
+      <SegmentGate hide={['anonymous']}>
+        <TrajectoryCard
+          scoreHistory={scoreHistory}
+          delegationTrend={delegationTrend}
+          currentScore={drep.drepScore}
+          scoreMomentum={drep.scoreMomentum}
+          delegatorCount={drep.delegatorCount}
+          votingPowerFormatted={formatAda(drep.votingPower)}
+        />
+      </SegmentGate>
+
+      {/* About — visible to all (helps delegation decisions) */}
       <AboutSection
         description={drep.description}
         bio={drep.metadata?.bio}
@@ -782,55 +674,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         {/* Governance Philosophy — deep content for governance participants */}
         <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />
 
-        {/* Delegation Power Trend */}
-        {delegationTrend.length >= 2 ? (
-          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Delegation Trend
-              </span>
-              <span className="text-xs text-muted-foreground">{delegationTrend.length} epochs</span>
-            </div>
-            <div className="flex items-end gap-[2px] h-10">
-              {(() => {
-                const counts = delegationTrend.map((d) => d.delegatorCount);
-                const maxCount = Math.max(...counts, 1);
-                return delegationTrend.map((d) => (
-                  <div
-                    key={d.epoch}
-                    className="flex-1 bg-primary/60 rounded-t-sm min-w-[3px]"
-                    style={{ height: `${Math.max(4, (d.delegatorCount / maxCount) * 100)}%` }}
-                    title={`Epoch ${d.epoch}: ${d.delegatorCount.toLocaleString()} delegators, ${d.votingPowerAda.toLocaleString()} ADA`}
-                  />
-                ));
-              })()}
-            </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
-              <span>E{delegationTrend[0].epoch}</span>
-              <span>
-                {delegationTrend[delegationTrend.length - 1].delegatorCount.toLocaleString()}{' '}
-                delegators &middot;{' '}
-                {(delegationTrend[delegationTrend.length - 1].votingPowerAda / 1_000_000).toFixed(
-                  1,
-                )}
-                M ADA
-              </span>
-              <span>E{delegationTrend[delegationTrend.length - 1].epoch}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-4">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
-              Delegation Trend
-            </span>
-            <p className="text-xs text-muted-foreground">
-              Delegation trend data will appear after 2+ epochs of delegation activity.
-            </p>
-          </div>
-        )}
-
-        {/* Activity feed */}
-        <ActivitySideWidget drepId={drep.drepId} limit={5} />
+        {/* Citizen Endorsements — interactive version for detailed analysis */}
+        <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
 
         {/* Similar DReps */}
         <SimilarDReps drepId={drep.drepId} />

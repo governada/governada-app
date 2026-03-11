@@ -28,6 +28,8 @@ interface DRepProfileHeroProps {
   traitTags: string[];
   isActive: boolean;
   matchScore?: number | null;
+  narrative?: string | null;
+  narrativeAccentColor?: string;
   children?: React.ReactNode;
 }
 
@@ -41,6 +43,8 @@ export function DRepProfileHero({
   traitTags,
   isActive,
   matchScore,
+  narrative,
+  narrativeAccentColor,
   children,
 }: DRepProfileHeroProps) {
   const { segment } = useSegment();
@@ -83,6 +87,20 @@ export function DRepProfileHero({
                 </p>
               )}
             </div>
+
+            {/* AI narrative summary — above the fold */}
+            {narrative && (
+              <p
+                className="text-sm text-muted-foreground leading-relaxed"
+                style={
+                  narrativeAccentColor
+                    ? { borderLeft: `2px solid ${narrativeAccentColor}`, paddingLeft: '0.75rem' }
+                    : undefined
+                }
+              >
+                {narrative}
+              </p>
+            )}
 
             {/* Trait tags + match context — full tags for governance participants only */}
             <div className="flex flex-wrap gap-2">

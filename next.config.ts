@@ -80,6 +80,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       { source: '/proposals', destination: '/governance/proposals', permanent: true },
+
+      // Committee route consolidation
+      {
+        source: '/discover/committee',
+        destination: '/governance/committee',
+        permanent: true,
+      },
     ];
   },
   images: {

@@ -3,6 +3,7 @@
 import { Activity, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { HubCard, HubCardSkeleton, HubCardError, type CardUrgency } from './HubCard';
+import { getBand, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi/types';
 
 interface GHIComponent {
   name: string;
@@ -43,19 +44,17 @@ export function GovernanceHealthCard() {
   const rounded = Math.round(score);
   const components = (ghi?.components as GHIComponent[]) ?? [];
 
-  // Health band
-  let band: string;
-  let urgency: CardUrgency;
-  if (rounded >= 70) {
-    band = 'Healthy';
-    urgency = 'success';
-  } else if (rounded >= 50) {
-    band = 'Fair';
-    urgency = 'warning';
-  } else {
-    band = 'Needs Attention';
-    urgency = 'critical';
-  }
+  // Use canonical GHI bands (76/51/26) to match the dedicated health page
+  const bandKey: GHIBand = getBand(rounded);
+  const band = GHI_BAND_LABELS[bandKey];
+  const urgency: CardUrgency =
+    bandKey === 'strong'
+      ? 'success'
+      : bandKey === 'good'
+        ? 'default'
+        : bandKey === 'fair'
+          ? 'warning'
+          : 'critical';
 
   const bandColor =
     urgency === 'success'

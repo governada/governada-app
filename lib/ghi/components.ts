@@ -41,21 +41,52 @@ export async function computeDRepParticipation({
   const active = (dreps ?? []).filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
   if (active.length === 0) return { raw: 0 };
 
+  // Participation-weighted median: weight each DRep's participation by their
+  // voting power so that DReps with more delegation carry proportionally more
+  // influence on the system-level health signal. This reflects whether the ADA
+  // that IS delegated is being well-represented, rather than penalizing the
+  // index for ghost DReps who registered but never participate.
+  const entries = active
+    .map((d) => ({
+      participation: (d.effective_participation as number) ?? 0,
+      weight: parseInt(
+        String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'),
+        10,
+      ),
+    }))
+    .filter((e) => e.weight > 0)
+    .sort((a, b) => a.participation - b.participation);
+
+  if (entries.length === 0) return { raw: 0 };
+
+  const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
+  const halfWeight = totalWeight / 2;
+
+  let cumulativeWeight = 0;
+  let weightedMedian = entries[0].participation;
+  for (const entry of entries) {
+    cumulativeWeight += entry.weight;
+    if (cumulativeWeight >= halfWeight) {
+      weightedMedian = entry.participation;
+      break;
+    }
+  }
+
+  // Also compute unweighted median for detail reporting
   const participationValues = active
     .map((d) => (d.effective_participation as number) ?? 0)
     .sort((a, b) => a - b);
-
-  // Median (not mean) — resistant to outlier auto-voters
   const mid = Math.floor(participationValues.length / 2);
-  const median =
+  const unweightedMedian =
     participationValues.length % 2 === 0
       ? (participationValues[mid - 1] + participationValues[mid]) / 2
       : participationValues[mid];
 
   return {
-    raw: Math.min(100, Math.max(0, median)),
+    raw: Math.min(100, Math.max(0, weightedMedian)),
     detail: {
-      medianParticipation: median,
+      weightedMedianParticipation: weightedMedian,
+      unweightedMedianParticipation: unweightedMedian,
       activeDreps: active.length,
     },
   };

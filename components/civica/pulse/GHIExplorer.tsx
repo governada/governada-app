@@ -161,93 +161,97 @@ export function GHIExplorer({
             exit="hidden"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3"
           >
-            {components.map((comp) => {
-              const calKey = getCalibrationKey(comp.name);
-              const curve = calibration[calKey];
-              const trend = componentTrends[comp.name];
-              const label = COMPONENT_LABELS[calKey] ?? comp.name;
-              const tooltipText = COMPONENT_TOOLTIPS[calKey];
+            {components
+              .filter((c) => c.weight > 0)
+              .map((comp) => {
+                const calKey = getCalibrationKey(comp.name);
+                const curve = calibration[calKey];
+                const trend = componentTrends[comp.name];
+                const label = COMPONENT_LABELS[calKey] ?? comp.name;
+                const tooltipText = COMPONENT_TOOLTIPS[calKey];
 
-              const sparkData = componentHistory
-                .filter((h) => h.components)
-                .map((h) => {
-                  const match = h.components!.find((c) => c.name === comp.name);
-                  return match?.value ?? null;
-                })
-                .slice(-5);
+                const sparkData = componentHistory
+                  .filter((h) => h.components)
+                  .map((h) => {
+                    const match = h.components!.find((c) => c.name === comp.name);
+                    return match?.value ?? null;
+                  })
+                  .slice(-5);
 
-              const scorePct = Math.min((comp.contribution / comp.weight) * 100, 100);
+                const scorePct = Math.min((comp.contribution / comp.weight) * 100, 100);
 
-              return (
-                <motion.div
-                  key={comp.name}
-                  variants={fadeInUp}
-                  className="rounded-lg border border-border/50 bg-card/70 backdrop-blur-md p-3 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    {tooltipText ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm font-medium cursor-help border-b border-dashed border-muted-foreground/40">
-                              {label}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-60">
-                            <p>{tooltipText}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : (
-                      <span className="text-sm font-medium">{label}</span>
-                    )}
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {Math.round(comp.weight * 100)}%
-                    </span>
-                  </div>
-
-                  {/* Score bar */}
-                  <div
-                    className="relative h-2 rounded-full bg-muted overflow-hidden"
-                    role="meter"
-                    aria-valuenow={Math.round(comp.value)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`${label}: ${Math.round(comp.value)} out of 100`}
+                return (
+                  <motion.div
+                    key={comp.name}
+                    variants={fadeInUp}
+                    className="rounded-lg border border-border/50 bg-card/70 backdrop-blur-md p-3 space-y-2"
                   >
-                    <motion.div
-                      className={cn('absolute inset-y-0 left-0 rounded-full', barColor)}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${scorePct}%` }}
-                      transition={shouldReduceMotion ? { duration: 0 } : (spring.smooth as object)}
-                      aria-hidden="true"
-                    />
-                  </div>
-
-                  {/* Zone indicator */}
-                  {curve && <ZoneIndicator value={comp.value} curve={curve} />}
-
-                  {/* Footer: sparkline + trend */}
-                  <div className="flex items-center justify-between">
-                    <MiniSparkline data={sparkData} />
-                    {trend && trend.delta !== 0 && (
-                      <span
-                        className={cn(
-                          'text-[10px] font-medium',
-                          trend.direction === 'up'
-                            ? 'text-emerald-500'
-                            : trend.direction === 'down'
-                              ? 'text-rose-500'
-                              : 'text-muted-foreground',
-                        )}
-                      >
-                        {trend.direction === 'up' ? '↑' : '↓'} {Math.abs(trend.delta).toFixed(1)}
+                    <div className="flex items-center justify-between">
+                      {tooltipText ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm font-medium cursor-help border-b border-dashed border-muted-foreground/40">
+                                {label}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-60">
+                              <p>{tooltipText}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-sm font-medium">{label}</span>
+                      )}
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {Math.round(comp.weight * 100)}%
                       </span>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+                    </div>
+
+                    {/* Score bar */}
+                    <div
+                      className="relative h-2 rounded-full bg-muted overflow-hidden"
+                      role="meter"
+                      aria-valuenow={Math.round(comp.value)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`${label}: ${Math.round(comp.value)} out of 100`}
+                    >
+                      <motion.div
+                        className={cn('absolute inset-y-0 left-0 rounded-full', barColor)}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${scorePct}%` }}
+                        transition={
+                          shouldReduceMotion ? { duration: 0 } : (spring.smooth as object)
+                        }
+                        aria-hidden="true"
+                      />
+                    </div>
+
+                    {/* Zone indicator */}
+                    {curve && <ZoneIndicator value={comp.value} curve={curve} />}
+
+                    {/* Footer: sparkline + trend */}
+                    <div className="flex items-center justify-between">
+                      <MiniSparkline data={sparkData} />
+                      {trend && trend.delta !== 0 && (
+                        <span
+                          className={cn(
+                            'text-[10px] font-medium',
+                            trend.direction === 'up'
+                              ? 'text-emerald-500'
+                              : trend.direction === 'down'
+                                ? 'text-rose-500'
+                                : 'text-muted-foreground',
+                          )}
+                        >
+                          {trend.direction === 'up' ? '↑' : '↓'} {Math.abs(trend.delta).toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
 
             {/* Share button */}
             <motion.div variants={fadeInUp} className="col-span-full flex justify-end">

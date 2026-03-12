@@ -10,9 +10,9 @@ export const GET = withRouteHandler(
 
     const { data, error } = await supabase
       .from('citizen_milestones')
-      .select('milestone_key, milestone_label, created_at')
+      .select('milestone_key, milestone_label, achieved_at')
       .eq('user_id', userId!)
-      .order('created_at', { ascending: false });
+      .order('achieved_at', { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: 'Failed to fetch milestones' }, { status: 500 });
@@ -23,7 +23,7 @@ export const GET = withRouteHandler(
         milestones: (data ?? []).map((m) => ({
           key: m.milestone_key,
           label: m.milestone_label,
-          earnedAt: m.created_at,
+          earnedAt: m.achieved_at,
         })),
       },
       { headers: { 'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=120' } },

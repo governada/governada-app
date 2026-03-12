@@ -809,3 +809,23 @@ export function useInboxNotifications(enabled: boolean) {
     refetchInterval: 60_000,
   });
 }
+
+// ── Citizen Impact Score ─────────────────────────────────────────────────────
+
+export interface ImpactScoreResponse {
+  score: number;
+  delegationTenureScore: number;
+  repActivityScore: number;
+  engagementDepthScore: number;
+  coverageScore: number;
+  computed: boolean;
+}
+
+export function useCitizenImpactScore(enabled: boolean) {
+  return useQuery<ImpactScoreResponse>({
+    queryKey: ['citizen-impact-score'],
+    queryFn: () => fetchAuthed<ImpactScoreResponse>('/api/you/impact-score'),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}

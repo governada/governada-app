@@ -1,6 +1,20 @@
 'use client';
 
-import { HandHeart, Flame, Vote, Megaphone, Coins, Lock, type LucideIcon } from 'lucide-react';
+import {
+  HandHeart,
+  Flame,
+  Vote,
+  Megaphone,
+  Coins,
+  Lock,
+  MessageCircle,
+  Users,
+  ThumbsUp,
+  ShieldCheck,
+  TrendingUp,
+  Award,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CITIZEN_MILESTONES, type CitizenMilestoneDefinition } from '@/lib/citizenMilestones';
 
@@ -12,6 +26,12 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Vote,
   Megaphone,
   Coins,
+  MessageCircle,
+  Users,
+  ThumbsUp,
+  ShieldCheck,
+  TrendingUp,
+  Award,
 };
 
 /* ── Types ──────────────────────────────────────────────────────── */
@@ -43,6 +63,7 @@ const CATEGORY_LABEL: Record<CitizenMilestoneDefinition['category'], string> = {
   influence: 'Influence',
   engagement: 'Engagement',
   identity: 'Identity',
+  impact: 'Impact',
 };
 
 /* ── Component ─────────────────────────────────────────────────── */
@@ -51,7 +72,7 @@ export function MilestoneGallery({ earned, recentKeys }: MilestoneGalleryProps) 
   const earnedSet = new Set(earned.map((m) => m.key));
   const earnedMap = new Map(earned.map((m) => [m.key, m]));
 
-  const categories = ['delegation', 'influence', 'engagement', 'identity'] as const;
+  const categories = ['delegation', 'influence', 'engagement', 'identity', 'impact'] as const;
 
   return (
     <div className="space-y-6">

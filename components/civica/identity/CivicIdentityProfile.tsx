@@ -23,6 +23,8 @@ import { ShareModal } from '@/components/civica/shared/ShareModal';
 import { AsyncContent } from '@/components/civica/shared/AsyncContent';
 import { MilestoneGallery } from './MilestoneGallery';
 import { CitizenMilestoneCelebration } from './CitizenMilestoneCelebration';
+import { ImpactScoreCard } from './ImpactScoreCard';
+import { useCitizenImpactScore } from '@/hooks/queries';
 import type { GovernanceFootprint } from '@/lib/governanceFootprint';
 
 /* ── Data hooks (TanStack Query) ───────────────────────────────── */
@@ -137,6 +139,9 @@ export function CivicIdentityProfile() {
     isLoading: milestonesLoading,
     isError: milestonesError,
   } = useCitizenMilestones();
+  const { data: impactScoreData, isLoading: impactScoreLoading } = useCitizenImpactScore(
+    segment !== 'anonymous',
+  );
   const [shareOpen, setShareOpen] = useState(false);
 
   const isLoading = segmentLoading || footprintLoading;
@@ -358,6 +363,22 @@ export function CivicIdentityProfile() {
           </div>
         </div>
       )}
+
+      {/* Governance Impact Score */}
+      <div>
+        <SectionHeader title="Governance Impact" />
+        {impactScoreLoading ? (
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        ) : impactScoreData ? (
+          <ImpactScoreCard data={impactScoreData} />
+        ) : (
+          <div className="rounded-2xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-5 text-center">
+            <p className="text-sm text-muted-foreground">
+              Impact score will be calculated on the next sync cycle.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Alignment Profile */}
       {footprint?.identity.delegatedDRep && (

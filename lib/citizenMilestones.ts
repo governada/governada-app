@@ -16,7 +16,7 @@ export interface CitizenMilestoneDefinition {
   label: string;
   description: string;
   icon: string;
-  category: 'delegation' | 'influence' | 'engagement' | 'identity';
+  category: 'delegation' | 'influence' | 'engagement' | 'identity' | 'impact';
   shareText: string;
 }
 
@@ -108,6 +108,60 @@ export const CITIZEN_MILESTONES: CitizenMilestoneDefinition[] = [
     shareText: "10 civic actions and counting! I'm actively shaping Cardano governance.",
   },
 
+  // New engagement milestones
+  {
+    key: 'first-sentiment-vote',
+    label: 'First Voice',
+    description: 'Cast your first sentiment vote',
+    icon: 'MessageCircle',
+    category: 'engagement',
+    shareText: 'I just cast my first sentiment vote on Cardano governance!',
+  },
+  {
+    key: 'assembly-participant',
+    label: 'Assembly Member',
+    description: 'Participated in a citizen assembly',
+    icon: 'Users',
+    category: 'engagement',
+    shareText: 'I participated in a Cardano citizen assembly! Democracy in action.',
+  },
+  {
+    key: 'endorsement-given',
+    label: 'Endorser',
+    description: 'Endorsed your first DRep',
+    icon: 'ThumbsUp',
+    category: 'engagement',
+    shareText: 'I just endorsed my first DRep on Cardano! Supporting great representation.',
+  },
+
+  // Coverage milestones
+  {
+    key: 'coverage-90',
+    label: 'Full Coverage',
+    description: '90%+ proposal coverage through your DRep',
+    icon: 'ShieldCheck',
+    category: 'influence',
+    shareText: '90%+ proposal coverage! My DRep votes on almost everything. @GovernadaIO',
+  },
+
+  // Impact score milestones
+  {
+    key: 'impact-score-50',
+    label: 'Rising Citizen',
+    description: 'Impact score reached 50',
+    icon: 'TrendingUp',
+    category: 'impact',
+    shareText: 'My Governance Impact Score hit 50! Rising citizen of Cardano governance.',
+  },
+  {
+    key: 'impact-score-80',
+    label: 'Governance Champion',
+    description: 'Impact score reached 80',
+    icon: 'Award',
+    category: 'impact',
+    shareText: 'Governance Impact Score 80+! A true champion of Cardano governance. @GovernadaIO',
+  },
+
   // ADA governed
   {
     key: 'ada-governed-100k',
@@ -190,27 +244,48 @@ export async function checkAndAwardCitizenMilestones(
     if (influenced >= 100) award('influenced-100');
   }
 
-  // Engagement actions: sentiment votes + priority signals + concern flags
-  const [sentimentResult, priorityResult, concernResult] = await Promise.all([
-    supabase
-      .from('citizen_sentiment')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
-    supabase
-      .from('citizen_priority_signals')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
-    supabase
-      .from('citizen_concern_flags')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
-  ]);
+  // Engagement actions: sentiment votes + priority signals + concern flags + assemblies + endorsements
+  const [sentimentResult, priorityResult, concernResult, assemblyResult, endorsementResult] =
+    await Promise.all([
+      supabase
+        .from('citizen_sentiment')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabase
+        .from('citizen_priority_signals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabase
+        .from('citizen_concern_flags')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabase
+        .from('citizen_assembly_votes')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabase
+        .from('citizen_endorsements')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+    ]);
 
+  const sentimentCount = sentimentResult.count ?? 0;
+  const assemblyCount = assemblyResult.count ?? 0;
+  const endorsementCount = endorsementResult.count ?? 0;
   const engagementCount =
-    (sentimentResult.count ?? 0) + (priorityResult.count ?? 0) + (concernResult.count ?? 0);
+    sentimentCount +
+    (priorityResult.count ?? 0) +
+    (concernResult.count ?? 0) +
+    assemblyCount +
+    endorsementCount;
 
   if (engagementCount >= 1) award('first-engagement');
   if (engagementCount >= 10) award('engagement-10');
+
+  // Specific engagement milestones
+  if (sentimentCount >= 1) award('first-sentiment-vote');
+  if (assemblyCount >= 1) award('assembly-participant');
+  if (endorsementCount >= 1) award('endorsement-given');
 
   // ADA governed (from DRep's total delegated stake, representing governance footprint)
   if (drepId) {
@@ -225,6 +300,36 @@ export async function checkAndAwardCitizenMilestones(
     const governedAda = (powerSnapshot?.live_stake_lovelace ?? 0) / 1_000_000;
     if (governedAda >= 100_000) award('ada-governed-100k');
     if (governedAda >= 1_000_000) award('ada-governed-1m');
+  }
+
+  // Coverage milestone: 90%+ proposal coverage
+  if (drepId) {
+    const [votedResult, totalResult] = await Promise.all([
+      supabase
+        .from('drep_votes')
+        .select('vote_tx_hash', { count: 'exact', head: true })
+        .eq('drep_id', drepId),
+      supabase.from('proposals').select('id', { count: 'exact', head: true }),
+    ]);
+
+    const voted = votedResult.count ?? 0;
+    const total = totalResult.count ?? 0;
+    if (total > 0 && voted / total >= 0.9) {
+      award('coverage-90');
+    }
+  }
+
+  // Impact score milestones
+  const { data: impactRow } = await supabase
+    .from('citizen_impact_scores')
+    .select('score')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (impactRow) {
+    const impactScore = Number(impactRow.score);
+    if (impactScore >= 50) award('impact-score-50');
+    if (impactScore >= 80) award('impact-score-80');
   }
 
   // Persist new milestones

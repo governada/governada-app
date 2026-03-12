@@ -9,6 +9,7 @@ import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { CivicaHeader } from './CivicaHeader';
 import { CivicaBottomNav } from './CivicaBottomNav';
 import { CivicaSidebar } from './CivicaSidebar';
+import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -106,6 +107,7 @@ export function CivicaShell({ children }: { children: React.ReactNode }) {
         <Suspense fallback={null}>
           <DeepLinkHandler />
         </Suspense>
+        <SyncFreshnessBanner />
         <CivicaHeader />
         <CivicaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 

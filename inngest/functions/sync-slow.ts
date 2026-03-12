@@ -7,7 +7,7 @@ import { logger } from '@/lib/logger';
 export const syncSlow = inngest.createFunction(
   {
     id: 'sync-slow',
-    retries: 1,
+    retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"slow-sync"' },
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();

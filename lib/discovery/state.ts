@@ -54,6 +54,22 @@ const DEFAULT_STATE: DiscoveryState = {
   fabPulseStopped: false,
 };
 
+/* ─── Cross-instance change notification ─────────────── */
+
+const CHANGE_EVENT = 'governada_discovery_changed';
+
+function notifyStateChange(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+}
+
+/** Subscribe to state changes from ANY hook instance */
+export function onStateChange(handler: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener(CHANGE_EVENT, handler);
+  return () => window.removeEventListener(CHANGE_EVENT, handler);
+}
+
 /* ─── Core read/write ────────────────────────────────── */
 
 export function getDiscoveryState(): DiscoveryState {
@@ -76,6 +92,7 @@ export function updateDiscoveryState(partial: Partial<DiscoveryState>): Discover
   } catch {
     /* localStorage may be full or disabled */
   }
+  notifyStateChange();
   return updated;
 }
 

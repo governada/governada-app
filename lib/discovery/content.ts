@@ -17,6 +17,8 @@ export interface SpotlightStep {
   title: string;
   description: string;
   position: 'top' | 'bottom' | 'left' | 'right' | 'auto';
+  /** Route where this step's target element lives (for multi-page tours) */
+  route?: string;
 }
 
 /* ─── Mini tour ──────────────────────────────────────── */
@@ -32,6 +34,8 @@ export interface MiniTour {
   segments: UserSegment[];
   /** Route to navigate to before starting */
   startRoute: string;
+  /** Feature IDs that completing this tour should mark as explored */
+  relatedFeatures?: string[];
 }
 
 /* ─── Feature map item ───────────────────────────────── */
@@ -82,6 +86,7 @@ export const TOURS: MiniTour[] = [
     icon: 'Home',
     segments: ['citizen', 'anonymous'],
     startRoute: '/',
+    relatedFeatures: ['delegation-health', 'governance-coverage'],
     steps: [
       {
         id: 'hub-briefing',
@@ -90,6 +95,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Your personalized summary of what happened this epoch — proposals, votes, and changes that affect your ADA.',
         position: 'bottom',
+        route: '/',
       },
       {
         id: 'hub-representation',
@@ -98,6 +104,7 @@ export const TOURS: MiniTour[] = [
         description:
           'See who represents you and how well they are performing. This is your governance health at a glance.',
         position: 'bottom',
+        route: '/',
       },
       {
         id: 'hub-actions',
@@ -106,6 +113,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Suggested next steps based on what is happening in governance right now. Proposals to review, votes to cast, and teams to build.',
         position: 'top',
+        route: '/',
       },
     ],
   },
@@ -117,6 +125,7 @@ export const TOURS: MiniTour[] = [
     icon: 'LayoutDashboard',
     segments: ['drep'],
     startRoute: '/',
+    relatedFeatures: ['workspace-votes'],
     steps: [
       {
         id: 'drep-voting-queue',
@@ -125,6 +134,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Active proposals awaiting your vote. These are sorted by urgency so you never miss a deadline.',
         position: 'bottom',
+        route: '/',
       },
       {
         id: 'drep-delegators',
@@ -133,6 +143,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Track who trusts you with their voting power. See growth trends and engagement levels.',
         position: 'bottom',
+        route: '/',
       },
       {
         id: 'drep-competitive',
@@ -141,6 +152,7 @@ export const TOURS: MiniTour[] = [
         description:
           'How you compare to other DReps on key governance metrics. Use this to improve your representation quality.',
         position: 'top',
+        route: '/',
       },
     ],
   },
@@ -152,6 +164,7 @@ export const TOURS: MiniTour[] = [
     icon: 'Server',
     segments: ['spo'],
     startRoute: '/',
+    relatedFeatures: [],
     steps: [
       {
         id: 'spo-score',
@@ -160,6 +173,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Your pool governance reputation — how actively and responsibly you participate in Cardano governance.',
         position: 'bottom',
+        route: '/',
       },
       {
         id: 'spo-delegators',
@@ -168,6 +182,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Your delegators and their governance expectations. A differentiator for attracting delegation.',
         position: 'bottom',
+        route: '/',
       },
       {
         id: 'spo-position',
@@ -176,6 +191,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Declare and share your stance on key governance topics. Delegators want to know where you stand.',
         position: 'top',
+        route: '/workspace/position',
       },
     ],
   },
@@ -189,6 +205,7 @@ export const TOURS: MiniTour[] = [
     icon: 'Landmark',
     segments: ['anonymous', 'citizen', 'drep', 'spo', 'cc'],
     startRoute: '/governance/proposals',
+    relatedFeatures: ['browse-proposals', 'browse-dreps', 'governance-health'],
     steps: [
       {
         id: 'gov-proposals',
@@ -197,6 +214,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Every governance action being decided right now — treasury withdrawals, parameter changes, and more. Each proposal shows its current status and voting progress.',
         position: 'bottom',
+        route: '/governance/proposals',
       },
       {
         id: 'gov-representatives',
@@ -205,6 +223,7 @@ export const TOURS: MiniTour[] = [
         description:
           'The DReps who vote on your behalf. Browse, compare, and find representatives whose values match yours.',
         position: 'bottom',
+        route: '/governance/representatives',
       },
       {
         id: 'gov-health',
@@ -213,6 +232,7 @@ export const TOURS: MiniTour[] = [
         description:
           'An objective measure of how well Cardano governance is functioning — participation rates, voting quality, and systemic resilience.',
         position: 'bottom',
+        route: '/governance/health',
       },
     ],
   },
@@ -226,6 +246,7 @@ export const TOURS: MiniTour[] = [
     icon: 'Compass',
     segments: ['anonymous', 'citizen'],
     startRoute: '/match',
+    relatedFeatures: ['match-flow'],
     steps: [
       {
         id: 'match-questions',
@@ -234,6 +255,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Answer 3 quick questions about your governance priorities. No wallet needed — just your perspective.',
         position: 'bottom',
+        route: '/match',
       },
       {
         id: 'match-results',
@@ -242,6 +264,7 @@ export const TOURS: MiniTour[] = [
         description:
           'See DReps and pools ranked by how closely they align with your values. Each match shows a compatibility score.',
         position: 'bottom',
+        route: '/match',
       },
       {
         id: 'match-delegate',
@@ -250,6 +273,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Ready to delegate? Connect your wallet and make it official. Your ADA stays in your wallet — you are just choosing who votes for you.',
         position: 'top',
+        route: '/match',
       },
     ],
   },
@@ -263,6 +287,7 @@ export const TOURS: MiniTour[] = [
     icon: 'LayoutDashboard',
     segments: ['drep'],
     startRoute: '/workspace',
+    relatedFeatures: ['workspace-votes', 'workspace-rationales'],
     steps: [
       {
         id: 'ws-cockpit',
@@ -271,6 +296,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Your dashboard for governance action — pending votes, recent activity, and key metrics at a glance.',
         position: 'bottom',
+        route: '/workspace',
       },
       {
         id: 'ws-votes',
@@ -279,6 +305,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Review proposals and cast your votes. Each vote includes space for your rationale — delegators want to know your reasoning.',
         position: 'bottom',
+        route: '/workspace/votes',
       },
       {
         id: 'ws-delegators',
@@ -287,6 +314,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Understand who trusts you: their ADA stake, how long they have delegated, and what they care about.',
         position: 'bottom',
+        route: '/workspace/delegators',
       },
       {
         id: 'ws-rationale',
@@ -295,6 +323,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Write and manage your voting rationales. Clear reasoning builds trust and attracts delegation.',
         position: 'top',
+        route: '/workspace/rationales',
       },
     ],
   },
@@ -306,6 +335,7 @@ export const TOURS: MiniTour[] = [
     icon: 'Server',
     segments: ['spo'],
     startRoute: '/workspace',
+    relatedFeatures: [],
     steps: [
       {
         id: 'ws-spo-score',
@@ -314,6 +344,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Your pool governance reputation score — based on participation quality, reliability, and engagement.',
         position: 'bottom',
+        route: '/workspace',
       },
       {
         id: 'ws-spo-profile',
@@ -322,6 +353,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Edit your governance profile. Share your stance on key topics to attract like-minded delegators.',
         position: 'bottom',
+        route: '/workspace/pool-profile',
       },
       {
         id: 'ws-spo-delegators',
@@ -330,6 +362,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Track your pool delegators and their governance preferences. A unique differentiator for your pool.',
         position: 'top',
+        route: '/workspace',
       },
     ],
   },
@@ -343,6 +376,7 @@ export const TOURS: MiniTour[] = [
     icon: 'User',
     segments: ['citizen', 'drep', 'spo'],
     startRoute: '/you',
+    relatedFeatures: ['civic-identity'],
     steps: [
       {
         id: 'you-card',
@@ -351,6 +385,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Your governance identity at a glance — tier, engagement level, and delegation status.',
         position: 'bottom',
+        route: '/you',
       },
       {
         id: 'you-milestones',
@@ -359,6 +394,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Track your governance journey. Each milestone marks a meaningful step in your participation.',
         position: 'bottom',
+        route: '/you',
       },
       {
         id: 'you-history',
@@ -367,6 +403,7 @@ export const TOURS: MiniTour[] = [
         description:
           'A timeline of your governance activity — delegations, votes, and engagement over time.',
         position: 'top',
+        route: '/you',
       },
     ],
   },
@@ -380,6 +417,7 @@ export const TOURS: MiniTour[] = [
     icon: 'HelpCircle',
     segments: ['anonymous', 'citizen', 'drep', 'spo', 'cc'],
     startRoute: '/help',
+    relatedFeatures: ['getting-started', 'methodology'],
     steps: [
       {
         id: 'help-getting-started',
@@ -388,6 +426,7 @@ export const TOURS: MiniTour[] = [
         description:
           'New to Cardano governance? Start here for a quick overview of how it all works and what you can do.',
         position: 'bottom',
+        route: '/help',
       },
       {
         id: 'help-methodology',
@@ -396,6 +435,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Full transparency on how we calculate scores, tiers, and health metrics. Every formula is documented.',
         position: 'bottom',
+        route: '/help',
       },
     ],
   },

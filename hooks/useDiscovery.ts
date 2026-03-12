@@ -19,6 +19,7 @@ import {
   markFeatureExplored as _markFeatureExplored,
   markHubOpened as _markHubOpened,
   markMilestoneCelebrated as _markMilestoneCelebrated,
+  onStateChange,
   type DiscoveryState,
 } from '@/lib/discovery/state';
 import {
@@ -35,6 +36,9 @@ export function useDiscovery() {
   const { segment } = useSegment();
   const [version, setVersion] = useState(0);
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
+
+  // Sync with state changes from other hook instances (e.g., DiscoveryHub → SpotlightProvider)
+  useEffect(() => onStateChange(refresh), [refresh]);
 
   // Read state reactively (re-reads on version bump)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- version drives re-reads

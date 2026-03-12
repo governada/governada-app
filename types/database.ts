@@ -959,6 +959,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      citizen_impact_scores: {
+        Row: {
+          coverage_score: number;
+          delegation_tenure_score: number;
+          engagement_depth_score: number;
+          rep_activity_score: number;
+          score: number;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          coverage_score?: number;
+          delegation_tenure_score?: number;
+          engagement_depth_score?: number;
+          rep_activity_score?: number;
+          score?: number;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          coverage_score?: number;
+          delegation_tenure_score?: number;
+          engagement_depth_score?: number;
+          rep_activity_score?: number;
+          score?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       citizen_impact_tags: {
         Row: {
           awareness: string;
@@ -1199,6 +1229,30 @@ export type Database = {
           last_synced_at?: string;
           start_epoch?: number | null;
           status?: string;
+        };
+        Relationships: [];
+      };
+      community_intelligence_snapshots: {
+        Row: {
+          computed_at: string;
+          data: Json;
+          epoch: number;
+          id: number;
+          snapshot_type: string;
+        };
+        Insert: {
+          computed_at?: string;
+          data?: Json;
+          epoch: number;
+          id?: number;
+          snapshot_type: string;
+        };
+        Update: {
+          computed_at?: string;
+          data?: Json;
+          epoch?: number;
+          id?: number;
+          snapshot_type?: string;
         };
         Relationships: [];
       };
@@ -2184,6 +2238,27 @@ export type Database = {
           drep_id?: string;
           philosophy_text?: string;
           updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      governance_reports: {
+        Row: {
+          epoch: number;
+          generated_at: string;
+          narrative: string | null;
+          report_data: Json;
+        };
+        Insert: {
+          epoch: number;
+          generated_at?: string;
+          narrative?: string | null;
+          report_data?: Json;
+        };
+        Update: {
+          epoch?: number;
+          generated_at?: string;
+          narrative?: string | null;
+          report_data?: Json;
         };
         Relationships: [];
       };

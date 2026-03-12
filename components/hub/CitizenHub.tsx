@@ -17,6 +17,7 @@ import {
   ThumbsDown,
   HelpCircle,
   ExternalLink,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { briefingContainer, briefingItem } from '@/lib/animations';
@@ -24,6 +25,7 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import {
   useEpochConsequence,
   useGovernanceHolder,
+  useCitizenImpactScore,
   type ConsequenceProposal,
 } from '@/hooks/queries';
 import { computeTier } from '@/lib/scoring/tiers';
@@ -302,6 +304,7 @@ export function CitizenHub() {
   } = useEpochConsequence(stakeAddress);
 
   const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
+  const { data: impactScore } = useCitizenImpactScore(!!stakeAddress);
 
   const isLoading = consequenceLoading || holderLoading;
 
@@ -426,7 +429,7 @@ export function CitizenHub() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Your governance footprint
         </h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <FootprintStat icon={Vote} value={proposalsInfluenced} label="Proposals Influenced" />
           <FootprintStat
             icon={Coins}
@@ -434,6 +437,11 @@ export function CitizenHub() {
             label="ADA Governed"
           />
           <FootprintStat icon={Flame} value={delegationStreak} label="Epoch Streak" />
+          <FootprintStat
+            icon={TrendingUp}
+            value={impactScore?.computed ? Math.round(impactScore.score) : '--'}
+            label="Impact Score"
+          />
         </div>
       </Section>
 

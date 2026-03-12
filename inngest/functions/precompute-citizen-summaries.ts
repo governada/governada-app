@@ -8,6 +8,10 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { logger } from '@/lib/logger';
+import { calculateImpactScore, persistImpactScore } from '@/lib/citizenImpactScore';
+import { checkAndAwardCitizenMilestones, CITIZEN_MILESTONES } from '@/lib/citizenMilestones';
+import { notifyUser } from '@/lib/notifications';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 export const precomputeCitizenSummaries = inngest.createFunction(
   {
@@ -35,7 +39,12 @@ export const precomputeCitizenSummaries = inngest.createFunction(
         .select('id, wallet_address, claimed_drep_id')
         .not('claimed_drep_id', 'is', null);
 
-      if (!users?.length) return { computed: 0, epoch: targetEpoch };
+      if (!users?.length)
+        return {
+          computed: 0,
+          epoch: targetEpoch,
+          userList: [] as { id: string; drepId: string | null }[],
+        };
 
       const { data: recap } = await supabase
         .from('epoch_recaps')
@@ -110,9 +119,85 @@ export const precomputeCitizenSummaries = inngest.createFunction(
         }
       }
 
-      return { computed, epoch: targetEpoch };
+      return {
+        computed,
+        epoch: targetEpoch,
+        userList: users.map((u) => ({ id: u.id, drepId: u.claimed_drep_id })),
+      };
     });
 
-    return result;
+    // Step 2: Compute impact scores for all users
+    const impactResult = await step.run('compute-impact-scores', async () => {
+      const userList = result.userList ?? [];
+      let scored = 0;
+
+      for (const user of userList) {
+        try {
+          const breakdown = await calculateImpactScore(user.id, user.drepId);
+          await persistImpactScore(user.id, breakdown);
+          scored++;
+        } catch (e) {
+          logger.warn('[citizen-summaries] Impact score failed for user', {
+            userId: user.id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      return { scored };
+    });
+
+    // Step 3: Check milestones and send notifications
+    const milestoneResult = await step.run('check-milestones', async () => {
+      const userList = result.userList ?? [];
+      let totalNew = 0;
+
+      for (const user of userList) {
+        try {
+          const newKeys = await checkAndAwardCitizenMilestones(user.id, user.drepId);
+
+          if (newKeys.length > 0) {
+            totalNew += newKeys.length;
+
+            // Send notification for each new milestone
+            for (const key of newKeys) {
+              const def = CITIZEN_MILESTONES.find((m) => m.key === key);
+              if (!def) continue;
+
+              await notifyUser(user.id, {
+                eventType: 'delegation-milestone',
+                title: `Milestone Earned: ${def.label}`,
+                body: def.description,
+                url: '/you/identity',
+                metadata: { milestoneKey: key, category: def.category },
+              });
+
+              captureServerEvent(
+                'citizen_milestone_earned',
+                {
+                  milestoneKey: key,
+                  category: def.category,
+                },
+                user.id,
+              );
+            }
+          }
+        } catch (e) {
+          logger.warn('[citizen-summaries] Milestone check failed for user', {
+            userId: user.id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      return { newMilestones: totalNew };
+    });
+
+    return {
+      computed: result.computed,
+      epoch: result.epoch,
+      impactScoresComputed: impactResult.scored,
+      newMilestones: milestoneResult.newMilestones,
+    };
   },
 );

@@ -1,3 +1,3 @@
 import { Inngest } from 'inngest';
 
-export const inngest = new Inngest({ id: 'drepscore' });
+export const inngest = new Inngest({ id: 'governada' });

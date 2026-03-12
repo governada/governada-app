@@ -169,6 +169,24 @@ _(Patterns for finding, filtering, matching, recommendation)_
 
 ### Profile & Identity
 
+#### Passive Data as Shareable Identity (Spotify Wrapped Pattern)
+
+- **Source**: Spotify Wrapped — https://newsroom.spotify.com/wrapped/
+- **Discovered**: 2026-03-12 (explore-feature: citizen hub)
+- **What they do**: 200M users in 24 hours (2025), 500M shares. 16 personality archetypes from passive listening data. "Listening Age," "Wrapped Party" for social comparison. Annual ritual with anticipation cycle. Second-day engagement drop improved from 60% to 14%.
+- **Why it's world-class**: Proved that passive data reflected as identity creates the strongest viral loop in consumer software. Users don't share their data — they share who their data says they ARE.
+- **Applicable to**: "Governance Wrapped" — annual/quarterly identity review from delegation data. Governance Archetypes ("Treasury Hawk," "Protocol Guardian") from PCA alignment vectors. Shareable personality cards sized for social media.
+- **Adoption difficulty**: Medium — PCA data exists, needs archetype classification rules + card renderer + temporal ritual
+
+#### Visual Self-Placement as Identity (Political Compass Pattern)
+
+- **Source**: iSideWith (81M users, 83% quiz completion) + Political Compass (600K+ Reddit subculture)
+- **Discovered**: 2026-03-12 (explore-feature: citizen hub)
+- **What they do**: Place users on a 2D+ grid showing political identity. iSideWith matches to candidates ("You side 87% with X"). The grid itself becomes the identity — users describe themselves by quadrant. Low stakes, high self-expression.
+- **Why it's world-class**: The visual MAP is more powerful than any score. It's instantly shareable, debatable, and creates community around shared positions. 83% completion on a 42-question quiz proves intrinsic motivation.
+- **Applicable to**: Citizen alignment radar (6D) showing where you sit in governance space. DRep overlay showing alignment/drift. "Citizens Like You" clustering. The radar IS the identity.
+- **Adoption difficulty**: Easy — alignment vectors exist, need radar visualization + DRep overlay + cluster labels
+
 #### Consistency Heatmap as Social Signal
 
 - **Source**: GitHub — https://gitblend.com/kb/understanding-github-contribution-graphs
@@ -369,6 +387,26 @@ _(Patterns for finding, filtering, matching, recommendation)_
 - **Why it's world-class**: Keeps analytics simple and writer-focused. Editor gets out of the writer's way. Writing feels like creation, not form-filling.
 - **Applicable to**: Rationale authoring experience — distraction-free editor, 3 hero numbers (rationales published, avg engagement, ratio)
 - **Adoption difficulty**: Medium — CIP-100 flow exists, needs Ghost-style minimal editor + content analytics
+
+### Consequence & Feedback Loops
+
+#### Consequence Visibility as Return Driver #1
+
+- **Source**: Participatory budgeting research (Decidim Barcelona 7+ years, 31 digital PB cases across Europe)
+- **Discovered**: 2026-03-12 (explore-feature: citizen hub)
+- **What they do**: Platforms that show "Your vote helped fund Project X" get repeat participation. Platforms that collect input but never show what happened see participation COLLAPSE in subsequent rounds. The #1 cited factor for return visits is "closing the feedback loop."
+- **Why it's world-class**: This isn't a design trick — it's the fundamental mechanism of democratic engagement. Citizens return when they see consequences, not when they see dashboards.
+- **Applicable to**: Citizen Hub as consequence story: "This epoch, your delegation helped decide 15.2M ADA." Each proposal shows outcome + DRep vote + citizen signal. Lifetime impact counter grows over time.
+- **Adoption difficulty**: Easy — proposal outcomes, DRep votes, and treasury amounts all exist. Need composition layer.
+
+#### Personal Spending Receipt (Treasury Transparency)
+
+- **Source**: "Where Does My Money Go?" (UK) + USAspending.gov + "Where Did My Tax Go?"
+- **Discovered**: 2026-03-12 (explore-feature: citizen hub)
+- **What they do**: Transform abstract government spending into personal receipt: "Of YOUR money, $X went to defense, $Y to healthcare." Treemap/bubble visualizations create exploration sessions. Comparison over time creates narrative.
+- **Why it's world-class**: The shift from "the budget" to "YOUR money" is the entire engagement trick. Personalization transforms civic data from boring to compelling.
+- **Applicable to**: Citizen treasury receipt: "Your delegation represents X ADA of voting power. This quarter, treasury proposals worth Y ADA were decided. Here's how that breaks down." Treemap by spending category.
+- **Adoption difficulty**: Easy — treasury data + proposal amounts exist. Need treemap visualization + personalized framing.
 
 ### Gamification & Habit Formation
 

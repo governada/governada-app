@@ -32,6 +32,8 @@ interface TargetRect {
 
 const PADDING = 8; // px around target element
 const TOOLTIP_GAP = 12; // px between target and tooltip
+const RETRY_INTERVAL_MS = 300;
+const MAX_RETRIES = 10; // 10 * 300ms = 3s max wait for DOM
 
 export function SpotlightOverlay({
   step,
@@ -45,21 +47,17 @@ export function SpotlightOverlay({
   const shouldReduceMotion = useReducedMotion();
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Find and measure the target element
+  // Find and measure the target element — retries to handle post-navigation DOM delays
   useEffect(() => {
-    const findTarget = () => {
-      const el = document.querySelector(step.targetSelector);
-      if (!el) {
-        // Target not found — skip this step automatically
-        onNext();
-        return;
-      }
+    let retryCount = 0;
+    let retryTimer: ReturnType<typeof setTimeout>;
+    let measureTimer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
 
-      // Scroll into view if needed
+    const measureTarget = (el: Element) => {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      // Measure after scroll settles
-      const timer = setTimeout(() => {
+      measureTimer = setTimeout(() => {
+        if (cancelled) return;
         const rect = el.getBoundingClientRect();
         setTargetRect({
           top: rect.top + window.scrollY,
@@ -67,21 +65,45 @@ export function SpotlightOverlay({
           width: rect.width,
           height: rect.height,
         });
-
-        // Determine tooltip position based on available space
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
         setTooltipPosition(spaceBelow > 200 || spaceBelow > spaceAbove ? 'bottom' : 'top');
       }, 300);
-
-      return () => clearTimeout(timer);
     };
 
+    const findTarget = () => {
+      if (cancelled) return;
+      const el = document.querySelector(step.targetSelector);
+      if (el) {
+        measureTarget(el);
+        return;
+      }
+      // Retry — DOM may not be rendered yet after navigation
+      retryCount++;
+      if (retryCount < MAX_RETRIES) {
+        retryTimer = setTimeout(findTarget, RETRY_INTERVAL_MS);
+      } else {
+        // Give up after max retries — skip this step
+        if (!cancelled) onNext();
+      }
+    };
+
+    // Reset rect when step changes
+    setTargetRect(null);
     findTarget();
-    // Re-measure on resize
-    const handleResize = () => findTarget();
+
+    const handleResize = () => {
+      const el = document.querySelector(step.targetSelector);
+      if (el) measureTarget(el);
+    };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(retryTimer);
+      clearTimeout(measureTimer);
+      window.removeEventListener('resize', handleResize);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-runs only when step changes
   }, [step.targetSelector, step.id]);
 

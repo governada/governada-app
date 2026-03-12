@@ -46,7 +46,7 @@ export function RepresentationCard() {
   // Always-abstain delegation — valid choice, no data fetch needed
   if (delegatedDrep === 'drep_always_abstain') {
     return (
-      <HubCard href="/delegation" urgency="default" label="Delegation: Always Abstain">
+      <HubCard href="/match" urgency="default" label="Delegation: Always Abstain">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Ban className="h-4 w-4 text-muted-foreground" />
@@ -68,7 +68,7 @@ export function RepresentationCard() {
   // No-confidence delegation — valid choice, no data fetch needed
   if (delegatedDrep === 'drep_always_no_confidence') {
     return (
-      <HubCard href="/delegation" urgency="warning" label="Delegation: No Confidence">
+      <HubCard href="/match" urgency="warning" label="Delegation: No Confidence">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <ThumbsDown className="h-4 w-4 text-amber-500" />
@@ -146,7 +146,7 @@ function DelegatedRepresentationCard({
         : 'text-red-600 dark:text-red-400';
 
   return (
-    <HubCard href="/delegation" urgency={urgency} label={`${statusLabel}: ${statusMessage}`}>
+    <HubCard href="/" urgency={urgency} label={`${statusLabel}: ${statusMessage}`}>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <StatusIcon className={`h-4 w-4 ${statusColor}`} />

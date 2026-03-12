@@ -70,7 +70,7 @@ export function CoverageCard() {
 
   return (
     <HubCard
-      href="/delegation"
+      href="/"
       urgency={urgency === 'default' ? 'default' : urgency}
       label={`Governance coverage: ${verdict}`}
     >

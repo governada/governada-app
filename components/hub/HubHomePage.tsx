@@ -6,6 +6,10 @@ import { AnonymousLanding } from './AnonymousLanding';
 import { CitizenHub } from './CitizenHub';
 import { HubCardSkeleton } from './cards/HubCard';
 import { OnboardingChecklist } from '@/components/funnel/OnboardingChecklist';
+import { DRepCockpit } from '@/components/workspace/DRepCockpit';
+import { CompetitiveContext } from '@/components/workspace/CompetitiveContext';
+import { ProfileShareToolkit } from '@/components/workspace/ProfileShareToolkit';
+import { SPOCockpit } from '@/components/workspace/SPOCockpit';
 
 interface PulseData {
   totalAdaGoverned: string;
@@ -31,7 +35,7 @@ interface HubHomePageProps {
  * Other personas: Hub cards over constellation globe.
  */
 export function HubHomePage({ pulseData }: HubHomePageProps) {
-  const { segment, isLoading } = useSegment();
+  const { segment, isLoading, drepId, poolId } = useSegment();
 
   // While detecting segment, show skeleton cards to prevent CLS flash
   if (isLoading) {
@@ -59,6 +63,33 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
     );
   }
 
-  // Other authenticated personas — globe provided by CivicaShell, cards float on glass
+  // DReps get the Governance Cockpit as their homepage
+  if (segment === 'drep') {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
+        <h1 className="text-xl font-bold text-foreground">Governance Cockpit</h1>
+        <DRepCockpit />
+        <CompetitiveContext />
+        {drepId && (
+          <ProfileShareToolkit entityType="drep" entityId={drepId} entityName="My DRep Profile" />
+        )}
+      </div>
+    );
+  }
+
+  // SPOs get their Governance Overview cockpit as homepage
+  if (segment === 'spo') {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
+        <h1 className="text-xl font-bold text-foreground">Governance Overview</h1>
+        <SPOCockpit />
+        {poolId && (
+          <ProfileShareToolkit entityType="spo" entityId={poolId} entityName="My Pool Profile" />
+        )}
+      </div>
+    );
+  }
+
+  // CC and other authenticated personas — hub cards
   return <HubCardRenderer persona={segment} />;
 }

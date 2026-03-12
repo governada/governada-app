@@ -80,7 +80,7 @@ export function AlertCard() {
   const AlertIcon = alert.icon;
 
   return (
-    <HubCard href="/delegation" urgency={alert.urgency} label={alert.message}>
+    <HubCard href="/" urgency={alert.urgency} label={alert.message}>
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <AlertIcon

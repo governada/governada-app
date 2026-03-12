@@ -1,7 +1,7 @@
 /**
  * Next.js Middleware
  * - Query-param redirects for old /discover?tab= routes
- * - Auth gate for protected routes (workspace, you, delegation)
+ * - Auth gate for protected routes (workspace, you)
  * - CORS for /api/v1/* routes
  * Auth and rate limiting for API routes are handled in lib/api/handler.ts.
  */
@@ -26,7 +26,7 @@ const DISCOVER_TAB_MAP: Record<string, string> = {
   rankings: '/governance/representatives?view=rankings',
 };
 
-const AUTH_REQUIRED_PATHS = ['/workspace', '/you', '/delegation'];
+const AUTH_REQUIRED_PATHS = ['/workspace', '/you'];
 
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;

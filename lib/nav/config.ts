@@ -5,6 +5,7 @@
  * - Desktop sidebar
  * - Mobile bottom bar (4 items, persona-adaptive)
  * - Mobile pill bar (section sub-pages)
+ * - Header help dropdown
  *
  * See docs/strategy/context/navigation-architecture.md for the full spec.
  */
@@ -15,7 +16,6 @@ import {
   Briefcase,
   Globe,
   User,
-  Handshake,
   Compass,
   HelpCircle,
   FileText,
@@ -106,13 +106,46 @@ export const GOVERNANCE_ITEMS: NavItem[] = [
   { href: '/governance/health', label: 'Health', icon: Activity },
 ];
 
-export const YOU_ITEMS: NavItem[] = [
-  { href: '/you', label: 'Governance ID', icon: BadgeCheck },
-  { href: '/you/identity', label: 'Identity', icon: UserCog },
+/** Base You items — all authenticated personas */
+const YOU_BASE: NavItem[] = [
+  { href: '/you', label: 'Identity', icon: UserCog },
   { href: '/you/inbox', label: 'Inbox', icon: Bell, badge: 'unread' },
   { href: '/you/settings', label: 'Settings', icon: Settings },
 ];
 
+/** Build persona-specific You items (adds scorecard links for DReps/SPOs) */
+export function getYouItems(
+  segment: UserSegment,
+  context?: { drepId?: string | null; poolId?: string | null },
+): NavItem[] {
+  const items = [...YOU_BASE];
+  const hasDrep = segment === 'drep' || !!context?.drepId;
+  const hasSpo = segment === 'spo' || !!context?.poolId;
+
+  const scorecardItems: NavItem[] = [];
+  if (hasDrep)
+    scorecardItems.push({
+      href: '/you/drep',
+      label: 'DRep Scorecard',
+      icon: BadgeCheck,
+      segments: ['drep'],
+    });
+  if (hasSpo)
+    scorecardItems.push({
+      href: '/you/spo',
+      label: 'Pool Scorecard',
+      icon: BarChart3,
+      segments: ['spo'],
+    });
+
+  if (scorecardItems.length > 0) {
+    items.splice(1, 0, ...scorecardItems); // Insert after Identity
+  }
+
+  return items;
+}
+
+/** Help items — used in header dropdown (no longer in sidebar) */
 export const HELP_ITEMS: NavItem[] = [
   { href: '/help', label: 'FAQ', icon: HelpCircle },
   { href: '/help/glossary', label: 'Glossary', icon: BookOpen },
@@ -196,37 +229,19 @@ export function getSidebarSections(segmentOrContext: UserSegment | SidebarContex
     items: GOVERNANCE_ITEMS,
   });
 
-  // Delegation — authenticated with delegation
-  if (segment !== 'anonymous') {
-    sections.push({
-      id: 'delegation',
-      label: 'Delegation',
-      icon: Handshake,
-      href: '/delegation',
-      requiresAuth: true,
-    });
-  }
-
-  // You — authenticated
+  // You — authenticated (persona-aware items)
   if (segment !== 'anonymous') {
     sections.push({
       id: 'you',
       label: 'You',
       icon: User,
       href: '/you',
-      items: YOU_ITEMS,
+      items: getYouItems(segment, { drepId, poolId }),
       requiresAuth: true,
     });
   }
 
-  // Help — everyone
-  sections.push({
-    id: 'help',
-    label: 'Help',
-    icon: HelpCircle,
-    href: '/help',
-    items: HELP_ITEMS,
-  });
+  // Help removed from sidebar — now in header dropdown
 
   return sections;
 }
@@ -242,17 +257,10 @@ const BOTTOM_BAR_ANONYMOUS: NavItem[] = [
   { href: '/help', label: 'Help', icon: HelpCircle },
 ];
 
-const BOTTOM_BAR_CITIZEN_UNDELEGATED: NavItem[] = [
+const BOTTOM_BAR_CITIZEN: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/match', label: 'Match', icon: Compass },
-  { href: '/you', label: 'You', icon: User, badge: 'unread' },
-];
-
-const BOTTOM_BAR_CITIZEN_DELEGATED: NavItem[] = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/governance', label: 'Governance', icon: Globe },
-  { href: '/delegation', label: 'Delegation', icon: Handshake },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
@@ -273,16 +281,16 @@ const BOTTOM_BAR_SPO: NavItem[] = [
 const BOTTOM_BAR_CC: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
-  { href: '/delegation', label: 'Delegation', icon: Handshake },
+  { href: '/match', label: 'Match', icon: Compass },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
-export function getBottomBarItems(segment: UserSegment, hasDelegation: boolean): NavItem[] {
+export function getBottomBarItems(segment: UserSegment): NavItem[] {
   switch (segment) {
     case 'anonymous':
       return BOTTOM_BAR_ANONYMOUS;
     case 'citizen':
-      return hasDelegation ? BOTTOM_BAR_CITIZEN_DELEGATED : BOTTOM_BAR_CITIZEN_UNDELEGATED;
+      return BOTTOM_BAR_CITIZEN;
     case 'drep':
       return BOTTOM_BAR_DREP;
     case 'spo':
@@ -321,12 +329,12 @@ export function getPillBarItems(
     return WORKSPACE_DREP_ITEMS;
   }
   if (pathname.startsWith('/you')) {
-    return YOU_ITEMS;
+    return getYouItems(segment, context);
   }
   if (pathname.startsWith('/help')) {
     return HELP_ITEMS;
   }
-  // No pill bar for single-page sections (Home, Delegation, Match)
+  // No pill bar for single-page sections (Home, Match)
   return null;
 }
 
@@ -338,7 +346,6 @@ export function getCurrentSection(pathname: string): string | null {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/workspace')) return 'workspace';
   if (pathname.startsWith('/governance')) return 'governance';
-  if (pathname.startsWith('/delegation')) return 'delegation';
   if (pathname.startsWith('/you')) return 'you';
   if (pathname.startsWith('/match')) return 'match';
   if (pathname.startsWith('/help')) return 'help';

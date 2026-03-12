@@ -14,6 +14,8 @@ import {
   AlertCircle,
   ArrowRight,
   Shield,
+  Users,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -108,6 +110,44 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
+/* ── Empty-state CTAs ─────────────────────────────────────────── */
+
+function UndelegatedCTA() {
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-5 text-center space-y-3">
+      <Users className="h-6 w-6 text-primary mx-auto" />
+      <p className="text-sm font-semibold text-foreground">
+        Delegate to a DRep to start building your civic identity
+      </p>
+      <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+        Your governance footprint begins when you delegate. Find a DRep whose values match yours and
+        your votes will count toward on-chain proposals.
+      </p>
+      <Button size="sm" asChild>
+        <Link href="/match">
+          Find Your DRep
+          <ArrowRight className="h-3.5 w-3.5 ml-1" />
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function UnstakedCTA() {
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/70 p-5 text-center space-y-3">
+      <Landmark className="h-6 w-6 text-muted-foreground mx-auto" />
+      <p className="text-sm font-semibold text-foreground">
+        Stake with a pool to complete your governance coverage
+      </p>
+      <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+        Staking secures the network and earns rewards while your delegation shapes governance.
+        Together they make your civic identity complete.
+      </p>
+    </div>
+  );
+}
+
 /* ── Loading skeleton ──────────────────────────────────────────── */
 
 function ProfileSkeleton() {
@@ -174,6 +214,9 @@ export function CivicIdentityProfile() {
 
   if (isLoading) return <ProfileSkeleton />;
 
+  const isUndelegated = !footprint?.identity.delegatedDRep;
+  const isUnstaked = !footprint?.identity.delegatedPool;
+
   const shareUrl = stakeAddress
     ? `https://governada.io/my-gov/identity`
     : 'https://governada.io/my-gov/identity';
@@ -221,74 +264,84 @@ export function CivicIdentityProfile() {
       >
         {footprint && (
           <>
-            {/* Participation tier banner */}
-            <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-4">
-              {(() => {
-                const tier = footprint.identity.participationTier;
-                const config = HEALTH_CONFIG[tier];
-                const TierIcon = config.icon;
-                return (
-                  <>
-                    <TierIcon className={cn('h-5 w-5', config.color)} />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">{config.label} Citizen</p>
-                      <p className="text-xs text-muted-foreground">
-                        {footprint.identity.delegationAgeDays != null
-                          ? `Delegating for ${footprint.identity.delegationAgeDays} days`
-                          : 'Start delegating to build your identity'}
-                      </p>
-                    </div>
-                    {footprint.delegationRecord.drepName && (
-                      <Link
-                        href={`/drep/${footprint.identity.delegatedDRep}`}
-                        className="text-sm font-medium text-primary hover:underline"
-                      >
-                        {footprint.delegationRecord.drepName}
-                      </Link>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+            {isUndelegated ? (
+              /* Undelegated citizen — show onboarding CTA instead of empty stats */
+              <UndelegatedCTA />
+            ) : (
+              <>
+                {/* Participation tier banner */}
+                <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-4">
+                  {(() => {
+                    const tier = footprint.identity.participationTier;
+                    const config = HEALTH_CONFIG[tier];
+                    const TierIcon = config.icon;
+                    return (
+                      <>
+                        <TierIcon className={cn('h-5 w-5', config.color)} />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold">{config.label} Citizen</p>
+                          <p className="text-xs text-muted-foreground">
+                            {footprint.identity.delegationAgeDays != null
+                              ? `Delegating for ${footprint.identity.delegationAgeDays} days`
+                              : 'Start delegating to build your identity'}
+                          </p>
+                        </div>
+                        {footprint.delegationRecord.drepName && (
+                          <Link
+                            href={`/drep/${footprint.identity.delegatedDRep}`}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            {footprint.delegationRecord.drepName}
+                          </Link>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
 
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard
-                icon={Calendar}
-                label="Citizen Since"
-                value={
-                  footprint.identity.delegationAgeDays != null
-                    ? `${Math.floor(footprint.identity.delegationAgeDays / 5)} epochs`
-                    : '--'
-                }
-                sub={
-                  footprint.identity.delegationAgeDays != null
-                    ? `${footprint.identity.delegationAgeDays} days`
-                    : undefined
-                }
-              />
-              <StatCard
-                icon={Flame}
-                label="Delegation Streak"
-                value={footprint.citizenActivity.epochsActive}
-                sub={`epoch${footprint.citizenActivity.epochsActive !== 1 ? 's' : ''} active`}
-              />
-              <StatCard
-                icon={Vote}
-                label="Proposals Influenced"
-                value={footprint.impact.proposalsInfluenced}
-              />
-              <StatCard
-                icon={Coins}
-                label="ADA Governed"
-                value={
-                  footprint.impact.adaGoverned > 0
-                    ? formatAdaCompact(footprint.impact.adaGoverned)
-                    : '--'
-                }
-                sub={footprint.impact.delegationWeight}
-              />
-            </div>
+                {/* Stats grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatCard
+                    icon={Calendar}
+                    label="Citizen Since"
+                    value={
+                      footprint.identity.delegationAgeDays != null
+                        ? `${Math.floor(footprint.identity.delegationAgeDays / 5)} epochs`
+                        : '--'
+                    }
+                    sub={
+                      footprint.identity.delegationAgeDays != null
+                        ? `${footprint.identity.delegationAgeDays} days`
+                        : undefined
+                    }
+                  />
+                  <StatCard
+                    icon={Flame}
+                    label="Delegation Streak"
+                    value={footprint.citizenActivity.epochsActive}
+                    sub={`epoch${footprint.citizenActivity.epochsActive !== 1 ? 's' : ''} active`}
+                  />
+                  <StatCard
+                    icon={Vote}
+                    label="Proposals Influenced"
+                    value={footprint.impact.proposalsInfluenced}
+                  />
+                  <StatCard
+                    icon={Coins}
+                    label="ADA Governed"
+                    value={
+                      footprint.impact.adaGoverned > 0
+                        ? formatAdaCompact(footprint.impact.adaGoverned)
+                        : '--'
+                    }
+                    sub={footprint.impact.delegationWeight}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Unstaked notice — shown below stats or below undelegated CTA */}
+            {isUnstaked && <UnstakedCTA />}
           </>
         )}
       </AsyncContent>
@@ -297,40 +350,59 @@ export function CivicIdentityProfile() {
       {footprint && (
         <div>
           <SectionHeader title="Governance Footprint" />
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
-              <p className="text-xs text-muted-foreground">DRep Score</p>
-              <p className="text-2xl font-bold tabular-nums">
-                {footprint.delegationRecord.drepScore ?? '--'}
-                <span className="text-sm font-normal text-muted-foreground">/100</span>
+          {isUndelegated ? (
+            <div className="rounded-xl border border-border/50 bg-card/70 p-5 text-center space-y-3">
+              <Vote className="h-6 w-6 text-muted-foreground mx-auto" />
+              <p className="text-sm font-medium text-foreground">No governance footprint yet</p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                Once you delegate to a DRep, this section will show their score, votes cast on your
+                behalf, and your delegation history.
               </p>
-              {footprint.delegationRecord.drepRank && (
-                <p className="text-xs text-muted-foreground">
-                  Rank #{footprint.delegationRecord.drepRank}
-                </p>
-              )}
-            </div>
-            <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
-              <p className="text-xs text-muted-foreground">DRep Votes Cast</p>
-              <p className="text-2xl font-bold tabular-nums">
-                {footprint.delegationRecord.keyVotes}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {footprint.delegationRecord.delegationChanges} delegation change
-                {footprint.delegationRecord.delegationChanges !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-
-          {delegatedDrep && (
-            <div className="mt-3">
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/drep/${delegatedDrep}`}>
-                  View your DRep
+                <Link href="/match">
+                  Browse DReps
                   <ArrowRight className="h-3.5 w-3.5 ml-1" />
                 </Link>
               </Button>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
+                  <p className="text-xs text-muted-foreground">DRep Score</p>
+                  <p className="text-2xl font-bold tabular-nums">
+                    {footprint.delegationRecord.drepScore ?? '--'}
+                    <span className="text-sm font-normal text-muted-foreground">/100</span>
+                  </p>
+                  {footprint.delegationRecord.drepRank && (
+                    <p className="text-xs text-muted-foreground">
+                      Rank #{footprint.delegationRecord.drepRank}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
+                  <p className="text-xs text-muted-foreground">DRep Votes Cast</p>
+                  <p className="text-2xl font-bold tabular-nums">
+                    {footprint.delegationRecord.keyVotes}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {footprint.delegationRecord.delegationChanges} delegation change
+                    {footprint.delegationRecord.delegationChanges !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+
+              {delegatedDrep && (
+                <div className="mt-3">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/drep/${delegatedDrep}`}>
+                      View your DRep
+                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -381,19 +453,21 @@ export function CivicIdentityProfile() {
       </div>
 
       {/* Alignment Profile */}
-      {footprint?.identity.delegatedDRep && (
+      {footprint && (
         <div>
           <SectionHeader title="Alignment" />
           <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Quick Match</p>
               <p className="text-xs text-muted-foreground">
-                See how your values align with DReps across the network.
+                {isUndelegated
+                  ? 'Find a DRep who shares your governance values.'
+                  : 'See how your values align with DReps across the network.'}
               </p>
             </div>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant={isUndelegated ? 'default' : 'outline'} size="sm" asChild>
               <Link href="/match">
-                Take Quiz
+                {isUndelegated ? 'Find Your DRep' : 'Take Quiz'}
                 <ArrowRight className="h-3.5 w-3.5 ml-1" />
               </Link>
             </Button>

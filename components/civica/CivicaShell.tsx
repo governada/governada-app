@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { SegmentProvider } from '@/components/providers/SegmentProvider';
@@ -55,6 +55,8 @@ function DeepLinkHandler() {
  * Sidebar is persona-adaptive via the nav config.
  */
 export function CivicaShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isHomepage = pathname === '/';
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -79,20 +81,22 @@ export function CivicaShell({ children }: { children: React.ReactNode }) {
         <CivicaHeader />
         <CivicaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
-        {/* Global constellation globe — subtle glassmorphic background on all pages */}
-        <div
-          className={cn(
-            'fixed inset-0 pointer-events-none z-0 transition-[left] duration-200',
-            sidebarCollapsed ? 'lg:left-16' : 'lg:left-60',
-          )}
-          aria-hidden="true"
-        >
-          <div className="absolute inset-0 opacity-30">
-            <ConstellationScene interactive={false} className="w-full h-full" />
+        {/* Global constellation globe — subtle glassmorphic background (hidden on homepage which has its own hero globe) */}
+        {!isHomepage && (
+          <div
+            className={cn(
+              'fixed inset-0 pointer-events-none z-0 transition-[left] duration-200',
+              sidebarCollapsed ? 'lg:left-16' : 'lg:left-60',
+            )}
+            aria-hidden="true"
+          >
+            <div className="absolute inset-0 opacity-30">
+              <ConstellationScene interactive={false} className="w-full h-full" />
+            </div>
+            {/* Gradient fade — globe is most visible at top, fades toward bottom */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-60% to-background" />
           </div>
-          {/* Gradient fade — globe is most visible at top, fades toward bottom */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-60% to-background" />
-        </div>
+        )}
 
         <main
           id="main-content"

@@ -1,8 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { Users } from 'lucide-react';
 import { EnrichedDRep } from '@/lib/koios';
 import { DRepCard } from '@/components/DRepCard';
+import { EmptyState } from '@/components/EmptyState';
 
 interface DRepCardGridProps {
   dreps: EnrichedDRep[];
@@ -25,7 +27,17 @@ export function DRepCardGrid({
 }: DRepCardGridProps) {
   const router = useRouter();
 
-  if (dreps.length === 0) return null;
+  if (dreps.length === 0) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="No DReps to display"
+        message="No representatives match the current criteria. Try adjusting your filters."
+        compact
+        component="DRepCardGrid"
+      />
+    );
+  }
 
   const handleClick = (drep: EnrichedDRep) => {
     if (onCardClick) {

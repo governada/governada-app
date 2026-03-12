@@ -213,7 +213,7 @@ export function Header() {
           <GovernanceHeartbeat />
         </div>
 
-        <nav className="flex items-center space-x-2 sm:space-x-4">
+        <nav className="flex items-center space-x-2 sm:space-x-4" aria-label="Main navigation">
           <Link href="/governance" className={navLinkClass('/governance')}>
             <Compass className="h-4 w-4" />
             <span>Governance</span>
@@ -339,6 +339,7 @@ export function Header() {
                     variant="outline"
                     size="sm"
                     className="gap-2 hover:text-primary hover:bg-primary/10 hover:border-primary/40"
+                    aria-label="User menu"
                   >
                     <Badge
                       variant="outline"

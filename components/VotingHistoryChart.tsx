@@ -490,7 +490,13 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
           <CardTitle>Voting History</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-muted-foreground py-8">No voting history available yet.</p>
+          <EmptyState
+            icon={FileText}
+            title="No votes yet"
+            message="This representative hasn't voted on any proposals yet. Check back after they participate in governance."
+            compact
+            component="VotingHistoryChart"
+          />
         </CardContent>
       </Card>
     );
@@ -544,6 +550,7 @@ export function VotingHistoryChart({ votes, userPrefs = [] }: VotingHistoryChart
                   setShowAllVotes(false);
                 }}
                 className="pl-9 h-8 text-sm"
+                aria-label="Search proposals by title"
               />
             </div>
 

@@ -2,8 +2,10 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useDashboardDelegatorTrends } from '@/hooks/queries';
+import { EmptyState } from '@/components/EmptyState';
 
 const DelegatorTrendChart = dynamic(
   () => import('@/components/DelegatorTrendChart').then((m) => m.DelegatorTrendChart),
@@ -31,7 +33,17 @@ export function DelegatorAnalytics({ drepId }: DelegatorAnalyticsProps) {
   const data = raw as { snapshots: Snapshot[]; currentDelegators: number | null } | undefined;
 
   if (loading) return <DelegatorSkeleton />;
-  if (!data) return null;
+  if (!data) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="No delegator data"
+        message="Delegator analytics are not available yet. Data will appear once delegation activity is recorded."
+        compact
+        component="DelegatorAnalytics"
+      />
+    );
+  }
 
   const latestPower =
     data.snapshots.length > 0 ? data.snapshots[data.snapshots.length - 1].votingPowerAda : null;

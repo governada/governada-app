@@ -548,7 +548,11 @@ function LoadingScreen({ answers }: { answers: Record<string, string> }) {
 
 function ErrorScreen({ message, onRetry }: { message: string | null; onRetry: () => void }) {
   return (
-    <div className="text-center max-w-md space-y-4 animate-in fade-in duration-300">
+    <div
+      className="text-center max-w-md space-y-4 animate-in fade-in duration-300"
+      role="alert"
+      aria-live="assertive"
+    >
       <p className="text-lg font-semibold">Something went wrong</p>
       <p className="text-sm text-muted-foreground">{message || 'Please try again.'}</p>
       <Button onClick={onRetry} variant="outline">

@@ -18,7 +18,10 @@ export function ErrorBanner({
   onRetry,
 }: ErrorBannerProps) {
   return (
-    <div className="w-full bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6">
+    <div
+      className="w-full bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6"
+      role="alert"
+    >
       <div className="flex items-start gap-3">
         <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
         <div className="flex-1">

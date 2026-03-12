@@ -93,6 +93,7 @@ export function DiscoverFilterBar({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9 h-9"
+            aria-label="Search"
           />
           {search && (
             <button

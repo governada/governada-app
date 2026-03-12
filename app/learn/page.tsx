@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     description: 'Everything you need to understand Cardano on-chain governance.',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Governada — Learn Governance',
+    description: 'Everything you need to understand Cardano on-chain governance.',
+  },
 };
 
 export default function LearnPage() {

@@ -16,7 +16,13 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CCTransparencyTrend } from '@/components/cc/CCTransparencyTrend';
+import dynamic from 'next/dynamic';
+
+const CCTransparencyTrend = dynamic(
+  () =>
+    import('@/components/cc/CCTransparencyTrend').then((m) => ({ default: m.CCTransparencyTrend })),
+  { ssr: false, loading: () => <div className="h-48 animate-pulse bg-muted rounded-xl" /> },
+);
 import { CopyableAddress } from '@/components/CopyableAddress';
 import {
   interpretFidelityScore,

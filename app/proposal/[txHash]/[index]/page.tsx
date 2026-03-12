@@ -36,9 +36,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const proposalIndex = parseInt(indexStr, 10);
   const proposal = isNaN(proposalIndex) ? null : await getProposalByKey(txHash, proposalIndex);
   const title = proposal?.title || `Proposal ${txHash.slice(0, 12)}...`;
+  const description = proposal?.abstract
+    ? proposal.abstract.slice(0, 160)
+    : `Governance proposal details, votes, and analysis on Governada.`;
   return {
     title: `${title} — Governada`,
-    description: `Governance proposal details, votes, and analysis on Governada.`,
+    description,
+    openGraph: {
+      title: `${title} — Governada`,
+      description,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} — Governada`,
+      description,
+    },
   };
 }
 
@@ -96,8 +109,30 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
   const title = proposal.title || `Proposal ${txHash.slice(0, 12)}...`;
 
+  // JSON-LD structured data for governance proposal
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description: proposal.abstract || `Cardano governance proposal`,
+    url: `https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`,
+    publisher: {
+      '@type': 'Organization',
+      name: 'Governada',
+      url: 'https://governada.io',
+    },
+    about: {
+      '@type': 'Thing',
+      name: 'Cardano Governance',
+    },
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <PageViewTracker
         event="proposal_detail_viewed"
         properties={{ tx_hash: txHash, index: proposalIndex }}

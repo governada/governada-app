@@ -4,8 +4,13 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Users, Compass, Activity, Vote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConstellationScene } from '@/components/ConstellationScene';
+import dynamic from 'next/dynamic';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
+
+const ConstellationScene = dynamic(
+  () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
+);
 
 interface AnonymousLandingProps {
   pulseData?: {

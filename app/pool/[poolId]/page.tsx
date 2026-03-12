@@ -88,9 +88,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     score != null && tier
       ? `${name} \u2014 SPO Governance Score: ${score} (${tier}) \u2014 Governada`
       : `${name} \u2014 SPO Governance Profile \u2014 Governada`;
+  const description = `SPO governance score, voting record, and alignment data for ${name} on Cardano.`;
+  const ogImageUrl = `https://governada.io/api/og/staking/${encodeURIComponent(poolId)}`;
   return {
     title,
-    description: `SPO governance score, voting record, and alignment data for ${name} on Cardano.`,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'profile',
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${name} governance card` }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 
@@ -623,18 +637,18 @@ export default async function PoolProfilePage({ params }: PageProps) {
   // ── Tier progress bar ─────────────────────────────────────────────────────
 
   const tierProgressBar = tierProgress.pointsToNext != null && (
-    <div className="flex items-center gap-3 text-sm">
-      <span>
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
+      <span className="whitespace-nowrap">
         {tierProgress.pointsToNext} pts to{' '}
         <span className="text-primary font-bold">{tierProgress.nextTier}</span>
       </span>
-      <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden">
+      <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden shrink-0">
         <div
           className="h-full rounded-full bg-primary"
           style={{ width: `${tierProgress.percentWithinTier}%` }}
         />
       </div>
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
         {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
       </span>
     </div>

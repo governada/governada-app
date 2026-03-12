@@ -6,7 +6,12 @@ import { Button } from '@/components/ui/button';
 import { GovTerm } from '@/components/GovTerm';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
-import { ConstellationScene } from '@/components/ConstellationScene';
+import dynamic from 'next/dynamic';
+
+const ConstellationScene = dynamic(
+  () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
+);
 import { EpochBriefing } from './EpochBriefing';
 
 function formatAdaShort(ada: number): string {

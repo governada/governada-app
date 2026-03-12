@@ -95,6 +95,7 @@ export function WorkspaceDelegatorsPage() {
         <Link
           href="/workspace"
           className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Back to workspace"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>

@@ -261,6 +261,7 @@ export function Header() {
                     variant="ghost"
                     size="icon"
                     className="relative hover:text-primary hover:bg-primary/10"
+                    aria-label="Notifications"
                   >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (

@@ -164,6 +164,7 @@ export function MilestoneBadges({ drepId, compact = false }: MilestoneBadgesProp
                 size="icon"
                 className="absolute top-2 right-2 h-8 w-8"
                 onClick={dismissCelebration}
+                aria-label="Dismiss celebration"
               >
                 <X className="h-4 w-4" />
               </Button>

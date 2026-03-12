@@ -27,7 +27,12 @@ import {
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { posthog } from '@/lib/posthog';
-import { ConstellationScene } from '@/components/ConstellationScene';
+import dynamic from 'next/dynamic';
+
+const ConstellationScene = dynamic(
+  () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
+);
 import { staggerContainer, fadeInUp } from '@/lib/animations';
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {

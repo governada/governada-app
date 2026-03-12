@@ -16,7 +16,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { GovTerm } from '@/components/GovTerm';
 import { useSPOPoolCompetitive } from '@/hooks/queries';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { ConstellationScene } from '@/components/ConstellationScene';
+import dynamic from 'next/dynamic';
+
+const ConstellationScene = dynamic(
+  () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
+);
 
 const TIER_COLORS: Record<string, string> = {
   Emerging: 'text-muted-foreground',

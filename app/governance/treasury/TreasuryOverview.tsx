@@ -7,7 +7,12 @@ import { TreasuryKeyMetrics } from '@/components/treasury/TreasuryKeyMetrics';
 import { TreasuryEpochFlow } from '@/components/treasury/TreasuryEpochFlow';
 import { TreasuryPendingProposals } from '@/components/TreasuryPendingProposals';
 import { TreasuryAccountabilitySection } from '@/components/TreasuryAccountabilitySection';
-import { TreasurySimulator } from '@/components/TreasurySimulator';
+import dynamic from 'next/dynamic';
+
+const TreasurySimulator = dynamic(
+  () => import('@/components/TreasurySimulator').then((m) => ({ default: m.TreasurySimulator })),
+  { ssr: false, loading: () => <div className="h-64 animate-pulse bg-muted rounded-xl" /> },
+);
 import { DRepTreasuryTrackRecord } from '@/components/treasury/DRepTreasuryTrackRecord';
 import { SegmentGate } from '@/components/shared/SegmentGate';
 import {

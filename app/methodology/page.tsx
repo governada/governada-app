@@ -16,6 +16,11 @@ export const metadata: Metadata = {
       'How Governada scores DReps, SPOs, and CC members. Transparent, reproducible scoring methodology for Cardano governance research.',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Scoring Methodology — Governada',
+    description: 'Transparent, reproducible scoring methodology for Cardano governance research.',
+  },
 };
 
 // ---------------------------------------------------------------------------

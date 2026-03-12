@@ -471,8 +471,27 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   // For DRep owners, also shows a "Write Statement" button
   const statementsContent = <DRepStatementsTab drepId={drep.drepId} />;
 
+  // JSON-LD structured data for DRep profile
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: drepName,
+    url: `https://governada.io/drep/${encodeURIComponent(drep.drepId)}`,
+    description: drep.description || `Cardano DRep with governance score ${drep.drepScore}/100`,
+    image: `${BASE_URL}/api/og/drep/${encodeURIComponent(drep.drepId)}`,
+    jobTitle: 'Delegated Representative (DRep)',
+    memberOf: {
+      '@type': 'Organization',
+      name: 'Cardano Governance',
+    },
+  };
+
   const profileContent = (
     <div className="container mx-auto px-4 py-8 space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <ProfileViewTracker drepId={drep.drepId} />
       <PageViewTracker event="drep_profile_viewed" properties={{ drep_id: drep.drepId }} />
       <TierCelebrationManager
@@ -529,26 +548,26 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       {/* 3. Tier Progress + Momentum — governance participants only */}
       {isViewerAuthenticated && tierProgress.pointsToNext != null && (
         <SegmentGate show={['drep', 'spo', 'cc']}>
-          <div className="flex items-center justify-between rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-3">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-4 sm:px-5 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-sm font-medium whitespace-nowrap">
                 {tierProgress.pointsToNext} pts to{' '}
                 <span className="text-primary font-bold">{tierProgress.nextTier}</span>
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
               </span>
             </div>
             <div className="flex items-center gap-3">
               {drep.scoreMomentum != null && drep.scoreMomentum !== 0 && (
                 <span
-                  className={`text-xs font-medium tabular-nums ${drep.scoreMomentum > 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                  className={`text-xs font-medium tabular-nums whitespace-nowrap ${drep.scoreMomentum > 0 ? 'text-emerald-400' : 'text-rose-400'}`}
                 >
                   {drep.scoreMomentum > 0 ? '+' : ''}
                   {drep.scoreMomentum.toFixed(1)} pts/day
                 </span>
               )}
-              <div className="w-24 h-1.5 bg-border rounded-full overflow-hidden">
+              <div className="w-24 h-1.5 bg-border rounded-full overflow-hidden shrink-0">
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${tierProgress.percentWithinTier}%` }}
@@ -577,7 +596,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
       {/* 5. Identity metadata row — governance participants only */}
       <SegmentGate show={['drep', 'spo', 'cc']}>
-        <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-sm text-muted-foreground overflow-hidden">
           {drep.ticker && (
             <Badge variant="outline" className="text-sm px-2 py-0.5">
               {drep.ticker.toUpperCase()}

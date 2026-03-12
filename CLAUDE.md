@@ -108,19 +108,21 @@ C:\Users\dalto\governada\
 | Audit scoring rubric & benchmarks         | `docs/strategy/context/audit-rubric.md`            | ~180  |
 | Work plan template (parallel agents)      | `docs/strategy/context/work-plan-template.md`      | ~80   |
 | Competitive landscape (updated by audits) | `docs/strategy/context/competitive-landscape.md`   | ~150  |
+| World-class patterns library              | `docs/strategy/context/world-class-patterns.md`    | ~100  |
 | Full vision (strategic audits only)       | `docs/strategy/ultimate-vision.md`                 | ~730  |
 
 ## Audit Commands
 
-| Command                                          | Purpose                                                                                                        | Cadence                                        |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `/audit [full\|step:N\|area]`                    | Product audit against vision (10 dimensions)                                                                   | Quarterly full, monthly focused                |
-| `/verify-audit`                                  | Confirm previous audit gaps were closed                                                                        | After each build cycle                         |
-| `/audit-experience [persona-state]`              | End-to-end experience audit for one persona (UX + journeys + intelligence + craft)                             | Monthly per persona, quarterly rotation        |
-| `/audit-engine [full\|scoring\|data\|sync]`      | Backend engine: scoring models, data integrity, sync pipeline, calibration                                     | Monthly focused, quarterly full                |
-| `/audit-security [area]`                         | Auth, RLS, API security, data protection, infra hardening, anti-gaming                                         | Pre-launch full, quarterly, after auth changes |
-| `/audit-feature [route\|feature]`                | MLE audit of a single page through all persona lenses — JTBD, narrative, info budget, craft, subtraction recs  | Before/after page builds, monthly rotation     |
-| `/audit-all [full\|experiences\|systems\|quick]` | Orchestrator: launches experience + engine + security audits as parallel subagents, synthesizes unified report | Quarterly full, monthly quick                  |
+| Command                                          | Purpose                                                                                                                     | Cadence                                        |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `/audit [full\|step:N\|area]`                    | Product audit against vision (10 dimensions)                                                                                | Quarterly full, monthly focused                |
+| `/verify-audit`                                  | Confirm previous audit gaps were closed                                                                                     | After each build cycle                         |
+| `/audit-experience [persona-state]`              | End-to-end experience audit for one persona (UX + journeys + intelligence + craft)                                          | Monthly per persona, quarterly rotation        |
+| `/audit-engine [full\|scoring\|data\|sync]`      | Backend engine: scoring models, data integrity, sync pipeline, calibration                                                  | Monthly focused, quarterly full                |
+| `/audit-security [area]`                         | Auth, RLS, API security, data protection, infra hardening, anti-gaming                                                      | Pre-launch full, quarterly, after auth changes |
+| `/audit-feature [feature]`                       | Deep-dive feature audit — necessity test, world-class benchmark, subtraction recs, data opportunities, ambitious redesigns  | Before/after page builds, monthly rotation     |
+| `/explore-feature [feature]`                     | Generative exploration — 3 alternative concepts, data opportunity scan, inspiration research. Use when audit scores plateau | When scores plateau, before major redesigns    |
+| `/audit-all [full\|experiences\|systems\|quick]` | Orchestrator: launches experience + engine + security audits as parallel subagents, synthesizes unified report              | Quarterly full, monthly quick                  |
 
 ## Strategy Commands
 

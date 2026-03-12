@@ -770,3 +770,42 @@ export function useWorkspaceCockpit(drepId: string | null | undefined) {
     staleTime: 30_000,
   });
 }
+
+// ── Inbox Notifications ─────────────────────────────────────────────────────
+
+export interface InboxNotification {
+  id: string;
+  title: string;
+  body: string | null;
+  type: string;
+  action_url: string | null;
+  metadata: Record<string, unknown> | null;
+  read: boolean;
+  created_at: string;
+}
+
+interface NotificationsResponse {
+  notifications: InboxNotification[];
+  hasMore: boolean;
+  unreadCount: number;
+}
+
+async function fetchAuthed<T>(url: string): Promise<T> {
+  const { getStoredSession } = await import('@/lib/supabaseAuth');
+  const token = getStoredSession();
+  const headers: HeadersInit = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export function useInboxNotifications(enabled: boolean) {
+  return useQuery<NotificationsResponse>({
+    queryKey: ['inbox-notifications'],
+    queryFn: () => fetchAuthed<NotificationsResponse>('/api/you/notifications'),
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}

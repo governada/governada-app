@@ -2,8 +2,8 @@
 
 > **Status:** Active north star -- all build decisions, monetization timing, and architecture choices should align with this document.
 > **Created:** March 2026
-> **Version:** 3.0
-> **Last updated:** 2026-03-10 (V3.0: Strategic pivot to flywheel-oriented build phases, navigation architecture reset, UX philosophy overhaul)
+> **Version:** 3.1
+> **Last updated:** 2026-03-12 (V3.1: Phase 2+3 strategic re-evaluation — merged Engagement + Viral/Identity into launch-ready phases, added representative activation and growth engine)
 > **Supersedes:** V2.3. Persona deep dives live in `docs/strategy/personas/`.
 > **Living document:** Agents should update status markers and progress annotations as work proceeds. Log changes in `docs/strategy/vision-changelog.md`. Increment minor version (3.1, 3.2...) for progress updates; reserve major version (4.0) for strategic pivots.
 
@@ -134,7 +134,7 @@ Governada scores governance behavior
 
 **Moat:** Methodology credibility + historical depth. Anyone can scrape on-chain data, but a trusted, transparent, community-validated scoring methodology with 100+ epochs of history is extremely hard to replicate.
 
-**Activation energy:** LOW. The scoring engine (Steps 0-2.5) is complete. This flywheel activates by surfacing scores brilliantly in the new architecture.
+**Activation energy:** LOW. The scoring engine is complete. This flywheel is ACTIVE -- scores surfaced in new architecture (Phase 1 shipped). Phase 2 accelerates with representative activation and competitive leaderboards.
 
 ### Flywheel 2: Engagement
 
@@ -150,7 +150,7 @@ Citizen connects wallet
 
 **Moat:** Citizen preference data (governance profiles, priority signals, sentiment) + structured civic opinion at scale. No competitor collects this because no competitor has built the civic hub where citizens participate.
 
-**Activation energy:** MEDIUM. Engagement mechanisms exist (Step 6 shipped). Need recomposition from dead `/engage` page into Hub cards and contextual prompts.
+**Activation energy:** MEDIUM. Engagement mechanisms exist (7 built). Phase 2 activates: recompose from dead `/engage` page into Hub feed and contextual prompts on entity pages.
 
 ### Flywheel 3: Content/Discourse
 
@@ -165,7 +165,7 @@ DReps publish rationales + epoch updates on Governada
 
 **Moat:** CIP-100 authoring infrastructure. If Governada is the best authoring experience for CIP-100 rationales, it captures governance discourse at creation.
 
-**Activation energy:** LOW-MEDIUM. CIP-100 infrastructure exists (Step 5 shipped). Workspace routing in new architecture connects creation to consumption.
+**Activation energy:** LOW-MEDIUM. CIP-100 infrastructure exists. Workspace routing shipped (Phase 1). This flywheel is STARTING -- Phase 2 representative activation accelerates content creation.
 
 ### Flywheel 4: Viral/Identity
 
@@ -180,7 +180,7 @@ Citizen earns governance milestones
 
 **Moat:** Emotional attachment to governance identity. Citizens who see their 100-epoch history don't casually abandon the product.
 
-**Activation energy:** MEDIUM. Wrapped and OG image infrastructure exist (Step 7 partial). Needs Impact Score, milestone sharing, better identity surfaces.
+**Activation energy:** MEDIUM. Wrapped and OG image infrastructure exist. Phase 2 activates: Impact Score, milestone sharing, share engine, representative profile sharing. Merged into Phase 2 for launch -- engagement + identity + sharing are interdependent.
 
 ### Flywheel 5: Integration/Distribution
 
@@ -194,7 +194,7 @@ Governada builds governance intelligence
 
 **Moat:** Network effects of integration. Each wallet showing Governada scores validates the system and drives traffic.
 
-**Activation energy:** HIGH. Needs stable product + API v2 + business development. Premature until flywheels 1-3 are running.
+**Activation energy:** HIGH. Needs stable product + API v2 + business development. Premature until flywheels 1-4 are running. Post-launch phase.
 
 ### How Flywheels Compound
 
@@ -462,19 +462,21 @@ Growth comes from three channels plus flywheel-driven organic growth:
 
 ### 1. Direct Acquisition (Citizens Come to Governada)
 
-- Two-path anonymous landing: "Find Your Representative" (Match) + "Explore Governance"
-- Match as primary conversion funnel: quiz -> results -> "connect wallet to delegate" -> citizen
+- Two-path anonymous landing: "Build Your Governance Team" (Match) + "Explore Governance"
+- Match as primary conversion funnel: quiz -> results -> "connect wallet to delegate" -> citizen. Framed as assembling a "governance team" (DRep + governance-active Pool).
 - Hub as retention driver: fresh content every ~5 days at epoch boundary
+- Epoch-boundary digest: opt-in email notification with personalized briefing summary. Email collection is opt-in only -- web3-first identity, email as notification channel.
 - Civic identity as attachment mechanism: growing footprint creates switching cost
 - Governance Coverage as differentiated hook: "Are you fully represented?"
 
 ### 2. Viral Distribution (Personas Share Governada)
 
-- DReps share scores, profiles, and Wrapped to attract delegation
+- DReps share scores, profiles, and Wrapped to attract delegation. Share engine with pre-formatted text + OG images.
 - SPOs share governance reputation to differentiate their pools
-- Citizens share civic identity, Wrapped, and governance coverage
+- Citizens share civic identity, milestones, governance stats, and coverage
 - Every share is a billboard. DReps and SPOs are the unpaid sales force.
-- Milestone share cards + Governance Wrapped are the dedicated viral engines
+- Milestone share cards, governance stats, sentiment divergence insights, and Governance Wrapped are the dedicated viral engines
+- "Governance team" framing: "My governance team covers 92% of Cardano governance" -- shareable stat
 
 ### 3. B2B Distribution (Partners Embed Governada)
 
@@ -489,8 +491,9 @@ Growth comes from three channels plus flywheel-driven organic growth:
 - Accountability flywheel: DReps optimize for Governada scores -> they share -> their delegators discover the platform
 - Content flywheel: governance discourse centralizes on Governada -> becomes the canonical governance reference
 - Engagement flywheel: citizen voice mechanisms create data no competitor has -> attracts researchers and partners
+- Community intelligence: epoch reports, sentiment divergence, governance temperature create citation-worthy content every epoch
 
-**Anonymous-to-citizen funnel (Option C):** Anonymous users see rich governance data and engagement results but cannot participate in engagement. Engagement results serve as conversion motivation. Wallet connect prompts appear at the moment of intent, not on arrival.
+**Anonymous-to-citizen funnel:** Anonymous users see rich governance data and engagement results but cannot participate in engagement. Engagement results serve as conversion motivation. Wallet connect prompts appear at the moment of intent, not on arrival.
 
 ---
 
@@ -514,7 +517,7 @@ The backend intelligence engine is production-grade and unchanged by the archite
 - Community engagement: 7 mechanisms (sentiment, priorities, concern flags, impact tags, questions, assemblies, endorsements), integrity system, precompute pipeline
 - Viral infrastructure: Wrapped generation, OG image generation, civic identity OG images
 
-### Phase 0: Architecture Reset [IN PROGRESS]
+### Phase 0: Architecture Reset [COMPLETE]
 
 _Rebuild the frontend skeleton around the new navigation architecture and MLE approach._
 
@@ -533,7 +536,7 @@ _Rebuild the frontend skeleton around the new navigation architecture and MLE ap
 
 **Flywheel impact:** Sets the stage. No flywheel spins yet, but the architecture enables all of them.
 
-### Phase 1: Recompose & Activate [Accountability + Content flywheels]
+### Phase 1: Recompose & Activate [~95% COMPLETE]
 
 _Take existing components (300+) and place them correctly in the new architecture. Recomposition, not rebuilding._
 
@@ -550,108 +553,182 @@ _Take existing components (300+) and place them correctly in the new architectur
 - **Accountability** starts -- scores surfaced prominently, profiles easy to find, competitive pressure loop begins
 - **Content/Discourse** starts -- Workspace makes CIP-100 authoring frictionless, rationales visible on profiles
 
-### Phase 2: Engagement Flywheel Activation
+### Phase 2: The Living Platform [NOT STARTED — LAUNCH PHASE 1 of 2]
 
-_Recompose engagement mechanisms from dead `/engage` page into the living architecture._
+_Transform Governada from an intelligence platform you visit into a civic platform you inhabit. Engagement, identity, sharing, and representative activation ship together because they're interdependent -- engagement without a sharing engine is a tree falling in an empty forest._
 
-**2a: Hub engagement cards** -- Active sentiment polls, priority signals, assemblies as Hub cards. "Glass window" for anonymous users (see results, can't participate).
+_Flywheel targets: Engagement + Viral/Identity + Content/Discourse (merged — these are one interconnected system for launch)_
 
-**2b: Contextual prompts** -- "How do you feel about this?" on proposals. "Endorse this DRep" on profiles. Impact tags on funded projects. Concern flags inline on proposals.
+**2a: Engagement Activation (The Voice Layer)** -- Surface the 7 engagement mechanisms already built but buried on the dead `/engage` page:
 
-**2c: Engagement -> intelligence feedback** -- Citizen sentiment visible in DRep Workspace. Engagement metrics in briefings. Endorsement counts on discovery cards. Priority signals shape governance health narrative.
+- Hub feed engagement items -- active sentiment polls, priority signals, citizen assemblies surfaced in the Hub feed. Citizens see governance questions when they land, not buried on a dead page.
+- Contextual prompts on entity pages -- "How do you feel about this proposal?" on proposal pages. "Endorse this DRep" on DRep profiles. Impact tags on funded projects in treasury. Concern flags inline on proposals.
+- Anonymous glass window -- anonymous visitors see engagement results (sentiment bars, endorsement counts, priority rankings) but can't participate. Conversion motivation: "Citizens rated this proposal 73% positive -- connect to add your voice."
+- Engagement -> intelligence feedback -- citizen sentiment visible in DRep Workspace ("Your delegators are 68% opposed to this proposal"). Endorsement counts on governance browse cards. Priority signals shape Hub briefing narrative.
+- Community Consensus visualization -- aggregate citizen voice on key governance questions. Feature-flagged at launch (needs data volume threshold before surfacing).
+
+**2b: Civic Identity & Milestones (The Investment Layer)** -- Create emotional investment that prevents churn:
+
+- Governance Impact Score -- personal metric combining: delegation tenure, representative activity on your behalf, engagement depth, governance coverage. Progressive, always growing. Displayed on Hub and `/you`.
+- Milestone achievement system -- detect and celebrate: first delegation, first sentiment vote, 10-epoch delegation streak, "Your DRep voted on 50 proposals on your behalf," coverage milestones. Each milestone is a retention moment AND a sharing trigger.
+- Enhanced civic identity surface -- `/you` identity page becomes a living governance resume: "Citizen since Epoch 472. 34 proposals represented. Governance Coverage: 92%. 3 endorsements given."
+- "Governance Since" as status -- epoch tenure is social capital. Early adopters get bragging rights.
+
+**2c: Share Engine (The Viral Layer)** -- Every significant moment becomes a social media post:
+
+- Milestone share cards -- beautiful branded OG images for each milestone. One-tap share to X/Twitter with pre-formatted text.
+- DRep/SPO profile share cards -- score tier, key stats, endorsement count. OG images optimized for social feeds. DReps share to attract delegation; SPOs share to differentiate.
+- Governance stats shareable -- always-on "my governance identity" card. Coverage, tenure, engagement depth, DRep alignment.
+- Sentiment divergence shareable -- "Your DRep voted against 73% of citizens on Proposal X." Controversial, shareable, drives conversation.
+- Coverage gap shareable -- "Only 60% of governance decisions are being made on your behalf." Conversion tool disguised as a share.
+- Pre-formatted share text + deep links -- every share includes a link that lands the viewer on the relevant page with full context.
+
+**2d: Representative Activation (The Supply-Side Engine)** -- Turn DReps and SPOs into the unpaid marketing team:
+
+- "Claim Your Profile" flow -- DRep/SPO connects wallet, sees their auto-generated profile, enhances with governance philosophy, key positions, communication preferences. Simple, 3-minute flow.
+- Delegator intelligence dashboard -- "Your delegators care about: treasury (42%), hard forks (31%), parameter changes (27%)." Derived from engagement data. Intelligence no competitor offers.
+- Competitive context -- "You're ranked #47 of 312 active DReps. Top 15%." Score trend, peer comparison. Creates urgency.
+- Profile sharing toolkit -- "Share Your Governada Profile" with pre-formatted post, profile card OG image, embed snippet for personal websites.
+- Governance leaderboards -- top DReps by score, by rationale quality, by citizen endorsements. Public, shareable, creates competitive pressure.
 
 **Flywheel activation:**
 
-- **Engagement** starts -- citizens engage, data feeds intelligence, better intelligence brings citizens back
-- **Accountability** accelerates -- DReps see citizen sentiment, respond with better rationales
+- **Engagement** activates -- citizens engage via Hub and entity pages, data feeds intelligence, better intelligence brings citizens back
+- **Viral/Identity** activates -- milestones -> share -> discovery -> new users -> milestones -> share
+- **Accountability** accelerates -- DReps see citizen sentiment + competitive leaderboards, respond with better rationales
+- **Content/Discourse** accelerates -- representative activation drives content creation (rationales, philosophy statements)
 
-### Phase 3: Anonymous Funnel + Coverage Polish
+**Definition of done:** Citizens can engage with governance from Hub and entity pages. Every engagement, milestone, and governance event generates a shareable card. DReps and SPOs can claim profiles and share them. Anonymous users see engagement results and feel compelled to connect.
 
-_Optimize conversion from visitor to citizen. Make Governance Coverage a headline feature._
+### Phase 3: The Growth Engine [NOT STARTED — LAUNCH PHASE 2 of 2]
 
-**3a: Funnel optimization** -- Two-path landing with clear value props. Match flow expanded to cover DRep + Pool ("governance team" assembly). Inline education, not a Learn section. Wallet connect at moment of intent. PostHog funnel measurement + iteration.
+_Every visitor converts, every citizen returns every epoch, every epoch generates conversation. Phase 2 makes the product alive. Phase 3 makes it grow sustainably._
 
-**3b: Coverage as differentiator** -- Coverage % prominent on Hub and Delegation. "Complete your governance team" CTA. Coverage trend over time. Improvement suggestions. Shareable coverage card.
+_Flywheel targets: Closes all loops -- conversion feeds engagement, retention feeds data compounding, community intelligence feeds organic distribution_
 
-**Flywheel activation:** All flywheels benefit from more users entering. Coverage concept creates word-of-mouth (unique -- no competitor measures this).
+**3a: Conversion Funnel (The Door)** -- Optimize the path from stranger to citizen:
 
-### Phase 4: Viral/Identity Flywheel Activation
+- Anonymous landing optimization -- two clear paths with real governance data visible. Social proof with live numbers: "312 active DReps scored. X citizens engaged this epoch. $Y billion treasury tracked."
+- Match flow as primary conversion -- "Build Your Governance Team in 60 Seconds." DRep matching + Pool matching in one flow. Results show coverage gap if only one is delegated. "Governance team" framing throughout.
+- Wallet connect at moment of intent -- not on arrival. When they try to endorse, vote sentiment, or delegate after matching. The prompt appears when they've already decided to act.
+- Progressive onboarding -- first visit: landing + match. Return: Hub with limited cards. Connected: full civic experience.
+- PostHog funnel instrumentation -- measure every step: landing -> match_started -> match_completed -> wallet_prompt -> connected -> first_engagement -> return_visit. Identify and fix drop-offs.
+- SEO foundation -- DRep profiles, SPO profiles, proposal pages, governance health optimized for organic search. Governance search traffic is uncontested territory.
 
-_Make governance participation something worth showing off._
+**3b: Return Loop (The Hook)** -- The "come back every epoch" engine:
 
-**4a: Governance Impact Score** -- Personal gamified score: delegation duration x DRep activity x engagement depth x coverage. Progressive, shareable.
+- Epoch-boundary digest -- opt-in email notification when a new epoch starts: "Epoch 485 just started. Your DRep voted on 3 proposals. Governance Coverage: 92%. 2 new proposals to watch." Personalized, brief, actionable. Email collection is opt-in only -- no email required for auth (web3-first identity).
+- Alert system -- DRep voted (how?), coverage changed, score shifted, governance milestone reached, engagement results. Configurable granularity.
+- Notification pipeline -> `/you/inbox` -- wire the existing inbox page to real governance events: votes, delegation changes, milestones, engagement results, DRep communications.
+- "What changed" on return -- when a citizen returns after absence, Hub shows a summary: "Since you last visited: 4 proposals decided, your DRep voted on all of them, treasury spent X ADA."
+- Engagement result follow-ups -- "87% of citizens agreed with your sentiment vote." "Your concern flag was raised by 23 other citizens." Closes the engagement loop.
 
-**4b: Milestone share cards** -- Beautiful, branded OG images for: first delegation, DRep milestones, coverage streaks, epoch anniversaries.
+**3c: Community Intelligence (The Conversation Starter)** -- Novel governance insights that create organic PR every epoch. All feature-flagged until data volume is sufficient:
 
-**4c: Enhanced Wrapped** -- Multi-role support, engagement stats, coverage data, all five flywheels' data in the narrative.
+- Citizen Mandate dashboard -- "What does the Cardano community want governance to focus on?" Aggregate priority signals visualized with trend lines. A governance artifact that doesn't exist anywhere.
+- Sentiment Divergence Index -- where do citizens and their DReps disagree? Aggregate divergence per DRep, per proposal category. Accountability journalism, automated.
+- "State of Governance" epoch report -- auto-generated from real data: participation rates, treasury activity, score shifts, notable votes, citizen engagement summary. Shareable as a card or full page.
+- Governance Temperature -- single-number aggregate sentiment: how does the community feel about governance right now? Epoch-over-epoch trend. Like Consumer Confidence Index for Cardano governance.
 
-**Flywheel activation:** **Viral/Identity** starts -- users share -> others discover -> they connect -> they share. Top-of-funnel growth.
+**3d: Launch Readiness (The Finish)** -- V3 as MVP means launch-grade quality:
 
-### Phase 5: Monetization Layer
+- Mobile experience audit + fixes -- validate "mobile is primary" principle. Fix interaction targets, scroll behavior, responsive layouts, bottom bar usability.
+- Performance optimization -- sub-2s meaningful paint on key pages. Code-split heavy components. Optimize critical Supabase queries (Hub, governance browse, entity profiles).
+- Load testing (QP-13) -- the one remaining Quality Package. Ensure the product handles launch traffic.
+- Edge case polish -- empty states for new users, error recovery, loading skeletons.
+- SEO technical -- meta tags, structured data, sitemap, canonical URLs for all public-facing pages.
+- Legal/privacy baseline -- terms of service, privacy policy. Launch blockers if missing.
+
+**Flywheel activation:**
+
+- All flywheels benefit from conversion optimization (more users entering)
+- **Data compounding** accelerates -- return loop ensures consistent data collection every epoch
+- Community intelligence (when feature flags flip) creates organic distribution via shareable epoch reports
+
+**Definition of done:** Anonymous -> citizen conversion is measurable and optimized. Citizens return every epoch driven by notifications. Mobile experience is polished. Performance handles launch traffic. The product feels finished, not early-access.
+
+**PUBLIC LAUNCH** after Phase 3. Maximum buzz, not quiet rollout.
+
+### Phase 4: Monetization Layer [POST-LAUNCH]
 
 _Flywheels 1-4 running, user base growing. Premium is a natural upsell, not a gate._
 
-**5a: Subscription infrastructure** -- Stripe (ADA-native later), subscriptions table, ProGate component, entitlement checks.
+**4a: Subscription infrastructure** -- Stripe (ADA-native later), subscriptions table, ProGate component, entitlement checks.
 
-**5b: DRep Pro ($15-25/mo)** -- Delegation analytics, score simulator, competitive intelligence, AI-enhanced rationale drafting, advanced inbox prioritization.
+**4b: DRep Pro ($15-25/mo)** -- Delegation analytics, score simulator, competitive intelligence, AI-enhanced rationale drafting, advanced inbox prioritization.
 
-**5c: SPO Pro ($15-25/mo)** -- Governance reputation analytics, competitive landscape, growth coaching, rich pool profile customization.
+**4c: SPO Pro ($15-25/mo)** -- Governance reputation analytics, competitive landscape, growth coaching, rich pool profile customization.
 
-**5d: Premium Delegator ($5-10/mo)** -- AI Governance Advisor (deeper than free briefing), advanced alerts, portfolio delegation management, enhanced Wrapped.
+**4d: Premium Delegator ($5-10/mo)** -- AI Governance Advisor (deeper than free briefing), advanced alerts, portfolio delegation management, enhanced Wrapped.
 
-**5e: Verified Project ($10-25/project)** -- Identity verification, enhanced project page, milestone management, proposal drafting intelligence.
+**4e: Verified Project ($10-25/project)** -- Identity verification, enhanced project page, milestone management, proposal drafting intelligence.
 
 **Free/Pro boundary:** Free = everything needed to govern effectively (voting, rationale, proposal workspace, basic stats, basic identity, all engagement). Pro = competitive advantage, growth analytics, AI-powered efficiency. Never gate essential governance operations.
 
-### Phase 6: Integration Flywheel Activation
+### Phase 5: Integration Flywheel Activation [POST-LAUNCH]
 
 _Stable product, proven flywheels, ready for B2B distribution._
 
-**6a: API v2** -- Full entity, governance, scoring, matching, alignment, bulk export endpoints. OpenAPI spec + SDK generation. Rate limiting tiers.
+**5a: API v2** -- Full entity, governance, scoring, matching, alignment, bulk export endpoints. OpenAPI spec + SDK generation. Rate limiting tiers.
 
-**6b: Embeddable widgets** -- Quick Match, DRep Score card, SPO Governance badge, GHI gauge, Delegation Health indicator. Themeable, "Powered by Governada."
+**5b: Embeddable widgets** -- Quick Match, DRep Score card, SPO Governance badge, GHI gauge, Delegation Health indicator. Themeable, "Powered by Governada."
 
-**6c: Partner integrations** -- Eternl -> Lace -> PoolTool -> Vespr (priority order).
+**5c: Partner integrations** -- Eternl -> Lace -> PoolTool -> Vespr (priority order).
 
 **Flywheel activation:** **Integration** starts -- wallets show Governada data -> users discover platform -> more data -> better intelligence -> more integration demand.
 
-### Phase 7+: Advanced Intelligence & New Products
+### Phase 6+: Advanced Intelligence & New Products [POST-LAUNCH]
 
-**7a: Delegation Network Graph + Influence Mapping** -- Delegation flow visualization, power concentration analysis, governance factions, historical delegation migration. R3F/WebGL visualization.
+**6a: Delegation Network Graph + Influence Mapping** -- Delegation flow visualization, power concentration analysis, governance factions, historical delegation migration. R3F/WebGL visualization.
 
-**7b: Governance Simulation Engine** -- "What if" analysis: simulate governance outcomes under different delegation distributions, score projections, staking governance simulation.
+**6b: Governance Simulation Engine** -- "What if" analysis: simulate governance outcomes under different delegation distributions, score projections, staking governance simulation.
 
-**7c: Catalyst Score** -- Accountability framework for Project Catalyst. Separate product surface, shared infrastructure.
+**6c: Catalyst Score** -- Accountability framework for Project Catalyst. Separate product surface, shared infrastructure.
 
-**7d: Cross-Ecosystem Governance Identity** -- Governance passport, verifiable credentials, cross-chain reputation bridging, DID integration.
+**6d: Cross-Ecosystem Governance Identity** -- Governance passport, verifiable credentials, cross-chain reputation bridging, DID integration.
 
-### Phase Overlap Opportunities
+**6e: Enhanced Wrapped** -- Multi-role support, engagement stats, coverage data, all five flywheels' data in the narrative.
 
-Phases 1-3 can partially overlap:
+### Phase 2+3 Execution Strategy
 
-- Phase 1 (recompose) is chunked by section -- Governance section can ship before Workspace is complete
-- Phase 2 (engagement) can start as soon as Hub cards exist (Phase 0 output)
-- Phase 3 (funnel) can start as soon as Governance section exists (Phase 1b output)
+Phases 2 and 3 execute with maximum parallelism:
 
-Compressed timeline for Phases 1-3: ~4-5 weeks with parallel agents vs. 6+ weeks sequential.
+- Phase 2a (engagement surfaces) and 2b (identity/milestones) can build simultaneously
+- Phase 2c (share engine) depends on 2a+2b outputs but can start with match result sharing patterns already shipped
+- Phase 2d (representative activation) is independent of 2a-2c and can build in parallel
+- Phase 3a (funnel) can start as soon as Phase 2a engagement surfaces exist
+- Phase 3b (return loop) requires Phase 2b milestones but notification infrastructure is independent
+- Phase 3c (community intelligence) is backend-heavy and can build alongside frontend work
+- Phase 3d (launch readiness) runs as a continuous thread throughout both phases
+
+**The growth model at launch:**
+
+```
+DReps claim profiles -> share to attract delegation
+  -> Followers discover Governada -> connect wallets
+    -> Citizens engage (sentiment, priorities, endorsements)
+      -> Engagement data enriches DRep profiles + intelligence
+        -> DReps share richer profiles -> more followers discover
+          -> Community intelligence insights generate organic conversation
+            -> More citizens -> more data -> better product -> compounding growth
+```
 
 ---
 
 ## Monetization Roadmap (Aligned to Phases)
 
-| After Phase | Revenue Stream                                                         | Target                |
-| ----------- | ---------------------------------------------------------------------- | --------------------- |
-| 0-3         | **Free forever** -- build userbase, prove value, secure Catalyst grant | $0/mo + $30-75K grant |
-| 4           | **Wrapped virality** -- organic growth, ecosystem sponsor placements   | $200-500/mo sponsors  |
-| 5           | **DRep Pro** -- competitive analytics + growth tools                   | $1,000-2,500/mo       |
-| 5           | **SPO Pro** -- delegation growth + competitive intelligence            | $1,000-2,500/mo       |
-| 5           | **Verified Projects** -- identity verification + accountability tools  | $200-500/mo           |
-| 5           | **Premium Delegator** -- AI governance advisor + advanced tracking     | $750-2,000/mo         |
-| 6           | **API/B2B** -- wallet integrations, exchanges, pool tools              | $1,500-4,000/mo       |
-| 6           | **Research Subscriptions** -- academic + professional data access      | $200-1,000/mo         |
-| 7           | **Enterprise** -- institutional delegation advisory, custom reporting  | $2,000-5,000/mo       |
-| 7+          | **Catalyst Score** -- separate product line                            | $2,000+/mo            |
-| 7+          | **Governance-as-a-Service** -- platform play                           | TBD                   |
+| After Phase  | Revenue Stream                                                         | Target                |
+| ------------ | ---------------------------------------------------------------------- | --------------------- |
+| 0-3 (LAUNCH) | **Free forever** -- build userbase, prove value, secure Catalyst grant | $0/mo + $30-75K grant |
+| 4            | **DRep Pro** -- competitive analytics + growth tools                   | $1,000-2,500/mo       |
+| 4            | **SPO Pro** -- delegation growth + competitive intelligence            | $1,000-2,500/mo       |
+| 4            | **Verified Projects** -- identity verification + accountability tools  | $200-500/mo           |
+| 4            | **Premium Delegator** -- AI governance advisor + advanced tracking     | $750-2,000/mo         |
+| 5            | **API/B2B** -- wallet integrations, exchanges, pool tools              | $1,500-4,000/mo       |
+| 5            | **Research Subscriptions** -- academic + professional data access      | $200-1,000/mo         |
+| 6            | **Enterprise** -- institutional delegation advisory, custom reporting  | $2,000-5,000/mo       |
+| 6+           | **Catalyst Score** -- separate product line                            | $2,000+/mo            |
+| 6+           | **Governance-as-a-Service** -- platform play                           | TBD                   |
 
 **Cumulative target at full maturity: $12,000-25,000+/mo.**
 

@@ -8,6 +8,16 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+export interface CCHealthSummaryResponse {
+  status: 'healthy' | 'attention' | 'critical';
+  narrative: string;
+  trend: 'improving' | 'stable' | 'declining';
+  activeMembers: number;
+  totalMembers: number;
+  avgTransparency: number | null;
+  tensionCount: number;
+}
+
 export interface CommitteeMemberQuickView {
   ccHotId: string;
   name: string | null;
@@ -18,10 +28,12 @@ export interface CommitteeMemberQuickView {
   noCount: number;
   abstainCount: number;
   approvalRate: number;
+  rank: number | null;
+  narrativeVerdict: string | null;
 }
 
 export function useCommitteeMembers() {
-  return useQuery<{ members: CommitteeMemberQuickView[] }>({
+  return useQuery<{ members: CommitteeMemberQuickView[]; health: CCHealthSummaryResponse }>({
     queryKey: ['cc-members'],
     queryFn: () => fetchJson('/api/governance/committee'),
     staleTime: 120_000,

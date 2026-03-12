@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
+import { getCCHealthSummary, getCCMemberVerdicts } from '@/lib/data';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -8,16 +9,20 @@ export const dynamic = 'force-dynamic';
 export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
-  // Fetch vote aggregation
-  const { data: votes, error } = await supabase.from('cc_votes').select('cc_hot_id, vote');
+  // Parallel fetches: votes, health summary, and member verdicts
+  const [{ data: votes, error }, health, verdicts] = await Promise.all([
+    supabase.from('cc_votes').select('cc_hot_id, vote'),
+    getCCHealthSummary(),
+    getCCMemberVerdicts(),
+  ]);
 
   if (error) {
     logger.error('Supabase error', { context: 'governance/committee', error: error?.message });
-    return NextResponse.json({ members: [] });
+    return NextResponse.json({ members: [], health });
   }
 
   if (!votes?.length) {
-    return NextResponse.json({ members: [] });
+    return NextResponse.json({ members: [], health });
   }
 
   const memberMap = new Map<string, { yes: number; no: number; abstain: number }>();
@@ -48,10 +53,14 @@ export const GET = withRouteHandler(async () => {
     });
   }
 
+  // Build verdict lookup
+  const verdictMap = new Map(verdicts.map((v) => [v.ccHotId, v]));
+
   const members = Array.from(memberMap.entries())
     .map(([ccHotId, counts]) => {
       const total = counts.yes + counts.no + counts.abstain;
       const meta = metaMap.get(ccHotId);
+      const verdict = verdictMap.get(ccHotId);
       return {
         ccHotId,
         name: meta?.name ?? null,
@@ -62,6 +71,8 @@ export const GET = withRouteHandler(async () => {
         noCount: counts.no,
         abstainCount: counts.abstain,
         approvalRate: total > 0 ? Math.round((counts.yes / total) * 100) : 0,
+        rank: verdict?.rank ?? null,
+        narrativeVerdict: verdict?.narrative ?? null,
       };
     })
     .sort((a, b) => {
@@ -73,7 +84,7 @@ export const GET = withRouteHandler(async () => {
     });
 
   return NextResponse.json(
-    { members },
+    { members, health },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300',

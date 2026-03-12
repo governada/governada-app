@@ -1088,6 +1088,215 @@ export async function getCCMembersTransparency(): Promise<CCMemberTransparency[]
 }
 
 // ============================================================================
+// CC HEALTH SUMMARY & MEMBER VERDICTS
+// ============================================================================
+
+export interface CCHealthSummary {
+  status: 'healthy' | 'attention' | 'critical';
+  narrative: string;
+  trend: 'improving' | 'stable' | 'declining';
+  activeMembers: number;
+  totalMembers: number;
+  avgTransparency: number | null;
+  tensionCount: number;
+}
+
+export interface CCMemberVerdict {
+  ccHotId: string;
+  rank: number;
+  total: number;
+  narrative: string;
+  strongestPillar: string | null;
+  weakestPillar: string | null;
+  trend: 'improving' | 'stable' | 'declining';
+}
+
+export async function getCCHealthSummary(): Promise<CCHealthSummary> {
+  const { interpretHealthStatus, generateCCHealthNarrative } =
+    await import('@/lib/cc/interpretations');
+
+  try {
+    const supabase = createClient();
+
+    // Parallel fetches: members, tension data, and latest snapshots for trend
+    const [members, { data: alignmentRows }, { data: votes }, { data: stats }] = await Promise.all([
+      getCCMembersTransparency(),
+      supabase
+        .from('inter_body_alignment')
+        .select('proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct'),
+      supabase.from('cc_votes').select('cc_hot_id, proposal_tx_hash, proposal_index, vote'),
+      supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
+    ]);
+
+    const currentEpoch = stats?.current_epoch ?? 0;
+    const activeMembers = members.filter((m) => m.status === 'authorized').length;
+    const totalMembers = members.length;
+    const scoredMembers = members.filter((m) => m.transparencyIndex != null);
+    const avgTransparency =
+      scoredMembers.length > 0
+        ? Math.round(
+            scoredMembers.reduce((sum, m) => sum + (m.transparencyIndex ?? 0), 0) /
+              scoredMembers.length,
+          )
+        : null;
+
+    // Count tension proposals (where CC unanimous vote diverges from DRep majority)
+    const safeVotes = votes ?? [];
+    const alignmentMap = new Map<string, string>();
+    for (const row of alignmentRows ?? []) {
+      const key = `${row.proposal_tx_hash}-${row.proposal_index}`;
+      const drepMaj =
+        row.drep_yes_pct > row.drep_no_pct
+          ? 'Yes'
+          : row.drep_no_pct > row.drep_yes_pct
+            ? 'No'
+            : 'Abstain';
+      alignmentMap.set(key, drepMaj);
+    }
+
+    const proposalVotes = new Map<string, Map<string, string>>();
+    for (const v of safeVotes) {
+      const key = `${v.proposal_tx_hash}-${v.proposal_index}`;
+      const voteMap = proposalVotes.get(key) ?? new Map<string, string>();
+      voteMap.set(v.cc_hot_id, v.vote);
+      proposalVotes.set(key, voteMap);
+    }
+
+    let tensionCount = 0;
+    for (const [key, voteMap] of proposalVotes) {
+      const allVotes = Array.from(voteMap.values());
+      if (allVotes.length < totalMembers || totalMembers === 0) continue;
+      const first = allVotes[0];
+      const isUnanimous = allVotes.every((v) => v === first);
+      if (isUnanimous) {
+        const drepMaj = alignmentMap.get(key);
+        if (drepMaj && drepMaj !== 'Abstain' && first !== drepMaj) tensionCount++;
+      }
+    }
+
+    // Trend: compare current epoch avg vs 3 epochs ago
+    let trend: 'improving' | 'stable' | 'declining' = 'stable';
+    if (currentEpoch > 3 && scoredMembers.length > 0) {
+      const { data: oldSnapshots } = await supabase
+        .from('cc_transparency_snapshots')
+        .select('transparency_index')
+        .eq('epoch_no', currentEpoch - 3);
+
+      if (oldSnapshots && oldSnapshots.length > 0) {
+        const oldAvg = Math.round(
+          oldSnapshots.reduce((s, r) => s + (r.transparency_index ?? 0), 0) / oldSnapshots.length,
+        );
+        const delta = (avgTransparency ?? 0) - oldAvg;
+        if (delta > 2) trend = 'improving';
+        else if (delta < -2) trend = 'declining';
+      }
+    }
+
+    const healthData = { activeMembers, totalMembers, avgTransparency, tensionCount, trend };
+    const status = interpretHealthStatus(healthData);
+    const narrative = generateCCHealthNarrative(healthData);
+
+    return { status, narrative, trend, activeMembers, totalMembers, avgTransparency, tensionCount };
+  } catch {
+    return {
+      status: 'attention',
+      narrative: 'Unable to compute CC health summary.',
+      trend: 'stable',
+      activeMembers: 0,
+      totalMembers: 0,
+      avgTransparency: null,
+      tensionCount: 0,
+    };
+  }
+}
+
+export async function getCCMemberVerdicts(): Promise<CCMemberVerdict[]> {
+  const { generateMemberVerdict, interpretTrend } = await import('@/lib/cc/interpretations');
+
+  try {
+    const supabase = createClient();
+    const members = await getCCMembersTransparency();
+    if (members.length === 0) return [];
+
+    // Get latest 2 snapshots per member for trend
+    const { data: snapshots } = await supabase
+      .from('cc_transparency_snapshots')
+      .select('cc_hot_id, epoch_no, transparency_index')
+      .order('epoch_no', { ascending: false })
+      .limit(members.length * 5);
+
+    const snapshotsByMember = new Map<string, { epoch: number; index: number }[]>();
+    for (const s of snapshots ?? []) {
+      const list = snapshotsByMember.get(s.cc_hot_id) ?? [];
+      list.push({ epoch: s.epoch_no, index: s.transparency_index ?? 0 });
+      snapshotsByMember.set(s.cc_hot_id, list);
+    }
+
+    const PILLAR_LABELS: Record<string, string> = {
+      participation: 'Participation',
+      rationaleQuality: 'Rationale Quality',
+      responsiveness: 'Responsiveness',
+      independence: 'Independence',
+    };
+
+    return members.map((m, i) => {
+      const rank = i + 1;
+      const total = members.length;
+
+      // Find strongest/weakest pillar
+      const pillars: [string, number | null][] = [
+        ['participation', m.participationScore],
+        ['rationaleQuality', m.rationaleQualityScore],
+        ['responsiveness', m.responsivenessScore],
+        ['independence', m.independenceScore],
+      ];
+      const validPillars = pillars.filter(([, v]) => v != null) as [string, number][];
+      const sorted = [...validPillars].sort((a, b) => b[1] - a[1]);
+      const strongest = sorted.length > 0 ? PILLAR_LABELS[sorted[0][0]] : null;
+      const weakest = sorted.length > 1 ? PILLAR_LABELS[sorted[sorted.length - 1][0]] : null;
+
+      // Compute trend
+      const memberSnaps = snapshotsByMember.get(m.ccHotId) ?? [];
+      let trend: 'improving' | 'stable' | 'declining' = 'stable';
+      if (memberSnaps.length >= 2) {
+        const current = memberSnaps[0].index;
+        const previous = memberSnaps[Math.min(2, memberSnaps.length - 1)].index;
+        const epochSpan =
+          memberSnaps[0].epoch - memberSnaps[Math.min(2, memberSnaps.length - 1)].epoch;
+        const trendStr = interpretTrend(current, previous, epochSpan);
+        if (trendStr.startsWith('Improving')) trend = 'improving';
+        else if (trendStr.startsWith('Declining')) trend = 'declining';
+      }
+
+      const narrative = generateMemberVerdict({
+        rank,
+        total,
+        transparencyScore: m.transparencyIndex,
+        trend,
+        strongestPillar: strongest,
+        weakestPillar: weakest,
+        participationRate:
+          m.votesCast != null && m.eligibleProposals != null && m.eligibleProposals > 0
+            ? Math.round((m.votesCast / m.eligibleProposals) * 100)
+            : null,
+      });
+
+      return {
+        ccHotId: m.ccHotId,
+        rank,
+        total,
+        narrative,
+        strongestPillar: strongest,
+        weakestPillar: weakest,
+        trend,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// ============================================================================
 // GOVERNANCE INBOX
 // ============================================================================
 

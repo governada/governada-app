@@ -42,12 +42,18 @@ export interface TransparencyResult {
 // Weights — per persona doc spec
 // ---------------------------------------------------------------------------
 
+// Weights — redistributed after removing Community Engagement (Pillar 5).
+// Pillar 5 data sources (questionsAnswered, endorsementCount) don't exist yet,
+// so the pillar was contributing 0 to every member's score, artificially deflating
+// all transparency indices by up to 10 points. Weights below redistribute the
+// original 10% proportionally across the 4 active pillars.
+// When engagement data becomes available, re-enable with its own weight slice.
 const WEIGHTS = {
-  participation: 0.35,
-  rationaleQuality: 0.3,
-  responsiveness: 0.15,
-  independence: 0.1,
-  communityEngagement: 0.1,
+  participation: 0.39,
+  rationaleQuality: 0.33,
+  responsiveness: 0.17,
+  independence: 0.11,
+  communityEngagement: 0,
 };
 
 // ---------------------------------------------------------------------------

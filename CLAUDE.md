@@ -119,6 +119,7 @@ C:\Users\dalto\governada\
 | `/audit-experience [persona-state]`              | End-to-end experience audit for one persona (UX + journeys + intelligence + craft)                             | Monthly per persona, quarterly rotation        |
 | `/audit-engine [full\|scoring\|data\|sync]`      | Backend engine: scoring models, data integrity, sync pipeline, calibration                                     | Monthly focused, quarterly full                |
 | `/audit-security [area]`                         | Auth, RLS, API security, data protection, infra hardening, anti-gaming                                         | Pre-launch full, quarterly, after auth changes |
+| `/audit-feature [route\|feature]`                | MLE audit of a single page through all persona lenses — JTBD, narrative, info budget, craft, subtraction recs  | Before/after page builds, monthly rotation     |
 | `/audit-all [full\|experiences\|systems\|quick]` | Orchestrator: launches experience + engine + security audits as parallel subagents, synthesizes unified report | Quarterly full, monthly quick                  |
 
 ## Strategy Commands

@@ -45,24 +45,41 @@ const BAND_COLORS: Record<string, string> = {
 
 const COMPONENT_LABELS: Record<string, string> = {
   drepParticipation: 'DRep Participation',
+  spoParticipation: 'SPO Participation',
   citizenEngagement: 'Citizen Engagement',
   deliberationQuality: 'Deliberation Quality',
   governanceEffectiveness: 'Governance Effectiveness',
+  ccConstitutionalFidelity: 'CC Constitutional Fidelity',
   powerDistribution: 'Power Distribution',
   systemStability: 'System Stability',
 };
 
 const COMPONENT_TOOLTIPS: Record<string, string> = {
   drepParticipation: 'Percentage of active DReps who voted on proposals this epoch',
+  spoParticipation: 'SPO governance vote coverage weighted by importance and temporal decay',
   citizenEngagement: 'Delegation activity, endorsements, and community sentiment participation',
   deliberationQuality: 'Rationale provision rate and depth of governance deliberation',
   governanceEffectiveness: 'Proposal throughput, vote decisiveness, and outcome delivery',
+  ccConstitutionalFidelity: 'CC participation, constitutional grounding, and reasoning quality',
   powerDistribution: 'Distribution of voting power and delegation diversity across DReps',
   systemStability: 'Protocol parameter stability and governance process consistency',
 };
 
+const CALIBRATION_KEY_MAP: Record<string, string> = {
+  'DRep Participation': 'drepParticipation',
+  'SPO Participation': 'spoParticipation',
+  'Citizen Engagement': 'citizenEngagement',
+  'Deliberation Quality': 'deliberationQuality',
+  'Governance Effectiveness': 'governanceEffectiveness',
+  'CC Constitutional Fidelity': 'ccConstitutionalFidelity',
+  'Power Distribution': 'powerDistribution',
+  'System Stability': 'systemStability',
+};
+
 function getCalibrationKey(name: string): string {
-  return name.replace(/\s+/g, '').replace(/^./, (c) => c.toLowerCase());
+  return (
+    CALIBRATION_KEY_MAP[name] ?? name.replace(/\s+/g, '').replace(/^./, (c) => c.toLowerCase())
+  );
 }
 
 function MiniSparkline({ data }: { data: (number | null)[] }) {

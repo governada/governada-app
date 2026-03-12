@@ -43,6 +43,7 @@ import {
   Activity,
   Inbox,
   Search,
+  Landmark,
 } from 'lucide-react';
 import { MobileNav } from './MobileNav';
 import { GovernanceHeartbeat } from './GovernanceHeartbeat';
@@ -60,6 +61,10 @@ const ALERT_ICONS: Record<AlertType, typeof TrendingDown> = {
   'drep-urgent-deadline': Clock,
   'critical-proposal-open': AlertTriangle,
   'drep-missing-votes': Vote,
+  'ncl-threshold-crossed': Landmark,
+  'ncl-period-expiring': Landmark,
+  'ncl-exceeded-projected': Landmark,
+  'drep-treasury-vote': Landmark,
 };
 
 const ALERT_COLORS: Record<AlertType, string> = {
@@ -74,6 +79,10 @@ const ALERT_COLORS: Record<AlertType, string> = {
   'drep-urgent-deadline': 'text-red-500',
   'critical-proposal-open': 'text-red-500',
   'drep-missing-votes': 'text-amber-500',
+  'ncl-threshold-crossed': 'text-amber-500',
+  'ncl-period-expiring': 'text-amber-500',
+  'ncl-exceeded-projected': 'text-red-500',
+  'drep-treasury-vote': 'text-primary',
 };
 
 export function Header() {

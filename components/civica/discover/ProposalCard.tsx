@@ -5,6 +5,8 @@ import { ChevronRight, Clock, Landmark, AlertTriangle, CircleDot } from 'lucide-
 import { cn } from '@/lib/utils';
 import { getProposalTheme, getVerdict } from '@/components/civica/proposals/proposal-theme';
 import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
+import { NclImpactIndicator } from '@/components/shared/NclImpactIndicator';
+import { useTreasuryNcl } from '@/hooks/queries';
 import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -146,6 +148,7 @@ export function ProposalCard({
   hasDrepVotes,
   animationDelay,
 }: ProposalCardProps) {
+  const { data: nclData } = useTreasuryNcl();
   const status = p.status ?? 'Open';
   const statusLower = status.toLowerCase();
   const isOpen = statusLower === 'open';
@@ -159,6 +162,8 @@ export function ProposalCard({
   const hasTreasury = p.type === 'TreasuryWithdrawals' && p.withdrawalAmount;
   const pill = drepVote ? VOTE_PILL[drepVote] : null;
   const needsVote = !pill && isOpen && !!delegatedDrepId && hasDrepVotes;
+  const ncl = nclData?.ncl;
+  const showNcl = hasTreasury && ncl?.period?.nclAda;
 
   const href = `/proposal/${p.txHash}/${p.index}`;
   const title = p.title || `${p.txHash?.slice(0, 16)}…`;
@@ -180,6 +185,16 @@ export function ProposalCard({
           <span className="text-[11px] tabular-nums text-muted-foreground/60 shrink-0">
             ₳{fmtAda(p.withdrawalAmount!)}
           </span>
+        )}
+        {showNcl && (
+          <NclImpactIndicator
+            currentUtilizationPct={ncl!.utilizationPct}
+            proposalAmountAda={p.withdrawalAmount!}
+            nclAda={ncl!.period.nclAda}
+            remainingAda={ncl!.remainingAda}
+            isEnacted={statusLower === 'enacted'}
+            variant="compact"
+          />
         )}
         {p.deliveryStatus && p.deliveryStatus !== 'unknown' && (
           <ProposalDeliveryBadge
@@ -316,6 +331,18 @@ export function ProposalCard({
               status={p.deliveryStatus as DeliveryStatus}
               score={p.deliveryScore}
               compact
+            />
+          )}
+          {showNcl && (
+            <NclImpactIndicator
+              currentUtilizationPct={ncl!.utilizationPct}
+              proposalAmountAda={p.withdrawalAmount!}
+              nclAda={ncl!.period.nclAda}
+              remainingAda={ncl!.remainingAda}
+              startEpoch={ncl!.period.startEpoch}
+              endEpoch={ncl!.period.endEpoch}
+              isEnacted={statusLower === 'enacted'}
+              variant="compact"
             />
           )}
           <div className="flex items-center gap-1.5 ml-auto">

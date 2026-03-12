@@ -17,6 +17,7 @@ import {
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useGovernanceHolder, useSPOSummary, useAlignmentDrift } from '@/hooks/queries';
 import { FeatureGate } from '@/components/FeatureGate';
+import { DRepTreasuryStewardship } from '@/components/delegation/DRepTreasuryStewardship';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { computeTier } from '@/lib/scoring/tiers';
@@ -213,6 +214,9 @@ function DRepSection() {
           </div>
         )}
       </FeatureGate>
+
+      {/* Treasury stewardship */}
+      <DRepTreasuryStewardship drepId={delegatedDrep} />
 
       {/* Link to full profile */}
       <Link

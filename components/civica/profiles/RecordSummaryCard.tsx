@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { FileText, CheckCircle2, AlertTriangle, XCircle, Clock } from 'lucide-react';
-import { useDRepOutcomeSummary } from '@/hooks/queries';
+import { FileText, CheckCircle2, AlertTriangle, XCircle, Clock, Landmark } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useDRepOutcomeSummary, useDRepNclImpact } from '@/hooks/queries';
 import type { DRepOutcomeSummary as DRepOutcomeSummaryType } from '@/lib/proposalOutcomes';
 import { spring } from '@/lib/animations';
 
@@ -61,7 +62,22 @@ export function RecordSummaryCard({
   rationaleRate,
 }: RecordSummaryCardProps) {
   const { data: raw, isLoading } = useDRepOutcomeSummary(drepId);
+  const { data: nclRaw } = useDRepNclImpact(drepId);
   const summary = raw as DRepOutcomeSummaryType | undefined;
+  const nclImpact = (
+    nclRaw as
+      | {
+          impact: {
+            approvedAda: number;
+            opposedAda: number;
+            approvedPct: number;
+            opposedPct: number;
+            nclAda: number;
+            judgmentScore: number | null;
+          } | null;
+        }
+      | undefined
+  )?.impact;
 
   if (isLoading) return null;
 
@@ -193,6 +209,53 @@ export function RecordSummaryCard({
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* NCL Treasury Voting Record */}
+      {nclImpact && (nclImpact.approvedAda > 0 || nclImpact.opposedAda > 0) && (
+        <div className="rounded-lg border border-border/50 bg-card/50 p-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Landmark className="h-3 w-3 text-amber-400" />
+            Treasury Voting Record
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {nclImpact.approvedAda > 0 && (
+              <div>
+                <span className="text-muted-foreground">Approved: </span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  ₳
+                  {nclImpact.approvedAda >= 1_000_000
+                    ? `${(nclImpact.approvedAda / 1_000_000).toFixed(1)}M`
+                    : `${(nclImpact.approvedAda / 1_000).toFixed(0)}K`}
+                </span>
+                <span
+                  className={cn(
+                    'text-xs ml-1',
+                    nclImpact.approvedPct >= 40 ? 'text-amber-400' : 'text-muted-foreground',
+                  )}
+                >
+                  ({nclImpact.approvedPct}% of budget)
+                </span>
+              </div>
+            )}
+            {nclImpact.opposedAda > 0 && (
+              <div>
+                <span className="text-muted-foreground">Opposed: </span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  ₳
+                  {nclImpact.opposedAda >= 1_000_000
+                    ? `${(nclImpact.opposedAda / 1_000_000).toFixed(1)}M`
+                    : `${(nclImpact.opposedAda / 1_000).toFixed(0)}K`}
+                </span>
+              </div>
+            )}
+          </div>
+          {nclImpact.judgmentScore != null && (
+            <p className="text-xs text-muted-foreground">
+              Judgment: {nclImpact.judgmentScore}% of approved proposals delivered
+            </p>
+          )}
         </div>
       )}
 

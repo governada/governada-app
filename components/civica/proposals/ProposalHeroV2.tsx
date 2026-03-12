@@ -12,6 +12,9 @@ import { ProposalVerdict } from './ProposalVerdict';
 import { getProposalTheme } from './proposal-theme';
 import { cn } from '@/lib/utils';
 import type { TriBodyVotes } from '@/lib/data';
+import { NclImpactIndicator } from '@/components/shared/NclImpactIndicator';
+import { ProposalValueContext } from '@/components/shared/ProposalValueContext';
+import type { NclUtilization } from '@/lib/treasury';
 
 function formatTreasuryPct(amount: number, balance: number): string {
   const pct = (amount / balance) * 100;
@@ -38,6 +41,7 @@ interface ProposalHeroV2Props {
   currentEpoch: number;
   triBody: TriBodyVotes | null;
   blockTime: number | null;
+  nclUtilization?: NclUtilization | null;
 }
 
 export function ProposalHeroV2({
@@ -58,6 +62,7 @@ export function ProposalHeroV2({
   currentEpoch,
   triBody,
   blockTime,
+  nclUtilization,
 }: ProposalHeroV2Props) {
   const theme = getProposalTheme(proposalType);
   const TypeIcon = theme.icon;
@@ -73,6 +78,7 @@ export function ProposalHeroV2({
   const isOpen = !ratifiedEpoch && !enactedEpoch && !droppedEpoch && !expiredEpoch;
   const remaining = expirationEpoch != null ? Math.max(0, expirationEpoch - currentEpoch) : null;
   const isUrgent = isOpen && remaining != null && remaining > 0 && remaining <= 2;
+  const isTreasury = proposalType === 'TreasuryWithdrawals' && withdrawalAmount != null;
 
   return (
     <div className="space-y-4">
@@ -127,21 +133,38 @@ export function ProposalHeroV2({
           </h1>
 
           {/* Treasury withdrawal callout */}
-          {proposalType === 'TreasuryWithdrawals' && withdrawalAmount != null && (
+          {isTreasury && (
             <div
               className="inline-flex items-baseline gap-2 rounded-lg px-4 py-2.5"
               style={{ backgroundColor: theme.accentMuted }}
             >
               <span className="text-2xl font-bold tabular-nums" style={{ color: theme.accent }}>
-                {withdrawalAmount.toLocaleString()} ADA
+                {withdrawalAmount!.toLocaleString()} ADA
               </span>
               {treasuryBalanceAda != null && treasuryBalanceAda > 0 && (
                 <span className="text-sm text-muted-foreground">
-                  {formatTreasuryPct(withdrawalAmount, treasuryBalanceAda)} of treasury
+                  {formatTreasuryPct(withdrawalAmount!, treasuryBalanceAda)} of treasury
                 </span>
               )}
             </div>
           )}
+
+          {/* NCL Budget Impact — shows how this proposal affects the budget period limit */}
+          {isTreasury && nclUtilization && (
+            <NclImpactIndicator
+              currentUtilizationPct={nclUtilization.utilizationPct}
+              proposalAmountAda={withdrawalAmount!}
+              nclAda={nclUtilization.period.nclAda}
+              remainingAda={nclUtilization.remainingAda}
+              startEpoch={nclUtilization.period.startEpoch}
+              endEpoch={nclUtilization.period.endEpoch}
+              isEnacted={enactedEpoch != null}
+              variant="detailed"
+            />
+          )}
+
+          {/* Value Context — historical comparison + value type classification */}
+          {isTreasury && <ProposalValueContext txHash={txHash} proposalIndex={proposalIndex} />}
 
           {/* Date */}
           {date && <p className="text-xs text-muted-foreground">Proposed {date}</p>}

@@ -17,7 +17,11 @@ export type AlertType =
   | 'drep-pending-proposals'
   | 'drep-urgent-deadline'
   | 'critical-proposal-open'
-  | 'drep-missing-votes';
+  | 'drep-missing-votes'
+  | 'ncl-threshold-crossed'
+  | 'ncl-period-expiring'
+  | 'ncl-exceeded-projected'
+  | 'drep-treasury-vote';
 
 export interface Alert {
   id: string;
@@ -46,6 +50,7 @@ const PREV_MATCH_SCORES_KEY = 'drepscore_prev_match_scores';
 const LAST_VISIT_KEY = 'drepscore_last_visit';
 const DISMISSED_ALERTS_KEY = 'drepscore_dismissed_alerts';
 const WATCHLIST_KEY = 'drepscore_watchlist';
+const NCL_LAST_THRESHOLD_KEY = 'governada_ncl_last_threshold';
 
 // ── Thresholds ──────────────────────────────────────────────────────────────
 
@@ -100,6 +105,27 @@ function getWatchlist(): string[] {
   }
 }
 
+function getNclLastThreshold(): number {
+  if (typeof window === 'undefined') return 0;
+  return parseInt(localStorage.getItem(NCL_LAST_THRESHOLD_KEY) || '0', 10);
+}
+
+function setNclLastThreshold(threshold: number) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(NCL_LAST_THRESHOLD_KEY, String(threshold));
+}
+
+interface NclAlertData {
+  utilizationPct: number;
+  projectedUtilizationPct: number;
+  epochsRemaining: number;
+  nclAda: number;
+  remainingAda: number;
+  status: 'healthy' | 'elevated' | 'critical';
+  startEpoch: number;
+  endEpoch: number;
+}
+
 // ── Hook ────────────────────────────────────────────────────────────────────
 
 export function useAlignmentAlerts() {
@@ -128,6 +154,7 @@ export function useAlignmentAlerts() {
     drepVotedCount?: number;
     drepMissingCount?: number;
   } | null>(null);
+  const [nclData, setNclData] = useState<NclAlertData | null>(null);
 
   useEffect(() => {
     setDismissedIds(getDismissedAlerts());
@@ -299,6 +326,38 @@ export function useAlignmentAlerts() {
       cancelled = true;
     };
   }, [ownDRepId]);
+
+  // Fetch NCL data for budget alerts
+  useEffect(() => {
+    if (!connected) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch('/api/treasury/ncl');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data.ncl) {
+          setNclData({
+            utilizationPct: data.ncl.utilizationPct,
+            projectedUtilizationPct: data.ncl.projectedUtilizationPct,
+            epochsRemaining: data.ncl.epochsRemaining,
+            nclAda: data.ncl.period.nclAda,
+            remainingAda: data.ncl.remainingAda,
+            status: data.ncl.status,
+            startEpoch: data.ncl.period.startEpoch,
+            endEpoch: data.ncl.period.endEpoch,
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connected]);
 
   // Fetch governance summary for ADA holder alerts (delegators)
   useEffect(() => {
@@ -529,6 +588,89 @@ export function useAlignmentAlerts() {
       }
     }
 
+    // ── 8. NCL budget alerts ──────────────────────────────────────────
+    if (nclData) {
+      const NCL_THRESHOLDS = [90, 75, 50] as const;
+      const lastThreshold = getNclLastThreshold();
+
+      // A. NCL threshold crossed
+      for (const threshold of NCL_THRESHOLDS) {
+        if (nclData.utilizationPct >= threshold && lastThreshold < threshold) {
+          const formatAda = (ada: number) =>
+            ada >= 1_000_000 ? `${(ada / 1_000_000).toFixed(0)}M` : `${(ada / 1_000).toFixed(0)}K`;
+          result.push({
+            id: `ncl-threshold-${threshold}`,
+            type: 'ncl-threshold-crossed',
+            title: `Budget utilization reached ${Math.round(nclData.utilizationPct)}%`,
+            description: `The treasury has used ₳${formatAda(nclData.nclAda - nclData.remainingAda)} of the ₳${formatAda(nclData.nclAda)} budget limit. ₳${formatAda(nclData.remainingAda)} remains for ${nclData.epochsRemaining} epochs.`,
+            link: '/governance/treasury',
+            timestamp: now,
+            read: false,
+            metadata: {
+              threshold,
+              utilizationPct: nclData.utilizationPct,
+              remainingAda: nclData.remainingAda,
+            },
+          });
+          // Record highest crossed threshold
+          setNclLastThreshold(threshold);
+          break; // Only fire the highest crossed threshold
+        }
+      }
+
+      // B. NCL period expiring soon
+      if (nclData.epochsRemaining > 0 && nclData.epochsRemaining < 15) {
+        result.push({
+          id: `ncl-expiring-${nclData.endEpoch}`,
+          type: 'ncl-period-expiring',
+          title: `Budget period ends in ${nclData.epochsRemaining} epochs`,
+          description: `The current ₳${nclData.nclAda >= 1_000_000 ? `${(nclData.nclAda / 1_000_000).toFixed(0)}M` : nclData.nclAda.toLocaleString()} spending limit expires at Epoch ${nclData.endEpoch}. A new NCL Info Action will need to pass for the next period.`,
+          link: '/governance/treasury',
+          timestamp: now,
+          read: false,
+          metadata: {
+            epochsRemaining: nclData.epochsRemaining,
+            endEpoch: nclData.endEpoch,
+          },
+        });
+      }
+
+      // C. Pending proposals would exceed NCL (relevant for DReps)
+      if (ownDRepId && nclData.projectedUtilizationPct > 100) {
+        result.push({
+          id: `ncl-exceeded-projected-${nclData.endEpoch}`,
+          type: 'ncl-exceeded-projected',
+          title: 'Pending proposals exceed budget limit',
+          description: `If all pending proposals pass, total withdrawals would reach ${Math.round(nclData.projectedUtilizationPct)}% of the ₳${nclData.nclAda >= 1_000_000 ? `${(nclData.nclAda / 1_000_000).toFixed(0)}M` : nclData.nclAda.toLocaleString()} constitutional limit.`,
+          link: '/governance/treasury',
+          timestamp: now,
+          read: false,
+          metadata: {
+            projectedUtilizationPct: nclData.projectedUtilizationPct,
+            nclAda: nclData.nclAda,
+          },
+        });
+      }
+    }
+
+    // ── 9. DRep treasury vote alert (citizen only) ─────────────────────
+    if (delegatedDrepId && voteActivity.length > 0) {
+      for (const v of voteActivity.slice(0, 3)) {
+        if (v.proposalType === 'TreasuryWithdrawals') {
+          result.push({
+            id: `drep-treasury-vote-${v.voteTxHash}`,
+            type: 'drep-treasury-vote',
+            title: `Your DRep voted ${v.vote} on a treasury withdrawal`,
+            description: `"${v.proposalTitle || `Proposal ${v.proposalTxHash.slice(0, 8)}...`}" — a treasury withdrawal proposal.`,
+            link: `/proposal/${v.proposalTxHash}/${v.proposalIndex}`,
+            timestamp: v.blockTime,
+            read: false,
+            metadata: { vote: v.vote, proposalType: v.proposalType },
+          });
+        }
+      }
+    }
+
     // Update last visit time
     setLastVisit(now);
 
@@ -546,6 +688,7 @@ export function useAlignmentAlerts() {
     newProposalCount,
     inboxData,
     govSummary,
+    nclData,
   ]);
 
   // Filter out dismissed alerts

@@ -95,8 +95,25 @@ Read these files before launching sub-agents. This context informs the audit fra
 4. Read `docs/strategy/context/navigation-architecture.md` — route structure and nav design
 5. Read `docs/strategy/context/audit-rubric.md` — scoring anchors and calibration
 6. Read `docs/strategy/context/competitive-landscape.md` — competitor benchmarks
+7. Read `docs/strategy/context/world-class-patterns.md` — inspiration patterns library
 
-After loading, confirm the persona-state and proceed to Phase 2.
+After loading, confirm the persona-state and proceed to Phase 1.5.
+
+---
+
+## Phase 1.5: Analytics Context (if available)
+
+Before launching sub-agents, check for real user data to ground the audit:
+
+1. Check if PostHog analytics data is accessible (e.g., via API routes or exported data files)
+2. If available, gather for this persona's primary routes:
+   - Page view counts and bounce rates
+   - Feature adoption rates (which elements get clicks vs. are ignored)
+   - Funnel completion rates for key JTBDs
+   - Session duration patterns
+3. If NOT available, explicitly note: "This audit is code-based only. Findings about user behavior are inferred from code structure, not validated against real usage. Prioritize validating high-impact assumptions with analytics before building."
+
+Pass any analytics context to all sub-agents.
 
 ---
 
@@ -148,6 +165,10 @@ EMPTY_STATES:
 (Which views handle zero-data gracefully vs not)
 - [component/route]: [GRACEFUL/MISSING/BROKEN] — [what happens with no data]
 
+EXCESS_ELEMENTS:
+(UI elements, sections, or data displays that don't serve this persona's JTBDs — candidates for removal or relocation)
+- [element] | [route/component] | [why it doesn't earn its place for this persona]
+
 ALREADY_STRONG:
 (What works well — mandatory per audit-integrity.md)
 - [specific thing that's good] — [why it's good] — [file path]
@@ -185,6 +206,10 @@ D) Computation Gaps — Check whether engine capabilities exist but aren't expos
    - Read `lib/scoring/`, `lib/alignment/`, `lib/matching/`, `lib/ghi/`
    - Cross-reference capabilities with what's rendered on this persona's routes
 
+E) Data Opportunities — What NEW data sources or transformations would create intelligence that's currently impossible for this persona?
+   - Think beyond what exists: social proof signals, cross-chain activity, off-chain reputation, AI-derived insights, community sentiment, temporal patterns
+   - For each opportunity: what data source, what it would enable, and feasibility (available / requires partnership / requires research)
+
 Key files to examine:
 - `lib/scoring/` — scoring models and what they compute
 - `lib/alignment/` — alignment space and trajectory
@@ -208,6 +233,10 @@ SCORE_COMMUNICATION:
 GAPS:
 (Engine capabilities that exist in lib/ but this persona can't access through their routes)
 - [capability] | [exists in file] | [missing from route/component] | [user impact]
+
+DATA_OPPORTUNITIES:
+(New data sources or transformations that would create currently impossible intelligence)
+- [capability that doesn't exist yet]: [what data source would enable it] — [what persona experience it would unlock] — [feasibility: available/requires-partnership/requires-research]
 
 ALREADY_STRONG:
 - [specific intelligence surfacing that works well] — [file path] — [why it's effective]
@@ -257,6 +286,13 @@ F) Accessibility
    - Color contrast: WCAG 2.1 AA (4.5:1)?
    - Touch targets: 44x44px minimum on mobile?
 
+G) Experience Coherence
+   - Does this persona's journey feel like ONE product or a collection of features?
+   - Is visual language consistent across all routes? (same card patterns, same spacing, same typography scale)
+   - Is information density consistent? (or are some pages spacious while others are cramped)
+   - Is tone of voice consistent? (does the Hub talk to you the same way the governance section does)
+   - Are motion/animation patterns consistent? (same transition speeds, same easing, same loading patterns)
+
 Key files to examine:
 - `app/` — page.tsx files for persona's routes
 - `components/` — UI components, especially hero sections, score displays, loading states
@@ -278,6 +314,13 @@ ACCESSIBILITY:
 - Color contrast: [assessment]
 - Touch targets: [assessment]
 - Overall WCAG compliance estimate: [A / AA / AAA / partial]
+
+COHERENCE:
+- Visual language consistency: [consistent/inconsistent — specific examples]
+- Information density consistency: [consistent/inconsistent — specific examples]
+- Tone of voice consistency: [consistent/inconsistent — specific examples]
+- Motion/animation consistency: [consistent/inconsistent — specific examples]
+- Overall coherence verdict: [feels like one product / feels like a collection of features]
 
 EMOTIONAL_ARC:
 [2-3 sentences: Does the overall experience deliver the persona's target emotional journey? Be specific — reference actual routes and components.]
@@ -353,7 +396,7 @@ ALREADY_STRONG:
 - [specific performance pattern that's well done] — [file path]
 ```
 
-### Sub-agent 5: Competitive & Vision
+### Sub-agent 5: Competitive, Vision & Switching
 
 ```
 You are evaluating [PERSONA-STATE]'s experience against competitors and the V3 vision. This is a READ-ONLY audit — do not modify any files.
@@ -363,12 +406,16 @@ Instructions:
 2. Read `docs/strategy/ultimate-vision.md` — focus on sections relevant to this persona
 3. Read `docs/strategy/context/persona-quick-ref.md` for persona JTBDs
 4. Read `docs/strategy/context/build-manifest.md` for current build status
+5. Read `docs/strategy/context/world-class-patterns.md` for inspiration patterns
+
+**WebSearch required:** Before evaluating, WebSearch for the current state of at least 2 direct competitors (GovTool, DRep.tools, Tally) AND at least 1 world-class non-crypto product relevant to this persona's primary JTBD. Update `docs/strategy/context/competitive-landscape.md` with findings.
 
 A) Competitive Positioning
 For each JTBD of this persona, evaluate:
 - How does Governada compare to the best alternative? Consider: GovTool, DRep.tools, Tally, SubSquare, Snapshot
 - Is Governada ahead, behind, or at parity? Be specific — name the feature or flow.
 - What does the competitor do better? What does Governada do better?
+- **Beyond crypto:** How does Governada compare to the best non-crypto product that solves this type of problem? (e.g., for delegation: how does this compare to Robinhood's portfolio management? For workspace: how does this compare to Linear's inbox?)
 
 B) Vision Alignment
 - Read the relevant sections of `docs/strategy/ultimate-vision.md`
@@ -381,7 +428,12 @@ The 5 flywheels: Accountability, Engagement, Content/Discourse, Viral/Identity, 
 - How effectively? (Strong activation / Weak activation / Not activated)
 - What would strengthen flywheel activation for this persona?
 
-D) Share-Worthy Moment
+D) Switching Moment
+- What is the single interaction that would make this persona say "I'm never going back to [current alternative]"?
+- Does that moment exist in Governada today? If yes, where? If no, what would it be?
+- Be specific — name the feature, the data, the emotional response, and why it creates lock-in.
+
+E) Share-Worthy Moment
 - What's the single biggest opportunity to create a remarkable moment for this persona?
 - Something that would make them tell someone about Governada
 - Something that would make them screenshot and share
@@ -390,6 +442,7 @@ Return your findings in this EXACT format:
 
 COMPETITIVE_AUDIT:
 - [JTBD]: [Governada vs best alternative] — [ahead/behind/parity] — [specific evidence — name features, flows, or capabilities]
+- [JTBD]: [Governada vs best non-crypto product for this type of problem] — [how far from world-class] — [what's missing]
 
 VISION_ALIGNMENT:
 - Overall: [faithful/partial/divergent]
@@ -403,6 +456,9 @@ FLYWHEEL_ACTIVATION:
 - Content/Discourse: [strong/weak/not activated] — [evidence]
 - Viral/Identity: [strong/weak/not activated] — [evidence]
 - Integration/Distribution: [strong/weak/not activated] — [evidence]
+
+SWITCHING_MOMENT:
+[2-3 sentences: What is the single interaction that would make this persona say "I'm never going back to [alternative]"? Does it exist today? If not, what would it be? Be specific — name the feature, the data, and the emotional response.]
 
 SHARE_WORTHY:
 [1-2 sentences: What is the single biggest opportunity to create a remarkable, share-worthy moment for this persona? Be specific — name the feature, the flow, and why it would resonate.]
@@ -428,7 +484,19 @@ After all 5 sub-agents return, synthesize their findings into a unified experien
 
 This narrative should make the founder see through the persona's eyes. It is the audit's thesis statement — everything else supports it.
 
-### 3.2 Score Card
+### 3.2 Experience Coherence
+
+Evaluate whether this persona's full journey feels like one product or a collection of features. Using Sub-agent 3's coherence findings:
+
+- **Visual consistency**: Same card patterns, spacing, typography across all routes?
+- **Density consistency**: Some pages spacious while others are cramped?
+- **Tone consistency**: Hub talks differently than governance section?
+- **Motion consistency**: Same transitions, loading patterns, animation timing?
+- **Quality consistency**: Some pages polished, others rough? (A product with uneven quality feels worse than one that's uniformly moderate.)
+
+**Coherence verdict**: One sentence. "This persona's experience feels like [one polished product / a collection of features at different quality levels / mostly coherent with specific breaks at X and Y]."
+
+### 3.3 Score Card
 
 Score 6 dimensions. Each dimension is 0-10. Total possible: 60.
 
@@ -507,7 +575,7 @@ Present as a summary table:
 |                        |       |                    **TOTAL**              | XX/60   |
 ```
 
-### 3.3 What's Already Strong
+### 3.4 What's Already Strong
 
 **Mandatory section** (per audit-integrity.md). List 3-5 things this persona's experience does well today. For each:
 
@@ -516,7 +584,18 @@ Present as a summary table:
 - File path(s)
 - What would make it a 10/10 (if applicable — some things may already be excellent)
 
-### 3.4 Priority Stack
+### 3.5 Subtraction Recommendations
+
+**Mandatory section** (per audit-integrity.md). List elements in this persona's experience that should be REMOVED, simplified, or relocated. Draw from Sub-agent 1's EXCESS_ELEMENTS and Sub-agent 3's coherence findings. For each:
+
+- What it is (specific component, section, data display, or route)
+- Why it doesn't earn its place (doesn't serve this persona's JTBD, competes for attention with higher-priority elements, violates information budget)
+- Where its value migrates to (another page, a deeper interaction, or nowhere — it just goes away)
+- User impact of removing it (what improves by its absence)
+
+If genuinely nothing should be removed, explicitly justify why. This requires more than "everything is useful" — name the specific constraint that makes every element essential.
+
+### 3.6 Priority Stack
 
 Merge ALL sub-agent findings into a single prioritized list. Every item must have all three evidence requirements from audit-integrity.md: specific code path, concrete user impact, reproduction/measurement.
 
@@ -556,7 +635,20 @@ Apply the "Would Anyone Notice?" test:
 - If a real user wouldn't notice the change within 3 sessions, it is LOW PRIORITY at best
 - Exception for 7+ dimensions: "Does this move the product from 'it works' to 'I want to show this to someone'?"
 
-### 3.5 Work Plan
+**Ambitious Redesigns** (per audit-integrity.md World-Class Exception):
+If any dimension scores <7 and the current architecture has a ceiling below 9, present the redesign option separately with: current ceiling, redesign ceiling, effort, risk, what would change. Do not auto-exclude.
+
+### 3.7 Data Opportunities
+
+Consolidate Sub-agent 2's DATA_OPPORTUNITIES into a prioritized list of new data sources or transformations that would unlock currently impossible experiences for this persona. For each:
+
+- What data source or transformation
+- What experience it would enable
+- Which dimensions it would improve (E1-E6) and estimated impact
+- Feasibility: available / requires computation / requires new data source / requires partnership
+- Priority: pursue now / pursue after foundation work / long-term opportunity
+
+### 3.8 Work Plan
 
 Read `docs/strategy/context/work-plan-template.md` for the chunk format.
 
@@ -566,6 +658,7 @@ Convert the priority stack into executable chunks:
 2. Identify parallel opportunities — chunks touching different files/domains can run as simultaneous agents
 3. Flag decision points where the user must weigh in before an agent builds
 4. Sequence: infrastructure before consumers, foundation before polish, shared before specific
+5. Include subtraction items as first-class chunks — removals ship alongside additions
 
 For each chunk, follow the template format:
 
@@ -601,6 +694,27 @@ After presenting the work plan, ask:
 
 ---
 
+## Phase 4: Plateau Detection
+
+Check `.claude/audit-results/` for a previous audit of this persona-state.
+
+- If a previous audit exists and the total score delta is ≤2 points: flag explicitly:
+
+  > "This persona's scores have plateaued (previous: X/60, current: Y/60, delta: Z). Incremental diagnostic auditing is approaching its ceiling. Recommended next steps:
+  >
+  > 1. **Analytics validation**: Check PostHog data for this persona's routes to validate assumptions about user behavior
+  > 2. **Generative exploration**: Run `/explore-feature` on the lowest-scoring feature to imagine fundamentally different approaches
+  > 3. **Strategic reassessment**: Run `/strategy review` to check if the vision's priorities for this persona are still correct
+  > 4. **User research**: Consider user interviews or session recordings for this persona to discover needs the audit can't see from code alone
+  >
+  > Running the same diagnostic audit again is unlikely to produce meaningful new findings."
+
+- If no previous audit exists or delta is >2: proceed normally and note that plateau detection will be available in future runs.
+
+Save audit results to `.claude/audit-results/[persona-state]-experience.md` for future comparison.
+
+---
+
 ## Rules
 
 1. **Persona-first.** Every finding must be grounded in what this specific persona experiences. Generic findings that apply to "all users" belong in `/audit` (product-level), not here. If a finding doesn't change based on which persona you're auditing, it's out of scope.
@@ -613,20 +727,24 @@ After presenting the work plan, ask:
 
 5. **Be brutally honest.** The founder wants to see through the persona's eyes, not hear what they want to hear. A comfortable audit is a useless audit.
 
-6. **Follow all rules from `.claude/rules/audit-integrity.md`:**
+6. **Subtraction is mandatory.** Every audit must produce subtraction recommendations. If the agent can't find anything to remove, it's not looking hard enough — or it should explain why with specific evidence.
+
+7. **WebSearch is mandatory for Sub-agent 5.** Competitive intelligence based solely on cached documents produces stale benchmarks. Update competitive-landscape.md and world-class-patterns.md with findings.
+
+8. **Follow all rules from `.claude/rules/audit-integrity.md`:**
    - Evidence Requirement (code path + user impact + reproduction)
    - Cost-Benefit Gate (effort vs impact vs risk)
+   - World-Class Exception (ambitious redesigns for dimensions stuck below 7)
    - The "Already Good" Requirement (list what's strong, not just what's broken)
    - Score Calibration (10 = best in class across crypto AND competitive with top Web2; 8-9 = strong, polished, don't recommend changes without clear reason)
    - The "Would Anyone Notice?" Test (real user, first 3 sessions)
-   - Information Architecture Gate (for any recommendation that adds visible content)
+   - Subtraction is a Finding (mandatory removal recommendations)
+   - WebSearch Freshness Requirement (competitive intelligence must be current)
    - Anti-Patterns to Reject (no refactoring working code, no adding abstractions, no premature optimization)
-   - UX Anti-Patterns (no adding info without removing, no metrics without "so what", no data dumps)
-   - Competitor Benchmark (compare against what exists, not imaginary ideals; if ahead of all competitors, benchmark against Web2 category leaders)
 
-7. **Sub-agents run in parallel.** Launch all 5 in a single message. Do not wait for one to finish before launching the next.
+9. **Sub-agents run in parallel.** Launch all 5 in a single message. Do not wait for one to finish before launching the next.
 
-8. **Scope is one persona-state, not the whole product.** If you find issues that affect all personas, note them briefly but do not deep-dive. The priority stack should be 80%+ specific to the audited persona-state.
+10. **Scope is one persona-state, not the whole product.** If you find issues that affect all personas, note them briefly but do not deep-dive. The priority stack should be 80%+ specific to the audited persona-state.
 
 ---
 
@@ -636,3 +754,4 @@ After presenting the work plan, ask:
 - **Monthly**: Deep audit of the persona you're actively building for.
 - **Quarterly**: Cycle through all 9 persona-states. The order should reflect user base: citizen states first, then DRep, SPO, then secondary personas.
 - **After major UX changes**: Run for the most-affected persona-state to verify improvement.
+- **When scores plateau**: Switch to `/explore-feature` for generative alternatives or `/strategy review` for strategic reassessment. Don't keep running the same diagnostic loop.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import type { NclUtilization, DRepNclImpact } from '@/lib/treasury';
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -241,7 +242,19 @@ export function useTreasurySimilar(txHash: string, index: number) {
 export function useTreasuryNcl() {
   return useQuery({
     queryKey: ['treasury-ncl'],
-    queryFn: () => fetchJson('/api/treasury/ncl'),
+    queryFn: () => fetchJson<{ ncl: NclUtilization | null }>('/api/treasury/ncl'),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useDRepNclImpact(drepId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['drep-ncl-impact', drepId],
+    queryFn: () =>
+      fetchJson<{ impact: DRepNclImpact | null }>(
+        `/api/treasury/drep-ncl?drepId=${encodeURIComponent(drepId!)}`,
+      ),
+    enabled: !!drepId,
     staleTime: 5 * 60 * 1000,
   });
 }

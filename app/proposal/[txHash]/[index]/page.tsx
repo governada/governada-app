@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getProposalByKey, getVotesByProposal } from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { getTreasuryBalance } from '@/lib/treasury';
+import { getTreasuryBalance, getNclUtilization } from '@/lib/treasury';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProposalDescription } from '@/components/ProposalDescription';
 import { ThresholdMeter } from '@/components/ThresholdMeter';
@@ -46,10 +46,11 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
   if (isNaN(proposalIndex)) notFound();
 
-  const [proposal, votes, treasury] = await Promise.all([
+  const [proposal, votes, treasury, nclUtilization] = await Promise.all([
     getProposalByKey(txHash, proposalIndex),
     getVotesByProposal(txHash, proposalIndex),
     getTreasuryBalance(),
+    getNclUtilization(),
   ]);
 
   if (!proposal) notFound();
@@ -127,6 +128,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         currentEpoch={currentEpoch}
         triBody={proposal.triBody ?? null}
         blockTime={proposal.blockTime}
+        nclUtilization={nclUtilization}
       />
 
       {/* Zone 2: Community Signals — engagement, concerns, dimension tags */}

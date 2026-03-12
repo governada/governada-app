@@ -126,6 +126,7 @@ export interface TreasuryHealthScore {
     incomeStability: number;
     pendingLoad: number;
     runwayAdequacy: number;
+    nclDiscipline: number;
   };
   runwayMonths: number;
   burnRatePerEpoch: number;
@@ -195,12 +196,28 @@ export async function calculateTreasuryHealthScore(): Promise<TreasuryHealthScor
     return Math.max(0, Math.min(100, ratio * 50 + 25));
   })();
 
+  // 6. NCL discipline (0-100): is spending pace proportional to time elapsed?
+  // 100 = spending pace matches time pace or is below it
+  // 50  = spending ahead of schedule but within bounds
+  // 0   = spending pace would exceed NCL before period ends
+  const nclDiscipline = await (async () => {
+    const ncl = await getNclUtilization();
+    if (!ncl || ncl.period.nclAda <= 0) return 75; // No NCL = neutral
+    const timePct = ncl.periodProgressPct;
+    const spendPct = ncl.utilizationPct;
+    if (spendPct <= timePct) return 100; // On or under pace
+    const overPace = spendPct - timePct; // How far ahead of schedule
+    // Scale: 0 over = 100, 50+ over = 0
+    return Math.max(0, Math.min(100, 100 - overPace * 2));
+  })();
+
   const score = Math.round(
-    balanceTrend * 0.2 +
-      withdrawalVelocity * 0.2 +
+    balanceTrend * 0.15 +
+      withdrawalVelocity * 0.15 +
       incomeStability * 0.15 +
-      pendingLoad * 0.2 +
-      runwayAdequacy * 0.25,
+      pendingLoad * 0.15 +
+      runwayAdequacy * 0.2 +
+      nclDiscipline * 0.2,
   );
 
   return {
@@ -211,6 +228,7 @@ export async function calculateTreasuryHealthScore(): Promise<TreasuryHealthScor
       incomeStability: Math.round(incomeStability),
       pendingLoad: Math.round(pendingLoad),
       runwayAdequacy: Math.round(runwayAdequacy),
+      nclDiscipline: Math.round(nclDiscipline),
     },
     runwayMonths: runwayMonths === Infinity ? 999 : Math.round(runwayMonths),
     burnRatePerEpoch: Math.round(burnRate),
@@ -818,6 +836,206 @@ export async function getNclUtilization(): Promise<NclUtilization | null> {
     sustainabilityRatio: Math.round(sustainabilityRatio * 100) / 100,
     status,
   };
+}
+
+// ---------------------------------------------------------------------------
+// DRep NCL Impact
+// ---------------------------------------------------------------------------
+
+export interface DRepNclImpact {
+  approvedAda: number;
+  opposedAda: number;
+  approvedPct: number;
+  opposedPct: number;
+  nclAda: number;
+  periodStartEpoch: number;
+  periodEndEpoch: number;
+  judgmentScore: number | null;
+}
+
+export async function getDRepNclImpact(drepId: string): Promise<DRepNclImpact | null> {
+  const period = await getActiveNclPeriod();
+  if (!period) return null;
+
+  const supabase = createClient();
+
+  // Get all treasury withdrawal proposals in this NCL period that were enacted
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select('tx_hash, proposal_index, withdrawal_amount, enacted_epoch')
+    .eq('proposal_type', 'TreasuryWithdrawals')
+    .not('enacted_epoch', 'is', null)
+    .gte('enacted_epoch', period.startEpoch)
+    .lte('enacted_epoch', period.endEpoch);
+
+  if (!proposals || proposals.length === 0) {
+    return {
+      approvedAda: 0,
+      opposedAda: 0,
+      approvedPct: 0,
+      opposedPct: 0,
+      nclAda: period.nclAda,
+      periodStartEpoch: period.startEpoch,
+      periodEndEpoch: period.endEpoch,
+      judgmentScore: null,
+    };
+  }
+
+  // Get this DRep's votes on those proposals
+  const { data: votes } = await supabase
+    .from('votes')
+    .select('proposal_tx_hash, proposal_index, vote')
+    .eq('drep_id', drepId)
+    .in(
+      'proposal_tx_hash',
+      proposals.map((p) => p.tx_hash),
+    );
+
+  const voteMap = new Map<string, string>();
+  for (const v of votes || []) {
+    voteMap.set(`${v.proposal_tx_hash}#${v.proposal_index}`, v.vote);
+  }
+
+  let approvedAda = 0;
+  let opposedAda = 0;
+  let deliveredCount = 0;
+  let totalVotedYes = 0;
+
+  for (const p of proposals) {
+    const key = `${p.tx_hash}#${p.proposal_index}`;
+    const vote = voteMap.get(key);
+    const amount = p.withdrawal_amount || 0;
+    if (vote === 'Yes') {
+      approvedAda += amount;
+      totalVotedYes++;
+    } else if (vote === 'No') {
+      opposedAda += amount;
+    }
+  }
+
+  // Judgment score: % of approved proposals that delivered (if outcome data exists)
+  let judgmentScore: number | null = null;
+  if (totalVotedYes > 0) {
+    const yesProposals = proposals.filter(
+      (p) => voteMap.get(`${p.tx_hash}#${p.proposal_index}`) === 'Yes',
+    );
+    const { data: outcomes } = await supabase
+      .from('proposal_outcomes')
+      .select('delivery_status')
+      .in(
+        'proposal_tx_hash',
+        yesProposals.map((p) => p.tx_hash),
+      );
+
+    if (outcomes && outcomes.length > 0) {
+      deliveredCount = outcomes.filter((o) => o.delivery_status === 'delivered').length;
+      judgmentScore = Math.round((deliveredCount / outcomes.length) * 100);
+    }
+  }
+
+  return {
+    approvedAda,
+    opposedAda,
+    approvedPct: period.nclAda > 0 ? Math.round((approvedAda / period.nclAda) * 1000) / 10 : 0,
+    opposedPct: period.nclAda > 0 ? Math.round((opposedAda / period.nclAda) * 1000) / 10 : 0,
+    nclAda: period.nclAda,
+    periodStartEpoch: period.startEpoch,
+    periodEndEpoch: period.endEpoch,
+    judgmentScore,
+  };
+}
+
+export function getCitizenTreasuryImpact(
+  drepApprovedAda: number,
+  citizenDelegatedAda: number,
+  drepTotalVotingPower: number,
+): number {
+  if (drepTotalVotingPower <= 0) return 0;
+  return Math.round((citizenDelegatedAda / drepTotalVotingPower) * drepApprovedAda);
+}
+
+// ---------------------------------------------------------------------------
+// NCL Utilization History & Spending Velocity
+// ---------------------------------------------------------------------------
+
+export interface NclUtilizationHistoryPoint {
+  epoch: number;
+  cumulativeAda: number;
+  utilizationPct: number;
+}
+
+export interface NclSpendingVelocity {
+  adaPerEpoch: number;
+  projectedEndPct: number;
+  epochsToExhaustion: number | null;
+}
+
+/**
+ * Build epoch-by-epoch utilization curve from enacted proposals within an NCL period.
+ * Returns cumulative withdrawal ADA and utilization % at each epoch where a withdrawal was enacted.
+ */
+export async function getNclUtilizationHistory(): Promise<NclUtilizationHistoryPoint[]> {
+  const period = await getActiveNclPeriod();
+  if (!period) return [];
+
+  const supabase = createClient();
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select('enacted_epoch, withdrawal_amount')
+    .eq('proposal_type', 'TreasuryWithdrawals')
+    .not('enacted_epoch', 'is', null)
+    .gte('enacted_epoch', period.startEpoch)
+    .lte('enacted_epoch', period.endEpoch)
+    .order('enacted_epoch', { ascending: true });
+
+  if (!proposals || proposals.length === 0) {
+    return [{ epoch: period.startEpoch, cumulativeAda: 0, utilizationPct: 0 }];
+  }
+
+  // Group by epoch and build cumulative
+  const epochMap = new Map<number, number>();
+  for (const p of proposals) {
+    const epoch = p.enacted_epoch as number;
+    epochMap.set(epoch, (epochMap.get(epoch) || 0) + (p.withdrawal_amount || 0));
+  }
+
+  // Always start at period start with 0
+  const points: NclUtilizationHistoryPoint[] = [
+    { epoch: period.startEpoch, cumulativeAda: 0, utilizationPct: 0 },
+  ];
+
+  let cumulative = 0;
+  const sortedEpochs = [...epochMap.keys()].sort((a, b) => a - b);
+  for (const epoch of sortedEpochs) {
+    cumulative += epochMap.get(epoch)!;
+    points.push({
+      epoch,
+      cumulativeAda: cumulative,
+      utilizationPct: period.nclAda > 0 ? Math.round((cumulative / period.nclAda) * 1000) / 10 : 0,
+    });
+  }
+
+  return points;
+}
+
+/**
+ * Calculate spending velocity: average ADA per epoch and projected end-of-period utilization.
+ */
+export async function getNclSpendingVelocity(): Promise<NclSpendingVelocity | null> {
+  const ncl = await getNclUtilization();
+  if (!ncl) return null;
+
+  const epochsElapsed = ncl.epochsElapsed || 1;
+  const adaPerEpoch = ncl.enactedWithdrawalsAda / epochsElapsed;
+
+  const totalEpochs = ncl.period.endEpoch - ncl.period.startEpoch;
+  const projectedTotalAda = adaPerEpoch * totalEpochs;
+  const projectedEndPct =
+    ncl.period.nclAda > 0 ? Math.round((projectedTotalAda / ncl.period.nclAda) * 1000) / 10 : 0;
+
+  const epochsToExhaustion = adaPerEpoch > 0 ? Math.round(ncl.remainingAda / adaPerEpoch) : null;
+
+  return { adaPerEpoch: Math.round(adaPerEpoch), projectedEndPct, epochsToExhaustion };
 }
 
 // ---------------------------------------------------------------------------

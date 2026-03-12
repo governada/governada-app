@@ -17,6 +17,7 @@ import {
   Activity,
   MessageSquare,
   Shield,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -131,6 +132,20 @@ function actionToNotification(
       iconColor: 'text-violet-400',
       borderColor: 'border-violet-900/30',
       bgColor: 'bg-violet-950/10',
+    },
+    ncl_threshold: {
+      category: 'proposal',
+      icon: Landmark,
+      iconColor: 'text-amber-400',
+      borderColor: 'border-amber-900/30',
+      bgColor: 'bg-amber-950/10',
+    },
+    ncl_period_expiring: {
+      category: 'proposal',
+      icon: Landmark,
+      iconColor: 'text-amber-400',
+      borderColor: 'border-amber-900/30',
+      bgColor: 'bg-amber-950/10',
     },
   };
 

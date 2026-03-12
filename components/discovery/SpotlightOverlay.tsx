@@ -7,7 +7,7 @@
  * the target element, plus an explanation tooltip card.
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, ChevronRight, SkipForward } from 'lucide-react';
@@ -59,9 +59,10 @@ export function SpotlightOverlay({
       measureTimer = setTimeout(() => {
         if (cancelled) return;
         const rect = el.getBoundingClientRect();
+        // Viewport-relative coords — overlay container is position:fixed
         setTargetRect({
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
+          top: rect.top,
+          left: rect.left,
           width: rect.width,
           height: rect.height,
         });

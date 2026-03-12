@@ -49,7 +49,7 @@ export function GovernanceImpactCard({
   treasuryBalanceAda,
 }: GovernanceImpactCardProps) {
   const { connected, delegatedDrepId } = useWallet();
-  const { stakeAddress, delegatedDrep } = useSegment();
+  const { stakeAddress, delegatedDrep, isViewingAs } = useSegment();
 
   // The wallet may provide delegatedDrepId before segment resolves
   const effectiveDrepId = delegatedDrepId || delegatedDrep;
@@ -59,8 +59,8 @@ export function GovernanceImpactCard({
   const walletAddress = stakeAddress ?? undefined;
   const { data: epochSummary } = useEpochSummary(walletAddress);
 
-  // No-wallet preview: blurred mock stats create FOMO
-  if (!connected) {
+  // No-wallet preview: blurred mock stats create FOMO (skip in View As mode)
+  if (!connected && !isViewingAs) {
     return (
       <div className="relative rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 overflow-hidden">
         <div className="absolute inset-0 backdrop-blur-sm bg-card/60 z-10 flex flex-col items-center justify-center gap-2">

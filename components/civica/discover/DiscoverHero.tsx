@@ -50,12 +50,12 @@ function StatPill({
 
 /* -- Segment-aware contextual banner ----------------------------- */
 function SegmentBanner({ totalDreps }: { totalDreps: number }) {
-  const { segment, delegatedDrep, isLoading } = useSegment();
+  const { segment, delegatedDrep, isLoading, isViewingAs } = useSegment();
   const { connected } = useWallet();
 
   if (isLoading) return null;
 
-  if (!connected || segment === 'anonymous') {
+  if (!isViewingAs && (!connected || segment === 'anonymous')) {
     return (
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-lg border border-primary/20 bg-card/80 backdrop-blur-sm p-4">
         <div className="flex items-center gap-3 shrink-0">

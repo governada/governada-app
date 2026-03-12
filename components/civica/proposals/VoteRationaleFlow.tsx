@@ -220,7 +220,7 @@ export function VoteRationaleFlow({
   aiSummary,
 }: VoteRationaleFlowProps) {
   const { connected, ownDRepId } = useWallet();
-  const { segment, poolId } = useSegment();
+  const { segment, poolId, isViewingAs, drepId: overrideDrepId } = useSegment();
   const { phase, startVote, confirmVote, reset, isProcessing, canVote } = useVote();
   const [flowStep, setFlowStep] = useState<FlowStep>('select');
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
@@ -231,8 +231,9 @@ export function VoteRationaleFlow({
 
   // Determine voter role and credential based on segment
   const voterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
-  const voterId = segment === 'spo' ? poolId : ownDRepId;
+  const voterId = segment === 'spo' ? poolId : ownDRepId || (isViewingAs ? overrideDrepId : null);
   const roleLabel = voterRole === 'spo' ? 'SPO' : 'DRep';
+  const previewMode = isViewingAs && !connected;
 
   // Detect success — transition flow step when vote succeeds
   useEffect(() => {
@@ -255,8 +256,8 @@ export function VoteRationaleFlow({
     );
   }
 
-  // Wallet not connected — show connect CTA
-  if (!connected) {
+  // Wallet not connected — show connect CTA (skip in View As mode)
+  if (!connected && !isViewingAs) {
     return (
       <Card className="border-primary/20">
         <CardContent className="pt-6 space-y-3">
@@ -274,7 +275,7 @@ export function VoteRationaleFlow({
   if (!voterId) return null;
 
   const handleVoteSelect = (vote: VoteChoice) => {
-    if (isProcessing) return;
+    if (previewMode || isProcessing) return;
     setSelectedVote(vote);
 
     if (phase.status === 'error') reset();
@@ -436,6 +437,12 @@ export function VoteRationaleFlow({
         {/* ------------------------------------------------------------------ */}
         {flowStep === 'select' && (
           <div className="space-y-3">
+            {previewMode && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                <Shield className="h-3.5 w-3.5 shrink-0" />
+                Preview mode — voting disabled while viewing as another user
+              </div>
+            )}
             {/* Vote buttons */}
             <div className="grid grid-cols-3 gap-2">
               {VOTE_OPTIONS.map(({ value, label, icon: Icon, color, selectedColor, bgColor }) => {
@@ -444,13 +451,13 @@ export function VoteRationaleFlow({
                   <button
                     key={value}
                     onClick={() => handleVoteSelect(value)}
-                    disabled={isProcessing}
+                    disabled={previewMode || isProcessing}
                     className={cn(
                       'flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-all',
                       isSelected
                         ? `${bgColor} ring-2 ring-offset-1 ring-offset-background ${selectedColor}`
                         : 'border-border hover:bg-muted/30',
-                      isProcessing && 'opacity-50 cursor-not-allowed',
+                      (previewMode || isProcessing) && 'opacity-50 cursor-not-allowed',
                     )}
                   >
                     <Icon className={cn('h-5 w-5', isSelected ? color : 'text-muted-foreground')} />
@@ -751,7 +758,7 @@ function PostVoteRationale({
   aiSummary?: string | null;
 }) {
   const { connected, ownDRepId } = useWallet();
-  const { segment, poolId } = useSegment();
+  const { segment, poolId, isViewingAs, drepId: overrideDrepId } = useSegment();
   const { phase, startVote, confirmVote, canVote } = useVote();
 
   const [expanded, setExpanded] = useState(false);
@@ -762,7 +769,8 @@ function PostVoteRationale({
 
   // Determine voter role and credential based on segment
   const postVoterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
-  const postVoterId = segment === 'spo' ? poolId : ownDRepId;
+  const postVoterId =
+    segment === 'spo' ? poolId : ownDRepId || (isViewingAs ? overrideDrepId : null);
 
   // Pending anchor data: when set, we auto-confirm after preflight completes
   const pendingAnchorRef = useRef<{ url: string; hash: string } | null>(null);
@@ -784,7 +792,7 @@ function PostVoteRationale({
     }
   }, [phase.status, vote, confirmVote, isSubmitting]);
 
-  if (!connected || !postVoterId) return null;
+  if ((!connected && !isViewingAs) || !postVoterId) return null;
   if (submitted) {
     return (
       <div className="flex items-center gap-2 text-xs text-emerald-500 mt-2 justify-center">

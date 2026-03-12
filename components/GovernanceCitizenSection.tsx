@@ -1,6 +1,8 @@
 'use client';
 
 import { useWallet } from '@/utils/wallet';
+import { useSegment } from '@/components/providers/SegmentProvider';
+import { Shield } from 'lucide-react';
 import { GovernanceTimeline } from '@/components/GovernanceTimeline';
 import { GovernanceImpactHero } from '@/components/GovernanceImpactHero';
 import { GovernanceCitizenPanels } from '@/components/GovernanceCitizenPanels';
@@ -99,6 +101,19 @@ export function GovernanceCitizenSection() {
 
     return init;
   }, [holderData, timelineData, isAuthenticated, address, delegatedDrepId]);
+
+  const { isViewingAs, segment } = useSegment();
+
+  if (isViewingAs && (!connected || !isAuthenticated || !state)) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          <Shield className="h-3.5 w-3.5 shrink-0" />
+          Preview mode — viewing as {segment}. Connect a wallet to see real citizen governance data.
+        </div>
+      </div>
+    );
+  }
 
   if (!connected || !isAuthenticated || !state) return null;
 

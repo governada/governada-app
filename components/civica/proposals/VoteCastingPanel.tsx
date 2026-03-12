@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Sparkles,
   FileText,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -138,7 +139,7 @@ export function VoteCastingPanel({
   aiSummary,
 }: VoteCastingPanelProps) {
   const { connected, ownDRepId } = useWallet();
-  const { segment, poolId } = useSegment();
+  const { segment, poolId, isViewingAs, drepId: overrideDrepId } = useSegment();
   const { phase, startVote, confirmVote, reset, isProcessing } = useVote();
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
   const [rationaleText, setRationaleText] = useState('');
@@ -147,14 +148,16 @@ export function VoteCastingPanel({
   const [isPublishing, setIsPublishing] = useState(false);
   // Determine voter role and credential from segment
   const voterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
-  const voterId = segment === 'spo' ? poolId : ownDRepId;
-  const canVote = connected && !!voterId;
+  const voterId = segment === 'spo' ? poolId : ownDRepId || (isViewingAs ? overrideDrepId : null);
+  const previewMode = isViewingAs && !connected;
+  const canVote = connected && !!voterId && !previewMode;
 
   // Don't show for closed proposals
   if (!isOpen) return null;
 
-  // Don't show if not a DRep or SPO
-  if (!connected || !voterId) return null;
+  // Don't show if not a DRep or SPO (allow View As mode)
+  if (!connected && !isViewingAs) return null;
+  if (!voterId) return null;
 
   const isConfirming = phase.status === 'confirming';
   const isDone = phase.status === 'success';
@@ -167,7 +170,7 @@ export function VoteCastingPanel({
       : 'DReps who explain votes score higher on Engagement (25% weight)';
 
   const handleVoteSelect = (vote: VoteChoice) => {
-    if (isProcessing || isDone) return;
+    if (previewMode || isProcessing || isDone) return;
     setSelectedVote(vote);
 
     if (hasError) reset();
@@ -252,6 +255,13 @@ export function VoteCastingPanel({
           )}
         </div>
 
+        {previewMode && (
+          <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            <Shield className="h-3.5 w-3.5 shrink-0" />
+            Preview mode — voting disabled while viewing as another user
+          </div>
+        )}
+
         {/* Vote buttons */}
         {!isDone && (
           <div
@@ -265,7 +275,7 @@ export function VoteCastingPanel({
                 <button
                   key={value}
                   onClick={() => handleVoteSelect(value)}
-                  disabled={isProcessing || isPublishing}
+                  disabled={previewMode || isProcessing || isPublishing}
                   role="radio"
                   aria-checked={isSelected}
                   className={cn(

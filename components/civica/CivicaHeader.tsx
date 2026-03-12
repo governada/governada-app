@@ -17,10 +17,12 @@ import {
   ShieldCheck,
   Scale,
   Layers,
+  HelpCircle,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
+import { HELP_ITEMS } from '@/lib/nav/config';
 import { useWallet } from '@/utils/wallet-context';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 import { TIER_SCORE_COLOR, type TierKey } from '@/components/civica/cards/tierStyles';
@@ -157,6 +159,30 @@ export function CivicaHeader() {
               )}
             </Button>
           )}
+
+          {/* Help dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                aria-label="Help"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {HELP_ITEMS.map(({ href, label, icon: Icon }) => (
+                <DropdownMenuItem key={href} asChild>
+                  <Link href={href}>
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button
             variant="ghost"

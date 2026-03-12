@@ -1,20 +1,11 @@
-import type { Metadata } from 'next';
-import { PageViewTracker } from '@/components/PageViewTracker';
-import { DelegationPage } from '@/components/hub/DelegationPage';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Your Governance Coverage — Governada',
-  description:
-    'See who represents your ADA in Cardano governance. Review your DRep and stake pool delegation.',
-};
-
+/**
+ * /delegation is deprecated — its content has been folded into the CitizenHub homepage.
+ * Redirect any direct visits to the home page.
+ */
 export default function Delegation() {
-  return (
-    <>
-      <PageViewTracker event="delegation_viewed" />
-      <DelegationPage />
-    </>
-  );
+  redirect('/');
 }

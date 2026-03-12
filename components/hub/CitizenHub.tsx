@@ -21,6 +21,8 @@ import {
   TrendingUp,
   RefreshCw,
   Wallet,
+  Server,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { briefingContainer, briefingItem } from '@/lib/animations';
@@ -29,6 +31,7 @@ import {
   useEpochConsequence,
   useGovernanceHolder,
   useCitizenImpactScore,
+  useSPOSummary,
   type ConsequenceProposal,
 } from '@/hooks/queries';
 import { computeTier } from '@/lib/scoring/tiers';
@@ -435,10 +438,123 @@ function CitizenHubSkeleton() {
   );
 }
 
+/* ── Pool + coverage indicator (inline in representation) ───── */
+
+function PoolAndCoverage({
+  delegatedDrep,
+  delegatedPool,
+  poolRaw,
+}: {
+  delegatedDrep: string | null;
+  delegatedPool: string | null;
+  poolRaw: unknown;
+}) {
+  const pool = poolRaw as Record<string, unknown> | undefined;
+  const poolName = (pool?.poolName as string) || (pool?.ticker as string) || null;
+  const ticker = (pool?.ticker as string) ?? '';
+  const govScore = Math.round((pool?.governanceScore as number) ?? 0);
+  const poolParticipation = Math.round((pool?.participationRate as number) ?? 0);
+  const poolVoteCount = (pool?.voteCount as number) ?? 0;
+  const poolIsGovActive = poolVoteCount > 0;
+
+  // Coverage calculation (mirrors DelegationPage CoverageSummary logic)
+  const hasDrep = !!delegatedDrep;
+  const hasPool = !!delegatedPool;
+  const coveredTypes = hasDrep ? 5 : 0;
+  const poolCoveredTypes = hasPool && poolIsGovActive ? 2 : 0;
+  const totalTypes = 7;
+  const covered = coveredTypes + poolCoveredTypes;
+  const coveragePct = Math.round((covered / totalTypes) * 100);
+
+  let coverageLabel: string;
+  let coverageColor: string;
+  if (coveragePct === 100) {
+    coverageLabel = 'Full coverage';
+    coverageColor = 'text-emerald-400';
+  } else if (coveragePct >= 50) {
+    coverageLabel = 'Partial coverage';
+    coverageColor = 'text-amber-400';
+  } else {
+    coverageLabel = 'Low coverage';
+    coverageColor = 'text-red-400';
+  }
+
+  return (
+    <div className="mt-3 space-y-3 pt-3 border-t border-white/[0.06]">
+      {/* Coverage indicator */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Governance coverage</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={cn('text-xs font-semibold', coverageColor)}>{coverageLabel}</span>
+          <span className={cn('text-xs font-bold tabular-nums', coverageColor)}>
+            {coveragePct}%
+          </span>
+        </div>
+      </div>
+
+      {/* Compact coverage bar */}
+      <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            coveragePct === 100
+              ? 'bg-emerald-500'
+              : coveragePct >= 50
+                ? 'bg-amber-500'
+                : 'bg-red-500',
+          )}
+          style={{ width: `${coveragePct}%` }}
+        />
+      </div>
+
+      {/* Pool info */}
+      {delegatedPool && poolName && (
+        <Link
+          href={`/pool/${encodeURIComponent(delegatedPool)}`}
+          className="flex items-center justify-between gap-3 group"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Server className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">
+                {ticker ? `[${ticker}] ` : ''}
+                {poolName}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="tabular-nums">Gov score: {govScore}</span>
+              <span className="text-muted-foreground/40">&middot;</span>
+              <span className="tabular-nums">{poolParticipation}% participation</span>
+            </div>
+          </div>
+          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {delegatedPool && !poolName && !pool && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Server className="h-3.5 w-3.5" />
+          <span>Pool delegated</span>
+        </div>
+      )}
+
+      {!delegatedPool && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+          <Server className="h-3.5 w-3.5" />
+          <span>No stake pool — 2 action types unrepresented</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main component ──────────────────────────────────────────── */
 
 export function CitizenHub() {
-  const { stakeAddress, delegatedDrep } = useSegment();
+  const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
 
   const {
     data: consequence,
@@ -448,6 +564,7 @@ export function CitizenHub() {
 
   const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
   const { data: impactScore } = useCitizenImpactScore(!!stakeAddress);
+  const { data: poolRaw } = useSPOSummary(delegatedPool);
 
   const isLoading = consequenceLoading || holderLoading;
 
@@ -617,7 +734,10 @@ export function CitizenHub() {
           delegatedDrep !== 'drep_always_abstain' &&
           delegatedDrep !== 'drep_always_no_confidence' &&
           drep && (
-            <Link href="/delegation" className="flex items-center justify-between gap-3 group">
+            <Link
+              href={`/drep/${encodeURIComponent(delegatedDrep)}`}
+              className="flex items-center justify-between gap-3 group"
+            >
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   {drepIsActive ? (
@@ -652,7 +772,7 @@ export function CitizenHub() {
           )}
 
         {delegatedDrep === 'drep_always_abstain' && (
-          <Link href="/delegation" className="flex items-center justify-between gap-3 group">
+          <Link href="/match" className="flex items-center justify-between gap-3 group">
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">Always Abstain</p>
               <p className="text-xs text-muted-foreground">
@@ -664,7 +784,7 @@ export function CitizenHub() {
         )}
 
         {delegatedDrep === 'drep_always_no_confidence' && (
-          <Link href="/delegation" className="flex items-center justify-between gap-3 group">
+          <Link href="/match" className="flex items-center justify-between gap-3 group">
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">No Confidence</p>
               <p className="text-xs text-muted-foreground">
@@ -674,6 +794,13 @@ export function CitizenHub() {
             <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
           </Link>
         )}
+
+        {/* ── Pool + Coverage ───────────────────────────────────── */}
+        <PoolAndCoverage
+          delegatedDrep={delegatedDrep}
+          delegatedPool={delegatedPool}
+          poolRaw={poolRaw}
+        />
       </Section>
 
       {/* ── Quick links ────────────────────────────────────── */}
@@ -693,13 +820,6 @@ export function CitizenHub() {
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           Find a DRep
-        </Link>
-        <span className="text-muted-foreground/30">&middot;</span>
-        <Link
-          href="/delegation"
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          My delegation
         </Link>
       </motion.div>
     </motion.div>

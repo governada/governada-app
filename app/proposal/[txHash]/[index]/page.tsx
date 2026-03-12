@@ -168,7 +168,18 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         nclUtilization={nclUtilization}
       />
 
-      {/* Zone 2: Community Signals — engagement, concerns, dimension tags */}
+      {/* Zone 2: Take Action — vote flow + citizen voice side by side */}
+      <ActionPanel
+        txHash={txHash}
+        proposalIndex={proposalIndex}
+        title={title}
+        isOpen={isOpen}
+        proposalAbstract={proposal.abstract}
+        proposalType={proposal.proposalType}
+        aiSummary={proposal.aiSummary}
+      />
+
+      {/* Zone 3: Community Signals — engagement, concerns, dimension tags */}
       <div className="space-y-4">
         <EngagementSummary txHash={txHash} proposalIndex={proposalIndex} />
         <ConcernFlagBanner
@@ -191,24 +202,13 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         <ProposalDimensionTags relevantPrefs={proposal.relevantPrefs} />
       </div>
 
-      {/* Zone 3: Intelligence Briefing — AI summary + constitutional + params merged */}
+      {/* Zone 4: Intelligence Briefing — AI summary + constitutional + params merged */}
       <IntelligenceBriefing
         txHash={txHash}
         proposalIndex={proposalIndex}
         aiSummary={proposal.aiSummary}
         proposalType={proposal.proposalType}
         paramChanges={proposal.paramChanges}
-      />
-
-      {/* Zone 4: Take Action — vote flow + citizen voice side by side */}
-      <ActionPanel
-        txHash={txHash}
-        proposalIndex={proposalIndex}
-        title={title}
-        isOpen={isOpen}
-        proposalAbstract={proposal.abstract}
-        proposalType={proposal.proposalType}
-        aiSummary={proposal.aiSummary}
       />
 
       {/* Zone 5: The Debate — structured pro/con rationales */}

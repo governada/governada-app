@@ -4,11 +4,11 @@ import type { Metadata } from 'next';
 import { CivicIdentityProfile } from '@/components/civica/identity/CivicIdentityProfile';
 
 export const metadata: Metadata = {
-  title: 'Governada — You',
+  title: 'Governada — Identity',
   description:
-    'Your governance identity — delegation history, governance footprint, milestones, and engagement stats.',
+    'Your civic identity — delegation history, governance footprint, milestones, and engagement stats.',
   openGraph: {
-    title: 'Governada — Your Governance Identity',
+    title: 'Governada — Your Civic Identity',
     description: 'Your civic identity on Cardano governance.',
     type: 'website',
   },

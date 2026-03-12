@@ -9,11 +9,10 @@ import { getBottomBarItems } from '@/lib/nav/config';
 
 export function CivicaBottomNav() {
   const pathname = usePathname();
-  const { segment, stakeAddress, delegatedDrep, delegatedPool } = useSegment();
+  const { segment, stakeAddress } = useSegment();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
-  const hasDelegation = !!(delegatedDrep || delegatedPool);
 
-  const navItems = getBottomBarItems(segment, hasDelegation);
+  const navItems = getBottomBarItems(segment);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';

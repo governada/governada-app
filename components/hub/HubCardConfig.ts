@@ -46,14 +46,14 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'status',
     priority: 1,
     conditional: false,
-    href: '/delegation',
+    href: '/',
   },
   coverage: {
     id: 'coverage',
     type: 'status',
     priority: 2,
     conditional: false,
-    href: '/delegation',
+    href: '/',
   },
   'governance-health': {
     id: 'governance-health',
@@ -67,7 +67,7 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'action',
     priority: 1,
     conditional: true,
-    href: '/delegation',
+    href: '/',
   },
   briefing: {
     id: 'briefing',

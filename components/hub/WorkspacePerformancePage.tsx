@@ -184,12 +184,17 @@ export function WorkspacePerformancePage() {
         ))}
       </div>
 
-      {/* View full profile */}
-      {drepId && (
+      {/* Actions */}
+      <div className="space-y-2">
         <Button asChild variant="outline" className="w-full">
-          <Link href={`/drep/${encodeURIComponent(drepId)}`}>View Public Profile</Link>
+          <Link href="/governance/leaderboard">See how you compare</Link>
         </Button>
-      )}
+        {drepId && (
+          <Button asChild variant="ghost" className="w-full">
+            <Link href={`/drep/${encodeURIComponent(drepId)}`}>View Public Profile</Link>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useWallet } from '@/utils/wallet';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Wallet, Share2, Check } from 'lucide-react';
+import { Sparkles, ArrowRight, Wallet, Share2, Check, Pencil } from 'lucide-react';
+import { posthog } from '@/lib/posthog';
 
 interface DRepDashboardWrapperProps {
   drepId: string;
@@ -59,9 +60,14 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {shareButton}
-          <Link href="/my-gov">
+          <Link href="/workspace">
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+              <Pencil className="h-3.5 w-3.5" /> Edit Profile
+            </Button>
+          </Link>
+          <Link href="/workspace">
             <Button size="sm" className="gap-1.5 text-xs">
-              Open Dashboard <ArrowRight className="h-3.5 w-3.5" />
+              Open Workspace <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
         </div>
@@ -71,22 +77,31 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
 
   if (!isClaimed && segment !== 'anonymous' && segment !== 'citizen') {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-muted-foreground/25 px-4 py-2.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <Wallet className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="text-sm text-muted-foreground truncate">
-            Is this your DRep? Claim it to access insights.
-          </span>
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="rounded-full bg-primary/10 p-1.5 shrink-0">
+            <Wallet className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-sm font-medium text-foreground block truncate">
+              Claim this profile
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Connect your wallet to unlock your workspace and delegator analytics
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {shareButton}
           <Button
             size="sm"
-            variant="outline"
             className="gap-1.5 text-xs"
-            onClick={() => window.dispatchEvent(new Event('openWalletConnect'))}
+            onClick={() => {
+              posthog.capture('drep_profile_claimed', { drep_id: drepId, step: 'cta_clicked' });
+              window.dispatchEvent(new Event('openWalletConnect'));
+            }}
           >
-            <Wallet className="h-3.5 w-3.5" /> Claim
+            <Wallet className="h-3.5 w-3.5" /> Claim Profile
           </Button>
         </div>
       </div>

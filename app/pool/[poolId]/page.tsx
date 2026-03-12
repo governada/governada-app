@@ -49,6 +49,7 @@ const SpoProfileTabsV2 = nextDynamic(
 
 import { SpoProfileHero } from '@/components/civica/profiles/SpoProfileHero';
 import { PoolClaimCard } from '@/components/civica/profiles/PoolClaimCard';
+import { FeatureGate } from '@/components/FeatureGate';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';
 import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/civica/cards/tierStyles';
 
@@ -800,8 +801,10 @@ export default async function PoolProfilePage({ params }: PageProps) {
           </Card>
         )}
 
-        {/* Pool claim card */}
-        <PoolClaimCard poolId={poolId} poolName={displayName} claimedBy={claimedBy} />
+        {/* Pool claim card — gated behind spo_claim_flow feature flag */}
+        <FeatureGate flag="spo_claim_flow">
+          <PoolClaimCard poolId={poolId} poolName={displayName} claimedBy={claimedBy} />
+        </FeatureGate>
 
         {/* Chapter 4: Detailed Analysis — progressive disclosure gate */}
         <DetailedAnalysisGate>

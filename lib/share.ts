@@ -63,6 +63,10 @@ export function buildDRepUrl(drepId: string): string {
   return `${SITE_URL}/drep/${encodeURIComponent(drepId)}`;
 }
 
+export function buildPoolUrl(poolId: string): string {
+  return `${SITE_URL}/pool/${encodeURIComponent(poolId)}`;
+}
+
 export function buildCompareUrl(drepIds: string[]): string {
   return `${SITE_URL}/compare?dreps=${drepIds.map(encodeURIComponent).join(',')}`;
 }

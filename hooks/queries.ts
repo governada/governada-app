@@ -829,3 +829,33 @@ export function useCitizenImpactScore(enabled: boolean) {
     staleTime: 5 * 60_000,
   });
 }
+
+// ── Delegator Intelligence ────────────────────────────────────────────
+
+export interface DelegatorIntelligenceData {
+  topPriorities: { priority: string; count: number }[];
+  sentimentByProposal: {
+    proposalTxHash: string;
+    proposalIndex: number;
+    title: string | null;
+    support: number;
+    oppose: number;
+    abstain: number;
+    total: number;
+  }[];
+  avgEngagement: number;
+  engagedDelegators: number;
+  totalDelegators: number;
+}
+
+export function useDelegatorIntelligence(drepId: string | null | undefined) {
+  return useQuery<DelegatorIntelligenceData>({
+    queryKey: ['delegator-intelligence', drepId],
+    queryFn: () =>
+      fetchJson<DelegatorIntelligenceData>(
+        `/api/workspace/delegator-intelligence?drepId=${encodeURIComponent(drepId!)}`,
+      ),
+    enabled: !!drepId,
+    staleTime: 120_000,
+  });
+}

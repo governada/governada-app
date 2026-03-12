@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useGovernanceHealthIndex } from '@/hooks/queries';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorCard } from '@/components/ui/ErrorCard';
 import { spring } from '@/lib/animations';
@@ -24,50 +25,114 @@ interface GHIData {
   trend: GHITrend;
 }
 
-const BAND_STYLES: Record<
-  string,
-  { text: string; ring: string; bg: string; label: string; description: string }
-> = {
+const BAND_STYLES: Record<string, { text: string; ring: string; bg: string; label: string }> = {
   strong: {
     text: 'text-emerald-500',
     ring: 'var(--color-emerald-500)',
     bg: 'bg-emerald-500/10',
     label: 'Strong',
-    description: 'Cardano governance is highly active with broad participation.',
   },
   good: {
     text: 'text-green-500',
     ring: 'var(--color-green-500)',
     bg: 'bg-green-500/10',
     label: 'Good',
-    description: 'Governance is healthy with solid participation across most areas.',
   },
   fair: {
     text: 'text-amber-500',
     ring: 'var(--color-amber-500)',
     bg: 'bg-amber-500/10',
     label: 'Fair',
-    description: 'Governance participation is moderate, with room for improvement.',
   },
   critical: {
     text: 'text-rose-500',
     ring: 'var(--color-rose-500)',
     bg: 'bg-rose-500/10',
     label: 'Critical',
-    description: 'Governance participation is low. Key areas need attention.',
   },
 };
 
 const CIRCUMFERENCE = 2 * Math.PI * 15.5;
 
+function buildVerdict(
+  band: string,
+  direction: 'up' | 'down' | 'flat',
+  _delta: number,
+  streakEpochs: number,
+): string {
+  const hasStreak = streakEpochs > 1;
+
+  if (band === 'strong') {
+    if (direction === 'up')
+      return hasStreak
+        ? `Governance is thriving \u2014 health has climbed for ${streakEpochs} consecutive epochs.`
+        : 'Governance is thriving with broad participation and accountability.';
+    if (direction === 'down')
+      return 'Still strong, but the trend is cooling. Worth watching this epoch.';
+    return 'Governance is in excellent shape across all dimensions.';
+  }
+
+  if (band === 'good') {
+    if (direction === 'up')
+      return hasStreak
+        ? `Healthy and improving \u2014 ${streakEpochs} epochs of steady gains.`
+        : 'Governance is healthy and trending upward.';
+    if (direction === 'down')
+      return 'Governance is solid but losing momentum. A few areas need attention.';
+    return 'Governance is performing well with room for further growth.';
+  }
+
+  if (band === 'fair') {
+    if (direction === 'up')
+      return 'Governance is recovering. Participation and accountability are on the rise.';
+    if (direction === 'down')
+      return hasStreak
+        ? `Governance has declined for ${streakEpochs} epochs. Key areas need intervention.`
+        : 'Governance health is moderate and slipping. Action is needed.';
+    return 'Governance participation is moderate, with clear room for improvement.';
+  }
+
+  // critical
+  if (direction === 'up')
+    return 'Signs of recovery are emerging, but governance needs urgent attention.';
+  if (direction === 'down')
+    return hasStreak
+      ? `Governance has been declining for ${streakEpochs} epochs. Immediate action is critical.`
+      : 'Governance health is critical and worsening.';
+  return 'Governance participation is dangerously low. The ecosystem needs to mobilize.';
+}
+
+function buildPersonaAddendum(segment: string, band: string): string | null {
+  if (segment === 'drep') {
+    if (band === 'critical' || band === 'fair')
+      return 'Your votes and rationales directly move this score. Every action counts.';
+    return 'Your consistent participation is helping maintain governance health.';
+  }
+  if (segment === 'spo') {
+    if (band === 'critical' || band === 'fair')
+      return 'SPO governance participation can help reverse this trend.';
+    return null;
+  }
+  if (segment === 'citizen') {
+    if (band === 'critical' || band === 'fair')
+      return 'Delegating to an active DRep is the most impactful action you can take.';
+    return null;
+  }
+  if (segment === 'cc') {
+    return 'Constitutional Committee oversight shapes the governance environment.';
+  }
+  return null;
+}
+
 export function GHIHero() {
   const { data: rawGhi, isLoading, isError, refetch } = useGovernanceHealthIndex(1);
   const shouldReduceMotion = useReducedMotion();
+  const { segment } = useSegment();
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-5 p-5 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md">
-        <Skeleton className="h-20 w-20 rounded-full shrink-0" />
+        <Skeleton className="h-[120px] w-[120px] rounded-full shrink-0" />
         <div className="space-y-2 flex-1">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-3 w-64" />
@@ -106,6 +171,9 @@ export function GHIHero() {
       ? `${streakEpochs}-epoch ${direction === 'up' ? 'climb' : direction === 'down' ? 'slide' : 'streak'}`
       : null;
 
+  const verdict = buildVerdict(band, direction, delta, streakEpochs);
+  const personaAddendum = buildPersonaAddendum(segment, band);
+
   return (
     <div
       className={cn(
@@ -116,14 +184,14 @@ export function GHIHero() {
     >
       {/* Score ring */}
       <div
-        className="relative h-20 w-20 shrink-0"
+        className="relative h-[120px] w-[120px] shrink-0"
         role="meter"
         aria-valuenow={Math.round(score)}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`Governance Health Index: ${Math.round(score)} out of 100`}
       >
-        <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90" aria-hidden="true">
+        <svg viewBox="0 0 36 36" className="h-[120px] w-[120px] -rotate-90" aria-hidden="true">
           <circle
             cx="18"
             cy="18"
@@ -133,6 +201,22 @@ export function GHIHero() {
             strokeWidth="2.5"
             className="text-muted/30"
           />
+          {/* Glow circle */}
+          {!shouldReduceMotion && (
+            <circle
+              cx="18"
+              cy="18"
+              r="15.5"
+              fill="none"
+              stroke={style.ring}
+              strokeWidth="3.5"
+              strokeDasharray={CIRCUMFERENCE}
+              strokeDashoffset={strokeOffset}
+              strokeLinecap="round"
+              className="animate-[ghi-pulse_3s_ease-in-out_infinite]"
+              style={{ filter: 'blur(3px)' }}
+            />
+          )}
           <motion.circle
             cx="18"
             cy="18"
@@ -153,8 +237,8 @@ export function GHIHero() {
         </svg>
         <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
           <div className="text-center leading-none">
-            <span className="text-2xl font-bold tabular-nums">{Math.round(score)}</span>
-            <span className="text-[9px] text-muted-foreground font-medium">/100</span>
+            <span className="text-3xl font-bold tabular-nums">{Math.round(score)}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">/100</span>
           </div>
         </div>
       </div>
@@ -180,8 +264,17 @@ export function GHIHero() {
           )}
         </div>
         {streakLabel && <p className="text-xs text-muted-foreground">{streakLabel}</p>}
-        <p className="text-sm text-muted-foreground">{style.description}</p>
+        <p className="text-sm text-muted-foreground">{verdict}</p>
+        {personaAddendum && <p className="text-xs text-primary/80 mt-1">{personaAddendum}</p>}
       </div>
+
+      {/* Pulse animation keyframes */}
+      <style>{`
+        @keyframes ghi-pulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
     </div>
   );
 }

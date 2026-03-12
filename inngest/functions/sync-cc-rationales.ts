@@ -402,13 +402,10 @@ export const syncCcRationales = inngest.createFunction(
           {
             cc_hot_id: ccHotId,
             fidelity_score: result.score,
-            transparency_index: result.score, // backward compat until migration
-            transparency_grade: result.grade,
+            fidelity_grade: result.grade,
             participation_score: result.pillars.participation,
             rationale_quality_score: result.pillars.reasoningQuality,
-            // constitutionalGrounding stored in independence_score until migration adds proper column
-            independence_score: result.pillars.constitutionalGrounding,
-            community_engagement_score: 0, // pillar removed
+            constitutional_grounding_score: result.pillars.constitutionalGrounding,
             votes_cast: result.votesCast,
             eligible_proposals: result.eligibleProposals,
             updated_at: new Date().toISOString(),
@@ -418,16 +415,14 @@ export const syncCcRationales = inngest.createFunction(
 
         // Persist snapshot with explicit error logging
         if (!error && currentEpoch > 0) {
-          const { error: snapError } = await supabase.from('cc_transparency_snapshots').upsert(
+          const { error: snapError } = await supabase.from('cc_fidelity_snapshots').upsert(
             {
               cc_hot_id: ccHotId,
               epoch_no: currentEpoch,
-              transparency_index: result.score,
+              fidelity_score: result.score,
               participation_score: result.pillars.participation,
               rationale_quality_score: result.pillars.reasoningQuality,
-              responsiveness_score: 0, // pillar removed
-              independence_score: result.pillars.constitutionalGrounding,
-              community_engagement_score: 0, // pillar removed
+              constitutional_grounding_score: result.pillars.constitutionalGrounding,
               votes_cast: result.votesCast,
               eligible_proposals: result.eligibleProposals,
             },
@@ -445,10 +440,10 @@ export const syncCcRationales = inngest.createFunction(
         if (!error) scored++;
       }
 
-      // Log snapshot completeness for cc_transparency
+      // Log snapshot completeness for cc_fidelity
       if (currentEpoch > 0) {
         const { count: snapshotCount } = await supabase
-          .from('cc_transparency_snapshots')
+          .from('cc_fidelity_snapshots')
           .select('cc_hot_id', { count: 'exact', head: true })
           .eq('epoch_no', currentEpoch);
 
@@ -459,7 +454,7 @@ export const syncCcRationales = inngest.createFunction(
 
         await supabase.from('snapshot_completeness_log').upsert(
           {
-            snapshot_type: 'cc_transparency',
+            snapshot_type: 'cc_fidelity',
             epoch_no: currentEpoch,
             snapshot_date: new Date().toISOString().slice(0, 10),
             record_count: actualCount,

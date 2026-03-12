@@ -293,9 +293,9 @@ export const checkSnapshotCompleteness = inngest.createFunction(
           detail: `${ccMemberCount ?? 0} members tracked`,
         });
 
-        // 20. CC Transparency snapshots for current epoch
+        // 20. CC Fidelity snapshots for current epoch
         const { count: ccTransCount } = await supabase
-          .from('cc_transparency_snapshots')
+          .from('cc_fidelity_snapshots')
           .select('cc_hot_id', { count: 'exact', head: true })
           .eq('epoch_no', epoch);
         const ccTransExpected = ccMemberCount ?? 0;
@@ -306,7 +306,7 @@ export const checkSnapshotCompleteness = inngest.createFunction(
               ? 100
               : 0;
         results.push({
-          name: 'cc_transparency_snapshots',
+          name: 'cc_fidelity_snapshots',
           passed: ccTransCoverage >= 50 || ccTransExpected === 0,
           detail: `${ccTransCount ?? 0}/${ccTransExpected} members (${ccTransCoverage.toFixed(1)}%)`,
         });

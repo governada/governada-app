@@ -19,7 +19,7 @@ export const GET = withRouteHandler(async () => {
   ] = await Promise.all([
     supabase
       .from('cc_members')
-      .select('cc_hot_id, author_name, transparency_grade, fidelity_score, status')
+      .select('cc_hot_id, author_name, fidelity_grade, fidelity_score, status')
       .eq('status', 'authorized'),
     supabase.from('cc_votes').select('cc_hot_id, vote'),
     supabase.from('cc_rationales').select('cc_hot_id, author_name').not('author_name', 'is', null),
@@ -65,7 +65,7 @@ export const GET = withRouteHandler(async () => {
       return {
         ccHotId: m.cc_hot_id,
         name: m.author_name ?? rationaleNameMap.get(m.cc_hot_id) ?? null,
-        fidelityGrade: m.transparency_grade ?? null, // column rename pending migration
+        fidelityGrade: m.fidelity_grade ?? null,
         fidelityScore: m.fidelity_score ?? null,
         voteCount: total,
         yesCount: counts.yes,

@@ -159,6 +159,14 @@ export async function generateMetadata({ params }: DRepDetailPageProps): Promise
   };
 }
 
+/** Average AI rationale quality score across all scored votes */
+function computeAvgRationaleQuality(votes: { rationale_quality: number | null }[]): number | null {
+  const scored = votes.filter((v) => v.rationale_quality !== null && v.rationale_quality > 0);
+  if (scored.length === 0) return null;
+  const sum = scored.reduce((acc, v) => acc + v.rationale_quality!, 0);
+  return Math.round(sum / scored.length);
+}
+
 async function getDRepData(drepId: string) {
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -282,6 +290,7 @@ async function getDRepData(drepId: string) {
       governanceIdentity: cachedDRep.governanceIdentity ?? null,
       governanceIdentityRaw: cachedDRep.governanceIdentityRaw ?? null,
       scoreMomentum: cachedDRep.scoreMomentum ?? null,
+      rationaleQualityAvg: computeAvgRationaleQuality(votes),
     };
   } catch (error) {
     console.error('[DRepProfile] Error loading DRep data:', error);
@@ -734,6 +743,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
                     governanceIdentityRaw={drep.governanceIdentityRaw}
                     scoreMomentum={drep.scoreMomentum}
                     rationaleRate={drep.rationaleRate}
+                    rationaleQualityAvg={drep.rationaleQualityAvg}
                     deliberationModifier={drep.deliberationModifier}
                     reliabilityStreak={drep.reliabilityStreak}
                     reliabilityRecency={drep.reliabilityRecency}

@@ -18,6 +18,7 @@ export interface ScoreDeepDiveProps {
   governanceIdentityRaw: number | null;
   scoreMomentum: number | null;
   rationaleRate: number;
+  rationaleQualityAvg: number | null;
   deliberationModifier: number;
   reliabilityStreak: number;
   reliabilityRecency: number;
@@ -181,17 +182,37 @@ export function ScoreDeepDive(props: ScoreDeepDiveProps) {
                     <div className="mt-2 pl-1 space-y-1 text-xs text-muted-foreground">
                       {pillar.key === 'engagement' && (
                         <>
+                          <p className="text-xs font-medium text-foreground/80 mb-1">
+                            Provision (40%) + AI Quality (40%) + Deliberation (20%)
+                          </p>
                           <p className="tabular-nums">
                             Rationale provision: {props.rationaleRate}%
                           </p>
                           <p className="tabular-nums">
+                            AI rationale quality:{' '}
+                            {props.rationaleQualityAvg !== null
+                              ? `${props.rationaleQualityAvg}/100`
+                              : 'Not yet scored'}
+                          </p>
+                          <p className="tabular-nums">
                             Deliberation factor: {props.deliberationModifier}x
                           </p>
-                          <p className="text-primary/80 mt-1">
-                            {props.rationaleRate < 50
-                              ? 'To improve: add written rationales when voting — even brief reasoning boosts this pillar significantly.'
-                              : 'Strong rationale rate. Maintaining detailed explanations keeps this pillar high.'}
-                          </p>
+                          {props.rationaleQualityAvg !== null && (
+                            <p className="text-primary/80 mt-1">
+                              {props.rationaleQualityAvg >= 70
+                                ? 'Strong rationale quality — your explanations demonstrate specificity, reasoning depth, and proposal awareness.'
+                                : props.rationaleQualityAvg >= 40
+                                  ? 'Moderate rationale quality. To improve: cite specific proposal details, explain cause-effect reasoning, and reference stakeholder impacts.'
+                                  : 'Low rationale quality. To improve: explain WHY you voted this way, reference specific numbers or stakeholders from the proposal, and describe expected consequences.'}
+                            </p>
+                          )}
+                          {props.rationaleQualityAvg === null && (
+                            <p className="text-primary/80 mt-1">
+                              {props.rationaleRate < 50
+                                ? 'To improve: add written rationales when voting — even brief reasoning boosts this pillar significantly.'
+                                : 'Strong rationale rate. AI quality scoring will appear after your rationales are analyzed.'}
+                            </p>
+                          )}
                         </>
                       )}
                       {pillar.key === 'participation' && (

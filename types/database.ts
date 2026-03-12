@@ -528,6 +528,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      cc_fidelity_snapshots: {
+        Row: {
+          cc_hot_id: string;
+          constitutional_grounding_score: number | null;
+          eligible_proposals: number | null;
+          epoch_no: number;
+          fidelity_score: number | null;
+          participation_score: number | null;
+          rationale_quality_score: number | null;
+          snapshot_at: string | null;
+          votes_cast: number | null;
+        };
+        Insert: {
+          cc_hot_id: string;
+          constitutional_grounding_score?: number | null;
+          eligible_proposals?: number | null;
+          epoch_no: number;
+          fidelity_score?: number | null;
+          participation_score?: number | null;
+          rationale_quality_score?: number | null;
+          snapshot_at?: string | null;
+          votes_cast?: number | null;
+        };
+        Update: {
+          cc_hot_id?: string;
+          constitutional_grounding_score?: number | null;
+          eligible_proposals?: number | null;
+          epoch_no?: number;
+          fidelity_score?: number | null;
+          participation_score?: number | null;
+          rationale_quality_score?: number | null;
+          snapshot_at?: string | null;
+          votes_cast?: number | null;
+        };
+        Relationships: [];
+      };
       cc_members: {
         Row: {
           author_name: string | null;
@@ -535,20 +571,17 @@ export type Database = {
           avg_reasoning_quality: number | null;
           cc_cold_id: string | null;
           cc_hot_id: string;
-          community_engagement_score: number | null;
           consistency_score: number | null;
+          constitutional_grounding_score: number | null;
           eligible_proposals: number | null;
           expiration_epoch: number | null;
+          fidelity_grade: string | null;
           fidelity_score: number | null;
           has_script: boolean | null;
-          independence_score: number | null;
           participation_score: number | null;
           rationale_provision_rate: number | null;
           rationale_quality_score: number | null;
-          responsiveness_score: number | null;
           status: string | null;
-          transparency_grade: string | null;
-          transparency_index: number | null;
           updated_at: string | null;
           votes_cast: number | null;
         };
@@ -558,20 +591,17 @@ export type Database = {
           avg_reasoning_quality?: number | null;
           cc_cold_id?: string | null;
           cc_hot_id: string;
-          community_engagement_score?: number | null;
           consistency_score?: number | null;
+          constitutional_grounding_score?: number | null;
           eligible_proposals?: number | null;
           expiration_epoch?: number | null;
+          fidelity_grade?: string | null;
           fidelity_score?: number | null;
           has_script?: boolean | null;
-          independence_score?: number | null;
           participation_score?: number | null;
           rationale_provision_rate?: number | null;
           rationale_quality_score?: number | null;
-          responsiveness_score?: number | null;
           status?: string | null;
-          transparency_grade?: string | null;
-          transparency_index?: number | null;
           updated_at?: string | null;
           votes_cast?: number | null;
         };
@@ -581,20 +611,17 @@ export type Database = {
           avg_reasoning_quality?: number | null;
           cc_cold_id?: string | null;
           cc_hot_id?: string;
-          community_engagement_score?: number | null;
           consistency_score?: number | null;
+          constitutional_grounding_score?: number | null;
           eligible_proposals?: number | null;
           expiration_epoch?: number | null;
+          fidelity_grade?: string | null;
           fidelity_score?: number | null;
           has_script?: boolean | null;
-          independence_score?: number | null;
           participation_score?: number | null;
           rationale_provision_rate?: number | null;
           rationale_quality_score?: number | null;
-          responsiveness_score?: number | null;
           status?: string | null;
-          transparency_grade?: string | null;
-          transparency_index?: number | null;
           updated_at?: string | null;
           votes_cast?: number | null;
         };
@@ -663,48 +690,6 @@ export type Database = {
           reasoning_quality_score?: number | null;
           scored_at?: string | null;
           summary?: string | null;
-        };
-        Relationships: [];
-      };
-      cc_transparency_snapshots: {
-        Row: {
-          cc_hot_id: string;
-          community_engagement_score: number | null;
-          eligible_proposals: number | null;
-          epoch_no: number;
-          independence_score: number | null;
-          participation_score: number | null;
-          rationale_quality_score: number | null;
-          responsiveness_score: number | null;
-          snapshot_at: string | null;
-          transparency_index: number | null;
-          votes_cast: number | null;
-        };
-        Insert: {
-          cc_hot_id: string;
-          community_engagement_score?: number | null;
-          eligible_proposals?: number | null;
-          epoch_no: number;
-          independence_score?: number | null;
-          participation_score?: number | null;
-          rationale_quality_score?: number | null;
-          responsiveness_score?: number | null;
-          snapshot_at?: string | null;
-          transparency_index?: number | null;
-          votes_cast?: number | null;
-        };
-        Update: {
-          cc_hot_id?: string;
-          community_engagement_score?: number | null;
-          eligible_proposals?: number | null;
-          epoch_no?: number;
-          independence_score?: number | null;
-          participation_score?: number | null;
-          rationale_quality_score?: number | null;
-          responsiveness_score?: number | null;
-          snapshot_at?: string | null;
-          transparency_index?: number | null;
-          votes_cast?: number | null;
         };
         Relationships: [];
       };
@@ -959,6 +944,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      citizen_impact_scores: {
+        Row: {
+          coverage_score: number;
+          delegation_tenure_score: number;
+          engagement_depth_score: number;
+          rep_activity_score: number;
+          score: number;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          coverage_score?: number;
+          delegation_tenure_score?: number;
+          engagement_depth_score?: number;
+          rep_activity_score?: number;
+          score?: number;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          coverage_score?: number;
+          delegation_tenure_score?: number;
+          engagement_depth_score?: number;
+          rep_activity_score?: number;
+          score?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       citizen_impact_tags: {
         Row: {
           awareness: string;
@@ -1088,6 +1103,47 @@ export type Database = {
         };
         Relationships: [];
       };
+      citizen_proposal_followups: {
+        Row: {
+          created_at: string;
+          id: string;
+          notified: boolean;
+          outcome: string | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          sentiment: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          notified?: boolean;
+          outcome?: string | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          sentiment: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          notified?: boolean;
+          outcome?: string | null;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          sentiment?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'citizen_proposal_followups_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       citizen_sentiment: {
         Row: {
           created_at: string | null;
@@ -1199,6 +1255,30 @@ export type Database = {
           last_synced_at?: string;
           start_epoch?: number | null;
           status?: string;
+        };
+        Relationships: [];
+      };
+      community_intelligence_snapshots: {
+        Row: {
+          computed_at: string;
+          data: Json;
+          epoch: number;
+          id: number;
+          snapshot_type: string;
+        };
+        Insert: {
+          computed_at?: string;
+          data?: Json;
+          epoch: number;
+          id?: number;
+          snapshot_type: string;
+        };
+        Update: {
+          computed_at?: string;
+          data?: Json;
+          epoch?: number;
+          id?: number;
+          snapshot_type?: string;
         };
         Relationships: [];
       };
@@ -2184,6 +2264,27 @@ export type Database = {
           drep_id?: string;
           philosophy_text?: string;
           updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      governance_reports: {
+        Row: {
+          epoch: number;
+          generated_at: string;
+          narrative: string | null;
+          report_data: Json;
+        };
+        Insert: {
+          epoch: number;
+          generated_at?: string;
+          narrative?: string | null;
+          report_data?: Json;
+        };
+        Update: {
+          epoch?: number;
+          generated_at?: string;
+          narrative?: string | null;
+          report_data?: Json;
         };
         Relationships: [];
       };
@@ -3872,6 +3973,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'user_governance_profiles_new_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: true;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      user_notification_preferences: {
+        Row: {
+          alert_coverage_changed: boolean;
+          alert_drep_voted: boolean;
+          alert_milestone_earned: boolean;
+          alert_score_shifted: boolean;
+          created_at: string;
+          digest_frequency: string;
+          email: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          alert_coverage_changed?: boolean;
+          alert_drep_voted?: boolean;
+          alert_milestone_earned?: boolean;
+          alert_score_shifted?: boolean;
+          created_at?: string;
+          digest_frequency?: string;
+          email?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          alert_coverage_changed?: boolean;
+          alert_drep_voted?: boolean;
+          alert_milestone_earned?: boolean;
+          alert_score_shifted?: boolean;
+          created_at?: string;
+          digest_frequency?: string;
+          email?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_notification_preferences_user_id_fkey';
             columns: ['user_id'];
             isOneToOne: true;
             referencedRelation: 'users';

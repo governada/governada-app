@@ -161,7 +161,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   const pillarScores = member
     ? {
         participation: member.participation_score,
-        constitutionalGrounding: member.independence_score, // repurposed column
+        constitutionalGrounding: member.constitutional_grounding_score,
         reasoningQuality: member.rationale_quality_score,
       }
     : null;
@@ -170,7 +170,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     ccHotId: decodedId,
     authorName,
     fidelityScore,
-    fidelityGrade: member?.transparency_grade ?? null, // column rename pending migration
+    fidelityGrade: member?.fidelity_grade ?? null,
     status: member?.status ?? null,
     expirationEpoch: member?.expiration_epoch ?? null,
     rank: rank > 0 ? rank : null,
@@ -183,7 +183,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     votesCast: member?.votes_cast ?? totalVotes,
     eligibleProposals: member?.eligible_proposals ?? null,
     rationaleProvisionRate: member?.rationale_provision_rate ?? null,
-    constitutionalGroundingScore: member?.independence_score ?? null, // repurposed column
+    constitutionalGroundingScore: member?.constitutional_grounding_score ?? null,
     drepAgree,
     drepCompare,
     spoAgree,

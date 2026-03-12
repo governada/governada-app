@@ -479,6 +479,7 @@ export interface DRepVoteRow {
   block_time: number;
   meta_url: string | null;
   meta_hash: string | null;
+  rationale_quality: number | null;
 }
 
 /**
@@ -1009,7 +1010,7 @@ export async function getCCFidelityHistory(ccHotId: string): Promise<CCFidelityS
   try {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('cc_transparency_snapshots')
+      .from('cc_fidelity_snapshots')
       .select('*')
       .eq('cc_hot_id', ccHotId)
       .order('epoch_no', { ascending: true });
@@ -1017,9 +1018,9 @@ export async function getCCFidelityHistory(ccHotId: string): Promise<CCFidelityS
     if (error || !data) return [];
     return data.map((s) => ({
       epochNo: s.epoch_no,
-      fidelityScore: s.transparency_index ?? 0,
+      fidelityScore: s.fidelity_score ?? 0,
       participationScore: s.participation_score ?? 0,
-      constitutionalGroundingScore: s.independence_score ?? 0, // repurposed column
+      constitutionalGroundingScore: s.constitutional_grounding_score ?? 0,
       reasoningQualityScore: s.rationale_quality_score ?? 0,
       votesCast: s.votes_cast ?? 0,
       eligibleProposals: s.eligible_proposals ?? 0,
@@ -1058,7 +1059,7 @@ export async function getCCMembersFidelity(): Promise<CCMemberFidelity[]> {
     const { data, error } = await supabase
       .from('cc_members')
       .select(
-        'cc_hot_id, author_name, status, expiration_epoch, fidelity_score, transparency_grade, participation_score, rationale_quality_score, independence_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, votes_cast, eligible_proposals',
+        'cc_hot_id, author_name, status, expiration_epoch, fidelity_score, fidelity_grade, participation_score, rationale_quality_score, constitutional_grounding_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, votes_cast, eligible_proposals',
       )
       .order('fidelity_score', { ascending: false, nullsFirst: false });
 
@@ -1069,9 +1070,9 @@ export async function getCCMembersFidelity(): Promise<CCMemberFidelity[]> {
       status: m.status,
       expirationEpoch: m.expiration_epoch,
       fidelityScore: m.fidelity_score,
-      fidelityGrade: m.transparency_grade, // column rename pending migration
+      fidelityGrade: m.fidelity_grade,
       participationScore: m.participation_score,
-      constitutionalGroundingScore: m.independence_score, // repurposed column
+      constitutionalGroundingScore: m.constitutional_grounding_score,
       reasoningQualityScore: m.rationale_quality_score,
       rationaleProvisionRate: m.rationale_provision_rate,
       avgArticleCoverage: m.avg_article_coverage,
@@ -1178,13 +1179,13 @@ export async function getCCHealthSummary(): Promise<CCHealthSummary> {
     let trend: 'improving' | 'stable' | 'declining' = 'stable';
     if (currentEpoch > 3 && scoredMembers.length > 0) {
       const { data: oldSnapshots } = await supabase
-        .from('cc_transparency_snapshots')
-        .select('transparency_index')
+        .from('cc_fidelity_snapshots')
+        .select('fidelity_score')
         .eq('epoch_no', currentEpoch - 3);
 
       if (oldSnapshots && oldSnapshots.length > 0) {
         const oldAvg = Math.round(
-          oldSnapshots.reduce((s, r) => s + (r.transparency_index ?? 0), 0) / oldSnapshots.length,
+          oldSnapshots.reduce((s, r) => s + (r.fidelity_score ?? 0), 0) / oldSnapshots.length,
         );
         const delta = (avgFidelity ?? 0) - oldAvg;
         if (delta > 2) trend = 'improving';
@@ -1220,15 +1221,15 @@ export async function getCCMemberVerdicts(): Promise<CCMemberVerdict[]> {
 
     // Get latest 2 snapshots per member for trend
     const { data: snapshots } = await supabase
-      .from('cc_transparency_snapshots')
-      .select('cc_hot_id, epoch_no, transparency_index')
+      .from('cc_fidelity_snapshots')
+      .select('cc_hot_id, epoch_no, fidelity_score')
       .order('epoch_no', { ascending: false })
       .limit(members.length * 5);
 
     const snapshotsByMember = new Map<string, { epoch: number; index: number }[]>();
     for (const s of snapshots ?? []) {
       const list = snapshotsByMember.get(s.cc_hot_id) ?? [];
-      list.push({ epoch: s.epoch_no, index: s.transparency_index ?? 0 });
+      list.push({ epoch: s.epoch_no, index: s.fidelity_score ?? 0 });
       snapshotsByMember.set(s.cc_hot_id, list);
     }
 

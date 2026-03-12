@@ -5,6 +5,10 @@ import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { CivicaPulseOverview } from '@/components/civica/pulse/CivicaPulseOverview';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FeatureGate } from '@/components/FeatureGate';
+import { GovernanceTemperature } from '@/components/community/GovernanceTemperature';
+import { CitizenMandate } from '@/components/community/CitizenMandate';
+import { SentimentDivergence } from '@/components/community/SentimentDivergence';
 
 export const metadata: Metadata = {
   title: 'Governada — Governance Health',
@@ -50,10 +54,25 @@ export default function HealthPage() {
   return (
     <>
       <PageViewTracker event="governance_health_viewed" />
-      <div className="container mx-auto px-4 sm:px-6 py-6">
+      <div className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
         <Suspense fallback={<HealthFallback />}>
           <CivicaPulseOverview />
         </Suspense>
+
+        {/* Community Intelligence — all feature-flagged */}
+        <FeatureGate flag="governance_temperature">
+          <GovernanceTemperature />
+        </FeatureGate>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <FeatureGate flag="community_mandate">
+            <CitizenMandate />
+          </FeatureGate>
+
+          <FeatureGate flag="sentiment_divergence">
+            <SentimentDivergence />
+          </FeatureGate>
+        </div>
       </div>
     </>
   );

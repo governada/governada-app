@@ -36,6 +36,7 @@ import { generateDrepEpochUpdates } from '@/inngest/functions/generate-drep-epoc
 import { precomputeEngagementSignals } from '@/inngest/functions/precompute-engagement-signals';
 import { generateCitizenAssembly } from '@/inngest/functions/generate-citizen-assembly';
 import { trackProposalOutcomes } from '@/inngest/functions/track-proposal-outcomes';
+import { computeCommunityIntelligence } from '@/inngest/functions/compute-community-intelligence';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -76,5 +77,6 @@ export const { GET, POST, PUT } = serve({
     precomputeEngagementSignals,
     generateCitizenAssembly,
     trackProposalOutcomes,
+    computeCommunityIntelligence,
   ],
 });

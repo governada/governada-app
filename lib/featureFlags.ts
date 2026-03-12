@@ -21,6 +21,10 @@
  * governance_font                — Custom display font (Space Grotesk) for headings
  * governance_wrapped             — Governance Wrapped generation (gates expensive AI jobs)
  * citizen_assembly_ai_generation — AI-generated citizen assembly questions
+ * community_mandate             — Citizen Mandate dashboard (priority signal aggregation)
+ * sentiment_divergence           — Sentiment Divergence Index (citizen vs DRep alignment)
+ * state_of_governance_report     — Auto-generated epoch report with community intelligence
+ * governance_temperature         — Governance Temperature gauge (0-100 aggregate sentiment)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

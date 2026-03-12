@@ -1,13 +1,5 @@
-import dynamic from 'next/dynamic';
 import { SectionPillBar } from '@/components/civica/SectionPillBar';
-
-const SectionSpotlightTrigger = dynamic(
-  () =>
-    import('@/components/discovery/SectionSpotlightTrigger').then((m) => ({
-      default: m.SectionSpotlightTrigger,
-    })),
-  { ssr: false },
-);
+import { SectionSpotlightTrigger } from '@/components/discovery/SectionSpotlightTrigger';
 
 export default function HelpLayout({ children }: { children: React.ReactNode }) {
   return (

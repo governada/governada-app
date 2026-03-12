@@ -3,6 +3,7 @@
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { HubCardRenderer } from './HubCardRenderer';
 import { AnonymousLanding } from './AnonymousLanding';
+import { CitizenHub } from './CitizenHub';
 import { HubCardSkeleton } from './cards/HubCard';
 
 interface PulseData {
@@ -45,6 +46,11 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
     return <AnonymousLanding pulseData={pulseData} />;
   }
 
-  // Authenticated homepage — globe provided by CivicaShell, cards float on glass
+  // Citizens get the consequence story Hub
+  if (segment === 'citizen') {
+    return <CitizenHub />;
+  }
+
+  // Other authenticated personas — globe provided by CivicaShell, cards float on glass
   return <HubCardRenderer persona={segment} />;
 }

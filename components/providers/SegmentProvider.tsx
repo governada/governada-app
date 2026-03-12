@@ -36,6 +36,8 @@ export interface SegmentState {
   getEngagementLevelOverride: () => EngagementLevel | null;
   getCredibilityTierOverride: () => CredibilityTier | null;
   getGovernanceLevelOverride: () => GovernanceLevel | null;
+  /** True when admin "View As" override is active — components should show preview mode */
+  isViewingAs: boolean;
 }
 
 const STORAGE_KEY = 'civica_segment';
@@ -59,6 +61,7 @@ const DEFAULT_STATE: SegmentState = {
   getEngagementLevelOverride: () => null,
   getCredibilityTierOverride: () => null,
   getGovernanceLevelOverride: () => null,
+  isViewingAs: false,
 };
 
 const SegmentContext = createContext<SegmentState>(DEFAULT_STATE);
@@ -106,6 +109,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       | 'getEngagementLevelOverride'
       | 'getCredibilityTierOverride'
       | 'getGovernanceLevelOverride'
+      | 'isViewingAs'
     >
   >({
     isLoading: false,
@@ -203,6 +207,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     getEngagementLevelOverride: () => dimensionOverrides.engagementLevel ?? null,
     getCredibilityTierOverride: () => dimensionOverrides.credibilityTier ?? null,
     getGovernanceLevelOverride: () => dimensionOverrides.governanceLevel ?? null,
+    isViewingAs: override !== null,
   };
 
   return <SegmentContext.Provider value={value}>{children}</SegmentContext.Provider>;

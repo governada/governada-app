@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useWallet } from '@/utils/wallet';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MessageSquare, Send, Info, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Send, Info, CheckCircle2, Shield } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
 
 interface AskYourDRepProps {
@@ -18,15 +19,21 @@ interface AskYourDRepProps {
 
 export function AskYourDRep({ txHash, proposalIndex, proposalTitle }: AskYourDRepProps) {
   const { connected, isAuthenticated, delegatedDrepId, authenticate } = useWallet();
+  const { isViewingAs, delegatedDrep } = useSegment();
   const [question, setQuestion] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Only show if user has a delegated DRep
-  if (!connected || !delegatedDrepId) return null;
+  const previewMode = isViewingAs && !connected;
+  const effectiveDrepId = delegatedDrepId || (isViewingAs ? delegatedDrep : null);
+
+  // Only show if user has a delegated DRep (real or overridden)
+  if (!effectiveDrepId) return null;
+  if (!connected && !isViewingAs) return null;
 
   const submit = async () => {
+    if (previewMode) return;
     if (!question.trim() || question.length > 500) return;
     hapticLight();
 
@@ -50,7 +57,7 @@ export function AskYourDRep({ txHash, proposalIndex, proposalTitle }: AskYourDRe
         },
         body: JSON.stringify({
           sessionToken: token,
-          drepId: delegatedDrepId,
+          drepId: effectiveDrepId,
           questionText: question.trim(),
           proposalTxHash: txHash,
           proposalIndex,
@@ -70,7 +77,7 @@ export function AskYourDRep({ txHash, proposalIndex, proposalTitle }: AskYourDRe
           posthog.capture('citizen_question_asked', {
             proposal_tx_hash: txHash,
             proposal_index: proposalIndex,
-            drep_id: delegatedDrepId,
+            drep_id: effectiveDrepId,
           });
         })
         .catch(() => {});
@@ -130,6 +137,12 @@ export function AskYourDRep({ txHash, proposalIndex, proposalTitle }: AskYourDRe
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {previewMode && (
+          <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            <Shield className="h-3.5 w-3.5 shrink-0" />
+            Preview mode — questions disabled while viewing as another user
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
           Ask your DRep about &ldquo;{proposalTitle.slice(0, 80)}
           {proposalTitle.length > 80 ? '...' : ''}&rdquo;
@@ -140,13 +153,14 @@ export function AskYourDRep({ txHash, proposalIndex, proposalTitle }: AskYourDRe
           placeholder="What's your position on this proposal?"
           className="min-h-[80px] text-sm resize-none"
           maxLength={500}
+          disabled={previewMode}
         />
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{question.length}/500</span>
           <Button
             size="sm"
             onClick={submit}
-            disabled={submitting || !question.trim()}
+            disabled={previewMode || submitting || !question.trim()}
             className="gap-1.5"
           >
             <Send className="h-3.5 w-3.5" />

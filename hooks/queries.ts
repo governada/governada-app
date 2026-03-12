@@ -15,15 +15,15 @@ export interface CCHealthSummaryResponse {
   trend: 'improving' | 'stable' | 'declining';
   activeMembers: number;
   totalMembers: number;
-  avgTransparency: number | null;
+  avgFidelity: number | null;
   tensionCount: number;
 }
 
 export interface CommitteeMemberQuickView {
   ccHotId: string;
   name: string | null;
-  transparencyGrade: string | null;
-  transparencyIndex: number | null;
+  fidelityGrade: string | null;
+  fidelityScore: number | null;
   voteCount: number;
   yesCount: number;
   noCount: number;

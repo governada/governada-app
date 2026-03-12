@@ -13,15 +13,11 @@
  */
 
 // ---------------------------------------------------------------------------
-// Transparency Score
+// Constitutional Fidelity Score
 // ---------------------------------------------------------------------------
 
-export function interpretTransparencyScore(
-  score: number | null,
-  rank: number,
-  total: number,
-): string {
-  if (score == null) return 'No transparency data available yet.';
+export function interpretFidelityScore(score: number | null, rank: number, total: number): string {
+  if (score == null) return 'No fidelity data available yet.';
   const label =
     score >= 85
       ? 'Excellent'
@@ -32,8 +28,11 @@ export function interpretTransparencyScore(
           : score >= 40
             ? 'Weak'
             : 'Poor';
-  return `${label} transparency (${score}/100) — ranked ${ordinal(rank)} of ${total} members`;
+  return `${label} constitutional fidelity (${score}/100) — ranked ${ordinal(rank)} of ${total} members`;
 }
+
+/** @deprecated Use interpretFidelityScore */
+export const interpretTransparencyScore = interpretFidelityScore;
 
 // ---------------------------------------------------------------------------
 // Participation
@@ -110,20 +109,26 @@ export function interpretRationaleQuality(
 }
 
 // ---------------------------------------------------------------------------
-// Independence
+// Constitutional Grounding
 // ---------------------------------------------------------------------------
 
-export function interpretIndependence(score: number | null, unanimousRate: number | null): string {
-  if (score == null) return 'Independence data not yet available.';
+export function interpretConstitutionalGrounding(score: number | null): string {
+  if (score == null) return 'Constitutional grounding data not yet available.';
   if (score >= 80)
-    return 'High independence — regularly exercises independent judgment on proposals';
-  if (score >= 60) {
-    const ctx =
-      unanimousRate != null && unanimousRate >= 90 ? ' despite high overall CC consensus' : '';
-    return `Moderate independence${ctx} — balanced between consensus and independent judgment`;
-  }
-  if (score >= 40) return 'Low independence — tends to vote with the CC majority on most proposals';
-  return 'Very low independence — rarely diverges from the CC majority';
+    return 'Strong constitutional grounding — consistently cites relevant articles and sections';
+  if (score >= 60)
+    return 'Good constitutional grounding — cites articles on most votes with reasonable coverage';
+  if (score >= 40)
+    return 'Moderate constitutional grounding — some article citations but coverage could improve';
+  return 'Weak constitutional grounding — rarely cites constitutional articles in rationales';
+}
+
+/** @deprecated Use interpretConstitutionalGrounding */
+export function interpretIndependence(
+  score: number | null,
+  _unanimousRate?: number | null,
+): string {
+  return interpretConstitutionalGrounding(score);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,16 +154,14 @@ export function interpretTrend(
 
 interface PillarScores {
   participation: number | null;
-  rationaleQuality: number | null;
-  responsiveness: number | null;
-  independence: number | null;
+  constitutionalGrounding: number | null;
+  reasoningQuality: number | null;
 }
 
 const PILLAR_LABELS: Record<keyof PillarScores, string> = {
   participation: 'Participation',
-  rationaleQuality: 'Rationale Quality',
-  responsiveness: 'Responsiveness',
-  independence: 'Independence',
+  constitutionalGrounding: 'Constitutional Grounding',
+  reasoningQuality: 'Reasoning Quality',
 };
 
 export function interpretPillarStrengthWeakness(pillars: PillarScores): string {
@@ -192,30 +195,35 @@ export type TrendDirection = 'improving' | 'stable' | 'declining';
 export interface CCHealthData {
   activeMembers: number;
   totalMembers: number;
-  avgTransparency: number | null;
+  avgFidelity: number | null;
+  /** @deprecated Use avgFidelity */
+  avgTransparency?: number | null;
   tensionCount: number;
   trend: TrendDirection;
 }
 
 export function interpretHealthStatus(data: CCHealthData): HealthStatus {
-  const { avgTransparency, activeMembers } = data;
-  if (avgTransparency == null) return 'attention';
+  const avg = data.avgFidelity ?? data.avgTransparency ?? null;
+  const { activeMembers } = data;
+  if (avg == null) return 'attention';
   if (activeMembers === 0) return 'critical';
-  if (avgTransparency >= 65) return 'healthy';
-  if (avgTransparency >= 45) return 'attention';
+  if (avg >= 65) return 'healthy';
+  if (avg >= 45) return 'attention';
   return 'critical';
 }
 
 export function generateCCHealthNarrative(data: CCHealthData): string {
-  const { activeMembers, totalMembers, avgTransparency, tensionCount } = data;
+  const { activeMembers } = data;
+  const avg = data.avgFidelity ?? data.avgTransparency ?? null;
+  const { tensionCount } = data;
   const status = interpretHealthStatus(data);
 
   const memberStr = `${activeMembers} active committee member${activeMembers !== 1 ? 's' : ''}`;
 
   const scoreStr =
-    avgTransparency != null
-      ? `Average transparency is ${avgTransparency >= 70 ? 'strong' : avgTransparency >= 55 ? 'moderate' : 'weak'} at ${avgTransparency}/100`
-      : 'Transparency scores are not yet available';
+    avg != null
+      ? `Average fidelity is ${avg >= 70 ? 'strong' : avg >= 55 ? 'moderate' : 'weak'} at ${avg}/100`
+      : 'Fidelity scores are not yet available';
 
   if (status === 'critical')
     return `${memberStr}. ${scoreStr}. Accountability gaps need attention.`;
@@ -235,7 +243,9 @@ export function generateCCHealthNarrative(data: CCHealthData): string {
 export interface MemberVerdictInput {
   rank: number;
   total: number;
-  transparencyScore: number | null;
+  fidelityScore: number | null;
+  /** @deprecated Use fidelityScore */
+  transparencyScore?: number | null;
   trend: TrendDirection;
   strongestPillar: string | null;
   weakestPillar: string | null;
@@ -243,9 +253,10 @@ export interface MemberVerdictInput {
 }
 
 export function generateMemberVerdict(input: MemberVerdictInput): string {
-  const { rank, total, transparencyScore, trend, strongestPillar, weakestPillar } = input;
+  const { rank, total, trend, strongestPillar, weakestPillar } = input;
+  const score = input.fidelityScore ?? input.transparencyScore ?? null;
 
-  if (transparencyScore == null) return 'Transparency data not yet available.';
+  if (score == null) return 'Fidelity data not yet available.';
 
   const positionStr =
     rank <= Math.ceil(total / 3)

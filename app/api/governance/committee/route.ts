@@ -19,7 +19,7 @@ export const GET = withRouteHandler(async () => {
   ] = await Promise.all([
     supabase
       .from('cc_members')
-      .select('cc_hot_id, author_name, transparency_grade, transparency_index, status')
+      .select('cc_hot_id, author_name, transparency_grade, fidelity_score, status')
       .eq('status', 'authorized'),
     supabase.from('cc_votes').select('cc_hot_id, vote'),
     supabase.from('cc_rationales').select('cc_hot_id, author_name').not('author_name', 'is', null),
@@ -65,8 +65,8 @@ export const GET = withRouteHandler(async () => {
       return {
         ccHotId: m.cc_hot_id,
         name: m.author_name ?? rationaleNameMap.get(m.cc_hot_id) ?? null,
-        transparencyGrade: m.transparency_grade ?? null,
-        transparencyIndex: m.transparency_index ?? null,
+        fidelityGrade: m.transparency_grade ?? null, // column rename pending migration
+        fidelityScore: m.fidelity_score ?? null,
         voteCount: total,
         yesCount: counts.yes,
         noCount: counts.no,
@@ -77,9 +77,9 @@ export const GET = withRouteHandler(async () => {
       };
     })
     .sort((a, b) => {
-      // Sort by transparency index (descending) if available, then by vote count
-      if (a.transparencyIndex != null && b.transparencyIndex != null) {
-        return b.transparencyIndex - a.transparencyIndex;
+      // Sort by fidelity score (descending) if available, then by vote count
+      if (a.fidelityScore != null && b.fidelityScore != null) {
+        return b.fidelityScore - a.fidelityScore;
       }
       return b.voteCount - a.voteCount;
     });

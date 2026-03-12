@@ -1,7 +1,7 @@
 # Build Manifest (derived from ultimate-vision.md V3.0)
 
 > **Purpose:** Machine-readable audit checklist. Agents verify `[x]` items exist, report `[ ]` items as gaps.
-> **Last synced with vision:** 2026-03-10
+> **Last synced with vision:** 2026-03-12 (V3.1)
 > **Usage:** `Phase 1 audit` = read this file, verify files/routes/tables. `Phase 2 audit` = read ultimate-vision.md for qualitative alignment.
 > **Scoring:** After each `/audit`, record dimension scores in the Audit Score History section at the bottom.
 
@@ -174,56 +174,103 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 
 ---
 
-## Phase 2: Engagement Flywheel Activation [NOT STARTED]
+## Phase 2: The Living Platform [NOT STARTED — LAUNCH PHASE 1 of 2]
 
-- [ ] Hub engagement cards — active sentiment polls, priority signals, assemblies
-- [ ] Anonymous glass window — see engagement results, can't participate, conversion CTA
+### 2a: Engagement Activation (The Voice Layer)
+
+- [ ] Hub feed engagement items — active sentiment polls, priority signals, assemblies
 - [ ] Contextual prompts on proposal pages — inline sentiment voting
 - [ ] Contextual prompts on DRep profiles — endorsement prompt
 - [ ] Contextual prompts on funded projects — impact tags
 - [ ] Concern flags inline on proposal pages
-- [ ] Citizen sentiment visible in DRep Workspace
-- [ ] Engagement metrics in Hub briefings
-- [ ] Endorsement counts on discovery cards
+- [ ] Anonymous glass window — see engagement results, can't participate, conversion CTA
+- [ ] Engagement → intelligence feedback — citizen sentiment visible in DRep Workspace
+- [ ] Endorsement counts on governance browse cards
+- [ ] Community Consensus visualization (feature-flagged until data volume threshold)
 
-### Flywheel activated: Engagement
+### 2b: Civic Identity & Milestones (The Investment Layer)
 
-- verify: engagement actions possible from Hub without visiting separate page
+- [ ] Governance Impact Score calculation + display on Hub and `/you`
+- [ ] Milestone achievement system — first delegation, first sentiment vote, streaks, coverage milestones
+- [ ] Enhanced civic identity surface on `/you` — governance resume
+- [ ] "Governance Since" epoch tenure display
+- [ ] `citizen_impact_scores` table
+
+### 2c: Share Engine (The Viral Layer)
+
+- [ ] Milestone share cards with branded OG images
+- [ ] DRep/SPO profile share cards (score tier, key stats, endorsements)
+- [ ] Governance stats shareable card (coverage, tenure, engagement depth)
+- [ ] Sentiment divergence shareable insights
+- [ ] Coverage gap shareable card
+- [ ] Pre-formatted share text + deep links for X/Twitter
+- [ ] One-tap share with `navigator.share()` + clipboard fallback
+
+### 2d: Representative Activation (The Supply-Side Engine)
+
+- [ ] "Claim Your Profile" flow — DRep connects wallet, enhances profile
+- [ ] "Claim Your Profile" flow — SPO connects wallet, governance statement
+- [ ] Delegator intelligence dashboard — "Your delegators care about..."
+- [ ] Competitive context — rank, percentile, peer comparison
+- [ ] Profile sharing toolkit — pre-formatted post, OG image, embed snippet
+- [ ] Governance leaderboards — by score, rationale quality, endorsements
+
+### Flywheels activated: Engagement, Viral/Identity, Accountability (accelerated), Content (accelerated)
+
+- verify: engagement actions possible from Hub and entity pages
 - verify: anonymous users see engagement results but cannot participate
-
----
-
-## Phase 3: Anonymous Funnel + Coverage Polish [NOT STARTED]
-
-- [ ] Two-path anonymous landing optimized (Match + Governance)
-- [ ] Match flow expanded: DRep matching + Pool matching ("governance team")
-- [ ] Inline education (tooltips, contextual explainers)
-- [ ] Wallet connect at moment of intent
-- [ ] PostHog funnel measurement + iteration
-- [ ] Governance Coverage prominent on Hub and Delegation
-- [ ] "Complete your governance team" CTA
-- [ ] Coverage trend over time
-- [ ] Shareable coverage card
-
-- verify: anonymous -> citizen conversion measurable via PostHog funnel
-
----
-
-## Phase 4: Viral/Identity Flywheel Activation [NOT STARTED]
-
-- [ ] GovernanceImpactScore calculation + display
-- [ ] CivicMilestoneShare cards (first delegation, DRep milestones, coverage streaks)
-- [ ] Enhanced Wrapped (multi-role, engagement stats, coverage)
-- [ ] Animated share preview generation
-- [ ] citizen_impact_scores table
-
-### Flywheel activated: Viral/Identity
-
 - verify: milestone share cards generate shareable OG images
+- verify: DReps/SPOs can claim and share profiles
 
 ---
 
-## Phase 5: Monetization Layer [NOT STARTED]
+## Phase 3: The Growth Engine [NOT STARTED — LAUNCH PHASE 2 of 2]
+
+### 3a: Conversion Funnel (The Door)
+
+- [ ] Anonymous landing optimization — live social proof numbers, two clear paths
+- [ ] Match flow reframed as "Build Your Governance Team" (DRep + Pool)
+- [ ] Wallet connect at moment of intent (not on arrival)
+- [ ] Progressive onboarding — reveal features as users are ready
+- [ ] PostHog funnel instrumentation — full conversion pipeline measured
+- [ ] SEO foundation — meta tags, structured data, sitemap for public-facing pages
+
+### 3b: Return Loop (The Hook)
+
+- [ ] Epoch-boundary digest — opt-in email with personalized briefing
+- [ ] Email collection opt-in flow (web3-first, no email for auth)
+- [ ] Alert system — DRep voted, coverage changed, score shifted, milestones
+- [ ] Notification pipeline wired to `/you/inbox` with real governance events
+- [ ] "What changed" summary on return visit
+- [ ] Engagement result follow-ups — "87% agreed with your vote"
+
+### 3c: Community Intelligence (The Conversation Starter) — all feature-flagged
+
+- [ ] Citizen Mandate dashboard — aggregate priority signals visualized
+- [ ] Sentiment Divergence Index — citizen vs. DRep agreement analysis
+- [ ] "State of Governance" auto-generated epoch report
+- [ ] Governance Temperature — single-number aggregate sentiment
+
+### 3d: Launch Readiness (The Finish)
+
+- [ ] Mobile experience audit + fixes
+- [ ] Performance optimization — sub-2s meaningful paint on key pages
+- [ ] Load testing (QP-13) — handle launch traffic
+- [ ] Edge case polish — empty states, error recovery, loading skeletons
+- [ ] Legal/privacy baseline — terms of service, privacy policy
+
+### Flywheels activated: All loops closed
+
+- verify: anonymous → citizen conversion measurable via PostHog funnel
+- verify: citizens receive epoch-boundary notifications
+- verify: mobile experience is polished
+- verify: product handles load testing threshold
+
+**PUBLIC LAUNCH after Phase 3**
+
+---
+
+## Phase 4: Monetization Layer [POST-LAUNCH]
 
 - [ ] Subscription infrastructure (Stripe)
 - [ ] subscriptions + subscription_events tables
@@ -235,7 +282,7 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 
 ---
 
-## Phase 6: Integration Flywheel Activation [NOT STARTED]
+## Phase 5: Integration Flywheel Activation [POST-LAUNCH]
 
 - [ ] API v2 expansion — full entity, governance, scoring, matching endpoints
 - [ ] OpenAPI spec + SDK generation (TypeScript, Python)
@@ -255,13 +302,14 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 
 ---
 
-## Phase 7+: Advanced Intelligence & New Products [NOT STARTED]
+## Phase 6+: Advanced Intelligence & New Products [POST-LAUNCH]
 
 - [ ] Delegation network graph + influence mapping
 - [ ] Governance simulation engine
 - [ ] delegation_snapshots per-epoch collection
 - [ ] Catalyst Score (separate product line)
 - [ ] Cross-ecosystem governance identity
+- [ ] Enhanced Wrapped (multi-role, engagement stats, coverage)
 
 ---
 

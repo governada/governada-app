@@ -166,7 +166,7 @@ export function CCHealthVerdict({ health }: CCHealthVerdictProps) {
           className="flex flex-col items-center gap-1 sm:min-w-[140px]"
         >
           <HealthArc
-            score={health.avgTransparency}
+            score={health.avgFidelity}
             color={config.arcColor}
             trackColor={config.arcTrack}
           />

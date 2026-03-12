@@ -129,12 +129,13 @@ export const IMPORTANCE_WEIGHTS = {
 
 /**
  * Reliability sub-component weights (must sum to 1.0).
+ * V3.1: Responsiveness (timeliness) removed — voting within the window is sufficient.
+ * Weights redistributed: Streak 35%, Recency 30%, Gap 25%, Tenure 10%.
  */
 export const RELIABILITY_WEIGHTS = {
-  streak: 0.3,
-  recency: 0.25,
-  gap: 0.2,
-  responsiveness: 0.15,
+  streak: 0.35,
+  recency: 0.3,
+  gap: 0.25,
   tenure: 0.1,
 } as const;
 
@@ -148,8 +149,6 @@ export const RELIABILITY_PARAMS = {
   recencyDecayDivisor: 5,
   /** Gap penalty: points lost per epoch gap. */
   gapPenaltyPerEpoch: 12,
-  /** Responsiveness: score = 100 * exp(-medianDays / divisor). */
-  responsivenessDivisor: 14,
   /** Tenure asymptote: 20-point floor, 80-point growth. */
   tenureFloor: 20,
   tenureGrowth: 80,
@@ -341,6 +340,117 @@ export const TIER_BOUNDARIES = [
 ] as const;
 
 // ---------------------------------------------------------------------------
+// DRep & SPO Pillar Calibration Curves (Absolute Scoring)
+// ---------------------------------------------------------------------------
+
+/**
+ * Absolute calibration curves for DRep pillar scores.
+ * Replaces percentile normalization: raw score → calibrated score via
+ * piecewise linear mapping. Your actions = your score, independent of
+ * how other DReps perform. Uses the same CalibrationCurve shape as GHI.
+ *
+ * This enables measuring growth in average DRep scores over time as a
+ * measure of Governada's impact on Cardano governance health.
+ */
+export const DREP_PILLAR_CALIBRATION = {
+  engagementQuality: {
+    floor: 5,
+    targetLow: 25,
+    targetHigh: 60,
+    ceiling: 85,
+  },
+  effectiveParticipation: {
+    floor: 10,
+    targetLow: 30,
+    targetHigh: 65,
+    ceiling: 90,
+  },
+  reliability: {
+    floor: 10,
+    targetLow: 30,
+    targetHigh: 65,
+    ceiling: 85,
+  },
+  governanceIdentity: {
+    floor: 10,
+    targetLow: 30,
+    targetHigh: 60,
+    ceiling: 80,
+  },
+} as const;
+
+/**
+ * Absolute calibration curves for SPO pillar scores.
+ */
+export const SPO_PILLAR_CALIBRATION = {
+  participation: {
+    floor: 10,
+    targetLow: 30,
+    targetHigh: 65,
+    ceiling: 90,
+  },
+  deliberation: {
+    floor: 5,
+    targetLow: 20,
+    targetHigh: 55,
+    ceiling: 80,
+  },
+  reliability: {
+    floor: 10,
+    targetLow: 30,
+    targetHigh: 65,
+    ceiling: 85,
+  },
+  governanceIdentity: {
+    floor: 10,
+    targetLow: 30,
+    targetHigh: 60,
+    ceiling: 80,
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// DRep Community Presence — Absolute Delegator Tiers
+// ---------------------------------------------------------------------------
+
+/**
+ * Absolute delegator count tiers for Community Presence scoring.
+ * Replaces percentile-based delegator ranking (zero-sum) with absolute
+ * thresholds (every DRep can reach 100 by growing their community).
+ * Tiers are evaluated highest-first; first match wins.
+ */
+export const DELEGATOR_TIERS = [
+  { min: 250, score: 100 },
+  { min: 100, score: 95 },
+  { min: 50, score: 80 },
+  { min: 15, score: 60 },
+  { min: 5, score: 40 },
+  { min: 1, score: 20 },
+  { min: 0, score: 0 },
+] as const;
+
+// ---------------------------------------------------------------------------
+// CC Constitutional Fidelity Score
+// ---------------------------------------------------------------------------
+
+/**
+ * CC Constitutional Fidelity pillar weights (must sum to 1.0).
+ * Replaces the 5-pillar Transparency Index with a simpler 3-pillar model:
+ *   1. Participation (30%)    — Do they vote?
+ *   2. Constitutional Grounding (40%) — Do they cite relevant articles?
+ *   3. Reasoning Quality (30%) — How thorough is their reasoning?
+ *
+ * Removed: Responsiveness (timeliness), Independence, Community Engagement.
+ * Philosophy: "Do they vote in line with the constitution? In ambiguous cases,
+ * do they justify their votes enough to back it up?"
+ */
+export const CC_FIDELITY_WEIGHTS = {
+  participation: 0.3,
+  constitutionalGrounding: 0.4,
+  reasoningQuality: 0.3,
+} as const;
+
+// ---------------------------------------------------------------------------
 // GHI Calibration Curves
 // ---------------------------------------------------------------------------
 
@@ -361,6 +471,12 @@ export const GHI_CALIBRATION = {
     targetHigh: 70,
     ceiling: 90,
   },
+  spoParticipation: {
+    floor: 10,
+    targetLow: 25,
+    targetHigh: 55,
+    ceiling: 80,
+  },
   citizenEngagement: {
     floor: 10,
     targetLow: 30,
@@ -378,6 +494,12 @@ export const GHI_CALIBRATION = {
     targetLow: 40,
     targetHigh: 70,
     ceiling: 90,
+  },
+  ccConstitutionalFidelity: {
+    floor: 15,
+    targetLow: 35,
+    targetHigh: 65,
+    ceiling: 85,
   },
   powerDistribution: {
     floor: 15,
@@ -400,15 +522,17 @@ export const GHI_CALIBRATION = {
 /**
  * GHI component weights (must sum to 1.0).
  *
- * Engagement (35%): DRep Participation (20%) + Citizen Engagement (15%)
- * Quality (40%): Deliberation Quality (20%) + Governance Effectiveness (20%)
+ * Engagement (35%): DRep Participation (15%) + SPO Participation (10%) + Citizen Engagement (10%)
+ * Quality (40%): Deliberation Quality (15%) + Governance Effectiveness (15%) + CC Constitutional Fidelity (10%)
  * Resilience (25%): Power Distribution (15%) + System Stability (10%)
  */
 export const GHI_COMPONENT_WEIGHTS = {
-  'DRep Participation': 0.2,
-  'Citizen Engagement': 0.15,
-  'Deliberation Quality': 0.2,
-  'Governance Effectiveness': 0.2,
+  'DRep Participation': 0.15,
+  'SPO Participation': 0.1,
+  'Citizen Engagement': 0.1,
+  'Deliberation Quality': 0.15,
+  'Governance Effectiveness': 0.15,
+  'CC Constitutional Fidelity': 0.1,
   'Power Distribution': 0.15,
   'System Stability': 0.1,
 } as const;
@@ -465,6 +589,46 @@ export const DRIFT_THRESHOLDS = {
   moderate: 30,
   // Above moderate = high
 } as const;
+
+// ---------------------------------------------------------------------------
+// Piecewise Linear Calibration Function
+// ---------------------------------------------------------------------------
+
+/**
+ * Calibration curve shape for piecewise linear mapping.
+ */
+export interface CalibrationCurve {
+  floor: number;
+  targetLow: number;
+  targetHigh: number;
+  ceiling: number;
+}
+
+/**
+ * Piecewise linear calibration: maps a raw 0-100 score to a calibrated 0-95 score.
+ * Used by both GHI components and individual pillar scoring (DRep/SPO).
+ *
+ * Below floor    → 0-20  (critical)
+ * Floor→targetLow  → 20-50 (fair)
+ * TargetLow→targetHigh → 50-80 (good)
+ * TargetHigh→ceiling  → 80-95 (strong)
+ * Above ceiling   → cap at 95
+ */
+export function calibrate(raw: number, curve: CalibrationCurve): number {
+  if (raw <= curve.floor) {
+    return curve.floor === 0 ? 0 : Math.max(0, (raw / curve.floor) * 20);
+  }
+  if (raw <= curve.targetLow) {
+    return 20 + ((raw - curve.floor) / (curve.targetLow - curve.floor)) * 30;
+  }
+  if (raw <= curve.targetHigh) {
+    return 50 + ((raw - curve.targetLow) / (curve.targetHigh - curve.targetLow)) * 30;
+  }
+  if (raw <= curve.ceiling) {
+    return 80 + ((raw - curve.targetHigh) / (curve.ceiling - curve.targetHigh)) * 15;
+  }
+  return 95;
+}
 
 // ---------------------------------------------------------------------------
 // PCA Configuration

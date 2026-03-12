@@ -9,25 +9,17 @@ import { TrendingUp } from 'lucide-react';
 import { useChartDimensions } from '@/lib/charts/useChartDimensions';
 import { GlowFilter } from '@/lib/charts/GlowDefs';
 import { chartTheme } from '@/lib/charts/theme';
-import type { CCTransparencySnapshot } from '@/lib/data';
+import type { CCFidelitySnapshot } from '@/lib/data';
 
-const PILLAR_KEYS = [
-  'Participation',
-  'Rationale',
-  'Responsiveness',
-  'Independence',
-  'Engagement',
-] as const;
+const PILLAR_KEYS = ['Participation', 'Grounding', 'Reasoning'] as const;
 const PILLAR_COLORS = [
   'oklch(0.68 0.16 160)', // green
   'oklch(0.60 0.18 290)', // purple
   'oklch(0.75 0.14 80)', // amber
-  'oklch(0.65 0.16 30)', // orange
-  'oklch(0.60 0.18 230)', // blue
 ];
 
 interface CCTransparencyTrendProps {
-  history: CCTransparencySnapshot[];
+  history: CCFidelitySnapshot[];
 }
 
 export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
@@ -41,12 +33,10 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
       history.map((s) => ({
         label: `E${s.epochNo}`,
         epochNo: s.epochNo,
-        Index: s.transparencyIndex,
+        Index: s.fidelityScore,
         Participation: s.participationScore,
-        Rationale: s.rationaleQualityScore,
-        Responsiveness: s.responsivenessScore,
-        Independence: s.independenceScore,
-        Engagement: s.communityEngagementScore,
+        Grounding: s.constitutionalGroundingScore,
+        Reasoning: s.reasoningQualityScore,
       })),
     [history],
   );
@@ -110,12 +100,12 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4" />
-            Transparency Trend
+            Constitutional Fidelity Trend
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Transparency tracking started recently. Check back after the next epoch to see how this
+            Fidelity tracking started recently. Check back after the next epoch to see how this
             member&apos;s score changes over time.
           </p>
         </CardContent>
@@ -130,12 +120,12 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4" />
-            Transparency Trend
+            Constitutional Fidelity Trend
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-6">
-            <p className="text-3xl font-bold tabular-nums">{s.transparencyIndex}</p>
+            <p className="text-3xl font-bold tabular-nums">{s.fidelityScore}</p>
             <p className="text-sm text-muted-foreground mt-1">
               First snapshot at epoch {s.epochNo}. Trend data will appear as more epochs pass.
             </p>
@@ -147,7 +137,7 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
 
   const latest = history[history.length - 1];
   const first = history[0];
-  const change = latest.transparencyIndex - first.transparencyIndex;
+  const change = latest.fidelityScore - first.fidelityScore;
   const hovered = hoveredIndex !== null ? chartData[hoveredIndex] : null;
   const ticks = yScale.ticks(5);
   const xTicks =
@@ -161,7 +151,7 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4" />
-            Transparency Trend
+            Constitutional Fidelity Trend
           </CardTitle>
           <div className="flex items-center gap-3">
             {history.length > 1 && (

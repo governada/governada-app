@@ -37,7 +37,7 @@ function makePillarMaps(
 // ── Tests ──
 
 describe('computeDRepScores', () => {
-  it('computes composite from 4 percentile-normalized pillars', () => {
+  it('computes composite from 4 calibrated pillars', () => {
     const { rawEngagement, rawParticipation, rawReliability, rawIdentity } = makePillarMaps({
       d1: { eq: 80, ep: 70, rl: 60, gi: 50 },
       d2: { eq: 40, ep: 50, rl: 60, gi: 70 },
@@ -79,7 +79,7 @@ describe('computeDRepScores', () => {
     expect(result.governanceIdentityRaw).toBe(50);
   });
 
-  it('single DRep gets 50 percentile on all pillars', () => {
+  it('single DRep gets calibrated scores based on raw inputs', () => {
     const results = computeDRepScores(
       new Map([['solo', 75]]),
       new Map([['solo', 60]]),
@@ -89,12 +89,12 @@ describe('computeDRepScores', () => {
     );
 
     const result = results.get('solo')!;
-    expect(result.engagementQualityPercentile).toBe(50);
-    expect(result.effectiveParticipationPercentile).toBe(50);
-    expect(result.reliabilityPercentile).toBe(50);
-    expect(result.governanceIdentityPercentile).toBe(50);
-    // Composite = 50 for all pillars
-    expect(result.composite).toBe(50);
+    // Calibrated via piecewise linear curves (absolute, not percentile)
+    expect(result.engagementQualityCalibrated).toBe(89);
+    expect(result.effectiveParticipationCalibrated).toBe(76);
+    expect(result.reliabilityCalibrated).toBe(91);
+    expect(result.governanceIdentityCalibrated).toBe(65);
+    expect(result.composite).toBe(83);
   });
 
   // ── Pillar weight verification ──
@@ -109,9 +109,9 @@ describe('computeDRepScores', () => {
     expect(total).toBeCloseTo(1.0, 10);
   });
 
-  // ── Percentile distribution ──
+  // ── Score distribution ──
 
-  it('produces valid percentile distribution with many DReps', () => {
+  it('produces valid score distribution with many DReps', () => {
     const rawEngagement = new Map<string, number>();
     const rawParticipation = new Map<string, number>();
     const rawReliability = new Map<string, number>();
@@ -228,7 +228,7 @@ describe('computeDRepScores', () => {
       new Map(),
     );
 
-    // Both should have results, missing pillars default to 0 percentile
+    // Both should have results, missing pillars default to 0 raw → calibrated 0
     expect(results.has('d1')).toBe(true);
     expect(results.has('d2')).toBe(true);
   });
@@ -260,14 +260,13 @@ describe('computeDRepScores', () => {
       new Map(),
     );
 
-    // With 3 DReps, all having distinct ordered scores and full confidence (default 100):
-    // Weighted percentile normalization (midpoint formula):
-    //   a is top in all pillars -> percentile ~83 each
-    //   b is middle -> percentile 50
-    //   c is bottom -> percentile ~17 each
-    expect(results.get('a')!.composite).toBe(83);
-    expect(results.get('b')!.composite).toBe(50);
-    expect(results.get('c')!.composite).toBe(17);
+    // With absolute calibration (not percentile), scores are determined solely by raw values:
+    //   a (90/85/80/75): high raws → high calibrated → composite ~93
+    //   b (60/55/50/45): mid raws → mid calibrated → composite ~72
+    //   c (30/25/20/15): low raws → low calibrated → composite ~43
+    expect(results.get('a')!.composite).toBe(93);
+    expect(results.get('b')!.composite).toBe(72);
+    expect(results.get('c')!.composite).toBe(43);
   });
 
   // ── Confidence field ──
@@ -317,10 +316,10 @@ describe('computeDRepScores', () => {
 
   // ── Zero-activity override ──
 
-  it('caps zero-activity DReps to GI-only composite (~15% of GI percentile)', () => {
+  it('caps zero-activity DReps to GI-only composite (~15% of GI calibrated)', () => {
     // DRep with zero activity on all 3 activity pillars but high GI
-    // should NOT score 50+ from dampened-to-median activity percentiles.
-    // Instead, activity percentiles should be forced to 0.
+    // should NOT score from dampened-to-median activity scores.
+    // Instead, activity calibrated scores should be forced to 0.
     const { rawEngagement, rawParticipation, rawReliability, rawIdentity } = makePillarMaps({
       active1: { eq: 80, ep: 70, rl: 60, gi: 50 },
       active2: { eq: 40, ep: 50, rl: 60, gi: 70 },
@@ -336,13 +335,13 @@ describe('computeDRepScores', () => {
     );
 
     const inactive = results.get('inactive')!;
-    // All activity percentiles should be 0
-    expect(inactive.engagementQualityPercentile).toBe(0);
-    expect(inactive.effectiveParticipationPercentile).toBe(0);
-    expect(inactive.reliabilityPercentile).toBe(0);
-    // GI percentile should NOT be 0 (profile is real data)
-    expect(inactive.governanceIdentityPercentile).toBeGreaterThan(0);
-    // Composite should be at most GI weight (15%) * 100 = 15
+    // All activity calibrated scores should be 0
+    expect(inactive.engagementQualityCalibrated).toBe(0);
+    expect(inactive.effectiveParticipationCalibrated).toBe(0);
+    expect(inactive.reliabilityCalibrated).toBe(0);
+    // GI calibrated should NOT be 0 (profile is real data)
+    expect(inactive.governanceIdentityCalibrated).toBeGreaterThan(0);
+    // Composite should be at most GI weight (15%) * 95 (calibration cap) ≈ 14
     expect(inactive.composite).toBeLessThanOrEqual(15);
     // Active DReps should still score normally (much higher than inactive)
     const active1 = results.get('active1')!;
@@ -366,14 +365,15 @@ describe('computeDRepScores', () => {
 
     const partial = results.get('partial')!;
     // With EP>0, zero-activity override should NOT apply
-    // EQ and RL percentiles should be dampened to median (not forced to 0)
-    // since the DRep has SOME activity (EP=30)
-    expect(partial.engagementQualityPercentile).toBeGreaterThan(0);
+    // EP should get a positive calibrated score from raw=30
+    expect(partial.effectiveParticipationCalibrated).toBeGreaterThan(0);
+    // Composite should be higher than a fully inactive DRep
+    expect(partial.composite).toBeGreaterThan(0);
   });
 
   // ── Confidence dampening ──
 
-  it('dampens low-confidence DRep percentiles toward median', () => {
+  it('dampens low-confidence DRep calibrated scores toward median', () => {
     // Three DReps: d1 (top, low confidence) should be pulled toward median.
     // d3 (top, full confidence) should NOT be pulled toward median.
     const confidences = new Map([

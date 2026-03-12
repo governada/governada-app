@@ -1,7 +1,9 @@
 /**
  * Reliability pillar (25% of DRep Score).
- * Enhanced from V2 with new Responsiveness sub-component and rebalanced weights.
- * "Can I count on this DRep to keep showing up — and show up quickly?"
+ * "Can I count on this DRep to keep showing up?"
+ *
+ * 4 sub-components: Streak (35%), Recency (30%), Gap (25%), Tenure (10%).
+ * Timeliness removed — voting within the window is sufficient.
  */
 
 import type { VoteData } from './types';
@@ -14,7 +16,6 @@ export interface ReliabilityV3Result {
   streak: number;
   recency: number;
   longestGap: number;
-  responsiveness: number;
   tenure: number;
 }
 
@@ -68,7 +69,6 @@ function computeSingleDRepReliability(
     streak: 0,
     recency: 999,
     longestGap: 0,
-    responsiveness: 0,
     tenure: 0,
   };
 
@@ -118,10 +118,7 @@ function computeSingleDRepReliability(
   longestGap = Math.max(longestGap, currentGap);
   const gapScore = Math.max(0, 100 - longestGap * RELIABILITY_PARAMS.gapPenaltyPerEpoch);
 
-  // 4. Responsiveness (15%) — median days from proposal to vote
-  const responsivenessScore = computeResponsiveness(votes);
-
-  // 5. Tenure (10%) — epochs since first vote, diminishing returns
+  // 4. Tenure (10%) — epochs since first vote, diminishing returns
   const tenure = Math.max(0, currentEpoch - firstEpoch);
   const tenureScore = Math.min(
     100,
@@ -136,7 +133,6 @@ function computeSingleDRepReliability(
     streakScore * WEIGHTS.streak +
       recencyScore * WEIGHTS.recency +
       gapScore * WEIGHTS.gap +
-      responsivenessScore * WEIGHTS.responsiveness +
       tenureScore * WEIGHTS.tenure,
   );
 
@@ -145,32 +141,8 @@ function computeSingleDRepReliability(
     streak,
     recency,
     longestGap,
-    responsiveness: responsivenessScore,
     tenure,
   };
-}
-
-/**
- * Responsiveness: median days from proposal submission to DRep vote.
- * Score: 100 * exp(-median_days / 14)
- * Within 1 day ≈ 93, within 7 days ≈ 61, within 30 days ≈ 12
- */
-function computeResponsiveness(votes: VoteData[]): number {
-  const deltas: number[] = [];
-
-  for (const v of votes) {
-    if (v.proposalBlockTime > 0 && v.blockTime > v.proposalBlockTime) {
-      const daysToVote = (v.blockTime - v.proposalBlockTime) / 86400;
-      deltas.push(daysToVote);
-    }
-  }
-
-  if (deltas.length === 0) return 50; // no data, neutral score
-
-  deltas.sort((a, b) => a - b);
-  const median = deltas[Math.floor(deltas.length / 2)];
-
-  return Math.round(100 * Math.exp(-median / RELIABILITY_PARAMS.responsivenessDivisor));
 }
 
 function clamp(v: number): number {

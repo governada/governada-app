@@ -48,13 +48,13 @@ export interface DRepProfileData {
 export interface DRepScoreResult {
   composite: number;
   engagementQualityRaw: number;
-  engagementQualityPercentile: number;
+  engagementQualityCalibrated: number;
   effectiveParticipationRaw: number;
-  effectiveParticipationPercentile: number;
+  effectiveParticipationCalibrated: number;
   reliabilityRaw: number;
-  reliabilityPercentile: number;
+  reliabilityCalibrated: number;
   governanceIdentityRaw: number;
-  governanceIdentityPercentile: number;
+  governanceIdentityCalibrated: number;
   confidence: number;
   momentum: number | null;
 }

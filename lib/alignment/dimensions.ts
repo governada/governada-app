@@ -163,20 +163,11 @@ function calcDecentralization(inputs: DimensionInput[], drep: DRepContext, now: 
     voteScore = totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) : 50;
   }
 
-  // Size tier modifier (minor influence, not dominant)
-  const tierModifier: Record<string, number> = {
-    Small: 10,
-    Medium: 3,
-    Large: -5,
-    Whale: -12,
-  };
-  const modifier = tierModifier[drep.sizeTier] ?? 0;
-
   // Voting breadth bonus (more diverse proposal types = more engaged in governance)
   const proposalTypes = new Set(inputs.map((i) => i.proposalType));
   const breadthBonus = Math.min(8, proposalTypes.size * 2);
 
-  return clamp(voteScore + modifier + breadthBonus);
+  return clamp(voteScore + breadthBonus);
 }
 
 function calcSecurity(inputs: DimensionInput[], drep: DRepContext, now: number): number {

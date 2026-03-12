@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronDown, ChevronUp, Vote, BookOpen, Clock, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Vote, BookOpen, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCommitteeMembers } from '@/hooks/queries';
@@ -26,7 +26,7 @@ const GRADE_COLORS: Record<string, string> = {
   F: 'bg-rose-500/15 text-rose-500 border-rose-500/30',
 };
 
-function transparencyBarColor(score: number | null): string {
+function fidelityBarColor(score: number | null): string {
   if (score == null) return 'bg-muted';
   if (score >= 85) return 'bg-emerald-500/80';
   if (score >= 70) return 'bg-sky-500/80';
@@ -41,7 +41,7 @@ function transparencyBarColor(score: number | null): string {
 
 function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
   const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
-  const gradeStyle = member.transparencyGrade ? (GRADE_COLORS[member.transparencyGrade] ?? '') : '';
+  const gradeStyle = member.fidelityGrade ? (GRADE_COLORS[member.fidelityGrade] ?? '') : '';
 
   return (
     <Link
@@ -54,14 +54,14 @@ function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
       </span>
 
       {/* Grade badge */}
-      {member.transparencyGrade ? (
+      {member.fidelityGrade ? (
         <span
           className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-bold',
             gradeStyle,
           )}
         >
-          {member.transparencyGrade}
+          {member.fidelityGrade}
         </span>
       ) : (
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
@@ -81,16 +81,16 @@ function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
         )}
       </div>
 
-      {/* Transparency bar (hidden on mobile) */}
+      {/* Fidelity bar (hidden on mobile) */}
       <div className="hidden sm:flex items-center gap-2 w-36 shrink-0">
         <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
           <div
-            className={`h-full rounded-full ${transparencyBarColor(member.transparencyIndex)}`}
-            style={{ width: `${member.transparencyIndex ?? 0}%` }}
+            className={`h-full rounded-full ${fidelityBarColor(member.fidelityScore)}`}
+            style={{ width: `${member.fidelityScore ?? 0}%` }}
           />
         </div>
         <span className="font-mono text-xs tabular-nums text-muted-foreground w-7 text-right">
-          {member.transparencyIndex ?? '—'}
+          {member.fidelityScore ?? '—'}
         </span>
       </div>
 
@@ -108,7 +108,7 @@ function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
 
 function MemberCard({ member }: { member: CommitteeMemberQuickView }) {
   const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
-  const gradeStyle = member.transparencyGrade ? (GRADE_COLORS[member.transparencyGrade] ?? '') : '';
+  const gradeStyle = member.fidelityGrade ? (GRADE_COLORS[member.fidelityGrade] ?? '') : '';
 
   return (
     <Link
@@ -117,14 +117,14 @@ function MemberCard({ member }: { member: CommitteeMemberQuickView }) {
     >
       <div className="flex items-start gap-3">
         {/* Grade badge */}
-        {member.transparencyGrade ? (
+        {member.fidelityGrade ? (
           <span
             className={cn(
               'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-bold',
               gradeStyle,
             )}
           >
-            {member.transparencyGrade}
+            {member.fidelityGrade}
           </span>
         ) : (
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
@@ -144,16 +144,16 @@ function MemberCard({ member }: { member: CommitteeMemberQuickView }) {
             )}
           </div>
 
-          {/* Transparency bar */}
+          {/* Fidelity bar */}
           <div className="flex items-center gap-2 mt-2">
             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full rounded-full ${transparencyBarColor(member.transparencyIndex)}`}
-                style={{ width: `${member.transparencyIndex ?? 0}%` }}
+                className={`h-full rounded-full ${fidelityBarColor(member.fidelityScore)}`}
+                style={{ width: `${member.fidelityScore ?? 0}%` }}
               />
             </div>
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              {member.transparencyIndex ?? '—'}
+              {member.fidelityScore ?? '—'}
             </span>
           </div>
 
@@ -177,24 +177,18 @@ function Methodology() {
   const [open, setOpen] = useState(false);
 
   const pillars = [
-    { icon: Vote, label: 'Participation', weight: '39%', desc: 'Vote rate on eligible proposals' },
+    { icon: Vote, label: 'Participation', weight: '30%', desc: 'Vote rate on eligible proposals' },
     {
       icon: BookOpen,
-      label: 'Rationale Quality',
-      weight: '33%',
-      desc: 'Constitutional article citations in vote rationales',
-    },
-    {
-      icon: Clock,
-      label: 'Responsiveness',
-      weight: '17%',
-      desc: 'Timeliness of voting relative to deadlines',
+      label: 'Constitutional Grounding',
+      weight: '40%',
+      desc: 'Depth of constitutional article citations in vote rationales',
     },
     {
       icon: Sparkles,
-      label: 'Independence',
-      weight: '11%',
-      desc: 'Independent judgment vs. always voting with the majority',
+      label: 'Reasoning Quality',
+      weight: '30%',
+      desc: 'Quality and completeness of rationale explanations',
     },
   ];
 
@@ -204,16 +198,16 @@ function Methodology() {
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-5 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <span>How is the Transparency Index calculated?</span>
+        <span>How is the Constitutional Fidelity Score calculated?</span>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
       {open && (
         <div className="border-t px-5 py-4 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Each CC member is scored on 4 pillars of accountability. The weighted average produces
-            the Transparency Index (0-100).
+            Each CC member is scored on 3 pillars of constitutional accountability. The weighted
+            average produces the Constitutional Fidelity Score (0-100).
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             {pillars.map((p) => (
               <div key={p.label} className="space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-medium">
@@ -271,10 +265,10 @@ export default function CommitteePage() {
   const sorted = useMemo(
     () =>
       [...members].sort((a, b) => {
-        if (a.transparencyIndex != null && b.transparencyIndex != null)
-          return b.transparencyIndex - a.transparencyIndex;
-        if (a.transparencyIndex != null) return -1;
-        if (b.transparencyIndex != null) return 1;
+        if (a.fidelityScore != null && b.fidelityScore != null)
+          return b.fidelityScore - a.fidelityScore;
+        if (a.fidelityScore != null) return -1;
+        if (b.fidelityScore != null) return 1;
         return b.voteCount - a.voteCount;
       }),
     [members],

@@ -10,13 +10,11 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchCip136Rationale } from '@/lib/cc/parseCip136';
 import {
-  computeFidelityScore,
   computeRationaleProvision,
   computeAvgArticleCoverage,
   computeAvgReasoningQuality,
-  computeConsistencyIndependence,
 } from '@/lib/cc/fidelityScore';
-import { computeFullTransparencyIndex } from '@/lib/scoring/ccTransparency';
+import { computeFullConstitutionalFidelity } from '@/lib/scoring/ccTransparency';
 import type { CCMemberVoteData } from '@/lib/scoring/ccTransparency';
 import { logger } from '@/lib/logger';
 import { errMsg, capMsg } from '@/lib/sync-utils';
@@ -237,24 +235,6 @@ export const syncCcRationales = inngest.createFunction(
         });
       }
 
-      // Get DRep alignment data for independence scoring
-      const { data: alignmentRows } = await supabase
-        .from('inter_body_alignment')
-        .select('proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct');
-
-      const drepMajorityMap = new Map<string, string>();
-      for (const row of alignmentRows ?? []) {
-        const key = `${row.proposal_tx_hash}:${row.proposal_index}`;
-        drepMajorityMap.set(
-          key,
-          row.drep_yes_pct > row.drep_no_pct
-            ? 'Yes'
-            : row.drep_no_pct > row.drep_yes_pct
-              ? 'No'
-              : 'Abstain',
-        );
-      }
-
       // Group votes by member
       const memberVotes = new Map<
         string,
@@ -277,9 +257,6 @@ export const syncCcRationales = inngest.createFunction(
         });
         memberVotes.set(v.cc_hot_id, list);
       }
-
-      // Compute distinct active proposal types
-      const activeTypes = new Set(Array.from(proposalMap.values()).map((p) => p.type));
 
       let scored = 0;
       for (const [ccHotId, mvotes] of memberVotes) {
@@ -322,62 +299,13 @@ export const syncCcRationales = inngest.createFunction(
               ? Math.round(articleCoverage * 0.7 + rationaleProvision * 0.3)
               : 0;
 
-        // Pillar 4: Consistency & Independence
-        let drepAgreements = 0;
-        let drepComparisons = 0;
-        let totalDaysToVote = 0;
-        let responsiveVotes = 0;
-        const memberTypes = new Set<string>();
-
-        for (const v of mvotes) {
-          const pKey = `${v.proposalTxHash}:${v.proposalIndex}`;
-          const proposal = proposalMap.get(pKey);
-          if (proposal) {
-            memberTypes.add(proposal.type);
-            // Responsiveness
-            const daysToVote = (v.blockTime - proposal.blockTime) / 86400;
-            if (daysToVote >= 0) {
-              totalDaysToVote += daysToVote;
-              responsiveVotes++;
-            }
-          }
-
-          const drepMajority = drepMajorityMap.get(pKey);
-          if (drepMajority && drepMajority !== 'Abstain') {
-            drepComparisons++;
-            if (v.vote === drepMajority) drepAgreements++;
-          }
-        }
-
-        const drepAlignmentPct =
-          drepComparisons > 0 ? (drepAgreements / drepComparisons) * 100 : 50;
-        const avgDaysToVote = responsiveVotes > 0 ? totalDaysToVote / responsiveVotes : 10;
-
-        const consistencyIndependence = computeConsistencyIndependence(
-          drepAlignmentPct,
-          avgDaysToVote,
-          memberTypes.size,
-          activeTypes.size,
-        );
-
-        // Compute composite score
-        const result = computeFidelityScore({
-          rationaleProvision,
-          articleCoverage,
-          reasoningQuality,
-          consistencyIndependence,
-        });
-
-        // Update cc_members with scores
+        // Update cc_members with granular pillar values
         const { error } = await supabase.from('cc_members').upsert(
           {
             cc_hot_id: ccHotId,
-            fidelity_score: result.score,
             rationale_provision_rate: rationaleProvision,
             avg_article_coverage: articleCoverage,
             avg_reasoning_quality: reasoningQuality,
-            consistency_score: consistencyIndependence,
-            responsiveness_score: Math.round(avgDaysToVote * 10) / 10,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'cc_hot_id' },
@@ -389,8 +317,8 @@ export const syncCcRationales = inngest.createFunction(
       return { scored };
     });
 
-    // Step 4: Compute Transparency Index + persist snapshots
-    const transparencyResult = await step.run('compute-transparency-index', async () => {
+    // Step 4: Compute Constitutional Fidelity Score + persist snapshots
+    const transparencyResult = await step.run('compute-constitutional-fidelity', async () => {
       const supabase = getSupabaseAdmin();
 
       // Get current epoch
@@ -440,43 +368,6 @@ export const syncCcRationales = inngest.createFunction(
         });
       }
 
-      // DRep alignment
-      const { data: alignmentRows } = await supabase
-        .from('inter_body_alignment')
-        .select('proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct');
-
-      const drepMajorityMap = new Map<string, string>();
-      for (const row of alignmentRows ?? []) {
-        const key = `${row.proposal_tx_hash}:${row.proposal_index}`;
-        drepMajorityMap.set(
-          key,
-          row.drep_yes_pct > row.drep_no_pct
-            ? 'Yes'
-            : row.drep_no_pct > row.drep_yes_pct
-              ? 'No'
-              : 'Abstain',
-        );
-      }
-
-      // CC majority per proposal (for independence scoring)
-      const proposalCcVotes = new Map<string, Map<string, string>>();
-      for (const v of votes) {
-        const key = `${v.proposal_tx_hash}:${v.proposal_index}`;
-        const voteMap = proposalCcVotes.get(key) ?? new Map<string, string>();
-        voteMap.set(v.cc_hot_id, v.vote);
-        proposalCcVotes.set(key, voteMap);
-      }
-
-      const ccMajorityMap = new Map<string, string>();
-      for (const [key, voteMap] of proposalCcVotes) {
-        const counts: Record<string, number> = {};
-        for (const vote of voteMap.values()) {
-          counts[vote] = (counts[vote] ?? 0) + 1;
-        }
-        const majority = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-        if (majority) ccMajorityMap.set(key, majority[0]);
-      }
-
       // Total eligible proposals (all proposals in the system)
       const totalEligibleProposals = new Set(
         proposals.map((p) => `${p.tx_hash}:${p.proposal_index}`),
@@ -498,28 +389,26 @@ export const syncCcRationales = inngest.createFunction(
 
       let scored = 0;
       for (const [ccHotId, mvotes] of memberVotes) {
-        const result = computeFullTransparencyIndex({
+        const result = computeFullConstitutionalFidelity({
           ccHotId,
           votes: mvotes,
           proposalMap,
           rationaleMap,
-          drepMajorityMap,
-          ccMajorityMap,
           totalEligibleProposals,
-          questionsAnswered: 0, // Not yet tracked
-          endorsementCount: 0, // Not yet tracked
         });
 
-        // Update cc_members with transparency index
+        // Update cc_members with Constitutional Fidelity Score
         const { error } = await supabase.from('cc_members').upsert(
           {
             cc_hot_id: ccHotId,
-            transparency_index: result.index,
+            fidelity_score: result.score,
+            transparency_index: result.score, // backward compat until migration
             transparency_grade: result.grade,
             participation_score: result.pillars.participation,
-            rationale_quality_score: result.pillars.rationaleQuality,
-            independence_score: result.pillars.independence,
-            community_engagement_score: result.pillars.communityEngagement,
+            rationale_quality_score: result.pillars.reasoningQuality,
+            // constitutionalGrounding stored in independence_score until migration adds proper column
+            independence_score: result.pillars.constitutionalGrounding,
+            community_engagement_score: 0, // pillar removed
             votes_cast: result.votesCast,
             eligible_proposals: result.eligibleProposals,
             updated_at: new Date().toISOString(),
@@ -533,19 +422,19 @@ export const syncCcRationales = inngest.createFunction(
             {
               cc_hot_id: ccHotId,
               epoch_no: currentEpoch,
-              transparency_index: result.index,
+              transparency_index: result.score,
               participation_score: result.pillars.participation,
-              rationale_quality_score: result.pillars.rationaleQuality,
-              responsiveness_score: result.pillars.responsiveness,
-              independence_score: result.pillars.independence,
-              community_engagement_score: result.pillars.communityEngagement,
+              rationale_quality_score: result.pillars.reasoningQuality,
+              responsiveness_score: 0, // pillar removed
+              independence_score: result.pillars.constitutionalGrounding,
+              community_engagement_score: 0, // pillar removed
               votes_cast: result.votesCast,
               eligible_proposals: result.eligibleProposals,
             },
             { onConflict: 'cc_hot_id,epoch_no' },
           );
           if (snapError) {
-            logger.error('[sync-cc-rationales] Transparency snapshot upsert failed', {
+            logger.error('[sync-cc-rationales] Fidelity snapshot upsert failed', {
               ccHotId,
               epoch: currentEpoch,
               error: snapError.message,
@@ -581,7 +470,7 @@ export const syncCcRationales = inngest.createFunction(
           { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
         );
 
-        logger.info('[sync-cc-rationales] Transparency snapshots stored', {
+        logger.info('[sync-cc-rationales] Constitutional Fidelity snapshots stored', {
           scored,
           snapshotCount: actualCount,
           expected: expectedCount,

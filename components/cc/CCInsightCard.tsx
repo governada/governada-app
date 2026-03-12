@@ -45,11 +45,11 @@ function selectInsight(
 
   // Persona-aware: CC member sees standing
   if (segment === 'cc') {
-    const scored = members.filter((m) => m.transparencyIndex != null);
+    const scored = members.filter((m) => m.fidelityScore != null);
     return {
       icon: ShieldCheck,
       title: 'Your Committee Standing',
-      body: `${scored.length} member${scored.length !== 1 ? 's' : ''} scored on the Transparency Index. Check your profile to see your rank and pillar breakdown.`,
+      body: `${scored.length} member${scored.length !== 1 ? 's' : ''} scored on Constitutional Fidelity. Check your profile to see your rank and pillar breakdown.`,
       accent: 'text-emerald-500',
     };
   }
@@ -69,7 +69,7 @@ function selectInsight(
     return {
       icon: TrendingUp,
       title: 'Accountability Improving',
-      body: `Average transparency scores are trending upward across the committee, signaling stronger governance practices.`,
+      body: `Average fidelity scores are trending upward across the committee, signaling stronger governance practices.`,
       accent: 'text-emerald-500',
     };
   }
@@ -78,35 +78,34 @@ function selectInsight(
     return {
       icon: TrendingUp,
       title: 'Accountability Declining',
-      body: `Average transparency scores have dropped — some members may need to improve participation or rationale quality.`,
+      body: `Average fidelity scores have dropped — some members may need to improve participation or rationale quality.`,
       accent: 'text-rose-500',
     };
   }
 
   // Priority 3: All members graded well
-  const graded = members.filter((m) => m.transparencyGrade != null);
+  const graded = members.filter((m) => m.fidelityGrade != null);
   const allStrong =
-    graded.length > 0 &&
-    graded.every((m) => m.transparencyGrade === 'A' || m.transparencyGrade === 'B');
+    graded.length > 0 && graded.every((m) => m.fidelityGrade === 'A' || m.fidelityGrade === 'B');
   if (allStrong) {
     return {
       icon: ShieldCheck,
       title: 'Strong Accountability',
-      body: `All scored members are maintaining a B grade or above — healthy transparency across the committee.`,
+      body: `All scored members are maintaining a B grade or above — strong constitutional fidelity across the committee.`,
       accent: 'text-emerald-500',
     };
   }
 
   // Fallback: general insight
-  const scored = members.filter((m) => m.transparencyIndex != null);
+  const scored = members.filter((m) => m.fidelityScore != null);
   const active = health.activeMembers;
   return {
     icon: Lightbulb,
     title: 'Committee Overview',
     body:
       scored.length > 0
-        ? `${active} active member${active !== 1 ? 's' : ''} with ${scored.length} scored on the Transparency Index. Review individual profiles to see pillar breakdowns.`
-        : `${active} active committee member${active !== 1 ? 's' : ''} participating in governance. Transparency scores will appear after the next scoring cycle.`,
+        ? `${active} active member${active !== 1 ? 's' : ''} with ${scored.length} scored on Constitutional Fidelity. Review individual profiles to see pillar breakdowns.`
+        : `${active} active committee member${active !== 1 ? 's' : ''} participating in governance. Fidelity scores will appear after the next scoring cycle.`,
     accent: 'text-blue-500',
   };
 }

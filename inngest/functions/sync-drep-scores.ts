@@ -205,7 +205,6 @@ export const syncDrepScores = inngest.createFunction(
 
         // Profile data for governance identity
         const profiles = new Map<string, DRepProfileData>();
-        const allDelegatorCounts: number[] = [];
 
         for (const row of drepRows) {
           const info = (row.info || {}) as Record<string, unknown>;
@@ -217,7 +216,6 @@ export const syncDrepScores = inngest.createFunction(
             delegatorCount,
             metadataHashVerified: row.metadata_hash_verified || false,
           });
-          allDelegatorCounts.push(delegatorCount);
         }
 
         timing.step2_build_maps_ms = Date.now() - s2;
@@ -246,7 +244,7 @@ export const syncDrepScores = inngest.createFunction(
           drepEpochData,
         );
 
-        const rawIdentity = computeGovernanceIdentity(profiles, allDelegatorCounts);
+        const rawIdentity = computeGovernanceIdentity(profiles);
 
         timing.step3_compute_pillars_ms = Date.now() - s3;
 
@@ -325,13 +323,13 @@ export const syncDrepScores = inngest.createFunction(
           return {
             id: drepId,
             score: s.composite,
-            engagement_quality: s.engagementQualityPercentile,
+            engagement_quality: s.engagementQualityCalibrated,
             engagement_quality_raw: s.engagementQualityRaw,
-            effective_participation_v3: s.effectiveParticipationPercentile,
+            effective_participation_v3: s.effectiveParticipationCalibrated,
             effective_participation_v3_raw: s.effectiveParticipationRaw,
-            reliability_v3: s.reliabilityPercentile,
+            reliability_v3: s.reliabilityCalibrated,
             reliability_v3_raw: s.reliabilityRaw,
-            governance_identity: s.governanceIdentityPercentile,
+            governance_identity: s.governanceIdentityCalibrated,
             governance_identity_raw: s.governanceIdentityRaw,
             score_momentum: s.momentum,
             confidence: s.confidence,
@@ -355,18 +353,18 @@ export const syncDrepScores = inngest.createFunction(
           score: s.composite,
           epoch_no: currentEpoch,
           score_momentum: s.momentum,
-          engagement_quality: s.engagementQualityPercentile,
+          engagement_quality: s.engagementQualityCalibrated,
           engagement_quality_raw: s.engagementQualityRaw,
-          effective_participation_v3: s.effectiveParticipationPercentile,
+          effective_participation_v3: s.effectiveParticipationCalibrated,
           effective_participation_v3_raw: s.effectiveParticipationRaw,
-          reliability_v3: s.reliabilityPercentile,
+          reliability_v3: s.reliabilityCalibrated,
           reliability_v3_raw: s.reliabilityRaw,
-          governance_identity: s.governanceIdentityPercentile,
+          governance_identity: s.governanceIdentityCalibrated,
           governance_identity_raw: s.governanceIdentityRaw,
-          effective_participation: s.effectiveParticipationPercentile,
-          rationale_rate: s.engagementQualityPercentile,
-          reliability_score: s.reliabilityPercentile,
-          profile_completeness: s.governanceIdentityPercentile,
+          effective_participation: s.effectiveParticipationCalibrated,
+          rationale_rate: s.engagementQualityCalibrated,
+          reliability_score: s.reliabilityCalibrated,
+          profile_completeness: s.governanceIdentityCalibrated,
         }));
 
         await batchUpsert(

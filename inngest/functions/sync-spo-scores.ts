@@ -289,12 +289,10 @@ export const syncSpoScores = inngest.createFunction(
 
         // Build SPO profile data for Governance Identity pillar
         const spoProfiles = new Map<string, SpoProfileData>();
-        const allDelegatorCounts: number[] = [];
         const poolMetaMap = new Map<string, PoolRow>();
 
         for (const p of (poolRows || []) as PoolRow[]) {
           poolMetaMap.set(p.pool_id, p);
-          allDelegatorCounts.push(p.delegator_count ?? 0);
         }
 
         for (const poolId of poolVotes.keys()) {
@@ -310,13 +308,10 @@ export const syncSpoScores = inngest.createFunction(
             metadataHashVerified: meta?.metadata_hash_verified ?? false,
             delegatorCount: meta?.delegator_count ?? 0,
           });
-          if (!poolMetaMap.has(poolId)) {
-            allDelegatorCounts.push(0);
-          }
         }
 
         const identityScores = identityEnabled
-          ? computeSpoGovernanceIdentity(spoProfiles, allDelegatorCounts)
+          ? computeSpoGovernanceIdentity(spoProfiles)
           : new Map<string, number>();
 
         // Load score history for momentum (30-day window for V3)
@@ -429,16 +424,16 @@ export const syncSpoScores = inngest.createFunction(
             pool_id: poolId,
             governance_score: s.composite,
             participation_raw: Math.round(s.participationRaw),
-            participation_pct: Math.round(s.participationPercentile),
+            participation_pct: Math.round(s.participationCalibrated),
             deliberation_raw: Math.round(s.deliberationRaw),
-            deliberation_pct: Math.round(s.deliberationPercentile),
+            deliberation_pct: Math.round(s.deliberationCalibrated),
             // V2 compat columns
             consistency_raw: Math.round(s.consistencyRaw),
-            consistency_pct: Math.round(s.consistencyPercentile),
+            consistency_pct: Math.round(s.consistencyCalibrated),
             reliability_raw: Math.round(s.reliabilityRaw),
-            reliability_pct: Math.round(s.reliabilityPercentile),
+            reliability_pct: Math.round(s.reliabilityCalibrated),
             governance_identity_raw: Math.round(s.governanceIdentityRaw),
-            governance_identity_pct: Math.round(s.governanceIdentityPercentile),
+            governance_identity_pct: Math.round(s.governanceIdentityCalibrated),
             score_momentum: s.momentum,
             confidence: s.confidence,
             vote_count: voteCount,
@@ -468,15 +463,15 @@ export const syncSpoScores = inngest.createFunction(
           epoch_no: currentEpoch,
           governance_score: s.composite,
           participation_rate: Math.round(s.participationRaw),
-          participation_pct: Math.round(s.participationPercentile),
+          participation_pct: Math.round(s.participationCalibrated),
           deliberation_raw: Math.round(s.deliberationRaw),
-          deliberation_pct: Math.round(s.deliberationPercentile),
+          deliberation_pct: Math.round(s.deliberationCalibrated),
           consistency_raw: Math.round(s.consistencyRaw),
-          consistency_pct: Math.round(s.consistencyPercentile),
+          consistency_pct: Math.round(s.consistencyCalibrated),
           reliability_raw: Math.round(s.reliabilityRaw),
-          reliability_pct: Math.round(s.reliabilityPercentile),
+          reliability_pct: Math.round(s.reliabilityCalibrated),
           governance_identity_raw: Math.round(s.governanceIdentityRaw),
-          governance_identity_pct: Math.round(s.governanceIdentityPercentile),
+          governance_identity_pct: Math.round(s.governanceIdentityCalibrated),
           score_momentum: s.momentum,
           confidence: s.confidence,
           rationale_rate: null,

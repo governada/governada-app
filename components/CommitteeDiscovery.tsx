@@ -34,22 +34,22 @@ function VoteBar({ yes, no, abstain }: { yes: number; no: number; abstain: numbe
 
 function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
   const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
-  const gradeStyle = member.transparencyGrade ? GRADE_COLORS[member.transparencyGrade] || '' : '';
+  const gradeStyle = member.fidelityGrade ? GRADE_COLORS[member.fidelityGrade] || '' : '';
 
   return (
     <Link
       href={`/committee#${member.ccHotId.slice(0, 12)}`}
       className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors group"
     >
-      {/* Transparency grade badge */}
-      {member.transparencyGrade ? (
+      {/* Fidelity grade badge */}
+      {member.fidelityGrade ? (
         <span
           className={cn(
             'text-[10px] font-bold w-6 h-6 rounded flex items-center justify-center border shrink-0',
             gradeStyle,
           )}
         >
-          {member.transparencyGrade}
+          {member.fidelityGrade}
         </span>
       ) : (
         <span className="w-6 h-6 rounded flex items-center justify-center bg-muted text-muted-foreground text-[10px] font-medium shrink-0">
@@ -135,10 +135,10 @@ export function CommitteeDiscovery() {
         onReset={resetFilters}
       />
 
-      {/* Link to full transparency page */}
+      {/* Link to full fidelity page */}
       <div className="flex items-center justify-end">
         <Link href="/governance/committee" className="text-xs text-primary hover:underline">
-          View full Transparency Index →
+          View full Constitutional Fidelity Index →
         </Link>
       </div>
 

@@ -191,9 +191,9 @@ describe('computeReliability', () => {
     expect(scores.get('active')!).toBeGreaterThan(scores.get('stale')!);
   });
 
-  // ── Responsiveness ──
+  // ── Responsiveness removed (directive 1: no timeliness factors) ──
 
-  it('rewards fast response time (voting soon after proposal)', () => {
+  it('scores fast and slow responders equally (timeliness removed)', () => {
     const proposalEpochs = makeProposalEpochs([518, 519, 520]);
 
     // Fast responder: votes within 1 day of proposal
@@ -201,7 +201,7 @@ describe('computeReliability', () => {
       makeVoteData({
         drepId: 'fast',
         proposalKey: `tx_f${i}-0`,
-        blockTime: NOW - (3 - i) * ONE_EPOCH + ONE_DAY, // 1 day after proposal
+        blockTime: NOW - (3 - i) * ONE_EPOCH + ONE_DAY,
         proposalBlockTime: NOW - (3 - i) * ONE_EPOCH,
       }),
     );
@@ -229,7 +229,8 @@ describe('computeReliability', () => {
       ]),
     );
 
-    expect(scores.get('fast')!).toBeGreaterThan(scores.get('slow')!);
+    // With timeliness removed, response speed no longer affects score
+    expect(scores.get('fast')!).toBe(scores.get('slow')!);
   });
 
   // ── Scores bounded ──

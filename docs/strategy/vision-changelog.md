@@ -11,6 +11,17 @@ Track incremental updates to `ultimate-vision.md` and persona docs. Agents shoul
 
 ---
 
+### v3.1 -- 2026-03-12
+
+- **Build Phases:** Complete re-evaluation of Phases 2-4 after ~25 PRs since last strategy review. Old Phase 2 (engagement recomposition) too narrow. Old Phase 3 (funnel optimization) premature without viral engine. Old Phase 4 (viral/identity) too late for launch. Merged into two new launch phases:
+  - **Phase 2: "The Living Platform"** — Engagement activation + civic identity + milestones + share engine + representative activation. Activates Engagement + Viral/Identity + Content flywheels simultaneously.
+  - **Phase 3: "The Growth Engine"** — Conversion funnel + epoch-boundary return loop + community intelligence (feature-flagged) + launch readiness (mobile, performance, SEO, legal).
+- **Phase renumbering:** Old 5→4 (Monetization), 6→5 (Integration), 7→6+ (Advanced). Enhanced Wrapped moved to 6+.
+- **Launch strategy:** PUBLIC LAUNCH after Phase 3. Maximum buzz. V3 as MVP.
+- **Distribution strategy:** Added epoch-boundary email digest (opt-in, web3-first), "governance team" framing, community intelligence as organic distribution.
+- **Flywheel status:** Accountability ACTIVE. Content/Discourse STARTING. Engagement + Viral/Identity activate together in Phase 2.
+- **Phase status:** Phase 0 → COMPLETE. Phase 1 → ~95% COMPLETE.
+
 ### v2.2 -- 2026-03-07
 
 - **Step 4 audit:** Codebase audit revealed that Step 4 "net-new" items EpochBriefing.tsx, CivicIdentityCard.tsx, and TreasuryCitizenView.tsx were already built during Step 3. Moved to "already built" section.

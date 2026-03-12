@@ -1,5 +1,5 @@
 /**
- * GHI v2 Orchestrator — computes the Governance Health Index from 6 components.
+ * GHI v2 Orchestrator — computes the Governance Health Index from 8 components.
  *
  * Replaces the old lib/ghi.ts computeGHI(). Re-exports types/constants for
  * backward compatibility so no consumer changes are needed.
@@ -10,9 +10,11 @@ import { getFeatureFlag } from '@/lib/featureFlags';
 import { calibrate, CALIBRATION } from './calibration';
 import {
   computeDRepParticipation,
+  computeSPOParticipation,
   computeCitizenEngagement,
   computeDeliberationQuality,
   computeGovernanceEffectiveness,
+  computeCCConstitutionalFidelity,
   computePowerDistribution,
   computeSystemStability,
   type ComponentInput,
@@ -42,7 +44,7 @@ const BASE_WEIGHTS = GHI_COMPONENT_WEIGHTS;
 type ComponentName = keyof typeof BASE_WEIGHTS;
 
 /**
- * When Citizen Engagement is off, redistribute its 15% proportionally.
+ * When Citizen Engagement is off, redistribute its 10% proportionally.
  */
 function getWeights(citizenEngagementEnabled: boolean): Record<ComponentName, number> {
   if (citizenEngagementEnabled) {
@@ -89,10 +91,20 @@ export async function computeGHI(): Promise<GHIComputeResult> {
   const weights = getWeights(citizenEngagementEnabled);
 
   // Compute all components in parallel
-  const [participation, deliberation, effectiveness, power, stability] = await Promise.all([
+  const [
+    participation,
+    spoParticipation,
+    deliberation,
+    effectiveness,
+    ccFidelity,
+    power,
+    stability,
+  ] = await Promise.all([
     computeDRepParticipation(input),
+    computeSPOParticipation(input),
     computeDeliberationQuality(input),
     computeGovernanceEffectiveness(input),
+    computeCCConstitutionalFidelity(input),
     computePowerDistribution(input),
     computeSystemStability(input),
   ]);
@@ -105,11 +117,13 @@ export async function computeGHI(): Promise<GHIComputeResult> {
   // Apply calibration curves
   const calibrated = {
     'DRep Participation': calibrate(participation.raw, CALIBRATION.drepParticipation),
+    'SPO Participation': calibrate(spoParticipation.raw, CALIBRATION.spoParticipation),
     'Citizen Engagement': citizenEngagementEnabled
       ? calibrate(engagement.raw, CALIBRATION.citizenEngagement)
       : 0,
     'Deliberation Quality': calibrate(deliberation.raw, CALIBRATION.deliberationQuality),
     'Governance Effectiveness': calibrate(effectiveness.raw, CALIBRATION.governanceEffectiveness),
+    'CC Constitutional Fidelity': calibrate(ccFidelity.raw, CALIBRATION.ccConstitutionalFidelity),
     'Power Distribution': calibrate(power.raw, CALIBRATION.powerDistribution),
     'System Stability': calibrate(stability.raw, CALIBRATION.systemStability),
   };

@@ -1,19 +1,22 @@
 /**
- * DRep Score V3 — Composite calculator + momentum + confidence.
- * Combines 4 percentile-normalized pillars with configurable weights.
- * Confidence-weighted percentile normalization prevents low-data DReps
- * from inflating rankings. Percentile dampening pulls low-confidence
- * scores toward the median.
+ * DRep Score V3.1 — Composite calculator + momentum + confidence.
+ * Combines 4 absolute-calibrated pillars with configurable weights.
+ * Replaces percentile normalization: raw score → calibrated score via
+ * piecewise linear curves. Your actions = your score, independent of
+ * how other DReps perform.
+ *
+ * Confidence dampening still applies to calibrated scores for low-data DReps.
  * Momentum is computed from score history via simple linear regression.
  */
 
 import { PILLAR_WEIGHTS, type DRepScoreResult } from './types';
-import { percentileNormalizeWeighted, dampenPercentile } from './confidence';
+import { dampenPercentile } from './confidence';
+import { calibrate, DREP_PILLAR_CALIBRATION } from './calibration';
 
 /**
  * Compute final DRep Scores for all DReps from raw pillar scores.
- * Percentile-normalizes each pillar (confidence-weighted), applies
- * confidence dampening, computes weighted composite, and momentum.
+ * Calibrates each pillar via absolute curves, applies confidence dampening,
+ * computes weighted composite, and momentum.
  *
  * @param rawEngagement Map<drepId, raw 0-100>
  * @param rawParticipation Map<drepId, raw 0-100>
@@ -30,9 +33,6 @@ export function computeDRepScores(
   scoreHistory: Map<string, { date: string; score: number }[]>,
   confidences?: Map<string, number>,
 ): Map<string, DRepScoreResult> {
-  // Use confidence-weighted percentile normalization when confidences provided,
-  // otherwise fall back to equal-weight (all confidence = 100)
-  const defaultConfidences = new Map<string, number>();
   const allDrepIds = new Set<string>([
     ...rawEngagement.keys(),
     ...rawParticipation.keys(),
@@ -40,49 +40,46 @@ export function computeDRepScores(
     ...rawIdentity.keys(),
   ]);
 
-  // Build default confidences if not provided
-  const effectiveConfidences = confidences ?? defaultConfidences;
-  if (!confidences) {
-    for (const id of allDrepIds) {
-      defaultConfidences.set(id, 100);
-    }
-  }
-
-  // Confidence-weighted percentile normalization for each pillar
-  const pctEngagement = percentileNormalizeWeighted(rawEngagement, effectiveConfidences);
-  const pctParticipation = percentileNormalizeWeighted(rawParticipation, effectiveConfidences);
-  const pctReliability = percentileNormalizeWeighted(rawReliability, effectiveConfidences);
-  const pctIdentity = percentileNormalizeWeighted(rawIdentity, effectiveConfidences);
-
   const results = new Map<string, DRepScoreResult>();
 
   for (const drepId of allDrepIds) {
-    const confidence = effectiveConfidences.get(drepId) ?? 100;
+    const confidence = confidences?.get(drepId) ?? 100;
 
-    // Dampen percentile scores toward median for low-confidence DReps
-    let eqPct = dampenPercentile(pctEngagement.get(drepId) ?? 0, confidence);
-    let epPct = dampenPercentile(pctParticipation.get(drepId) ?? 0, confidence);
-    let rlPct = dampenPercentile(pctReliability.get(drepId) ?? 0, confidence);
-    const giPct = dampenPercentile(pctIdentity.get(drepId) ?? 0, confidence);
-
-    // Zero-activity override: when ALL three activity pillars have raw score 0,
-    // the DRep has never participated in governance. Pull their activity percentiles
-    // to 0 instead of the dampened median, so composite reflects actual inactivity.
-    // GI (profile-based) is unaffected — it's legitimately earned from profile data.
+    // Calibrate raw scores via absolute piecewise linear curves
     const eqRaw = rawEngagement.get(drepId) ?? 0;
     const epRaw = rawParticipation.get(drepId) ?? 0;
     const rlRaw = rawReliability.get(drepId) ?? 0;
+    const giRaw = rawIdentity.get(drepId) ?? 0;
+
+    let eqCal = dampenPercentile(
+      calibrate(eqRaw, DREP_PILLAR_CALIBRATION.engagementQuality),
+      confidence,
+    );
+    let epCal = dampenPercentile(
+      calibrate(epRaw, DREP_PILLAR_CALIBRATION.effectiveParticipation),
+      confidence,
+    );
+    let rlCal = dampenPercentile(calibrate(rlRaw, DREP_PILLAR_CALIBRATION.reliability), confidence);
+    const giCal = dampenPercentile(
+      calibrate(giRaw, DREP_PILLAR_CALIBRATION.governanceIdentity),
+      confidence,
+    );
+
+    // Zero-activity override: when ALL three activity pillars have raw score 0,
+    // the DRep has never participated in governance. Force calibrated scores
+    // to 0 instead of the dampened median, so composite reflects actual inactivity.
+    // GI (profile-based) is unaffected — it's legitimately earned from profile data.
     if (eqRaw === 0 && epRaw === 0 && rlRaw === 0) {
-      eqPct = 0;
-      epPct = 0;
-      rlPct = 0;
+      eqCal = 0;
+      epCal = 0;
+      rlCal = 0;
     }
 
     const composite = Math.round(
-      eqPct * PILLAR_WEIGHTS.engagementQuality +
-        epPct * PILLAR_WEIGHTS.effectiveParticipation +
-        rlPct * PILLAR_WEIGHTS.reliability +
-        giPct * PILLAR_WEIGHTS.governanceIdentity,
+      eqCal * PILLAR_WEIGHTS.engagementQuality +
+        epCal * PILLAR_WEIGHTS.effectiveParticipation +
+        rlCal * PILLAR_WEIGHTS.reliability +
+        giCal * PILLAR_WEIGHTS.governanceIdentity,
     );
 
     const history = scoreHistory.get(drepId);
@@ -90,14 +87,14 @@ export function computeDRepScores(
 
     results.set(drepId, {
       composite: clamp(composite),
-      engagementQualityRaw: rawEngagement.get(drepId) ?? 0,
-      engagementQualityPercentile: eqPct,
-      effectiveParticipationRaw: rawParticipation.get(drepId) ?? 0,
-      effectiveParticipationPercentile: epPct,
-      reliabilityRaw: rawReliability.get(drepId) ?? 0,
-      reliabilityPercentile: rlPct,
-      governanceIdentityRaw: rawIdentity.get(drepId) ?? 0,
-      governanceIdentityPercentile: giPct,
+      engagementQualityRaw: eqRaw,
+      engagementQualityCalibrated: eqCal,
+      effectiveParticipationRaw: epRaw,
+      effectiveParticipationCalibrated: epCal,
+      reliabilityRaw: rlRaw,
+      reliabilityCalibrated: rlCal,
+      governanceIdentityRaw: giRaw,
+      governanceIdentityCalibrated: giCal,
       confidence,
       momentum,
     });

@@ -2,13 +2,14 @@
  * SPO Governance Identity pillar (15% of SPO Score V3).
  * Two sub-components: Pool Identity Quality (60%) and Delegation Responsiveness (40%).
  *
- * V3 changes from V2:
+ * V3.1 changes:
  * - Governance statement uses keyword quality checklist instead of pure character count
  * - Community Presence replaced by Delegation Responsiveness (delegator retention after votes)
- * - Falls back to delegator count percentile when insufficient retention data
+ * - Falls back to absolute delegator count tiers (not percentile) when insufficient retention data
  */
 
 import { isValidatedSocialLink } from '@/utils/display';
+import { DELEGATOR_TIERS } from './calibration';
 
 const SUB_WEIGHTS = { poolIdentityQuality: 0.6, delegationResponsiveness: 0.4 };
 
@@ -50,15 +51,13 @@ export interface DelegationRetentionData {
 
 /**
  * Compute raw Governance Identity scores (0-100) for all SPOs.
- * Uses delegation responsiveness when available, falls back to delegator count percentile.
+ * Uses delegation responsiveness when available, falls back to absolute delegator count tiers.
  */
 export function computeSpoGovernanceIdentity(
   profiles: Map<string, SpoProfileData>,
-  allDelegatorCounts: number[],
   retentionData?: Map<string, DelegationRetentionData>,
 ): Map<string, number> {
   const scores = new Map<string, number>();
-  const sortedCounts = [...allDelegatorCounts].sort((a, b) => a - b);
 
   for (const [poolId, profile] of profiles) {
     const identityScore = computePoolIdentityQuality(profile);
@@ -69,8 +68,8 @@ export function computeSpoGovernanceIdentity(
       // Delegation responsiveness: retention rate after governance activity
       communityScore = computeDelegationResponsiveness(responsiveness);
     } else {
-      // Fallback: delegator count percentile
-      communityScore = computeCommunityPresencePercentile(profile.delegatorCount, sortedCounts);
+      // Fallback: absolute delegator count tiers
+      communityScore = computeCommunityPresence(profile.delegatorCount);
     }
 
     const raw =
@@ -199,31 +198,14 @@ function computeDelegationResponsiveness(data: DelegationRetentionData): number 
 }
 
 /**
- * Fallback: delegator count percentile (same as V2).
+ * Community Presence fallback: absolute delegator count tiers.
+ * Not zero-sum — every SPO can reach 100 by growing their community.
  */
-function computeCommunityPresencePercentile(
-  delegatorCount: number,
-  sortedCounts: number[],
-): number {
-  if (sortedCounts.length === 0) return 0;
-  if (sortedCounts.length === 1) return 50;
-
-  let lo = 0;
-  let hi = sortedCounts.length - 1;
-
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (sortedCounts[mid] < delegatorCount) lo = mid + 1;
-    else hi = mid;
+function computeCommunityPresence(delegatorCount: number): number {
+  for (const tier of DELEGATOR_TIERS) {
+    if (delegatorCount >= tier.min) return tier.score;
   }
-
-  let first = lo;
-  let last = lo;
-  while (first > 0 && sortedCounts[first - 1] === delegatorCount) first--;
-  while (last < sortedCounts.length - 1 && sortedCounts[last + 1] === delegatorCount) last++;
-
-  const avgRank = (first + last) / 2;
-  return Math.round((avgRank / (sortedCounts.length - 1)) * 100);
+  return 0;
 }
 
 interface Tier {

@@ -340,7 +340,7 @@ describe('SPO Score V3', () => {
         ['pool2', sparse],
       ]);
 
-      const scores = computeSpoGovernanceIdentity(profiles, [100, 5]);
+      const scores = computeSpoGovernanceIdentity(profiles);
       expect(scores.get('pool1')!).toBeGreaterThan(scores.get('pool2')!);
     });
   });

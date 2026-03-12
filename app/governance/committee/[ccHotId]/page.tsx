@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { getCCTransparencyHistory, getCCMembersTransparency } from '@/lib/data';
+import { getCCFidelityHistory, getCCMembersFidelity } from '@/lib/data';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { Breadcrumb } from '@/components/shared/Breadcrumb';
 import { CCMemberProfileClient } from '@/components/cc/CCMemberProfileClient';
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const name = member?.author_name ?? `CC Member ${ccHotId.slice(0, 12)}...`;
   return {
     title: `${name} — Constitutional Committee — Governada`,
-    description: `Transparency score, voting record, and accountability metrics for ${name}.`,
+    description: `Constitutional fidelity score, voting record, and accountability metrics for ${name}.`,
   };
 }
 
@@ -38,7 +38,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     { data: votes },
     { data: rationales },
     { data: alignmentRows },
-    transparencyHistory,
+    fidelityHistory,
     allMembers,
     { data: proposals },
   ] = await Promise.all([
@@ -59,8 +59,8 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
       .select(
         'proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct, spo_yes_pct, spo_no_pct',
       ),
-    getCCTransparencyHistory(decodedId),
-    getCCMembersTransparency(),
+    getCCFidelityHistory(decodedId),
+    getCCMembersFidelity(),
     supabase.from('proposals').select('tx_hash, proposal_index, title, proposal_type'),
   ]);
 
@@ -129,10 +129,10 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   }
 
   const authorName = member?.author_name ?? rationales?.[0]?.author_name ?? null;
-  const transparencyIndex = member?.transparency_index ?? null;
+  const fidelityScore = member?.fidelity_score ?? null;
 
   // Peer rank
-  const scoredMembers = allMembers.filter((m) => m.transparencyIndex != null);
+  const scoredMembers = allMembers.filter((m) => m.fidelityScore != null);
   const rank = scoredMembers.findIndex((m) => m.ccHotId === decodedId) + 1;
   const totalScored = scoredMembers.length;
 
@@ -157,21 +157,20 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     };
   });
 
-  // Pillar scores for the breakdown
+  // Pillar scores for the breakdown (3-pillar Constitutional Fidelity model)
   const pillarScores = member
     ? {
         participation: member.participation_score,
-        rationaleQuality: member.rationale_quality_score,
-        responsiveness: member.responsiveness_score,
-        independence: member.independence_score,
+        constitutionalGrounding: member.independence_score, // repurposed column
+        reasoningQuality: member.rationale_quality_score,
       }
     : null;
 
   const profileData = {
     ccHotId: decodedId,
     authorName,
-    transparencyIndex,
-    transparencyGrade: member?.transparency_grade ?? null,
+    fidelityScore,
+    fidelityGrade: member?.transparency_grade ?? null, // column rename pending migration
     status: member?.status ?? null,
     expirationEpoch: member?.expiration_epoch ?? null,
     rank: rank > 0 ? rank : null,
@@ -184,14 +183,14 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     votesCast: member?.votes_cast ?? totalVotes,
     eligibleProposals: member?.eligible_proposals ?? null,
     rationaleProvisionRate: member?.rationale_provision_rate ?? null,
-    independenceScore: member?.independence_score ?? null,
+    constitutionalGroundingScore: member?.independence_score ?? null, // repurposed column
     drepAgree,
     drepCompare,
     spoAgree,
     spoCompare,
     pillarScores,
     enrichedVotes,
-    transparencyHistory,
+    fidelityHistory,
   };
 
   return (

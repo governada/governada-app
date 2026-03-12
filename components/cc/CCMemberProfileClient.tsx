@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import {
   Vote,
   BookOpen,
-  Clock,
   Sparkles,
   ShieldCheck,
   Users,
@@ -20,14 +19,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CCTransparencyTrend } from '@/components/cc/CCTransparencyTrend';
 import { CopyableAddress } from '@/components/CopyableAddress';
 import {
-  interpretTransparencyScore,
+  interpretFidelityScore,
   interpretParticipation,
   interpretRationaleQuality,
-  interpretIndependence,
+  interpretConstitutionalGrounding,
   interpretPillarStrengthWeakness,
 } from '@/lib/cc/interpretations';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
-import type { CCTransparencySnapshot } from '@/lib/data';
+import type { CCFidelitySnapshot } from '@/lib/data';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,16 +48,15 @@ interface EnrichedVote {
 
 interface PillarScores {
   participation: number | null;
-  rationaleQuality: number | null;
-  responsiveness: number | null;
-  independence: number | null;
+  constitutionalGrounding: number | null;
+  reasoningQuality: number | null;
 }
 
 interface ProfileData {
   ccHotId: string;
   authorName: string | null;
-  transparencyIndex: number | null;
-  transparencyGrade: string | null;
+  fidelityScore: number | null;
+  fidelityGrade: string | null;
   status: string | null;
   expirationEpoch: number | null;
   rank: number | null;
@@ -71,14 +69,14 @@ interface ProfileData {
   votesCast: number;
   eligibleProposals: number | null;
   rationaleProvisionRate: number | null;
-  independenceScore: number | null;
+  constitutionalGroundingScore: number | null;
   drepAgree: number;
   drepCompare: number;
   spoAgree: number;
   spoCompare: number;
   pillarScores: PillarScores | null;
   enrichedVotes: EnrichedVote[];
-  transparencyHistory: CCTransparencySnapshot[];
+  fidelityHistory: CCFidelitySnapshot[];
 }
 
 // ---------------------------------------------------------------------------
@@ -110,11 +108,11 @@ const VOTES_PER_PAGE = 10;
 function ProfileHero({ data }: { data: ProfileData }) {
   const displayName =
     data.authorName ?? `${data.ccHotId.slice(0, 12)}\u2026${data.ccHotId.slice(-6)}`;
-  const grade = data.transparencyGrade ? GRADE_COLORS[data.transparencyGrade] : null;
+  const grade = data.fidelityGrade ? GRADE_COLORS[data.fidelityGrade] : null;
 
   const verdict =
-    data.transparencyIndex != null && data.rank != null
-      ? interpretTransparencyScore(data.transparencyIndex, data.rank, data.totalScored)
+    data.fidelityScore != null && data.rank != null
+      ? interpretFidelityScore(data.fidelityScore, data.rank, data.totalScored)
       : null;
 
   const pillarSummary = data.pillarScores
@@ -171,7 +169,7 @@ function ProfileHero({ data }: { data: ProfileData }) {
       </div>
 
       {/* Right: Score card */}
-      {data.transparencyIndex != null && grade && data.transparencyGrade && (
+      {data.fidelityScore != null && grade && data.fidelityGrade && (
         <div
           className={cn(
             'shrink-0 w-full sm:w-48 rounded-xl border px-6 py-5 text-center',
@@ -179,11 +177,9 @@ function ProfileHero({ data }: { data: ProfileData }) {
             grade.border,
           )}
         >
-          <p className="text-xs text-muted-foreground mb-1">Transparency Index</p>
-          <p className={cn('text-4xl font-bold tabular-nums', grade.text)}>
-            {data.transparencyIndex}
-          </p>
-          <p className={cn('text-lg font-bold', grade.text)}>Grade {data.transparencyGrade}</p>
+          <p className="text-xs text-muted-foreground mb-1">Constitutional Fidelity</p>
+          <p className={cn('text-4xl font-bold tabular-nums', grade.text)}>{data.fidelityScore}</p>
+          <p className={cn('text-lg font-bold', grade.text)}>Grade {data.fidelityGrade}</p>
         </div>
       )}
     </div>
@@ -201,11 +197,11 @@ function KeyStats({ data }: { data: ProfileData }) {
       : `${data.totalVotes} votes cast`;
 
   const rationaleNarrative = interpretRationaleQuality(
-    data.pillarScores?.rationaleQuality ?? null,
+    data.pillarScores?.reasoningQuality ?? null,
     data.rationaleProvisionRate,
   );
 
-  const independenceNarrative = interpretIndependence(data.independenceScore, null);
+  const groundingNarrative = interpretConstitutionalGrounding(data.constitutionalGroundingScore);
 
   const stats = [
     {
@@ -221,16 +217,19 @@ function KeyStats({ data }: { data: ProfileData }) {
       narrative: participationNarrative,
     },
     {
-      label: 'Rationale Quality',
+      label: 'Constitutional Grounding',
+      value:
+        data.constitutionalGroundingScore != null
+          ? `${Math.round(data.constitutionalGroundingScore)}`
+          : '\u2014',
+      sub: data.constitutionalGroundingScore != null ? '/100 score' : 'Not available',
+      narrative: groundingNarrative,
+    },
+    {
+      label: 'Reasoning Quality',
       value: `${data.withRationale}/${data.totalVotes}`,
       sub: `${data.totalVotes > 0 ? Math.round((data.withRationale / data.totalVotes) * 100) : 0}% provision rate`,
       narrative: rationaleNarrative,
-    },
-    {
-      label: 'Independence',
-      value: data.independenceScore != null ? `${Math.round(data.independenceScore)}` : '\u2014',
-      sub: data.independenceScore != null ? '/100 score' : 'Not available',
-      narrative: independenceNarrative,
     },
   ];
 
@@ -304,47 +303,40 @@ function OverviewTab({ data }: { data: ProfileData }) {
   return (
     <div className="space-y-6">
       {/* Pillar breakdown */}
-      {data.pillarScores && data.transparencyIndex != null && (
+      {data.pillarScores && data.fidelityScore != null && (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Scale className="h-4 w-4" />
-            Transparency Index Breakdown
+            Constitutional Fidelity Breakdown
           </h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <PillarBar
               icon={<Vote className="h-3.5 w-3.5" />}
               label="Participation"
-              weight="39%"
+              weight="30%"
               score={data.pillarScores.participation}
               delay={0}
             />
             <PillarBar
               icon={<BookOpen className="h-3.5 w-3.5" />}
-              label="Rationale Quality"
-              weight="33%"
-              score={data.pillarScores.rationaleQuality}
+              label="Constitutional Grounding"
+              weight="40%"
+              score={data.pillarScores.constitutionalGrounding}
               delay={0.1}
             />
             <PillarBar
-              icon={<Clock className="h-3.5 w-3.5" />}
-              label="Responsiveness"
-              weight="17%"
-              score={data.pillarScores.responsiveness}
-              delay={0.2}
-            />
-            <PillarBar
               icon={<Sparkles className="h-3.5 w-3.5" />}
-              label="Independence"
-              weight="11%"
-              score={data.pillarScores.independence}
-              delay={0.3}
+              label="Reasoning Quality"
+              weight="30%"
+              score={data.pillarScores.reasoningQuality}
+              delay={0.2}
             />
           </div>
         </div>
       )}
 
-      {/* Transparency trend */}
-      <CCTransparencyTrend history={data.transparencyHistory} />
+      {/* Fidelity trend */}
+      <CCTransparencyTrend history={data.fidelityHistory} />
     </div>
   );
 }

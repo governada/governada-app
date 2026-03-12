@@ -1,17 +1,18 @@
 /**
- * SPO Governance Score V3 — 4-pillar composite calculator.
+ * SPO Governance Score V3.1 — 4-pillar composite calculator.
  * Participation (35%) + Deliberation Quality (25%) + Reliability (25%) + Governance Identity (15%).
- * Confidence-weighted percentile normalization, proposal-aware reliability, 30-day momentum (ADR-006 V3).
+ * Absolute calibrated scoring (not percentile), proposal-aware reliability, 30-day momentum.
  */
 
-import { percentileNormalize } from './percentile';
-import { percentileNormalizeWeighted } from './confidence';
+import { dampenPercentile } from './confidence';
 import { DECAY_LAMBDA } from './types';
 import {
   SPO_PILLAR_WEIGHTS as _SPO_WEIGHTS,
   SPO_MARGIN,
   SPO_RELIABILITY_WEIGHTS,
   SPO_RELIABILITY_PARAMS,
+  SPO_PILLAR_CALIBRATION,
+  calibrate,
 } from './calibration';
 
 export const SPO_PILLAR_WEIGHTS = _SPO_WEIGHTS;
@@ -34,19 +35,19 @@ export type SpoVoteData = SpoVoteDataV3;
 export interface SpoScoreResult {
   composite: number;
   participationRaw: number;
-  participationPercentile: number;
+  participationCalibrated: number;
   deliberationRaw: number;
-  deliberationPercentile: number;
+  deliberationCalibrated: number;
   reliabilityRaw: number;
-  reliabilityPercentile: number;
+  reliabilityCalibrated: number;
   governanceIdentityRaw: number;
-  governanceIdentityPercentile: number;
+  governanceIdentityCalibrated: number;
   confidence: number;
   momentum: number | null;
   /** @deprecated V2 compat — same as deliberationRaw */
   consistencyRaw: number;
-  /** @deprecated V2 compat — same as deliberationPercentile */
-  consistencyPercentile: number;
+  /** @deprecated V2 compat — same as deliberationCalibrated */
+  consistencyCalibrated: number;
 }
 
 /**
@@ -74,58 +75,69 @@ export function computeSpoScores(
 
   const nowSeconds = allVotes.length > 0 ? Math.max(...allVotes.map((v) => v.blockTime)) : 0;
 
-  const participationRaw = new Map<string, number>();
-  const reliabilityRaw = new Map<string, number>();
+  const participationRawMap = new Map<string, number>();
+  const reliabilityRawMap = new Map<string, number>();
 
   for (const [poolId, votes] of byPool) {
-    participationRaw.set(
+    participationRawMap.set(
       poolId,
       computeParticipation(votes, totalProposalPool, nowSeconds, proposalMarginMultipliers),
     );
-    reliabilityRaw.set(poolId, computeReliability(votes, currentEpoch, activeEpochs));
+    reliabilityRawMap.set(poolId, computeReliability(votes, currentEpoch, activeEpochs));
   }
-
-  // Use confidence-weighted percentile normalization
-  const participationPct = percentileNormalizeWeighted(participationRaw, confidences);
-  const deliberationPct = percentileNormalizeWeighted(deliberationScores, confidences);
-  const reliabilityPct = percentileNormalizeWeighted(reliabilityRaw, confidences);
-  const identityPct = percentileNormalize(identityScores);
 
   const result = new Map<string, SpoScoreResult>();
   const allPoolIds = new Set([...byPool.keys(), ...identityScores.keys()]);
 
   for (const poolId of allPoolIds) {
-    const pPct = participationPct.get(poolId) ?? 0;
-    const dPct = deliberationPct.get(poolId) ?? 0;
-    const rPct = reliabilityPct.get(poolId) ?? 0;
-    const iPct = identityPct.get(poolId) ?? 0;
+    const confidence = confidences.get(poolId) ?? 0;
+
+    const pRaw = participationRawMap.get(poolId) ?? 0;
+    const dRaw = deliberationScores.get(poolId) ?? 0;
+    const rlRaw = reliabilityRawMap.get(poolId) ?? 0;
+    const giRaw = identityScores.get(poolId) ?? 0;
+
+    // Absolute calibrated scoring — your actions = your score
+    let pCal = dampenPercentile(calibrate(pRaw, SPO_PILLAR_CALIBRATION.participation), confidence);
+    let dCal = dampenPercentile(calibrate(dRaw, SPO_PILLAR_CALIBRATION.deliberation), confidence);
+    let rlCal = dampenPercentile(calibrate(rlRaw, SPO_PILLAR_CALIBRATION.reliability), confidence);
+    const giCal = dampenPercentile(
+      calibrate(giRaw, SPO_PILLAR_CALIBRATION.governanceIdentity),
+      confidence,
+    );
+
+    // Zero-activity override: if all 3 activity pillars have raw 0, force calibrated to 0
+    if (pRaw === 0 && dRaw === 0 && rlRaw === 0) {
+      pCal = 0;
+      dCal = 0;
+      rlCal = 0;
+    }
 
     const composite = Math.round(
-      SPO_PILLAR_WEIGHTS.participation * pPct +
-        SPO_PILLAR_WEIGHTS.deliberation * dPct +
-        SPO_PILLAR_WEIGHTS.reliability * rPct +
-        SPO_PILLAR_WEIGHTS.governanceIdentity * iPct,
+      SPO_PILLAR_WEIGHTS.participation * pCal +
+        SPO_PILLAR_WEIGHTS.deliberation * dCal +
+        SPO_PILLAR_WEIGHTS.reliability * rlCal +
+        SPO_PILLAR_WEIGHTS.governanceIdentity * giCal,
     );
 
     const history = scoreHistory.get(poolId);
     const momentum = history ? computeMomentum(history) : null;
-    const confidence = confidences.get(poolId) ?? 0;
 
     result.set(poolId, {
       composite: clamp(composite),
-      participationRaw: participationRaw.get(poolId) ?? 0,
-      participationPercentile: pPct,
-      deliberationRaw: deliberationScores.get(poolId) ?? 0,
-      deliberationPercentile: dPct,
-      reliabilityRaw: reliabilityRaw.get(poolId) ?? 0,
-      reliabilityPercentile: rPct,
-      governanceIdentityRaw: identityScores.get(poolId) ?? 0,
-      governanceIdentityPercentile: iPct,
+      participationRaw: pRaw,
+      participationCalibrated: pCal,
+      deliberationRaw: dRaw,
+      deliberationCalibrated: dCal,
+      reliabilityRaw: rlRaw,
+      reliabilityCalibrated: rlCal,
+      governanceIdentityRaw: giRaw,
+      governanceIdentityCalibrated: giCal,
       confidence,
       momentum,
       // V2 compat
-      consistencyRaw: deliberationScores.get(poolId) ?? 0,
-      consistencyPercentile: dPct,
+      consistencyRaw: dRaw,
+      consistencyCalibrated: dCal,
     });
   }
   return result;

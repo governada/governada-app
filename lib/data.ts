@@ -989,22 +989,23 @@ export async function getCcVotesByProposal(
 }
 
 // ============================================================================
-// CC TRANSPARENCY INDEX
+// CC CONSTITUTIONAL FIDELITY
 // ============================================================================
 
-export interface CCTransparencySnapshot {
+export interface CCFidelitySnapshot {
   epochNo: number;
-  transparencyIndex: number;
+  fidelityScore: number;
   participationScore: number;
-  rationaleQualityScore: number;
-  responsivenessScore: number;
-  independenceScore: number;
-  communityEngagementScore: number;
+  constitutionalGroundingScore: number;
+  reasoningQualityScore: number;
   votesCast: number;
   eligibleProposals: number;
 }
 
-export async function getCCTransparencyHistory(ccHotId: string): Promise<CCTransparencySnapshot[]> {
+/** @deprecated Use CCFidelitySnapshot */
+export type CCTransparencySnapshot = CCFidelitySnapshot;
+
+export async function getCCFidelityHistory(ccHotId: string): Promise<CCFidelitySnapshot[]> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -1016,12 +1017,10 @@ export async function getCCTransparencyHistory(ccHotId: string): Promise<CCTrans
     if (error || !data) return [];
     return data.map((s) => ({
       epochNo: s.epoch_no,
-      transparencyIndex: s.transparency_index ?? 0,
+      fidelityScore: s.transparency_index ?? 0,
       participationScore: s.participation_score ?? 0,
-      rationaleQualityScore: s.rationale_quality_score ?? 0,
-      responsivenessScore: s.responsiveness_score ?? 0,
-      independenceScore: s.independence_score ?? 0,
-      communityEngagementScore: s.community_engagement_score ?? 0,
+      constitutionalGroundingScore: s.independence_score ?? 0, // repurposed column
+      reasoningQualityScore: s.rationale_quality_score ?? 0,
       votesCast: s.votes_cast ?? 0,
       eligibleProposals: s.eligible_proposals ?? 0,
     }));
@@ -1030,36 +1029,38 @@ export async function getCCTransparencyHistory(ccHotId: string): Promise<CCTrans
   }
 }
 
-export interface CCMemberTransparency {
+/** @deprecated Use getCCFidelityHistory */
+export const getCCTransparencyHistory = getCCFidelityHistory;
+
+export interface CCMemberFidelity {
   ccHotId: string;
   authorName: string | null;
   status: string | null;
   expirationEpoch: number | null;
-  transparencyIndex: number | null;
-  transparencyGrade: string | null;
-  participationScore: number | null;
-  rationaleQualityScore: number | null;
-  responsivenessScore: number | null;
-  independenceScore: number | null;
-  communityEngagementScore: number | null;
   fidelityScore: number | null;
+  fidelityGrade: string | null;
+  participationScore: number | null;
+  constitutionalGroundingScore: number | null;
+  reasoningQualityScore: number | null;
   rationaleProvisionRate: number | null;
   avgArticleCoverage: number | null;
   avgReasoningQuality: number | null;
-  consistencyScore: number | null;
   votesCast: number | null;
   eligibleProposals: number | null;
 }
 
-export async function getCCMembersTransparency(): Promise<CCMemberTransparency[]> {
+/** @deprecated Use CCMemberFidelity */
+export type CCMemberTransparency = CCMemberFidelity;
+
+export async function getCCMembersFidelity(): Promise<CCMemberFidelity[]> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('cc_members')
       .select(
-        'cc_hot_id, author_name, status, expiration_epoch, transparency_index, transparency_grade, participation_score, rationale_quality_score, independence_score, community_engagement_score, responsiveness_score, fidelity_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, consistency_score, votes_cast, eligible_proposals',
+        'cc_hot_id, author_name, status, expiration_epoch, fidelity_score, transparency_grade, participation_score, rationale_quality_score, independence_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, votes_cast, eligible_proposals',
       )
-      .order('transparency_index', { ascending: false, nullsFirst: false });
+      .order('fidelity_score', { ascending: false, nullsFirst: false });
 
     if (error || !data) return [];
     return data.map((m) => ({
@@ -1067,18 +1068,14 @@ export async function getCCMembersTransparency(): Promise<CCMemberTransparency[]
       authorName: m.author_name,
       status: m.status,
       expirationEpoch: m.expiration_epoch,
-      transparencyIndex: m.transparency_index,
-      transparencyGrade: m.transparency_grade,
-      participationScore: m.participation_score,
-      rationaleQualityScore: m.rationale_quality_score,
-      responsivenessScore: m.responsiveness_score,
-      independenceScore: m.independence_score,
-      communityEngagementScore: m.community_engagement_score,
       fidelityScore: m.fidelity_score,
+      fidelityGrade: m.transparency_grade, // column rename pending migration
+      participationScore: m.participation_score,
+      constitutionalGroundingScore: m.independence_score, // repurposed column
+      reasoningQualityScore: m.rationale_quality_score,
       rationaleProvisionRate: m.rationale_provision_rate,
       avgArticleCoverage: m.avg_article_coverage,
       avgReasoningQuality: m.avg_reasoning_quality,
-      consistencyScore: m.consistency_score,
       votesCast: m.votes_cast,
       eligibleProposals: m.eligible_proposals,
     }));
@@ -1086,6 +1083,9 @@ export async function getCCMembersTransparency(): Promise<CCMemberTransparency[]
     return [];
   }
 }
+
+/** @deprecated Use getCCMembersFidelity */
+export const getCCMembersTransparency = getCCMembersFidelity;
 
 // ============================================================================
 // CC HEALTH SUMMARY & MEMBER VERDICTS
@@ -1097,7 +1097,7 @@ export interface CCHealthSummary {
   trend: 'improving' | 'stable' | 'declining';
   activeMembers: number;
   totalMembers: number;
-  avgTransparency: number | null;
+  avgFidelity: number | null;
   tensionCount: number;
 }
 
@@ -1131,11 +1131,11 @@ export async function getCCHealthSummary(): Promise<CCHealthSummary> {
     const currentEpoch = stats?.current_epoch ?? 0;
     const activeMembers = members.filter((m) => m.status === 'authorized').length;
     const totalMembers = activeMembers; // Only count active members — expired ones are historical
-    const scoredMembers = members.filter((m) => m.transparencyIndex != null);
-    const avgTransparency =
+    const scoredMembers = members.filter((m) => m.fidelityScore != null);
+    const avgFidelity =
       scoredMembers.length > 0
         ? Math.round(
-            scoredMembers.reduce((sum, m) => sum + (m.transparencyIndex ?? 0), 0) /
+            scoredMembers.reduce((sum, m) => sum + (m.fidelityScore ?? 0), 0) /
               scoredMembers.length,
           )
         : null;
@@ -1186,17 +1186,17 @@ export async function getCCHealthSummary(): Promise<CCHealthSummary> {
         const oldAvg = Math.round(
           oldSnapshots.reduce((s, r) => s + (r.transparency_index ?? 0), 0) / oldSnapshots.length,
         );
-        const delta = (avgTransparency ?? 0) - oldAvg;
+        const delta = (avgFidelity ?? 0) - oldAvg;
         if (delta > 2) trend = 'improving';
         else if (delta < -2) trend = 'declining';
       }
     }
 
-    const healthData = { activeMembers, totalMembers, avgTransparency, tensionCount, trend };
+    const healthData = { activeMembers, totalMembers, avgFidelity, tensionCount, trend };
     const status = interpretHealthStatus(healthData);
     const narrative = generateCCHealthNarrative(healthData);
 
-    return { status, narrative, trend, activeMembers, totalMembers, avgTransparency, tensionCount };
+    return { status, narrative, trend, activeMembers, totalMembers, avgFidelity, tensionCount };
   } catch {
     return {
       status: 'attention',
@@ -1204,7 +1204,7 @@ export async function getCCHealthSummary(): Promise<CCHealthSummary> {
       trend: 'stable',
       activeMembers: 0,
       totalMembers: 0,
-      avgTransparency: null,
+      avgFidelity: null,
       tensionCount: 0,
     };
   }
@@ -1234,9 +1234,8 @@ export async function getCCMemberVerdicts(): Promise<CCMemberVerdict[]> {
 
     const PILLAR_LABELS: Record<string, string> = {
       participation: 'Participation',
-      rationaleQuality: 'Rationale Quality',
-      responsiveness: 'Responsiveness',
-      independence: 'Independence',
+      constitutionalGrounding: 'Constitutional Grounding',
+      reasoningQuality: 'Reasoning Quality',
     };
 
     return members.map((m, i) => {
@@ -1246,9 +1245,8 @@ export async function getCCMemberVerdicts(): Promise<CCMemberVerdict[]> {
       // Find strongest/weakest pillar
       const pillars: [string, number | null][] = [
         ['participation', m.participationScore],
-        ['rationaleQuality', m.rationaleQualityScore],
-        ['responsiveness', m.responsivenessScore],
-        ['independence', m.independenceScore],
+        ['constitutionalGrounding', m.constitutionalGroundingScore],
+        ['reasoningQuality', m.reasoningQualityScore],
       ];
       const validPillars = pillars.filter(([, v]) => v != null) as [string, number][];
       const sorted = [...validPillars].sort((a, b) => b[1] - a[1]);
@@ -1271,7 +1269,7 @@ export async function getCCMemberVerdicts(): Promise<CCMemberVerdict[]> {
       const narrative = generateMemberVerdict({
         rank,
         total,
-        transparencyScore: m.transparencyIndex,
+        fidelityScore: m.fidelityScore,
         trend,
         strongestPillar: strongest,
         weakestPillar: weakest,

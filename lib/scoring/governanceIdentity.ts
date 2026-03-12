@@ -6,7 +6,7 @@
 
 import { isValidatedSocialLink } from '@/utils/display';
 import type { DRepProfileData } from './types';
-import { IDENTITY_WEIGHTS, PROFILE_FIELD_SCORES } from './calibration';
+import { IDENTITY_WEIGHTS, PROFILE_FIELD_SCORES, DELEGATOR_TIERS } from './calibration';
 
 const SUB_WEIGHTS = IDENTITY_WEIGHTS;
 
@@ -14,20 +14,15 @@ const SUB_WEIGHTS = IDENTITY_WEIGHTS;
  * Compute raw Governance Identity scores (0-100) for all DReps.
  *
  * @param profiles Per-DRep profile data (metadata, delegator count, hash verified)
- * @param allDelegatorCounts All DReps' delegator counts (for percentile ranking)
  */
 export function computeGovernanceIdentity(
   profiles: Map<string, DRepProfileData>,
-  allDelegatorCounts: number[],
 ): Map<string, number> {
   const scores = new Map<string, number>();
 
-  // Pre-sort delegator counts for percentile computation
-  const sortedCounts = [...allDelegatorCounts].sort((a, b) => a - b);
-
   for (const [drepId, profile] of profiles) {
     const profileScore = computeProfileQuality(profile);
-    const communityScore = computeCommunityPresence(profile.delegatorCount, sortedCounts);
+    const communityScore = computeCommunityPresence(profile.delegatorCount);
 
     const raw =
       profileScore * SUB_WEIGHTS.profileQuality + communityScore * SUB_WEIGHTS.communityPresence;
@@ -93,32 +88,14 @@ function computeProfileQuality(profile: DRepProfileData): number {
 
 /**
  * Community Presence (40% of pillar).
- * Delegator count percentile: where does this DRep rank by number of delegators?
- * Count-based (not ADA-based) to measure trust breadth.
+ * Absolute delegator count tiers: every DRep can reach 100 by growing
+ * their community. Not zero-sum — independent of other DReps' counts.
  */
-function computeCommunityPresence(delegatorCount: number, sortedCounts: number[]): number {
-  if (sortedCounts.length === 0) return 0;
-  if (sortedCounts.length === 1) return 50;
-
-  // Find position in sorted array (average rank for ties)
-  let lo = 0;
-  let hi = sortedCounts.length - 1;
-
-  // Binary search for first occurrence
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (sortedCounts[mid] < delegatorCount) lo = mid + 1;
-    else hi = mid;
+function computeCommunityPresence(delegatorCount: number): number {
+  for (const tier of DELEGATOR_TIERS) {
+    if (delegatorCount >= tier.min) return tier.score;
   }
-
-  // Find range of ties
-  let first = lo;
-  let last = lo;
-  while (first > 0 && sortedCounts[first - 1] === delegatorCount) first--;
-  while (last < sortedCounts.length - 1 && sortedCounts[last + 1] === delegatorCount) last++;
-
-  const avgRank = (first + last) / 2;
-  return Math.round((avgRank / (sortedCounts.length - 1)) * 100);
+  return 0;
 }
 
 // --- Helpers ---

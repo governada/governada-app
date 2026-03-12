@@ -1,9 +1,9 @@
 /**
  * GHI v2 Component Computations
  *
- * 6 components across 3 categories:
- *   Engagement (35%): DRep Participation (20%), Citizen Engagement (15%)
- *   Quality (40%):    Deliberation Quality (20%), Governance Effectiveness (20%)
+ * 8 components across 3 categories:
+ *   Engagement (35%): DRep Participation (15%), SPO Participation (10%), Citizen Engagement (10%)
+ *   Quality (40%):    Deliberation Quality (15%), Governance Effectiveness (15%), CC Constitutional Fidelity (10%)
  *   Resilience (25%): Power Distribution (15%), System Stability (10%)
  *
  * Each function returns a raw 0-100 score. Calibration is applied externally.
@@ -407,7 +407,94 @@ export async function computePowerDistribution({
 }
 
 // ---------------------------------------------------------------------------
-// 2F. System Stability (10%)
+// 2F. SPO Participation (10%)
+// ---------------------------------------------------------------------------
+
+export async function computeSPOParticipation({
+  supabase,
+}: ComponentInput): Promise<ComponentScore> {
+  // Get SPO governance votes and total eligible proposals
+  const { data: spoVotes } = await supabase
+    .from('spo_votes')
+    .select('pool_id, proposal_tx_hash, proposal_index');
+
+  const { data: proposals } = await supabase.from('proposals').select('tx_hash, proposal_index');
+
+  if (!proposals?.length) return { raw: 0 };
+
+  const totalProposals = new Set(proposals.map((p) => `${p.tx_hash}:${p.proposal_index}`)).size;
+
+  if (!spoVotes?.length) return { raw: 0, detail: { activeSpos: 0, medianParticipation: 0 } };
+
+  // Group by SPO and compute participation rate per pool
+  const poolVotes = new Map<string, Set<string>>();
+  for (const v of spoVotes) {
+    const set = poolVotes.get(v.pool_id) ?? new Set();
+    set.add(`${v.proposal_tx_hash}:${v.proposal_index}`);
+    poolVotes.set(v.pool_id, set);
+  }
+
+  const rates = Array.from(poolVotes.values())
+    .map((voted) => (voted.size / totalProposals) * 100)
+    .sort((a, b) => a - b);
+
+  const mid = Math.floor(rates.length / 2);
+  const medianParticipation =
+    rates.length % 2 === 0 ? (rates[mid - 1] + rates[mid]) / 2 : rates[mid];
+
+  return {
+    raw: Math.min(100, Math.max(0, Math.round(medianParticipation))),
+    detail: {
+      activeSpos: poolVotes.size,
+      medianParticipation: Math.round(medianParticipation),
+      totalProposals,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2G. CC Constitutional Fidelity (10%)
+// ---------------------------------------------------------------------------
+
+export async function computeCCConstitutionalFidelity({
+  supabase,
+}: ComponentInput): Promise<ComponentScore> {
+  // Read pre-computed fidelity scores from cc_members
+  const { data: members } = await supabase
+    .from('cc_members')
+    .select('cc_hot_id, fidelity_score, status')
+    .not('fidelity_score', 'is', null);
+
+  if (!members?.length) return { raw: 0 };
+
+  // Only score active members
+  const active = members.filter((m) => m.status === 'active' || m.status === 'Active');
+  const scored = active.length > 0 ? active : members;
+
+  const scores = scored
+    .map((m) => (m.fidelity_score as number) ?? 0)
+    .filter((s) => s > 0)
+    .sort((a, b) => a - b);
+
+  if (scores.length === 0) return { raw: 0, detail: { activeCcMembers: scored.length } };
+
+  // Median fidelity score across CC members
+  const mid = Math.floor(scores.length / 2);
+  const medianFidelity =
+    scores.length % 2 === 0 ? (scores[mid - 1] + scores[mid]) / 2 : scores[mid];
+
+  return {
+    raw: Math.min(100, Math.max(0, Math.round(medianFidelity))),
+    detail: {
+      activeCcMembers: scored.length,
+      medianFidelity: Math.round(medianFidelity),
+      scoredCount: scores.length,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2H. System Stability (10%)
 // ---------------------------------------------------------------------------
 
 export async function computeSystemStability({

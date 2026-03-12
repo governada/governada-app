@@ -42,7 +42,7 @@ interface PoolItem {
 interface CCMemberItem {
   ccHotId: string;
   name?: string | null;
-  transparencyGrade?: string | null;
+  fidelityGrade?: string | null;
   voteCount?: number;
 }
 
@@ -297,9 +297,9 @@ export function AdminViewAsPicker({
                       </div>
                     )}
                   </div>
-                  {m.transparencyGrade && (
+                  {m.fidelityGrade && (
                     <span className="text-xs font-semibold text-muted-foreground">
-                      {m.transparencyGrade}
+                      {m.fidelityGrade}
                     </span>
                   )}
                 </button>

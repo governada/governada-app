@@ -1,16 +1,16 @@
 /**
  * SPO Deliberation Quality pillar (25% of SPO Score V3).
- * Replaces the broken Consistency pillar from V2.
  *
- * Three sub-components:
- * - Rationale Provision (40%): % of votes with rationale, importance-weighted
- * - Vote Timing Distribution (30%): stddev of time-to-vote (bot/human detection)
- * - Proposal Coverage Entropy (30%): Shannon entropy across proposal types
+ * Two sub-components:
+ * - Rationale Provision (55%): % of votes with rationale, importance-weighted
+ * - Proposal Coverage Entropy (45%): Shannon entropy across proposal types
+ *
+ * Timeliness removed — voting within the window is sufficient.
  */
 
 import { DECAY_LAMBDA } from './types';
 
-const SUB_WEIGHTS = { rationaleProvision: 0.4, timingDistribution: 0.3, coverageEntropy: 0.3 };
+const SUB_WEIGHTS = { rationaleProvision: 0.55, coverageEntropy: 0.45 };
 const INFO_ACTION = 'InfoAction';
 
 export interface SpoDeliberationVoteData {
@@ -40,13 +40,9 @@ export function computeSpoDeliberationQuality(
     }
 
     const provision = computeRationaleProvision(votes, nowSeconds);
-    const timing = computeTimingDistribution(votes);
     const entropy = computeCoverageEntropy(votes, allProposalTypes);
 
-    const raw =
-      provision * SUB_WEIGHTS.rationaleProvision +
-      timing * SUB_WEIGHTS.timingDistribution +
-      entropy * SUB_WEIGHTS.coverageEntropy;
+    const raw = provision * SUB_WEIGHTS.rationaleProvision + entropy * SUB_WEIGHTS.coverageEntropy;
 
     scores.set(poolId, clamp(Math.round(raw)));
   }
@@ -76,37 +72,6 @@ function computeRationaleProvision(votes: SpoDeliberationVoteData[], nowSeconds:
   }
 
   return totalWeight === 0 ? 0 : (weightedHas / totalWeight) * 100;
-}
-
-/**
- * Vote Timing Distribution (30%): standard deviation of time-to-vote.
- * Penalizes bot-like patterns (near-zero stddev) and extreme variance.
- * Natural human deliberation variance (~3 days stddev) scores highest.
- */
-function computeTimingDistribution(votes: SpoDeliberationVoteData[]): number {
-  const responseDays: number[] = [];
-  for (const v of votes) {
-    if (v.proposalBlockTime > 0 && v.blockTime > v.proposalBlockTime) {
-      responseDays.push((v.blockTime - v.proposalBlockTime) / 86400);
-    }
-  }
-
-  if (responseDays.length < 3) return 50; // insufficient data
-
-  const mean = responseDays.reduce((a, b) => a + b, 0) / responseDays.length;
-  const variance = responseDays.reduce((sum, d) => sum + (d - mean) ** 2, 0) / responseDays.length;
-  const stddev = Math.sqrt(variance);
-
-  // Target stddev: ~3 days of natural variation
-  const TARGET_STDDEV = 3;
-
-  // Score: peaks at target, decays on both sides
-  // Low stddev (bot-like): steep penalty
-  // High stddev (erratic): gradual penalty
-  const riseScore = 1 - Math.exp(-stddev / TARGET_STDDEV);
-  const decayScore = Math.exp(-Math.max(0, stddev - 3 * TARGET_STDDEV) / (2 * TARGET_STDDEV));
-
-  return clamp(Math.round(riseScore * decayScore * 100));
 }
 
 /**

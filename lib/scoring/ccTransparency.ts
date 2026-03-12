@@ -1,89 +1,68 @@
 /**
- * CC Transparency Index — 5-pillar accountability score for Constitutional Committee members.
+ * CC Constitutional Fidelity Score — 3-pillar accountability score for Constitutional Committee members.
  *
- * Aligned with the CC Member persona doc specification:
- *   1. Participation (35%)    — Vote rate on governance actions
- *   2. Rationale Quality (30%) — Provision rate + article coverage + reasoning depth
- *   3. Responsiveness (15%)   — Time from proposal to CC vote
- *   4. Independence (10%)     — Independent judgment vs CC-bloc groupthink
- *   5. Community Engagement (10%) — Citizen endorsements + question responses
+ * Simplified from the 5-pillar Transparency Index to focus on what matters:
+ *   1. Participation (30%)            — Do they vote?
+ *   2. Constitutional Grounding (40%) — Do they cite relevant constitutional articles?
+ *   3. Reasoning Quality (30%)        — How thorough is their reasoning?
  *
- * Design: measures process, not outcomes. A CC member who votes against
- * community sentiment but provides thorough constitutional reasoning scores well.
+ * Removed: Responsiveness (timeliness — voting within the window is sufficient),
+ * Independence (hard to measure fairly), Community Engagement (no data sources yet).
+ *
+ * Philosophy: "Do they vote in line with the constitution? In ambiguous cases,
+ * do they justify their votes enough to back it up?"
  */
 
 import {
   computeRationaleProvision,
   computeAvgArticleCoverage,
   computeAvgReasoningQuality,
-  computeResponsivenessScore,
-  computeIndependenceScore as computeDRepAlignmentIndependence,
 } from '@/lib/cc/fidelityScore';
+import { CC_FIDELITY_WEIGHTS } from './calibration';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface TransparencyPillars {
+export interface ConstitutionalFidelityPillars {
   participation: number; // 0-100
-  rationaleQuality: number; // 0-100
-  responsiveness: number; // 0-100
-  independence: number; // 0-100
-  communityEngagement: number; // 0-100
+  constitutionalGrounding: number; // 0-100
+  reasoningQuality: number; // 0-100
 }
 
-export interface TransparencyResult {
-  index: number; // 0-100 composite
-  pillars: TransparencyPillars;
+export interface ConstitutionalFidelityResult {
+  score: number; // 0-100 composite
+  pillars: ConstitutionalFidelityPillars;
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
 }
-
-// ---------------------------------------------------------------------------
-// Weights — per persona doc spec
-// ---------------------------------------------------------------------------
-
-// Weights — redistributed after removing Community Engagement (Pillar 5).
-// Pillar 5 data sources (questionsAnswered, endorsementCount) don't exist yet,
-// so the pillar was contributing 0 to every member's score, artificially deflating
-// all transparency indices by up to 10 points. Weights below redistribute the
-// original 10% proportionally across the 4 active pillars.
-// When engagement data becomes available, re-enable with its own weight slice.
-const WEIGHTS = {
-  participation: 0.39,
-  rationaleQuality: 0.33,
-  responsiveness: 0.17,
-  independence: 0.11,
-  communityEngagement: 0,
-};
 
 // ---------------------------------------------------------------------------
 // Composite
 // ---------------------------------------------------------------------------
 
-export function computeTransparencyIndex(pillars: TransparencyPillars): TransparencyResult {
-  const index = Math.round(
-    pillars.participation * WEIGHTS.participation +
-      pillars.rationaleQuality * WEIGHTS.rationaleQuality +
-      pillars.responsiveness * WEIGHTS.responsiveness +
-      pillars.independence * WEIGHTS.independence +
-      pillars.communityEngagement * WEIGHTS.communityEngagement,
+export function computeConstitutionalFidelity(
+  pillars: ConstitutionalFidelityPillars,
+): ConstitutionalFidelityResult {
+  const score = Math.round(
+    pillars.participation * CC_FIDELITY_WEIGHTS.participation +
+      pillars.constitutionalGrounding * CC_FIDELITY_WEIGHTS.constitutionalGrounding +
+      pillars.reasoningQuality * CC_FIDELITY_WEIGHTS.reasoningQuality,
   );
 
-  return { index, pillars, grade: indexToGrade(index) };
+  return { score, pillars, grade: scoreToGrade(score) };
 }
 
-function indexToGrade(index: number): TransparencyResult['grade'] {
-  if (index >= 85) return 'A';
-  if (index >= 70) return 'B';
-  if (index >= 55) return 'C';
-  if (index >= 40) return 'D';
+function scoreToGrade(score: number): ConstitutionalFidelityResult['grade'] {
+  if (score >= 85) return 'A';
+  if (score >= 70) return 'B';
+  if (score >= 55) return 'C';
+  if (score >= 40) return 'D';
   return 'F';
 }
 
 // ---------------------------------------------------------------------------
 // Pillar 1: Participation (0-100)
 // What % of eligible governance actions did they vote on?
-// Non-participation is the most basic accountability failure.
 // ---------------------------------------------------------------------------
 
 export function computeParticipationScore(votesCast: number, eligibleProposals: number): number {
@@ -92,97 +71,48 @@ export function computeParticipationScore(votesCast: number, eligibleProposals: 
 }
 
 // ---------------------------------------------------------------------------
-// Pillar 2: Rationale Quality (0-100)
-// Composite of: provision rate, article coverage, reasoning depth.
-// Uses existing fidelity sub-components.
+// Pillar 2: Constitutional Grounding (0-100)
+// How well do they cite relevant constitutional articles?
+// Combines rationale provision rate with article coverage.
 // ---------------------------------------------------------------------------
 
-export function computeRationaleQualityScore(
+export function computeConstitutionalGroundingScore(
+  totalVotes: number,
+  votesWithRationale: number,
+  votesWithArticleData: Array<{ proposalType: string; citedArticles: string[] }>,
+): number {
+  // Provision rate gates the score — no rationale means no grounding possible
+  const provision = computeRationaleProvision(totalVotes, votesWithRationale); // 0-100
+  const coverage = computeAvgArticleCoverage(votesWithArticleData); // 0-100
+
+  // Weight: provision 35% (did they even provide rationale?), coverage 65% (did they cite correctly?)
+  return Math.round(provision * 0.35 + coverage * 0.65);
+}
+
+// ---------------------------------------------------------------------------
+// Pillar 3: Reasoning Quality (0-100)
+// AI-assessed depth of constitutional reasoning.
+// Falls back to a blend of provision + coverage when no AI scores available.
+// ---------------------------------------------------------------------------
+
+export function computeReasoningQualityScore(
   totalVotes: number,
   votesWithRationale: number,
   votesWithArticleData: Array<{ proposalType: string; citedArticles: string[] }>,
   reasoningScores: number[],
 ): number {
-  // Sub-scores with internal weights
-  const provision = computeRationaleProvision(totalVotes, votesWithRationale); // 0-100
-  const coverage = computeAvgArticleCoverage(votesWithArticleData); // 0-100
-  const reasoning =
-    reasoningScores.length > 0
-      ? computeAvgReasoningQuality(reasoningScores)
-      : votesWithRationale > 0
-        ? Math.round(coverage * 0.7 + provision * 0.3)
-        : 0;
-
-  // Weight: provision 30%, coverage 35%, reasoning 35%
-  return Math.round(provision * 0.3 + coverage * 0.35 + reasoning * 0.35);
-}
-
-// ---------------------------------------------------------------------------
-// Pillar 3: Responsiveness (0-100)
-// Uses computeResponsivenessScore from fidelityScore.ts.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Pillar 4: Independence (0-100)
-// Measures independent judgment vs CC-bloc groupthink.
-// Two sub-components:
-//   - CC-bloc independence (60%): How often do they diverge from unanimous CC votes?
-//     Some disagreement is healthy; perfect unanimity suggests groupthink.
-//   - DRep alignment independence (40%): Bell curve peaking at moderate alignment.
-// ---------------------------------------------------------------------------
-
-/**
- * CC-bloc independence: measures how often a member diverges from the CC majority.
- * Perfect unanimity on every vote = low score. Moderate independent votes = high score.
- * @param totalCcVotes Total proposals where the CC voted
- * @param memberDissentCount Proposals where this member voted differently from CC majority
- */
-export function computeBlocIndependenceScore(
-  totalCcVotes: number,
-  memberDissentCount: number,
-): number {
-  if (totalCcVotes === 0) return 50; // neutral default
-  const dissentRate = (memberDissentCount / totalCcVotes) * 100;
-
-  // Ideal dissent range: 5-25% (healthy independent judgment)
-  if (dissentRate >= 5 && dissentRate <= 25) return 100;
-  if (dissentRate < 5) {
-    // Too little dissent — groupthink signal
-    return Math.round(50 + dissentRate * 10); // 0%->50, 5%->100
+  if (reasoningScores.length > 0) {
+    return computeAvgReasoningQuality(reasoningScores);
   }
-  // More than 25% dissent — still scores well but tapers
-  return Math.max(40, Math.round(100 - (dissentRate - 25) * 2));
-}
 
-/**
- * Combined independence score.
- */
-export function computeIndependenceScoreCombined(
-  totalCcVotes: number,
-  memberDissentCount: number,
-  drepAlignmentPct: number,
-): number {
-  const bloc = computeBlocIndependenceScore(totalCcVotes, memberDissentCount);
-  const drepIndep = computeDRepAlignmentIndependence(drepAlignmentPct);
-  return Math.round(bloc * 0.6 + drepIndep * 0.4);
-}
+  // Fallback when AI scores aren't available yet
+  if (votesWithRationale > 0) {
+    const provision = computeRationaleProvision(totalVotes, votesWithRationale);
+    const coverage = computeAvgArticleCoverage(votesWithArticleData);
+    return Math.round(coverage * 0.7 + provision * 0.3);
+  }
 
-// ---------------------------------------------------------------------------
-// Pillar 5: Community Engagement (0-100)
-// Citizen questions answered, endorsement count, explanations beyond rationales.
-// When engagement data doesn't exist yet, returns 0.
-// ---------------------------------------------------------------------------
-
-export function computeCommunityEngagementScore(
-  questionsAnswered: number,
-  endorsementCount: number,
-): number {
-  // Score based on available engagement signals
-  // Each question answered = 15 points (max 60)
-  const questionScore = Math.min(60, questionsAnswered * 15);
-  // Each endorsement = 5 points (max 40)
-  const endorsementScore = Math.min(40, endorsementCount * 5);
-  return Math.min(100, questionScore + endorsementScore);
+  return 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -202,25 +132,23 @@ export interface CCMemberScoringInput {
   votes: CCMemberVoteData[];
   proposalMap: Map<string, { type: string; blockTime: number }>;
   rationaleMap: Map<string, { citedArticles: string[]; reasoningScore: number | null }>;
-  drepMajorityMap: Map<string, string>;
-  ccMajorityMap: Map<string, string>;
   totalEligibleProposals: number;
-  questionsAnswered: number;
-  endorsementCount: number;
 }
 
-export function computeFullTransparencyIndex(input: CCMemberScoringInput): TransparencyResult & {
+export function computeFullConstitutionalFidelity(
+  input: CCMemberScoringInput,
+): ConstitutionalFidelityResult & {
   votesCast: number;
   eligibleProposals: number;
 } {
-  const { votes, proposalMap, rationaleMap, drepMajorityMap, ccMajorityMap } = input;
+  const { votes, rationaleMap } = input;
   const totalVotes = votes.length;
   const votesWithRationale = votes.filter((v) => v.hasRationale).length;
 
   // Pillar 1: Participation
   const participation = computeParticipationScore(totalVotes, input.totalEligibleProposals);
 
-  // Pillar 2: Rationale Quality
+  // Build article data for Pillars 2 & 3
   const votesWithArticleData: Array<{ proposalType: string; citedArticles: string[] }> = [];
   const qualityScores: number[] = [];
   for (const v of votes) {
@@ -228,7 +156,7 @@ export function computeFullTransparencyIndex(input: CCMemberScoringInput): Trans
     const rationale = rationaleMap.get(rKey);
     if (rationale) {
       const pKey = `${v.proposalTxHash}:${v.proposalIndex}`;
-      const proposal = proposalMap.get(pKey);
+      const proposal = input.proposalMap.get(pKey);
       votesWithArticleData.push({
         proposalType: proposal?.type ?? 'InfoAction',
         citedArticles: rationale.citedArticles,
@@ -238,73 +166,26 @@ export function computeFullTransparencyIndex(input: CCMemberScoringInput): Trans
       }
     }
   }
-  const rationaleQuality = computeRationaleQualityScore(
+
+  // Pillar 2: Constitutional Grounding
+  const constitutionalGrounding = computeConstitutionalGroundingScore(
+    totalVotes,
+    votesWithRationale,
+    votesWithArticleData,
+  );
+
+  // Pillar 3: Reasoning Quality
+  const reasoningQuality = computeReasoningQualityScore(
     totalVotes,
     votesWithRationale,
     votesWithArticleData,
     qualityScores,
   );
 
-  // Pillar 3: Responsiveness
-  let totalDaysToVote = 0;
-  let responsiveVotes = 0;
-  for (const v of votes) {
-    const pKey = `${v.proposalTxHash}:${v.proposalIndex}`;
-    const proposal = proposalMap.get(pKey);
-    if (proposal) {
-      const daysToVote = (v.blockTime - proposal.blockTime) / 86400;
-      if (daysToVote >= 0) {
-        totalDaysToVote += daysToVote;
-        responsiveVotes++;
-      }
-    }
-  }
-  const avgDaysToVote = responsiveVotes > 0 ? totalDaysToVote / responsiveVotes : 10;
-  const responsiveness = computeResponsivenessScore(avgDaysToVote);
-
-  // Pillar 4: Independence
-  let drepAgreements = 0;
-  let drepComparisons = 0;
-  let memberDissentCount = 0;
-  let ccComparisons = 0;
-
-  for (const v of votes) {
-    const pKey = `${v.proposalTxHash}:${v.proposalIndex}`;
-
-    // DRep alignment
-    const drepMajority = drepMajorityMap.get(pKey);
-    if (drepMajority && drepMajority !== 'Abstain') {
-      drepComparisons++;
-      if (v.vote === drepMajority) drepAgreements++;
-    }
-
-    // CC-bloc dissent
-    const ccMajority = ccMajorityMap.get(pKey);
-    if (ccMajority) {
-      ccComparisons++;
-      if (v.vote !== ccMajority) memberDissentCount++;
-    }
-  }
-
-  const drepAlignmentPct = drepComparisons > 0 ? (drepAgreements / drepComparisons) * 100 : 50;
-  const independence = computeIndependenceScoreCombined(
-    ccComparisons,
-    memberDissentCount,
-    drepAlignmentPct,
-  );
-
-  // Pillar 5: Community Engagement
-  const communityEngagement = computeCommunityEngagementScore(
-    input.questionsAnswered,
-    input.endorsementCount,
-  );
-
-  const result = computeTransparencyIndex({
+  const result = computeConstitutionalFidelity({
     participation,
-    rationaleQuality,
-    responsiveness,
-    independence,
-    communityEngagement,
+    constitutionalGrounding,
+    reasoningQuality,
   });
 
   return {

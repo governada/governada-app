@@ -20,10 +20,10 @@ describe('computeGovernanceIdentity', () => {
 
   it('scores low for a DRep with null metadata and 0 delegators', () => {
     const profiles = new Map([['drep_empty', makeEmptyProfile('drep_empty')]]);
-    const scores = computeGovernanceIdentity(profiles, [0]);
-    // Profile quality = 0 (null metadata), community presence = 50 (single entry default)
-    // Total = 0 * 0.6 + 50 * 0.4 = 20
-    expect(scores.get('drep_empty')).toBe(20);
+    const scores = computeGovernanceIdentity(profiles);
+    // Profile quality = 0 (null metadata), community presence = 0 (0 delegators → tier 0)
+    // Total = 0 * 0.6 + 0 * 0.4 = 0
+    expect(scores.get('drep_empty')).toBe(0);
   });
 
   // ── Fully complete profile ──
@@ -35,10 +35,7 @@ describe('computeGovernanceIdentity', () => {
       metadataHashVerified: true,
     });
 
-    const scores = computeGovernanceIdentity(
-      new Map([['drep_full', profile]]),
-      [1, 5, 10, 50, 100, 200],
-    );
+    const scores = computeGovernanceIdentity(new Map([['drep_full', profile]]));
     // Complete profile + top delegator count → high score
     expect(scores.get('drep_full')!).toBeGreaterThan(70);
   });
@@ -62,7 +59,6 @@ describe('computeGovernanceIdentity', () => {
         ['a', withName],
         ['b', noName],
       ]),
-      [0, 0],
     );
     expect(scores.get('a')!).toBeGreaterThan(scores.get('b')!);
   });
@@ -90,7 +86,6 @@ describe('computeGovernanceIdentity', () => {
         ['medium', medium],
         ['short', short],
       ]),
-      [0, 0, 0],
     );
     expect(scores.get('long')!).toBeGreaterThan(scores.get('medium')!);
     expect(scores.get('medium')!).toBeGreaterThan(scores.get('short')!);
@@ -128,7 +123,6 @@ describe('computeGovernanceIdentity', () => {
         ['one', oneLink],
         ['none', noLinks],
       ]),
-      [0, 0, 0],
     );
     expect(scores.get('two')!).toBeGreaterThan(scores.get('one')!);
     expect(scores.get('one')!).toBeGreaterThan(scores.get('none')!);
@@ -146,7 +140,7 @@ describe('computeGovernanceIdentity', () => {
       delegatorCount: 0,
     });
 
-    const scores = computeGovernanceIdentity(new Map([['dupes', dupes]]), [0]);
+    const scores = computeGovernanceIdentity(new Map([['dupes', dupes]]));
     // Only 1 unique link → 25 points for social (not 30)
     // Just verify it's less than a profile with 2 unique links
     const twoUnique = makeProfile({
@@ -165,7 +159,6 @@ describe('computeGovernanceIdentity', () => {
         ['dupes', dupes],
         ['unique2', twoUnique],
       ]),
-      [0, 0],
     );
     expect(scores2.get('unique2')!).toBeGreaterThan(scores2.get('dupes')!);
   });
@@ -183,7 +176,7 @@ describe('computeGovernanceIdentity', () => {
       brokenUris: new Set(['https://twitter.com/drep']),
     });
 
-    const scores = computeGovernanceIdentity(new Map([['broken', brokenProfile]]), [0]);
+    const scores = computeGovernanceIdentity(new Map([['broken', brokenProfile]]));
     // Only 1 valid link (github, twitter is broken) → 25 pts not 30
     expect(scores.get('broken')!).toBeGreaterThan(0);
   });
@@ -209,7 +202,6 @@ describe('computeGovernanceIdentity', () => {
         ['verified', verified],
         ['unverified', unverified],
       ]),
-      [0, 0],
     );
     // Profile quality diff should be exactly 5 (hash bonus)
     // Community presence is same (both 0 delegators)
@@ -219,7 +211,7 @@ describe('computeGovernanceIdentity', () => {
     expect(diff).toBeLessThanOrEqual(4);
   });
 
-  // ── Community presence (delegator percentile) ──
+  // ── Community presence (absolute delegator tiers) ──
 
   it('scores higher for top delegator count', () => {
     const top = makeProfile({ drepId: 'top', metadata: { givenName: 'Top' }, delegatorCount: 500 });
@@ -229,28 +221,26 @@ describe('computeGovernanceIdentity', () => {
       delegatorCount: 1,
     });
 
-    const allCounts = [1, 5, 10, 50, 100, 500];
     const scores = computeGovernanceIdentity(
       new Map([
         ['top', top],
         ['bottom', bottom],
       ]),
-      allCounts,
     );
     expect(scores.get('top')!).toBeGreaterThan(scores.get('bottom')!);
   });
 
-  it('returns 50 percentile when only one delegator count exists', () => {
+  it('uses absolute delegator tiers for community presence', () => {
     const profile = makeProfile({
       drepId: 'solo',
       metadata: { givenName: 'Solo' },
       delegatorCount: 100,
     });
 
-    const scores = computeGovernanceIdentity(new Map([['solo', profile]]), [100]);
-    // Community presence = 50 (single entry), Profile = name(15) × 0.6 = 9
-    // Total ≈ 9 + 50*0.4 = 29
-    expect(scores.get('solo')!).toBeGreaterThan(20);
+    const scores = computeGovernanceIdentity(new Map([['solo', profile]]));
+    // Community presence = 95 (100 delegators → tier 95), Profile = name(15) × 0.6 = 9
+    // Total ≈ 9 + 95*0.4 = 47
+    expect(scores.get('solo')!).toBeGreaterThan(40);
   });
 
   // ── @value wrapper handling ──
@@ -265,7 +255,7 @@ describe('computeGovernanceIdentity', () => {
       delegatorCount: 0,
     });
 
-    const scores = computeGovernanceIdentity(new Map([['cip119', profile]]), [0]);
+    const scores = computeGovernanceIdentity(new Map([['cip119', profile]]));
     // Should extract string from @value wrapper
     expect(scores.get('cip119')!).toBeGreaterThan(0);
   });
@@ -291,7 +281,7 @@ describe('computeGovernanceIdentity', () => {
       delegatorCount: 1000,
     });
 
-    const scores = computeGovernanceIdentity(new Map([['max', maxProfile]]), [0, 100, 500, 1000]);
+    const scores = computeGovernanceIdentity(new Map([['max', maxProfile]]));
     expect(scores.get('max')!).toBeLessThanOrEqual(100);
     expect(scores.get('max')!).toBeGreaterThanOrEqual(0);
   });

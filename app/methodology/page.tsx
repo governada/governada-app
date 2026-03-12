@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { TIERS } from '@/lib/scoring/tiers';
 import { PILLAR_WEIGHTS, DECAY_HALF_LIFE_DAYS } from '@/lib/scoring/types';
 import { SPO_PILLAR_WEIGHTS } from '@/lib/scoring/spoScore';
+import { CC_FIDELITY_WEIGHTS, GHI_COMPONENT_WEIGHTS } from '@/lib/scoring/calibration';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -58,12 +59,11 @@ const DREP_PILLARS = [
     weight: PILLAR_WEIGHTS.reliability,
     color: 'bg-amber-500',
     description:
-      'Tracks consistency and dependability of governance engagement across five sub-components, only counting epochs where proposals existed.',
+      'Tracks consistency and dependability of governance engagement across four sub-components, only counting epochs where proposals existed. Voting within the governance window is sufficient — speed of response is not measured.',
     layers: [
-      'Active Streak (30%) — consecutive proposal-active epochs with votes',
-      'Recency (25%) — exponential decay since last vote',
-      'Gap Penalty (20%) — penalizes longest inactivity stretch',
-      'Responsiveness (15%) — median days from proposal submission to vote',
+      'Active Streak (35%) — consecutive proposal-active epochs with votes',
+      'Recency (30%) — exponential decay since last vote',
+      'Gap Penalty (25%) — penalizes longest inactivity stretch',
       'Tenure (10%) — time since first vote, logarithmic curve',
     ],
   },
@@ -75,7 +75,7 @@ const DREP_PILLARS = [
       "Rewards DReps who provide meaningful identity and intent information. Quality-tiered field scoring (not binary has/hasn't) across CIP-119 metadata fields, plus community trust signals.",
     layers: [
       'Profile Quality (60%) — name, objectives, motivations, qualifications, bio, social links, hash verification',
-      'Community Presence (40%) — delegator count percentile (count-based, not ADA-based)',
+      'Community Presence (40%) — absolute delegator tiers (250+=100, 100+=95, 50+=80, 15+=60, 5+=40, 1+=20)',
     ],
   },
 ];
@@ -98,7 +98,7 @@ const SPO_PILLARS = [
     weight: SPO_PILLAR_WEIGHTS.deliberation,
     color: 'bg-emerald-500',
     description:
-      'Replaces the V2 consistency metric with a multi-signal measure of deliberation depth, including bot-detection via vote timing analysis.',
+      'Multi-signal measure of deliberation depth, including bot-detection via vote timing analysis.',
     layers: [
       'Rationale Provision (40%) — importance-weighted % with rationale',
       'Vote Timing Distribution (30%) — stddev of time-to-vote (natural variation scores highest)',
@@ -135,71 +135,71 @@ const SPO_PILLARS = [
 const CC_PILLARS = [
   {
     name: 'Participation',
-    weight: 35,
+    weight: Math.round(CC_FIDELITY_WEIGHTS.participation * 100),
     description:
-      'Vote rate on governance actions. Non-participation is the most basic accountability failure.',
+      'Vote rate on governance actions. Non-participation is the most basic accountability failure for constitutional guardians.',
   },
   {
-    name: 'Rationale Quality',
-    weight: 30,
+    name: 'Constitutional Grounding',
+    weight: Math.round(CC_FIDELITY_WEIGHTS.constitutionalGrounding * 100),
     description:
-      'Composite of rationale provision rate (30%), constitutional article coverage (35%), and reasoning depth (35%). Rewards thorough constitutional reasoning.',
+      'Do they cite relevant constitutional articles when voting? Measures how well CC members ground their decisions in the constitution they are sworn to uphold.',
   },
   {
-    name: 'Responsiveness',
-    weight: 15,
+    name: 'Reasoning Quality',
+    weight: Math.round(CC_FIDELITY_WEIGHTS.reasoningQuality * 100),
     description:
-      'Average time from proposal submission to CC vote. Faster deliberation scores higher via exponential decay.',
-  },
-  {
-    name: 'Independence',
-    weight: 10,
-    description:
-      'CC-bloc independence (60%) measures dissent from CC majority (5-25% dissent = ideal). DRep alignment independence (40%) peaks at moderate alignment.',
-  },
-  {
-    name: 'Community Engagement',
-    weight: 10,
-    description:
-      'Citizen question responses and endorsement count. Rewards CC members who engage beyond their constitutional duties.',
+      'How thorough is their reasoning? AI-assessed depth and clarity of rationale provided with each vote. In ambiguous cases, strong reasoning matters most.',
   },
 ];
 
 const GHI_COMPONENTS = [
   {
     name: 'DRep Participation',
-    weight: 20,
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['DRep Participation'] * 100),
     category: 'Engagement',
     description: 'Median effective participation score across all active DReps.',
   },
   {
+    name: 'SPO Participation',
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['SPO Participation'] * 100),
+    category: 'Engagement',
+    description: 'SPO governance vote coverage weighted by importance and temporal decay.',
+  },
+  {
     name: 'Citizen Engagement',
-    weight: 15,
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['Citizen Engagement'] * 100),
     category: 'Engagement',
     description: 'Delegation rate (62.5%) and delegation dynamism/churn (37.5%).',
   },
   {
     name: 'Deliberation Quality',
-    weight: 20,
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['Deliberation Quality'] * 100),
     category: 'Quality',
     description: 'Rationale quality (50%), debate diversity (30%), and voting independence (20%).',
   },
   {
     name: 'Governance Effectiveness',
-    weight: 20,
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['Governance Effectiveness'] * 100),
     category: 'Quality',
     description: 'Proposal resolution rate (40%), decision velocity (30%), and throughput (30%).',
   },
   {
+    name: 'CC Constitutional Fidelity',
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['CC Constitutional Fidelity'] * 100),
+    category: 'Quality',
+    description: 'Aggregate CC participation, constitutional grounding, and reasoning quality.',
+  },
+  {
     name: 'Power Distribution',
-    weight: 15,
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['Power Distribution'] * 100),
     category: 'Resilience',
     description:
-      'Edinburgh Decentralization Index composite (Nakamoto, Gini, Shannon entropy, HHI, Theil, concentration, tau) plus new DRep onboarding rate.',
+      'Edinburgh Decentralization Index composite (Nakamoto, Gini, Shannon entropy, HHI, Theil, concentration, tau) plus DRep onboarding rate.',
   },
   {
     name: 'System Stability',
-    weight: 10,
+    weight: Math.round(GHI_COMPONENT_WEIGHTS['System Stability'] * 100),
     category: 'Resilience',
     description: 'DRep retention (50%), score volatility (30%), and infrastructure health (20%).',
   },
@@ -285,7 +285,7 @@ function TableOfContents() {
     { id: 'drep-scoring', label: 'DRep Scoring' },
     { id: 'tiers', label: 'Tier System' },
     { id: 'spo-scoring', label: 'SPO Governance Scoring' },
-    { id: 'cc-transparency', label: 'CC Transparency Index' },
+    { id: 'cc-transparency', label: 'CC Constitutional Fidelity' },
     { id: 'alignment', label: 'Alignment Dimensions' },
     { id: 'ghi', label: 'Governance Health Index' },
     { id: 'data-sources', label: 'Data Sources' },
@@ -325,8 +325,8 @@ export default function MethodologyPage() {
           <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
             Governada measures governance quality for DReps, Stake Pool Operators, and
             Constitutional Committee members on the Cardano network. Every score is computed from
-            on-chain data, percentile-normalized across all active entities, and decayed over time
-            to reflect current behavior. Scores measure process and engagement, not political
+            on-chain data, calibrated through absolute scoring curves, and decayed over time to
+            reflect current behavior. Scores measure process and engagement, not political
             positions.
           </p>
           <TableOfContents />
@@ -338,11 +338,11 @@ export default function MethodologyPage() {
           <h2 className="text-xl font-bold">Scoring Philosophy</h2>
           <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
             <p>
-              <strong className="text-foreground">Percentile normalization.</strong> Raw pillar
-              scores are converted to percentiles across all entities. This prevents gaming through
-              volume and ensures scores reflect relative standing, not just raw metrics.
-              Confidence-weighted normalization dampens low-data entities toward the median,
-              preventing new DReps from inflating rankings.
+              <strong className="text-foreground">Absolute calibration.</strong> Raw pillar scores
+              are mapped through piecewise linear calibration curves to produce a 0-95 score. Your
+              actions determine your score — independent of how other participants perform. This
+              means every DRep and SPO has clear, actionable steps to improve, and if everyone
+              improves, all scores go up. No zero-sum competition.
             </p>
             <p>
               <strong className="text-foreground">Temporal decay.</strong> Older governance activity
@@ -373,11 +373,11 @@ export default function MethodologyPage() {
         {/* DRep Scoring */}
         <section className="space-y-6">
           <SectionAnchor id="drep-scoring" />
-          <h2 className="text-xl font-bold">DRep Score V3</h2>
+          <h2 className="text-xl font-bold">DRep Score</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Every DRep receives a composite score from 0 to 100, computed from four weighted
-            pillars. Each pillar is percentile-normalized across all active DReps, ensuring the
-            score reflects relative standing. The composite formula:
+            pillars. Each pillar is calibrated through absolute scoring curves, meaning your actions
+            directly determine your score. The composite formula:
           </p>
           <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
             <code className="block text-xs text-muted-foreground font-mono">
@@ -457,11 +457,11 @@ export default function MethodologyPage() {
         {/* SPO Governance Scoring */}
         <section className="space-y-6">
           <SectionAnchor id="spo-scoring" />
-          <h2 className="text-xl font-bold">SPO Governance Score V3</h2>
+          <h2 className="text-xl font-bold">SPO Governance Score</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Stake Pool Operators are scored on their governance participation using the same tier
-            system as DReps. The four pillars are tailored to SPO governance behavior, with
-            confidence-weighted percentile normalization and a 30-day momentum window.
+            system as DReps. The four pillars are tailored to SPO governance behavior, with absolute
+            calibration curves and a 30-day momentum window.
           </p>
           <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
             <code className="block text-xs text-muted-foreground font-mono">
@@ -510,12 +510,13 @@ export default function MethodologyPage() {
         {/* CC Transparency Index */}
         <section className="space-y-6">
           <SectionAnchor id="cc-transparency" />
-          <h2 className="text-xl font-bold">CC Transparency Index</h2>
+          <h2 className="text-xl font-bold">CC Constitutional Fidelity Score</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Constitutional Committee members receive a Transparency Index from 0 to 100, measuring
-            process and accountability rather than political outcomes. A CC member who votes against
-            community sentiment but provides thorough constitutional reasoning scores well. The
-            index maps to letter grades: A (85+), B (70-84), C (55-69), D (40-54), F (&lt;40).
+            Constitutional Committee members receive a Constitutional Fidelity Score from 0 to 100,
+            measuring how faithfully they uphold their constitutional mandate. A CC member who votes
+            against community sentiment but provides thorough constitutional reasoning scores well.
+            The philosophy: do they vote in line with the constitution? In ambiguous cases, do they
+            justify their votes enough to back it up?
           </p>
 
           <div className="space-y-2">
@@ -577,9 +578,11 @@ export default function MethodologyPage() {
           <h2 className="text-xl font-bold">Governance Health Index (GHI)</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             The GHI measures the health of Cardano governance as a whole, not individual entities.
-            It combines six components across three categories into a single 0-100 score, tracked
+            It combines eight components across three categories into a single 0-100 score, tracked
             epoch-by-epoch. Raw metrics are calibrated through piecewise linear curves before
-            weighting.
+            weighting. Because individual scores use absolute calibration, when DReps, SPOs, and CC
+            members collectively improve their governance behavior, the GHI rises — making Governada
+            a tool that measurably improves Cardano governance quality.
           </p>
 
           {(['Engagement', 'Quality', 'Resilience'] as const).map((category) => {
@@ -587,7 +590,7 @@ export default function MethodologyPage() {
               Engagement: '35%',
               Quality: '40%',
               Resilience: '25%',
-            };
+            }; // DRep 15% + SPO 10% + Citizen 10% = 35%, Deliberation 15% + Effectiveness 15% + CC 10% = 40%, Power 15% + Stability 10% = 25%
             return (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -659,7 +662,7 @@ export default function MethodologyPage() {
                 </li>
                 <li className="pl-3 border-l-2 border-border">
                   <strong>Score recomputation</strong> — triggered after each sync cycle with
-                  percentile normalization across the full entity set
+                  absolute calibration across all entity scores
                 </li>
                 <li className="pl-3 border-l-2 border-border">
                   <strong>Rationale quality scoring</strong> — AI assessment of on-chain rationale
@@ -701,8 +704,8 @@ export default function MethodologyPage() {
             <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
               <p className="text-xs font-semibold text-foreground">Academic citation</p>
               <code className="block text-[11px] text-muted-foreground font-mono bg-muted p-2 rounded whitespace-pre-wrap">
-                Governada. (2026). Scoring Methodology: DRep Score V3, SPO Governance Score V3, CC
-                Transparency Index, Governance Health Index. Retrieved from
+                Governada. (2026). Scoring Methodology: DRep Score, SPO Governance Score, CC
+                Constitutional Fidelity Score, Governance Health Index. Retrieved from
                 https://governada.io/methodology
               </code>
             </div>
@@ -725,7 +728,7 @@ export default function MethodologyPage() {
           <p className="text-xs text-muted-foreground">
             Questions or feedback?{' '}
             <a
-              href="https://github.com/drepscore"
+              href="https://github.com/governada"
               className="text-primary hover:underline"
               target="_blank"
               rel="noopener noreferrer"

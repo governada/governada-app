@@ -192,6 +192,13 @@ export function TrajectoryCard({
         </div>
       )}
 
+      {/* Governance impact */}
+      {hasScoreData && (
+        <p className="text-[10px] text-primary/70">
+          Score improvements directly raise Cardano&rsquo;s Governance Health Index.
+        </p>
+      )}
+
       {/* Delegation momentum */}
       {hasDelegationData && (
         <div className="space-y-1.5">

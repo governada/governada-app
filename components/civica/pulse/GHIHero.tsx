@@ -266,6 +266,9 @@ export function GHIHero() {
         {streakLabel && <p className="text-xs text-muted-foreground">{streakLabel}</p>}
         <p className="text-sm text-muted-foreground">{verdict}</p>
         {personaAddendum && <p className="text-xs text-primary/80 mt-1">{personaAddendum}</p>}
+        <p className="text-[10px] text-muted-foreground/70 mt-1">
+          Absolute scoring — when participants improve, this number rises.
+        </p>
       </div>
 
       {/* Pulse animation keyframes */}

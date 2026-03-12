@@ -1,13 +1,14 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Lightbulb, Zap, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Lightbulb, Zap, TrendingUp, ShieldCheck, Users } from 'lucide-react';
 import { fadeInUp } from '@/lib/animations';
 import type { CCHealthSummaryResponse, CommitteeMemberQuickView } from '@/hooks/queries';
 
 interface CCInsightCardProps {
   health: CCHealthSummaryResponse;
   members: CommitteeMemberQuickView[];
+  segment?: string;
 }
 
 interface Insight {
@@ -20,8 +21,40 @@ interface Insight {
 function selectInsight(
   health: CCHealthSummaryResponse,
   members: CommitteeMemberQuickView[],
+  segment?: string,
 ): Insight {
-  // Priority 1: Alignment tensions
+  // Persona-aware: DRep sees CC-DRep tension elevated
+  if (segment === 'drep' && health.tensionCount > 0) {
+    return {
+      icon: Zap,
+      title: 'CC–DRep Alignment',
+      body: `The committee diverged from DRep majority on ${health.tensionCount} proposal${health.tensionCount > 1 ? 's' : ''}. Review member profiles to see where your votes differed from the CC.`,
+      accent: 'text-amber-500',
+    };
+  }
+
+  // Persona-aware: SPO sees CC-SPO alignment
+  if (segment === 'spo') {
+    return {
+      icon: Users,
+      title: 'CC–SPO Alignment',
+      body: "See how each committee member's constitutional votes align with SPO consensus on their individual profiles.",
+      accent: 'text-violet-500',
+    };
+  }
+
+  // Persona-aware: CC member sees standing
+  if (segment === 'cc') {
+    const scored = members.filter((m) => m.transparencyIndex != null);
+    return {
+      icon: ShieldCheck,
+      title: 'Your Committee Standing',
+      body: `${scored.length} member${scored.length !== 1 ? 's' : ''} scored on the Transparency Index. Check your profile to see your rank and pillar breakdown.`,
+      accent: 'text-emerald-500',
+    };
+  }
+
+  // Priority 1: Alignment tensions (citizen/anonymous default)
   if (health.tensionCount > 0) {
     return {
       icon: Zap,
@@ -78,8 +111,8 @@ function selectInsight(
   };
 }
 
-export function CCInsightCard({ health, members }: CCInsightCardProps) {
-  const insight = selectInsight(health, members);
+export function CCInsightCard({ health, members, segment }: CCInsightCardProps) {
+  const insight = selectInsight(health, members, segment);
   const Icon = insight.icon;
 
   return (

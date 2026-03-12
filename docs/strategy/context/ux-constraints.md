@@ -65,6 +65,29 @@ World-class products (Linear, Stripe, Robinhood, Apple Health) share one trait: 
 | **Supporting elements** | Pending governance actions (if any), pool governance activity summary                             |
 | **NOT on this page**    | Detailed analytics, delegator deep dives, competitive comparisons — those are workspace features. |
 
+### `/governance/committee` — CC Accountability
+
+| Attribute               | Constraint                                                              |
+| ----------------------- | ----------------------------------------------------------------------- |
+| **Core JTBD**           | Judge if my constitutional guardians are trustworthy                    |
+| **5-second answer**     | "The CC is [healthy/needs attention] — here's the story"                |
+| **Dominant element**    | CC Health Verdict — interpreted status with trend                       |
+| **Supporting elements** | Key insight card (persona-adapted), member accountability rankings      |
+| **NOT on this page**    | Raw stat cards, full methodology, unbounded tables, individual profiles |
+| **Persona adaptation**  | DRep: CC-DRep tension elevated. SPO: CC-SPO alignment. CC: your rank    |
+| **Benchmark**           | Apple Health cardio fitness: one number, one trend, one insight         |
+
+### `/governance/committee/[id]` — CC Member Profile
+
+| Attribute               | Constraint                                                             |
+| ----------------------- | ---------------------------------------------------------------------- |
+| **Core JTBD**           | Evaluate this CC member's accountability                               |
+| **5-second answer**     | "This member is [above/below average] because [reason]"                |
+| **Dominant element**    | Verdict hero — name, score, grade, one-line narrative                  |
+| **Supporting elements** | 3 key stats (participation, rationale quality, independence)           |
+| **NOT in the hero**     | Full pillar breakdown, voting record, alignment data (tabs below fold) |
+| **Benchmark**           | LinkedIn profile: name, headline, key stats above fold. Details scroll |
+
 ### `/discover`
 
 | Attribute               | Constraint                                                                                                                                                             |
@@ -141,6 +164,19 @@ World-class products (Linear, Stripe, Robinhood, Apple Health) share one trait: 
 | **Dominant element**    | Proposal summary: title, plain-English description, amount, deadline                                                                      |
 | **Supporting elements** | Vote status (% yes/no/abstain), citizen sentiment, your DRep's vote (if applicable)                                                       |
 | **NOT above the fold**  | Full voter lists, detailed treasury analysis, constitutional alignment deep dive, similar proposals comparison. Those are depth sections. |
+
+### `/governance/treasury`
+
+| Attribute                  | Constraint                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Core JTBD**              | See where treasury money goes and whether it works                                                               |
+| **5-second answer**        | "Budget [X]% used. [Y]% of spending delivered. [N] proposals pending."                                           |
+| **Dominant element**       | Narrative hero — one glanceable paragraph synthesizing balance, NCL utilization, effectiveness, pending activity |
+| **Supporting elements**    | NCL budget bar (enacted/pending/remaining segments), epoch flow, pending proposals                               |
+| **NOT on this page**       | Raw simulator controls above the fold, standalone health bar, four competing section headers                     |
+| **Progressive disclosure** | Accountability behind accordion. Simulator behind accordion. Health score components behind tooltip.             |
+| **Persona adaptation**     | Citizens: narrative + proportional share. DReps: vote queue + track record + NCL impact per vote.                |
+| **Benchmark**              | USAspending.gov summary: headline, budget context, drill-down. Government budget thermometers.                   |
 
 ### `/methodology`
 

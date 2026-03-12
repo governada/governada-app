@@ -262,11 +262,13 @@ function PillarBar({
   label,
   weight,
   score,
+  delay = 0,
 }: {
   icon: React.ReactNode;
   label: string;
   weight: string;
   score: number | null;
+  delay?: number;
 }) {
   const displayScore = score != null ? Math.round(score) : null;
   return (
@@ -279,9 +281,11 @@ function PillarBar({
         <span className="text-[10px] text-muted-foreground">{weight}</span>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', pillarBarColor(score))}
-          style={{ width: `${displayScore ?? 0}%` }}
+        <motion.div
+          className={cn('h-full rounded-full', pillarBarColor(score))}
+          initial={{ width: 0 }}
+          animate={{ width: `${displayScore ?? 0}%` }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1], delay: 0.3 + delay }}
         />
       </div>
       <p className="text-xs tabular-nums text-right text-muted-foreground">
@@ -311,24 +315,28 @@ function OverviewTab({ data }: { data: ProfileData }) {
               label="Participation"
               weight="39%"
               score={data.pillarScores.participation}
+              delay={0}
             />
             <PillarBar
               icon={<BookOpen className="h-3.5 w-3.5" />}
               label="Rationale Quality"
               weight="33%"
               score={data.pillarScores.rationaleQuality}
+              delay={0.1}
             />
             <PillarBar
               icon={<Clock className="h-3.5 w-3.5" />}
               label="Responsiveness"
               weight="17%"
               score={data.pillarScores.responsiveness}
+              delay={0.2}
             />
             <PillarBar
               icon={<Sparkles className="h-3.5 w-3.5" />}
               label="Independence"
               weight="11%"
               score={data.pillarScores.independence}
+              delay={0.3}
             />
           </div>
         </div>

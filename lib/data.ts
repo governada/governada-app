@@ -1130,7 +1130,7 @@ export async function getCCHealthSummary(): Promise<CCHealthSummary> {
 
     const currentEpoch = stats?.current_epoch ?? 0;
     const activeMembers = members.filter((m) => m.status === 'authorized').length;
-    const totalMembers = members.length;
+    const totalMembers = activeMembers; // Only count active members — expired ones are historical
     const scoredMembers = members.filter((m) => m.transparencyIndex != null);
     const avgTransparency =
       scoredMembers.length > 0

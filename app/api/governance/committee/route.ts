@@ -9,63 +9,64 @@ export const dynamic = 'force-dynamic';
 export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
-  // Parallel fetches: votes, health summary, and member verdicts
-  const [{ data: votes, error }, health, verdicts] = await Promise.all([
+  // Parallel fetches: active members, votes, rationale names, health, verdicts
+  const [
+    { data: activeMembers, error: membersError },
+    { data: votes, error: votesError },
+    { data: rationaleNames },
+    health,
+    verdicts,
+  ] = await Promise.all([
+    supabase
+      .from('cc_members')
+      .select('cc_hot_id, author_name, transparency_grade, transparency_index, status')
+      .eq('status', 'authorized'),
     supabase.from('cc_votes').select('cc_hot_id, vote'),
+    supabase.from('cc_rationales').select('cc_hot_id, author_name').not('author_name', 'is', null),
     getCCHealthSummary(),
     getCCMemberVerdicts(),
   ]);
 
-  if (error) {
-    logger.error('Supabase error', { context: 'governance/committee', error: error?.message });
+  if (membersError) {
+    logger.error('Supabase error', {
+      context: 'governance/committee',
+      error: membersError?.message,
+    });
     return NextResponse.json({ members: [], health });
   }
 
-  if (!votes?.length) {
-    return NextResponse.json({ members: [], health });
+  // Build rationale name fallback map (first name found per cc_hot_id)
+  const rationaleNameMap = new Map<string, string>();
+  for (const r of rationaleNames ?? []) {
+    if (r.author_name && !rationaleNameMap.has(r.cc_hot_id)) {
+      rationaleNameMap.set(r.cc_hot_id, r.author_name);
+    }
   }
 
-  const memberMap = new Map<string, { yes: number; no: number; abstain: number }>();
-  for (const v of votes) {
-    const existing = memberMap.get(v.cc_hot_id) || { yes: 0, no: 0, abstain: 0 };
+  // Build vote counts per member
+  const voteMap = new Map<string, { yes: number; no: number; abstain: number }>();
+  for (const v of votes ?? []) {
+    const existing = voteMap.get(v.cc_hot_id) || { yes: 0, no: 0, abstain: 0 };
     if (v.vote === 'Yes') existing.yes++;
     else if (v.vote === 'No') existing.no++;
     else existing.abstain++;
-    memberMap.set(v.cc_hot_id, existing);
-  }
-
-  // Fetch CC member metadata (names + transparency grades)
-  const ccIds = Array.from(memberMap.keys());
-  const { data: memberMeta } = await supabase
-    .from('cc_members')
-    .select('cc_hot_id, author_name, transparency_grade, transparency_index')
-    .in('cc_hot_id', ccIds);
-
-  const metaMap = new Map<
-    string,
-    { name: string | null; grade: string | null; index: number | null }
-  >();
-  for (const m of memberMeta || []) {
-    metaMap.set(m.cc_hot_id, {
-      name: m.author_name,
-      grade: m.transparency_grade,
-      index: m.transparency_index,
-    });
+    voteMap.set(v.cc_hot_id, existing);
   }
 
   // Build verdict lookup
   const verdictMap = new Map(verdicts.map((v) => [v.ccHotId, v]));
 
-  const members = Array.from(memberMap.entries())
-    .map(([ccHotId, counts]) => {
+  // Start from active members (not from votes) — ensures all 7 active CC members appear
+  const members = (activeMembers ?? [])
+    .map((m) => {
+      const counts = voteMap.get(m.cc_hot_id) || { yes: 0, no: 0, abstain: 0 };
       const total = counts.yes + counts.no + counts.abstain;
-      const meta = metaMap.get(ccHotId);
-      const verdict = verdictMap.get(ccHotId);
+      const verdict = verdictMap.get(m.cc_hot_id);
       return {
-        ccHotId,
-        name: meta?.name ?? null,
-        transparencyGrade: meta?.grade ?? null,
-        transparencyIndex: meta?.index ?? null,
+        ccHotId: m.cc_hot_id,
+        name: m.author_name ?? rationaleNameMap.get(m.cc_hot_id) ?? null,
+        transparencyGrade: m.transparency_grade ?? null,
+        transparencyIndex: m.transparency_index ?? null,
         voteCount: total,
         yesCount: counts.yes,
         noCount: counts.no,

@@ -198,9 +198,7 @@ export function CCHealthVerdict({ health }: CCHealthVerdictProps) {
 
             {/* Member count */}
             <span className="inline-flex items-center gap-1">
-              <span className="font-mono font-medium text-foreground">
-                {health.activeMembers}/{health.totalMembers}
-              </span>{' '}
+              <span className="font-mono font-medium text-foreground">{health.activeMembers}</span>{' '}
               active members
             </span>
 

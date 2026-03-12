@@ -172,7 +172,12 @@ export function interpretPillarStrengthWeakness(pillars: PillarScores): string {
   const strongest = sorted[0];
   const weakest = sorted[sorted.length - 1];
 
-  if (strongest[1] === weakest[1]) return `Balanced across all pillars at ${strongest[1]}/100`;
+  if (strongest[1] === weakest[1]) {
+    if (strongest[1] >= 70) return `Consistently strong across all pillars (${strongest[1]}/100)`;
+    if (strongest[1] >= 40)
+      return `Even across all pillars (${strongest[1]}/100) — room to improve`;
+    return `Low across all pillars (${strongest[1]}/100) — significant improvement needed`;
+  }
 
   return `Strongest: ${PILLAR_LABELS[strongest[0]]} (${strongest[1]}/100). Weakest: ${PILLAR_LABELS[weakest[0]]} (${weakest[1]}/100)`;
 }
@@ -193,11 +198,11 @@ export interface CCHealthData {
 }
 
 export function interpretHealthStatus(data: CCHealthData): HealthStatus {
-  const { avgTransparency, activeMembers, totalMembers } = data;
+  const { avgTransparency, activeMembers } = data;
   if (avgTransparency == null) return 'attention';
-  const activeRate = totalMembers > 0 ? activeMembers / totalMembers : 0;
-  if (avgTransparency >= 65 && activeRate >= 0.8) return 'healthy';
-  if (avgTransparency >= 45 && activeRate >= 0.5) return 'attention';
+  if (activeMembers === 0) return 'critical';
+  if (avgTransparency >= 65) return 'healthy';
+  if (avgTransparency >= 45) return 'attention';
   return 'critical';
 }
 
@@ -205,10 +210,7 @@ export function generateCCHealthNarrative(data: CCHealthData): string {
   const { activeMembers, totalMembers, avgTransparency, tensionCount } = data;
   const status = interpretHealthStatus(data);
 
-  const memberStr =
-    activeMembers === totalMembers
-      ? `All ${totalMembers} members are actively voting`
-      : `${activeMembers} of ${totalMembers} members are actively voting`;
+  const memberStr = `${activeMembers} active committee member${activeMembers !== 1 ? 's' : ''}`;
 
   const scoreStr =
     avgTransparency != null

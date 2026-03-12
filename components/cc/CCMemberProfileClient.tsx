@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CCTransparencyTrend } from '@/components/cc/CCTransparencyTrend';
+import { CopyableAddress } from '@/components/CopyableAddress';
 import {
   interpretTransparencyScore,
   interpretParticipation,
@@ -128,7 +129,7 @@ function ProfileHero({ data }: { data: ProfileData }) {
           {data.authorName ? (
             <>
               <h1 className="text-2xl sm:text-3xl font-bold truncate">{data.authorName}</h1>
-              <p className="font-mono text-xs text-muted-foreground truncate">{data.ccHotId}</p>
+              <CopyableAddress address={data.ccHotId} truncate className="text-xs" />
             </>
           ) : (
             <h1 className="text-xl sm:text-2xl font-bold font-mono break-all">{displayName}</h1>
@@ -210,11 +211,11 @@ function KeyStats({ data }: { data: ProfileData }) {
     {
       label: 'Participation',
       value:
-        data.eligibleProposals != null
+        data.eligibleProposals != null && data.eligibleProposals > 0
           ? `${data.votesCast}/${data.eligibleProposals}`
           : `${data.totalVotes}`,
       sub:
-        data.eligibleProposals != null
+        data.eligibleProposals != null && data.eligibleProposals > 0
           ? `${Math.round((data.votesCast / data.eligibleProposals) * 100)}% vote rate`
           : 'proposals voted on',
       narrative: participationNarrative,

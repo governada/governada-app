@@ -3,10 +3,9 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, ChevronDown, ChevronUp, Vote, BookOpen, Clock, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Vote, BookOpen, Clock, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
 import { useCommitteeMembers } from '@/hooks/queries';
 import type { CommitteeMemberQuickView } from '@/hooks/queries';
 import { CCHealthVerdict } from '@/components/cc/CCHealthVerdict';
@@ -265,29 +264,20 @@ function CommitteePageSkeleton() {
 export default function CommitteePage() {
   const { data, isLoading } = useCommitteeMembers();
   const { segment } = useSegment();
-  const [search, setSearch] = useState('');
 
   const members = useMemo(() => data?.members ?? [], [data]);
   const health = data?.health;
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return members;
-    const q = search.toLowerCase();
-    return members.filter(
-      (m) => m.name?.toLowerCase().includes(q) || m.ccHotId.toLowerCase().includes(q),
-    );
-  }, [members, search]);
-
   const sorted = useMemo(
     () =>
-      [...filtered].sort((a, b) => {
+      [...members].sort((a, b) => {
         if (a.transparencyIndex != null && b.transparencyIndex != null)
           return b.transparencyIndex - a.transparencyIndex;
         if (a.transparencyIndex != null) return -1;
         if (b.transparencyIndex != null) return 1;
         return b.voteCount - a.voteCount;
       }),
-    [filtered],
+    [members],
   );
 
   return (
@@ -313,24 +303,11 @@ export default function CommitteePage() {
 
           {/* Section 3: Member Rankings */}
           <motion.div variants={fadeInUp} className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-base font-semibold">Member Rankings</h2>
-              {members.length > 5 && (
-                <div className="relative w-48">
-                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search members…"
-                    className="h-8 pl-8 text-xs"
-                  />
-                </div>
-              )}
-            </div>
+            <h2 className="text-base font-semibold">Member Rankings</h2>
 
             {sorted.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
-                {search ? 'No members match your search.' : 'No CC member data available yet.'}
+                No CC member data available yet.
               </div>
             ) : (
               <>

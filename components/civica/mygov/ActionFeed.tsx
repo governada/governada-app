@@ -12,6 +12,7 @@ import {
   ChevronRight,
   FileText,
   ScrollText,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Action, ActionType } from '@/lib/actionFeed';
@@ -25,6 +26,8 @@ const TYPE_ICON: Record<ActionType, React.FC<{ className?: string }>> = {
   wrapped_ready: Sparkles,
   statement_missing: ScrollText,
   rationale_missing: FileText,
+  ncl_threshold: Landmark,
+  ncl_period_expiring: Landmark,
 };
 
 const TYPE_COLOR: Record<ActionType, string> = {
@@ -36,6 +39,8 @@ const TYPE_COLOR: Record<ActionType, string> = {
   wrapped_ready: 'text-amber-300 border-violet-900/40 bg-violet-950/10',
   statement_missing: 'text-cyan-400 border-cyan-900/40 bg-cyan-950/10',
   rationale_missing: 'text-amber-400 border-amber-900/40 bg-amber-950/10',
+  ncl_threshold: 'text-amber-400 border-amber-900/40 bg-amber-950/10',
+  ncl_period_expiring: 'text-amber-400 border-amber-900/40 bg-amber-950/10',
 };
 
 const TYPE_ICON_COLOR: Record<ActionType, string> = {
@@ -47,6 +52,8 @@ const TYPE_ICON_COLOR: Record<ActionType, string> = {
   wrapped_ready: 'text-amber-300',
   statement_missing: 'text-cyan-400',
   rationale_missing: 'text-amber-400',
+  ncl_threshold: 'text-amber-400',
+  ncl_period_expiring: 'text-amber-400',
 };
 
 function ActionCard({ action, featured = false }: { action: Action; featured?: boolean }) {

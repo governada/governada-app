@@ -2,6 +2,7 @@
 
 import { TreasuryNarrativeHero } from '@/components/treasury/TreasuryNarrativeHero';
 import { NclBudgetBar } from '@/components/treasury/NclBudgetBar';
+import { NclUtilizationTrend } from '@/components/treasury/NclUtilizationTrend';
 import { TreasuryKeyMetrics } from '@/components/treasury/TreasuryKeyMetrics';
 import { TreasuryEpochFlow } from '@/components/treasury/TreasuryEpochFlow';
 import { TreasuryPendingProposals } from '@/components/TreasuryPendingProposals';
@@ -141,8 +142,25 @@ export function TreasuryOverview() {
         )}
       </SegmentGate>
 
-      {/* 7 & 8. Depth sections behind accordion */}
+      {/* 7, 8, 9. Depth sections behind accordion */}
       <Accordion type="multiple" className="space-y-2">
+        {ncl && (
+          <AccordionItem
+            value="ncl-trend"
+            className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5"
+          >
+            <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+              Budget Utilization Over Time
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {Math.round(ncl.utilizationPct)}% used
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <NclUtilizationTrend />
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
         <AccordionItem
           value="accountability"
           className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5"

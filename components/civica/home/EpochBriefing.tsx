@@ -28,7 +28,13 @@ import { Badge } from '@/components/ui/badge';
 import { AsyncContent } from '@/components/ui/AsyncContent';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTreasuryCurrent, useTreasuryPending, useGovernanceCalendar } from '@/hooks/queries';
+import {
+  useTreasuryCurrent,
+  useTreasuryPending,
+  useTreasuryNcl,
+  useGovernanceCalendar,
+} from '@/hooks/queries';
+import type { NclUtilization } from '@/lib/treasury';
 import { briefingContainer, briefingItem } from '@/lib/animations';
 import { GovTerm } from '@/components/ui/GovTerm';
 import {
@@ -229,6 +235,7 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
   const { data: identity } = useCivicIdentity(wallet);
   const { data: rawTreasury, dataUpdatedAt } = useTreasuryCurrent();
   const { data: rawPending } = useTreasuryPending();
+  const { data: nclRaw } = useTreasuryNcl();
   const { data: voiceData } = useCitizenVoice(wallet);
   const { data: calendarRaw } = useGovernanceCalendar();
   const calendar = calendarRaw as
@@ -247,6 +254,7 @@ export function EpochBriefing({ wallet }: EpochBriefingProps) {
           identity={identity as Record<string, unknown> | null}
           rawTreasury={rawTreasury}
           rawPending={rawPending}
+          nclUtilization={(nclRaw as { ncl: NclUtilization | null } | undefined)?.ncl ?? null}
           voiceData={voiceData}
           epochSecondsRemaining={calendar?.secondsRemaining ?? null}
           epochProgress={calendar?.epochProgress ?? null}
@@ -318,6 +326,7 @@ function EpochBriefingContent({
   identity,
   rawTreasury,
   rawPending,
+  nclUtilization,
   voiceData,
   epochSecondsRemaining,
   epochProgress,
@@ -327,6 +336,7 @@ function EpochBriefingContent({
   identity: Record<string, unknown> | null;
   rawTreasury: unknown;
   rawPending: unknown;
+  nclUtilization: NclUtilization | null;
   voiceData: CitizenVoiceData | undefined | null;
   epochSecondsRemaining: number | null;
   epochProgress: number | null;
@@ -700,6 +710,44 @@ function EpochBriefingContent({
           <GovTerm term="runway">runway</GovTerm>
           {' at current spending rate'}
         </p>
+      )}
+      {nclUtilization && (
+        <div className="mt-2.5 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              Budget:{' '}
+              <span
+                className={cn(
+                  'font-semibold',
+                  nclUtilization.status === 'critical'
+                    ? 'text-red-400'
+                    : nclUtilization.status === 'elevated'
+                      ? 'text-amber-400'
+                      : 'text-emerald-400',
+                )}
+              >
+                {Math.round(nclUtilization.utilizationPct)}% used
+              </span>{' '}
+              of ₳{formatAdaCompact(nclUtilization.period.nclAda)} limit
+            </span>
+            <span className="text-muted-foreground/60 tabular-nums">
+              {nclUtilization.epochsRemaining} epochs left
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-700',
+                nclUtilization.status === 'critical'
+                  ? 'bg-red-500'
+                  : nclUtilization.status === 'elevated'
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500',
+              )}
+              style={{ width: `${Math.min(nclUtilization.utilizationPct, 100)}%` }}
+            />
+          </div>
+        </div>
       )}
       {data.treasury?.proportionalShareAda != null && data.treasury.proportionalShareAda > 0 && (
         <p className="text-sm text-muted-foreground mt-1">

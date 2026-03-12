@@ -6,7 +6,9 @@ export type ActionType =
   | 'tier_approaching'
   | 'wrapped_ready'
   | 'statement_missing'
-  | 'rationale_missing';
+  | 'rationale_missing'
+  | 'ncl_threshold'
+  | 'ncl_period_expiring';
 
 export interface Action {
   id: string;
@@ -40,6 +42,12 @@ export interface ActionFeedInput {
   spoUnexplainedVotesCount?: number;
   /** When set, injects a wrapped_ready action linking to /my-gov/wrapped/[period] */
   wrappedReadyPeriod?: string;
+  /** NCL budget utilization percentage (0-100+) */
+  nclUtilizationPct?: number;
+  /** NCL epochs remaining in current period */
+  nclEpochsRemaining?: number;
+  /** NCL projected utilization if all pending proposals pass */
+  nclProjectedPct?: number;
 }
 
 const TIER_THRESHOLDS: Record<string, number> = {
@@ -296,6 +304,52 @@ export function generateActions(input: ActionFeedInput): Action[] {
         }
       }
     }
+  }
+
+  // ── NCL budget alerts (all segments) ─────────────────────────────
+  if (input.nclUtilizationPct !== undefined && input.nclUtilizationPct >= 75) {
+    const isCritical = input.nclUtilizationPct >= 90;
+    actions.push({
+      id: 'ncl_threshold',
+      type: 'ncl_threshold',
+      title: isCritical
+        ? `Budget at ${Math.round(input.nclUtilizationPct)}% — approaching limit`
+        : `Budget ${Math.round(input.nclUtilizationPct)}% utilized`,
+      description: isCritical
+        ? 'Treasury spending is approaching the constitutional limit for this period.'
+        : 'Treasury budget utilization is elevated. Monitor pending proposals.',
+      href: '/governance/treasury',
+      priority: isCritical ? 1 : 2,
+      cta: 'View Treasury',
+    });
+  }
+
+  if (
+    input.nclEpochsRemaining !== undefined &&
+    input.nclEpochsRemaining > 0 &&
+    input.nclEpochsRemaining < 15
+  ) {
+    actions.push({
+      id: 'ncl_period_expiring',
+      type: 'ncl_period_expiring',
+      title: `Budget period ends in ${input.nclEpochsRemaining} epochs`,
+      description: 'The current spending limit period is ending soon.',
+      href: '/governance/treasury',
+      priority: 2,
+      cta: 'View Treasury',
+    });
+  }
+
+  if (segment === 'drep' && input.nclProjectedPct !== undefined && input.nclProjectedPct > 100) {
+    actions.push({
+      id: 'ncl_exceeded_projected',
+      type: 'ncl_threshold',
+      title: 'Pending proposals exceed budget limit',
+      description: `If all pending proposals pass, spending would reach ${Math.round(input.nclProjectedPct)}% of the constitutional limit.`,
+      href: '/governance/treasury',
+      priority: 1,
+      cta: 'Review Proposals',
+    });
   }
 
   if (input.wrappedReadyPeriod) {

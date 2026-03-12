@@ -358,6 +358,44 @@ export function useGovernanceForYou() {
   });
 }
 
+// -- Citizen consequence story --
+
+export interface ConsequenceProposal {
+  txHash: string;
+  index: number;
+  title: string | null;
+  proposalType: string;
+  outcome: 'ratified' | 'dropped' | 'expired' | null;
+  outcomeEpoch: number | null;
+  withdrawalAda: number | null;
+  aiSummary: string | null;
+  drepVote: string | null;
+  communitySignal: {
+    support: number;
+    oppose: number;
+    unsure: number;
+    total: number;
+  } | null;
+  userSignal: string | null;
+}
+
+export interface EpochConsequenceData {
+  epoch: number;
+  adaDecided: number;
+  votingPowerFraction: number | null;
+  votingPowerAda: number | null;
+  decidedProposals: ConsequenceProposal[];
+  activeProposals: ConsequenceProposal[];
+}
+
+export function useEpochConsequence(wallet: string | null | undefined) {
+  return useQuery<EpochConsequenceData>({
+    queryKey: ['epoch-consequence', wallet ?? 'anon'],
+    queryFn: () => fetchJson('/api/citizen/epoch-consequence'),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 export function useSpoVotes(txHash: string, index: number) {
   return useQuery({
     queryKey: ['spo-votes', txHash, index],

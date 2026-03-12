@@ -27,6 +27,8 @@ import {
   useGovernancePulse,
   useDashboardInbox,
   useDashboardUrgent,
+  useInboxNotifications,
+  type InboxNotification,
 } from '@/hooks/queries';
 import { generateActions } from '@/lib/actionFeed';
 import { SPOInbox } from './SPOInbox';
@@ -166,6 +168,139 @@ function actionToNotification(
     cta: action.cta,
     priority: action.priority,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Map DB notification → NotificationItem
+// ---------------------------------------------------------------------------
+
+const DB_TYPE_META: Record<
+  string,
+  Pick<NotificationItem, 'category' | 'icon' | 'iconColor' | 'borderColor' | 'bgColor'>
+> = {
+  'score-change': {
+    category: 'score',
+    icon: TrendingDown,
+    iconColor: 'text-amber-400',
+    borderColor: 'border-amber-900/30',
+    bgColor: 'bg-amber-950/10',
+  },
+  'pending-proposals': {
+    category: 'proposal',
+    icon: Vote,
+    iconColor: 'text-primary',
+    borderColor: 'border-primary/20',
+    bgColor: 'bg-primary/5',
+  },
+  'urgent-deadline': {
+    category: 'proposal',
+    icon: Clock,
+    iconColor: 'text-rose-400',
+    borderColor: 'border-rose-900/30',
+    bgColor: 'bg-rose-950/10',
+  },
+  'delegation-change': {
+    category: 'alignment',
+    icon: AlertCircle,
+    iconColor: 'text-amber-400',
+    borderColor: 'border-amber-900/30',
+    bgColor: 'bg-amber-950/10',
+  },
+  'tier-change': {
+    category: 'score',
+    icon: Star,
+    iconColor: 'text-violet-400',
+    borderColor: 'border-violet-900/30',
+    bgColor: 'bg-violet-950/10',
+  },
+  'rank-change': {
+    category: 'score',
+    icon: BarChart2,
+    iconColor: 'text-sky-400',
+    borderColor: 'border-sky-900/30',
+    bgColor: 'bg-sky-950/10',
+  },
+  'alignment-drift': {
+    category: 'alignment',
+    icon: AlertCircle,
+    iconColor: 'text-amber-400',
+    borderColor: 'border-amber-900/30',
+    bgColor: 'bg-amber-950/10',
+  },
+  'drep-voted': {
+    category: 'proposal',
+    icon: Vote,
+    iconColor: 'text-emerald-400',
+    borderColor: 'border-emerald-900/30',
+    bgColor: 'bg-emerald-950/10',
+  },
+  'drep-missed-vote': {
+    category: 'proposal',
+    icon: Vote,
+    iconColor: 'text-rose-400',
+    borderColor: 'border-rose-900/30',
+    bgColor: 'bg-rose-950/10',
+  },
+  'citizen-level-up': {
+    category: 'score',
+    icon: Star,
+    iconColor: 'text-emerald-400',
+    borderColor: 'border-emerald-900/30',
+    bgColor: 'bg-emerald-950/10',
+  },
+  'better-match-found': {
+    category: 'alignment',
+    icon: Activity,
+    iconColor: 'text-primary',
+    borderColor: 'border-primary/20',
+    bgColor: 'bg-primary/5',
+  },
+};
+
+function dbNotificationToItem(n: InboxNotification): NotificationItem {
+  const meta = DB_TYPE_META[n.type] ?? {
+    category: 'system' as const,
+    icon: Bell,
+    iconColor: 'text-muted-foreground',
+    borderColor: 'border-border',
+    bgColor: 'bg-card',
+  };
+
+  return {
+    id: `db_${n.id}`,
+    ...meta,
+    title: n.title,
+    description: n.body ?? '',
+    href: n.action_url ?? undefined,
+    cta: n.action_url ? 'View' : undefined,
+    priority: 2,
+  };
+}
+
+async function markNotificationsRead(ids: string[]): Promise<void> {
+  const { getStoredSession } = await import('@/lib/supabaseAuth');
+  const token = getStoredSession();
+  if (!token) return;
+  const dbIds = ids.filter((id) => id.startsWith('db_')).map((id) => id.slice(3));
+  const localIds = ids.filter((id) => !id.startsWith('db_'));
+  if (localIds.length > 0) markRead(localIds);
+  if (dbIds.length === 0) return;
+  await fetch('/api/you/notifications', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ ids: dbIds }),
+  });
+}
+
+async function markAllNotificationsRead(): Promise<void> {
+  const { getStoredSession } = await import('@/lib/supabaseAuth');
+  const token = getStoredSession();
+  if (!token) return;
+  await fetch('/api/you/notifications', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ markAllRead: true }),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -406,12 +541,14 @@ function CivicaInboxInner({
   const [readSet, setReadSet] = useState<Set<string>>(new Set());
   const [showInfoItems, setShowInfoItems] = useState(false);
 
+  const isAuthenticated = segment !== 'anonymous';
   const { data: rawCard } = useDRepReportCard(segment === 'drep' ? drepId : delegatedDrep);
   const { data: rawPulse, isLoading: pulseLoading } = useGovernancePulse();
   const { data: rawInbox, isLoading: inboxLoading } = useDashboardInbox(
     segment === 'drep' ? drepId : null,
   );
   const { data: rawUrgent } = useDashboardUrgent(segment === 'drep' ? drepId : null);
+  const { data: dbNotifications, isLoading: dbLoading } = useInboxNotifications(isAuthenticated);
 
   const card = rawCard as
     | {
@@ -443,19 +580,27 @@ function CivicaInboxInner({
       }
     | undefined;
 
+  // Build read set from localStorage + DB read state
   useEffect(() => {
-    setReadSet(getReadSet());
-  }, []);
+    const localRead = getReadSet();
+    if (dbNotifications?.notifications) {
+      for (const n of dbNotifications.notifications) {
+        if (n.read) localRead.add(`db_${n.id}`);
+      }
+    }
+    setReadSet(localRead);
+  }, [dbNotifications]);
 
   const handleRead = useCallback((id: string) => {
-    markRead([id]);
     setReadSet((prev) => new Set([...prev, id]));
+    markNotificationsRead([id]);
   }, []);
 
   const handleMarkAllRead = useCallback((items: NotificationItem[]) => {
     const ids = items.map((i) => i.id);
-    markRead(ids);
     setReadSet((prev) => new Set([...prev, ...ids]));
+    markNotificationsRead(ids);
+    markAllNotificationsRead();
   }, []);
 
   // Build notifications from action feed + system events
@@ -497,8 +642,14 @@ function CivicaInboxInner({
     });
   }
 
+  // DB-persisted notifications (from Inngest check-notifications pipeline)
+  const dbItems: NotificationItem[] = (dbNotifications?.notifications ?? [])
+    .filter((n) => !n.read)
+    .map(dbNotificationToItem);
+
   const allNotifications: NotificationItem[] = [
     ...actions.map(actionToNotification),
+    ...dbItems,
     ...communicationNotes,
     ...systemNotes,
   ];
@@ -510,7 +661,7 @@ function CivicaInboxInner({
       : allNotifications.filter((n) => n.category === activeFilter);
 
   const unreadCount = allNotifications.filter((n) => !readSet.has(n.id)).length;
-  const isLoading = pulseLoading || inboxLoading;
+  const isLoading = pulseLoading || inboxLoading || (isAuthenticated && dbLoading);
 
   return (
     <div className="space-y-6">

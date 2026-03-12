@@ -177,6 +177,9 @@ export async function notifyUser(
   const payload = toPayload(event);
   const supabase = getSupabaseAdmin();
 
+  // Persist to inbox (DB) regardless of channel preferences — inbox is always-on
+  await persistToInbox(supabase, userId, payload);
+
   const { data: prefs } = await supabase
     .from('notification_preferences')
     .select('channel')
@@ -360,6 +363,90 @@ export async function notifySegment(
     sent++;
   }
   return sent;
+}
+
+// ── Inbox Persistence ───────────────────────────────────────────────────────
+
+/**
+ * Resolve a userId to a stake address via user_wallets (primary) or users table (legacy).
+ * Returns null if no stake address is found — the notification still sends to channels
+ * but won't appear in the inbox.
+ */
+async function resolveStakeAddress(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+): Promise<string | null> {
+  const { data: wallet } = await supabase
+    .from('user_wallets')
+    .select('stake_address')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (wallet?.stake_address) return wallet.stake_address;
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('wallet_address')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!user?.wallet_address) return null;
+
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1'}/address_info`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _addresses: [user.wallet_address] }),
+        signal: AbortSignal.timeout(5_000),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.[0]?.stake_address) return data[0].stake_address as string;
+    }
+  } catch {
+    // Non-critical — inbox persistence degrades gracefully
+  }
+
+  return null;
+}
+
+/**
+ * Persist a notification to the inbox (notifications table) so users can
+ * see it in the /you/inbox UI. Called once per notifyUser() invocation,
+ * not once per channel.
+ */
+async function persistToInbox(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+  payload: NotificationPayload,
+): Promise<void> {
+  try {
+    const stakeAddress = await resolveStakeAddress(supabase, userId);
+    if (!stakeAddress) {
+      logger.warn('[Notifications] Cannot persist to inbox — no stake address for user', {
+        userId,
+      });
+      return;
+    }
+
+    await supabase.from('notifications').insert({
+      user_stake_address: stakeAddress,
+      type: payload.eventType,
+      title: payload.fallback?.title ?? payload.eventType,
+      body: payload.fallback?.body ?? null,
+      action_url: payload.fallback?.url ?? null,
+      metadata: payload.metadata ?? payload.data ?? null,
+    });
+  } catch (e) {
+    logger.error('[Notifications] Failed to persist to inbox', {
+      userId,
+      error: e instanceof Error ? e.message : e,
+    });
+  }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

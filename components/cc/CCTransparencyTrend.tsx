@@ -73,6 +73,13 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
     return gen(chartData) ?? '';
   }, [chartData, xScale, yScale]);
 
+  const areaPath = useMemo(() => {
+    if (!linePath || chartData.length < 2) return '';
+    const firstX = xScale(chartData[0].label) ?? 0;
+    const lastX = xScale(chartData[chartData.length - 1].label) ?? 0;
+    return `${linePath} L ${lastX},${innerHeight} L ${firstX},${innerHeight} Z`;
+  }, [linePath, chartData, xScale, innerHeight]);
+
   const pillarPaths = useMemo(() => {
     if (!showPillars) return [];
     return PILLAR_KEYS.map((key) => {
@@ -182,6 +189,10 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
             <svg width={width} height={250}>
               <defs>
                 <GlowFilter id="ti-glow" stdDeviation={3} />
+                <linearGradient id="ti-area-gradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="oklch(0.72 0.14 200)" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="oklch(0.72 0.14 200)" stopOpacity={0} />
+                </linearGradient>
               </defs>
               <g transform={`translate(${margin.left},${margin.top})`}>
                 {/* Grid lines */}
@@ -227,6 +238,9 @@ export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
                     {d.label}
                   </text>
                 ))}
+
+                {/* Area gradient fill */}
+                {areaPath && <path d={areaPath} fill="url(#ti-area-gradient)" />}
 
                 {/* Score line glow */}
                 <path

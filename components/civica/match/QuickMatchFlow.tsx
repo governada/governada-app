@@ -48,6 +48,7 @@ import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
 import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
 import { saveMatchProfile, loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
+import { emitDiscoveryEvent } from '@/lib/discovery/events';
 import {
   webShare,
   canWebShare,
@@ -234,6 +235,7 @@ export function QuickMatchFlow() {
       setDrepResults(drepData);
       setSpoResults(spoData);
       setStep('results');
+      emitDiscoveryEvent('match_completed');
 
       // Funnel: match completed + results viewed
       trackFunnel(FUNNEL_EVENTS.MATCH_COMPLETED, {
@@ -454,7 +456,10 @@ function QuestionScreen({
   onSelect: (value: string) => void;
 }) {
   return (
-    <div className="w-full max-w-2xl space-y-6 animate-in fade-in slide-in-from-right-8 duration-300">
+    <div
+      className="w-full max-w-2xl space-y-6 animate-in fade-in slide-in-from-right-8 duration-300"
+      data-discovery="match-questions"
+    >
       <div className="text-center space-y-2">
         <h2 className="font-display text-xl sm:text-2xl font-bold">{question.title}</h2>
         <p className="text-sm text-muted-foreground">{question.subtitle}</p>
@@ -718,7 +723,10 @@ function ResultsScreen({
   const hasMatches = activeResults.matches.length > 0;
 
   return (
-    <div className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
+    <div
+      className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500"
+      data-discovery="match-results"
+    >
       {/* User identity */}
       <div className="text-center space-y-4">
         <h2 className="font-display text-2xl sm:text-3xl font-bold">Your Governance Team</h2>
@@ -904,7 +912,10 @@ function ResultsScreen({
                         <p className="text-sm text-muted-foreground">
                           {getMatchNarrative(heroMatch)}
                         </p>
-                        <div className="flex gap-2 justify-center pt-1">
+                        <div
+                          className="flex gap-2 justify-center pt-1"
+                          data-discovery="match-delegate"
+                        >
                           {!heroIsSPO && (
                             <DelegateButton drepId={heroMatch.drepId} drepName={heroName} />
                           )}

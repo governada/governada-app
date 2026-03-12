@@ -102,7 +102,11 @@ const PROPOSAL_TYPE_LABELS: Record<string, string> = {
 
 /* ── Section wrapper (glassmorphic) ──────────────────────────── */
 
-function Section({ children, className }: { children: React.ReactNode; className?: string }) {
+function Section({
+  children,
+  className,
+  ...rest
+}: { children: React.ReactNode; className?: string } & Record<string, unknown>) {
   return (
     <motion.section
       variants={briefingItem}
@@ -110,6 +114,7 @@ function Section({ children, className }: { children: React.ReactNode; className
         'rounded-2xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4 sm:p-5',
         className,
       )}
+      {...rest}
     >
       {children}
     </motion.section>
@@ -611,7 +616,11 @@ export function CitizenHub() {
       <WhatChanged />
 
       {/* ── Epoch headline ─────────────────────────────────── */}
-      <motion.header variants={briefingItem} className="space-y-1 pb-1">
+      <motion.header
+        variants={briefingItem}
+        className="space-y-1 pb-1"
+        data-discovery="hub-briefing"
+      >
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Epoch {epoch}
         </p>
@@ -712,7 +721,7 @@ export function CitizenHub() {
       <CommunityConsensus />
 
       {/* ── Representation quality ─────────────────────────── */}
-      <Section>
+      <Section data-discovery="hub-representation">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Your representation
         </h2>
@@ -807,6 +816,7 @@ export function CitizenHub() {
       <motion.div
         variants={briefingItem}
         className="flex items-center justify-center gap-4 pt-2 pb-4"
+        data-discovery="hub-actions"
       >
         <Link
           href="/governance"

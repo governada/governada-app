@@ -90,7 +90,7 @@ export function WorkspaceDelegatorsPage() {
   const change = recentChanges.length > 0 ? recentChanges[0].count : 0;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
+    <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6" data-discovery="ws-delegators">
       <div className="flex items-center gap-3">
         <Link
           href="/workspace"

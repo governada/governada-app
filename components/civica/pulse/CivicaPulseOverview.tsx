@@ -158,7 +158,7 @@ export function CivicaPulseOverview() {
   const hasError = pulseError || treasuryError;
 
   return (
-    <div className="space-y-6 pt-4">
+    <div className="space-y-6 pt-4" data-discovery="gov-health">
       {hasError && (
         <ErrorCard
           message="Unable to load governance data."

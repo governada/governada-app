@@ -226,7 +226,7 @@ export function CivicIdentityProfile() {
   const shareText = `Check out my Civic Identity on Cardano! ${earned.length} milestones earned. @GovernadaIO`;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-discovery="you-card">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -348,7 +348,7 @@ export function CivicIdentityProfile() {
 
       {/* Governance Footprint */}
       {footprint && (
-        <div>
+        <div data-discovery="you-history">
           <SectionHeader title="Governance Footprint" />
           {isUndelegated ? (
             <div className="rounded-xl border border-border/50 bg-card/70 p-5 text-center space-y-3">
@@ -476,7 +476,7 @@ export function CivicIdentityProfile() {
       )}
 
       {/* Milestone Gallery */}
-      <div>
+      <div data-discovery="you-milestones">
         <SectionHeader title="Milestones" />
         <AsyncContent
           isLoading={milestonesLoading}

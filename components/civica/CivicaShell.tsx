@@ -16,6 +16,33 @@ const ConstellationScene = dynamic(
   { ssr: false },
 );
 
+const SpotlightProvider = dynamic(
+  () =>
+    import('@/components/discovery/SpotlightProvider').then((m) => ({
+      default: m.SpotlightProvider,
+    })),
+  { ssr: false },
+);
+
+const DiscoveryHub = dynamic(
+  () => import('@/components/discovery/DiscoveryHub').then((m) => ({ default: m.DiscoveryHub })),
+  { ssr: false },
+);
+
+const EngagementNudge = dynamic(
+  () =>
+    import('@/components/discovery/EngagementNudge').then((m) => ({ default: m.EngagementNudge })),
+  { ssr: false },
+);
+
+const MilestoneTrigger = dynamic(
+  () =>
+    import('@/components/discovery/MilestoneTrigger').then((m) => ({
+      default: m.MilestoneTrigger,
+    })),
+  { ssr: false },
+);
+
 const SIDEBAR_STORAGE_KEY = 'governada_sidebar_collapsed';
 
 function DeepLinkHandler() {
@@ -136,6 +163,13 @@ export function CivicaShell({ children }: { children: React.ReactNode }) {
           </p>
         </footer>
         <CivicaBottomNav />
+
+        {/* Discovery Layer — lazy-loaded, zero impact on initial render */}
+        <SpotlightProvider>
+          <DiscoveryHub />
+          <EngagementNudge />
+          <MilestoneTrigger />
+        </SpotlightProvider>
       </TierThemeProvider>
     </SegmentProvider>
   );

@@ -20,6 +20,7 @@ import {
 import { resolveRewardAddress } from '@meshsdk/core';
 import { PollFeedback } from '@/components/PollFeedback';
 import { hapticLight } from '@/lib/haptics';
+import { emitDiscoveryEvent } from '@/lib/discovery/events';
 import type { PollResultsResponse } from '@/types/supabase';
 
 interface SentimentPollProps {
@@ -123,6 +124,7 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
       setRevealed(true);
       setChangingVote(false);
       setFeedbackVote(vote);
+      emitDiscoveryEvent('sentiment_voted');
 
       import('@/lib/posthog')
         .then(({ posthog }) => {

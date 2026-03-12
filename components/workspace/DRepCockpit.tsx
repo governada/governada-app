@@ -38,19 +38,23 @@ export function DRepCockpit() {
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in-0 duration-300">
+    <div className="space-y-4 animate-in fade-in-0 duration-300" data-discovery="ws-cockpit">
       {/* Score Hero */}
       <CockpitScoreHero score={data.score} scoreStory={data.scoreStory} />
 
       {/* Governance Readiness */}
-      <GovernanceReadiness data={data} />
+      <div data-discovery="drep-voting-queue">
+        <GovernanceReadiness data={data} />
+      </div>
 
       {/* Action Feed */}
       <ActionFeed actionFeed={data.actionFeed} />
 
       {/* Bottom row: Delegation + Heatmap */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <DelegationHealth delegation={data.delegation} />
+        <div data-discovery="drep-delegators">
+          <DelegationHealth delegation={data.delegation} />
+        </div>
         <CockpitHeatmap heatmap={data.activityHeatmap} />
       </div>
     </div>

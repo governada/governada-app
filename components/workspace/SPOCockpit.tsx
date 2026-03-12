@@ -49,9 +49,12 @@ export function SPOCockpit() {
   if (suggestions.length === 0) suggestions.push('Keep voting consistently to maintain your rank');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-discovery="spo-score">
       {/* Score overview */}
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <div
+        className="rounded-2xl border border-border bg-card p-5 space-y-4"
+        data-discovery="ws-spo-score"
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-foreground">Governance Score</h2>

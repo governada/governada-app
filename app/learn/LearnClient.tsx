@@ -82,7 +82,7 @@ export function LearnClient() {
       </div>
 
       {/* Getting Started */}
-      <section>
+      <section data-discovery="help-getting-started">
         <h2 className="text-lg font-semibold mb-4">Getting Started</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {GETTING_STARTED.map((item) => {
@@ -117,7 +117,7 @@ export function LearnClient() {
       </section>
 
       {/* Governance Glossary */}
-      <section>
+      <section data-discovery="help-methodology">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Governance Glossary</h2>
           <span className="text-xs text-muted-foreground">{filteredTerms.length} terms</span>

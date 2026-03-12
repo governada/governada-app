@@ -364,7 +364,7 @@ export function SPOCommandCenter({ poolId }: { poolId: string }) {
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2" data-discovery="ws-spo-delegators">
         {[
           {
             label: 'Delegators',

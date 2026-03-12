@@ -40,7 +40,7 @@ export function CompetitiveContext() {
   if (!rank && !percentile) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-discovery="drep-competitive">
       <div className="flex items-center gap-2">
         <Trophy className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">

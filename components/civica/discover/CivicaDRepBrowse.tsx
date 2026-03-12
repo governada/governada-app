@@ -440,7 +440,7 @@ export function CivicaDRepBrowse(_props: CivicaDRepBrowseProps) {
   }
 
   return (
-    <div ref={contentRef} className="space-y-3">
+    <div ref={contentRef} className="space-y-3" data-discovery="gov-representatives">
       {/* ── Page header ──────────────────────────────────────────── */}
       <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 pt-2 pb-3">
         <div className="flex items-baseline justify-between gap-4">

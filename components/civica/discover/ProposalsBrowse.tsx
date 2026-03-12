@@ -139,7 +139,7 @@ export function ProposalsBrowse() {
   }
 
   return (
-    <div ref={contentRef} className="space-y-3">
+    <div ref={contentRef} className="space-y-3" data-discovery="gov-proposals">
       {/* Page heading */}
       <div className="flex items-baseline justify-between gap-4">
         <h1 className="text-xl font-bold tracking-tight">What&apos;s Being Decided</h1>

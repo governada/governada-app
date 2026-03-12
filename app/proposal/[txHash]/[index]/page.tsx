@@ -136,6 +136,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       <PageViewTracker
         event="proposal_detail_viewed"
         properties={{ tx_hash: txHash, index: proposalIndex }}
+        discoveryEvent="proposal_viewed"
       />
 
       <Breadcrumb

@@ -493,7 +493,11 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <ProfileViewTracker drepId={drep.drepId} />
-      <PageViewTracker event="drep_profile_viewed" properties={{ drep_id: drep.drepId }} />
+      <PageViewTracker
+        event="drep_profile_viewed"
+        properties={{ drep_id: drep.drepId }}
+        discoveryEvent="drep_viewed"
+      />
       <TierCelebrationManager
         entityType="drep"
         entityId={drep.drepId}

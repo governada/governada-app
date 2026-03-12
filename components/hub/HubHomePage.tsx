@@ -5,6 +5,7 @@ import { HubCardRenderer } from './HubCardRenderer';
 import { AnonymousLanding } from './AnonymousLanding';
 import { CitizenHub } from './CitizenHub';
 import { HubCardSkeleton } from './cards/HubCard';
+import { OnboardingChecklist } from '@/components/funnel/OnboardingChecklist';
 
 interface PulseData {
   totalAdaGoverned: string;
@@ -15,6 +16,7 @@ interface PulseData {
   claimedDReps: number;
   activeSpOs: number;
   ccMembers: number;
+  totalDelegators: number;
 }
 
 interface HubHomePageProps {
@@ -24,8 +26,9 @@ interface HubHomePageProps {
 /**
  * HubHomePage — The home page dispatcher.
  *
- * Anonymous: Clean conversion landing page.
- * Authenticated: Hub cards over a subtle constellation globe background.
+ * Anonymous: Clean conversion landing page with social proof.
+ * Citizen: Onboarding checklist + consequence story Hub.
+ * Other personas: Hub cards over constellation globe.
  */
 export function HubHomePage({ pulseData }: HubHomePageProps) {
   const { segment, isLoading } = useSegment();
@@ -46,9 +49,14 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
     return <AnonymousLanding pulseData={pulseData} />;
   }
 
-  // Citizens get the consequence story Hub
+  // Citizens get the onboarding checklist + consequence story Hub
   if (segment === 'citizen') {
-    return <CitizenHub />;
+    return (
+      <>
+        <OnboardingChecklist />
+        <CitizenHub />
+      </>
+    );
   }
 
   // Other authenticated personas — globe provided by CivicaShell, cards float on glass

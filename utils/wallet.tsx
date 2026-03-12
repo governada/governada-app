@@ -289,6 +289,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           const { posthog } = await import('@/lib/posthog');
           posthog.capture('wallet_connected', { wallet_type: name });
           posthog.identify(addresses[0], { segment: 'holder', wallet_type: name });
+          // Funnel event: wallet connected
+          const { trackFunnel, FUNNEL_EVENTS } = await import('@/lib/funnel');
+          trackFunnel(FUNNEL_EVENTS.WALLET_CONNECTED, { source: name });
         } catch {
           /* posthog optional */
         }

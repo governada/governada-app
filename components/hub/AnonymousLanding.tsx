@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Users, Server } from 'lucide-react';
+import { ArrowRight, Users, Compass, Activity, Vote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConstellationScene } from '@/components/ConstellationScene';
+import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 
 interface AnonymousLandingProps {
   pulseData?: {
@@ -11,19 +13,26 @@ interface AnonymousLandingProps {
     activeProposals: number;
     activeDReps: number;
     activeSpOs: number;
+    totalDelegators: number;
   };
 }
 
 /**
- * Anonymous Landing — Clean conversion page.
+ * Anonymous Landing — Optimized conversion page.
  *
- * Radical simplicity. One value prop, one visual, two CTAs.
- * Passes the 5-second test: "This helps me participate in Cardano governance."
+ * Two clear paths:
+ * 1. "Build your governance team" → /match (the conversion action)
+ * 2. "Explore governance" → /governance (browse without connecting)
  *
- * Two-path entry: Find your DRep OR Find your Stake Pool.
- * Both go to Quick Match with the appropriate tab pre-selected.
+ * Enhanced social proof: live DRep, proposal, and participation counts.
+ * Glass-window peek at governance health pulse to demonstrate value.
+ * PostHog funnel instrumented at every interaction.
  */
 export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
+  useEffect(() => {
+    trackFunnel(FUNNEL_EVENTS.LANDING_VIEWED);
+  }, []);
+
   return (
     <div className="relative flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Constellation hero */}
@@ -48,56 +57,112 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
               textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
             }}
           >
-            It takes 60 seconds to use it.
+            Build your governance team in 60 seconds.
           </p>
         </div>
       </section>
 
       {/* CTAs + social proof */}
       <section className="relative z-10 mx-auto w-full max-w-lg px-6 -mt-8 pb-12 space-y-6">
-        {/* Two CTAs — DRep and Stake Pool paths */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button asChild size="lg" className="flex-1 gap-2">
-            <Link href="/match?tab=drep">
-              <Users className="h-4 w-4" />
-              Find Your Representative
-              <ArrowRight className="h-4 w-4" />
+        {/* Primary CTA — Build your governance team */}
+        <div className="flex flex-col gap-3">
+          <Button
+            asChild
+            size="lg"
+            className="w-full gap-2 text-base py-6 rounded-xl font-semibold"
+            onClick={() => trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_primary' })}
+          >
+            <Link href="/match">
+              <Users className="h-5 w-5" />
+              Build Your Governance Team
+              <ArrowRight className="h-5 w-5" />
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="flex-1 gap-2">
-            <Link href="/match?tab=spo">
-              <Server className="h-4 w-4" />
-              Find Your Stake Pool
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="w-full gap-2"
+            onClick={() =>
+              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_secondary' })
+            }
+          >
+            <Link href="/governance">
+              <Compass className="h-4 w-4" />
+              Explore Governance
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>
 
-        {/* Social proof — framed as liveness, not raw metrics */}
+        {/* Live social proof stats */}
         {pulseData && (
-          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-            <span>
-              <strong className="text-foreground">{pulseData.activeDReps}</strong> active
-              representatives
-            </span>
-            <span className="text-border">|</span>
-            <span>
-              <strong className="text-foreground">{pulseData.activeProposals}</strong> proposals
-              being voted on
-            </span>
+          <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <SocialProofStat
+                icon={Users}
+                value={pulseData.activeDReps}
+                label="active DReps representing you"
+              />
+              <SocialProofStat
+                icon={Vote}
+                value={pulseData.activeProposals}
+                label="proposals being decided"
+              />
+              <SocialProofStat
+                icon={Activity}
+                value={pulseData.totalDelegators}
+                label="citizens participating"
+              />
+            </div>
           </div>
         )}
 
-        {/* Secondary discovery link */}
-        <div className="flex justify-center">
+        {/* Secondary discovery links */}
+        <div className="flex items-center justify-center gap-4 text-xs">
           <Link
             href="/governance/health"
-            className="text-xs text-muted-foreground/70 hover:text-primary transition-colors"
+            className="text-muted-foreground/70 hover:text-primary transition-colors"
+            onClick={() => trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_health' })}
           >
-            Is Cardano governance healthy? &rarr;
+            Is governance healthy? &rarr;
+          </Link>
+          <span className="text-border">|</span>
+          <Link
+            href="/governance/proposals"
+            className="text-muted-foreground/70 hover:text-primary transition-colors"
+            onClick={() =>
+              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_proposals' })
+            }
+          >
+            What&apos;s being voted on? &rarr;
           </Link>
         </div>
       </section>
+    </div>
+  );
+}
+
+/* ─── Social proof stat ───────────────────────────────── */
+
+function SocialProofStat({
+  icon: Icon,
+  value,
+  label,
+}: {
+  icon: typeof Users;
+  value: number;
+  label: string;
+}) {
+  const formatted = value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-center gap-1.5">
+        <Icon className="h-3.5 w-3.5 text-primary/70" />
+        <span className="text-lg font-bold text-foreground tabular-nums">{formatted}</span>
+      </div>
+      <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
     </div>
   );
 }

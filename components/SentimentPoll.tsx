@@ -133,6 +133,21 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
           });
         })
         .catch(() => {});
+
+      // Funnel: first engagement tracking
+      import('@/lib/funnel')
+        .then(({ trackFunnel, FUNNEL_EVENTS, getOnboardingState, updateOnboardingState }) => {
+          trackFunnel(FUNNEL_EVENTS.FIRST_ENGAGEMENT, {
+            source: 'sentiment_poll',
+            context: vote,
+          });
+          // Mark first sentiment vote in onboarding
+          const state = getOnboardingState();
+          if (!state.firstSentimentVote) {
+            updateOnboardingState({ firstSentimentVote: true });
+          }
+        })
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Vote failed');
     } finally {
@@ -224,12 +239,17 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
                 size="sm"
                 className="gap-1.5"
                 onClick={() => {
+                  import('@/lib/funnel')
+                    .then(({ trackFunnel, FUNNEL_EVENTS }) => {
+                      trackFunnel(FUNNEL_EVENTS.WALLET_PROMPT_SHOWN, { source: 'sentiment_poll' });
+                    })
+                    .catch(() => {});
                   const event = new CustomEvent('openWalletConnect');
                   window.dispatchEvent(event);
                 }}
               >
                 <Wallet className="h-3.5 w-3.5" />
-                Connect Wallet to Vote
+                Connect to Make Your Voice Count
               </Button>
               {community.total > 0 && (
                 <p className="text-[10px] text-muted-foreground">

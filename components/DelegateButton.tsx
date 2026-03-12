@@ -58,12 +58,31 @@ export function DelegateButton({ drepId, drepName, size = 'sm', className }: Del
       window.dispatchEvent(new Event('openWalletConnect'));
       return;
     }
+    // Funnel: delegation started
+    import('@/lib/funnel')
+      .then(({ trackFunnel, FUNNEL_EVENTS }) => {
+        trackFunnel(FUNNEL_EVENTS.DELEGATION_STARTED, {
+          entity_id: drepId,
+          entity_name: drepName,
+        });
+      })
+      .catch(() => {});
     startDelegation(drepId);
   };
 
   const handleConfirm = async () => {
     const result = await confirmDelegation(drepId);
     if (result) {
+      // Funnel: delegation completed
+      import('@/lib/funnel')
+        .then(({ trackFunnel, FUNNEL_EVENTS, updateOnboardingState }) => {
+          trackFunnel(FUNNEL_EVENTS.DELEGATION_COMPLETED, {
+            entity_id: drepId,
+            entity_name: drepName,
+          });
+          updateOnboardingState({ delegatedDRep: true });
+        })
+        .catch(() => {});
       fetch(`/api/dreps/${encodeURIComponent(drepId)}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {

@@ -39,6 +39,8 @@ const RadarOverlay = dynamic(
 );
 import { usePostHog } from 'posthog-js/react';
 import { DelegateButton } from '@/components/DelegateButton';
+import { IntentWalletPrompt } from '@/components/funnel/IntentWalletPrompt';
+import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { getDominantDimension, getIdentityColor, getPersonalityLabel } from '@/lib/drepIdentity';
@@ -103,7 +105,7 @@ interface Question {
 const QUESTIONS: Question[] = [
   {
     id: 'treasury',
-    title: 'How should Cardano\u2019s treasury be managed?',
+    title: 'What do you care about: treasury spending?',
     subtitle: 'The treasury funds ecosystem growth \u2014 currently holding billions of ADA.',
     options: [
       {
@@ -128,7 +130,7 @@ const QUESTIONS: Question[] = [
   },
   {
     id: 'protocol',
-    title: 'How should protocol changes be approached?',
+    title: 'What do you care about: protocol changes?',
     subtitle: 'Protocol upgrades shape Cardano\u2019s technical direction and security.',
     options: [
       {
@@ -153,8 +155,8 @@ const QUESTIONS: Question[] = [
   },
   {
     id: 'transparency',
-    title: 'How important is transparency in governance?',
-    subtitle: 'Should representatives explain their voting decisions?',
+    title: 'What do you care about: transparency?',
+    subtitle: 'Should your governance team explain their voting decisions?',
     options: [
       {
         value: 'essential',
@@ -232,6 +234,16 @@ export function QuickMatchFlow() {
       setDrepResults(drepData);
       setSpoResults(spoData);
       setStep('results');
+
+      // Funnel: match completed + results viewed
+      trackFunnel(FUNNEL_EVENTS.MATCH_COMPLETED, {
+        personality: drepData.personalityLabel,
+        drep_matches: drepData.matches.length,
+        spo_matches: spoData.matches.length,
+      });
+      trackFunnel(FUNNEL_EVENTS.MATCH_RESULT_VIEWED, {
+        top_match_score: drepData.matches[0]?.matchScore ?? 0,
+      });
 
       // Mark quick match as completed for authenticated users
       const token = getStoredSession();
@@ -346,6 +358,7 @@ export function QuickMatchFlow() {
           <IntroScreen
             onStart={() => {
               posthog?.capture('quick_match_started');
+              trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'match_intro' });
               setStep(0);
             }}
             storedProfile={storedProfile}
@@ -393,15 +406,14 @@ function IntroScreen({
       </div>
       <div className="space-y-2">
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
-          Find Your Governance Match
+          Build Your Governance Team
         </h1>
         <p className="text-muted-foreground text-base sm:text-lg leading-relaxed">
-          Answer 3 questions about your governance values and we&apos;ll match you with DReps and
-          SPOs who share your vision. Under 60 seconds.
+          Answer 3 questions about what you care about and see who votes like you. We&apos;ll match
+          you with DReps and SPOs who share your vision. Under 60 seconds.
         </p>
         <p className="text-xs text-muted-foreground/80 max-w-md mx-auto">
-          DReps vote on governance proposals on your behalf. SPOs secure the network and vote on
-          protocol changes.{' '}
+          Your governance team votes on proposals and secures the network on your behalf.{' '}
           <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
             <Shield className="h-3 w-3 inline shrink-0" />
             Your funds stay in your wallet.
@@ -410,7 +422,7 @@ function IntroScreen({
       </div>
 
       <Button size="lg" className="text-base px-8 py-6 rounded-xl font-semibold" onClick={onStart}>
-        Start Quick Match
+        Find Your Team
         <ArrowRight className="ml-2 h-5 w-5" />
       </Button>
 
@@ -705,7 +717,7 @@ function ResultsScreen({
     <div className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
       {/* User identity */}
       <div className="text-center space-y-4">
-        <h2 className="font-display text-2xl sm:text-3xl font-bold">Your Governance Profile</h2>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold">Your Governance Team</h2>
 
         <div className="flex justify-center">
           <GovernanceRadar alignments={drepResults.userAlignments} size="full" />
@@ -934,6 +946,15 @@ function ResultsScreen({
       {/* Confidence breakdown + improvement CTAs */}
       {drepResults.confidenceBreakdown && (
         <MatchConfidenceCTA breakdown={drepResults.confidenceBreakdown} variant="full" />
+      )}
+
+      {/* Wallet connect at moment of intent — only for anonymous users */}
+      {!getStoredSession() && hasMatches && (
+        <IntentWalletPrompt
+          variant="delegate"
+          entityName={activeResults.matches[0]?.drepName ?? undefined}
+          className="max-w-md mx-auto"
+        />
       )}
 
       {/* CTAs */}

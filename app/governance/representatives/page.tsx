@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { FunnelExploreTracker } from '@/components/funnel/FunnelExploreTracker';
 import { CivicaDRepBrowse } from '@/components/civica/discover/CivicaDRepBrowse';
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default function RepresentativesPage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
       <PageViewTracker event="governance_representatives_viewed" />
+      <FunnelExploreTracker />
       <CivicaDRepBrowse />
     </div>
   );

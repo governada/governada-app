@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { FunnelExploreTracker } from '@/components/funnel/FunnelExploreTracker';
 import { CivicaPulseOverview } from '@/components/civica/pulse/CivicaPulseOverview';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FeatureGate } from '@/components/FeatureGate';
@@ -54,6 +55,7 @@ export default function HealthPage() {
   return (
     <>
       <PageViewTracker event="governance_health_viewed" />
+      <FunnelExploreTracker />
       <div className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
         <Suspense fallback={<HealthFallback />}>
           <CivicaPulseOverview />

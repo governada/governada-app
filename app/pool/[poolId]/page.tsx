@@ -49,6 +49,8 @@ const SpoProfileTabsV2 = nextDynamic(
 
 import { SpoProfileHero } from '@/components/civica/profiles/SpoProfileHero';
 import { PoolClaimCard } from '@/components/civica/profiles/PoolClaimCard';
+import { PoolProfileEditorGate } from '@/components/civica/profiles/PoolProfileEditorGate';
+import { FeatureGate } from '@/components/FeatureGate';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';
 import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/civica/cards/tierStyles';
 
@@ -98,7 +100,7 @@ async function getPoolRow(poolId: string) {
     const { data, error } = await supabase
       .from('pools')
       .select(
-        'pool_id, ticker, pool_name, pledge_lovelace, governance_score, participation_pct, deliberation_pct, consistency_pct, reliability_pct, governance_identity_pct, confidence, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake_lovelace, vote_count, governance_statement, current_tier, score_momentum, homepage_url, pool_status, claimed_by, claimed_at, retiring_epoch',
+        'pool_id, ticker, pool_name, pledge_lovelace, governance_score, participation_pct, deliberation_pct, consistency_pct, reliability_pct, governance_identity_pct, confidence, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake_lovelace, vote_count, governance_statement, current_tier, score_momentum, homepage_url, pool_status, claimed_by, claimed_at, retiring_epoch, social_links',
       )
       .eq('pool_id', poolId)
       .single();
@@ -418,6 +420,9 @@ export default async function PoolProfilePage({ params }: PageProps) {
   const poolStatus = (poolRow.pool_status as string) ?? 'registered';
   const claimedBy = (poolRow.claimed_by as string) ?? null;
   const retiringEpoch = (poolRow.retiring_epoch as number) ?? null;
+  const socialLinks = Array.isArray(poolRow.social_links)
+    ? (poolRow.social_links as Array<{ uri: string; label?: string }>)
+    : [];
   const isRetired = poolStatus === 'retired';
   const isRetiring = poolStatus === 'retiring';
 
@@ -800,8 +805,16 @@ export default async function PoolProfilePage({ params }: PageProps) {
           </Card>
         )}
 
-        {/* Pool claim card */}
-        <PoolClaimCard poolId={poolId} poolName={displayName} claimedBy={claimedBy} />
+        {/* Pool claim card — gated behind spo_claim_flow feature flag */}
+        <FeatureGate flag="spo_claim_flow">
+          <PoolClaimCard poolId={poolId} poolName={displayName} claimedBy={claimedBy} />
+          <PoolProfileEditorGate
+            poolId={poolId}
+            claimedBy={claimedBy}
+            governanceStatement={governanceStatement}
+            socialLinks={socialLinks}
+          />
+        </FeatureGate>
 
         {/* Chapter 4: Detailed Analysis — progressive disclosure gate */}
         <DetailedAnalysisGate>

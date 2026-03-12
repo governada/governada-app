@@ -6,6 +6,8 @@ import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DRepCockpit } from '@/components/workspace/DRepCockpit';
+import { CompetitiveContext } from '@/components/workspace/CompetitiveContext';
+import { ProfileShareToolkit } from '@/components/workspace/ProfileShareToolkit';
 
 /**
  * SPO Workspace — Governance score overview for SPOs.
@@ -114,7 +116,7 @@ function SPOWorkspace() {
  * SPO: Governance score overview.
  */
 export function WorkspacePage() {
-  const { segment } = useSegment();
+  const { segment, drepId, poolId } = useSegment();
 
   // Non-DRep/SPO users get redirected
   if (segment !== 'drep' && segment !== 'spo') {
@@ -131,12 +133,27 @@ export function WorkspacePage() {
     );
   }
 
+  const entityType = segment === 'drep' ? 'drep' : 'spo';
+  const entityId = segment === 'drep' ? drepId : poolId;
+
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-4">
+    <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
       <h1 className="text-xl font-bold text-foreground">
         {segment === 'drep' ? 'Governance Cockpit' : 'Governance Overview'}
       </h1>
       {segment === 'drep' ? <DRepCockpit /> : <SPOWorkspace />}
+
+      {/* Competitive Context — DRep only (SPO has its own position page) */}
+      {segment === 'drep' && <CompetitiveContext />}
+
+      {/* Profile Share Toolkit */}
+      {entityId && (
+        <ProfileShareToolkit
+          entityType={entityType as 'drep' | 'spo'}
+          entityId={entityId}
+          entityName={entityType === 'drep' ? 'My DRep Profile' : 'My Pool Profile'}
+        />
+      )}
     </div>
   );
 }

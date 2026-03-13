@@ -9,7 +9,8 @@ interface DepthGateProps {
   minDepth: GovernanceDepth;
   /** What to render when depth is below threshold (default: nothing) */
   fallback?: ReactNode;
-  children: ReactNode;
+  /** Children to render when depth meets threshold (optional for fallback-only usage) */
+  children?: ReactNode;
 }
 
 /**
@@ -20,7 +21,7 @@ interface DepthGateProps {
  * mount and their hooks don't fire — keeping API calls proportional to what
  * the user actually sees.
  */
-export function DepthGate({ minDepth, fallback = null, children }: DepthGateProps) {
+export function DepthGate({ minDepth, fallback = null, children = null }: DepthGateProps) {
   const { isAtLeast } = useGovernanceDepth();
   return isAtLeast(minDepth) ? <>{children}</> : <>{fallback}</>;
 }

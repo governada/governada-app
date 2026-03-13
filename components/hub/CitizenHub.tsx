@@ -47,7 +47,11 @@ import { hapticLight } from '@/lib/haptics';
 import { useSentimentResults } from '@/hooks/useEngagement';
 import { useCheckin } from '@/hooks/useCheckin';
 import { useEpochHeadline } from '@/hooks/useEpochHeadline';
+import { useDepthConfig } from '@/hooks/useDepthConfig';
+import { DepthGate } from '@/components/providers/DepthGate';
 import { CommunityConsensus } from './CommunityConsensus';
+import { DelegationHealthSummary } from './DelegationHealthSummary';
+import { DepthDiscoveryFooter } from './DepthDiscoveryFooter';
 import { WhatChanged } from '@/components/hub/WhatChanged';
 
 type SentimentChoice = 'support' | 'oppose' | 'unsure';
@@ -574,73 +578,329 @@ function PoolAndCoverage({
   );
 }
 
-/* ── Main component ──────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+ * SECTION COMPONENTS — each owns its data hooks so DepthGate
+ * prevents hook execution when the section is gated out.
+ * ══════════════════════════════════════════════════════════════════ */
 
-export function CitizenHub() {
-  const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
+/* ── Decided Proposals Section (informed+) ────────────────────── */
 
+function DecidedProposalsSection() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence, isError: consequenceError } = useEpochConsequence(stakeAddress);
+  const { proposalLimit } = useDepthConfig('hub');
+
+  const decidedProposals = consequence?.decidedProposals ?? [];
+
+  if (consequenceError) {
+    return (
+      <Section className="text-center py-8">
+        <p className="text-sm text-muted-foreground">
+          Couldn&apos;t load governance activity. Try refreshing.
+        </p>
+      </Section>
+    );
+  }
+
+  if (decidedProposals.length === 0) return null;
+
+  const visible = decidedProposals.slice(0, proposalLimit);
+
+  return (
+    <Section>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        What was decided
+      </h2>
+      <div className="space-y-2">
+        {visible.map((p) => (
+          <ConsequenceCard key={`${p.txHash}:${p.index}`} proposal={p} />
+        ))}
+      </div>
+      {decidedProposals.length > proposalLimit && (
+        <Link
+          href="/governance/proposals"
+          className="mt-2 block text-center text-xs text-primary hover:underline"
+        >
+          +{decidedProposals.length - proposalLimit} more
+        </Link>
+      )}
+    </Section>
+  );
+}
+
+/* ── Active Proposals Section (informed+) ─────────────────────── */
+
+function ActiveProposalsSection() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence } = useEpochConsequence(stakeAddress);
+  const { proposalLimit } = useDepthConfig('hub');
+
+  const activeProposals = consequence?.activeProposals ?? [];
+
+  if (activeProposals.length === 0) return null;
+
+  const visible = activeProposals.slice(0, proposalLimit);
+
+  return (
+    <Section>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Being decided now
+        </h2>
+        <Link
+          href="/governance/proposals"
+          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+        >
+          View all
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className="space-y-2">
+        {visible.map((p) => (
+          <ActiveProposalCard key={`${p.txHash}:${p.index}`} proposal={p} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ── Empty State (informed+, shown when no proposals exist) ──── */
+
+function EmptyProposalsState() {
+  const { stakeAddress } = useSegment();
   const {
     data: consequence,
-    isLoading: consequenceLoading,
+    isLoading,
     isError: consequenceError,
   } = useEpochConsequence(stakeAddress);
 
-  const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
-  const { data: impactScore } = useCitizenImpactScore(!!stakeAddress);
+  const decidedProposals = consequence?.decidedProposals ?? [];
+  const activeProposals = consequence?.activeProposals ?? [];
+
+  // Only show when consequence data loaded and both lists are empty
+  if (isLoading || consequenceError || decidedProposals.length > 0 || activeProposals.length > 0) {
+    return null;
+  }
+
+  return (
+    <Section className="text-center py-8">
+      <p className="text-sm text-muted-foreground">
+        No governance proposals this epoch yet. Check back soon.
+      </p>
+      <Link
+        href="/governance"
+        className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
+      >
+        Explore governance
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    </Section>
+  );
+}
+
+/* ── Your Representation Section (informed+) ──────────────────── */
+
+function YourRepresentationSection() {
+  const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
+  const { data: holderRaw } = useGovernanceHolder(stakeAddress);
   const { data: poolRaw } = useSPOSummary(delegatedPool);
-  const { streak: checkinStreak, recordCheckin } = useCheckin(!!stakeAddress);
-  const { aiHeadline } = useEpochHeadline(!!stakeAddress);
 
-  // Fire check-in on mount (idempotent — one row per epoch)
-  useEffect(() => {
-    if (stakeAddress) recordCheckin();
-  }, [stakeAddress, recordCheckin]);
-
-  const [shareCopied, setShareCopied] = useState(false);
-
-  const isLoading = consequenceLoading || holderLoading;
-
-  if (isLoading) return <CitizenHubSkeleton />;
-
-  // Extract DRep data from holder
   const holder = holderRaw as Record<string, unknown> | undefined;
   const drep = holder?.drep as Record<string, unknown> | undefined;
   const drepName = (drep?.name as string) || (drep?.ticker as string) || 'Your DRep';
   const drepScore = (drep?.score as number) ?? 0;
   const drepIsActive = (drep?.isActive as boolean) ?? true;
   const participationRate = (drep?.participationRate as number) ?? 0;
+
+  return (
+    <Section data-discovery="hub-representation">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        Your representation
+      </h2>
+
+      {!delegatedDrep && (
+        <Link href="/match" className="flex items-center justify-between gap-3 group">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-semibold text-foreground">Unrepresented</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Find a representative who shares your values
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {delegatedDrep &&
+        delegatedDrep !== 'drep_always_abstain' &&
+        delegatedDrep !== 'drep_always_no_confidence' &&
+        drep && (
+          <Link
+            href={`/drep/${encodeURIComponent(delegatedDrep)}`}
+            className="flex items-center justify-between gap-3 group"
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                {drepIsActive ? (
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <ShieldX className="h-4 w-4 text-red-500" />
+                )}
+                <span className="text-sm font-semibold text-foreground">{drepName}</span>
+                <span
+                  className={cn(
+                    'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full',
+                    drepIsActive
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-red-500/10 text-red-400',
+                  )}
+                >
+                  {drepIsActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="tabular-nums">
+                  Score: {Math.round(drepScore)} &middot; {computeTier(drepScore)}
+                </span>
+                <span className="text-muted-foreground/40">&middot;</span>
+                <span className="tabular-nums">{Math.round(participationRate)}% participation</span>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+          </Link>
+        )}
+
+      {delegatedDrep === 'drep_always_abstain' && (
+        <Link href="/match" className="flex items-center justify-between gap-3 group">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">Always Abstain</p>
+            <p className="text-xs text-muted-foreground">
+              Your ADA is registered but won&apos;t vote on any decisions. It still counts as
+              &ldquo;present&rdquo; for minimum participation requirements.
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {delegatedDrep === 'drep_always_no_confidence' && (
+        <Link href="/match" className="flex items-center justify-between gap-3 group">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">No Confidence</p>
+            <p className="text-xs text-muted-foreground">
+              Your ADA signals that you don&apos;t trust the current governance system. This pushes
+              back against all proposals.
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {/* ── Pool + Coverage ───────────────────────────────────── */}
+      <PoolAndCoverage
+        delegatedDrep={delegatedDrep}
+        delegatedPool={delegatedPool}
+        poolRaw={poolRaw}
+      />
+    </Section>
+  );
+}
+
+/* ── Governance Footprint Section (engaged+) ──────────────────── */
+
+function GovernanceFootprintSection() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence } = useEpochConsequence(stakeAddress);
+  const { data: holderRaw } = useGovernanceHolder(stakeAddress);
+  const { data: impactScore } = useCitizenImpactScore(!!stakeAddress);
+  const { streak: checkinStreak } = useCheckin(!!stakeAddress);
+
+  const holder = holderRaw as Record<string, unknown> | undefined;
   const footprint = holder?.footprint as Record<string, unknown> | undefined;
 
-  // Consequence data
-  const epoch = consequence?.epoch ?? 0;
-  const adaDecided = consequence?.adaDecided ?? 0;
   const decidedProposals = consequence?.decidedProposals ?? [];
-  const activeProposals = consequence?.activeProposals ?? [];
-  const votingPowerFraction = consequence?.votingPowerFraction;
   const votingPowerAda = consequence?.votingPowerAda;
 
-  // Footprint stats from holder or consequence
   const proposalsInfluenced = (footprint?.proposalsInfluenced as number) ?? decidedProposals.length;
   const delegationStreak = (footprint?.delegationStreak as number) ?? 0;
   const adaGoverned = votingPowerAda ?? 0;
 
-  // Build headline — prefer AI-generated, fall back to template
+  return (
+    <Section>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        Your participation
+      </h2>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <FootprintStat icon={Vote} value={proposalsInfluenced} label="Decisions Made" />
+        <FootprintStat
+          icon={Coins}
+          value={adaGoverned > 0 ? formatAda(adaGoverned) : '--'}
+          label="ADA Represented"
+        />
+        <FootprintStat
+          icon={Flame}
+          value={checkinStreak || delegationStreak}
+          label="Check-in Streak"
+        />
+        <FootprintStat
+          icon={TrendingUp}
+          value={impactScore?.computed ? Math.round(impactScore.score) : '--'}
+          label="Participation"
+        />
+      </div>
+    </Section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * EPOCH HEADLINE — always-visible orchestrator-level section
+ * ══════════════════════════════════════════════════════════════════ */
+
+function EpochHeadline({
+  aiHeadline,
+  epoch,
+  votingPowerFraction,
+  votingPowerAda,
+  stakeAddress,
+  proposalsInfluenced,
+  adaGoverned,
+  checkinStreak,
+  delegationStreak,
+  drepName,
+  hasDrep,
+}: {
+  aiHeadline: string | null;
+  epoch: number;
+  votingPowerFraction: number | null;
+  votingPowerAda: number | null;
+  stakeAddress: string | null;
+  proposalsInfluenced: number;
+  adaGoverned: number;
+  checkinStreak: number;
+  delegationStreak: number;
+  drepName: string;
+  hasDrep: boolean;
+}) {
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const adaDecidedForHeadline = votingPowerAda ?? 0;
   const templateHeadline =
-    adaDecided > 0
-      ? `Your representative helped decide how ${formatAda(adaDecided)} ADA is spent`
-      : decidedProposals.length > 0
-        ? `${decidedProposals.length} decision${decidedProposals.length !== 1 ? 's' : ''} made this period`
+    adaDecidedForHeadline > 0
+      ? `Your representative helped decide how ${formatAda(adaDecidedForHeadline)} ADA is spent`
+      : proposalsInfluenced > 0
+        ? `${proposalsInfluenced} decision${proposalsInfluenced !== 1 ? 's' : ''} made this period`
         : 'No decisions yet this period';
   const headlineText = aiHeadline || templateHeadline;
 
-  // Share epoch report card
   function handleShare() {
     const params = new URLSearchParams({
       headline: headlineText,
       decisions: String(proposalsInfluenced),
       ada: formatAda(adaGoverned),
       streak: String(checkinStreak || delegationStreak),
-      ...(drep ? { drep: drepName } : {}),
+      ...(hasDrep ? { drep: drepName } : {}),
     });
     const shareUrl = `${window.location.origin}/share/epoch/${epoch}?${params.toString()}`;
 
@@ -656,6 +916,74 @@ export function CitizenHub() {
   }
 
   return (
+    <motion.header variants={briefingItem} className="space-y-1 pb-1" data-discovery="hub-briefing">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {epoch > 0 ? epochDateRange(epoch) : 'This period'}
+        <span className="ml-1.5 text-muted-foreground/50">Epoch {epoch}</span>
+      </p>
+      <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
+        {headlineText}
+        {aiHeadline && (
+          <Sparkles className="ml-1.5 inline-block h-4 w-4 text-muted-foreground/40" />
+        )}
+      </h1>
+      {votingPowerFraction != null && votingPowerFraction > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Your {votingPowerAda ? `${formatAda(votingPowerAda)} ADA` : 'ADA'} adds weight to your
+          representative&apos;s votes
+        </p>
+      )}
+      {epoch > 0 && stakeAddress && (
+        <button
+          onClick={handleShare}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          {shareCopied ? 'Link copied!' : 'Share epoch report'}
+        </button>
+      )}
+    </motion.header>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * MAIN COMPONENT — thin orchestrator with DepthGate wiring
+ * ══════════════════════════════════════════════════════════════════ */
+
+export function CitizenHub() {
+  const { stakeAddress, delegatedDrep } = useSegment();
+
+  // Always-visible hooks: epoch headline + consequence for headline data + checkin
+  const { aiHeadline } = useEpochHeadline(!!stakeAddress);
+  const { data: consequence, isLoading: consequenceLoading } = useEpochConsequence(stakeAddress);
+  const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
+  const { streak: checkinStreak, recordCheckin } = useCheckin(!!stakeAddress);
+
+  // Fire check-in on mount (idempotent — one row per epoch)
+  useEffect(() => {
+    if (stakeAddress) recordCheckin();
+  }, [stakeAddress, recordCheckin]);
+
+  const isLoading = consequenceLoading || holderLoading;
+
+  if (isLoading) return <CitizenHubSkeleton />;
+
+  // Extract data needed for the always-visible headline
+  const holder = holderRaw as Record<string, unknown> | undefined;
+  const drep = holder?.drep as Record<string, unknown> | undefined;
+  const drepName = (drep?.name as string) || (drep?.ticker as string) || 'Your DRep';
+  const footprint = holder?.footprint as Record<string, unknown> | undefined;
+
+  const epoch = consequence?.epoch ?? 0;
+  const decidedProposals = consequence?.decidedProposals ?? [];
+  const votingPowerFraction = consequence?.votingPowerFraction ?? null;
+  const votingPowerAda = consequence?.votingPowerAda ?? null;
+
+  const proposalsInfluenced = (footprint?.proposalsInfluenced as number) ?? decidedProposals.length;
+  const delegationStreak = (footprint?.delegationStreak as number) ?? 0;
+  const adaGoverned = votingPowerAda ?? 0;
+
+  return (
     <motion.div
       variants={briefingContainer}
       initial="hidden"
@@ -665,225 +993,58 @@ export function CitizenHub() {
       {/* ── What Changed (return visit summary) ──────────── */}
       <WhatChanged />
 
-      {/* ── Epoch headline ─────────────────────────────────── */}
-      <motion.header
-        variants={briefingItem}
-        className="space-y-1 pb-1"
-        data-discovery="hub-briefing"
-      >
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {epoch > 0 ? epochDateRange(epoch) : 'This period'}
-          <span className="ml-1.5 text-muted-foreground/50">Epoch {epoch}</span>
-        </p>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
-          {headlineText}
-          {aiHeadline && (
-            <Sparkles className="ml-1.5 inline-block h-4 w-4 text-muted-foreground/40" />
-          )}
-        </h1>
-        {votingPowerFraction != null && votingPowerFraction > 0 && (
-          <p className="text-sm text-muted-foreground">
-            Your {votingPowerAda ? `${formatAda(votingPowerAda)} ADA` : 'ADA'} adds weight to your
-            representative&apos;s votes
-          </p>
-        )}
-        {epoch > 0 && stakeAddress && (
-          <button
-            onClick={handleShare}
-            className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            {shareCopied ? 'Link copied!' : 'Share epoch report'}
-          </button>
-        )}
-      </motion.header>
+      {/* ── Epoch headline (always visible) ────────────────── */}
+      <EpochHeadline
+        aiHeadline={aiHeadline}
+        epoch={epoch}
+        votingPowerFraction={votingPowerFraction}
+        votingPowerAda={votingPowerAda}
+        stakeAddress={stakeAddress}
+        proposalsInfluenced={proposalsInfluenced}
+        adaGoverned={adaGoverned}
+        checkinStreak={checkinStreak}
+        delegationStreak={delegationStreak}
+        drepName={drepName}
+        hasDrep={!!delegatedDrep}
+      />
 
-      {/* ── Decided proposals ──────────────────────────────── */}
-      {decidedProposals.length > 0 && (
-        <Section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            What was decided
-          </h2>
-          <div className="space-y-2">
-            {decidedProposals.map((p) => (
-              <ConsequenceCard key={`${p.txHash}:${p.index}`} proposal={p} />
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* ── Delegation Health (always visible) ─────────────── */}
+      <DelegationHealthSummary />
 
-      {/* ── Active proposals ───────────────────────────────── */}
-      {activeProposals.length > 0 && (
-        <Section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Being decided now
-            </h2>
-            <Link
-              href="/governance/proposals"
-              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-            >
-              View all
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {activeProposals.map((p) => (
-              <ActiveProposalCard key={`${p.txHash}:${p.index}`} proposal={p} />
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* ── Decided proposals (informed+) ──────────────────── */}
+      <DepthGate minDepth="informed">
+        <DecidedProposalsSection />
+      </DepthGate>
 
-      {/* ── Empty state ────────────────────────────────────── */}
-      {consequenceError && (
-        <Section className="text-center py-8">
-          <p className="text-sm text-muted-foreground">
-            Couldn&apos;t load governance activity. Try refreshing.
-          </p>
-        </Section>
-      )}
+      {/* ── Active proposals (informed+) ───────────────────── */}
+      <DepthGate minDepth="informed">
+        <ActiveProposalsSection />
+      </DepthGate>
 
-      {!consequenceError && decidedProposals.length === 0 && activeProposals.length === 0 && (
-        <Section className="text-center py-8">
-          <p className="text-sm text-muted-foreground">
-            No governance proposals this epoch yet. Check back soon.
-          </p>
-          <Link
-            href="/governance"
-            className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
-          >
-            Explore governance
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Section>
-      )}
+      {/* ── Empty state (informed+, shown when no proposals) ─ */}
+      <DepthGate minDepth="informed">
+        <EmptyProposalsState />
+      </DepthGate>
 
-      {/* ── Governance footprint ───────────────────────────── */}
-      <Section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Your participation
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <FootprintStat icon={Vote} value={proposalsInfluenced} label="Decisions Made" />
-          <FootprintStat
-            icon={Coins}
-            value={adaGoverned > 0 ? formatAda(adaGoverned) : '--'}
-            label="ADA Represented"
-          />
-          <FootprintStat
-            icon={Flame}
-            value={checkinStreak || delegationStreak}
-            label="Check-in Streak"
-          />
-          <FootprintStat
-            icon={TrendingUp}
-            value={impactScore?.computed ? Math.round(impactScore.score) : '--'}
-            label="Participation"
-          />
-        </div>
-      </Section>
+      {/* ── Your representation (informed+) ────────────────── */}
+      <DepthGate minDepth="informed">
+        <YourRepresentationSection />
+      </DepthGate>
 
-      {/* ── Community Consensus (feature-flagged) ────────── */}
-      <CommunityConsensus />
+      {/* ── Governance footprint (engaged+) ────────────────── */}
+      <DepthGate minDepth="engaged">
+        <GovernanceFootprintSection />
+      </DepthGate>
 
-      {/* ── Representation quality ─────────────────────────── */}
-      <Section data-discovery="hub-representation">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Your representation
-        </h2>
+      {/* ── Community Consensus (engaged+, feature-flagged) ── */}
+      <DepthGate minDepth="engaged">
+        <CommunityConsensus />
+      </DepthGate>
 
-        {!delegatedDrep && (
-          <Link href="/match" className="flex items-center justify-between gap-3 group">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-semibold text-foreground">Unrepresented</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Find a representative who shares your values
-              </p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-          </Link>
-        )}
+      {/* ── Subtle depth upsell for users below Engaged ────── */}
+      <DepthGate minDepth="engaged" fallback={<DepthDiscoveryFooter />} />
 
-        {delegatedDrep &&
-          delegatedDrep !== 'drep_always_abstain' &&
-          delegatedDrep !== 'drep_always_no_confidence' &&
-          drep && (
-            <Link
-              href={`/drep/${encodeURIComponent(delegatedDrep)}`}
-              className="flex items-center justify-between gap-3 group"
-            >
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  {drepIsActive ? (
-                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  ) : (
-                    <ShieldX className="h-4 w-4 text-red-500" />
-                  )}
-                  <span className="text-sm font-semibold text-foreground">{drepName}</span>
-                  <span
-                    className={cn(
-                      'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full',
-                      drepIsActive
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-red-500/10 text-red-400',
-                    )}
-                  >
-                    {drepIsActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="tabular-nums">
-                    Score: {Math.round(drepScore)} &middot; {computeTier(drepScore)}
-                  </span>
-                  <span className="text-muted-foreground/40">&middot;</span>
-                  <span className="tabular-nums">
-                    {Math.round(participationRate)}% participation
-                  </span>
-                </div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-            </Link>
-          )}
-
-        {delegatedDrep === 'drep_always_abstain' && (
-          <Link href="/match" className="flex items-center justify-between gap-3 group">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Always Abstain</p>
-              <p className="text-xs text-muted-foreground">
-                Your ADA is registered but won&apos;t vote on any decisions. It still counts as
-                &ldquo;present&rdquo; for minimum participation requirements.
-              </p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-          </Link>
-        )}
-
-        {delegatedDrep === 'drep_always_no_confidence' && (
-          <Link href="/match" className="flex items-center justify-between gap-3 group">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">No Confidence</p>
-              <p className="text-xs text-muted-foreground">
-                Your ADA signals that you don&apos;t trust the current governance system. This
-                pushes back against all proposals.
-              </p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-          </Link>
-        )}
-
-        {/* ── Pool + Coverage ───────────────────────────────────── */}
-        <PoolAndCoverage
-          delegatedDrep={delegatedDrep}
-          delegatedPool={delegatedPool}
-          poolRaw={poolRaw}
-        />
-      </Section>
-
-      {/* ── Quick links ────────────────────────────────────── */}
+      {/* ── Quick links (always visible) ───────────────────── */}
       <motion.div
         variants={briefingItem}
         className="flex items-center justify-center gap-4 pt-2 pb-4"

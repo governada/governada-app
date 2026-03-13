@@ -253,7 +253,7 @@ export function GovernanceTuner() {
         </CardContent>
 
         {/* Fine-tune section (Deep level only) */}
-        {effectiveDepth === 'deep' && (
+        {(effectiveDepth === 'engaged' || effectiveDepth === 'deep') && (
           <div className="border-t border-border">
             <button
               onClick={() => setFineTuneOpen((prev) => !prev)}
@@ -310,8 +310,7 @@ function FineTunePanel({
   return (
     <div className="space-y-4 px-6 pb-4">
       <p className="text-xs text-muted-foreground">
-        At the Deep level, all user-facing events are enabled. Individual toggles will be available
-        in a future update.
+        {enabledKeys.length} event types enabled at this level. Individual toggles coming soon.
       </p>
       {grouped.map(([category, categoryEvents]) => (
         <div key={category} className="space-y-2">

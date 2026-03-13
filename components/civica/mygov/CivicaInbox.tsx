@@ -18,11 +18,10 @@ import {
   MessageSquare,
   Shield,
   Landmark,
-  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { useSegment } from '@/components/providers/SegmentProvider';
 import {
   useDRepReportCard,
@@ -34,7 +33,6 @@ import {
 } from '@/hooks/queries';
 import { generateActions } from '@/lib/actionFeed';
 import { SPOInbox } from './SPOInbox';
-import { NotificationPreferences } from './NotificationPreferences';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -678,133 +676,162 @@ function CivicaInboxInner({
               : 'All caught up'}
           </p>
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={() => handleMarkAllRead(filtered)}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+        <div className="flex items-center gap-3">
+          {unreadCount > 0 && (
+            <button
+              onClick={() => handleMarkAllRead(filtered)}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+            >
+              <CheckCircle className="h-3 w-3" />
+              Mark all read
+            </button>
+          )}
+          <Link
+            href="/you/settings"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors"
           >
-            <CheckCircle className="h-3 w-3" />
-            Mark all read
-          </button>
-        )}
+            Manage
+          </Link>
+        </div>
       </div>
 
-      <Tabs defaultValue="notifications" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="notifications" className="flex items-center gap-1.5">
-            <Bell className="h-3.5 w-3.5" />
-            Notifications
-          </TabsTrigger>
-          <TabsTrigger value="preferences" className="flex items-center gap-1.5">
-            <Settings className="h-3.5 w-3.5" />
-            Preferences
-          </TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
+        {/* Filter tabs */}
+        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+          {FILTER_TABS.filter((t) => {
+            // Hide system tab for anon
+            if (t.key === 'system' && segment === 'anonymous') return false;
+            return true;
+          }).map((tab) => {
+            const count =
+              tab.key === 'all'
+                ? allNotifications.filter((n) => !readSet.has(n.id)).length
+                : allNotifications.filter((n) => n.category === tab.key && !readSet.has(n.id))
+                    .length;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveFilter(tab.key)}
+                className={cn(
+                  'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                  activeFilter === tab.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                )}
+              >
+                {tab.label}
+                {count > 0 && (
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center h-4 min-w-4 rounded-full text-[10px] font-bold px-1',
+                      activeFilter === tab.key
+                        ? 'bg-primary-foreground/20 text-primary-foreground'
+                        : 'bg-primary/20 text-primary',
+                    )}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-        <TabsContent value="notifications" className="space-y-4">
-          {/* Filter tabs */}
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-            {FILTER_TABS.filter((t) => {
-              // Hide system tab for anon
-              if (t.key === 'system' && segment === 'anonymous') return false;
-              return true;
-            }).map((tab) => {
-              const count =
-                tab.key === 'all'
-                  ? allNotifications.filter((n) => !readSet.has(n.id)).length
-                  : allNotifications.filter((n) => n.category === tab.key && !readSet.has(n.id))
-                      .length;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveFilter(tab.key)}
-                  className={cn(
-                    'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                    activeFilter === tab.key
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
-                  )}
-                >
-                  {tab.label}
-                  {count > 0 && (
-                    <span
-                      className={cn(
-                        'inline-flex items-center justify-center h-4 min-w-4 rounded-full text-[10px] font-bold px-1',
-                        activeFilter === tab.key
-                          ? 'bg-primary-foreground/20 text-primary-foreground'
-                          : 'bg-primary/20 text-primary',
-                      )}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Content — smart quiet mode */}
-          {(() => {
-            if (isLoading) {
-              return (
-                <div className="space-y-2">
-                  {[...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
-                  ))}
-                </div>
-              );
-            }
-
-            if (filtered.length === 0) {
-              return (
-                <div className="rounded-xl border border-emerald-900/30 bg-emerald-950/10 px-5 py-10 text-center space-y-2">
-                  <CheckCircle className="h-8 w-8 text-emerald-400 mx-auto" />
-                  <p className="text-sm font-medium text-emerald-300">You&apos;re all caught up</p>
-                  <p className="text-xs text-muted-foreground">
-                    {activeFilter === 'all'
-                      ? 'No governance notifications right now. Your participation is healthy.'
-                      : `No ${activeFilter} notifications right now.`}
-                  </p>
-                </div>
-              );
-            }
-
-            // Split into urgent (priority 1-2) and informational (priority 3)
-            const urgentItems = filtered.filter((n) => n.priority <= 2);
-            const infoItems = filtered.filter((n) => n.priority > 2);
-
-            // Quiet mode: no urgent items, only informational
-            if (urgentItems.length === 0 && infoItems.length > 0 && activeFilter === 'all') {
-              return (
-                <div className="space-y-2">
-                  <QuietModeSummary
-                    ghiScore={pulse?.ghiScore ?? undefined}
-                    ghiDelta={pulse?.ghiDelta ?? undefined}
-                    activeProposals={pulse?.activeProposals ?? undefined}
-                    infoCount={infoItems.length}
-                    showDetails={showInfoItems}
-                    onToggleDetails={() => setShowInfoItems((v) => !v)}
-                  />
-                  {showInfoItems && (
-                    <div className="space-y-2">
-                      {infoItems.map((item) => (
-                        <NotificationCard
-                          key={item.id}
-                          item={item}
-                          isRead={readSet.has(item.id)}
-                          onRead={handleRead}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            // Normal mode: show urgent items first, then info items
+        {/* Content — smart quiet mode */}
+        {(() => {
+          if (isLoading) {
             return (
               <div className="space-y-2">
-                {urgentItems.map((item) => (
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                ))}
+              </div>
+            );
+          }
+
+          if (filtered.length === 0) {
+            return (
+              <div className="rounded-xl border border-emerald-900/30 bg-emerald-950/10 px-5 py-10 text-center space-y-2">
+                <CheckCircle className="h-8 w-8 text-emerald-400 mx-auto" />
+                <p className="text-sm font-medium text-emerald-300">You&apos;re all caught up</p>
+                <p className="text-xs text-muted-foreground">
+                  {activeFilter === 'all'
+                    ? 'No governance notifications right now. Your participation is healthy.'
+                    : `No ${activeFilter} notifications right now.`}
+                </p>
+              </div>
+            );
+          }
+
+          // Split into urgent (priority 1-2) and informational (priority 3)
+          const urgentItems = filtered.filter((n) => n.priority <= 2);
+          const infoItems = filtered.filter((n) => n.priority > 2);
+
+          // Quiet mode: no urgent items, only informational
+          if (urgentItems.length === 0 && infoItems.length > 0 && activeFilter === 'all') {
+            return (
+              <div className="space-y-2">
+                <QuietModeSummary
+                  ghiScore={pulse?.ghiScore ?? undefined}
+                  ghiDelta={pulse?.ghiDelta ?? undefined}
+                  activeProposals={pulse?.activeProposals ?? undefined}
+                  infoCount={infoItems.length}
+                  showDetails={showInfoItems}
+                  onToggleDetails={() => setShowInfoItems((v) => !v)}
+                />
+                {showInfoItems && (
+                  <div className="space-y-2">
+                    {infoItems.map((item) => (
+                      <NotificationCard
+                        key={item.id}
+                        item={item}
+                        isRead={readSet.has(item.id)}
+                        onRead={handleRead}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Normal mode: show urgent items first, then info items
+          return (
+            <div className="space-y-2">
+              {urgentItems.map((item) => (
+                <NotificationCard
+                  key={item.id}
+                  item={item}
+                  isRead={readSet.has(item.id)}
+                  onRead={handleRead}
+                />
+              ))}
+              {infoItems.length > 0 && urgentItems.length > 0 && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowInfoItems((v) => !v)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+                  >
+                    <ChevronDown
+                      className={cn('h-3 w-3 transition-transform', showInfoItems && 'rotate-180')}
+                    />
+                    {showInfoItems ? 'Hide' : 'Show'} {infoItems.length} informational update
+                    {infoItems.length > 1 ? 's' : ''}
+                  </button>
+                  {showInfoItems &&
+                    infoItems.map((item) => (
+                      <NotificationCard
+                        key={item.id}
+                        item={item}
+                        isRead={readSet.has(item.id)}
+                        onRead={handleRead}
+                      />
+                    ))}
+                </div>
+              )}
+              {infoItems.length > 0 &&
+                urgentItems.length === 0 &&
+                infoItems.map((item) => (
                   <NotificationCard
                     key={item.id}
                     item={item}
@@ -812,108 +839,67 @@ function CivicaInboxInner({
                     onRead={handleRead}
                   />
                 ))}
-                {infoItems.length > 0 && urgentItems.length > 0 && (
-                  <div className="pt-2">
-                    <button
-                      onClick={() => setShowInfoItems((v) => !v)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
-                    >
-                      <ChevronDown
-                        className={cn(
-                          'h-3 w-3 transition-transform',
-                          showInfoItems && 'rotate-180',
-                        )}
-                      />
-                      {showInfoItems ? 'Hide' : 'Show'} {infoItems.length} informational update
-                      {infoItems.length > 1 ? 's' : ''}
-                    </button>
-                    {showInfoItems &&
-                      infoItems.map((item) => (
-                        <NotificationCard
-                          key={item.id}
-                          item={item}
-                          isRead={readSet.has(item.id)}
-                          onRead={handleRead}
-                        />
-                      ))}
-                  </div>
-                )}
-                {infoItems.length > 0 &&
-                  urgentItems.length === 0 &&
-                  infoItems.map((item) => (
-                    <NotificationCard
-                      key={item.id}
-                      item={item}
-                      isRead={readSet.has(item.id)}
-                      onRead={handleRead}
-                    />
-                  ))}
-              </div>
-            );
-          })()}
+            </div>
+          );
+        })()}
 
-          {/* DRep pending proposals detail (DRep segment only) */}
-          {segment === 'drep' && inbox?.pendingProposals && inbox.pendingProposals.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Pending Votes ({inbox.pendingCount ?? 0})
-                </p>
-                {(inbox.scoreImpact?.potentialGain ?? 0) > 0 && (
-                  <span className="text-xs text-emerald-400 font-medium">
-                    +{inbox.scoreImpact!.potentialGain!.toFixed(1)} pts potential
-                  </span>
-                )}
-              </div>
-              <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-                {inbox.pendingProposals.slice(0, 5).map((p) => (
-                  <Link
-                    key={p.txHash ?? p.id ?? ''}
-                    href={`/proposal/${p.txHash}/${p.index ?? 0}`}
-                    className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors group"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate font-medium">
-                        {p.title ?? p.proposalTitle ?? 'Proposal'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {p.priority === 'critical' && (
-                          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">
-                            Critical
-                          </span>
-                        )}
-                        {p.epochsRemaining != null && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {p.epochsRemaining} epoch{p.epochsRemaining !== 1 ? 's' : ''} left
-                          </span>
-                        )}
-                        {(p.perProposalScoreImpact ?? 0) > 0 && (
-                          <span className="text-[10px] text-emerald-400">
-                            +{p.perProposalScoreImpact} pts
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                  </Link>
-                ))}
-              </div>
-              {inbox.pendingProposals.length > 5 && (
-                <Link
-                  href="/governance/proposals"
-                  className="block text-center text-xs text-muted-foreground hover:text-primary transition-colors py-1"
-                >
-                  View all {inbox.pendingCount ?? 0} pending proposals
-                </Link>
+        {/* DRep pending proposals detail (DRep segment only) */}
+        {segment === 'drep' && inbox?.pendingProposals && inbox.pendingProposals.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Pending Votes ({inbox.pendingCount ?? 0})
+              </p>
+              {(inbox.scoreImpact?.potentialGain ?? 0) > 0 && (
+                <span className="text-xs text-emerald-400 font-medium">
+                  +{inbox.scoreImpact!.potentialGain!.toFixed(1)} pts potential
+                </span>
               )}
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="preferences" className="space-y-4">
-          <NotificationPreferences />
-        </TabsContent>
-      </Tabs>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+              {inbox.pendingProposals.slice(0, 5).map((p) => (
+                <Link
+                  key={p.txHash ?? p.id ?? ''}
+                  href={`/proposal/${p.txHash}/${p.index ?? 0}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate font-medium">
+                      {p.title ?? p.proposalTitle ?? 'Proposal'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {p.priority === 'critical' && (
+                        <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">
+                          Critical
+                        </span>
+                      )}
+                      {p.epochsRemaining != null && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {p.epochsRemaining} epoch{p.epochsRemaining !== 1 ? 's' : ''} left
+                        </span>
+                      )}
+                      {(p.perProposalScoreImpact ?? 0) > 0 && (
+                        <span className="text-[10px] text-emerald-400">
+                          +{p.perProposalScoreImpact} pts
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                </Link>
+              ))}
+            </div>
+            {inbox.pendingProposals.length > 5 && (
+              <Link
+                href="/governance/proposals"
+                className="block text-center text-xs text-muted-foreground hover:text-primary transition-colors py-1"
+              >
+                View all {inbox.pendingCount ?? 0} pending proposals
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

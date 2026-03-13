@@ -9,13 +9,11 @@ import {
   Vote,
   Coins,
   Share2,
-  CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
   ArrowRight,
   Shield,
   Users,
   Landmark,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,7 +24,12 @@ import { AsyncContent } from '@/components/civica/shared/AsyncContent';
 import { MilestoneGallery } from './MilestoneGallery';
 import { CitizenMilestoneCelebration } from './CitizenMilestoneCelebration';
 import { ImpactScoreCard } from './ImpactScoreCard';
+import { GovernanceRings } from './GovernanceRings';
+import { GovernancePulse } from './GovernancePulse';
+import { IdentityNarrative } from './IdentityNarrative';
+import { MilestoneStamps } from './MilestoneStamps';
 import { useCitizenImpactScore } from '@/hooks/queries';
+import { computeGovernanceRings, RING_CONFIG } from '@/lib/governanceRings';
 import type { GovernanceFootprint } from '@/lib/governanceFootprint';
 
 /* ── Data hooks (TanStack Query) ───────────────────────────────── */
@@ -71,13 +74,6 @@ function formatAdaCompact(ada: number): string {
   if (ada >= 1_000) return `${(ada / 1_000).toFixed(0)}K`;
   return ada.toFixed(0);
 }
-
-const HEALTH_CONFIG = {
-  champion: { icon: CheckCircle2, color: 'text-emerald-500', label: 'Champion' },
-  active: { icon: CheckCircle2, color: 'text-emerald-500', label: 'Active' },
-  participant: { icon: AlertTriangle, color: 'text-amber-500', label: 'Participant' },
-  observer: { icon: AlertCircle, color: 'text-muted-foreground', label: 'Observer' },
-} as const;
 
 /* ── Section components ────────────────────────────────────────── */
 
@@ -154,13 +150,15 @@ function ProfileSkeleton() {
   return (
     <div className="space-y-6">
       <Skeleton className="h-6 w-48" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="flex justify-center">
+        <Skeleton className="h-[200px] w-[200px] rounded-full" />
+      </div>
+      <Skeleton className="h-4 w-64 mx-auto" />
+      <div className="flex gap-2">
         {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          <Skeleton key={i} className="h-16 w-16 rounded-lg" />
         ))}
       </div>
-      <Skeleton className="h-32 w-full rounded-xl" />
-      <Skeleton className="h-48 w-full rounded-xl" />
     </div>
   );
 }
@@ -183,6 +181,7 @@ export function CivicIdentityProfile() {
     segment !== 'anonymous',
   );
   const [shareOpen, setShareOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const isLoading = segmentLoading || footprintLoading;
   const earned = milestonesData?.milestones ?? [];
@@ -193,6 +192,9 @@ export function CivicIdentityProfile() {
   const recentKeys = new Set(
     earned.filter((m) => new Date(m.earnedAt).getTime() > recentCutoff).map((m) => m.key),
   );
+
+  // Compute governance rings from existing data
+  const ringsData = computeGovernanceRings(footprint, impactScoreData);
 
   if (segment === 'anonymous' && !segmentLoading) {
     return (
@@ -223,7 +225,7 @@ export function CivicIdentityProfile() {
   const shareOgUrl = stakeAddress
     ? `/api/og/civic-identity/${encodeURIComponent(stakeAddress)}`
     : '';
-  const shareText = `Check out my Civic Identity on Cardano! ${earned.length} milestones earned. @GovernadaIO`;
+  const shareText = `Check out my Civic Identity on Cardano! Governance Pulse: ${ringsData.pulse}/100. ${earned.length} milestones earned. @GovernadaIO`;
 
   return (
     <div className="space-y-8" data-discovery="you-card">
@@ -248,211 +250,87 @@ export function CivicIdentityProfile() {
         )}
       </div>
 
-      {/* Citizen Since + Key Stats */}
+      {/* ── Hero: Governance Rings + Pulse ───────────────────────── */}
       <AsyncContent
-        isLoading={footprintLoading}
+        isLoading={footprintLoading || impactScoreLoading}
         isError={footprintError}
         data={footprint}
         errorMessage="Unable to load your governance footprint."
         skeleton={
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-xl" />
-            ))}
+          <div className="flex justify-center">
+            <Skeleton className="h-[200px] w-[200px] rounded-full" />
           </div>
         }
       >
         {footprint && (
           <>
             {isUndelegated ? (
-              /* Undelegated citizen — show onboarding CTA instead of empty stats */
               <UndelegatedCTA />
             ) : (
-              <>
-                {/* Participation tier banner */}
-                <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-4">
-                  {(() => {
-                    const tier = footprint.identity.participationTier;
-                    const config = HEALTH_CONFIG[tier];
-                    const TierIcon = config.icon;
-                    return (
-                      <>
-                        <TierIcon className={cn('h-5 w-5', config.color)} />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold">{config.label} Citizen</p>
-                          <p className="text-xs text-muted-foreground">
-                            {footprint.identity.delegationAgeDays != null
-                              ? `Delegating for ${footprint.identity.delegationAgeDays} days`
-                              : 'Start delegating to build your identity'}
-                          </p>
-                        </div>
-                        {footprint.delegationRecord.drepName && (
-                          <Link
-                            href={`/drep/${footprint.identity.delegatedDRep}`}
-                            className="text-sm font-medium text-primary hover:underline"
-                          >
-                            {footprint.delegationRecord.drepName}
-                          </Link>
-                        )}
-                      </>
-                    );
-                  })()}
+              <div className="flex flex-col items-center gap-5">
+                {/* Rings with Pulse centered inside */}
+                <div className="relative">
+                  <GovernanceRings rings={ringsData.rings} size={200} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <GovernancePulse
+                      pulse={ringsData.pulse}
+                      pulseColor={ringsData.pulseColor}
+                      pulseLabel={ringsData.pulseLabel}
+                    />
+                  </div>
                 </div>
 
-                {/* Stats grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <StatCard
-                    icon={Calendar}
-                    label="Citizen Since"
-                    value={
-                      footprint.identity.delegationAgeDays != null
-                        ? `${Math.floor(footprint.identity.delegationAgeDays / 5)} epochs`
-                        : '--'
-                    }
-                    sub={
-                      footprint.identity.delegationAgeDays != null
-                        ? `${footprint.identity.delegationAgeDays} days`
-                        : undefined
-                    }
-                  />
-                  <StatCard
-                    icon={Flame}
-                    label="Delegation Streak"
-                    value={footprint.citizenActivity.epochsActive}
-                    sub={`epoch${footprint.citizenActivity.epochsActive !== 1 ? 's' : ''} active`}
-                  />
-                  <StatCard
-                    icon={Vote}
-                    label="Proposals Influenced"
-                    value={footprint.impact.proposalsInfluenced}
-                  />
-                  <StatCard
-                    icon={Coins}
-                    label="ADA Governed"
-                    value={
-                      footprint.impact.adaGoverned > 0
-                        ? formatAdaCompact(footprint.impact.adaGoverned)
-                        : '--'
-                    }
-                    sub={footprint.impact.delegationWeight}
-                  />
+                {/* Ring legend */}
+                <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5">
+                  {RING_CONFIG.map((config) => (
+                    <div key={config.key} className="flex items-center gap-1.5">
+                      <div
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: config.color }}
+                      />
+                      <span className="text-xs text-muted-foreground">{config.label}</span>
+                    </div>
+                  ))}
                 </div>
-              </>
+
+                {/* Identity narrative */}
+                <IdentityNarrative
+                  participationTier={footprint.identity.participationTier}
+                  drepName={footprint.delegationRecord.drepName}
+                  delegationAgeDays={footprint.identity.delegationAgeDays}
+                  proposalsInfluenced={footprint.impact.proposalsInfluenced}
+                  pulse={ringsData.pulse}
+                  pulseLabel={ringsData.pulseLabel}
+                />
+              </div>
             )}
 
-            {/* Unstaked notice — shown below stats or below undelegated CTA */}
             {isUnstaked && <UnstakedCTA />}
           </>
         )}
       </AsyncContent>
 
-      {/* Governance Footprint */}
-      {footprint && (
-        <div data-discovery="you-history">
-          <SectionHeader title="Governance Footprint" />
-          {isUndelegated ? (
-            <div className="rounded-xl border border-border/50 bg-card/70 p-5 text-center space-y-3">
-              <Vote className="h-6 w-6 text-muted-foreground mx-auto" />
-              <p className="text-sm font-medium text-foreground">No governance footprint yet</p>
-              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                Once you delegate to a DRep, this section will show their score, votes cast on your
-                behalf, and your delegation history.
-              </p>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/match">
-                  Browse DReps
-                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Link>
-              </Button>
+      {/* ── Milestone Stamps ─────────────────────────────────────── */}
+      <div data-discovery="you-milestones">
+        <SectionHeader title="Milestones" />
+        <AsyncContent
+          isLoading={milestonesLoading}
+          isError={milestonesError}
+          data={milestonesData}
+          errorMessage="Unable to load milestones."
+          skeleton={
+            <div className="flex gap-2">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-16 rounded-lg" />
+              ))}
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
-                  <p className="text-xs text-muted-foreground">DRep Score</p>
-                  <p className="text-2xl font-bold tabular-nums">
-                    {footprint.delegationRecord.drepScore ?? '--'}
-                    <span className="text-sm font-normal text-muted-foreground">/100</span>
-                  </p>
-                  {footprint.delegationRecord.drepRank && (
-                    <p className="text-xs text-muted-foreground">
-                      Rank #{footprint.delegationRecord.drepRank}
-                    </p>
-                  )}
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
-                  <p className="text-xs text-muted-foreground">DRep Votes Cast</p>
-                  <p className="text-2xl font-bold tabular-nums">
-                    {footprint.delegationRecord.keyVotes}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {footprint.delegationRecord.delegationChanges} delegation change
-                    {footprint.delegationRecord.delegationChanges !== 1 ? 's' : ''}
-                  </p>
-                </div>
-              </div>
-
-              {delegatedDrep && (
-                <div className="mt-3">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/drep/${delegatedDrep}`}>
-                      View your DRep
-                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Engagement Stats */}
-      {footprint && (
-        <div>
-          <SectionHeader title="Engagement Stats" />
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
-              <p className="text-xl font-bold tabular-nums">
-                {footprint.citizenActivity.pollsTaken}
-              </p>
-              <p className="text-xs text-muted-foreground">Polls Taken</p>
-            </div>
-            <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
-              <p className="text-xl font-bold tabular-nums">
-                {footprint.citizenActivity.pollStreak}
-              </p>
-              <p className="text-xs text-muted-foreground">Poll Streak</p>
-            </div>
-            <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
-              <p className="text-xl font-bold tabular-nums">
-                {footprint.citizenActivity.consistency != null
-                  ? `${footprint.citizenActivity.consistency}%`
-                  : '--'}
-              </p>
-              <p className="text-xs text-muted-foreground">Consistency</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Governance Impact Score */}
-      <div>
-        <SectionHeader title="Governance Impact" />
-        {impactScoreLoading ? (
-          <Skeleton className="h-64 w-full rounded-2xl" />
-        ) : impactScoreData ? (
-          <ImpactScoreCard data={impactScoreData} />
-        ) : (
-          <div className="rounded-2xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-5 text-center">
-            <p className="text-sm text-muted-foreground">
-              Impact score will be calculated on the next sync cycle.
-            </p>
-          </div>
-        )}
+          }
+        >
+          <MilestoneStamps earned={earned} recentKeys={recentKeys} />
+        </AsyncContent>
       </div>
 
-      {/* Alignment Profile */}
+      {/* ── Alignment Quick Match ────────────────────────────────── */}
       {footprint && (
         <div>
           <SectionHeader title="Alignment" />
@@ -475,25 +353,166 @@ export function CivicIdentityProfile() {
         </div>
       )}
 
-      {/* Milestone Gallery */}
-      <div data-discovery="you-milestones">
-        <SectionHeader title="Milestones" />
-        <AsyncContent
-          isLoading={milestonesLoading}
-          isError={milestonesError}
-          data={milestonesData}
-          errorMessage="Unable to load milestones."
-          skeleton={
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full rounded-xl" />
-              ))}
+      {/* ── Collapsible Details ───────────────────────────────────── */}
+      {footprint && !isUndelegated && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setDetailsOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 hover:text-foreground transition-colors"
+          >
+            <ChevronDown
+              className={cn('h-3.5 w-3.5 transition-transform', detailsOpen && 'rotate-180')}
+            />
+            Detailed Breakdown
+          </button>
+
+          {detailsOpen && (
+            <div className="space-y-6 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard
+                  icon={Calendar}
+                  label="Citizen Since"
+                  value={
+                    footprint.identity.delegationAgeDays != null
+                      ? `${Math.floor(footprint.identity.delegationAgeDays / 5)} epochs`
+                      : '--'
+                  }
+                  sub={
+                    footprint.identity.delegationAgeDays != null
+                      ? `${footprint.identity.delegationAgeDays} days`
+                      : undefined
+                  }
+                />
+                <StatCard
+                  icon={Flame}
+                  label="Delegation Streak"
+                  value={footprint.citizenActivity.epochsActive}
+                  sub={`epoch${footprint.citizenActivity.epochsActive !== 1 ? 's' : ''} active`}
+                />
+                <StatCard
+                  icon={Vote}
+                  label="Proposals Influenced"
+                  value={footprint.impact.proposalsInfluenced}
+                />
+                <StatCard
+                  icon={Coins}
+                  label="ADA Governed"
+                  value={
+                    footprint.impact.adaGoverned > 0
+                      ? formatAdaCompact(footprint.impact.adaGoverned)
+                      : '--'
+                  }
+                  sub={footprint.impact.delegationWeight}
+                />
+              </div>
+
+              {/* Governance Footprint */}
+              <div data-discovery="you-history">
+                <SectionHeader title="Governance Footprint" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
+                    <p className="text-xs text-muted-foreground">DRep Score</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {footprint.delegationRecord.drepScore ?? '--'}
+                      <span className="text-sm font-normal text-muted-foreground">/100</span>
+                    </p>
+                    {footprint.delegationRecord.drepRank && (
+                      <p className="text-xs text-muted-foreground">
+                        Rank #{footprint.delegationRecord.drepRank}
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-card p-4 space-y-1">
+                    <p className="text-xs text-muted-foreground">DRep Votes Cast</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {footprint.delegationRecord.keyVotes}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {footprint.delegationRecord.delegationChanges} delegation change
+                      {footprint.delegationRecord.delegationChanges !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                {delegatedDrep && (
+                  <div className="mt-3">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/drep/${delegatedDrep}`}>
+                        View your DRep
+                        <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Engagement Stats */}
+              <div>
+                <SectionHeader title="Engagement Stats" />
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                    <p className="text-xl font-bold tabular-nums">
+                      {footprint.citizenActivity.pollsTaken}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Polls Taken</p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                    <p className="text-xl font-bold tabular-nums">
+                      {footprint.citizenActivity.pollStreak}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Poll Streak</p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                    <p className="text-xl font-bold tabular-nums">
+                      {footprint.citizenActivity.consistency != null
+                        ? `${footprint.citizenActivity.consistency}%`
+                        : '--'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Consistency</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Impact Score */}
+              <div>
+                <SectionHeader title="Governance Impact" />
+                {impactScoreLoading ? (
+                  <Skeleton className="h-64 w-full rounded-2xl" />
+                ) : impactScoreData ? (
+                  <ImpactScoreCard data={impactScoreData} />
+                ) : (
+                  <div className="rounded-2xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-5 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Impact score will be calculated on the next sync cycle.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Full Milestone Gallery */}
+              <div>
+                <SectionHeader title="All Milestones" />
+                <AsyncContent
+                  isLoading={milestonesLoading}
+                  isError={milestonesError}
+                  data={milestonesData}
+                  errorMessage="Unable to load milestones."
+                  skeleton={
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {[...Array(6)].map((_, i) => (
+                        <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                      ))}
+                    </div>
+                  }
+                >
+                  <MilestoneGallery earned={earned} recentKeys={recentKeys} />
+                </AsyncContent>
+              </div>
             </div>
-          }
-        >
-          <MilestoneGallery earned={earned} recentKeys={recentKeys} />
-        </AsyncContent>
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Milestone celebration (for newly earned milestones) */}
       {recentKeys.size > 0 && (

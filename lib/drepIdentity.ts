@@ -225,12 +225,27 @@ export function getRadarAxisEndpoints(size: number, padding = 24): [number, numb
 
 /** Short, evocative archetypes derived from alignment scores. */
 const PERSONALITY_ARCHETYPES: Record<AlignmentDimension, string[]> = {
-  treasuryConservative: ['The Guardian', 'The Fiscal Hawk', 'The Prudent Steward'],
-  treasuryGrowth: ['The Builder', 'The Growth Champion', 'The Catalyst'],
-  decentralization: ['The Federalist', 'The Power Distributor', 'The Decentralizer'],
-  security: ['The Sentinel', 'The Cautious Architect', 'The Shield'],
-  innovation: ['The Pioneer', 'The Changemaker', 'The Innovator'],
-  transparency: ['The Beacon', 'The Transparent Champion', 'The Open Book'],
+  treasuryConservative: ['The Guardian', 'The Fiscal Hawk', 'The Prudent Steward', 'The Moderate'],
+  treasuryGrowth: ['The Builder', 'The Growth Architect', 'The Catalyst', 'The Pragmatist'],
+  decentralization: [
+    'The Federalist',
+    'The Power Distributor',
+    'The Decentralizer',
+    'The Balanced Voice',
+  ],
+  security: [
+    'The Sentinel',
+    'The Protocol Guardian',
+    'The Cautious Architect',
+    'The Measured Thinker',
+  ],
+  innovation: ['The Pioneer', 'The Changemaker', 'The Explorer', 'The Curious Mind'],
+  transparency: [
+    'The Beacon',
+    'The Open Advocate',
+    'The Transparency Champion',
+    'The Thoughtful Observer',
+  ],
 };
 
 /**
@@ -245,7 +260,8 @@ export function getPersonalityLabel(alignments: AlignmentScores): string {
 
   if (distance > 30) return labels[0];
   if (distance > 15) return labels[1];
-  return labels[2];
+  if (distance > 8) return labels[2];
+  return labels[3];
 }
 
 /**

@@ -6,6 +6,7 @@ import { scaleLinear } from 'd3-scale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorCard } from '@/components/ui/ErrorCard';
 import { cn } from '@/lib/utils';
+import { GlowBar } from '@/components/ui/GlowBar';
 import { useTreasuryCurrent, useTreasuryHistory, useTreasuryPending } from '@/hooks/queries';
 import type { TreasuryData } from '@/types/api';
 
@@ -276,19 +277,24 @@ export function CivicaTreasury() {
               {treasury.healthScore ?? 0}
             </p>
           </div>
-          <div className="w-full h-2 bg-border rounded-full overflow-hidden">
-            <div
-              className={cn(
-                'h-full rounded-full',
-                (treasury.healthScore ?? 0) >= 70
-                  ? 'bg-emerald-500'
-                  : (treasury.healthScore ?? 0) >= 40
-                    ? 'bg-amber-500'
-                    : 'bg-rose-500',
-              )}
-              style={{ width: `${treasury.healthScore}%` }}
-            />
-          </div>
+          <GlowBar
+            value={treasury.healthScore ?? 0}
+            fillClass={
+              (treasury.healthScore ?? 0) >= 70
+                ? 'bg-emerald-500'
+                : (treasury.healthScore ?? 0) >= 40
+                  ? 'bg-amber-500'
+                  : 'bg-rose-500'
+            }
+            glowColor={
+              (treasury.healthScore ?? 0) >= 70
+                ? '#10b981'
+                : (treasury.healthScore ?? 0) >= 40
+                  ? '#f59e0b'
+                  : '#ef4444'
+            }
+            height={8}
+          />
         </div>
       )}
 

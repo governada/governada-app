@@ -103,6 +103,17 @@ export function NclUtilizationTrend() {
                 className="w-full h-auto"
                 preserveAspectRatio="none"
               >
+                <defs>
+                  <filter id="ncl-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+                    <feComposite in2="SourceGraphic" operator="over" />
+                  </filter>
+                  <linearGradient id="ncl-gradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+
                 {/* Threshold lines */}
                 {svgData.thresholds.map((t) => (
                   <line
@@ -125,7 +136,19 @@ export function NclUtilizationTrend() {
                 ))}
 
                 {/* Area fill */}
-                <path d={svgData.areaPath} fill="url(#ncl-gradient)" opacity={0.3} />
+                <path d={svgData.areaPath} fill="url(#ncl-gradient)" />
+
+                {/* Glow layer */}
+                <path
+                  d={svgData.linePath}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={4}
+                  className="text-primary"
+                  strokeLinejoin="round"
+                  filter="url(#ncl-glow)"
+                  opacity={0.4}
+                />
 
                 {/* Utilization line */}
                 <path
@@ -159,14 +182,6 @@ export function NclUtilizationTrend() {
                     className="text-primary"
                   />
                 )}
-
-                {/* Gradient definition */}
-                <defs>
-                  <linearGradient id="ncl-gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
               </svg>
 
               {/* Epoch range labels */}

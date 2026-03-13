@@ -2,6 +2,7 @@
 
 import { TrendingUp, Flame, Users, MessageCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { GlowBar } from '@/components/ui/GlowBar';
 import type { ImpactScoreResponse } from '@/hooks/queries';
 
 /* ── Pillar config ─────────────────────────────────────────────── */
@@ -92,6 +93,12 @@ function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
 
 /* ── Pillar bar ─────────────────────────────────────────────────── */
 
+function pillarGlow(pct: number): { fillClass: string; glowColor: string } {
+  if (pct >= 80) return { fillClass: 'bg-emerald-500', glowColor: '#10b981' };
+  if (pct >= 50) return { fillClass: 'bg-blue-500', glowColor: '#3b82f6' };
+  return { fillClass: 'bg-amber-500', glowColor: '#f59e0b' };
+}
+
 function PillarBar({
   label,
   value,
@@ -106,6 +113,7 @@ function PillarBar({
   description: string;
 }) {
   const pct = Math.min((value / max) * 100, 100);
+  const { fillClass, glowColor } = pillarGlow(pct);
 
   return (
     <div className="space-y-1.5">
@@ -118,15 +126,7 @@ function PillarBar({
           {value.toFixed(1)}/{max}
         </span>
       </div>
-      <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all duration-500',
-            pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-primary' : 'bg-amber-500',
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <GlowBar value={pct} fillClass={fillClass} glowColor={glowColor} height={8} />
       <p className="text-[10px] text-muted-foreground">{description}</p>
     </div>
   );

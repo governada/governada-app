@@ -178,6 +178,39 @@ export const notifyEpochRecap = inngest.createFunction(
               ? `${(epochStats.treasuryWithdrawnAda / 1_000_000).toFixed(1)}M`
               : '0';
 
+          // Fetch AI headline from governance_briefs if available
+          let aiHeadline: string | undefined;
+          const { data: brief } = await supabase
+            .from('governance_briefs')
+            .select('content_json')
+            .eq('user_id', pref.user_id)
+            .eq('epoch', currentEpoch - 1)
+            .maybeSingle();
+          if (brief?.content_json) {
+            const content = brief.content_json as { headline?: string };
+            if (content.headline) aiHeadline = content.headline;
+          }
+
+          // Fetch check-in streak
+          let checkinStreak: number | undefined;
+          if (stakeAddr) {
+            const { data: checkins } = await supabase
+              .from('user_hub_checkins')
+              .select('epoch')
+              .eq('user_stake_address', stakeAddr)
+              .order('epoch', { ascending: false })
+              .limit(20);
+            if (checkins?.length) {
+              let streak = 1;
+              for (let ci = 1; ci < checkins.length; ci++) {
+                const gap = checkins[ci - 1].epoch - checkins[ci].epoch;
+                if (gap <= 2) streak++;
+                else break;
+              }
+              checkinStreak = streak;
+            }
+          }
+
           // Create inbox notification
           await notifyUser(pref.user_id, {
             eventType: 'governance-brief',
@@ -205,9 +238,13 @@ export const notifyEpochRecap = inngest.createFunction(
                 const EpochDigest = (await import('@/emails/EpochDigest')).default;
                 const unsubscribeUrl = generateUnsubscribeUrl(pref.user_id);
 
+                const emailSubject = aiHeadline
+                  ? `Epoch ${currentEpoch - 1}: ${aiHeadline}`
+                  : `Epoch ${currentEpoch - 1}: ${epochStats.proposalsDecided} proposals decided`;
+
                 const sent = await sendEmail(
                   pref.email,
-                  `Epoch ${currentEpoch - 1}: ${epochStats.proposalsDecided} proposals decided`,
+                  emailSubject,
                   React.createElement(EpochDigest, {
                     epoch: currentEpoch - 1,
                     proposalsDecided: epochStats.proposalsDecided,
@@ -227,6 +264,8 @@ export const notifyEpochRecap = inngest.createFunction(
                         : null,
                     })),
                     unsubscribeUrl,
+                    aiHeadline,
+                    checkinStreak,
                   }),
                   {
                     unsubscribeUrl,

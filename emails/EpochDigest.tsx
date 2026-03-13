@@ -39,6 +39,10 @@ export interface EpochDigestProps {
     daysRemaining: number | null;
   }>;
   unsubscribeUrl: string;
+  /** AI-generated headline from governance_briefs (optional) */
+  aiHeadline?: string;
+  /** Epoch check-in streak count (optional) */
+  checkinStreak?: number;
 }
 
 // ── Shared Styles ────────────────────────────────────────────────────────
@@ -128,8 +132,12 @@ export default function EpochDigest({
   newMilestones = [],
   activeProposals = [],
   unsubscribeUrl = '#',
+  aiHeadline,
+  checkinStreak,
 }: EpochDigestProps) {
-  const previewText = `Epoch ${epoch}: ${proposalsDecided} proposals decided, ${adaGoverned} ADA governed`;
+  const previewText =
+    aiHeadline ||
+    `Epoch ${epoch}: ${proposalsDecided} proposals decided, ${adaGoverned} ADA governed`;
 
   return (
     <Html>
@@ -158,11 +166,23 @@ export default function EpochDigest({
                 margin: '0 0 4px',
               }}
             >
-              Epoch {epoch} Summary
+              {aiHeadline || `Epoch ${epoch} Summary`}
             </Heading>
             <Text style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
               {proposalsDecided} proposals decided &middot; {adaGoverned} ADA governed
             </Text>
+            {checkinStreak != null && checkinStreak > 1 && (
+              <Text
+                style={{
+                  color: '#f59e0b',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  margin: '8px 0 0',
+                }}
+              >
+                &#128293; You&apos;ve checked in {checkinStreak} epochs in a row!
+              </Text>
+            )}
           </Section>
 
           {/* DRep Activity Card */}
@@ -286,8 +306,16 @@ export default function EpochDigest({
           {/* CTA */}
           <Section style={{ textAlign: 'center', margin: '8px 0 24px' }}>
             <Button style={button} href={`${BASE_URL}/`}>
-              Open Governada
+              See your full briefing
             </Button>
+            <Text style={{ fontSize: '13px', color: '#64748b', marginTop: '12px' }}>
+              <Link
+                href={`${BASE_URL}/share/epoch/${epoch}`}
+                style={{ color: '#6366f1', textDecoration: 'none' }}
+              >
+                Share your epoch report &#8594;
+              </Link>
+            </Text>
           </Section>
 
           {/* Footer */}

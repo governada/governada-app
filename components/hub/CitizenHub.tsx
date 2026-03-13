@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -23,6 +23,8 @@ import {
   Wallet,
   Server,
   Shield,
+  Sparkles,
+  Share2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { briefingContainer, briefingItem } from '@/lib/animations';
@@ -43,6 +45,8 @@ import { getStoredSession } from '@/lib/supabaseAuth';
 import { resolveRewardAddress } from '@meshsdk/core';
 import { hapticLight } from '@/lib/haptics';
 import { useSentimentResults } from '@/hooks/useEngagement';
+import { useCheckin } from '@/hooks/useCheckin';
+import { useEpochHeadline } from '@/hooks/useEpochHeadline';
 import { CommunityConsensus } from './CommunityConsensus';
 import { WhatChanged } from '@/components/hub/WhatChanged';
 
@@ -584,6 +588,15 @@ export function CitizenHub() {
   const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
   const { data: impactScore } = useCitizenImpactScore(!!stakeAddress);
   const { data: poolRaw } = useSPOSummary(delegatedPool);
+  const { streak: checkinStreak, recordCheckin } = useCheckin(!!stakeAddress);
+  const { aiHeadline } = useEpochHeadline(!!stakeAddress);
+
+  // Fire check-in on mount (idempotent — one row per epoch)
+  useEffect(() => {
+    if (stakeAddress) recordCheckin();
+  }, [stakeAddress, recordCheckin]);
+
+  const [shareCopied, setShareCopied] = useState(false);
 
   const isLoading = consequenceLoading || holderLoading;
 
@@ -611,13 +624,36 @@ export function CitizenHub() {
   const delegationStreak = (footprint?.delegationStreak as number) ?? 0;
   const adaGoverned = votingPowerAda ?? 0;
 
-  // Build headline
-  const headlineText =
+  // Build headline — prefer AI-generated, fall back to template
+  const templateHeadline =
     adaDecided > 0
       ? `Your representative helped decide how ${formatAda(adaDecided)} ADA is spent`
       : decidedProposals.length > 0
         ? `${decidedProposals.length} decision${decidedProposals.length !== 1 ? 's' : ''} made this period`
         : 'No decisions yet this period';
+  const headlineText = aiHeadline || templateHeadline;
+
+  // Share epoch report card
+  function handleShare() {
+    const params = new URLSearchParams({
+      headline: headlineText,
+      decisions: String(proposalsInfluenced),
+      ada: formatAda(adaGoverned),
+      streak: String(checkinStreak || delegationStreak),
+      ...(drep ? { drep: drepName } : {}),
+    });
+    const shareUrl = `${window.location.origin}/share/epoch/${epoch}?${params.toString()}`;
+
+    if (navigator.share) {
+      navigator.share({ title: `Epoch ${epoch} Report`, url: shareUrl }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      });
+    }
+    hapticLight();
+  }
 
   return (
     <motion.div
@@ -641,12 +677,24 @@ export function CitizenHub() {
         </p>
         <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
           {headlineText}
+          {aiHeadline && (
+            <Sparkles className="ml-1.5 inline-block h-4 w-4 text-muted-foreground/40" />
+          )}
         </h1>
         {votingPowerFraction != null && votingPowerFraction > 0 && (
           <p className="text-sm text-muted-foreground">
             Your {votingPowerAda ? `${formatAda(votingPowerAda)} ADA` : 'ADA'} adds weight to your
             representative&apos;s votes
           </p>
+        )}
+        {epoch > 0 && stakeAddress && (
+          <button
+            onClick={handleShare}
+            className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            {shareCopied ? 'Link copied!' : 'Share epoch report'}
+          </button>
         )}
       </motion.header>
 
@@ -723,7 +771,11 @@ export function CitizenHub() {
             value={adaGoverned > 0 ? formatAda(adaGoverned) : '--'}
             label="ADA Represented"
           />
-          <FootprintStat icon={Flame} value={delegationStreak} label="Active Streak" />
+          <FootprintStat
+            icon={Flame}
+            value={checkinStreak || delegationStreak}
+            label="Check-in Streak"
+          />
           <FootprintStat
             icon={TrendingUp}
             value={impactScore?.computed ? Math.round(impactScore.score) : '--'}

@@ -4013,6 +4013,27 @@ export type Database = {
           },
         ];
       };
+      user_hub_checkins: {
+        Row: {
+          checked_in_at: string;
+          epoch: number;
+          id: string;
+          user_stake_address: string;
+        };
+        Insert: {
+          checked_in_at?: string;
+          epoch: number;
+          id?: string;
+          user_stake_address: string;
+        };
+        Update: {
+          checked_in_at?: string;
+          epoch?: number;
+          id?: string;
+          user_stake_address?: string;
+        };
+        Relationships: [];
+      };
       user_notification_preferences: {
         Row: {
           alert_coverage_changed: boolean;

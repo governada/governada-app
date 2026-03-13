@@ -18,6 +18,7 @@ import {
   Scale,
   Layers,
   HelpCircle,
+  CheckCheck,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { useTheme } from 'next-themes';
@@ -27,6 +28,12 @@ import { useWallet } from '@/utils/wallet-context';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 import { TIER_SCORE_COLOR, type TierKey } from '@/components/civica/cards/tierStyles';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
+import {
+  useNotifications,
+  useMarkRead,
+  useMarkAllRead,
+  type Notification,
+} from '@/hooks/useNotifications';
 import { useAdminCheck } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,6 +74,102 @@ const SEGMENT_ICONS: Record<UserSegment, typeof User> = {
   spo: ShieldCheck,
   cc: Scale,
 };
+
+/* ── Notification bell dropdown ──────────────────────────────── */
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
+
+function NotificationBell({ unreadCount }: { unreadCount: number }) {
+  const router = useRouter();
+  const { data: notifData } = useNotifications(true);
+  const markRead = useMarkRead();
+  const markAllRead = useMarkAllRead();
+  const recent = (notifData?.notifications ?? []).slice(0, 5);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
+          aria-label="Notifications"
+        >
+          <Bell className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>Notifications</span>
+          {unreadCount > 0 && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                markAllRead.mutate();
+              }}
+              className="text-[10px] font-normal text-primary hover:underline cursor-pointer"
+            >
+              <CheckCheck className="inline h-3 w-3 mr-0.5" />
+              Mark all read
+            </button>
+          )}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {recent.length === 0 && (
+          <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+            No notifications yet
+          </div>
+        )}
+        {recent.map((n: Notification) => (
+          <DropdownMenuItem
+            key={n.id}
+            className="flex items-start gap-2.5 py-2.5 cursor-pointer"
+            onSelect={() => {
+              if (!n.read) markRead.mutate([n.id]);
+              if (n.action_url) router.push(n.action_url);
+            }}
+          >
+            {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+            {n.read && <span className="mt-1.5 h-2 w-2 shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <p className={cn('text-sm leading-snug line-clamp-1', !n.read && 'font-medium')}>
+                {n.title}
+              </p>
+              {n.body && (
+                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{n.body}</p>
+              )}
+            </div>
+            <span className="text-[10px] text-muted-foreground/60 shrink-0 tabular-nums">
+              {formatRelativeTime(n.created_at)}
+            </span>
+          </DropdownMenuItem>
+        ))}
+        {recent.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="justify-center text-xs text-primary">
+              <Link href="/you/inbox">View all notifications</Link>
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function CivicaHeader() {
   const router = useRouter();
@@ -142,23 +245,8 @@ export function CivicaHeader() {
             </kbd>
           </Button>
 
-          {/* Notification bell */}
-          {connected && isAuthenticated && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={() => router.push('/you/inbox')}
-              aria-label="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </Button>
-          )}
+          {/* Notification bell dropdown */}
+          {connected && isAuthenticated && <NotificationBell unreadCount={unreadCount} />}
 
           {/* Help dropdown */}
           <DropdownMenu>

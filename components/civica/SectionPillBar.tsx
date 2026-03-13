@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { getPillBarItems } from '@/lib/nav/config';
+import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 
 interface SectionPillBarProps {
   section: string;
@@ -17,7 +18,8 @@ interface SectionPillBarProps {
 export function SectionPillBar({ section: _section }: SectionPillBarProps) {
   const pathname = usePathname();
   const { segment, drepId, poolId } = useSegment();
-  const items = getPillBarItems(pathname, segment, { drepId, poolId });
+  const { depth } = useGovernanceDepth();
+  const items = getPillBarItems(pathname, segment, { drepId, poolId, depth });
 
   if (!items || items.length < 2) return null;
 

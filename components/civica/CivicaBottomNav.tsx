@@ -6,13 +6,15 @@ import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { getBottomBarItems } from '@/lib/nav/config';
+import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 
 export function CivicaBottomNav() {
   const pathname = usePathname();
   const { segment, stakeAddress } = useSegment();
+  const { depth } = useGovernanceDepth();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
 
-  const navItems = getBottomBarItems(segment);
+  const navItems = getBottomBarItems({ segment, depth });
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';

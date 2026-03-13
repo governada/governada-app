@@ -152,8 +152,8 @@ export function GovernanceTuner() {
           {saved && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
         </div>
         <p className="text-sm text-muted-foreground">
-          Choose how closely you follow Cardano governance. We&apos;ll tailor your notifications
-          accordingly.
+          Choose how closely you follow Cardano governance. We&apos;ll tailor your entire experience
+          &mdash; notifications, navigation, and information density.
         </p>
       </div>
 

@@ -66,8 +66,7 @@ export const TUNER_LEVELS: Record<GovernanceDepth, TunerLevel> = {
   hands_off: {
     key: 'hands_off',
     label: 'Hands-Off',
-    description:
-      "You'll only hear from us if something needs your attention — like your delegation becoming inactive or a critical governance event.",
+    description: "A quick health check. We'll surface only what needs your attention.",
     shortDescription: "Alerts only when something's wrong",
     iconName: 'BellOff',
     eventTypes: HANDS_OFF_EVENTS,
@@ -77,8 +76,7 @@ export const TUNER_LEVELS: Record<GovernanceDepth, TunerLevel> = {
   informed: {
     key: 'informed',
     label: 'Informed',
-    description:
-      "Stay in the loop on major governance activity — new proposals, your DRep's score changes, and epoch summaries.",
+    description: 'A regular briefing on what matters. The essentials, clearly presented.',
     shortDescription: 'Major governance updates',
     iconName: 'Bell',
     eventTypes: INFORMED_EVENTS,
@@ -88,8 +86,7 @@ export const TUNER_LEVELS: Record<GovernanceDepth, TunerLevel> = {
   engaged: {
     key: 'engaged',
     label: 'Engaged',
-    description:
-      'Actively participate in governance decisions. Get notified about alignment drift, delegation milestones, and how your DRep voted on proposals you care about.',
+    description: 'Active governance participation. Full dashboard, all the tools.',
     shortDescription: 'Active governance participation',
     iconName: 'BellRing',
     eventTypes: ENGAGED_EVENTS,
@@ -99,8 +96,7 @@ export const TUNER_LEVELS: Record<GovernanceDepth, TunerLevel> = {
   deep: {
     key: 'deep',
     label: 'Deep',
-    description:
-      'Full visibility into everything happening in Cardano governance. Every event, individually configurable.',
+    description: 'Everything visible. Full event stream, all metrics, maximum detail.',
     shortDescription: 'Full visibility, full control',
     iconName: 'BellPlus',
     eventTypes: getAllUserFacingEventKeys(),

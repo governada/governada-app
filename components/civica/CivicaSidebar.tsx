@@ -12,6 +12,7 @@ import {
   type NavItemGroup,
 } from '@/lib/nav/config';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
+import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { Button } from '@/components/ui/button';
 
 interface CivicaSidebarProps {
@@ -22,9 +23,10 @@ interface CivicaSidebarProps {
 export function CivicaSidebar({ collapsed, onToggle }: CivicaSidebarProps) {
   const pathname = usePathname();
   const { segment, stakeAddress, drepId, poolId } = useSegment();
+  const { depth } = useGovernanceDepth();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
 
-  const sections = getSidebarSections({ segment, drepId, poolId });
+  const sections = getSidebarSections({ segment, drepId, poolId, depth });
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';

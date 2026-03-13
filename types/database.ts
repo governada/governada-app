@@ -3922,6 +3922,35 @@ export type Database = {
           },
         ];
       };
+      user_entity_subscriptions: {
+        Row: {
+          created_at: string;
+          entity_id: string;
+          entity_type: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          entity_id: string;
+          entity_type: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          entity_id?: string;
+          entity_type?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_entity_subscriptions_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       user_governance_profile_history: {
         Row: {
           alignment_scores: Json | null;
@@ -4130,6 +4159,7 @@ export type Database = {
           display_name: string | null;
           email: string | null;
           email_verified: boolean | null;
+          governance_depth: string;
           governance_level: string | null;
           id: string;
           last_active: string | null;
@@ -4151,6 +4181,7 @@ export type Database = {
           display_name?: string | null;
           email?: string | null;
           email_verified?: boolean | null;
+          governance_depth?: string;
           governance_level?: string | null;
           id?: string;
           last_active?: string | null;
@@ -4172,6 +4203,7 @@ export type Database = {
           display_name?: string | null;
           email?: string | null;
           email_verified?: boolean | null;
+          governance_depth?: string;
           governance_level?: string | null;
           id?: string;
           last_active?: string | null;

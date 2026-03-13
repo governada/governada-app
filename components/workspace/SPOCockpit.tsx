@@ -3,14 +3,20 @@
 import Link from 'next/link';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
+import { DepthGate } from '@/components/providers/DepthGate';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * SPO Governance Cockpit — Governance score overview for SPOs.
  *
- * JTBD: "What's my governance reputation?"
- * Score with pillar breakdown, top improvement suggestions, trend.
+ * Depth-adaptive layout:
+ * - Hands-Off: Governance score + pending governance actions (status widget)
+ * - Informed:  + delegator count + recent governance actions (operational summary)
+ * - Engaged:   Current full cockpit (default for SPOs)
+ * - Deep:      + pool comparison analytics placeholder
+ *
+ * SPO default depth = engaged, so existing users see no change.
  */
 export function SPOCockpit() {
   const { poolId } = useSegment();
@@ -50,7 +56,7 @@ export function SPOCockpit() {
 
   return (
     <div className="space-y-6" data-discovery="spo-score">
-      {/* Score overview */}
+      {/* Score overview — all depths (governance score is core info) */}
       <div
         className="rounded-2xl border border-border bg-card p-5 space-y-4"
         data-discovery="ws-spo-score"
@@ -65,46 +71,63 @@ export function SPOCockpit() {
           <span className="text-4xl font-bold tabular-nums text-foreground">{score}</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-muted/50 p-3 text-center">
-            <p className="text-xl font-bold tabular-nums text-foreground">{voteCount}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Votes Cast</p>
+        {/* Vote/participation stats — informed+ (operational summary) */}
+        <DepthGate minDepth="informed">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-muted/50 p-3 text-center">
+              <p className="text-xl font-bold tabular-nums text-foreground">{voteCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Votes Cast</p>
+            </div>
+            <div className="rounded-xl bg-muted/50 p-3 text-center">
+              <p className="text-xl font-bold tabular-nums text-foreground">{participationRate}%</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Participation</p>
+            </div>
           </div>
-          <div className="rounded-xl bg-muted/50 p-3 text-center">
-            <p className="text-xl font-bold tabular-nums text-foreground">{participationRate}%</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Participation</p>
-          </div>
+        </DepthGate>
+      </div>
+
+      {/* Improvement suggestions — engaged+ (full cockpit experience) */}
+      <DepthGate minDepth="engaged">
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Next Steps
+          </h3>
+          {suggestions.slice(0, 3).map((s, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-2 rounded-lg border border-border bg-card p-3"
+            >
+              <span className="text-primary font-bold text-sm">{i + 1}.</span>
+              <p className="text-sm text-foreground">{s}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </DepthGate>
 
-      {/* Improvement suggestions */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Next Steps
-        </h3>
-        {suggestions.slice(0, 3).map((s, i) => (
-          <div
-            key={i}
-            className="flex items-start gap-2 rounded-lg border border-border bg-card p-3"
-          >
-            <span className="text-primary font-bold text-sm">{i + 1}.</span>
-            <p className="text-sm text-foreground">{s}</p>
-          </div>
-        ))}
-      </div>
+      {/* Quick links — engaged+ (workspace navigation) */}
+      <DepthGate minDepth="engaged">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/workspace/pool-profile">Pool Profile</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/workspace/position">Competitive Position</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/workspace/delegators">Delegators</Link>
+          </Button>
+        </div>
+      </DepthGate>
 
-      {/* Quick links */}
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/pool-profile">Pool Profile</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/position">Competitive Position</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/delegators">Delegators</Link>
-        </Button>
-      </div>
+      {/* Deep: placeholder for pool comparison analytics */}
+      <DepthGate minDepth="deep">
+        <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center space-y-1">
+          <p className="text-sm font-medium text-muted-foreground">Pool Comparison Analytics</p>
+          <p className="text-xs text-muted-foreground/70">
+            Compare your governance activity against similar pools — coming soon.
+          </p>
+        </div>
+      </DepthGate>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useSegment } from '@/components/providers/SegmentProvider';
+import { DepthGate } from '@/components/providers/DepthGate';
 import { HubCardRenderer } from './HubCardRenderer';
 import { AnonymousLanding } from './AnonymousLanding';
 import { CitizenHub } from './CitizenHub';
@@ -69,10 +70,16 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
       <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
         <h1 className="text-xl font-bold text-foreground">Governance Cockpit</h1>
         <DRepCockpit />
-        <CompetitiveContext />
-        {drepId && (
-          <ProfileShareToolkit entityType="drep" entityId={drepId} entityName="My DRep Profile" />
-        )}
+        {/* Competitive context — deep only (competitive intelligence) */}
+        <DepthGate minDepth="deep">
+          <CompetitiveContext />
+        </DepthGate>
+        {/* Profile sharing — engaged+ (workspace integration) */}
+        <DepthGate minDepth="engaged">
+          {drepId && (
+            <ProfileShareToolkit entityType="drep" entityId={drepId} entityName="My DRep Profile" />
+          )}
+        </DepthGate>
       </div>
     );
   }
@@ -83,9 +90,12 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
       <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
         <h1 className="text-xl font-bold text-foreground">Governance Overview</h1>
         <SPOCockpit />
-        {poolId && (
-          <ProfileShareToolkit entityType="spo" entityId={poolId} entityName="My Pool Profile" />
-        )}
+        {/* Profile sharing — engaged+ (workspace integration) */}
+        <DepthGate minDepth="engaged">
+          {poolId && (
+            <ProfileShareToolkit entityType="spo" entityId={poolId} entityName="My Pool Profile" />
+          )}
+        </DepthGate>
       </div>
     );
   }

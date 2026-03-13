@@ -52,6 +52,9 @@ supabase/.temp/
 
 # typescript
 *.tsbuildinfo
+
+# linter/formatter caches
+.eslintcache
 next-env.d.ts
 .env*.local
 

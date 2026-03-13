@@ -1144,6 +1144,39 @@ export type Database = {
           },
         ];
       };
+      citizen_ring_snapshots: {
+        Row: {
+          coverage_ring: number;
+          created_at: string | null;
+          delegation_ring: number;
+          engagement_ring: number;
+          epoch: number;
+          id: string;
+          pulse: number;
+          user_id: string;
+        };
+        Insert: {
+          coverage_ring: number;
+          created_at?: string | null;
+          delegation_ring: number;
+          engagement_ring: number;
+          epoch: number;
+          id?: string;
+          pulse: number;
+          user_id: string;
+        };
+        Update: {
+          coverage_ring?: number;
+          created_at?: string | null;
+          delegation_ring?: number;
+          engagement_ring?: number;
+          epoch?: number;
+          id?: string;
+          pulse?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       citizen_sentiment: {
         Row: {
           created_at: string | null;

@@ -265,6 +265,43 @@ export function getPersonalityLabel(alignments: AlignmentScores): string {
 }
 
 /**
+ * Derive a compound archetype from alignment scores by combining
+ * the top-2 dominant dimensions. Produces labels like
+ * "The Guardian with a Pioneer's curiosity".
+ *
+ * Only uses the compound form when both top dimensions have
+ * meaningful distance from center (>10). Otherwise falls back
+ * to the single archetype.
+ */
+export function getCompoundArchetype(alignments: AlignmentScores): string {
+  const primary = getPersonalityLabel(alignments);
+
+  // Find the top-2 dimensions by distance from 50
+  const ranked = DIMENSION_ORDER.map((dim) => ({
+    dim,
+    distance: Math.abs((alignments[dim] ?? 50) - 50),
+  })).sort((a, b) => b.distance - a.distance);
+
+  const [first, second] = ranked;
+
+  // Only compound when both dimensions have strong signal
+  if (first.distance <= 10 || second.distance <= 10) return primary;
+  // Skip if both map to the same dimension (shouldn't happen, but guard)
+  if (first.dim === second.dim) return primary;
+
+  const secondaryLabels = PERSONALITY_ARCHETYPES[second.dim];
+  // Pick a descriptor based on second dimension's strength
+  const secondaryDescriptor =
+    second.distance > 30
+      ? secondaryLabels[0]
+      : second.distance > 15
+        ? secondaryLabels[1]
+        : secondaryLabels[2];
+
+  return `${primary} with ${secondaryDescriptor} instincts`;
+}
+
+/**
  * Hysteresis margin — new dominant dimension must lead by this many points
  * over the previous dominant dimension before the label is allowed to change.
  * Prevents flickering when a DRep's alignment hovers near a dimension boundary.

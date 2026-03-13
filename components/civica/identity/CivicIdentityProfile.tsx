@@ -28,8 +28,11 @@ import { GovernanceRings } from './GovernanceRings';
 import { GovernancePulse } from './GovernancePulse';
 import { IdentityNarrative } from './IdentityNarrative';
 import { MilestoneStamps } from './MilestoneStamps';
+import { PulseHistoryChart } from './PulseHistoryChart';
 import { useCitizenImpactScore } from '@/hooks/queries';
 import { computeGovernanceRings, RING_CONFIG } from '@/lib/governanceRings';
+import { getCompoundArchetype, getDominantDimension, getIdentityColor } from '@/lib/drepIdentity';
+import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GovernanceFootprint } from '@/lib/governanceFootprint';
 
 /* ── Data hooks (TanStack Query) ───────────────────────────────── */
@@ -293,6 +296,26 @@ export function CivicIdentityProfile() {
                   ))}
                 </div>
 
+                {/* Governance archetype (from delegated DRep's alignment) */}
+                {footprint.delegationRecord.drepAlignment &&
+                  (() => {
+                    const alignment = footprint.delegationRecord.drepAlignment as AlignmentScores;
+                    const archetype = getCompoundArchetype(alignment);
+                    const dominant = getDominantDimension(alignment);
+                    const color = getIdentityColor(dominant);
+                    return (
+                      <div className="text-center">
+                        <p
+                          className="text-lg font-bold tracking-tight"
+                          style={{ color: color.hex }}
+                        >
+                          {archetype}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Your governance archetype</p>
+                      </div>
+                    );
+                  })()}
+
                 {/* Identity narrative */}
                 <IdentityNarrative
                   participationTier={footprint.identity.participationTier}
@@ -301,7 +324,19 @@ export function CivicIdentityProfile() {
                   proposalsInfluenced={footprint.impact.proposalsInfluenced}
                   pulse={ringsData.pulse}
                   pulseLabel={ringsData.pulseLabel}
+                  rings={ringsData.rings}
+                  archetype={
+                    footprint.delegationRecord.drepAlignment
+                      ? getCompoundArchetype(
+                          footprint.delegationRecord.drepAlignment as AlignmentScores,
+                        )
+                      : null
+                  }
+                  milestonesEarned={earned.length}
                 />
+
+                {/* Pulse history sparkline (only renders if snapshots exist) */}
+                <PulseHistoryChart className="justify-center" />
               </div>
             )}
 
@@ -326,7 +361,7 @@ export function CivicIdentityProfile() {
             </div>
           }
         >
-          <MilestoneStamps earned={earned} recentKeys={recentKeys} />
+          <MilestoneStamps earned={earned} recentKeys={recentKeys} stakeAddress={stakeAddress} />
         </AsyncContent>
       </div>
 

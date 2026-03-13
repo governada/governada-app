@@ -38,6 +38,7 @@ import { generateCitizenAssembly } from '@/inngest/functions/generate-citizen-as
 import { trackProposalOutcomes } from '@/inngest/functions/track-proposal-outcomes';
 import { computeCommunityIntelligence } from '@/inngest/functions/compute-community-intelligence';
 import { notifyEngagementOutcomes } from '@/inngest/functions/notify-engagement-outcomes';
+import { snapshotCitizenRings } from '@/inngest/functions/snapshot-citizen-rings';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
@@ -79,5 +80,6 @@ export const { GET, POST, PUT } = serve({
     trackProposalOutcomes,
     computeCommunityIntelligence,
     notifyEngagementOutcomes,
+    snapshotCitizenRings,
   ],
 });

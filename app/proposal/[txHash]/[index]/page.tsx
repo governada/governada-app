@@ -21,6 +21,7 @@ import { ConcernFlagBanner } from '@/components/engagement/ConcernFlagBanner';
 import { ProposalSentimentSection } from '@/components/engagement/ProposalSentimentSection';
 import { ConcernFlagsSection } from '@/components/engagement/ConcernFlagsSection';
 import { ProposalHeroV2 } from '@/components/civica/proposals/ProposalHeroV2';
+import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { IntelligenceBriefing } from '@/components/civica/proposals/IntelligenceBriefing';
 import { DebateSection } from '@/components/civica/proposals/DebateSection';
 import { ActionPanel } from '@/components/civica/proposals/ActionPanel';
@@ -139,13 +140,16 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         discoveryEvent="proposal_viewed"
       />
 
-      <Breadcrumb
-        items={[
-          { label: 'Governance', href: '/' },
-          { label: 'Proposals', href: '/governance/proposals' },
-          { label: title },
-        ]}
-      />
+      <div className="flex items-center justify-between gap-2">
+        <Breadcrumb
+          items={[
+            { label: 'Governance', href: '/' },
+            { label: 'Proposals', href: '/governance/proposals' },
+            { label: title },
+          ]}
+        />
+        <WatchEntityButton entityType="proposal" entityId={`${txHash}:${proposalIndex}`} />
+      </div>
 
       {/* Zone 1: Hero — type-specific gradient, verdict strip, prominent title */}
       <ProposalHeroV2

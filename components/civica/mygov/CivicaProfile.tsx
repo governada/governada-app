@@ -1,20 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import {
-  User,
-  Bell,
-  Shield,
-  Settings,
-  LogOut,
-  ChevronRight,
-  Check,
-  Loader2,
-  BookOpen,
-  Sparkles,
-} from 'lucide-react';
+import { User, Shield, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -27,101 +14,8 @@ import {
   TIER_BORDER,
 } from '@/components/civica/cards/tierStyles';
 import { computeTier } from '@/lib/scoring/tiers';
-import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
 import { EmailOptIn } from '@/components/notifications/EmailOptIn';
-
-// ---------------------------------------------------------------------------
-// Notification preference toggle
-// ---------------------------------------------------------------------------
-
-const NOTIFICATION_EVENTS = [
-  {
-    key: 'proposal_open',
-    label: 'New governance proposals',
-    description: 'When new proposals are submitted',
-  },
-  {
-    key: 'drep_score_change',
-    label: 'DRep score changes',
-    description: "When your delegated DRep's score changes significantly",
-  },
-  {
-    key: 'alignment_drift',
-    label: 'Alignment drift alerts',
-    description: "When your DRep's values drift from yours",
-  },
-  {
-    key: 'epoch_summary',
-    label: 'Epoch recaps',
-    description: 'Summary of governance activity each epoch',
-  },
-  {
-    key: 'tier_change',
-    label: 'Tier milestones',
-    description: 'When a DRep you follow changes tier',
-  },
-] as const;
-
-function NotificationToggle({
-  eventKey,
-  label,
-  description,
-  channel,
-  defaultEnabled,
-}: {
-  eventKey: string;
-  label: string;
-  description: string;
-  channel: 'in_app' | 'email';
-  defaultEnabled: boolean;
-}) {
-  const [enabled, setEnabled] = useState(defaultEnabled);
-  const [saving, setSaving] = useState(false);
-
-  const toggle = useCallback(async () => {
-    const next = !enabled;
-    setEnabled(next);
-    setSaving(true);
-    try {
-      await fetch('/api/user/notification-prefs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel, eventType: eventKey, enabled: next }),
-      });
-    } catch {
-      setEnabled(!next);
-    } finally {
-      setSaving(false);
-    }
-  }, [enabled, channel, eventKey]);
-
-  return (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex-1 min-w-0 pr-4">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-      </div>
-      <button
-        onClick={toggle}
-        disabled={saving}
-        className={cn(
-          'relative shrink-0 h-6 w-11 rounded-full transition-colors',
-          enabled ? 'bg-primary' : 'bg-border',
-          saving && 'opacity-50',
-        )}
-        role="switch"
-        aria-checked={enabled}
-      >
-        <span
-          className={cn(
-            'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-            enabled ? 'translate-x-5' : 'translate-x-0',
-          )}
-        />
-      </button>
-    </div>
-  );
-}
+import { GovernanceTuner } from '@/components/civica/mygov/GovernanceTuner';
 
 // ---------------------------------------------------------------------------
 // Section wrapper
@@ -155,36 +49,9 @@ export function CivicaProfile() {
   const { segment, stakeAddress, drepId, poolId, delegatedDrep } = useSegment();
   const { disconnect } = useWallet();
   const { data: rawUser, isLoading: userLoading } = useUser();
-  const queryClient = useQueryClient();
 
   const user = rawUser as Record<string, unknown> | undefined;
   const displayName: string = (user?.display_name as string) ?? '';
-  const digestFreq: string = (user?.digest_frequency as string) ?? 'weekly';
-  const [digestSaving, setDigestSaving] = useState(false);
-  const [selectedDigest, setSelectedDigest] = useState(digestFreq);
-  const [digestSaved, setDigestSaved] = useState(false);
-
-  const saveDigest = useCallback(
-    async (freq: string) => {
-      setSelectedDigest(freq);
-      setDigestSaving(true);
-      try {
-        await fetch('/api/user', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ digest_frequency: freq }),
-        });
-        queryClient.invalidateQueries({ queryKey: ['user'] });
-        setDigestSaved(true);
-        setTimeout(() => setDigestSaved(false), 2000);
-      } catch {
-        setSelectedDigest(digestFreq);
-      } finally {
-        setDigestSaving(false);
-      }
-    },
-    [digestFreq, queryClient],
-  );
 
   // Tier / score from user data (if DRep or SPO)
   const score: number = (user?.drepScore as number) ?? (user?.spoScore as number) ?? 0;
@@ -208,9 +75,9 @@ export function CivicaProfile() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="font-display text-xl font-bold">Profile & Settings</h2>
+        <h2 className="font-display text-xl font-bold">Settings</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Manage your governance identity and preferences.
+          Choose how closely you follow governance.
         </p>
       </div>
 
@@ -316,90 +183,8 @@ export function CivicaProfile() {
         </div>
       </div>
 
-      {/* Quiz / alignment profile */}
-      <Section icon={Sparkles} title="Governance Alignment">
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Your alignment profile is built from your Quick Match quiz answers and updates as you
-            interact with governance proposals.
-          </p>
-          <Link
-            href="/match"
-            className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3 hover:border-primary/30 transition-colors group"
-          >
-            <div>
-              <p className="text-sm font-medium">Take Quick Match</p>
-              <p className="text-xs text-muted-foreground">
-                Find a DRep aligned with your values in 60 seconds
-              </p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-          </Link>
-          <Link
-            href="/governance/representatives"
-            className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3 hover:border-primary/30 transition-colors group"
-          >
-            <div>
-              <p className="text-sm font-medium">Browse all DReps</p>
-              <p className="text-xs text-muted-foreground">
-                Discover and compare governance representatives
-              </p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-          </Link>
-        </div>
-      </Section>
-
-      {/* Governance philosophy (DRep / SPO only) */}
-      {(segment === 'drep' || segment === 'spo') && (segment === 'drep' ? drepId : poolId) && (
-        <Section icon={BookOpen} title="Governance Philosophy">
-          <GovernancePhilosophyEditor drepId={(segment === 'drep' ? drepId : poolId) as string} />
-        </Section>
-      )}
-
-      {/* Notification preferences */}
-      <Section icon={Bell} title="Notifications">
-        <div className="divide-y divide-border/50">
-          {NOTIFICATION_EVENTS.map((event) => (
-            <NotificationToggle
-              key={event.key}
-              eventKey={event.key}
-              label={event.label}
-              description={event.description}
-              channel="in_app"
-              defaultEnabled={true}
-            />
-          ))}
-        </div>
-        <div className="mt-4 pt-4 border-t border-border/50">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Email Digest
-          </p>
-          <div className="flex gap-2">
-            {(['off', 'weekly', 'daily'] as const).map((freq) => (
-              <button
-                key={freq}
-                onClick={() => saveDigest(freq)}
-                disabled={digestSaving}
-                className={cn(
-                  'flex-1 py-2 rounded-lg text-xs font-medium transition-colors capitalize',
-                  selectedDigest === freq
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted',
-                )}
-              >
-                {digestSaving && selectedDigest === freq ? (
-                  <Loader2 className="h-3 w-3 animate-spin mx-auto" />
-                ) : digestSaved && selectedDigest === freq ? (
-                  <Check className="h-3 w-3 mx-auto text-emerald-400" />
-                ) : (
-                  freq
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Section>
+      {/* Governance Tuner — the dominant settings control */}
+      <GovernanceTuner />
 
       {/* Email opt-in for governance briefings */}
       <EmailOptIn variant="inline" className="border border-border" />

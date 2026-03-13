@@ -48,6 +48,7 @@ const SpoProfileTabsV2 = nextDynamic(
 );
 
 import { SpoProfileHero } from '@/components/civica/profiles/SpoProfileHero';
+import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { PoolClaimCard } from '@/components/civica/profiles/PoolClaimCard';
 import { PoolProfileEditorGate } from '@/components/civica/profiles/PoolProfileEditorGate';
 import { FeatureGate } from '@/components/FeatureGate';
@@ -748,7 +749,9 @@ export default async function PoolProfilePage({ params }: PageProps) {
           isRetired={isRetired}
           isRetiring={isRetiring}
           isClaimed={!!claimedBy}
-        />
+        >
+          <WatchEntityButton entityType="spo" entityId={poolId} />
+        </SpoProfileHero>
 
         {/* Chapter 2: Trust at a Glance — persona-gated trust metrics */}
         <SpoTrustCard

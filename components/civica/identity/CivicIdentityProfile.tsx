@@ -14,6 +14,7 @@ import {
   Users,
   Landmark,
   ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -365,25 +366,41 @@ export function CivicIdentityProfile() {
         </AsyncContent>
       </div>
 
-      {/* ── Alignment Quick Match ────────────────────────────────── */}
+      {/* ── Governance Alignment ─────────────────────────────────── */}
       {footprint && (
-        <div>
-          <SectionHeader title="Alignment" />
-          <div className="rounded-xl border border-border/50 bg-card p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Quick Match</p>
-              <p className="text-xs text-muted-foreground">
-                {isUndelegated
-                  ? 'Find a DRep who shares your governance values.'
-                  : 'See how your values align with DReps across the network.'}
-              </p>
-            </div>
-            <Button variant={isUndelegated ? 'default' : 'outline'} size="sm" asChild>
-              <Link href="/match">
-                {isUndelegated ? 'Find Your DRep' : 'Take Quiz'}
-                <ArrowRight className="h-3.5 w-3.5 ml-1" />
-              </Link>
-            </Button>
+        <div data-discovery="you-alignment">
+          <SectionHeader title="Governance Alignment" />
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Your alignment profile is built from your Quick Match quiz answers and updates as you
+              interact with governance proposals.
+            </p>
+            <Link
+              href="/match"
+              className="flex items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 hover:border-primary/30 transition-colors group"
+            >
+              <div>
+                <p className="text-sm font-medium">Take Quick Match</p>
+                <p className="text-xs text-muted-foreground">
+                  {isUndelegated
+                    ? 'Find a DRep aligned with your values in 60 seconds'
+                    : 'See how your values align with DReps across the network'}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+            </Link>
+            <Link
+              href="/governance/representatives"
+              className="flex items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 hover:border-primary/30 transition-colors group"
+            >
+              <div>
+                <p className="text-sm font-medium">Browse all DReps</p>
+                <p className="text-xs text-muted-foreground">
+                  Discover and compare governance representatives
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+            </Link>
           </div>
         </div>
       )}

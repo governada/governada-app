@@ -6,6 +6,7 @@ import type { DimensionOverrides } from '@/lib/admin/viewAsRegistry';
 import type { EngagementLevel } from '@/lib/citizen/engagementLevel';
 import type { CredibilityTier } from '@/lib/citizenCredibility';
 import type { GovernanceLevel } from '@/lib/governanceLevels';
+import type { GovernanceDepth } from '@/lib/governanceTuner';
 
 export type UserSegment = 'anonymous' | 'citizen' | 'spo' | 'drep' | 'cc';
 
@@ -36,6 +37,7 @@ export interface SegmentState {
   getEngagementLevelOverride: () => EngagementLevel | null;
   getCredibilityTierOverride: () => CredibilityTier | null;
   getGovernanceLevelOverride: () => GovernanceLevel | null;
+  getGovernanceDepthOverride: () => GovernanceDepth | null;
   /** True when admin "View As" override is active — components should show preview mode */
   isViewingAs: boolean;
 }
@@ -61,6 +63,7 @@ const DEFAULT_STATE: SegmentState = {
   getEngagementLevelOverride: () => null,
   getCredibilityTierOverride: () => null,
   getGovernanceLevelOverride: () => null,
+  getGovernanceDepthOverride: () => null,
   isViewingAs: false,
 };
 
@@ -109,6 +112,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       | 'getEngagementLevelOverride'
       | 'getCredibilityTierOverride'
       | 'getGovernanceLevelOverride'
+      | 'getGovernanceDepthOverride'
       | 'isViewingAs'
     >
   >({
@@ -207,6 +211,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     getEngagementLevelOverride: () => dimensionOverrides.engagementLevel ?? null,
     getCredibilityTierOverride: () => dimensionOverrides.credibilityTier ?? null,
     getGovernanceLevelOverride: () => dimensionOverrides.governanceLevel ?? null,
+    getGovernanceDepthOverride: () => dimensionOverrides.governanceDepth ?? null,
     isViewingAs: override !== null,
   };
 

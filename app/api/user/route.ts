@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { SupabaseUser, SupabaseUserUpdate } from '@/types/supabase';
 import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
+import { isValidDepth, getTunerEvents, getTunerDigestFrequency } from '@/lib/governanceTuner';
+import { EVENT_REGISTRY } from '@/lib/notificationRegistry';
 
 export const GET = withRouteHandler(
   async (request: NextRequest, { userId }: RouteContext) => {
@@ -38,6 +40,8 @@ export const PATCH = withRouteHandler(
       'push_subscriptions',
       'display_name',
       'digest_frequency',
+      'governance_depth',
+      'notification_preferences',
     ];
 
     const sanitizedUpdates: Record<string, unknown> = { last_active: new Date().toISOString() };
@@ -45,6 +49,30 @@ export const PATCH = withRouteHandler(
       if (updates[field] !== undefined) {
         sanitizedUpdates[field] = updates[field];
       }
+    }
+
+    // When governance_depth is set, validate and compute derived notification settings
+    if (updates.governance_depth !== undefined) {
+      if (!isValidDepth(updates.governance_depth)) {
+        return NextResponse.json({ error: 'Invalid governance_depth value' }, { status: 400 });
+      }
+
+      const depth = updates.governance_depth;
+      const enabledEvents = getTunerEvents(depth);
+      const enabledSet = new Set(enabledEvents);
+
+      // Build notification_preferences: true for enabled events, false for the rest
+      const allUserFacingKeys = EVENT_REGISTRY.filter(
+        (e) => e.key !== 'profile-view' && e.key !== 'api-health-alert',
+      ).map((e) => e.key);
+
+      const notificationPreferences: Record<string, boolean> = {};
+      for (const key of allUserFacingKeys) {
+        notificationPreferences[key] = enabledSet.has(key);
+      }
+
+      sanitizedUpdates.notification_preferences = notificationPreferences;
+      sanitizedUpdates.digest_frequency = getTunerDigestFrequency(depth);
     }
 
     const supabase = getSupabaseAdmin();

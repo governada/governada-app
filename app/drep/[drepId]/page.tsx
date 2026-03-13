@@ -97,6 +97,7 @@ import { getDRepTraitTags } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
 import { generateDRepNarrative } from '@/lib/narratives';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
+import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
 import { DRepOutcomeSummary } from '@/components/civica/profiles/DRepOutcomeSummary';
 import { ScoreAnalysisGate } from '@/components/civica/profiles/ScoreAnalysisGate';
@@ -547,6 +548,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       >
         <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
         <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
+        <WatchEntityButton entityType="drep" entityId={drep.drepId} />
       </DRepProfileHero>
 
       {/* 3. Tier Progress + Momentum — governance participants only */}

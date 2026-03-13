@@ -21,6 +21,8 @@ import {
   CheckCheck,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
+import { DepthPickerDropdown } from './DepthPickerDropdown';
+import { DepthPromptModal } from './DepthPromptModal';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { HELP_ITEMS } from '@/lib/nav/config';
@@ -244,6 +246,9 @@ export function CivicaHeader() {
               ⌘K
             </kbd>
           </Button>
+
+          {/* Governance depth picker (desktop only) */}
+          {connected && isAuthenticated && <DepthPickerDropdown />}
 
           {/* Notification bell dropdown */}
           {connected && isAuthenticated && <NotificationBell unreadCount={unreadCount} />}
@@ -549,6 +554,8 @@ export function CivicaHeader() {
           descriptionOverride={pendingDualOverride.preset.secondaryPickerDescription}
         />
       )}
+      {/* First-use governance depth prompt */}
+      <DepthPromptModal />
     </header>
   );
 }

@@ -3,7 +3,7 @@
 > **Origin**: `/explore-feature Civic Identity` (2026-03-13)
 > **Concept**: Hybrid "Rings + Mirror Essence" — three governance rings as the persistent identity layer, Mirror narrative as the depth layer, Passport stamps for shareability.
 > **Inspiration**: Apple Watch Activity Rings, Strava Social Fitness, Gitcoin Passport, Pol.is Opinion Landscape
-> **Status**: Phase 1 SHIPPED (PR #319), Phases 2-3 planned
+> **Status**: Phase 1 SHIPPED (PR #319), Phase 2 SHIPPED (PR #320), Phase 3 planned
 
 ---
 
@@ -115,9 +115,9 @@ Behind a toggle: all existing detail sections (stats grid, footprint, engagement
 
 ---
 
-## Phase 2: Depth & Motivation (PRE-LAUNCH)
+## Phase 2: Depth & Motivation (COMPLETE ✅)
 
-> **Status**: Not started
+> **Status**: Shipped in PR #320 (2026-03-13)
 > **Effort**: M | **Impact**: Medium-High — adds identity depth, retention mechanics, and AI personality
 > **Priority**: Build before public launch — this is what makes identity feel alive vs. static
 

@@ -108,10 +108,19 @@ export function GovernanceTuner() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: saveGovernanceDepth,
-    onSuccess: () => {
+    onSuccess: (_data, newDepth) => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('governance_depth_changed', {
+            from: currentDepth,
+            to: newDepth,
+            source: 'settings_tuner',
+          });
+        })
+        .catch(() => {});
     },
     onError: () => {
       // Revert optimistic selection
@@ -174,7 +183,7 @@ export function GovernanceTuner() {
                 'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 isSelected
-                  ? 'border-primary bg-primary/10 dark:bg-primary/15 shadow-sm'
+                  ? 'border-primary bg-primary/15 shadow-sm'
                   : 'border-border bg-card hover:border-primary/40 hover:bg-muted/50',
               )}
             >

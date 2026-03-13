@@ -74,16 +74,31 @@ export function DepthPromptModal() {
     setSelectedDepth(getDefaultDepthForSegment(segment));
   }, [segment]);
 
+  const [error, setError] = useState<string | null>(null);
+
   const { mutate, isPending } = useMutation({
     mutationFn: saveGovernanceDepth,
-    onSuccess: () => {
+    onSuccess: (_data, depth) => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       localStorage.setItem(STORAGE_KEY, '1');
       setOpen(false);
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('governance_depth_changed', {
+            from: defaultDepth,
+            to: depth,
+            source: 'first_use_prompt',
+          });
+        })
+        .catch(() => {});
+    },
+    onError: () => {
+      setError('Could not save. You can try again or skip for now.');
     },
   });
 
   const handleContinue = useCallback(() => {
+    setError(null);
     mutate(selectedDepth);
   }, [mutate, selectedDepth]);
 
@@ -120,7 +135,7 @@ export function DepthPromptModal() {
                   'flex items-start gap-3 rounded-lg border px-3 py-3 text-left transition-all',
                   'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none',
                   isSelected
-                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                    ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-primary/40 hover:bg-muted/50',
                 )}
               >
@@ -170,6 +185,7 @@ export function DepthPromptModal() {
         </div>
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
+          {error && <p className="text-center text-xs text-destructive">{error}</p>}
           <Button onClick={handleContinue} disabled={isPending} className="w-full">
             {isPending ? (
               <>
@@ -180,6 +196,12 @@ export function DepthPromptModal() {
               'Continue'
             )}
           </Button>
+          <button
+            onClick={handleDismiss}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Skip for now
+          </button>
           <p className="text-center text-xs text-muted-foreground">
             You can change this anytime from the header or Settings.
           </p>

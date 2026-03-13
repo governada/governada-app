@@ -228,6 +228,7 @@ function ActiveProposalCard({ proposal }: { proposal: ConsequenceProposal }) {
   const typeLabel = PROPOSAL_TYPE_LABELS[proposal.proposalType] ?? proposal.proposalType;
   const { connected, isAuthenticated, address, delegatedDrepId, authenticate } = useWallet();
   const queryClient = useQueryClient();
+  const { showSentiment } = useDepthConfig('hub');
   const [voting, setVoting] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
 
@@ -350,8 +351,8 @@ function ActiveProposalCard({ proposal }: { proposal: ConsequenceProposal }) {
         </div>
       )}
 
-      {/* Inline sentiment buttons for connected users who haven't voted */}
-      {!hasVoted && connected && (
+      {/* Inline sentiment buttons for engaged+ connected users who haven't voted */}
+      {!hasVoted && connected && showSentiment && (
         <div className="flex gap-1.5 pt-1" role="radiogroup" aria-label="Share your sentiment">
           {[
             {

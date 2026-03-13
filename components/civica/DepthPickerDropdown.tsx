@@ -66,10 +66,19 @@ export function DepthPickerDropdown() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: saveGovernanceDepth,
-    onSuccess: () => {
+    onSuccess: (_data, newDepth) => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('governance_depth_changed', {
+            from: depth,
+            to: newDepth,
+            source: 'header_dropdown',
+          });
+        })
+        .catch(() => {});
     },
     onError: () => {
       setOptimisticDepth(null);

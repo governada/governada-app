@@ -19,6 +19,7 @@ import { resolveRewardAddress } from '@meshsdk/core';
 import { hapticLight } from '@/lib/haptics';
 import { HubCardSkeleton, HubCardError } from './HubCard';
 import { Button } from '@/components/ui/button';
+import { useDepthConfig } from '@/hooks/useDepthConfig';
 
 type SentimentChoice = 'support' | 'oppose' | 'unsure';
 
@@ -126,6 +127,7 @@ function InlineSentimentCard({
 }) {
   const { connected, isAuthenticated, address, delegatedDrepId, authenticate } = useWallet();
   const queryClient = useQueryClient();
+  const { showSentiment } = useDepthConfig('hub');
   const [voting, setVoting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -282,8 +284,8 @@ function InlineSentimentCard({
         </div>
       )}
 
-      {/* Inline voting buttons for connected users who haven't voted */}
-      {!hasVoted && connected && (
+      {/* Inline voting buttons for engaged+ connected users who haven't voted */}
+      {!hasVoted && connected && showSentiment && (
         <div className="flex gap-2" role="radiogroup" aria-label="Share your sentiment">
           {[
             {
@@ -332,8 +334,8 @@ function InlineSentimentCard({
         </div>
       )}
 
-      {/* CTA for unconnected users */}
-      {!hasVoted && !connected && (
+      {/* CTA for unconnected users (engaged+ only) */}
+      {!hasVoted && !connected && showSentiment && (
         <Button
           size="sm"
           variant="outline"

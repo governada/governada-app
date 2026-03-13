@@ -102,8 +102,19 @@ export function PulseHistoryChart({ className }: PulseHistoryChartProps) {
   const { data, isLoading } = useRingHistory();
   const snapshots = data?.snapshots ?? [];
 
+  if (isLoading) return null;
+
   // Need at least 2 data points for a meaningful chart
-  if (isLoading || snapshots.length < 2) return null;
+  if (snapshots.length < 2) {
+    return (
+      <div className={cn('flex items-center gap-2', className)}>
+        <Minus className="h-3.5 w-3.5 text-muted-foreground/50" />
+        <span className="text-xs text-muted-foreground/50">
+          Pulse history available after 2 epochs
+        </span>
+      </div>
+    );
+  }
 
   const pulseValues = snapshots.map((s) => s.pulse);
   const latest = pulseValues[pulseValues.length - 1];

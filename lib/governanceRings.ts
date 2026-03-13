@@ -35,7 +35,34 @@ export interface GovernanceRingsData {
   pulseLabel: string;
 }
 
-const RING_WEIGHTS = { delegation: 0.4, coverage: 0.35, engagement: 0.25 };
+export const RING_WEIGHTS = { delegation: 0.4, coverage: 0.35, engagement: 0.25 };
+
+/**
+ * Compute ring values from raw scores.
+ * Shared by both the client-side computation and the Inngest snapshot function.
+ *
+ * @param drepScore — DRep composite score (0-100)
+ * @param coverageScore — impact coverage score (0-25)
+ * @param engagementDepthScore — impact engagement depth score (0-25)
+ */
+export function computeRingValues(
+  drepScore: number,
+  coverageScore: number,
+  engagementDepthScore: number,
+): { rings: RingValues; pulse: number } {
+  const delegation = Math.min(Math.max(drepScore / 100, 0), 1);
+  const coverage = Math.min(coverageScore / 25, 1);
+  const engagement = Math.min(engagementDepthScore / 25, 1);
+
+  const pulse = Math.round(
+    (delegation * RING_WEIGHTS.delegation +
+      coverage * RING_WEIGHTS.coverage +
+      engagement * RING_WEIGHTS.engagement) *
+      100,
+  );
+
+  return { rings: { delegation, coverage, engagement }, pulse };
+}
 
 /**
  * Compute ring values from existing footprint + impact data.
@@ -45,26 +72,10 @@ export function computeGovernanceRings(
   footprint: GovernanceFootprint | null | undefined,
   impact: ImpactScoreBreakdown | null | undefined,
 ): GovernanceRingsData {
-  // Ring 1: Delegation Health — DRep score normalised to 0-1
-  const drepScore = footprint?.delegationRecord.drepScore ?? 0;
-  const delegation = Math.min(Math.max(drepScore / 100, 0), 1);
-
-  // Ring 2: Coverage — impact coverage score (0-25) normalised to 0-1
-  const coverageRaw = impact?.coverageScore ?? 0;
-  const coverage = Math.min(coverageRaw / 25, 1);
-
-  // Ring 3: Engagement — impact engagement depth score (0-25) normalised to 0-1
-  const engagementRaw = impact?.engagementDepthScore ?? 0;
-  const engagement = Math.min(engagementRaw / 25, 1);
-
-  const rings: RingValues = { delegation, coverage, engagement };
-
-  // Governance Pulse — weighted composite
-  const pulse = Math.round(
-    (delegation * RING_WEIGHTS.delegation +
-      coverage * RING_WEIGHTS.coverage +
-      engagement * RING_WEIGHTS.engagement) *
-      100,
+  const { rings, pulse } = computeRingValues(
+    footprint?.delegationRecord.drepScore ?? 0,
+    impact?.coverageScore ?? 0,
+    impact?.engagementDepthScore ?? 0,
   );
 
   const pulseColor =

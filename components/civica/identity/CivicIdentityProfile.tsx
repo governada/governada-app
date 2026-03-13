@@ -186,7 +186,7 @@ export function CivicIdentityProfile() {
   const [shareOpen, setShareOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const isLoading = segmentLoading || footprintLoading;
+  const isLoading = segmentLoading || footprintLoading || impactScoreLoading;
   const earned = milestonesData?.milestones ?? [];
 
   // Detect recent milestones (earned in last 10 days)

@@ -10,6 +10,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
+import { computeRingValues } from '@/lib/governanceRings';
 
 export const snapshotCitizenRings = inngest.createFunction(
   {
@@ -83,19 +84,18 @@ export const snapshotCitizenRings = inngest.createFunction(
         const drepId = userDrepMap.get(citizen.user_id);
         const drepScore = drepId ? (drepScoreMap.get(drepId) ?? 0) : 0;
 
-        // Same normalization as lib/governanceRings.ts
-        const delegation = Math.min(Math.max(drepScore / 100, 0), 1);
-        const coverage = Math.min((citizen.coverage_score ?? 0) / 25, 1);
-        const engagement = Math.min((citizen.engagement_depth_score ?? 0) / 25, 1);
-
-        const pulse = Math.round((delegation * 0.4 + coverage * 0.35 + engagement * 0.25) * 100);
+        const { rings, pulse } = computeRingValues(
+          drepScore,
+          citizen.coverage_score ?? 0,
+          citizen.engagement_depth_score ?? 0,
+        );
 
         rows.push({
           user_id: citizen.user_id,
           epoch: currentEpoch,
-          delegation_ring: Number(delegation.toFixed(3)),
-          coverage_ring: Number(coverage.toFixed(3)),
-          engagement_ring: Number(engagement.toFixed(3)),
+          delegation_ring: Number(rings.delegation.toFixed(3)),
+          coverage_ring: Number(rings.coverage.toFixed(3)),
+          engagement_ring: Number(rings.engagement.toFixed(3)),
           pulse,
         });
       }

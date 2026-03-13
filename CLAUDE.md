@@ -109,6 +109,7 @@ C:\Users\dalto\governada\
 | Work plan template (parallel agents)      | `docs/strategy/context/work-plan-template.md`      | ~80   |
 | Competitive landscape (updated by audits) | `docs/strategy/context/competitive-landscape.md`   | ~150  |
 | World-class patterns library              | `docs/strategy/context/world-class-patterns.md`    | ~100  |
+| Civic Identity Rings plan                 | `docs/strategy/plans/civic-identity-rings.md`      | ~280  |
 | Full vision (strategic audits only)       | `docs/strategy/ultimate-vision.md`                 | ~730  |
 
 ## Audit Commands

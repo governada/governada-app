@@ -1,2 +1,4 @@
 #!/usr/bin/env sh
-npm run preflight
+# CI is the authoritative gate before merge.
+# Pre-commit (lint-staged) handles formatting and linting.
+# No pre-push check needed — it was running preflight a 3rd time.

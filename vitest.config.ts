@@ -1,10 +1,33 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath, URL } from 'node:url';
 
+const sharedResolve = {
+  alias: {
+    '@': fileURLToPath(new URL('.', import.meta.url)),
+  },
+};
+
 export default defineConfig({
+  resolve: sharedResolve,
   test: {
-    include: ['__tests__/**/*.test.ts', '__tests__/**/*.test.tsx'],
-    environment: 'jsdom',
+    projects: [
+      {
+        resolve: sharedResolve,
+        test: {
+          name: 'unit',
+          include: ['__tests__/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        resolve: sharedResolve,
+        test: {
+          name: 'component',
+          include: ['__tests__/**/*.test.tsx'],
+          environment: 'jsdom',
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       include: [
@@ -24,11 +47,6 @@ export default defineConfig({
         'lib/matching/**/*.ts',
       ],
       reporter: ['text', 'lcov', 'json-summary'],
-    },
-  },
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('.', import.meta.url)),
     },
   },
 });

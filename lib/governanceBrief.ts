@@ -46,6 +46,7 @@ export interface BriefSection {
 
 export interface GeneratedBrief {
   greeting: string;
+  headline?: string;
   sections: BriefSection[];
   ctaText: string;
   ctaUrl: string;
@@ -189,7 +190,15 @@ export async function generateAIDRepBrief(ctx: DRepBriefContext): Promise<Genera
   try {
     const { generateText } = await import('./ai');
     const contextSummary = template.sections.map((s) => `${s.heading}: ${s.content}`).join('\n');
-    const prompt = `You are a governance analyst writing a personalized weekly brief for a Cardano DRep named ${ctx.drepName}. Rewrite the following data points into a warm, concise 150-word narrative. Tone: knowledgeable friend, not corporate. Keep all numbers accurate. Output only the narrative text, no headings.
+    const prompt = `You are a governance analyst writing a personalized weekly brief for a Cardano DRep named ${ctx.drepName}. Produce TWO things:
+
+1. HEADLINE: A single punchy sentence (max 15 words) summarizing the most important event this epoch for this DRep. Frame impact — score changes, votes cast, critical proposals. No generic statements.
+
+2. NARRATIVE: Rewrite the following data points into a warm, concise 150-word narrative. Tone: knowledgeable friend, not corporate. Keep all numbers accurate.
+
+Output format (exactly):
+HEADLINE: <your headline>
+NARRATIVE: <your narrative>
 
 DATA:
 ${contextSummary}
@@ -197,14 +206,19 @@ Score: ${ctx.currentScore} (${ctx.scoreChange > 0 ? 'up' : ctx.scoreChange < 0 ?
 Rank: #${ctx.rank} of ${ctx.totalDReps}
 Open proposals: ${ctx.proposalsOpen}${ctx.proposalsCritical > 0 ? ` (${ctx.proposalsCritical} critical)` : ''}`;
 
-    const narrative = await generateText(prompt, { maxTokens: 400 });
-    if (narrative) {
+    const response = await generateText(prompt, { maxTokens: 500 });
+    if (response) {
+      const headlineMatch = response.match(/HEADLINE:\s*(.+)/);
+      const narrativeMatch = response.match(/NARRATIVE:\s*([\s\S]+)/);
+      const aiHeadline = headlineMatch?.[1]?.trim();
+      const narrative = narrativeMatch?.[1]?.trim();
+
       return {
         greeting: template.greeting,
-        sections: [
-          { heading: 'Your Weekly Update', content: narrative },
-          ...template.sections.slice(1),
-        ],
+        headline: aiHeadline || template.headline,
+        sections: narrative
+          ? [{ heading: 'Your Weekly Update', content: narrative }, ...template.sections.slice(1)]
+          : template.sections,
         ctaText: template.ctaText,
         ctaUrl: template.ctaUrl,
       };
@@ -220,19 +234,32 @@ export async function generateAIHolderBrief(ctx: HolderBriefContext): Promise<Ge
   try {
     const { generateText } = await import('./ai');
     const contextSummary = template.sections.map((s) => `${s.heading}: ${s.content}`).join('\n');
-    const prompt = `You are a governance analyst writing a weekly brief for a Cardano ADA holder. Rewrite these data points into a warm, concise 100-word narrative. Tone: knowledgeable friend encouraging governance participation. Keep all numbers accurate. Output only the narrative text, no headings.
+    const prompt = `You are a governance analyst writing a weekly brief for a Cardano ADA holder. Produce TWO things:
+
+1. HEADLINE: A single punchy sentence (max 15 words) summarizing the most important governance event this epoch for this holder. Frame consequences — what happened to their ADA, their representation, or Cardano's treasury. No generic statements.
+
+2. NARRATIVE: Rewrite these data points into a warm, concise 100-word narrative. Tone: knowledgeable friend encouraging governance participation. Keep all numbers accurate.
+
+Output format (exactly):
+HEADLINE: <your headline>
+NARRATIVE: <your narrative>
 
 DATA:
 ${contextSummary}`;
 
-    const narrative = await generateText(prompt, { maxTokens: 300 });
-    if (narrative) {
+    const response = await generateText(prompt, { maxTokens: 400 });
+    if (response) {
+      const headlineMatch = response.match(/HEADLINE:\s*(.+)/);
+      const narrativeMatch = response.match(/NARRATIVE:\s*([\s\S]+)/);
+      const aiHeadline = headlineMatch?.[1]?.trim();
+      const narrative = narrativeMatch?.[1]?.trim();
+
       return {
         greeting: template.greeting,
-        sections: [
-          { heading: 'Your Weekly Update', content: narrative },
-          ...template.sections.slice(1),
-        ],
+        headline: aiHeadline || template.headline,
+        sections: narrative
+          ? [{ heading: 'Your Weekly Update', content: narrative }, ...template.sections.slice(1)]
+          : template.sections,
         ctaText: template.ctaText,
         ctaUrl: template.ctaUrl,
       };
@@ -272,8 +299,16 @@ function generateDRepBriefTemplate(ctx: DRepBriefContext): GeneratedBrief {
     },
   ];
 
+  const headline =
+    ctx.proposalsCritical > 0
+      ? `${ctx.proposalsCritical} critical proposal${ctx.proposalsCritical !== 1 ? 's' : ''} need your vote`
+      : ctx.votesThisEpoch > 0
+        ? `You cast ${ctx.votesThisEpoch} vote${ctx.votesThisEpoch !== 1 ? 's' : ''} this epoch`
+        : `${ctx.proposalsOpen} proposal${ctx.proposalsOpen !== 1 ? 's' : ''} await your attention`;
+
   return {
     greeting: `Hey ${ctx.drepName}, here's your weekly governance roundup.`,
+    headline,
     sections,
     ctaText: 'Open Dashboard',
     ctaUrl: '/my-gov',
@@ -315,8 +350,15 @@ function generateHolderBriefTemplate(ctx: HolderBriefContext): GeneratedBrief {
     });
   }
 
+  const headline = ctx.drepId
+    ? ctx.proposalsCritical > 0
+      ? `${ctx.proposalsCritical} critical proposal${ctx.proposalsCritical !== 1 ? 's' : ''} being decided — your delegation matters`
+      : `Your representative is working on ${ctx.proposalsOpen} open proposal${ctx.proposalsOpen !== 1 ? 's' : ''}`
+    : `${ctx.proposalsOpen} governance decision${ctx.proposalsOpen !== 1 ? 's' : ''} happening without you`;
+
   return {
     greeting: "Here's your weekly governance roundup from Governada.",
+    headline,
     sections,
     ctaText: 'Explore DReps',
     ctaUrl: '/governance/representatives',

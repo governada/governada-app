@@ -39,6 +39,8 @@ function setupMockChain() {
     eq: vi.fn().mockReturnThis(),
     neq: vi.fn().mockReturnThis(),
     gte: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
     in: vi.fn().mockResolvedValue({ data: [], error: null }),
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),

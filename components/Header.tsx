@@ -213,7 +213,7 @@ export function Header() {
           <GovernanceHeartbeat />
         </div>
 
-        <nav className="flex items-center space-x-2 sm:space-x-4">
+        <nav className="flex items-center space-x-2 sm:space-x-4" aria-label="Main navigation">
           <Link href="/governance" className={navLinkClass('/governance')}>
             <Compass className="h-4 w-4" />
             <span>Governance</span>
@@ -261,6 +261,7 @@ export function Header() {
                     variant="ghost"
                     size="icon"
                     className="relative hover:text-primary hover:bg-primary/10"
+                    aria-label="Notifications"
                   >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
@@ -277,6 +278,14 @@ export function Header() {
                       </Badge>
                     )}
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="flex items-center gap-2 p-2.5 cursor-pointer text-xs text-primary hover:bg-primary/10"
+                    onSelect={() => router.push('/you/inbox')}
+                  >
+                    <Inbox className="h-3.5 w-3.5" />
+                    <span>View all notifications</span>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {alerts.length === 0 ? (
                     <DropdownMenuItem className="flex items-center gap-3 p-3 cursor-default text-muted-foreground">
@@ -330,6 +339,7 @@ export function Header() {
                     variant="outline"
                     size="sm"
                     className="gap-2 hover:text-primary hover:bg-primary/10 hover:border-primary/40"
+                    aria-label="User menu"
                   >
                     <Badge
                       variant="outline"

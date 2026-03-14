@@ -22,7 +22,9 @@ import {
   AlertCircle,
   RefreshCw,
   ArrowLeft,
+  ExternalLink,
 } from 'lucide-react';
+import Link from 'next/link';
 import { posthog } from '@/lib/posthog';
 
 interface WalletConnectModalProps {
@@ -202,10 +204,21 @@ export function WalletConnectModal({
                   </Button>
                 ))
               ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No Cardano wallets detected</p>
-                  <p className="text-sm mt-1">Install Eternl, Nami, or Lace to continue</p>
+                <div className="text-center py-6 space-y-4">
+                  <div className="text-muted-foreground">
+                    <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="font-medium text-foreground">No Cardano wallets detected</p>
+                    <p className="text-sm mt-1">
+                      You need a Cardano wallet extension to connect. We&apos;ll help you get set
+                      up.
+                    </p>
+                  </div>
+                  <Button asChild className="w-full">
+                    <Link href="/get-started" onClick={() => onOpenChange(false)}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Get started with a wallet
+                    </Link>
+                  </Button>
                 </div>
               )}
             </div>

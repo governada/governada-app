@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CuratedVoteFlow } from '@/components/civica/match/CuratedVoteFlow';
+import { CuratedVoteFlow } from '@/components/governada/match/CuratedVoteFlow';
 
 export const dynamic = 'force-dynamic';
 

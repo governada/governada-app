@@ -564,7 +564,7 @@ None — execute directly. This is a responsive enhancement.
 ### Files to Read First
 
 - The new `/governance/committee/page.tsx` (from Chunk 4)
-- `components/civica/discover/DiscoverFilterBar.tsx` (responsive patterns)
+- `components/governada/discover/DiscoverFilterBar.tsx` (responsive patterns)
 - Tailwind breakpoint conventions used elsewhere in the app
 
 ---

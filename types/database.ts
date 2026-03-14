@@ -1144,6 +1144,39 @@ export type Database = {
           },
         ];
       };
+      citizen_ring_snapshots: {
+        Row: {
+          coverage_ring: number;
+          created_at: string | null;
+          delegation_ring: number;
+          engagement_ring: number;
+          epoch: number;
+          id: string;
+          pulse: number;
+          user_id: string;
+        };
+        Insert: {
+          coverage_ring: number;
+          created_at?: string | null;
+          delegation_ring: number;
+          engagement_ring: number;
+          epoch: number;
+          id?: string;
+          pulse: number;
+          user_id: string;
+        };
+        Update: {
+          coverage_ring?: number;
+          created_at?: string | null;
+          delegation_ring?: number;
+          engagement_ring?: number;
+          epoch?: number;
+          id?: string;
+          pulse?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       citizen_sentiment: {
         Row: {
           created_at: string | null;
@@ -3889,6 +3922,35 @@ export type Database = {
           },
         ];
       };
+      user_entity_subscriptions: {
+        Row: {
+          created_at: string;
+          entity_id: string;
+          entity_type: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          entity_id: string;
+          entity_type: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          entity_id?: string;
+          entity_type?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_entity_subscriptions_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       user_governance_profile_history: {
         Row: {
           alignment_scores: Json | null;
@@ -3979,6 +4041,27 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      user_hub_checkins: {
+        Row: {
+          checked_in_at: string;
+          epoch: number;
+          id: string;
+          user_stake_address: string;
+        };
+        Insert: {
+          checked_in_at?: string;
+          epoch: number;
+          id?: string;
+          user_stake_address: string;
+        };
+        Update: {
+          checked_in_at?: string;
+          epoch?: number;
+          id?: string;
+          user_stake_address?: string;
+        };
+        Relationships: [];
       };
       user_notification_preferences: {
         Row: {
@@ -4076,12 +4159,14 @@ export type Database = {
           display_name: string | null;
           email: string | null;
           email_verified: boolean | null;
+          governance_depth: string;
           governance_level: string | null;
           id: string;
           last_active: string | null;
           last_epoch_visited: number | null;
           last_push_check: string | null;
           last_visit_at: string | null;
+          notification_preferences: Json | null;
           onboarding_checklist: Json | null;
           poll_count: number | null;
           prefs: Json | null;
@@ -4097,12 +4182,14 @@ export type Database = {
           display_name?: string | null;
           email?: string | null;
           email_verified?: boolean | null;
+          governance_depth?: string;
           governance_level?: string | null;
           id?: string;
           last_active?: string | null;
           last_epoch_visited?: number | null;
           last_push_check?: string | null;
           last_visit_at?: string | null;
+          notification_preferences?: Json | null;
           onboarding_checklist?: Json | null;
           poll_count?: number | null;
           prefs?: Json | null;
@@ -4118,12 +4205,14 @@ export type Database = {
           display_name?: string | null;
           email?: string | null;
           email_verified?: boolean | null;
+          governance_depth?: string;
           governance_level?: string | null;
           id?: string;
           last_active?: string | null;
           last_epoch_visited?: number | null;
           last_push_check?: string | null;
           last_visit_at?: string | null;
+          notification_preferences?: Json | null;
           onboarding_checklist?: Json | null;
           poll_count?: number | null;
           prefs?: Json | null;

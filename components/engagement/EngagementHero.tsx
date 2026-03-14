@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef } from 'react';
+import { motion, useInView, useSpring, useTransform } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { CredibilityWithLevel } from '@/hooks/useEngagement';
@@ -14,10 +16,26 @@ const levelConfig = {
     color: 'text-muted-foreground',
     ring: 'stroke-muted-foreground',
     bg: 'bg-muted/50',
+    glow: '#64748b',
   },
-  Informed: { color: 'text-blue-500', ring: 'stroke-blue-500', bg: 'bg-blue-500/5' },
-  Engaged: { color: 'text-amber-500', ring: 'stroke-amber-500', bg: 'bg-amber-500/5' },
-  Champion: { color: 'text-emerald-500', ring: 'stroke-emerald-500', bg: 'bg-emerald-500/5' },
+  Informed: {
+    color: 'text-blue-500',
+    ring: 'stroke-blue-500',
+    bg: 'bg-blue-500/5',
+    glow: '#3b82f6',
+  },
+  Engaged: {
+    color: 'text-amber-500',
+    ring: 'stroke-amber-500',
+    bg: 'bg-amber-500/5',
+    glow: '#f59e0b',
+  },
+  Champion: {
+    color: 'text-emerald-500',
+    ring: 'stroke-emerald-500',
+    bg: 'bg-emerald-500/5',
+    glow: '#10b981',
+  },
 } as const;
 
 export function EngagementHero({ credibility, epoch }: EngagementHeroProps) {
@@ -28,18 +46,31 @@ export function EngagementHero({ credibility, epoch }: EngagementHeroProps) {
 
   const config = levelConfig[level as keyof typeof levelConfig] ?? levelConfig.Registered;
 
-  // SVG progress ring
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-20px' });
+
+  // Animated progress ring
   const circumference = 2 * Math.PI * 28;
-  const offset = circumference - (progress / 100) * circumference;
+  const springProgress = useSpring(0, { stiffness: 60, damping: 18 });
+  const strokeOffset = useTransform(
+    springProgress,
+    (v) => circumference - (v / 100) * circumference,
+  );
+
+  // Trigger spring when in view
+  if (isInView) {
+    springProgress.set(progress);
+  }
 
   return (
     <div
+      ref={ref}
       className={cn(
         'rounded-xl border border-border p-5 flex flex-col sm:flex-row items-center gap-5',
         config.bg,
       )}
     >
-      {/* Progress Ring */}
+      {/* Progress Ring with glow */}
       <div className="relative shrink-0">
         <svg
           width="72"
@@ -48,6 +79,12 @@ export function EngagementHero({ credibility, epoch }: EngagementHeroProps) {
           className="transform -rotate-90"
           aria-hidden="true"
         >
+          <defs>
+            <filter id="engagement-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+              <feComposite in2="SourceGraphic" operator="over" />
+            </filter>
+          </defs>
           <circle
             cx="36"
             cy="36"
@@ -57,7 +94,22 @@ export function EngagementHero({ credibility, epoch }: EngagementHeroProps) {
             className="text-muted/30"
             strokeWidth="4"
           />
-          <circle
+          {/* Glow layer */}
+          <motion.circle
+            cx="36"
+            cy="36"
+            r="28"
+            fill="none"
+            className={config.ring}
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            style={{ strokeDashoffset: strokeOffset }}
+            filter="url(#engagement-glow)"
+            opacity={0.4}
+          />
+          {/* Crisp ring */}
+          <motion.circle
             cx="36"
             cy="36"
             r="28"
@@ -66,8 +118,7 @@ export function EngagementHero({ credibility, epoch }: EngagementHeroProps) {
             strokeWidth="4"
             strokeLinecap="round"
             strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+            style={{ strokeDashoffset: strokeOffset }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">

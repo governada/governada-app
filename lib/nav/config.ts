@@ -5,6 +5,7 @@
  * - Desktop sidebar
  * - Mobile bottom bar (4 items, persona-adaptive)
  * - Mobile pill bar (section sub-pages)
+ * - Header help dropdown
  *
  * See docs/strategy/context/navigation-architecture.md for the full spec.
  */
@@ -15,7 +16,6 @@ import {
   Briefcase,
   Globe,
   User,
-  Handshake,
   Compass,
   HelpCircle,
   FileText,
@@ -35,8 +35,10 @@ import {
   BookOpen,
   MessageSquare,
   Shield,
+  Rocket,
 } from 'lucide-react';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
+import { type GovernanceDepth, getTunerLevel } from '@/lib/governanceTuner';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +54,8 @@ export interface NavItem {
   segments?: UserSegment[];
   /** Only show for authenticated users */
   requiresAuth?: boolean;
+  /** Minimum governance depth to show this item (undefined = all) */
+  minDepth?: GovernanceDepth;
 }
 
 /** A labelled group of items within a section (for dual-role workspace) */
@@ -106,14 +110,48 @@ export const GOVERNANCE_ITEMS: NavItem[] = [
   { href: '/governance/health', label: 'Health', icon: Activity },
 ];
 
-export const YOU_ITEMS: NavItem[] = [
-  { href: '/you', label: 'Governance ID', icon: BadgeCheck },
-  { href: '/you/identity', label: 'Identity', icon: UserCog },
+/** Base You items — all authenticated personas */
+const YOU_BASE: NavItem[] = [
+  { href: '/you', label: 'Identity', icon: UserCog },
   { href: '/you/inbox', label: 'Inbox', icon: Bell, badge: 'unread' },
   { href: '/you/settings', label: 'Settings', icon: Settings },
 ];
 
+/** Build persona-specific You items (adds scorecard links for DReps/SPOs) */
+export function getYouItems(
+  segment: UserSegment,
+  context?: { drepId?: string | null; poolId?: string | null },
+): NavItem[] {
+  const items = [...YOU_BASE];
+  const hasDrep = segment === 'drep' || !!context?.drepId;
+  const hasSpo = segment === 'spo' || !!context?.poolId;
+
+  const scorecardItems: NavItem[] = [];
+  if (hasDrep)
+    scorecardItems.push({
+      href: '/you/drep',
+      label: 'DRep Scorecard',
+      icon: BadgeCheck,
+      segments: ['drep'],
+    });
+  if (hasSpo)
+    scorecardItems.push({
+      href: '/you/spo',
+      label: 'Pool Scorecard',
+      icon: BarChart3,
+      segments: ['spo'],
+    });
+
+  if (scorecardItems.length > 0) {
+    items.splice(1, 0, ...scorecardItems); // Insert after Identity
+  }
+
+  return items;
+}
+
+/** Help items — used in header dropdown (no longer in sidebar) */
 export const HELP_ITEMS: NavItem[] = [
+  { href: '/get-started', label: 'Get Started', icon: Rocket },
   { href: '/help', label: 'FAQ', icon: HelpCircle },
   { href: '/help/glossary', label: 'Glossary', icon: BookOpen },
   { href: '/help/methodology', label: 'Methodology', icon: BarChart3 },
@@ -133,6 +171,38 @@ export interface SidebarContext {
   poolId?: string | null;
 }
 
+/** Extended context that includes governance depth for filtering */
+export interface NavContext extends SidebarContext {
+  depth?: GovernanceDepth;
+}
+
+// ---------------------------------------------------------------------------
+// Depth filtering helpers
+// ---------------------------------------------------------------------------
+
+/** Returns true if item passes the depth threshold (or has no threshold). */
+function meetsDepth(item: NavItem, depth: GovernanceDepth | undefined): boolean {
+  if (!item.minDepth || !depth) return true;
+  return getTunerLevel(depth).order >= getTunerLevel(item.minDepth).order;
+}
+
+/** Filter a list of nav items by governance depth. */
+function filterByDepth(items: NavItem[], depth: GovernanceDepth | undefined): NavItem[] {
+  if (!depth) return items;
+  return items.filter((item) => meetsDepth(item, depth));
+}
+
+/** Filter nav item groups by governance depth. */
+function filterGroupsByDepth(
+  groups: NavItemGroup[],
+  depth: GovernanceDepth | undefined,
+): NavItemGroup[] {
+  if (!depth) return groups;
+  return groups
+    .map((g) => ({ ...g, items: filterByDepth(g.items, depth) }))
+    .filter((g) => g.items.length > 0);
+}
+
 /**
  * Build deduplicated dual-role workspace groups.
  * Items that appear in both lists (matched by href) are shown only in the
@@ -148,11 +218,13 @@ function buildDualRoleGroups(): NavItemGroup[] {
   ];
 }
 
-export function getSidebarSections(segmentOrContext: UserSegment | SidebarContext): NavSection[] {
-  // Support both the legacy single-segment call and the new context call
-  const ctx: SidebarContext =
+export function getSidebarSections(
+  segmentOrContext: UserSegment | SidebarContext | NavContext,
+): NavSection[] {
+  // Support legacy single-segment call, SidebarContext, and NavContext
+  const ctx: NavContext =
     typeof segmentOrContext === 'string' ? { segment: segmentOrContext } : segmentOrContext;
-  const { segment, drepId, poolId } = ctx;
+  const { segment, drepId, poolId, depth } = ctx;
 
   const isDualRole = !!(drepId && poolId);
 
@@ -167,22 +239,26 @@ export function getSidebarSections(segmentOrContext: UserSegment | SidebarContex
 
   // Workspace — DRep/SPO only (with dual-role grouping)
   if (isDualRole) {
-    sections.push({
-      id: 'workspace',
-      label: 'Workspace',
-      icon: Briefcase,
-      href: '/workspace',
-      groups: buildDualRoleGroups(),
-      segments: ['drep', 'spo'],
-    });
+    const filteredGroups = filterGroupsByDepth(buildDualRoleGroups(), depth);
+    if (filteredGroups.length > 0) {
+      sections.push({
+        id: 'workspace',
+        label: 'Workspace',
+        icon: Briefcase,
+        href: '/workspace',
+        groups: filteredGroups,
+        segments: ['drep', 'spo'],
+      });
+    }
   } else if (segment === 'drep' || segment === 'spo') {
     const workspaceItems = segment === 'drep' ? WORKSPACE_DREP_ITEMS : WORKSPACE_SPO_ITEMS;
+    const filteredItems = filterByDepth(workspaceItems, depth);
     sections.push({
       id: 'workspace',
       label: 'Workspace',
       icon: Briefcase,
       href: '/workspace',
-      items: workspaceItems,
+      items: filteredItems,
       segments: ['drep', 'spo'],
     });
   }
@@ -193,40 +269,22 @@ export function getSidebarSections(segmentOrContext: UserSegment | SidebarContex
     label: 'Governance',
     icon: Globe,
     href: '/governance',
-    items: GOVERNANCE_ITEMS,
+    items: filterByDepth(GOVERNANCE_ITEMS, depth),
   });
 
-  // Delegation — authenticated with delegation
-  if (segment !== 'anonymous') {
-    sections.push({
-      id: 'delegation',
-      label: 'Delegation',
-      icon: Handshake,
-      href: '/delegation',
-      requiresAuth: true,
-    });
-  }
-
-  // You — authenticated
+  // You — authenticated (persona-aware items)
   if (segment !== 'anonymous') {
     sections.push({
       id: 'you',
       label: 'You',
       icon: User,
       href: '/you',
-      items: YOU_ITEMS,
+      items: filterByDepth(getYouItems(segment, { drepId, poolId }), depth),
       requiresAuth: true,
     });
   }
 
-  // Help — everyone
-  sections.push({
-    id: 'help',
-    label: 'Help',
-    icon: HelpCircle,
-    href: '/help',
-    items: HELP_ITEMS,
-  });
+  // Help removed from sidebar — now in header dropdown
 
   return sections;
 }
@@ -242,17 +300,10 @@ const BOTTOM_BAR_ANONYMOUS: NavItem[] = [
   { href: '/help', label: 'Help', icon: HelpCircle },
 ];
 
-const BOTTOM_BAR_CITIZEN_UNDELEGATED: NavItem[] = [
+const BOTTOM_BAR_CITIZEN: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/match', label: 'Match', icon: Compass },
-  { href: '/you', label: 'You', icon: User, badge: 'unread' },
-];
-
-const BOTTOM_BAR_CITIZEN_DELEGATED: NavItem[] = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/governance', label: 'Governance', icon: Globe },
-  { href: '/delegation', label: 'Delegation', icon: Handshake },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
@@ -273,20 +324,50 @@ const BOTTOM_BAR_SPO: NavItem[] = [
 const BOTTOM_BAR_CC: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
-  { href: '/delegation', label: 'Delegation', icon: Handshake },
+  { href: '/match', label: 'Match', icon: Compass },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
-export function getBottomBarItems(segment: UserSegment, hasDelegation: boolean): NavItem[] {
+/** Hands-Off bottom bar for citizen: swap Match for Help */
+const BOTTOM_BAR_CITIZEN_HANDS_OFF: NavItem[] = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/governance', label: 'Governance', icon: Globe },
+  { href: '/you', label: 'You', icon: User, badge: 'unread' },
+  { href: '/help', label: 'Help', icon: HelpCircle },
+];
+
+/** Hands-Off bottom bar for DRep: Home/Workspace/You/Help */
+const BOTTOM_BAR_DREP_HANDS_OFF: NavItem[] = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/workspace', label: 'Workspace', icon: Briefcase, badge: 'actions' },
+  { href: '/you', label: 'You', icon: User, badge: 'unread' },
+  { href: '/help', label: 'Help', icon: HelpCircle },
+];
+
+/** Hands-Off bottom bar for SPO: Home/Workspace/You/Help */
+const BOTTOM_BAR_SPO_HANDS_OFF: NavItem[] = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/workspace', label: 'Workspace', icon: Briefcase },
+  { href: '/you', label: 'You', icon: User, badge: 'unread' },
+  { href: '/help', label: 'Help', icon: HelpCircle },
+];
+
+export function getBottomBarItems(
+  segmentOrOpts: UserSegment | { segment: UserSegment; depth?: GovernanceDepth },
+): NavItem[] {
+  const segment = typeof segmentOrOpts === 'string' ? segmentOrOpts : segmentOrOpts.segment;
+  const depth = typeof segmentOrOpts === 'string' ? undefined : segmentOrOpts.depth;
+  const isHandsOff = depth === 'hands_off';
+
   switch (segment) {
     case 'anonymous':
       return BOTTOM_BAR_ANONYMOUS;
     case 'citizen':
-      return hasDelegation ? BOTTOM_BAR_CITIZEN_DELEGATED : BOTTOM_BAR_CITIZEN_UNDELEGATED;
+      return isHandsOff ? BOTTOM_BAR_CITIZEN_HANDS_OFF : BOTTOM_BAR_CITIZEN;
     case 'drep':
-      return BOTTOM_BAR_DREP;
+      return isHandsOff ? BOTTOM_BAR_DREP_HANDS_OFF : BOTTOM_BAR_DREP;
     case 'spo':
-      return BOTTOM_BAR_SPO;
+      return isHandsOff ? BOTTOM_BAR_SPO_HANDS_OFF : BOTTOM_BAR_SPO;
     case 'cc':
       return BOTTOM_BAR_CC;
     default:
@@ -301,32 +382,35 @@ export function getBottomBarItems(segment: UserSegment, hasDelegation: boolean):
 export function getPillBarItems(
   pathname: string,
   segment: UserSegment,
-  context?: { drepId?: string | null; poolId?: string | null },
+  context?: { drepId?: string | null; poolId?: string | null; depth?: GovernanceDepth },
 ): NavItem[] | null {
+  const depth = context?.depth;
+
   if (pathname.startsWith('/governance')) {
-    return GOVERNANCE_ITEMS;
+    return filterByDepth(GOVERNANCE_ITEMS, depth);
   }
   if (pathname.startsWith('/workspace')) {
     const isDualRole = !!(context?.drepId && context?.poolId);
     if (isDualRole) {
       // For dual-role users, combine both item sets (deduped) for pill bar
       const drepHrefs = new Set(WORKSPACE_DREP_ITEMS.map((i) => i.href));
-      return [
+      const combined = [
         ...WORKSPACE_DREP_ITEMS,
         ...WORKSPACE_SPO_ITEMS.filter((i) => !drepHrefs.has(i.href)),
       ];
+      return filterByDepth(combined, depth);
     }
-    if (segment === 'drep') return WORKSPACE_DREP_ITEMS;
-    if (segment === 'spo') return WORKSPACE_SPO_ITEMS;
-    return WORKSPACE_DREP_ITEMS;
+    if (segment === 'drep') return filterByDepth(WORKSPACE_DREP_ITEMS, depth);
+    if (segment === 'spo') return filterByDepth(WORKSPACE_SPO_ITEMS, depth);
+    return filterByDepth(WORKSPACE_DREP_ITEMS, depth);
   }
   if (pathname.startsWith('/you')) {
-    return YOU_ITEMS;
+    return filterByDepth(getYouItems(segment, context), depth);
   }
   if (pathname.startsWith('/help')) {
-    return HELP_ITEMS;
+    return filterByDepth(HELP_ITEMS, depth);
   }
-  // No pill bar for single-page sections (Home, Delegation, Match)
+  // No pill bar for single-page sections (Home, Match)
   return null;
 }
 
@@ -338,7 +422,6 @@ export function getCurrentSection(pathname: string): string | null {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/workspace')) return 'workspace';
   if (pathname.startsWith('/governance')) return 'governance';
-  if (pathname.startsWith('/delegation')) return 'delegation';
   if (pathname.startsWith('/you')) return 'you';
   if (pathname.startsWith('/match')) return 'match';
   if (pathname.startsWith('/help')) return 'help';

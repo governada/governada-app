@@ -223,7 +223,12 @@ export function DRepQuickView({
               </Button>
             </Link>
             {onWatchlistToggle && (
-              <Button variant="outline" size="icon" onClick={() => onWatchlistToggle(drep.drepId)}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => onWatchlistToggle(drep.drepId)}
+                aria-label={isWatchlisted ? 'Remove from watchlist' : 'Add to watchlist'}
+              >
                 <Heart
                   className={cn(
                     'h-4 w-4',

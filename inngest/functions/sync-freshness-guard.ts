@@ -35,6 +35,8 @@ const GHOST_THRESHOLD_MS = 30 * 60 * 1000;
 const HISTORICAL_GHOST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 const SELF_HEAL_MAX_TRIGGERS = 3;
 const SELF_HEAL_WINDOW_MS = 2 * 60 * 60 * 1000;
+/** Any sync_log entry with duration > 4h is a metric anomaly (likely onFailure delay) */
+const MAX_REASONABLE_DURATION_MS = 4 * 60 * 60 * 1000;
 
 export const syncFreshnessGuard = inngest.createFunction(
   {
@@ -102,6 +104,35 @@ export const syncFreshnessGuard = inngest.createFunction(
         ids: ghosts.map((g) => g.id),
       });
       return ghosts.length;
+    });
+
+    // Clean duration anomalies: entries where duration_ms > 4h.
+    // These are typically caused by onFailure handlers running hours after the sync
+    // started (due to Inngest retries + backoff), producing misleading duration metrics.
+    await step.run('cleanup-duration-anomalies', async () => {
+      const supabase = getSupabaseAdmin();
+      const { data: anomalies } = await supabase
+        .from('sync_log')
+        .select('id, sync_type, duration_ms')
+        .not('finished_at', 'is', null)
+        .not('started_at', 'is', null)
+        .gt('duration_ms', MAX_REASONABLE_DURATION_MS);
+
+      if (!anomalies || anomalies.length === 0) return 0;
+
+      for (const entry of anomalies) {
+        await supabase
+          .from('sync_log')
+          .update({
+            duration_ms: 0,
+            error_message: `Duration anomaly corrected by freshness guard (original: ${Math.round((entry.duration_ms ?? 0) / 60_000)}min — likely onFailure handler delay)`,
+          })
+          .eq('id', entry.id);
+      }
+      logger.info('[FreshnessGuard] Corrected duration anomalies', {
+        count: anomalies.length,
+      });
+      return anomalies.length;
     });
 
     const staleTypes = await step.run('check-freshness', async () => {

@@ -7,7 +7,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { ShareActions } from '@/components/ShareActions';
 import { GHI_BAND_COLORS, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi';
 import { StateOfGovernanceContent } from '@/app/pulse/report/[epoch]/report-content';
-import { FloatingShareFAB } from '@/components/civica/pulse/FloatingShareFAB';
+import { FloatingShareFAB } from '@/components/governada/pulse/FloatingShareFAB';
 import type { ReportData } from '@/lib/stateOfGovernance';
 import { BASE_URL } from '@/lib/constants';
 import { cn } from '@/lib/utils';

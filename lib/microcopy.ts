@@ -1,6 +1,38 @@
 /**
  * Micro-Copy System — centralized copy bank for UI micro-moments.
  * The difference between a shadcn template and a product with personality.
+ *
+ * ── Tone Guide ──────────────────────────────────────────────────────────────
+ *
+ * All copy in Governada follows one of three tiers, matched to the user's
+ * mindset — not the content type.
+ *
+ * WARM — "Teach me" mode
+ *   Where: glossary, onboarding, help pages, first-encounter tooltips,
+ *          "why it matters" text (especially citizen/anonymous segments).
+ *   Voice: conversational, everyday analogies welcome, like explaining it
+ *          to a smart friend over coffee. Never condescending, never cute.
+ *   Test:  "Would my mom understand this without a follow-up question?"
+ *   Example: "Like choosing a city council member — you pick someone, and
+ *             they vote on neighborhood decisions for you."
+ *
+ * CLEAR — "Get it done" mode
+ *   Where: inline tooltips during workflows, form hints, empty states,
+ *          error messages, CTAs, loading messages.
+ *   Voice: concise, personality through word choice not jokes. One sentence
+ *          max. The user is mid-task — don't slow them down.
+ *   Test:  "Can I read this in under 3 seconds and know what to do?"
+ *   Example: "The chain threw us a curveball. Try refreshing."
+ *
+ * NEUTRAL — "Prove it" mode
+ *   Where: methodology page, score breakdowns, data labels, chart axes.
+ *   Voice: precise, no personality. Trust comes from rigor here.
+ *   Test:  "Would a skeptic accept this as objective?"
+ *   Example: "Importance-weighted participation rate across active proposals."
+ *
+ * When writing new copy, pick the tier that matches the user's likely
+ * mindset at that moment. When in doubt, Clear is the safe default.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 export const LOADING_MESSAGES = {
@@ -72,14 +104,14 @@ export function getScoreBandLabel(score: number): string {
   return SCORE_BAND_LABELS.low;
 }
 
-// ─── Governance Terms ────────────────────────────────────────────────────────
+// ─── Governance Terms (Warm tier for definitions, segment-aware for context) ─
 
 export type GovTermSegment = 'anonymous' | 'citizen' | 'drep' | 'spo';
 
 export interface GovTermDef {
   /** Display label used as the tooltip trigger text */
   label: string;
-  /** One-sentence plain definition */
+  /** One-sentence plain definition (Warm tier) */
   definition: string;
   /** Segment-aware "Why it matters" framing. Falls back to `default`. */
   whyItMatters: Partial<Record<GovTermSegment, string>> & { default: string };
@@ -89,13 +121,13 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   drep: {
     label: 'DRep',
     definition:
-      'A Delegated Representative — an on-chain agent who casts governance votes on behalf of ADA holders who delegate to them.',
+      'Someone who votes on Cardano decisions on behalf of ADA holders like you. Think of them as your elected representative.',
     whyItMatters: {
       anonymous:
-        "When you delegate to a DRep, your ADA's voting weight amplifies their voice in every governance decision.",
+        "Pick one and your ADA backs their votes on every governance decision — it never leaves your wallet, you're just lending your voice.",
       citizen:
-        'Your DRep votes on every proposal using your delegated ADA. Their track record tells you how well they represent your values.',
-      drep: 'Your DRep status means every vote you cast carries the weight of everyone who delegated to you.',
+        "This person votes on every proposal using your ADA's weight. Their track record — right here on Governada — shows how well they actually represent you.",
+      drep: 'Every vote you cast carries the weight of everyone who delegated to you. That trust is reflected in your score.',
       spo: 'DReps vote on governance actions that directly affect network parameters and treasury allocation — the same decisions that affect your pool.',
       default:
         'DReps vote on Cardano governance proposals using the voting power of the ADA holders who delegate to them.',
@@ -104,10 +136,10 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   epoch: {
     label: 'Epoch',
     definition:
-      'A fixed 5-day period on the Cardano blockchain after which rewards are distributed and governance snapshots are taken.',
+      'Cardano runs on 5-day cycles. Think of it like a work week — at the end, staking rewards land in your wallet and governance votes get counted.',
     whyItMatters: {
       citizen:
-        'Governance proposals can expire at epoch boundaries — your DRep has a narrow window to vote before opportunities close.',
+        'Proposals can expire at the end of a cycle, so your representative has a narrow window to vote. If they miss it, that vote is gone for good.',
       drep: 'Each epoch is a governance window. Missed votes within an epoch are permanent — they drag your Reliability score.',
       default:
         'Epochs are the heartbeat of Cardano — rewards, delegation snapshots, and governance deadlines all align to epoch boundaries.',
@@ -116,23 +148,23 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   delegation: {
     label: 'Delegation',
     definition:
-      "The act of assigning your ADA's voting power to a DRep without transferring ownership of your ADA.",
+      'Choosing who votes on your behalf. Like picking your representative in an election — except you can switch anytime, and your ADA never leaves your wallet.',
     whyItMatters: {
       anonymous:
-        "Delegating costs nothing and doesn't move your ADA — it just amplifies a representative's governance voice with your weight.",
+        "It's free, takes about a minute, and doesn't move your ADA anywhere. You're just choosing who speaks for you when governance decisions come up.",
       citizen:
-        'You can redelegate to a different DRep at any time — switching takes effect at the next epoch snapshot.',
+        'You can change your mind anytime — switch representatives and the change kicks in at the start of the next 5-day cycle. No fees, no paperwork.',
       default:
-        'Delegation is how citizens participate in governance without voting on every proposal themselves.',
+        'Delegation is how ADA holders participate in governance without voting on every proposal themselves.',
     },
   },
   governanceAction: {
     label: 'Governance Action',
     definition:
-      'An on-chain proposal submitted to the Cardano governance system — covering treasury withdrawals, protocol parameter changes, hard forks, and constitutional amendments.',
+      'A proposal to change something about Cardano — like spending community funds, updating network rules, or approving a major upgrade.',
     whyItMatters: {
       citizen:
-        'Every governance action that passes changes how Cardano works — treasury spending, network rules, and protocol upgrades all flow through this process.',
+        "Every proposal that passes actually changes how Cardano works. Your representative votes on each one — that's why picking a good one matters.",
       drep: 'Your vote on each governance action is recorded on-chain permanently. How you vote (and whether you explain it) shapes your score.',
       default:
         "Governance actions are how Cardano's rules get changed. They require approval from DReps, stake pools, and the Constitutional Committee.",
@@ -141,22 +173,22 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   votingPower: {
     label: 'Voting Power',
     definition:
-      'The total ADA delegated to a DRep, measured in lovelace (1 ADA = 1,000,000 lovelace), representing their weighted influence on governance outcomes.',
+      "The total ADA backing a representative. It's like the difference between a petition with 10 signatures and 10,000 — more backing means more influence.",
     whyItMatters: {
       citizen:
-        'The more ADA holders delegate to your DRep, the greater their weight in deciding governance outcomes.',
-      drep: 'Governada deliberately excludes voting power from your score — governance quality, not whale capture, is what we reward.',
+        "When you delegate, your ADA adds to your representative's voting power. The more people choose them, the more weight their votes carry.",
+      drep: 'Governada deliberately excludes voting power from your score — governance quality, not whale capture, is what we measure.',
       default:
-        "Voting power determines how much weight a DRep's vote carries. High voting power doesn't mean high quality.",
+        "Voting power determines how much weight a DRep's vote carries. High voting power doesn't mean high quality — that's what the score is for.",
     },
   },
   rationale: {
     label: 'Rationale',
     definition:
-      "A DRep's on-chain or off-chain explanation of why they voted a particular way on a governance action.",
+      'A representative\'s written explanation of why they voted a certain way. The difference between "I voted yes" and "here\'s why I voted yes."',
     whyItMatters: {
       citizen:
-        "Rationales are your window into your DRep's reasoning — the difference between a representative who thinks and one who just clicks.",
+        "Rationales let you see your representative's actual thinking. Someone who explains their reasoning is doing the job — someone who just clicks buttons isn't.",
       drep: 'Providing rationales is the single highest-leverage action to improve your Engagement Quality score. Each one is AI-analyzed for depth.',
       default:
         'Rationales turn votes from yes/no signals into accountable positions — essential for informed delegation.',
@@ -165,10 +197,10 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   drepScore: {
     label: 'DRep Score',
     definition:
-      "Governada's composite 0–100 governance quality score, combining Engagement Quality (35%), Effective Participation (25%), Reliability (25%), and Governance Identity (15%).",
+      'A quality rating from 0 to 100 that measures how well a representative does their job — not how much ADA they have, but how responsibly they use the trust placed in them.',
     whyItMatters: {
       citizen:
-        'The score compresses hundreds of governance data points into one number — but always drill into the pillars to understand the story behind it.',
+        "Higher is better, but the number is just the headline. Tap through to see what's behind it — are they voting? Explaining their reasoning? Showing up consistently?",
       drep: 'Your score is percentile-normalized against all DReps. Improving any pillar moves you up relative to the field.',
       default:
         "The DRep Score isn't about voting power — it measures governance discipline, transparency, and engagement quality.",
@@ -177,10 +209,10 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   tier: {
     label: 'Governance Tier',
     definition:
-      'A six-level classification of governance quality: Emerging (0–39), Bronze (40–54), Silver (55–69), Gold (70–84), Diamond (85–94), Legendary (95–100).',
+      'A quality badge for representatives — Emerging, Bronze, Silver, Gold, Diamond, or Legendary. Like a trust rating that tells you at a glance how strong their track record is.',
     whyItMatters: {
       citizen:
-        "Tier badges give you an instant read on a DRep's governance standing without having to parse raw numbers.",
+        "Don't want to dig into the numbers? The tier badge gives you an instant read. Gold and above means they're consistently doing good work.",
       drep: 'Each tier unlock is a milestone — Diamond and Legendary DReps are in the top 15% and 5% of the field respectively.',
       default:
         'Tiers translate percentile scores into memorable, comparable labels that make governance quality scannable at a glance.',
@@ -189,10 +221,10 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   treasury: {
     label: 'Treasury',
     definition:
-      'The on-chain ADA reserve — funded by transaction fees and monetary expansion — that finances Cardano ecosystem development via governance-approved withdrawals.',
+      "Cardano's shared community fund — built up from transaction fees over time. Think of it like a city budget that the residents themselves vote on how to spend.",
     whyItMatters: {
       citizen:
-        'Your DRep votes on treasury withdrawals. Large disbursements can fund critical infrastructure — or waste community resources.',
+        'This is real money, and your representative votes on how it gets spent. A good rep funds critical projects. A careless one can waste community resources.',
       drep: 'Treasury governance actions carry the highest stakes. Your treasury voting record is scrutinized by delegators and analysts.',
       default:
         'The Cardano treasury holds billions in ADA. Every withdrawal requires governance approval from DReps, pools, and the Constitutional Committee.',
@@ -201,10 +233,10 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   constitutionalCommittee: {
     label: 'Constitutional Committee',
     definition:
-      'An elected body of representatives responsible for ensuring governance actions are constitutional before they can be enacted.',
+      "A small group of elected officials who act as Cardano's referees. They check that every governance decision follows the rules before it takes effect.",
     whyItMatters: {
       citizen:
-        'The CC acts as a final check on governance — even if DReps approve an action, the CC can block it if it violates the constitution.',
+        "Even if every representative votes yes on a proposal, this committee can block it if it breaks Cardano's rules. They're the safety net.",
       default:
         'The Constitutional Committee is one of three governance bodies. Their approval (alongside DReps and stake pools) is required for most governance actions.',
     },
@@ -212,20 +244,22 @@ export const GOV_TERMS: Record<string, GovTermDef> = {
   hardFork: {
     label: 'Hard Fork',
     definition:
-      'A protocol upgrade that requires all nodes to update software. On Cardano, hard forks are approved through the governance system.',
+      'A major upgrade to how Cardano works — like a big software update that everyone on the network adopts at the same time. These are rare and require broad agreement.',
     whyItMatters: {
       citizen:
-        "Hard forks change Cardano's technical rules. Your DRep's vote on hard fork proposals shapes the network's evolution.",
+        "These are the biggest decisions in governance. Your representative's vote on a hard fork literally shapes what Cardano becomes next.",
       spo: 'Hard forks require pool operators to update node software — your vote and upgrade readiness both matter here.',
       default:
-        'Hard forks are the highest-stakes governance actions — they literally change how Cardano works at the protocol level.',
+        'Hard forks are the highest-stakes governance actions — they change how Cardano works at the protocol level.',
     },
   },
   quorum: {
     label: 'Quorum',
     definition:
-      'The minimum percentage of active voting stake required for a governance action to be considered valid — varies by proposal type.',
+      "The minimum number of people who need to participate for a vote to count. It's a safeguard — if not enough representatives show up, the decision doesn't go through.",
     whyItMatters: {
+      citizen:
+        "This is why having an active representative matters. If too many reps sit out a vote, even good proposals can't pass — they just expire.",
       drep: "Low participation hurts everyone — if overall DRep voting doesn't reach quorum, governance actions fail even if those who voted approved them.",
       default:
         "Quorum prevents a small group from passing governance actions when most of the network isn't paying attention.",

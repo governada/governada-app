@@ -1,6 +1,7 @@
 'use client';
 
 import * as Sentry from '@sentry/nextjs';
+import Link from 'next/link';
 import { useEffect } from 'react';
 
 export default function Error({
@@ -35,12 +36,20 @@ export default function Error({
       <p className="text-muted-foreground max-w-md text-sm">
         An unexpected error occurred. Our team has been notified and is looking into it.
       </p>
-      <button
-        onClick={reset}
-        className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-      >
-        Try again
-      </button>
+      <div className="flex gap-3 mt-2">
+        <button
+          onClick={reset}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Try again
+        </button>
+        <Link
+          href="/help/support"
+          className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
+        >
+          Get help
+        </Link>
+      </div>
     </div>
   );
 }

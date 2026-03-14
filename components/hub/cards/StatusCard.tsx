@@ -240,7 +240,7 @@ export function SPODelegatorsCard() {
       urgency={change < 0 ? 'warning' : 'default'}
       label={`${currentCount} delegators, ${change >= 0 ? '+' : ''}${change} change`}
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4" data-discovery="spo-delegators">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />

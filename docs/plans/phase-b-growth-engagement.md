@@ -23,7 +23,7 @@
 
 ### Frontend Plan (Batch 9)
 
-- Clean-sheet redesign plan in `docs/plans/civica-frontend-redesign.md`
+- Clean-sheet redesign plan in `docs/plans/governada-frontend-redesign.md`
 - 4-destination navigation, segment detection, action feed, celebration/sharing system, tier visual identity
 - The Governada frontend plan creates the **surfaces** Phase B fills with content
 

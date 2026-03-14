@@ -457,6 +457,156 @@ _(Patterns for finding, filtering, matching, recommendation)_
 - **Applicable to**: Event-driven score updates on vote/rationale submission. Immediate feedback: "You just gained +3 on Engagement Quality."
 - **Adoption difficulty**: Hard — requires event-driven architecture shift from batch sync
 
+### Settings & Personalization
+
+#### Settings as Product Education
+
+- **Source**: Linear — https://linear.app/now/settings-are-not-a-design-failure
+- **Discovered**: 2026-03-13 (explore-feature: Settings)
+- **What they do**: Settings homepage doubles as product education. Tutorials and tips appear directly on settings pages. Users discover capabilities through configuration, not documentation. Notifications organized by channel (Desktop/Mobile/Email/Slack) with green/gray dots for instant status.
+- **Why it's world-class**: Reframes settings from "configuration chore" to "discover what the product can do." Users who visit settings leave more capable, not just more configured.
+- **Applicable to**: Settings page could educate users about governance participation levels, notification capabilities, and alignment features while they configure them.
+- **Adoption difficulty**: Easy — UX pattern, no new data needed
+
+#### Stackable Trust Delegation as Configuration
+
+- **Source**: Bluesky — https://bsky.social/about/blog/03-12-2024-stackable-moderation
+- **Discovered**: 2026-03-13 (explore-feature: Settings)
+- **What they do**: Users subscribe to up to 20 "labelers" (moderation services), each independently configurable with Hide/Warn/Ignore per label type. Content filtering is choosing WHOSE JUDGMENT to trust, not toggling individual content types.
+- **Why it's world-class**: Shifts settings from "what content do I see?" to "who do I trust to filter for me?" — a fundamentally different mental model that scales without complexity. Each labeler subscription is a trust relationship.
+- **Applicable to**: Governance notification preferences as "trust delegation" — instead of toggling 50 event types, users choose whose governance activity to follow (DRep, SPO, CC member) and the system configures notifications from that relationship.
+- **Adoption difficulty**: Medium — requires entity-based subscription model + notification routing
+
+#### Intent-Based Configuration (Single Dial)
+
+- **Source**: WHOOP recovery-based recommendations + Robinhood outcome-oriented portfolio settings
+- **Discovered**: 2026-03-13 (explore-feature: Settings)
+- **What they do**: WHOOP: one daily recovery score drives all behavior recommendations. Robinhood: risk tolerance slider configures entire portfolio allocation. Neither exposes the individual variables — users express INTENT, system handles configuration.
+- **Why it's world-class**: Collapses N toggles into 1 intent expression. Users don't need to understand the system's internals to configure it correctly. The system translates intent into optimal configuration.
+- **Applicable to**: "Governance Tuner" — single slider from "Hands-Off" to "Deep" that configures notification preferences, digest frequency, Hub layout, and information density in one gesture.
+- **Adoption difficulty**: Medium — requires intent-to-configuration mapping layer
+
+#### Contextual Settings at Point of Relevance
+
+- **Source**: GovTrack inline "Track" buttons + Slack channel join notifications + Material Design contextual settings pattern
+- **Discovered**: 2026-03-13 (explore-feature: Settings)
+- **What they do**: GovTrack: "Track this bill" button on every entity page — zero friction, no context switch. Slack (lesson): failed by NOT prompting notification preferences when joining channels. Material Design codified: frequently accessed actions should be inline, not in settings page.
+- **Why it's world-class**: Moves preference expression from "go to settings, find the toggle, change it" to "click one button where you already are." Settings pages have <5% toggle-change rates; inline buttons have much higher engagement.
+- **Applicable to**: "Watch this DRep" / "Track this proposal" buttons on entity pages. Notification preferences built organically through use, not through a settings page nobody visits.
+- **Adoption difficulty**: Easy — inline button component + entity subscription table
+
+#### Behavioral Inference with Transparent Override
+
+- **Source**: Gmail AI Inbox (behavioral VIP identification) + Windows 11 AI Settings Agent + Ziggma smart alerts
+- **Discovered**: 2026-03-13 (explore-feature: Settings)
+- **What they do**: Gmail: AI identifies VIPs from interaction signals, not explicit settings. Windows 11: natural language query surfaces relevant settings. Ziggma: user-defined alert thresholds with personal relevance scoring. All three: system INFERS preferences, user CORRECTS.
+- **Why it's world-class**: Inverts the settings paradigm from "user configures from blank slate" to "system proposes based on behavior, user adjusts." Dramatically reduces configuration effort while increasing personalization quality.
+- **Applicable to**: Settings that show "Based on your activity, you care about treasury proposals (8 views this epoch)" with one-click override. System learns preferences from behavior, surfaces evidence for transparency, allows correction.
+- **Adoption difficulty**: Hard — requires behavioral tracking pipeline, inference engine, evidence storage, transparency UI
+
+### Civic Identity & Reputation
+
+#### Activity Rings as Personal Governance Identity
+
+- **Source**: Apple Watch Activity Rings — https://developer.apple.com/design/human-interface-guidelines/activity-rings
+- **Discovered**: 2026-03-13 (explore-feature: Civic Identity)
+- **What they do**: Three concentric colored rings (Move, Exercise, Stand) that fill daily. Extreme simplicity — three goals, one glance. No leaderboards, no competition. Streaks reward consistency. Goal-gradient effect increases motivation as rings near completion. Daily reset creates fresh start.
+- **Why it's world-class**: Reduced complex health data to a single glanceable visual that actually changes behavior. "I usually close my rings" becomes identity. Non-competitive — pure personal progress. The daily reset + streak tension creates the perfect engagement loop.
+- **Applicable to**: 3 governance rings (Delegation Health, Representation Coverage, Civic Engagement) that fill per epoch. Single glance tells citizen "am I governing well?" Shareable. Personal, not competitive.
+- **Adoption difficulty**: Easy — data exists across governance footprint + impact score, needs ring visualization
+
+#### Progressive Trust Levels as Identity Maturation
+
+- **Source**: Discourse Trust Levels — https://blog.discourse.org/2018/06/understanding-discourse-trust-levels/
+- **Discovered**: 2026-03-13 (explore-feature: Civic Identity)
+- **What they do**: 5 trust levels (New → Basic → Member → Regular → Leader) earned through sustained participation. Permissions unlock gradually. Trust is earned by reading, posting, and time spent — not one-time actions. Auto-detects regulars without manual moderation.
+- **Why it's world-class**: Trust earned through _demonstrated consistent behavior_ creates genuine progression. New users are sandboxed (safe), veterans get real capabilities (rewarding). The system self-governs.
+- **Applicable to**: Governance identity progression where higher trust unlocks capabilities — not just badges, but real features (advanced analytics, comparison tools, community moderation, governance influence weight). Identity DOES something.
+- **Adoption difficulty**: Medium — engagement levels exist, needs trust-to-capability mapping
+
+#### Peer Recognition as Reputation Signal
+
+- **Source**: Coordinape — https://coordinape.com/
+- **Discovered**: 2026-03-13 (explore-feature: Civic Identity)
+- **What they do**: DAO members get 100 GIVE tokens per epoch to distribute to peers who contributed value. Purely peer-validated — no algorithm decides worth. Used by 100+ DAOs (Bankless, Yearn). "Maximizes decentralization of reputation attribution."
+- **Why it's world-class**: Reputation determined by the people you work with, not by an algorithm or authority. Social consensus mechanism for contribution recognition. Prevents gaming because peers know who actually contributes.
+- **Applicable to**: Citizen endorsements of DReps for specific governance qualities (thoughtful rationales, responsiveness, expertise). Community-validated layer on top of algorithmic scores. Already partially built via citizen_endorsements table.
+- **Adoption difficulty**: Easy — endorsement table exists, needs UI for endorsement reasons + display
+
+#### Non-Transferable Governance Milestones (SBT/POAP Pattern)
+
+- **Source**: POAP (Proof of Attendance Protocol) + Soulbound Token research (Vitalik Buterin, 2022) — https://ndlabs.dev/what-is-poap
+- **Discovered**: 2026-03-13 (explore-feature: Civic Identity)
+- **What they do**: POAP: Free collectible NFTs proving "I was there." SBTs: Non-transferable tokens representing earned credentials. SushiSwap gave POAPs specifically to governance voters. Collection grows organically into an "on-chain resume." Can't buy, sell, or transfer — you earn them.
+- **Why it's world-class**: Digital "I was there" moments. Merit-based identity that can't be gamed through purchase. The collection tells a story of engagement over time. Low-stakes but emotionally resonant.
+- **Applicable to**: Governance milestones as non-transferable collectibles — "Participated in Chang Hard Fork," "First Delegation," "100th Governance Action." Already have 47+ milestones defined; the visual/collectible/shareable layer is the gap.
+- **Adoption difficulty**: Easy — milestone system exists, needs collectible-style visual design + share cards per milestone
+
+#### Social Fitness Identity (Year In Review)
+
+- **Source**: Strava Year In Sport — https://press.strava.com/articles/strava-releases-12th-annual-year-in-sport-trend-report-2025
+- **Discovered**: 2026-03-13 (explore-feature: Civic Identity)
+- **What they do**: Annual shareable review of athletic identity. "If it's not on Strava, it didn't happen." Status derived from effort and sweat, not followers. 1M clubs, 14B kudos in 2025. Year In Sport creates annual identity ritual alongside Spotify Wrapped.
+- **Why it's world-class**: Shifted social status from views/likes to _effort and consistency_. Users emotionally identify with the product. The annual review creates anticipation and viral sharing.
+- **Applicable to**: "Year in Governance" or epoch-periodic identity review. Status through governance effort (voting, researching, delegating thoughtfully) rather than ADA wealth. Clubs/cohorts of citizens with similar governance values.
+- **Adoption difficulty**: Medium — needs temporal data aggregation + shareable card renderer + comparative stats
+
+#### Opinion Landscape as Self-Discovery
+
+- **Source**: Pol.is — https://compdemocracy.org/polis/
+- **Discovered**: 2026-03-13 (explore-feature: Civic Identity)
+- **What they do**: Real-time PCA + K-means clustering arranges participants into opinion groups. No traditional reputation/profile. Identity emerges from _what you believe_ — you discover which group you belong to. Used to shape Uber regulation in Taiwan.
+- **Why it's world-class**: Identity-through-position rather than identity-through-points. The discovery of "you tend to agree with Group A on treasury but Group B on protocol" is more meaningful than any badge. Creates self-awareness, not gamification.
+- **Applicable to**: Governance alignment landscape showing citizen's position among opinion clusters. "You're in the 'Fiscal Conservative + Innovation Champion' cluster with 1,200 other citizens." The position IS the identity. PCA infrastructure already exists.
+- **Adoption difficulty**: Medium — PCA + alignment exist, needs citizen clustering + landscape visualization + cluster labeling
+
+#### Composable Identity from Multiple Attestations
+
+- **Source**: Gitcoin Passport (now Human Passport) — https://passport.human.tech/
+- **Discovered**: 2026-03-13 (explore-feature: Civic Identity)
+- **What they do**: Users collect verification "stamps" from multiple independent sources (on-chain activity, social accounts, DAO participation). Aggregate trust score from composable evidence. 2M+ users. No PII stored — only hashed signals.
+- **Why it's world-class**: Identity is _accumulated evidence_, not a single credential. Privacy-first. The stamp model means identity grows richer over time through diverse actions, not through gaming one metric.
+- **Applicable to**: Civic identity as composable stamps — delegation stamp, voting stamp, engagement stamp, alignment stamp, milestone stamp. Each independently verifiable. Identity grows richer through diverse governance participation, not just one activity.
+- **Adoption difficulty**: Medium — multiple data sources exist, needs stamp abstraction + visual composition
+
+### Notification & Inbox Design
+
+#### AI Briefing Replacing Notification List
+
+- **Source**: BriefingAM + Alfred + Dume.ai — https://briefingam.com/ + https://get-alfred.ai/
+- **Discovered**: 2026-03-13 (explore-feature: Inbox)
+- **What they do**: AI morning briefings consolidate email, calendar, tasks into a single actionable overview. Alfred drafts replies and extracts tasks before the user opens. Best briefings go beyond summarizing to triage, flag conflicts, and surface what needs attention first.
+- **Why it's world-class**: Replaces the notification LIST paradigm with a narrative BRIEFING. Users don't process items — they read a story about what matters. Reduces cognitive load while increasing information density.
+- **Applicable to**: Epoch governance briefing — replace notification list with AI-generated narrative. "Quiet epoch. Your DRep voted on all 4 proposals." vs. "Active epoch. 2 things need attention..."
+- **Adoption difficulty**: Medium — AI composition layer over existing data, new component replacing list
+
+#### Triage Queue with Forced-Decision Model
+
+- **Source**: Superhuman + Linear + GitHub Notifications — https://blog.superhuman.com/inbox-zero-in-7-steps/ + https://linear.app/docs/inbox
+- **Discovered**: 2026-03-13 (explore-feature: Inbox)
+- **What they do**: Superhuman: split inbox, keyboard shortcuts (E=done, H=snooze), Cmd+K command palette, "Inbox Zero" animation. Linear: AI auto-categorizes, snooze resurfaces items, triage intelligence with LLM analysis. GitHub: Done/Saved states.
+- **Why it's world-class**: Every item demands a decision, not just awareness. Sequential processing creates flow state. "Inbox Zero" dopamine loop. AI triage suggestions reduce decision fatigue.
+- **Applicable to**: DRep workspace proposal triage — proposals as inbox items with forced-decision workflow. Better for workspace than citizen inbox.
+- **Adoption difficulty**: Large — keyboard handler, priority ranking, inline vote flow, snooze state, split queue UI
+
+#### Notification as Consequence Story
+
+- **Source**: Participatory budgeting research (Decidim Barcelona, 31 EU digital PB cases) + Robinhood portfolio threading
+- **Discovered**: 2026-03-13 (explore-feature: Inbox)
+- **What they do**: PB platforms showing "Your vote helped fund Project X" get repeat participation. Platforms that collect input but never show consequences see participation collapse. Robinhood threads notifications per holding as personal impact.
+- **Why it's world-class**: Reframes notifications from platform events to personal consequences. The #1 factor for return visits is closing the feedback loop. Not "Proposal passed" but "Your delegation decided 2.5M ADA."
+- **Applicable to**: Citizen inbox as consequence feed. Every notification reframed as "what YOUR governance relationship produced."
+- **Adoption difficulty**: Easy-Medium — data exists, needs narrative reframing layer (templates + AI)
+
+#### Calm Default with Breakthrough Alerts
+
+- **Source**: Calm Technology (Amber Case) + Robinhood threshold alerts — https://calmtech.com/ + https://robinhood.com/us/en/support/articles/price-alerts/
+- **Discovered**: 2026-03-13 (explore-feature: Inbox)
+- **What they do**: Calm Technology: information in periphery, not center of attention. Robinhood: holdings alerts ON by default, watchlist OFF. Threshold-based (5% or 10%) rather than every-event.
+- **Why it's world-class**: Solves notification fatigue by designing for periphery first, foreground only when thresholds crossed. Default state is quiet — alerts earn trust by not crying wolf.
+- **Applicable to**: Citizen inbox default is quiet. Most epochs: "All is well." Alerts only for threshold crossings (DRep missed vote, alignment drift > moderate, score dropped tier).
+- **Adoption difficulty**: Easy — quiet mode already exists, needs threshold calibration
+
 ### Performance & Perceived Speed
 
 _(Patterns for loading states, optimistic UI, streaming, progressive rendering)_

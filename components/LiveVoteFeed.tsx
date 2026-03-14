@@ -92,55 +92,61 @@ export function LiveVoteFeed({ limit = 10 }: { limit?: number }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ul
-          className="space-y-2 max-h-[320px] overflow-y-auto"
-          aria-label="Recent governance activity"
-        >
-          <AnimatePresence mode="popLayout" initial={false}>
-            {events.map((event) => {
-              const config = EVENT_ICONS[event.type] || EVENT_ICONS.vote;
-              const Icon = config.icon;
-              const href = getEventHref(event);
-              const itemId = `${event.type}-${event.timestamp}-${event.drepId}-${event.detail}`;
+        {events.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">
+            No recent governance activity to show.
+          </p>
+        ) : (
+          <ul
+            className="space-y-2 max-h-[320px] overflow-y-auto"
+            aria-label="Recent governance activity"
+          >
+            <AnimatePresence mode="popLayout" initial={false}>
+              {events.map((event) => {
+                const config = EVENT_ICONS[event.type] || EVENT_ICONS.vote;
+                const Icon = config.icon;
+                const href = getEventHref(event);
+                const itemId = `${event.type}-${event.timestamp}-${event.drepId}-${event.detail}`;
 
-              const content = (
-                <div className="flex items-start gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div
-                    className={`flex items-center justify-center w-7 h-7 rounded-full ${config.bg} shrink-0 mt-0.5`}
+                const content = (
+                  <div className="flex items-start gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div
+                      className={`flex items-center justify-center w-7 h-7 rounded-full ${config.bg} shrink-0 mt-0.5`}
+                    >
+                      <Icon className={`h-3.5 w-3.5 ${config.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm leading-snug">{formatEventText(event)}</p>
+                      <span className="text-xs text-muted-foreground">
+                        {formatRelativeTime(event.timestamp)}
+                      </span>
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <motion.li
+                    key={itemId}
+                    layout
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-start gap-3"
                   >
-                    <Icon className={`h-3.5 w-3.5 ${config.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug">{formatEventText(event)}</p>
-                    <span className="text-xs text-muted-foreground">
-                      {formatRelativeTime(event.timestamp)}
-                    </span>
-                  </div>
-                </div>
-              );
-
-              return (
-                <motion.li
-                  key={itemId}
-                  layout
-                  initial={{ opacity: 0, y: -12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-start gap-3"
-                >
-                  {href ? (
-                    <Link href={href} className="block flex-1 min-w-0">
-                      {content}
-                    </Link>
-                  ) : (
-                    content
-                  )}
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-        </ul>
+                    {href ? (
+                      <Link href={href} className="block flex-1 min-w-0">
+                        {content}
+                      </Link>
+                    ) : (
+                      content
+                    )}
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
+          </ul>
+        )}
       </CardContent>
     </Card>
   );

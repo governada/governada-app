@@ -38,7 +38,7 @@
 - Briefing replaces dashboard paradigm for connected citizens
 - Treasury citizen view positioned below briefing
 
-**Files:** `components/civica/home/HomeCitizen.tsx`
+**Files:** `components/governada/home/HomeCitizen.tsx`
 
 ---
 
@@ -52,7 +52,7 @@
 - Education integrated into paths, not separate destination
 - Messaging: "Your ADA gives you a voice"
 
-**Files:** `components/civica/home/HomeAnonymous.tsx`
+**Files:** `components/governada/home/HomeAnonymous.tsx`
 
 ---
 
@@ -101,7 +101,7 @@
 - Computes `proportionalShareAda = treasury * (drepStake / circulatingSupply)`
 - `EpochBriefing.tsx` displays "Your DRep's X ADA delegation represents Y ADA of the treasury"
 
-**Files:** `app/api/briefing/citizen/route.ts`, `components/civica/home/EpochBriefing.tsx`
+**Files:** `app/api/briefing/citizen/route.ts`, `components/governada/home/EpochBriefing.tsx`
 
 ---
 
@@ -249,7 +249,7 @@
 - Performance optimization (lazy loading, reduced bundle for mobile)
 - PWA-friendly briefing delivery
 
-**Key files:** `components/civica/home/EpochBriefing.tsx`, related layout components
+**Key files:** `components/governada/home/EpochBriefing.tsx`, related layout components
 
 ---
 

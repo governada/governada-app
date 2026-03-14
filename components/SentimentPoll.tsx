@@ -20,6 +20,7 @@ import {
 import { resolveRewardAddress } from '@meshsdk/core';
 import { PollFeedback } from '@/components/PollFeedback';
 import { hapticLight } from '@/lib/haptics';
+import { emitDiscoveryEvent } from '@/lib/discovery/events';
 import type { PollResultsResponse } from '@/types/supabase';
 
 interface SentimentPollProps {
@@ -123,6 +124,7 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
       setRevealed(true);
       setChangingVote(false);
       setFeedbackVote(vote);
+      emitDiscoveryEvent('sentiment_voted');
 
       import('@/lib/posthog')
         .then(({ posthog }) => {
@@ -131,6 +133,21 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
             proposal_index: proposalIndex,
             vote_direction: vote,
           });
+        })
+        .catch(() => {});
+
+      // Funnel: first engagement tracking
+      import('@/lib/funnel')
+        .then(({ trackFunnel, FUNNEL_EVENTS, getOnboardingState, updateOnboardingState }) => {
+          trackFunnel(FUNNEL_EVENTS.FIRST_ENGAGEMENT, {
+            source: 'sentiment_poll',
+            context: vote,
+          });
+          // Mark first sentiment vote in onboarding
+          const state = getOnboardingState();
+          if (!state.firstSentimentVote) {
+            updateOnboardingState({ firstSentimentVote: true });
+          }
         })
         .catch(() => {});
     } catch (err) {
@@ -224,12 +241,17 @@ export function SentimentPoll({ txHash, proposalIndex, isOpen }: SentimentPollPr
                 size="sm"
                 className="gap-1.5"
                 onClick={() => {
+                  import('@/lib/funnel')
+                    .then(({ trackFunnel, FUNNEL_EVENTS }) => {
+                      trackFunnel(FUNNEL_EVENTS.WALLET_PROMPT_SHOWN, { source: 'sentiment_poll' });
+                    })
+                    .catch(() => {});
                   const event = new CustomEvent('openWalletConnect');
                   window.dispatchEvent(event);
                 }}
               >
                 <Wallet className="h-3.5 w-3.5" />
-                Connect Wallet to Vote
+                Connect to Make Your Voice Count
               </Button>
               {community.total > 0 && (
                 <p className="text-[10px] text-muted-foreground">

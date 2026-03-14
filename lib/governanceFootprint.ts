@@ -21,6 +21,15 @@ export interface GovernanceFootprint {
     drepRank: number | null;
     keyVotes: number;
     delegationChanges: number;
+    /** DRep alignment scores (null if no delegation or alignment not computed) */
+    drepAlignment: {
+      treasuryConservative: number | null;
+      treasuryGrowth: number | null;
+      decentralization: number | null;
+      security: number | null;
+      innovation: number | null;
+      transparency: number | null;
+    } | null;
   };
   citizenActivity: {
     pollsTaken: number;
@@ -97,12 +106,15 @@ export async function buildGovernanceFootprint(
   let drepName: string | null = null;
   let drepScore: number | null = null;
   let drepRank: number | null = null;
+  let drepAlignment: GovernanceFootprint['delegationRecord']['drepAlignment'] = null;
   let keyVotes = 0;
 
   if (delegatedDRep) {
     const { data: drep } = await supabase
       .from('dreps')
-      .select('name, score, rank')
+      .select(
+        'name, score, rank, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+      )
       .eq('drep_id', delegatedDRep)
       .single();
 
@@ -110,6 +122,14 @@ export async function buildGovernanceFootprint(
       drepName = drep.name;
       drepScore = drep.score;
       drepRank = drep.rank;
+      drepAlignment = {
+        treasuryConservative: drep.alignment_treasury_conservative ?? null,
+        treasuryGrowth: drep.alignment_treasury_growth ?? null,
+        decentralization: drep.alignment_decentralization ?? null,
+        security: drep.alignment_security ?? null,
+        innovation: drep.alignment_innovation ?? null,
+        transparency: drep.alignment_transparency ?? null,
+      };
     }
 
     const { count } = await supabase
@@ -164,6 +184,7 @@ export async function buildGovernanceFootprint(
       drepRank,
       keyVotes,
       delegationChanges: delegationHistory.length,
+      drepAlignment,
     },
     citizenActivity: {
       pollsTaken: polls.length,

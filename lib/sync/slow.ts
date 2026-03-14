@@ -711,15 +711,27 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
       'Similarity cache',
     ];
 
+    // Core operations: failures here mean data integrity issues.
+    // Optional operations: failures are logged but don't mark the sync as failed.
+    const CORE_INDICES = [0, 3]; // Rationales, Power backfill
+    const coreErrors: string[] = [];
+    const optionalErrors: string[] = [];
+
     for (let i = 0; i < allResults.length; i++) {
       if (allResults[i].status === 'rejected') {
         const msg = errMsg((allResults[i] as PromiseRejectedResult).reason);
+        if (CORE_INDICES.includes(i)) {
+          coreErrors.push(`${labels[i]}: ${msg}`);
+        } else {
+          optionalErrors.push(`${labels[i]}: ${msg}`);
+        }
         syncErrors.push(`${labels[i]}: ${msg}`);
         log.error(`[SlowSync] ${labels[i]} failed`, { error: msg });
       }
     }
 
-    const success = syncErrors.length === 0;
+    // Success if core operations pass. Optional failures are logged as warnings.
+    const success = coreErrors.length === 0;
     const metrics = {
       rationales_fetched: settled.rationales?.fetched ?? 0,
       rationales_cached: settled.rationales?.cached ?? 0,
@@ -740,8 +752,16 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
     const duration = (syncLog.elapsed / 1000).toFixed(1);
     log.info('[SlowSync] Sync complete', { durationSeconds: duration, issues: syncErrors.length });
 
-    await syncLog.finalize(success, syncErrors.length > 0 ? syncErrors.join('; ') : null, metrics);
-    await emitPostHog(success, 'slow', syncLog.elapsed, metrics);
+    const errorSummary =
+      syncErrors.length > 0
+        ? (coreErrors.length > 0 ? 'CORE: ' : 'OPTIONAL: ') + syncErrors.join('; ')
+        : null;
+    await syncLog.finalize(success, errorSummary, metrics);
+    await emitPostHog(success, 'slow', syncLog.elapsed, {
+      ...metrics,
+      core_errors: coreErrors.length,
+      optional_errors: optionalErrors.length,
+    });
 
     return {
       success,

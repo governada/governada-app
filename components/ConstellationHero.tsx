@@ -9,9 +9,14 @@ import { useGovernanceHolder } from '@/hooks/queries';
 import { posthog } from '@/lib/posthog';
 import { ActivityTicker } from '@/components/ActivityTicker';
 import { PersonalizedStatsStrip } from '@/components/PersonalizedStatsStrip';
+import dynamic from 'next/dynamic';
 import { ConstellationSearch } from '@/components/ConstellationSearch';
 import { ConstellationNodeDetail } from '@/components/ConstellationNodeDetail';
-import { ConstellationScene } from '@/components/ConstellationScene';
+
+const ConstellationScene = dynamic(
+  () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
+);
 
 import type { UserSegment } from '@/components/PersonalGovernanceCard';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';

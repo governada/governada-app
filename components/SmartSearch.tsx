@@ -136,18 +136,26 @@ export function SmartSearch({ dreps, value, onChange, onSelectDRep, className }:
         onFocus={() => setIsFocused(true)}
         onKeyDown={handleKeyDown}
         className="pl-9 pr-8 bg-background/50 border-primary/20 focus:border-primary/50 transition-colors"
+        aria-label="Search DReps by name, ticker, ID, or handle"
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-autocomplete="list"
       />
       {value && (
         <button
           onClick={() => onChange('')}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          aria-label="Clear search"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       )}
 
       {showDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-50 overflow-hidden">
+        <div
+          className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-50 overflow-hidden"
+          role="listbox"
+        >
           {/* Fuzzy search suggestions */}
           {suggestions.length > 0 && (
             <div className="py-1">

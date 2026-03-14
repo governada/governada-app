@@ -9,6 +9,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { computeGHI } from '@/lib/ghi';
+import { blockTimeToEpoch } from '@/lib/koios';
 import { SyncLogger, errMsg, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
@@ -39,19 +40,8 @@ export const snapshotGhi = inngest.createFunction(
     });
 
     const epoch = await step.run('get-current-epoch', async () => {
-      const supabase = getSupabaseAdmin();
-      const { data } = await supabase
-        .from('governance_stats')
-        .select('current_epoch')
-        .eq('id', 1)
-        .single();
-      return data?.current_epoch ?? 0;
+      return blockTimeToEpoch(Math.floor(Date.now() / 1000));
     });
-
-    if (epoch === 0) {
-      logger.warn('[snapshot-ghi] Could not determine current epoch, skipping');
-      return { skipped: true };
-    }
 
     await step.run('store-ghi-snapshot', async () => {
       const supabase = getSupabaseAdmin();

@@ -16,6 +16,8 @@ export interface SupabaseUser {
   email?: string;
   email_verified?: boolean;
   digest_frequency?: 'weekly' | 'biweekly' | 'monthly' | 'off';
+  governance_depth?: 'hands_off' | 'informed' | 'engaged' | 'deep';
+  notification_preferences?: Record<string, boolean>;
 }
 
 export interface DelegationRecord {

@@ -16,6 +16,10 @@ All code changes compile clean. Execute the full deploy pipeline autonomously. D
 12. **Inngest sync**: PUT `https://governada.io/api/inngest` if functions changed → `npm run inngest:status`
 13. **Smoke test**: Hit new/changed endpoints on `governada.io`, run `npm run smoke-test`
 14. **Analytics**: `npm run posthog:check <event>` if new events
-15. **Cleanup**: Switch to main, pull, delete branch, update lessons if needed
+15. **Update tracking docs**: If this PR adds features, fixes scoring, changes counts (routes, components, functions), or ships a QP/step:
+    - Update `docs/strategy/context/build-manifest.md` — check off items, add new `[x]` entries with PR #, update counts
+    - Update `CLAUDE.md` if counts changed (Inngest functions, key files, etc.)
+    - Commit doc updates in the same PR or as a follow-up commit on main
+16. **Cleanup**: Switch to main, pull, delete local branch (`git branch -d <branch>`), drop any stashes from the branch (`git stash list` → `git stash drop`)
 
-**CRITICAL: Do NOT send a completion summary until deploy validation passes. Pushing code is step 6 of 15 — it is not "done."**
+**CRITICAL: Do NOT send a completion summary until deploy validation passes. Pushing code is step 6 of 16 — it is not "done."**

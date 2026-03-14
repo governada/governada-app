@@ -93,7 +93,7 @@ export function MobileNav({
             <SheetTitle className="text-left text-lg font-bold text-primary">$governada</SheetTitle>
           </SheetHeader>
 
-          <nav className="flex flex-col gap-1 px-2">
+          <nav className="flex flex-col gap-1 px-2" aria-label="Mobile navigation">
             {PRIMARY_NAV_ITEMS.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}

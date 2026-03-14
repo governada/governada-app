@@ -332,6 +332,18 @@ export const EVENT_REGISTRY: EventDefinition[] = [
     channels: ['push', 'email', 'discord', 'telegram'],
   },
 
+  // ── Engagement Outcomes ──────────────────────────────────────────────────
+  {
+    key: 'engagement-outcome',
+    category: 'citizen',
+    audience: 'holder',
+    urgency: 'batched',
+    label: 'Proposal Outcome Follow-ups',
+    description: 'When a proposal you voted on reaches a decision',
+    defaultChannels: ['push', 'email'],
+    channels: ['push', 'email', 'discord', 'telegram'],
+  },
+
   // ── Digest ────────────────────────────────────────────────────────────────
   {
     key: 'governance-brief',

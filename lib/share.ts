@@ -63,6 +63,10 @@ export function buildDRepUrl(drepId: string): string {
   return `${SITE_URL}/drep/${encodeURIComponent(drepId)}`;
 }
 
+export function buildPoolUrl(poolId: string): string {
+  return `${SITE_URL}/pool/${encodeURIComponent(poolId)}`;
+}
+
 export function buildCompareUrl(drepIds: string[]): string {
   return `${SITE_URL}/compare?dreps=${drepIds.map(encodeURIComponent).join(',')}`;
 }
@@ -73,6 +77,46 @@ export function buildPulseUrl(): string {
 
 export function buildMatchResultUrl(encodedProfile: string): string {
   return `${SITE_URL}/match/result?profile=${encodeURIComponent(encodedProfile)}`;
+}
+
+export function buildCitizenMilestoneUrl(stakeAddress: string, milestoneKey: string): string {
+  return `${SITE_URL}/you?milestone=${encodeURIComponent(milestoneKey)}&stake=${encodeURIComponent(stakeAddress)}`;
+}
+
+export function buildCitizenMilestoneOgUrl(stakeAddress: string, milestoneKey: string): string {
+  return `${SITE_URL}/api/og/citizen-milestone/${encodeURIComponent(stakeAddress)}/${encodeURIComponent(milestoneKey)}`;
+}
+
+export function buildPoolOgUrl(poolId: string): string {
+  return `${SITE_URL}/api/og/pool/${encodeURIComponent(poolId)}`;
+}
+
+export function buildGovernanceStatsUrl(stakeAddress: string): string {
+  return `${SITE_URL}/you?stake=${encodeURIComponent(stakeAddress)}`;
+}
+
+export function buildGovernanceStatsOgUrl(stakeAddress: string): string {
+  return `${SITE_URL}/api/og/governance-stats/${encodeURIComponent(stakeAddress)}`;
+}
+
+export function buildDivergenceUrl(): string {
+  return `${SITE_URL}/governance/health`;
+}
+
+export function buildDivergenceOgUrl(): string {
+  return `${SITE_URL}/api/og/divergence`;
+}
+
+export function buildCoverageGapUrl(stakeAddress: string): string {
+  return `${SITE_URL}/you?stake=${encodeURIComponent(stakeAddress)}`;
+}
+
+export function buildCoverageGapOgUrl(stakeAddress: string): string {
+  return `${SITE_URL}/api/og/coverage-gap/${encodeURIComponent(stakeAddress)}`;
+}
+
+export function buildDRepOgUrl(drepId: string): string {
+  return `${SITE_URL}/api/og/drep/${encodeURIComponent(drepId)}`;
 }
 
 export function trackShare(

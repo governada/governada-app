@@ -9,6 +9,9 @@ paths:
 
 - **Always start from fresh main.** Before any development: `git checkout main && git pull origin main && git checkout -b feat/<name>`. Never develop on a stale or leftover branch.
 - **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree. Don't leave stale branches around.
+- **Delete local branches after merge.** `gh pr merge --squash --delete-branch` only deletes the remote branch. Always follow up with `git branch -d <branch>` locally. The squash commit SHA differs from the branch commits, so use `-D` if `-d` complains about unmerged work you know was squash-merged.
+- **Prune remotes at session start.** Run `git fetch --prune` to remove stale remote tracking refs. The cleanup script does this automatically.
+- **Drop stashes after merge.** If you stashed work-in-progress for a branch that's now merged, drop those stashes. Don't let stashes accumulate.
 - **Verify branch freshness.** If resuming work in an existing worktree, check `git log --oneline origin/main..HEAD` -- if >10 commits behind, rebase first.
 
 ## Context Efficiency
@@ -72,5 +75,6 @@ This lets the founder quickly assess whether to review now or later, and creates
 
 ## Workspace Cleanup
 
-- **Run `bash scripts/cleanup.sh` at the start of major sessions** to detect stale worktrees, orphaned directories, and uncommitted changes.
+- **Run `bash scripts/cleanup.sh` at the start of major sessions** to detect stale worktrees, orphaned directories, stale branches, and uncommitted changes.
 - **Don't accumulate worktrees.** If a PR is merged, the worktree should be removed promptly. The cleanup script detects these.
+- **Run `bash scripts/cleanup.sh --clean` periodically** to auto-delete branches whose remote is gone and remove merged/stale worktrees.

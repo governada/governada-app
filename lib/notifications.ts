@@ -433,6 +433,19 @@ async function persistToInbox(
       return;
     }
 
+    // Deduplicate: skip if an unread notification of the same type was created within 24h
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('user_stake_address', stakeAddress)
+      .eq('type', payload.eventType)
+      .eq('read', false)
+      .gte('created_at', cutoff)
+      .limit(1);
+
+    if (existing && existing.length > 0) return;
+
     await supabase.from('notifications').insert({
       user_stake_address: stakeAddress,
       type: payload.eventType,

@@ -7,6 +7,7 @@ import { useDashboardDelegatorTrends, useSPODelegatorTrends } from '@/hooks/quer
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DelegatorSentimentSection } from './DelegatorSentimentSection';
+import { DelegatorIntelligence } from '@/components/workspace/DelegatorIntelligence';
 
 function TrendIcon({ value }: { value: number }) {
   if (value > 0) return <TrendingUp className="h-4 w-4 text-emerald-500" />;
@@ -89,11 +90,12 @@ export function WorkspaceDelegatorsPage() {
   const change = recentChanges.length > 0 ? recentChanges[0].count : 0;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
+    <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6" data-discovery="ws-delegators">
       <div className="flex items-center gap-3">
         <Link
           href="/workspace"
           className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Back to workspace"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -204,6 +206,9 @@ export function WorkspaceDelegatorsPage() {
               ))}
             </div>
           )}
+
+          {/* Delegator Intelligence — DRep only */}
+          {isDRep && drepId && <DelegatorIntelligence drepId={drepId} />}
         </>
       )}
     </div>

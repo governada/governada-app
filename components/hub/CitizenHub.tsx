@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
   CheckCircle2,
@@ -21,14 +21,20 @@ import {
   TrendingUp,
   RefreshCw,
   Wallet,
+  Server,
+  Shield,
+  Sparkles,
+  Share2,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { briefingContainer, briefingItem } from '@/lib/animations';
+import { briefingContainer, briefingItem, spring } from '@/lib/animations';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import {
   useEpochConsequence,
   useGovernanceHolder,
   useCitizenImpactScore,
+  useSPOSummary,
   type ConsequenceProposal,
 } from '@/hooks/queries';
 import { computeTier } from '@/lib/scoring/tiers';
@@ -40,7 +46,16 @@ import { getStoredSession } from '@/lib/supabaseAuth';
 import { resolveRewardAddress } from '@meshsdk/core';
 import { hapticLight } from '@/lib/haptics';
 import { useSentimentResults } from '@/hooks/useEngagement';
+import { useCheckin } from '@/hooks/useCheckin';
+import { useEpochHeadline } from '@/hooks/useEpochHeadline';
+import { useDepthConfig } from '@/hooks/useDepthConfig';
+import { DepthGate } from '@/components/providers/DepthGate';
 import { CommunityConsensus } from './CommunityConsensus';
+import { DelegationHealthSummary } from './DelegationHealthSummary';
+import { DepthDiscoveryFooter } from './DepthDiscoveryFooter';
+import { GovernancePulse } from './GovernancePulse';
+import { WhatChanged } from '@/components/hub/WhatChanged';
+import { playMilestoneChime } from '@/lib/sounds';
 
 type SentimentChoice = 'support' | 'oppose' | 'unsure';
 
@@ -59,16 +74,28 @@ function formatPowerFraction(fraction: number): string {
   return `${(fraction * 100).toFixed(3)}%`;
 }
 
+/** Convert epoch number to a human-readable date range like "Mar 8 – 13" */
+function epochDateRange(epoch: number): string {
+  const SHELLEY_GENESIS = 1596491091;
+  const EPOCH_LEN = 432000;
+  const BASE_EPOCH = 209;
+  const startUnix = SHELLEY_GENESIS + (epoch - BASE_EPOCH) * EPOCH_LEN;
+  const start = new Date(startUnix * 1000);
+  const end = new Date((startUnix + EPOCH_LEN) * 1000);
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
 const OUTCOME_CONFIG = {
   ratified: {
     icon: CheckCircle2,
-    label: 'Ratified',
+    label: 'Approved',
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10 border-emerald-500/20',
   },
   dropped: {
     icon: XCircle,
-    label: 'Dropped',
+    label: 'Rejected',
     color: 'text-red-500',
     bg: 'bg-red-500/10 border-red-500/20',
   },
@@ -83,22 +110,26 @@ const OUTCOME_CONFIG = {
 const VOTE_LABELS: Record<string, { label: string; color: string }> = {
   Yes: { label: 'Voted Yes', color: 'text-emerald-400' },
   No: { label: 'Voted No', color: 'text-red-400' },
-  Abstain: { label: 'Abstained', color: 'text-amber-400' },
+  Abstain: { label: 'Sat this one out', color: 'text-amber-400' },
 };
 
 const PROPOSAL_TYPE_LABELS: Record<string, string> = {
-  TreasuryWithdrawals: 'Treasury',
-  ParameterChange: 'Parameter Change',
-  HardForkInitiation: 'Hard Fork',
-  InfoAction: 'Info Action',
-  NoConfidence: 'No Confidence',
-  NewConstitution: 'Constitution',
-  UpdateCommittee: 'Committee Update',
+  TreasuryWithdrawals: 'Spending',
+  ParameterChange: 'Rule Change',
+  HardForkInitiation: 'Major Upgrade',
+  InfoAction: 'Community Statement',
+  NoConfidence: 'Leadership Challenge',
+  NewConstitution: 'Rules Update',
+  UpdateCommittee: 'Committee Change',
 };
 
 /* ── Section wrapper (glassmorphic) ──────────────────────────── */
 
-function Section({ children, className }: { children: React.ReactNode; className?: string }) {
+function Section({
+  children,
+  className,
+  ...rest
+}: { children: React.ReactNode; className?: string } & Record<string, unknown>) {
   return (
     <motion.section
       variants={briefingItem}
@@ -106,6 +137,7 @@ function Section({ children, className }: { children: React.ReactNode; className
         'rounded-2xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4 sm:p-5',
         className,
       )}
+      {...rest}
     >
       {children}
     </motion.section>
@@ -157,7 +189,7 @@ function ConsequenceCard({ proposal }: { proposal: ConsequenceProposal }) {
               <span className={cn('font-medium', voteInfo.color)}>{voteInfo.label}</span>
             )}
             {!voteInfo && proposal.drepVote === null && (
-              <span className="text-muted-foreground/60">DRep didn&apos;t vote</span>
+              <span className="text-muted-foreground/60">Your representative didn&apos;t vote</span>
             )}
             {proposal.communitySignal && proposal.communitySignal.total > 0 && (
               <CommunitySignalInline signal={proposal.communitySignal} />
@@ -199,6 +231,7 @@ function ActiveProposalCard({ proposal }: { proposal: ConsequenceProposal }) {
   const typeLabel = PROPOSAL_TYPE_LABELS[proposal.proposalType] ?? proposal.proposalType;
   const { connected, isAuthenticated, address, delegatedDrepId, authenticate } = useWallet();
   const queryClient = useQueryClient();
+  const { showSentiment } = useDepthConfig('hub');
   const [voting, setVoting] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
 
@@ -300,7 +333,9 @@ function ActiveProposalCard({ proposal }: { proposal: ConsequenceProposal }) {
                   DRep {voteInfo.label.toLowerCase()}
                 </span>
               )}
-              {!voteInfo && <span className="text-amber-400/80">DRep hasn&apos;t voted yet</span>}
+              {!voteInfo && (
+                <span className="text-amber-400/80">Your representative hasn&apos;t voted yet</span>
+              )}
               {community.total > 0 && <CommunitySignalInline signal={community} />}
             </div>
           </div>
@@ -319,8 +354,8 @@ function ActiveProposalCard({ proposal }: { proposal: ConsequenceProposal }) {
         </div>
       )}
 
-      {/* Inline sentiment buttons for connected users who haven't voted */}
-      {!hasVoted && connected && (
+      {/* Inline sentiment buttons for engaged+ connected users who haven't voted */}
+      {!hasVoted && connected && showSentiment && (
         <div className="flex gap-1.5 pt-1" role="radiogroup" aria-label="Share your sentiment">
           {[
             {
@@ -363,6 +398,13 @@ function ActiveProposalCard({ proposal }: { proposal: ConsequenceProposal }) {
             </button>
           ))}
         </div>
+      )}
+
+      {/* Depth nudge for connected users at informed (can see bars, can't vote) */}
+      {!hasVoted && connected && !showSentiment && (
+        <p className="text-[10px] text-muted-foreground/60 pt-1">
+          Adjust depth to Engaged to share your view
+        </p>
       )}
 
       {/* Connect CTA for unconnected users */}
@@ -434,53 +476,659 @@ function CitizenHubSkeleton() {
   );
 }
 
-/* ── Main component ──────────────────────────────────────────── */
+/* ── Pool + coverage indicator (inline in representation) ───── */
 
-export function CitizenHub() {
-  const { stakeAddress, delegatedDrep } = useSegment();
+function PoolAndCoverage({
+  delegatedDrep,
+  delegatedPool,
+  poolRaw,
+}: {
+  delegatedDrep: string | null;
+  delegatedPool: string | null;
+  poolRaw: unknown;
+}) {
+  const pool = poolRaw as Record<string, unknown> | undefined;
+  const poolName = (pool?.poolName as string) || (pool?.ticker as string) || null;
+  const ticker = (pool?.ticker as string) ?? '';
+  const govScore = Math.round((pool?.governanceScore as number) ?? 0);
+  const poolParticipation = Math.round((pool?.participationRate as number) ?? 0);
+  const poolVoteCount = (pool?.voteCount as number) ?? 0;
+  const poolIsGovActive = poolVoteCount > 0;
 
+  // Coverage calculation (mirrors DelegationPage CoverageSummary logic)
+  const hasDrep = !!delegatedDrep;
+  const hasPool = !!delegatedPool;
+  const coveredTypes = hasDrep ? 5 : 0;
+  const poolCoveredTypes = hasPool && poolIsGovActive ? 2 : 0;
+  const totalTypes = 7;
+  const covered = coveredTypes + poolCoveredTypes;
+  const coveragePct = Math.round((covered / totalTypes) * 100);
+
+  let coverageLabel: string;
+  let coverageColor: string;
+  if (coveragePct === 100) {
+    coverageLabel = 'Full coverage';
+    coverageColor = 'text-emerald-400';
+  } else if (coveragePct >= 50) {
+    coverageLabel = 'Partial coverage';
+    coverageColor = 'text-amber-400';
+  } else {
+    coverageLabel = 'Low coverage';
+    coverageColor = 'text-red-400';
+  }
+
+  return (
+    <div className="mt-3 space-y-3 pt-3 border-t border-white/[0.06]">
+      {/* Coverage indicator */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">How well you&apos;re represented</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={cn('text-xs font-semibold', coverageColor)}>{coverageLabel}</span>
+          <span className={cn('text-xs font-bold tabular-nums', coverageColor)}>
+            {coveragePct}%
+          </span>
+        </div>
+      </div>
+
+      {/* Compact coverage bar */}
+      <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            coveragePct === 100
+              ? 'bg-emerald-500'
+              : coveragePct >= 50
+                ? 'bg-amber-500'
+                : 'bg-red-500',
+          )}
+          style={{ width: `${coveragePct}%` }}
+        />
+      </div>
+
+      {/* Pool info */}
+      {delegatedPool && poolName && (
+        <Link
+          href={`/pool/${encodeURIComponent(delegatedPool)}`}
+          className="flex items-center justify-between gap-3 group"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Server className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">
+                {ticker ? `[${ticker}] ` : ''}
+                {poolName}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="tabular-nums">Gov score: {govScore}</span>
+              <span className="text-muted-foreground/40">&middot;</span>
+              <span className="tabular-nums">{poolParticipation}% participation</span>
+            </div>
+          </div>
+          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {delegatedPool && !poolName && !pool && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Server className="h-3.5 w-3.5" />
+          <span>Pool delegated</span>
+        </div>
+      )}
+
+      {!delegatedPool && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+          <Server className="h-3.5 w-3.5" />
+          <span>Your staking pool can also vote on 2 decision types — not set up yet</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * SECTION COMPONENTS — each owns its data hooks so DepthGate
+ * prevents hook execution when the section is gated out.
+ * ══════════════════════════════════════════════════════════════════ */
+
+/* ── Proposal Headlines (hands_off fallback) ─────────────────── */
+
+function ProposalHeadlines() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence } = useEpochConsequence(stakeAddress);
+
+  const decided = consequence?.decidedProposals ?? [];
+  const active = consequence?.activeProposals ?? [];
+  const proposals = [...active, ...decided].slice(0, 2);
+
+  if (proposals.length === 0) return null;
+
+  return (
+    <Section>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+        Governance activity
+      </h2>
+      <div className="space-y-1.5">
+        {proposals.map((p) => (
+          <Link
+            key={`${p.txHash}:${p.index}`}
+            href={`/proposal/${p.txHash}/${p.index}`}
+            className="block text-sm text-foreground/80 hover:text-primary transition-colors line-clamp-1"
+          >
+            {p.title ?? 'Untitled Proposal'}
+          </Link>
+        ))}
+      </div>
+      <Link
+        href="/governance/proposals"
+        className="mt-2 block text-xs text-primary hover:underline"
+      >
+        See all proposals
+      </Link>
+    </Section>
+  );
+}
+
+/* ── Decided Proposals Section (informed+) ────────────────────── */
+
+function DecidedProposalsSection() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence, isError: consequenceError } = useEpochConsequence(stakeAddress);
+  const { proposalLimit } = useDepthConfig('hub');
+
+  const decidedProposals = consequence?.decidedProposals ?? [];
+
+  if (consequenceError) {
+    return (
+      <Section className="text-center py-8">
+        <p className="text-sm text-muted-foreground">
+          Couldn&apos;t load governance activity. Try refreshing.
+        </p>
+      </Section>
+    );
+  }
+
+  if (decidedProposals.length === 0) return null;
+
+  const visible = decidedProposals.slice(0, proposalLimit);
+
+  return (
+    <Section>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        What was decided
+      </h2>
+      <div className="space-y-2">
+        {visible.map((p) => (
+          <ConsequenceCard key={`${p.txHash}:${p.index}`} proposal={p} />
+        ))}
+      </div>
+      {decidedProposals.length > proposalLimit && (
+        <Link
+          href="/governance/proposals"
+          className="mt-2 block text-center text-xs text-primary hover:underline"
+        >
+          +{decidedProposals.length - proposalLimit} more
+        </Link>
+      )}
+    </Section>
+  );
+}
+
+/* ── Active Proposals Section (informed+) ─────────────────────── */
+
+function ActiveProposalsSection() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence } = useEpochConsequence(stakeAddress);
+  const { proposalLimit } = useDepthConfig('hub');
+
+  const activeProposals = consequence?.activeProposals ?? [];
+
+  if (activeProposals.length === 0) return null;
+
+  const visible = activeProposals.slice(0, proposalLimit);
+
+  return (
+    <Section>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Being decided now
+        </h2>
+        <Link
+          href="/governance/proposals"
+          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+        >
+          View all
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className="space-y-2">
+        {visible.map((p) => (
+          <ActiveProposalCard key={`${p.txHash}:${p.index}`} proposal={p} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ── Empty State (informed+, shown when no proposals exist) ──── */
+
+function EmptyProposalsState() {
+  const { stakeAddress } = useSegment();
   const {
     data: consequence,
-    isLoading: consequenceLoading,
+    isLoading,
     isError: consequenceError,
   } = useEpochConsequence(stakeAddress);
 
-  const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
-  const { data: impactScore } = useCitizenImpactScore(!!stakeAddress);
+  const decidedProposals = consequence?.decidedProposals ?? [];
+  const activeProposals = consequence?.activeProposals ?? [];
 
-  const isLoading = consequenceLoading || holderLoading;
+  // Only show when consequence data loaded and both lists are empty
+  if (isLoading || consequenceError || decidedProposals.length > 0 || activeProposals.length > 0) {
+    return null;
+  }
 
-  if (isLoading) return <CitizenHubSkeleton />;
+  return (
+    <Section className="text-center py-8">
+      <p className="text-sm text-muted-foreground">
+        No governance proposals this epoch yet. Check back soon.
+      </p>
+      <Link
+        href="/governance"
+        className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
+      >
+        Explore governance
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    </Section>
+  );
+}
 
-  // Extract DRep data from holder
+/* ── Your Representation Section (informed+) ──────────────────── */
+
+function YourRepresentationSection() {
+  const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
+  const { data: holderRaw } = useGovernanceHolder(stakeAddress);
+  const { data: poolRaw } = useSPOSummary(delegatedPool);
+
   const holder = holderRaw as Record<string, unknown> | undefined;
   const drep = holder?.drep as Record<string, unknown> | undefined;
   const drepName = (drep?.name as string) || (drep?.ticker as string) || 'Your DRep';
   const drepScore = (drep?.score as number) ?? 0;
   const drepIsActive = (drep?.isActive as boolean) ?? true;
   const participationRate = (drep?.participationRate as number) ?? 0;
+
+  return (
+    <Section data-discovery="hub-representation">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        Your representation
+      </h2>
+
+      {!delegatedDrep && (
+        <Link href="/match" className="flex items-center justify-between gap-3 group">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-semibold text-foreground">Unrepresented</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Find a representative who shares your values
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {delegatedDrep &&
+        delegatedDrep !== 'drep_always_abstain' &&
+        delegatedDrep !== 'drep_always_no_confidence' &&
+        drep && (
+          <Link
+            href={`/drep/${encodeURIComponent(delegatedDrep)}`}
+            className="flex items-center justify-between gap-3 group"
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                {drepIsActive ? (
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <ShieldX className="h-4 w-4 text-red-500" />
+                )}
+                <span className="text-sm font-semibold text-foreground">{drepName}</span>
+                <span
+                  className={cn(
+                    'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full',
+                    drepIsActive
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-red-500/10 text-red-400',
+                  )}
+                >
+                  {drepIsActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="tabular-nums">
+                  Score: {Math.round(drepScore)} &middot; {computeTier(drepScore)}
+                </span>
+                <span className="text-muted-foreground/40">&middot;</span>
+                <span className="tabular-nums">{Math.round(participationRate)}% participation</span>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+          </Link>
+        )}
+
+      {delegatedDrep === 'drep_always_abstain' && (
+        <Link href="/match" className="flex items-center justify-between gap-3 group">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">Always Abstain</p>
+            <p className="text-xs text-muted-foreground">
+              Your ADA is registered but won&apos;t vote on any decisions. It still counts as
+              &ldquo;present&rdquo; for minimum participation requirements.
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {delegatedDrep === 'drep_always_no_confidence' && (
+        <Link href="/match" className="flex items-center justify-between gap-3 group">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">No Confidence</p>
+            <p className="text-xs text-muted-foreground">
+              Your ADA signals that you don&apos;t trust the current governance system. This pushes
+              back against all proposals.
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {/* ── Pool + Coverage ───────────────────────────────────── */}
+      <PoolAndCoverage
+        delegatedDrep={delegatedDrep}
+        delegatedPool={delegatedPool}
+        poolRaw={poolRaw}
+      />
+    </Section>
+  );
+}
+
+/* ── Governance Footprint Section (engaged+) ──────────────────── */
+
+function GovernanceFootprintSection() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence } = useEpochConsequence(stakeAddress);
+  const { data: holderRaw } = useGovernanceHolder(stakeAddress);
+  const { data: impactScore } = useCitizenImpactScore(!!stakeAddress);
+  const { streak: checkinStreak } = useCheckin(!!stakeAddress);
+
+  const holder = holderRaw as Record<string, unknown> | undefined;
   const footprint = holder?.footprint as Record<string, unknown> | undefined;
 
-  // Consequence data
-  const epoch = consequence?.epoch ?? 0;
-  const adaDecided = consequence?.adaDecided ?? 0;
   const decidedProposals = consequence?.decidedProposals ?? [];
-  const activeProposals = consequence?.activeProposals ?? [];
-  const votingPowerFraction = consequence?.votingPowerFraction;
   const votingPowerAda = consequence?.votingPowerAda;
 
-  // Footprint stats from holder or consequence
   const proposalsInfluenced = (footprint?.proposalsInfluenced as number) ?? decidedProposals.length;
   const delegationStreak = (footprint?.delegationStreak as number) ?? 0;
   const adaGoverned = votingPowerAda ?? 0;
 
-  // Build headline
-  const headlineText =
-    adaDecided > 0
-      ? `Your delegation helped decide ${formatAda(adaDecided)} ADA`
-      : decidedProposals.length > 0
-        ? `${decidedProposals.length} governance decision${decidedProposals.length !== 1 ? 's' : ''} this epoch`
-        : 'No governance decisions yet this epoch';
+  return (
+    <Section>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        Your participation
+      </h2>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <FootprintStat icon={Vote} value={proposalsInfluenced} label="Decisions Made" />
+        <FootprintStat
+          icon={Coins}
+          value={adaGoverned > 0 ? formatAda(adaGoverned) : '--'}
+          label="ADA Represented"
+        />
+        <FootprintStat
+          icon={Flame}
+          value={checkinStreak || delegationStreak}
+          label="Check-in Streak"
+        />
+        <FootprintStat
+          icon={TrendingUp}
+          value={impactScore?.computed ? Math.round(impactScore.score) : '--'}
+          label="Participation"
+        />
+      </div>
+    </Section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * EPOCH HEADLINE — always-visible orchestrator-level section
+ * ══════════════════════════════════════════════════════════════════ */
+
+function EpochHeadline({
+  aiHeadline,
+  epoch,
+  votingPowerFraction,
+  votingPowerAda,
+  stakeAddress,
+  proposalsInfluenced,
+  adaGoverned,
+  checkinStreak,
+  delegationStreak,
+  drepName,
+  hasDrep,
+}: {
+  aiHeadline: string | null;
+  epoch: number;
+  votingPowerFraction: number | null;
+  votingPowerAda: number | null;
+  stakeAddress: string | null;
+  proposalsInfluenced: number;
+  adaGoverned: number;
+  checkinStreak: number;
+  delegationStreak: number;
+  drepName: string;
+  hasDrep: boolean;
+}) {
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const adaDecidedForHeadline = votingPowerAda ?? 0;
+  const templateHeadline =
+    adaDecidedForHeadline > 0
+      ? `Your representative helped decide how ${formatAda(adaDecidedForHeadline)} ADA is spent`
+      : proposalsInfluenced > 0
+        ? `${proposalsInfluenced} decision${proposalsInfluenced !== 1 ? 's' : ''} made this period`
+        : 'No decisions yet this period';
+  const headlineText = aiHeadline || templateHeadline;
+
+  function handleShare() {
+    const params = new URLSearchParams({
+      headline: headlineText,
+      decisions: String(proposalsInfluenced),
+      ada: formatAda(adaGoverned),
+      streak: String(checkinStreak || delegationStreak),
+      ...(hasDrep ? { drep: drepName } : {}),
+    });
+    const shareUrl = `${window.location.origin}/share/epoch/${epoch}?${params.toString()}`;
+
+    if (navigator.share) {
+      navigator.share({ title: `Epoch ${epoch} Report`, url: shareUrl }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      });
+    }
+    hapticLight();
+  }
+
+  return (
+    <motion.header variants={briefingItem} className="space-y-1 pb-1" data-discovery="hub-briefing">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {epoch > 0 ? epochDateRange(epoch) : 'This period'}
+        <span className="ml-1.5 text-muted-foreground/50">Epoch {epoch}</span>
+      </p>
+      <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
+        {headlineText}
+        {aiHeadline && (
+          <Sparkles className="ml-1.5 inline-block h-4 w-4 text-muted-foreground/40" />
+        )}
+      </h1>
+      {votingPowerFraction != null && votingPowerFraction > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Your {votingPowerAda ? `${formatAda(votingPowerAda)} ADA` : 'ADA'} adds weight to your
+          representative&apos;s votes
+        </p>
+      )}
+      {epoch > 0 && stakeAddress && (
+        <button
+          onClick={handleShare}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          {shareCopied ? 'Link copied!' : 'Share epoch report'}
+        </button>
+      )}
+    </motion.header>
+  );
+}
+
+/* ── Coverage Celebration (post-delegation moment) ────────────── */
+
+const COVERAGE_FLAG = 'governada:coverage-just-delegated';
+
+function CoverageCelebration() {
+  const { delegatedDrep, delegatedPool } = useSegment();
+  const { data: poolRaw } = useSPOSummary(delegatedPool);
+  const shouldReduceMotion = useReducedMotion();
+  const [show, setShow] = useState(false);
+  const chimedRef = useRef(false);
+
+  // Check for the flag on mount
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(COVERAGE_FLAG)) {
+        sessionStorage.removeItem(COVERAGE_FLAG);
+        setShow(true);
+      }
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, []);
+
+  // Play chime once
+  useEffect(() => {
+    if (!show || chimedRef.current) return;
+    chimedRef.current = true;
+    playMilestoneChime();
+    import('@/lib/posthog')
+      .then(({ posthog }) => {
+        posthog.capture('coverage_celebration_shown');
+      })
+      .catch(() => {});
+  }, [show]);
+
+  // Auto-dismiss after 5 seconds (slightly longer than standard milestone)
+  useEffect(() => {
+    if (!show) return;
+    const timer = setTimeout(() => setShow(false), 5000);
+    return () => clearTimeout(timer);
+  }, [show]);
+
+  const dismiss = useCallback(() => setShow(false), []);
+
+  if (!show) return null;
+
+  // Compute coverage message (mirrors PoolAndCoverage logic)
+  const pool = poolRaw as Record<string, unknown> | undefined;
+  const poolVoteCount = (pool?.voteCount as number) ?? 0;
+  const poolIsGovActive = poolVoteCount > 0;
+  const hasDrep = !!delegatedDrep;
+  const hasPool = !!delegatedPool;
+  const drepCovered = hasDrep ? 5 : 0;
+  const poolCovered = hasPool && poolIsGovActive ? 2 : 0;
+  const covered = drepCovered + poolCovered;
+
+  let message: string;
+  if (covered === 7) {
+    message = '7 of 7 — full governance coverage!';
+  } else if (hasDrep && hasPool && !poolIsGovActive) {
+    message = `${covered} of 7 decision types now covered. Your staking pool could cover the remaining 2 types.`;
+  } else {
+    message = `${covered} of 7 decision types now covered by your representative.`;
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="coverage-celebration"
+        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 50, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        transition={spring.bouncy}
+        className="fixed bottom-24 sm:bottom-8 left-4 sm:left-auto sm:right-4 z-40 w-[300px] max-w-[calc(100vw-2rem)]"
+      >
+        <div className="rounded-xl border border-emerald-500/30 bg-card/95 backdrop-blur-xl shadow-2xl shadow-emerald-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500/15 shrink-0">
+              <Shield className="h-4.5 w-4.5 text-emerald-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-emerald-500">Governance Coverage Activated</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{message}</p>
+            </div>
+            <button
+              onClick={dismiss}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * MAIN COMPONENT — thin orchestrator with DepthGate wiring
+ * ══════════════════════════════════════════════════════════════════ */
+
+export function CitizenHub() {
+  const { stakeAddress, delegatedDrep } = useSegment();
+
+  // Always-visible hooks: epoch headline + consequence for headline data + checkin
+  const { aiHeadline } = useEpochHeadline(!!stakeAddress);
+  const { data: consequence, isLoading: consequenceLoading } = useEpochConsequence(stakeAddress);
+  const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
+  const { streak: checkinStreak, recordCheckin } = useCheckin(!!stakeAddress);
+
+  // Fire check-in on mount (idempotent — one row per epoch)
+  useEffect(() => {
+    if (stakeAddress) recordCheckin();
+  }, [stakeAddress, recordCheckin]);
+
+  const isLoading = consequenceLoading || holderLoading;
+
+  if (isLoading) return <CitizenHubSkeleton />;
+
+  // Extract data needed for the always-visible headline
+  const holder = holderRaw as Record<string, unknown> | undefined;
+  const drep = holder?.drep as Record<string, unknown> | undefined;
+  const drepName = (drep?.name as string) || (drep?.ticker as string) || 'Your DRep';
+  const footprint = holder?.footprint as Record<string, unknown> | undefined;
+
+  const epoch = consequence?.epoch ?? 0;
+  const decidedProposals = consequence?.decidedProposals ?? [];
+  const votingPowerFraction = consequence?.votingPowerFraction ?? null;
+  const votingPowerAda = consequence?.votingPowerAda ?? null;
+
+  const proposalsInfluenced = (footprint?.proposalsInfluenced as number) ?? decidedProposals.length;
+  const delegationStreak = (footprint?.delegationStreak as number) ?? 0;
+  const adaGoverned = votingPowerAda ?? 0;
 
   return (
     <motion.div
@@ -489,193 +1137,84 @@ export function CitizenHub() {
       animate="visible"
       className="mx-auto w-full max-w-2xl space-y-4 px-4 py-6"
     >
-      {/* ── Epoch headline ─────────────────────────────────── */}
-      <motion.header variants={briefingItem} className="space-y-1 pb-1">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Epoch {epoch}
-        </p>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
-          {headlineText}
-        </h1>
-        {votingPowerFraction != null && votingPowerFraction > 0 && (
-          <p className="text-sm text-muted-foreground">
-            Your voice represents {formatPowerFraction(votingPowerFraction)} of total voting power
-            {votingPowerAda ? ` (${formatAda(votingPowerAda)} ADA)` : ''}
-          </p>
-        )}
-      </motion.header>
+      {/* ── What Changed (return visit summary) ──────────── */}
+      <WhatChanged />
 
-      {/* ── Decided proposals ──────────────────────────────── */}
-      {decidedProposals.length > 0 && (
-        <Section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            What was decided
-          </h2>
-          <div className="space-y-2">
-            {decidedProposals.map((p) => (
-              <ConsequenceCard key={`${p.txHash}:${p.index}`} proposal={p} />
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* ── Epoch headline (always visible) ────────────────── */}
+      <EpochHeadline
+        aiHeadline={aiHeadline}
+        epoch={epoch}
+        votingPowerFraction={votingPowerFraction}
+        votingPowerAda={votingPowerAda}
+        stakeAddress={stakeAddress}
+        proposalsInfluenced={proposalsInfluenced}
+        adaGoverned={adaGoverned}
+        checkinStreak={checkinStreak}
+        delegationStreak={delegationStreak}
+        drepName={drepName}
+        hasDrep={!!delegatedDrep}
+      />
 
-      {/* ── Active proposals ───────────────────────────────── */}
-      {activeProposals.length > 0 && (
-        <Section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Being decided now
-            </h2>
-            <Link
-              href="/governance/proposals"
-              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-            >
-              View all
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {activeProposals.map((p) => (
-              <ActiveProposalCard key={`${p.txHash}:${p.index}`} proposal={p} />
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* ── Delegation Health (always visible) ─────────────── */}
+      <DelegationHealthSummary />
 
-      {/* ── Empty state ────────────────────────────────────── */}
-      {consequenceError && (
-        <Section className="text-center py-8">
-          <p className="text-sm text-muted-foreground">
-            Couldn&apos;t load governance activity. Try refreshing.
-          </p>
-        </Section>
-      )}
-
-      {!consequenceError && decidedProposals.length === 0 && activeProposals.length === 0 && (
-        <Section className="text-center py-8">
-          <p className="text-sm text-muted-foreground">
-            No governance proposals this epoch yet. Check back soon.
-          </p>
-          <Link
-            href="/governance"
-            className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
-          >
-            Explore governance
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Section>
-      )}
-
-      {/* ── Governance footprint ───────────────────────────── */}
-      <Section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Your governance footprint
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <FootprintStat icon={Vote} value={proposalsInfluenced} label="Proposals Influenced" />
-          <FootprintStat
-            icon={Coins}
-            value={adaGoverned > 0 ? formatAda(adaGoverned) : '--'}
-            label="ADA Governed"
+      {/* ── Governance Pulse teaser (undelegated citizens only) */}
+      {!delegatedDrep && (
+        <DepthGate
+          minDepth="informed"
+          fallback={
+            <GovernancePulse
+              activeProposalCount={consequence?.activeProposals?.length ?? 0}
+              aiHeadline={null}
+              compact
+            />
+          }
+        >
+          <GovernancePulse
+            activeProposalCount={consequence?.activeProposals?.length ?? 0}
+            aiHeadline={aiHeadline}
           />
-          <FootprintStat icon={Flame} value={delegationStreak} label="Epoch Streak" />
-          <FootprintStat
-            icon={TrendingUp}
-            value={impactScore?.computed ? Math.round(impactScore.score) : '--'}
-            label="Impact Score"
-          />
-        </div>
-      </Section>
+        </DepthGate>
+      )}
 
-      {/* ── Community Consensus (feature-flagged) ────────── */}
-      <CommunityConsensus />
+      {/* ── Decided proposals (informed+, headlines fallback for hands_off) */}
+      <DepthGate minDepth="informed" fallback={<ProposalHeadlines />}>
+        <DecidedProposalsSection />
+      </DepthGate>
 
-      {/* ── Representation quality ─────────────────────────── */}
-      <Section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Your representation
-        </h2>
+      {/* ── Active proposals (informed+) ───────────────────── */}
+      <DepthGate minDepth="informed">
+        <ActiveProposalsSection />
+      </DepthGate>
 
-        {!delegatedDrep && (
-          <Link href="/match" className="flex items-center justify-between gap-3 group">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-semibold text-foreground">Unrepresented</span>
-              </div>
-              <p className="text-xs text-muted-foreground">Find a DRep who shares your values</p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-          </Link>
-        )}
+      {/* ── Empty state (informed+, shown when no proposals) ─ */}
+      <DepthGate minDepth="informed">
+        <EmptyProposalsState />
+      </DepthGate>
 
-        {delegatedDrep &&
-          delegatedDrep !== 'drep_always_abstain' &&
-          delegatedDrep !== 'drep_always_no_confidence' &&
-          drep && (
-            <Link href="/delegation" className="flex items-center justify-between gap-3 group">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  {drepIsActive ? (
-                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  ) : (
-                    <ShieldX className="h-4 w-4 text-red-500" />
-                  )}
-                  <span className="text-sm font-semibold text-foreground">{drepName}</span>
-                  <span
-                    className={cn(
-                      'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full',
-                      drepIsActive
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-red-500/10 text-red-400',
-                    )}
-                  >
-                    {drepIsActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="tabular-nums">
-                    Score: {Math.round(drepScore)} &middot; {computeTier(drepScore)}
-                  </span>
-                  <span className="text-muted-foreground/40">&middot;</span>
-                  <span className="tabular-nums">
-                    {Math.round(participationRate)}% participation
-                  </span>
-                </div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-            </Link>
-          )}
+      {/* ── Your representation (informed+) ────────────────── */}
+      <DepthGate minDepth="informed">
+        <YourRepresentationSection />
+      </DepthGate>
 
-        {delegatedDrep === 'drep_always_abstain' && (
-          <Link href="/delegation" className="flex items-center justify-between gap-3 group">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Always Abstain</p>
-              <p className="text-xs text-muted-foreground">
-                Your ADA abstains on all governance actions but counts toward quorum.
-              </p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-          </Link>
-        )}
+      {/* ── Governance footprint (engaged+) ────────────────── */}
+      <DepthGate minDepth="engaged">
+        <GovernanceFootprintSection />
+      </DepthGate>
 
-        {delegatedDrep === 'drep_always_no_confidence' && (
-          <Link href="/delegation" className="flex items-center justify-between gap-3 group">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">No Confidence</p>
-              <p className="text-xs text-muted-foreground">
-                Your vote weight counts against all proposals.
-              </p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-          </Link>
-        )}
-      </Section>
+      {/* ── Community Consensus (engaged+, feature-flagged) ── */}
+      <DepthGate minDepth="engaged">
+        <CommunityConsensus />
+      </DepthGate>
 
-      {/* ── Quick links ────────────────────────────────────── */}
+      {/* ── Subtle depth upsell for users below Engaged ────── */}
+      <DepthGate minDepth="engaged" fallback={<DepthDiscoveryFooter />} />
+
+      {/* ── Quick links (always visible) ───────────────────── */}
       <motion.div
         variants={briefingItem}
         className="flex items-center justify-center gap-4 pt-2 pb-4"
+        data-discovery="hub-actions"
       >
         <Link
           href="/governance"
@@ -688,16 +1227,12 @@ export function CitizenHub() {
           href="/match"
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          Find a DRep
-        </Link>
-        <span className="text-muted-foreground/30">&middot;</span>
-        <Link
-          href="/delegation"
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          My delegation
+          Find a representative
         </Link>
       </motion.div>
+
+      {/* ── Coverage progression moment (post-delegation) ──── */}
+      <CoverageCelebration />
     </motion.div>
   );
 }

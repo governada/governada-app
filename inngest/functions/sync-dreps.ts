@@ -101,20 +101,22 @@ export const syncDreps = inngest.createFunction(
           drepData.delegatorCounts,
         );
 
-        // Return only the lightweight summary — not the raw data
+        // Return only the lightweight summary — not the raw data.
+        // Cap error arrays to prevent Inngest output_too_large failures.
+        const MAX_ERRORS = 20;
         return {
           upsertResult,
           postSyncResult: {
             alignmentComputed: postSyncResult.alignmentComputed,
             delegationSnapshotsInserted: postSyncResult.delegationSnapshotsInserted,
             scoreHistoryInserted: postSyncResult.scoreHistoryInserted,
-            errors: postSyncResult.errors,
+            errors: postSyncResult.errors.slice(0, MAX_ERRORS),
             durationMs: postSyncResult.durationMs,
           } satisfies PostSyncResult,
           handlesResolved: drepData.handlesResolved,
-          proposalErrors: proposalResult.errors,
+          proposalErrors: proposalResult.errors.slice(0, MAX_ERRORS),
           proposalDurationMs: proposalResult.durationMs,
-          fetchErrors: drepData.errors,
+          fetchErrors: drepData.errors.slice(0, MAX_ERRORS),
           fetchDurationMs: drepData.durationMs,
         };
       });

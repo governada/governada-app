@@ -109,6 +109,7 @@ export function ProposalVotersClient({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-8 text-sm"
+              aria-label="Search DReps by name or ID"
             />
           </div>
 

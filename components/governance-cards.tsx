@@ -114,25 +114,24 @@ const VOTE_CONFIG: Record<string, { icon: typeof CheckCircle2; color: string; bg
 const PRIORITY_STYLES: Record<string, { className: string; tooltip: string }> = {
   critical: {
     className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    tooltip:
-      'Critical: Fundamentally changes the network or governance structure. Requires careful attention.',
+    tooltip: 'Critical: This would fundamentally change how Cardano works. Pay close attention.',
   },
   important: {
     className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    tooltip: 'Important: Changes protocol parameters that affect fees, rewards, or block sizes.',
+    tooltip: 'Important: Changes network rules that affect fees, rewards, or performance.',
   },
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  TreasuryWithdrawals: 'Treasury',
-  ParameterChange: 'Params',
-  HardForkInitiation: 'Hard Fork',
-  NoConfidence: 'No Confidence',
+  TreasuryWithdrawals: 'Spending',
+  ParameterChange: 'Rule Change',
+  HardForkInitiation: 'Major Upgrade',
+  NoConfidence: 'Leadership Challenge',
   NewCommittee: 'Committee',
   NewConstitutionalCommittee: 'Committee',
-  NewConstitution: 'Constitution',
-  UpdateConstitution: 'Constitution',
-  InfoAction: 'Info',
+  NewConstitution: 'Rules Update',
+  UpdateConstitution: 'Rules Update',
+  InfoAction: 'Statement',
 };
 
 export function VoteBadge({ vote, label }: { vote: string; label?: string }) {
@@ -209,12 +208,12 @@ export function DelegationHealthCard({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            You haven&apos;t delegated to a DRep yet. Find one aligned with your values to
-            participate in governance.
+            You haven&apos;t chosen a representative yet. Find one who shares your values so your
+            ADA has a voice in decisions.
           </p>
           <Link href="/governance/representatives">
             <Button size="sm" className="gap-2">
-              Find a DRep
+              Find a Representative
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
@@ -233,7 +232,7 @@ export function DelegationHealthCard({
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Shield className="h-4 w-4 text-primary" />
-          Your DRep
+          Your Representative
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -322,8 +321,8 @@ export function RepresentationScoreCard({ rep }: { rep: RepresentationData }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Vote on proposals to see how well your DRep represents your views. Each poll vote you
-            cast builds this score.
+            Vote on proposals to see how well your representative matches your views. Each poll vote
+            you cast builds this score.
           </p>
           <Link href="/governance/proposals">
             <Button
@@ -364,7 +363,7 @@ export function RepresentationScoreCard({ rep }: { rep: RepresentationData }) {
           />
           <div className="space-y-1">
             <p className="text-sm">
-              Your DRep voted with you <strong>{rep.aligned}</strong> of{' '}
+              Your representative voted with you <strong>{rep.aligned}</strong> of{' '}
               <strong>{rep.total}</strong> times.
             </p>
             <p className="text-xs text-muted-foreground">
@@ -531,7 +530,7 @@ export function ActiveProposalsSection({ proposals }: { proposals: ActiveProposa
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="top">
-                        <p className="text-xs">Your DRep&apos;s on-chain governance vote</p>
+                        <p className="text-xs">Your representative&apos;s on-chain vote</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -581,15 +580,15 @@ export function RedelegationNudge({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
-          Your DRep voted differently from you on <strong>{misaligned}</strong> of{' '}
+          Your representative voted differently from you on <strong>{misaligned}</strong> of{' '}
           <strong>{total}</strong> recent proposals ({repScore}% alignment). Consider exploring
-          DReps who vote more like you.
+          representatives who vote more like you.
         </p>
 
         {suggestions.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-amber-800/70 dark:text-amber-300/70 uppercase tracking-wide">
-              DReps who voted like you
+              Representatives who voted like you
             </p>
             {suggestions.map((s) => (
               <Link

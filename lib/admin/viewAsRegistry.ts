@@ -5,7 +5,7 @@
  * RULE: Every new user state that changes what a user sees MUST be added here.
  * See `.claude/rules/view-as-registry.md` for the enforcement rule.
  *
- * The admin "View as" menu in CivicaHeader renders directly from this registry.
+ * The admin "View as" menu in GovernadaHeader renders directly from this registry.
  * If it's not here, it's not testable. If it's not testable, it doesn't ship.
  */
 
@@ -13,6 +13,7 @@ import type { UserSegment } from '@/components/providers/SegmentProvider';
 import type { EngagementLevel } from '@/lib/citizen/engagementLevel';
 import type { CredibilityTier } from '@/lib/citizenCredibility';
 import type { GovernanceLevel } from '@/lib/governanceLevels';
+import type { GovernanceDepth } from '@/lib/governanceTuner';
 
 // ---------------------------------------------------------------------------
 // 1. Segment × Sub-state combos (the "who am I" dimension)
@@ -231,6 +232,20 @@ export const GOVERNANCE_LEVEL_DIMENSION: CrossCuttingDimension<GovernanceLevel> 
   defaultValue: null,
 };
 
+export const GOVERNANCE_DEPTH_DIMENSION: CrossCuttingDimension<GovernanceDepth> = {
+  id: 'governanceDepth',
+  label: 'Governance Depth',
+  description: 'How closely the user follows governance — controls notification/digest intensity',
+  appliesTo: [],
+  values: [
+    { key: 'hands_off', label: 'Hands-Off', description: 'Alerts only when something is wrong' },
+    { key: 'informed', label: 'Informed', description: 'Major governance updates' },
+    { key: 'engaged', label: 'Engaged', description: 'Active governance participation' },
+    { key: 'deep', label: 'Deep', description: 'Full visibility, full control' },
+  ],
+  defaultValue: null,
+};
+
 /**
  * All cross-cutting dimensions. Add new dimensions here when they are created.
  * The View As menu iterates this array to render dimension override controls.
@@ -239,6 +254,7 @@ export const CROSS_CUTTING_DIMENSIONS = [
   ENGAGEMENT_LEVEL_DIMENSION,
   CREDIBILITY_TIER_DIMENSION,
   GOVERNANCE_LEVEL_DIMENSION,
+  GOVERNANCE_DEPTH_DIMENSION,
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -249,6 +265,7 @@ export interface DimensionOverrides {
   engagementLevel?: EngagementLevel | null;
   credibilityTier?: CredibilityTier | null;
   governanceLevel?: GovernanceLevel | null;
+  governanceDepth?: GovernanceDepth | null;
 }
 
 // ---------------------------------------------------------------------------

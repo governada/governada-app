@@ -4,7 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import type { NclUtilization, DRepNclImpact } from '@/lib/treasury';
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  const headers: Record<string, string> = {};
+  try {
+    const { getStoredSession } = await import('@/lib/supabaseAuth');
+    const token = getStoredSession();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  } catch {
+    // No session available — proceed without auth
+  }
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -827,5 +835,35 @@ export function useCitizenImpactScore(enabled: boolean) {
     queryFn: () => fetchAuthed<ImpactScoreResponse>('/api/you/impact-score'),
     enabled,
     staleTime: 5 * 60_000,
+  });
+}
+
+// ── Delegator Intelligence ────────────────────────────────────────────
+
+export interface DelegatorIntelligenceData {
+  topPriorities: { priority: string; count: number }[];
+  sentimentByProposal: {
+    proposalTxHash: string;
+    proposalIndex: number;
+    title: string | null;
+    support: number;
+    oppose: number;
+    abstain: number;
+    total: number;
+  }[];
+  avgEngagement: number;
+  engagedDelegators: number;
+  totalDelegators: number;
+}
+
+export function useDelegatorIntelligence(drepId: string | null | undefined) {
+  return useQuery<DelegatorIntelligenceData>({
+    queryKey: ['delegator-intelligence', drepId],
+    queryFn: () =>
+      fetchJson<DelegatorIntelligenceData>(
+        `/api/workspace/delegator-intelligence?drepId=${encodeURIComponent(drepId!)}`,
+      ),
+    enabled: !!drepId,
+    staleTime: 120_000,
   });
 }

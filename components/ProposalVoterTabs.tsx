@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { ProposalVoteDetail, SpoVoteDetail, CcVoteDetail } from '@/lib/data';
 import { useSpoVotes, useCcVotes } from '@/hooks/queries';
 import { ProposalVotersWithContext } from '@/components/ProposalVotersWithContext';
+import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,9 +37,13 @@ function SpoVotersList({ txHash, proposalIndex }: { txHash: string; proposalInde
 
   if (spoVotes.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-4 text-center">
-        No SPO votes recorded for this proposal.
-      </p>
+      <EmptyState
+        icon={Server}
+        title="No SPO votes yet"
+        message="No Stake Pool Operators have voted on this proposal yet."
+        compact
+        component="SpoVotersList"
+      />
     );
   }
 
@@ -96,9 +101,13 @@ function CcVotersList({ txHash, proposalIndex }: { txHash: string; proposalIndex
 
   if (ccVotes.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-4 text-center">
-        No Constitutional Committee votes recorded for this proposal.
-      </p>
+      <EmptyState
+        icon={ShieldCheck}
+        title="No CC votes yet"
+        message="No Constitutional Committee members have voted on this proposal yet."
+        compact
+        component="CcVotersList"
+      />
     );
   }
 
@@ -152,15 +161,18 @@ export function ProposalVoterTabs({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 border-b pb-2">
-        <div className="flex gap-2 flex-1">
+      <div className="flex items-center gap-2 border-b pb-2" role="tablist" aria-label="Voter type">
+        <div className="flex gap-1.5 sm:gap-2 flex-1 overflow-x-auto">
           {tabs.map(({ key, label, icon: Icon, count }) => (
             <Button
               key={key}
               variant={tab === key ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setTab(key)}
-              className="gap-1.5"
+              className="gap-1.5 shrink-0"
+              role="tab"
+              aria-selected={tab === key}
+              aria-controls={`voters-panel-${key}`}
             >
               <Icon className="h-3.5 w-3.5" />
               {label}
@@ -175,32 +187,40 @@ export function ProposalVoterTabs({
         )}
       </div>
 
-      {tab === 'dreps' && <ProposalVotersWithContext votes={votes} />}
+      {tab === 'dreps' && (
+        <div role="tabpanel" id="voters-panel-dreps" aria-label="DRep votes">
+          <ProposalVotersWithContext votes={votes} />
+        </div>
+      )}
       {tab === 'spos' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-4 w-4 text-cyan-500" />
-              SPO Votes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SpoVotersList txHash={txHash} proposalIndex={proposalIndex} />
-          </CardContent>
-        </Card>
+        <div role="tabpanel" id="voters-panel-spos" aria-label="SPO votes">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Server className="h-4 w-4 text-cyan-500" />
+                SPO Votes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SpoVotersList txHash={txHash} proposalIndex={proposalIndex} />
+            </CardContent>
+          </Card>
+        </div>
       )}
       {tab === 'cc' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-amber-500" />
-              Constitutional Committee Votes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CcVotersList txHash={txHash} proposalIndex={proposalIndex} />
-          </CardContent>
-        </Card>
+        <div role="tabpanel" id="voters-panel-cc" aria-label="Constitutional Committee votes">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-amber-500" />
+                Constitutional Committee Votes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CcVotersList txHash={txHash} proposalIndex={proposalIndex} />
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

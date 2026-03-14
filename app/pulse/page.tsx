@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
-import { CivicaPulseOverview } from '@/components/civica/pulse/CivicaPulseOverview';
+import { GovernadaPulseOverview } from '@/components/governada/pulse/GovernadaPulseOverview';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const metadata: Metadata = {
@@ -52,7 +52,7 @@ export default function PulsePage() {
       <PageViewTracker event="pulse_page_viewed" />
       <div className="container mx-auto px-4 sm:px-6 py-6">
         <Suspense fallback={<PulseFallback />}>
-          <CivicaPulseOverview />
+          <GovernadaPulseOverview />
         </Suspense>
       </div>
     </>

@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { RadarOverlay } from './RadarOverlay';
 import { cn } from '@/lib/utils';
 import type { AlignmentScores } from '@/lib/drepIdentity';
+import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
+import { generateMatchNarrative } from '@/lib/matching/matchNarrative';
 
 interface MatchCardProps {
   rank: number;
@@ -23,6 +25,7 @@ interface MatchCardProps {
   drepAlignments?: AlignmentScores | null;
   identityColor?: string;
   showRadar?: boolean;
+  confidenceBreakdown?: ConfidenceBreakdown;
   className?: string;
 }
 
@@ -46,6 +49,7 @@ export function MatchCard({
   drepAlignments,
   identityColor,
   showRadar = true,
+  confidenceBreakdown,
   className,
 }: MatchCardProps) {
   const displayName = drepName || drepId.slice(0, 12) + '...';
@@ -117,6 +121,17 @@ export function MatchCard({
                     {differDimensions.join(', ')}
                   </>
                 ) : null}
+              </p>
+            )}
+
+            {/* Match narrative */}
+            {(agreeDimensions?.length || differDimensions?.length) && (
+              <p className="text-sm text-muted-foreground">
+                {generateMatchNarrative({
+                  agreeDimensions: agreeDimensions ?? [],
+                  differDimensions: differDimensions ?? [],
+                  confidence: confidenceBreakdown,
+                })}
               </p>
             )}
 

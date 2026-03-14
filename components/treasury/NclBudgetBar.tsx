@@ -15,18 +15,21 @@ const STATUS_COLORS = {
     pending: 'bg-emerald-500/40',
     label: 'text-emerald-400',
     border: 'border-emerald-500/30',
+    glow: '#10b981',
   },
   elevated: {
     enacted: 'bg-amber-500',
     pending: 'bg-amber-500/40',
     label: 'text-amber-400',
     border: 'border-amber-500/30',
+    glow: '#f59e0b',
   },
   critical: {
     enacted: 'bg-red-500',
     pending: 'bg-red-500/40',
     label: 'text-red-400',
     border: 'border-red-500/30',
+    glow: '#ef4444',
   },
 } as const;
 
@@ -54,9 +57,11 @@ export function NclBudgetBar({ ncl }: NclBudgetBarProps) {
         <span className={cn('text-xs font-medium', colors.label)}>{STATUS_LABELS[ncl.status]}</span>
       </div>
 
-      {/* Segmented bar */}
+      {/* Segmented bar with glow */}
       <TooltipProvider>
-        <div className="relative h-5 w-full rounded-full bg-muted/30 overflow-hidden">
+        <div className="relative h-5 w-full">
+          <div className="absolute inset-0 rounded-full bg-muted/30" />
+
           {/* Enacted segment */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -65,8 +70,13 @@ export function NclBudgetBar({ ncl }: NclBudgetBarProps) {
                   'absolute inset-y-0 left-0 rounded-l-full transition-all',
                   colors.enacted,
                 )}
-                style={{ width: `${enactedPct}%` }}
-              />
+                style={{
+                  width: `${enactedPct}%`,
+                  boxShadow: `0 0 8px ${colors.glow}40, 0 0 16px ${colors.glow}15`,
+                }}
+              >
+                <div className="absolute inset-x-0 top-0 h-[40%] rounded-t-full bg-white/[0.12]" />
+              </div>
             </TooltipTrigger>
             <TooltipContent>
               <p>

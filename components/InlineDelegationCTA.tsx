@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Shield,
 } from 'lucide-react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { DelegationRisksModal } from './InfoModal';
 import { useState } from 'react';
@@ -220,6 +221,22 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
           </>
         )}
       </Button>
+      {!canDelegate && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground text-center leading-relaxed">
+            Delegation lets this DRep vote on your behalf. You keep full control of your ADA and can
+            change or remove your delegation at any time.
+          </p>
+          <p className="text-center">
+            <Link
+              href="/get-started"
+              className="text-xs text-primary/80 hover:text-primary hover:underline transition-colors"
+            >
+              Need help getting set up? &rarr;
+            </Link>
+          </p>
+        </div>
+      )}
       <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
           <Shield className="h-3 w-3 shrink-0" />

@@ -1,12 +1,22 @@
 import type { Metadata } from 'next';
-import { QuickMatchFlow } from '@/components/civica/match/QuickMatchFlow';
+import { QuickMatchFlow } from '@/components/governada/match/QuickMatchFlow';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Quick Match — Find Your DRep or SPO — Governada',
+  title: 'Build Your Governance Team — Governada',
   description:
-    'Answer 3 questions about your governance values and find the Cardano DRep or Stake Pool Operator who represents you best. No wallet required.',
+    'Answer 3 questions about what you care about and build your Cardano governance team. Find the DRep and Stake Pool that vote like you. No wallet required.',
+  openGraph: {
+    title: 'Build Your Governance Team — Governada',
+    description: 'Find who votes like you in Cardano governance. 60 seconds, no wallet needed.',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Build Your Governance Team — Governada',
+    description: 'Find who votes like you in Cardano governance. 60 seconds.',
+  },
 };
 
 export default function MatchPage() {

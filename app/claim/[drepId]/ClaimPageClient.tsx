@@ -212,6 +212,10 @@ export function ClaimPageClient({
             drep_score: score,
             source: 'claim_page',
           });
+          posthog.capture('drep_profile_claimed', {
+            drep_id: drepId,
+            drep_score: score,
+          });
           setShowCelebration(true);
           posthog.capture('claim_celebration_seen', { drep_id: drepId });
         }

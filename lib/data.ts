@@ -526,6 +526,7 @@ export async function getDRepById(drepId: string): Promise<EnrichedDRep | null> 
       .from('dreps')
       .select('*')
       .eq('id', drepId)
+      .abortSignal(AbortSignal.timeout(10_000))
       .single();
 
     if (supabaseError) {
@@ -1614,6 +1615,235 @@ export async function getEndorsementCount(
 // ============================================================================
 // CLAIM STATUS
 // ============================================================================
+
+// ============================================================================
+// DELEGATOR INTELLIGENCE
+// ============================================================================
+
+export interface DelegatorSentiment {
+  proposalTxHash: string;
+  proposalIndex: number;
+  title: string | null;
+  support: number;
+  oppose: number;
+  abstain: number;
+  total: number;
+}
+
+export interface DelegatorIntelligence {
+  /** Top governance priorities of delegators (ranked) */
+  topPriorities: { priority: string; count: number }[];
+  /** Delegator sentiment on active/recent proposals */
+  sentimentByProposal: DelegatorSentiment[];
+  /** Average engagement level (0-100) — % of delegators who have cast at least one signal */
+  avgEngagement: number;
+  /** Total delegators who have submitted signals */
+  engagedDelegators: number;
+  /** Total delegators */
+  totalDelegators: number;
+}
+
+/**
+ * Aggregate delegator intelligence for a DRep: priorities, sentiment, engagement.
+ * Pulls from citizen_priority_signals and citizen_sentiment tables
+ * filtered to citizens delegated to this DRep.
+ */
+export async function getDelegatorIntelligence(drepId: string): Promise<DelegatorIntelligence> {
+  const empty: DelegatorIntelligence = {
+    topPriorities: [],
+    sentimentByProposal: [],
+    avgEngagement: 0,
+    engagedDelegators: 0,
+    totalDelegators: 0,
+  };
+
+  try {
+    const supabase = createClient();
+
+    // Get delegator count for this DRep
+    const { data: drepRow } = await supabase.from('dreps').select('info').eq('id', drepId).single();
+
+    const totalDelegators =
+      ((drepRow?.info as Record<string, unknown>)?.delegatorCount as number) ?? 0;
+
+    // Get priority signals from citizens delegated to this DRep
+    // citizen_priority_signals has stake_address; we need to cross-ref
+    // with citizen_sentiment which has delegated_drep_id
+    const [sentimentResult, priorityResult] = await Promise.all([
+      supabase
+        .from('citizen_sentiment')
+        .select('proposal_tx_hash, proposal_index, sentiment, stake_address')
+        .eq('delegated_drep_id', drepId),
+      supabase.from('citizen_sentiment').select('stake_address').eq('delegated_drep_id', drepId),
+    ]);
+
+    const delegatorStakeAddresses = new Set(
+      (priorityResult.data ?? []).map((r) => r.stake_address).filter((s): s is string => !!s),
+    );
+
+    // Fetch priority signals for these delegators
+    let topPriorities: { priority: string; count: number }[] = [];
+    if (delegatorStakeAddresses.size > 0) {
+      const stakeAddrs = [...delegatorStakeAddresses].slice(0, 500);
+      const { data: priorityRows } = await supabase
+        .from('citizen_priority_signals')
+        .select('ranked_priorities')
+        .in('stake_address', stakeAddrs);
+
+      if (priorityRows && priorityRows.length > 0) {
+        const priorityCounts = new Map<string, number>();
+        for (const row of priorityRows) {
+          const priorities = row.ranked_priorities ?? [];
+          for (let i = 0; i < priorities.length; i++) {
+            const p = priorities[i];
+            // Weight by position: first = 3, second = 2, third+ = 1
+            const weight = Math.max(1, 4 - i);
+            priorityCounts.set(p, (priorityCounts.get(p) ?? 0) + weight);
+          }
+        }
+        topPriorities = [...priorityCounts.entries()]
+          .map(([priority, count]) => ({ priority, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 8);
+      }
+    }
+
+    // Aggregate sentiment by proposal
+    const sentimentByProposal: DelegatorSentiment[] = [];
+    const sentimentRows = sentimentResult.data ?? [];
+    if (sentimentRows.length > 0) {
+      const proposalSentimentMap = new Map<
+        string,
+        { txHash: string; index: number; support: number; oppose: number; abstain: number }
+      >();
+
+      for (const row of sentimentRows) {
+        const key = `${row.proposal_tx_hash}-${row.proposal_index}`;
+        const existing = proposalSentimentMap.get(key) ?? {
+          txHash: row.proposal_tx_hash,
+          index: row.proposal_index,
+          support: 0,
+          oppose: 0,
+          abstain: 0,
+        };
+        if (row.sentiment === 'support') existing.support++;
+        else if (row.sentiment === 'oppose') existing.oppose++;
+        else existing.abstain++;
+        proposalSentimentMap.set(key, existing);
+      }
+
+      // Fetch proposal titles
+      const txHashes = [...new Set([...proposalSentimentMap.values()].map((v) => v.txHash))];
+      const { data: proposals } = await supabase
+        .from('proposals')
+        .select('tx_hash, proposal_index, title')
+        .in('tx_hash', txHashes);
+
+      const titleMap = new Map<string, string>();
+      for (const p of proposals ?? []) {
+        titleMap.set(`${p.tx_hash}-${p.proposal_index}`, p.title);
+      }
+
+      for (const [key, agg] of proposalSentimentMap) {
+        sentimentByProposal.push({
+          proposalTxHash: agg.txHash,
+          proposalIndex: agg.index,
+          title: titleMap.get(key) ?? null,
+          support: agg.support,
+          oppose: agg.oppose,
+          abstain: agg.abstain,
+          total: agg.support + agg.oppose + agg.abstain,
+        });
+      }
+
+      sentimentByProposal.sort((a, b) => b.total - a.total);
+    }
+
+    const engagedDelegators = delegatorStakeAddresses.size;
+    const avgEngagement =
+      totalDelegators > 0 ? Math.round((engagedDelegators / totalDelegators) * 100) : 0;
+
+    return {
+      topPriorities,
+      sentimentByProposal: sentimentByProposal.slice(0, 10),
+      avgEngagement,
+      engagedDelegators,
+      totalDelegators,
+    };
+  } catch (err) {
+    logger.error('[Data] getDelegatorIntelligence error', { error: err });
+    return empty;
+  }
+}
+
+// ============================================================================
+// LEADERBOARD
+// ============================================================================
+
+export interface LeaderboardEntry {
+  rank: number;
+  drepId: string;
+  name: string;
+  score: number;
+  sizeTier: string;
+  participation: number;
+  rationale: number;
+  endorsements: number;
+  trend: number;
+}
+
+/**
+ * Get a ranked leaderboard of DReps sorted by score.
+ * Used by the governance/leaderboard page.
+ */
+export async function getLeaderboard(
+  limit = 20,
+  sortBy: 'score' | 'participation' | 'rationale' | 'endorsements' = 'score',
+): Promise<LeaderboardEntry[]> {
+  try {
+    const supabase = createClient();
+
+    const orderCol =
+      sortBy === 'participation'
+        ? 'effective_participation'
+        : sortBy === 'rationale'
+          ? 'rationale_rate'
+          : 'score';
+
+    const { data, error } = await supabase
+      .from('dreps')
+      .select(
+        'id, score, size_tier, info, effective_participation, rationale_rate, reliability_score',
+      )
+      .not('info->isActive', 'eq', false)
+      .order(orderCol, { ascending: false })
+      .limit(Math.min(50, limit));
+
+    if (error || !data) return [];
+
+    return data.map((d, i) => {
+      const info = (d.info ?? {}) as Record<string, unknown>;
+      return {
+        rank: i + 1,
+        drepId: d.id,
+        name:
+          (info.name as string) ||
+          (info.ticker as string) ||
+          (info.handle as string) ||
+          d.id.slice(0, 16),
+        score: d.score ?? 0,
+        sizeTier: d.size_tier ?? 'Unknown',
+        participation: d.effective_participation ?? 0,
+        rationale: d.rationale_rate ?? 0,
+        endorsements: 0, // populated separately if needed
+        trend: 0,
+      };
+    });
+  } catch (err) {
+    logger.error('[Data] getLeaderboard error', { error: err });
+    return [];
+  }
+}
 
 // ============================================================================
 // VOTING POWER & THRESHOLD HELPERS

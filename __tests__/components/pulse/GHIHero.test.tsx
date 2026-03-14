@@ -53,7 +53,7 @@ vi.mock('@/hooks/queries', () => ({
   useGovernanceHealthIndex: (...args: unknown[]) => mockUseGovernanceHealthIndex(...args),
 }));
 
-import { GHIHero } from '@/components/civica/pulse/GHIHero';
+import { GHIHero } from '@/components/governada/pulse/GHIHero';
 
 afterEach(() => {
   cleanup();

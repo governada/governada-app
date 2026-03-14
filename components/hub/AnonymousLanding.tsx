@@ -1,9 +1,16 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Users, Server } from 'lucide-react';
+import { ArrowRight, Users, Compass, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConstellationScene } from '@/components/ConstellationScene';
+import dynamic from 'next/dynamic';
+import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
+
+const ConstellationScene = dynamic(
+  () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
+  { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
+);
 
 interface AnonymousLandingProps {
   pulseData?: {
@@ -11,19 +18,26 @@ interface AnonymousLandingProps {
     activeProposals: number;
     activeDReps: number;
     activeSpOs: number;
+    totalDelegators: number;
   };
 }
 
 /**
- * Anonymous Landing — Clean conversion page.
+ * Anonymous Landing — Optimized conversion page.
  *
- * Radical simplicity. One value prop, one visual, two CTAs.
- * Passes the 5-second test: "This helps me participate in Cardano governance."
+ * Two clear paths:
+ * 1. "Build your governance team" → /match (the conversion action)
+ * 2. "Explore governance" → /governance (browse without connecting)
  *
- * Two-path entry: Find your DRep OR Find your Stake Pool.
- * Both go to Quick Match with the appropriate tab pre-selected.
+ * Enhanced social proof: live DRep, proposal, and participation counts.
+ * Glass-window peek at governance health pulse to demonstrate value.
+ * PostHog funnel instrumented at every interaction.
  */
 export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
+  useEffect(() => {
+    trackFunnel(FUNNEL_EVENTS.LANDING_VIEWED);
+  }, []);
+
   return (
     <div className="relative flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Constellation hero */}
@@ -48,53 +62,90 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
               textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
             }}
           >
-            It takes 60 seconds to use it.
+            Choose who votes for you. It takes 60 seconds.
           </p>
         </div>
       </section>
 
       {/* CTAs + social proof */}
       <section className="relative z-10 mx-auto w-full max-w-lg px-6 -mt-8 pb-12 space-y-6">
-        {/* Two CTAs — DRep and Stake Pool paths */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button asChild size="lg" className="flex-1 gap-2">
-            <Link href="/match?tab=drep">
-              <Users className="h-4 w-4" />
-              Find Your Representative
+        {/* Primary CTA — Build your governance team */}
+        <div className="flex flex-col gap-3">
+          <Button
+            asChild
+            size="lg"
+            className="w-full gap-2 text-base py-6 rounded-xl font-semibold"
+            onClick={() => trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_primary' })}
+          >
+            <Link href="/match">
+              <Users className="h-5 w-5" />
+              Choose Your Representative
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="w-full gap-2"
+            onClick={() =>
+              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_secondary' })
+            }
+          >
+            <Link href="/governance">
+              <Compass className="h-4 w-4" />
+              See What&apos;s Happening
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="flex-1 gap-2">
-            <Link href="/match?tab=spo">
-              <Server className="h-4 w-4" />
-              Find Your Stake Pool
+          <Button
+            asChild
+            variant="ghost"
+            size="lg"
+            className="w-full gap-2 text-muted-foreground hover:text-primary"
+            onClick={() =>
+              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_get_started' })
+            }
+          >
+            <Link href="/get-started">
+              <Rocket className="h-4 w-4" />
+              New to Cardano Governance? Get Started
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>
 
-        {/* Social proof — framed as liveness, not raw metrics */}
-        {pulseData && (
-          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-            <span>
-              <strong className="text-foreground">{pulseData.activeDReps}</strong> active
-              representatives
-            </span>
-            <span className="text-border">|</span>
-            <span>
-              <strong className="text-foreground">{pulseData.activeProposals}</strong> proposals
-              being voted on
-            </span>
+        {/* Narrative social proof — frames raw numbers as personal stakes */}
+        {pulseData && pulseData.activeProposals > 0 && (
+          <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4">
+            <p className="text-sm text-muted-foreground leading-relaxed text-center">
+              Right now,{' '}
+              <strong className="text-foreground">{pulseData.activeProposals} proposals</strong> are
+              deciding how Cardano&apos;s treasury is spent.{' '}
+              <strong className="text-foreground">{pulseData.activeDReps} representatives</strong>{' '}
+              are voting on your behalf. Your ADA gives you a say.
+            </p>
           </div>
         )}
 
-        {/* Secondary discovery link */}
-        <div className="flex justify-center">
+        {/* Secondary discovery links */}
+        <div className="flex items-center justify-center gap-4 text-xs">
           <Link
             href="/governance/health"
-            className="text-xs text-muted-foreground/70 hover:text-primary transition-colors"
+            className="text-muted-foreground/70 hover:text-primary transition-colors"
+            onClick={() => trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_health' })}
           >
-            Is Cardano governance healthy? &rarr;
+            How is Cardano being managed? &rarr;
+          </Link>
+          <span className="text-border">|</span>
+          <Link
+            href="/governance/proposals"
+            className="text-muted-foreground/70 hover:text-primary transition-colors"
+            onClick={() =>
+              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_proposals' })
+            }
+          >
+            What decisions are being made? &rarr;
           </Link>
         </div>
       </section>

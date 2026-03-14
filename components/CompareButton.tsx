@@ -160,6 +160,7 @@ export function CompareButton({ currentDrepId, currentDrepName }: CompareButtonP
                 className="pl-8 h-9 text-sm"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                aria-label="Search DReps to compare"
               />
             </div>
             {userPrefs.length > 0 && !query && (

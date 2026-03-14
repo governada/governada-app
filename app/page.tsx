@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { createClient } from '@/lib/supabase';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { HubHomePage } from '@/components/hub/HubHomePage';
@@ -8,11 +9,11 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Governada — Cardano Governance Intelligence',
   description:
-    'Cardano has a government. Know who represents you. Find your DRep, track governance proposals, and participate in on-chain democracy.',
+    'Cardano has a government. Know who represents you. Build your governance team, track proposals, and participate in on-chain democracy.',
   openGraph: {
     title: 'Governada — Cardano Governance Intelligence',
     description:
-      'Know who represents your ADA in Cardano governance. Discover DReps, track proposals, and take action.',
+      'Know who represents your ADA in Cardano governance. Build your governance team, track proposals, and take action.',
     type: 'website',
   },
   twitter: {
@@ -29,20 +30,32 @@ export const metadata: Metadata = {
 async function getGovernancePulse() {
   const supabase = createClient();
 
-  const [activeDRepsResult, totalDRepsResult, openProposalsResult] = await Promise.all([
-    supabase
-      .from('dreps')
-      .select('id', { count: 'exact', head: true })
-      .eq('info->>isActive', 'true'),
-    supabase.from('dreps').select('id', { count: 'exact', head: true }),
-    supabase
-      .from('proposals')
-      .select('tx_hash', { count: 'exact', head: true })
-      .is('ratified_epoch', null)
-      .is('enacted_epoch', null)
-      .is('dropped_epoch', null)
-      .is('expired_epoch', null),
-  ]);
+  const [activeDRepsResult, totalDRepsResult, openProposalsResult, totalDelegatorsResult] =
+    await Promise.all([
+      supabase
+        .from('dreps')
+        .select('id', { count: 'exact', head: true })
+        .eq('info->>isActive', 'true'),
+      supabase.from('dreps').select('id', { count: 'exact', head: true }),
+      supabase
+        .from('proposals')
+        .select('tx_hash', { count: 'exact', head: true })
+        .is('ratified_epoch', null)
+        .is('enacted_epoch', null)
+        .is('dropped_epoch', null)
+        .is('expired_epoch', null),
+      // Count unique delegators from the dreps table (sum of delegator counts)
+      supabase.from('dreps').select('info->delegatorCount'),
+    ]);
+
+  // Sum delegator counts across all DReps for social proof
+  let totalDelegators = 0;
+  if (totalDelegatorsResult.data) {
+    for (const row of totalDelegatorsResult.data) {
+      const count = (row as Record<string, unknown>).delegatorCount;
+      if (typeof count === 'number') totalDelegators += count;
+    }
+  }
 
   return {
     totalAdaGoverned: '',
@@ -53,14 +66,41 @@ async function getGovernancePulse() {
     claimedDReps: 0,
     activeSpOs: 0,
     ccMembers: 0,
+    totalDelegators,
   };
 }
 
 export default async function HomePage() {
   const pulseData = await getGovernancePulse();
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'Governada',
+    url: 'https://governada.io',
+    description:
+      'Governance intelligence for Cardano. Build your governance team, track proposals, and participate in on-chain democracy.',
+    applicationCategory: 'GovernanceApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Governada',
+      url: 'https://governada.io',
+    },
+  };
+
   return (
     <>
+      <Script
+        id="json-ld-organization"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <PageViewTracker event="homepage_viewed" />
       <HubHomePage pulseData={pulseData} />
     </>

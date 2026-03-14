@@ -1,142 +1,44 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { DRepCockpit } from '@/components/workspace/DRepCockpit';
 
 /**
- * SPO Workspace — Governance score overview for SPOs.
+ * WorkspacePage — Redirects DReps/SPOs to the homepage cockpit.
  *
- * JTBD: "What's my governance reputation?"
- * Score with pillar breakdown, top improvement suggestions, trend.
- */
-function SPOWorkspace() {
-  const { poolId } = useSegment();
-  const { data: competitiveRaw, isLoading: compLoading } = useSPOPoolCompetitive(poolId);
-  const { data: summaryRaw, isLoading: sumLoading } = useSPOSummary(poolId);
-
-  const isLoading = compLoading || sumLoading;
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-      </div>
-    );
-  }
-
-  const competitive = competitiveRaw as Record<string, unknown> | undefined;
-  const summary = summaryRaw as Record<string, unknown> | undefined;
-  const pool = competitive?.pool as Record<string, unknown> | undefined;
-  const score = Math.round((pool?.governance_score as number) ?? 0);
-  const rank = (competitive?.rank as number) ?? 0;
-  const totalPools = (competitive?.totalPools as number) ?? 0;
-  const percentile = Math.round((competitive?.percentile as number) ?? 0);
-  const voteCount = (summary?.voteCount as number) ?? (pool?.vote_count as number) ?? 0;
-  const participationRate = Math.round((summary?.participationRate as number) ?? 0);
-
-  // Improvement suggestions based on score components
-  const suggestions: string[] = [];
-  if (voteCount === 0)
-    suggestions.push('Cast your first governance vote to appear on the leaderboard');
-  if (participationRate < 50)
-    suggestions.push('Vote on more proposals to improve participation rate');
-  if (score < 50) suggestions.push('Add a governance statement to your pool profile');
-  if (suggestions.length === 0) suggestions.push('Keep voting consistently to maintain your rank');
-
-  return (
-    <div className="space-y-6">
-      {/* Score overview */}
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">Governance Score</h2>
-            <p className="text-sm text-muted-foreground">
-              Rank {rank} of {totalPools} pools &middot; Top {percentile}%
-            </p>
-          </div>
-          <span className="text-4xl font-bold tabular-nums text-foreground">{score}</span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-muted/50 p-3 text-center">
-            <p className="text-xl font-bold tabular-nums text-foreground">{voteCount}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Votes Cast</p>
-          </div>
-          <div className="rounded-xl bg-muted/50 p-3 text-center">
-            <p className="text-xl font-bold tabular-nums text-foreground">{participationRate}%</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Participation</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Improvement suggestions */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Next Steps
-        </h3>
-        {suggestions.slice(0, 3).map((s, i) => (
-          <div
-            key={i}
-            className="flex items-start gap-2 rounded-lg border border-border bg-card p-3"
-          >
-            <span className="text-primary font-bold text-sm">{i + 1}.</span>
-            <p className="text-sm text-foreground">{s}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Quick links */}
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/pool-profile">Pool Profile</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/position">Competitive Position</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/delegators">Delegators</Link>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * WorkspacePage — Dispatches to DRep Cockpit or SPO workspace.
- *
- * DRep: Governance Cockpit — single-page command center.
- * SPO: Governance score overview.
+ * The Governance Cockpit now lives on `/` for DReps and SPOs.
+ * This page redirects them home. Non-DRep/SPO users see a message.
+ * Sub-routes (e.g. /workspace/delegators) are unaffected — they
+ * have their own page.tsx files.
  */
 export function WorkspacePage() {
   const { segment } = useSegment();
+  const router = useRouter();
 
-  // Non-DRep/SPO users get redirected
-  if (segment !== 'drep' && segment !== 'spo') {
-    return (
-      <div className="mx-auto w-full max-w-2xl px-4 py-12 text-center space-y-4">
-        <h1 className="text-2xl font-bold text-foreground">Workspace</h1>
-        <p className="text-muted-foreground">
-          The workspace is for DReps and SPOs who actively participate in governance.
-        </p>
-        <Button asChild>
-          <Link href="/">Back to Hub</Link>
-        </Button>
-      </div>
-    );
+  useEffect(() => {
+    if (segment === 'drep' || segment === 'spo') {
+      router.replace('/');
+    }
+  }, [segment, router]);
+
+  // While redirecting, render nothing
+  if (segment === 'drep' || segment === 'spo') {
+    return null;
   }
 
+  // Non-DRep/SPO users get a message
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-4">
-      <h1 className="text-xl font-bold text-foreground">
-        {segment === 'drep' ? 'Governance Cockpit' : 'Governance Overview'}
-      </h1>
-      {segment === 'drep' ? <DRepCockpit /> : <SPOWorkspace />}
+    <div className="mx-auto w-full max-w-2xl px-4 py-12 text-center space-y-4">
+      <h1 className="text-2xl font-bold text-foreground">Workspace</h1>
+      <p className="text-muted-foreground">
+        The workspace is for DReps and SPOs who actively participate in governance.
+      </p>
+      <Button asChild>
+        <Link href="/">Back to Hub</Link>
+      </Button>
     </div>
   );
 }

@@ -24,7 +24,7 @@ export function RepresentationCard() {
   // Undelegated citizens — show CTA immediately
   if (!delegatedDrep) {
     return (
-      <HubCard href="/match" urgency="warning" label="You have no DRep. Find a representative.">
+      <HubCard href="/match" urgency="warning" label="You have no representative yet.">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-amber-500" />
@@ -33,10 +33,10 @@ export function RepresentationCard() {
             </span>
           </div>
           <p className="text-base font-semibold text-foreground">
-            Your ADA has no voice in governance
+            Your ADA has no voice in decisions
           </p>
           <p className="text-sm text-muted-foreground">
-            Find a DRep who shares your values &mdash; takes 60 seconds.
+            Find a representative who shares your values &mdash; takes 60 seconds.
           </p>
         </div>
       </HubCard>
@@ -46,7 +46,7 @@ export function RepresentationCard() {
   // Always-abstain delegation — valid choice, no data fetch needed
   if (delegatedDrep === 'drep_always_abstain') {
     return (
-      <HubCard href="/delegation" urgency="default" label="Delegation: Always Abstain">
+      <HubCard href="/match" urgency="default" label="Delegation: Always Abstain">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Ban className="h-4 w-4 text-muted-foreground" />
@@ -55,10 +55,11 @@ export function RepresentationCard() {
             </span>
           </div>
           <p className="text-base font-semibold text-foreground">
-            Your ADA abstains on all governance actions
+            Your ADA sits out every decision
           </p>
           <p className="text-sm text-muted-foreground">
-            You&apos;ve chosen to abstain rather than delegate. Your ADA still counts toward quorum.
+            You&apos;ve chosen not to vote on anything. Your ADA is still counted as participating,
+            but it won&apos;t support or oppose any proposal.
           </p>
         </div>
       </HubCard>
@@ -68,7 +69,7 @@ export function RepresentationCard() {
   // No-confidence delegation — valid choice, no data fetch needed
   if (delegatedDrep === 'drep_always_no_confidence') {
     return (
-      <HubCard href="/delegation" urgency="warning" label="Delegation: No Confidence">
+      <HubCard href="/match" urgency="warning" label="Delegation: No Confidence">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <ThumbsDown className="h-4 w-4 text-amber-500" />
@@ -77,10 +78,11 @@ export function RepresentationCard() {
             </span>
           </div>
           <p className="text-base font-semibold text-foreground">
-            Your ADA signals no confidence in governance
+            Your ADA is pushing back against all proposals
           </p>
           <p className="text-sm text-muted-foreground">
-            This is an active signal. Your vote weight counts against all proposals.
+            This signals that you don&apos;t trust the current governance system. Your ADA
+            automatically opposes every decision until you change this.
           </p>
         </div>
       </HubCard>
@@ -125,7 +127,7 @@ function DelegatedRepresentationCard({
 
   if (!isActive) {
     urgency = 'critical';
-    statusLabel = 'DRep Inactive';
+    statusLabel = 'Representative Inactive';
     statusMessage = `${drepName} is no longer active`;
   } else if (participationRate < 50) {
     urgency = 'warning';
@@ -146,7 +148,7 @@ function DelegatedRepresentationCard({
         : 'text-red-600 dark:text-red-400';
 
   return (
-    <HubCard href="/delegation" urgency={urgency} label={`${statusLabel}: ${statusMessage}`}>
+    <HubCard href="/" urgency={urgency} label={`${statusLabel}: ${statusMessage}`}>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <StatusIcon className={`h-4 w-4 ${statusColor}`} />
@@ -162,7 +164,7 @@ function DelegatedRepresentationCard({
             {getScoreNarrative({ score: drepScore, percentile: 50 })}
           </span>
           <span className="text-muted-foreground/60">&middot;</span>
-          <span>{delegatedPool ? 'Pool + DRep delegated' : 'Partial coverage'}</span>
+          <span>{delegatedPool ? 'Fully represented' : 'Partial coverage'}</span>
         </div>
       </div>
     </HubCard>

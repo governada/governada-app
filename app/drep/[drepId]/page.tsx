@@ -59,16 +59,17 @@ const MilestoneBadges = nextDynamic(
 );
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
 const SimilarDReps = nextDynamic(
-  () => import('@/components/civica/profiles/SimilarDReps').then((m) => m.SimilarDReps),
+  () => import('@/components/governada/profiles/SimilarDReps').then((m) => m.SimilarDReps),
   { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
 );
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
-import { TrustCard } from '@/components/civica/profiles/TrustCard';
-import { RecordSummaryCard } from '@/components/civica/profiles/RecordSummaryCard';
-import { TrajectoryCard } from '@/components/civica/profiles/TrajectoryCard';
+import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
+import { TrustCard } from '@/components/governada/profiles/TrustCard';
+import { RecordSummaryCard } from '@/components/governada/profiles/RecordSummaryCard';
+import { TrajectoryCard } from '@/components/governada/profiles/TrajectoryCard';
 const CitizenEndorsements = nextDynamic(
   () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
   { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
@@ -78,7 +79,9 @@ const AlignmentTrajectory = nextDynamic(
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
 const TierCelebrationManager = nextDynamic(() =>
-  import('@/components/civica/shared/TierCelebrationManager').then((m) => m.TierCelebrationManager),
+  import('@/components/governada/shared/TierCelebrationManager').then(
+    (m) => m.TierCelebrationManager,
+  ),
 );
 import {
   extractAlignments,
@@ -88,18 +91,20 @@ import {
 } from '@/lib/drepIdentity';
 import { computeTierProgress } from '@/lib/scoring/tiers';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
-import { DRepProfileTabsV2 } from '@/components/civica/profiles/DRepProfileTabsV2';
+import { DRepProfileTabsV2 } from '@/components/governada/profiles/DRepProfileTabsV2';
 const DRepStatementsTab = nextDynamic(
-  () => import('@/components/civica/profiles/DRepStatementsTab').then((m) => m.DRepStatementsTab),
+  () =>
+    import('@/components/governada/profiles/DRepStatementsTab').then((m) => m.DRepStatementsTab),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
 import { getDRepTraitTags } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
 import { generateDRepNarrative } from '@/lib/narratives';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
+import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
-import { DRepOutcomeSummary } from '@/components/civica/profiles/DRepOutcomeSummary';
-import { ScoreAnalysisGate } from '@/components/civica/profiles/ScoreAnalysisGate';
+import { DRepOutcomeSummary } from '@/components/governada/profiles/DRepOutcomeSummary';
+import { ScoreAnalysisGate } from '@/components/governada/profiles/ScoreAnalysisGate';
 import { getProposalOutcomesBatch } from '@/lib/proposalOutcomes';
 import {
   getDRepById,
@@ -370,31 +375,47 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   let openProposals: Awaited<ReturnType<typeof getOpenProposalsForDRep>> = [];
   let endorsementCount = 0;
 
-  try {
-    [
-      scoreHistory,
-      percentile,
-      rank,
-      delegationTrend,
-      linkChecks,
-      isClaimed,
-      spoAlignPct,
-      openProposals,
-      endorsementCount,
-    ] = await Promise.all([
-      getScoreHistory(drep.drepId),
-      getDRepPercentile(drep.drepScore),
-      getDRepRank(drep.drepId),
-      getDRepDelegationTrend(drep.drepId),
-      getSocialLinkChecks(drep.drepId),
-      isDRepClaimed(drep.drepId),
-      getSpoAlignment(drep.votes),
-      getOpenProposalsForDRep(drep.drepId),
-      getEndorsementCount('drep', drep.drepId),
-    ]);
-  } catch (err) {
-    console.error('[DRepProfile] Secondary data fetch failed, using defaults:', err);
+  // Wrap each secondary fetch with an 8-second timeout so a single slow fetch
+  // cannot block the entire page render. Timed-out fetches return their default value.
+  const SECONDARY_FETCH_TIMEOUT = 8_000;
+  function withTimeout<T>(promise: Promise<T>, fallback: T, label: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((resolve) =>
+        setTimeout(() => {
+          console.warn(
+            `[DRepProfile] Secondary fetch timed out after ${SECONDARY_FETCH_TIMEOUT}ms: ${label}`,
+          );
+          resolve(fallback);
+        }, SECONDARY_FETCH_TIMEOUT),
+      ),
+    ]).catch((err) => {
+      console.error(`[DRepProfile] Secondary fetch failed: ${label}`, err);
+      return fallback;
+    });
   }
+
+  [
+    scoreHistory,
+    percentile,
+    rank,
+    delegationTrend,
+    linkChecks,
+    isClaimed,
+    spoAlignPct,
+    openProposals,
+    endorsementCount,
+  ] = await Promise.all([
+    withTimeout(getScoreHistory(drep.drepId), [], 'scoreHistory'),
+    withTimeout(getDRepPercentile(drep.drepScore), 0, 'percentile'),
+    withTimeout(getDRepRank(drep.drepId), 0, 'rank'),
+    withTimeout(getDRepDelegationTrend(drep.drepId), [], 'delegationTrend'),
+    withTimeout(getSocialLinkChecks(drep.drepId), [], 'linkChecks'),
+    withTimeout(isDRepClaimed(drep.drepId), false, 'isClaimed'),
+    withTimeout(getSpoAlignment(drep.votes), null, 'spoAlignPct'),
+    withTimeout(getOpenProposalsForDRep(drep.drepId), [], 'openProposals'),
+    withTimeout(getEndorsementCount('drep', drep.drepId), 0, 'endorsementCount'),
+  ]);
 
   const pendingProposalCount = openProposals.length;
 
@@ -453,7 +474,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   const drepName = getDRepPrimaryName(drep);
   const traitTags = getDRepTraitTags(drep as unknown as EnrichedDRep);
 
-  // Use hysteresis-aware label when civica is enabled (last_personality_label is null for
+  // Use hysteresis-aware label when governada is enabled (last_personality_label is null for
   // all DReps currently — hysteresis kicks in once the sync pipeline starts persisting labels)
   const lastPersonalityLabel =
     ((drep as unknown as Record<string, unknown>).lastPersonalityLabel as string | null) ?? null;
@@ -471,10 +492,33 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   // For DRep owners, also shows a "Write Statement" button
   const statementsContent = <DRepStatementsTab drepId={drep.drepId} />;
 
+  // JSON-LD structured data for DRep profile
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: drepName,
+    url: `https://governada.io/drep/${encodeURIComponent(drep.drepId)}`,
+    description: drep.description || `Cardano DRep with governance score ${drep.drepScore}/100`,
+    image: `${BASE_URL}/api/og/drep/${encodeURIComponent(drep.drepId)}`,
+    jobTitle: 'Delegated Representative (DRep)',
+    memberOf: {
+      '@type': 'Organization',
+      name: 'Cardano Governance',
+    },
+  };
+
   const profileContent = (
     <div className="container mx-auto px-4 py-8 space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <ProfileViewTracker drepId={drep.drepId} />
-      <PageViewTracker event="drep_profile_viewed" properties={{ drep_id: drep.drepId }} />
+      <PageViewTracker
+        event="drep_profile_viewed"
+        properties={{ drep_id: drep.drepId }}
+        discoveryEvent="drep_viewed"
+      />
       <TierCelebrationManager
         entityType="drep"
         entityId={drep.drepId}
@@ -524,31 +568,32 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       >
         <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
         <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
+        <WatchEntityButton entityType="drep" entityId={drep.drepId} />
       </DRepProfileHero>
 
       {/* 3. Tier Progress + Momentum — governance participants only */}
       {isViewerAuthenticated && tierProgress.pointsToNext != null && (
         <SegmentGate show={['drep', 'spo', 'cc']}>
-          <div className="flex items-center justify-between rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-5 py-3">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-4 sm:px-5 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-sm font-medium whitespace-nowrap">
                 {tierProgress.pointsToNext} pts to{' '}
                 <span className="text-primary font-bold">{tierProgress.nextTier}</span>
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
               </span>
             </div>
             <div className="flex items-center gap-3">
               {drep.scoreMomentum != null && drep.scoreMomentum !== 0 && (
                 <span
-                  className={`text-xs font-medium tabular-nums ${drep.scoreMomentum > 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                  className={`text-xs font-medium tabular-nums whitespace-nowrap ${drep.scoreMomentum > 0 ? 'text-emerald-400' : 'text-rose-400'}`}
                 >
                   {drep.scoreMomentum > 0 ? '+' : ''}
                   {drep.scoreMomentum.toFixed(1)} pts/day
                 </span>
               )}
-              <div className="w-24 h-1.5 bg-border rounded-full overflow-hidden">
+              <div className="w-24 h-1.5 bg-border rounded-full overflow-hidden shrink-0">
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${tierProgress.percentWithinTier}%` }}
@@ -575,9 +620,19 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         drepId={drep.drepId}
       />
 
+      {/* ── Delegation Impact Preview — undelegated citizens only ── */}
+      <DelegationImpactPreview
+        drepName={drepName}
+        participationRate={drep.effectiveParticipation}
+        totalVotes={drep.totalVotes}
+        rationaleRate={drep.rationaleRate}
+        votingPowerAda={drep.votingPower}
+        delegatorCount={drep.delegatorCount}
+      />
+
       {/* 5. Identity metadata row — governance participants only */}
       <SegmentGate show={['drep', 'spo', 'cc']}>
-        <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-sm text-muted-foreground overflow-hidden">
           {drep.ticker && (
             <Badge variant="outline" className="text-sm px-2 py-0.5">
               {drep.ticker.toUpperCase()}
@@ -634,27 +689,23 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </div>
       </SegmentGate>
 
-      {/* ── Chapter 3: The Record — hidden for anonymous ── */}
-      <SegmentGate hide={['anonymous']}>
-        <RecordSummaryCard
-          drepId={drep.drepId}
-          totalVotes={drep.totalVotes}
-          participationRate={drep.effectiveParticipation}
-          rationaleRate={drep.rationaleRate}
-        />
-      </SegmentGate>
+      {/* ── Chapter 3: The Record — public data, visible to all ── */}
+      <RecordSummaryCard
+        drepId={drep.drepId}
+        totalVotes={drep.totalVotes}
+        participationRate={drep.effectiveParticipation}
+        rationaleRate={drep.rationaleRate}
+      />
 
-      {/* ── Chapter 4: Trajectory — hidden for anonymous ── */}
-      <SegmentGate hide={['anonymous']}>
-        <TrajectoryCard
-          scoreHistory={scoreHistory}
-          delegationTrend={delegationTrend}
-          currentScore={drep.drepScore}
-          scoreMomentum={drep.scoreMomentum}
-          delegatorCount={drep.delegatorCount}
-          votingPowerFormatted={formatAda(drep.votingPower)}
-        />
-      </SegmentGate>
+      {/* ── Chapter 4: Trajectory — public data, visible to all ── */}
+      <TrajectoryCard
+        scoreHistory={scoreHistory}
+        delegationTrend={delegationTrend}
+        currentScore={drep.drepScore}
+        scoreMomentum={drep.scoreMomentum}
+        delegatorCount={drep.delegatorCount}
+        votingPowerFormatted={formatAda(drep.votingPower)}
+      />
 
       {/* ── Citizen Endorsements — visible to all (social proof) ── */}
       <CitizenEndorsements entityType="drep" entityId={drep.drepId} />

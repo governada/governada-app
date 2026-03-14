@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
-import { MyGovClient } from '@/components/civica/MyGovClient';
+import { MyGovClient } from '@/components/governada/MyGovClient';
 
 export const metadata: Metadata = {
   title: 'Governada — My Gov',

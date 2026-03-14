@@ -29,7 +29,10 @@ export function ConnectionError({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm">
+      <div
+        className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm"
+        role="alert"
+      >
         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
         <span className="text-muted-foreground flex-1">{message}</span>
         {onRetry && (
@@ -37,6 +40,7 @@ export function ConnectionError({
             onClick={handleRetry}
             disabled={retrying}
             className="text-primary hover:text-primary/80 text-xs font-medium"
+            aria-label="Retry loading"
           >
             {retrying ? 'Retrying...' : 'Retry'}
           </button>
@@ -46,7 +50,10 @@ export function ConnectionError({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl">
+    <div
+      className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl"
+      role="alert"
+    >
       <div className="rounded-full p-4 mb-4 bg-amber-500/10">
         <AlertTriangle className="h-8 w-8 text-amber-500" />
       </div>

@@ -225,12 +225,27 @@ export function getRadarAxisEndpoints(size: number, padding = 24): [number, numb
 
 /** Short, evocative archetypes derived from alignment scores. */
 const PERSONALITY_ARCHETYPES: Record<AlignmentDimension, string[]> = {
-  treasuryConservative: ['The Guardian', 'The Fiscal Hawk', 'The Prudent Steward'],
-  treasuryGrowth: ['The Builder', 'The Growth Champion', 'The Catalyst'],
-  decentralization: ['The Federalist', 'The Power Distributor', 'The Decentralizer'],
-  security: ['The Sentinel', 'The Cautious Architect', 'The Shield'],
-  innovation: ['The Pioneer', 'The Changemaker', 'The Innovator'],
-  transparency: ['The Beacon', 'The Transparent Champion', 'The Open Book'],
+  treasuryConservative: ['The Guardian', 'The Fiscal Hawk', 'The Prudent Steward', 'The Moderate'],
+  treasuryGrowth: ['The Builder', 'The Growth Architect', 'The Catalyst', 'The Pragmatist'],
+  decentralization: [
+    'The Federalist',
+    'The Power Distributor',
+    'The Decentralizer',
+    'The Balanced Voice',
+  ],
+  security: [
+    'The Sentinel',
+    'The Protocol Guardian',
+    'The Cautious Architect',
+    'The Measured Thinker',
+  ],
+  innovation: ['The Pioneer', 'The Changemaker', 'The Explorer', 'The Curious Mind'],
+  transparency: [
+    'The Beacon',
+    'The Open Advocate',
+    'The Transparency Champion',
+    'The Thoughtful Observer',
+  ],
 };
 
 /**
@@ -245,7 +260,45 @@ export function getPersonalityLabel(alignments: AlignmentScores): string {
 
   if (distance > 30) return labels[0];
   if (distance > 15) return labels[1];
-  return labels[2];
+  if (distance > 8) return labels[2];
+  return labels[3];
+}
+
+/**
+ * Derive a compound archetype from alignment scores by combining
+ * the top-2 dominant dimensions. Produces labels like
+ * "The Guardian with a Pioneer's curiosity".
+ *
+ * Only uses the compound form when both top dimensions have
+ * meaningful distance from center (>10). Otherwise falls back
+ * to the single archetype.
+ */
+export function getCompoundArchetype(alignments: AlignmentScores): string {
+  const primary = getPersonalityLabel(alignments);
+
+  // Find the top-2 dimensions by distance from 50
+  const ranked = DIMENSION_ORDER.map((dim) => ({
+    dim,
+    distance: Math.abs((alignments[dim] ?? 50) - 50),
+  })).sort((a, b) => b.distance - a.distance);
+
+  const [first, second] = ranked;
+
+  // Only compound when both dimensions have strong signal
+  if (first.distance <= 10 || second.distance <= 10) return primary;
+  // Skip if both map to the same dimension (shouldn't happen, but guard)
+  if (first.dim === second.dim) return primary;
+
+  const secondaryLabels = PERSONALITY_ARCHETYPES[second.dim];
+  // Pick a descriptor based on second dimension's strength
+  const secondaryDescriptor =
+    second.distance > 30
+      ? secondaryLabels[0]
+      : second.distance > 15
+        ? secondaryLabels[1]
+        : secondaryLabels[2];
+
+  return `${primary} with ${secondaryDescriptor} instincts`;
 }
 
 /**

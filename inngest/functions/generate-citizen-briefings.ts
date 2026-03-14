@@ -10,7 +10,12 @@
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { assembleHolderBriefContext, generateHolderBrief, storeBrief } from '@/lib/governanceBrief';
+import {
+  assembleHolderBriefContext,
+  generateAIHolderBrief,
+  generateHolderBrief,
+  storeBrief,
+} from '@/lib/governanceBrief';
 import { checkAndAwardCitizenMilestones } from '@/lib/citizenMilestones';
 import { errMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
@@ -93,7 +98,13 @@ export const generateCitizenBriefings = inngest.createFunction(
               continue;
             }
 
-            const brief = generateHolderBrief(ctx);
+            // Try AI generation for personalized headline; fall back to template
+            let brief;
+            try {
+              brief = await generateAIHolderBrief(ctx);
+            } catch {
+              brief = generateHolderBrief(ctx);
+            }
             await storeBrief(user.id, 'citizen', brief, epoch);
 
             // Award any new citizen milestones alongside briefing generation

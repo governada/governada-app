@@ -16,7 +16,9 @@ import { generateSpoNarrative } from '@/lib/narratives';
 import { cn } from '@/lib/utils';
 
 const TierCelebrationManager = nextDynamic(() =>
-  import('@/components/civica/shared/TierCelebrationManager').then((m) => m.TierCelebrationManager),
+  import('@/components/governada/shared/TierCelebrationManager').then(
+    (m) => m.TierCelebrationManager,
+  ),
 );
 const CitizenEndorsements = nextDynamic(
   () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
@@ -24,33 +26,38 @@ const CitizenEndorsements = nextDynamic(
 );
 const DetailedAnalysisGate = nextDynamic(
   () =>
-    import('@/components/civica/shared/DetailedAnalysisGate').then((m) => m.DetailedAnalysisGate),
+    import('@/components/governada/shared/DetailedAnalysisGate').then(
+      (m) => m.DetailedAnalysisGate,
+    ),
   { loading: () => <div className="h-16 animate-pulse bg-muted rounded-xl" /> },
 );
 const SpoTrustCard = nextDynamic(
-  () => import('@/components/civica/profiles/SpoTrustCard').then((m) => m.SpoTrustCard),
+  () => import('@/components/governada/profiles/SpoTrustCard').then((m) => m.SpoTrustCard),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-xl" /> },
 );
 const SpoIdentityCard = nextDynamic(
-  () => import('@/components/civica/profiles/SpoIdentityCard').then((m) => m.SpoIdentityCard),
+  () => import('@/components/governada/profiles/SpoIdentityCard').then((m) => m.SpoIdentityCard),
   { loading: () => <div className="h-24 animate-pulse bg-muted rounded-xl" /> },
 );
 const InterBodyDynamicsCard = nextDynamic(
   () =>
-    import('@/components/civica/profiles/InterBodyDynamicsCard').then(
+    import('@/components/governada/profiles/InterBodyDynamicsCard').then(
       (m) => m.InterBodyDynamicsCard,
     ),
   { loading: () => <div className="h-40 animate-pulse bg-muted rounded-xl" /> },
 );
 const SpoProfileTabsV2 = nextDynamic(
-  () => import('@/components/civica/profiles/SpoProfileTabsV2').then((m) => m.SpoProfileTabsV2),
+  () => import('@/components/governada/profiles/SpoProfileTabsV2').then((m) => m.SpoProfileTabsV2),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-xl" /> },
 );
 
-import { SpoProfileHero } from '@/components/civica/profiles/SpoProfileHero';
-import { PoolClaimCard } from '@/components/civica/profiles/PoolClaimCard';
+import { SpoProfileHero } from '@/components/governada/profiles/SpoProfileHero';
+import { WatchEntityButton } from '@/components/WatchEntityButton';
+import { PoolClaimCard } from '@/components/governada/profiles/PoolClaimCard';
+import { PoolProfileEditorGate } from '@/components/governada/profiles/PoolProfileEditorGate';
+import { FeatureGate } from '@/components/FeatureGate';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';
-import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/civica/cards/tierStyles';
+import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/governada/cards/tierStyles';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,9 +93,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     score != null && tier
       ? `${name} \u2014 SPO Governance Score: ${score} (${tier}) \u2014 Governada`
       : `${name} \u2014 SPO Governance Profile \u2014 Governada`;
+  const description = `SPO governance score, voting record, and alignment data for ${name} on Cardano.`;
+  const ogImageUrl = `https://governada.io/api/og/staking/${encodeURIComponent(poolId)}`;
   return {
     title,
-    description: `SPO governance score, voting record, and alignment data for ${name} on Cardano.`,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'profile',
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${name} governance card` }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 
@@ -98,7 +119,7 @@ async function getPoolRow(poolId: string) {
     const { data, error } = await supabase
       .from('pools')
       .select(
-        'pool_id, ticker, pool_name, pledge_lovelace, governance_score, participation_pct, deliberation_pct, consistency_pct, reliability_pct, governance_identity_pct, confidence, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake_lovelace, vote_count, governance_statement, current_tier, score_momentum, homepage_url, pool_status, claimed_by, claimed_at, retiring_epoch',
+        'pool_id, ticker, pool_name, pledge_lovelace, governance_score, participation_pct, deliberation_pct, consistency_pct, reliability_pct, governance_identity_pct, confidence, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency, delegator_count, live_stake_lovelace, vote_count, governance_statement, current_tier, score_momentum, homepage_url, pool_status, claimed_by, claimed_at, retiring_epoch, social_links',
       )
       .eq('pool_id', poolId)
       .single();
@@ -418,6 +439,9 @@ export default async function PoolProfilePage({ params }: PageProps) {
   const poolStatus = (poolRow.pool_status as string) ?? 'registered';
   const claimedBy = (poolRow.claimed_by as string) ?? null;
   const retiringEpoch = (poolRow.retiring_epoch as number) ?? null;
+  const socialLinks = Array.isArray(poolRow.social_links)
+    ? (poolRow.social_links as Array<{ uri: string; label?: string }>)
+    : [];
   const isRetired = poolStatus === 'retired';
   const isRetiring = poolStatus === 'retiring';
 
@@ -618,18 +642,18 @@ export default async function PoolProfilePage({ params }: PageProps) {
   // ── Tier progress bar ─────────────────────────────────────────────────────
 
   const tierProgressBar = tierProgress.pointsToNext != null && (
-    <div className="flex items-center gap-3 text-sm">
-      <span>
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
+      <span className="whitespace-nowrap">
         {tierProgress.pointsToNext} pts to{' '}
         <span className="text-primary font-bold">{tierProgress.nextTier}</span>
       </span>
-      <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden">
+      <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden shrink-0">
         <div
           className="h-full rounded-full bg-primary"
           style={{ width: `${tierProgress.percentWithinTier}%` }}
         />
       </div>
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
         {tierProgress.percentWithinTier}% through {tierProgress.currentTier}
       </span>
     </div>
@@ -729,7 +753,9 @@ export default async function PoolProfilePage({ params }: PageProps) {
           isRetired={isRetired}
           isRetiring={isRetiring}
           isClaimed={!!claimedBy}
-        />
+        >
+          <WatchEntityButton entityType="spo" entityId={poolId} />
+        </SpoProfileHero>
 
         {/* Chapter 2: Trust at a Glance — persona-gated trust metrics */}
         <SpoTrustCard
@@ -800,8 +826,16 @@ export default async function PoolProfilePage({ params }: PageProps) {
           </Card>
         )}
 
-        {/* Pool claim card */}
-        <PoolClaimCard poolId={poolId} poolName={displayName} claimedBy={claimedBy} />
+        {/* Pool claim card — gated behind spo_claim_flow feature flag */}
+        <FeatureGate flag="spo_claim_flow">
+          <PoolClaimCard poolId={poolId} poolName={displayName} claimedBy={claimedBy} />
+          <PoolProfileEditorGate
+            poolId={poolId}
+            claimedBy={claimedBy}
+            governanceStatement={governanceStatement}
+            socialLinks={socialLinks}
+          />
+        </FeatureGate>
 
         {/* Chapter 4: Detailed Analysis — progressive disclosure gate */}
         <DetailedAnalysisGate>

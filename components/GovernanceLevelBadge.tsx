@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Eye, Vote, Shield, Crown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { GlowBar } from '@/components/ui/GlowBar';
 import { type GovernanceLevel, getLevelDefinition, getLevelProgress } from '@/lib/governanceLevels';
 import { posthog } from '@/lib/posthog';
 
@@ -14,26 +15,30 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   Crown,
 };
 
-const COLOR_MAP: Record<string, { badge: string; icon: string; bar: string }> = {
+const COLOR_MAP: Record<string, { badge: string; icon: string; bar: string; glow: string }> = {
   slate: {
     badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
     icon: 'text-slate-500',
     bar: 'bg-slate-500',
+    glow: '#64748b',
   },
   blue: {
     badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
     icon: 'text-blue-500',
     bar: 'bg-blue-500',
+    glow: '#3b82f6',
   },
   amber: {
     badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
     icon: 'text-amber-500',
     bar: 'bg-amber-500',
+    glow: '#f59e0b',
   },
   green: {
     badge: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
     icon: 'text-green-500',
     bar: 'bg-green-500',
+    glow: '#22c55e',
   },
 };
 
@@ -89,12 +94,12 @@ export function GovernanceLevelBadge({
               <span>Next: {progress.nextLabel}</span>
               <span>{progress.percent}%</span>
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${colors.bar}`}
-                style={{ width: `${progress.percent}%` }}
-              />
-            </div>
+            <GlowBar
+              value={progress.percent}
+              fillClass={colors.bar}
+              glowColor={colors.glow}
+              height={6}
+            />
             {progress.hint && <p className="text-[10px] text-muted-foreground">{progress.hint}</p>}
           </div>
         )}

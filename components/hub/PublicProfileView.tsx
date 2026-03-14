@@ -7,6 +7,7 @@ import { useDRepReportCard, useDashboardCompetitive } from '@/hooks/queries';
 import { computeTierProgress, type PillarBreakdown } from '@/lib/scoring/tiers';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
 
 interface ProfileCheckItem {
   label: string;
@@ -190,6 +191,9 @@ export function PublicProfileView() {
           ))}
         </div>
       </div>
+
+      {/* Governance philosophy editor */}
+      {profileId && <GovernancePhilosophyEditor drepId={profileId} />}
 
       {/* Info about on-chain profiles */}
       <div className="rounded-xl border border-border bg-muted/30 p-4">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { GlowBar } from '@/components/ui/GlowBar';
 import type { ConfidenceSource } from '@/lib/matching/confidence';
 
 /* ─── Source colors ────────────────────────────────────── */
@@ -13,6 +14,14 @@ const SOURCE_COLORS: Record<string, string> = {
   proposalDiversity: 'bg-purple-500',
   engagement: 'bg-amber-500',
   delegation: 'bg-cyan-500',
+};
+
+const SOURCE_GLOW: Record<string, string> = {
+  quizAnswers: '#3b82f6',
+  pollVotes: '#22c55e',
+  proposalDiversity: '#a855f7',
+  engagement: '#f59e0b',
+  delegation: '#06b6d4',
 };
 
 const SOURCE_TEXT_COLORS: Record<string, string> = {
@@ -71,15 +80,12 @@ function SimpleConfidenceBar({ votesUsed, targetVotes = 15, className }: LegacyC
           {votesUsed}/{targetVotes} votes — {pct}%
         </span>
       </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all duration-500',
-            isLow ? 'bg-amber-500' : 'bg-green-500',
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <GlowBar
+        value={pct}
+        fillClass={isLow ? 'bg-amber-500' : 'bg-green-500'}
+        glowColor={isLow ? '#f59e0b' : '#22c55e'}
+        height={8}
+      />
     </div>
   );
 }
@@ -125,33 +131,40 @@ function ProgressiveConfidenceBar({
         </div>
       </div>
 
-      {/* Segmented progress bar */}
-      <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-        {hasBreakdown ? (
-          sources!.map((source) => {
-            if (source.score <= 0) return null;
-            return (
-              <div
-                key={source.key}
-                className={cn(
-                  'h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full',
-                  SOURCE_COLORS[source.key] ?? 'bg-primary',
-                )}
-                style={{ width: `${source.score}%` }}
-                title={`${source.label}: ${Math.round(source.score)}/${source.maxScore}`}
-              />
-            );
-          })
-        ) : (
-          <div
-            className={cn(
-              'h-full rounded-full transition-all duration-500',
-              isLow ? 'bg-amber-500' : 'bg-green-500',
-            )}
-            style={{ width: `${confidence}%` }}
-          />
-        )}
-      </div>
+      {/* Segmented progress bar with glow */}
+      {hasBreakdown ? (
+        <div className="relative h-2 w-full">
+          <div className="absolute inset-0 rounded-full bg-muted/30" />
+          <div className="absolute inset-0 flex rounded-full overflow-hidden">
+            {sources!.map((source) => {
+              if (source.score <= 0) return null;
+              return (
+                <div
+                  key={source.key}
+                  className={cn(
+                    'h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full',
+                    SOURCE_COLORS[source.key] ?? 'bg-primary',
+                  )}
+                  style={{
+                    width: `${source.score}%`,
+                    boxShadow: `0 0 6px ${SOURCE_GLOW[source.key] ?? '#3b82f6'}40`,
+                  }}
+                  title={`${source.label}: ${Math.round(source.score)}/${source.maxScore}`}
+                >
+                  <div className="h-[40%] bg-white/[0.12] rounded-t-full" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <GlowBar
+          value={confidence}
+          fillClass={isLow ? 'bg-amber-500' : 'bg-green-500'}
+          glowColor={isLow ? '#f59e0b' : '#22c55e'}
+          height={8}
+        />
+      )}
 
       {/* Expanded breakdown */}
       {expanded && sources && (

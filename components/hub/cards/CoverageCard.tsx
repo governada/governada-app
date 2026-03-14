@@ -70,35 +70,35 @@ export function CoverageCard() {
 
   return (
     <HubCard
-      href="/delegation"
+      href="/"
       urgency={urgency === 'default' ? 'default' : urgency}
-      label={`Governance coverage: ${verdict}`}
+      label={`Representation: ${verdict}`}
     >
       <div className="space-y-2.5">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Governance Coverage
+            How Well You&apos;re Represented
           </span>
         </div>
 
         {/* Two-item checklist */}
         <div className="space-y-1.5">
           <CoverageCheckItem
-            label="DRep Delegation"
+            label="Your Representative"
             sublabel={
               drepOk
-                ? 'Covers 5 of 7 action types'
-                : 'No active DRep — 5 action types unrepresented'
+                ? 'Votes on 5 of 7 decision types for you'
+                : 'No active representative \u2014 5 decision types with no voice'
             }
             checked={drepOk}
           />
           <CoverageCheckItem
-            label="Pool Delegation"
+            label="Your Staking Pool"
             sublabel={
               poolOk
-                ? 'Covers 2 of 7 action types'
-                : 'No governance-active pool — 2 action types unrepresented'
+                ? 'Covers 2 of 7 decision types'
+                : 'No governance-active pool \u2014 2 decision types uncovered'
             }
             checked={poolOk}
           />

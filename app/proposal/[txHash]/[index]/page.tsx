@@ -12,18 +12,19 @@ import { ProposalOutcomeSection } from '@/components/ProposalOutcomeSection';
 import { ProposalVoterTabs } from '@/components/ProposalVoterTabs';
 import { SimilarProposals } from '@/components/SimilarProposals';
 import { PageViewTracker } from '@/components/PageViewTracker';
-import { VoteAdoptionCurve } from '@/components/civica/charts/VoteAdoptionCurve';
-import { ProposalDimensionTags } from '@/components/civica/proposals/ProposalDimensionTags';
-import { ProposalLifecycleTimeline } from '@/components/civica/proposals/ProposalLifecycleTimeline';
+import { VoteAdoptionCurve } from '@/components/governada/charts/VoteAdoptionCurve';
+import { ProposalDimensionTags } from '@/components/governada/proposals/ProposalDimensionTags';
+import { ProposalLifecycleTimeline } from '@/components/governada/proposals/ProposalLifecycleTimeline';
 import { ImpactTags } from '@/components/engagement/ImpactTags';
 import { EngagementSummary } from '@/components/engagement/EngagementSummary';
 import { ConcernFlagBanner } from '@/components/engagement/ConcernFlagBanner';
 import { ProposalSentimentSection } from '@/components/engagement/ProposalSentimentSection';
 import { ConcernFlagsSection } from '@/components/engagement/ConcernFlagsSection';
-import { ProposalHeroV2 } from '@/components/civica/proposals/ProposalHeroV2';
-import { IntelligenceBriefing } from '@/components/civica/proposals/IntelligenceBriefing';
-import { DebateSection } from '@/components/civica/proposals/DebateSection';
-import { ActionPanel } from '@/components/civica/proposals/ActionPanel';
+import { ProposalHeroV2 } from '@/components/governada/proposals/ProposalHeroV2';
+import { WatchEntityButton } from '@/components/WatchEntityButton';
+import { IntelligenceBriefing } from '@/components/governada/proposals/IntelligenceBriefing';
+import { DebateSection } from '@/components/governada/proposals/DebateSection';
+import { ActionPanel } from '@/components/governada/proposals/ActionPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +37,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const proposalIndex = parseInt(indexStr, 10);
   const proposal = isNaN(proposalIndex) ? null : await getProposalByKey(txHash, proposalIndex);
   const title = proposal?.title || `Proposal ${txHash.slice(0, 12)}...`;
+  const description = proposal?.abstract
+    ? proposal.abstract.slice(0, 160)
+    : `Governance proposal details, votes, and analysis on Governada.`;
   return {
     title: `${title} — Governada`,
-    description: `Governance proposal details, votes, and analysis on Governada.`,
+    description,
+    openGraph: {
+      title: `${title} — Governada`,
+      description,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} — Governada`,
+      description,
+    },
   };
 }
 
@@ -96,20 +110,46 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
   const title = proposal.title || `Proposal ${txHash.slice(0, 12)}...`;
 
+  // JSON-LD structured data for governance proposal
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description: proposal.abstract || `Cardano governance proposal`,
+    url: `https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`,
+    publisher: {
+      '@type': 'Organization',
+      name: 'Governada',
+      url: 'https://governada.io',
+    },
+    about: {
+      '@type': 'Thing',
+      name: 'Cardano Governance',
+    },
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <PageViewTracker
         event="proposal_detail_viewed"
         properties={{ tx_hash: txHash, index: proposalIndex }}
+        discoveryEvent="proposal_viewed"
       />
 
-      <Breadcrumb
-        items={[
-          { label: 'Governance', href: '/' },
-          { label: 'Proposals', href: '/governance/proposals' },
-          { label: title },
-        ]}
-      />
+      <div className="flex items-center justify-between gap-2">
+        <Breadcrumb
+          items={[
+            { label: 'Governance', href: '/' },
+            { label: 'Proposals', href: '/governance/proposals' },
+            { label: title },
+          ]}
+        />
+        <WatchEntityButton entityType="proposal" entityId={`${txHash}:${proposalIndex}`} />
+      </div>
 
       {/* Zone 1: Hero — type-specific gradient, verdict strip, prominent title */}
       <ProposalHeroV2
@@ -133,7 +173,18 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         nclUtilization={nclUtilization}
       />
 
-      {/* Zone 2: Community Signals — engagement, concerns, dimension tags */}
+      {/* Zone 2: Take Action — vote flow + citizen voice side by side */}
+      <ActionPanel
+        txHash={txHash}
+        proposalIndex={proposalIndex}
+        title={title}
+        isOpen={isOpen}
+        proposalAbstract={proposal.abstract}
+        proposalType={proposal.proposalType}
+        aiSummary={proposal.aiSummary}
+      />
+
+      {/* Zone 3: Community Signals — engagement, concerns, dimension tags */}
       <div className="space-y-4">
         <EngagementSummary txHash={txHash} proposalIndex={proposalIndex} />
         <ConcernFlagBanner
@@ -156,24 +207,13 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         <ProposalDimensionTags relevantPrefs={proposal.relevantPrefs} />
       </div>
 
-      {/* Zone 3: Intelligence Briefing — AI summary + constitutional + params merged */}
+      {/* Zone 4: Intelligence Briefing — AI summary + constitutional + params merged */}
       <IntelligenceBriefing
         txHash={txHash}
         proposalIndex={proposalIndex}
         aiSummary={proposal.aiSummary}
         proposalType={proposal.proposalType}
         paramChanges={proposal.paramChanges}
-      />
-
-      {/* Zone 4: Take Action — vote flow + citizen voice side by side */}
-      <ActionPanel
-        txHash={txHash}
-        proposalIndex={proposalIndex}
-        title={title}
-        isOpen={isOpen}
-        proposalAbstract={proposal.abstract}
-        proposalType={proposal.proposalType}
-        aiSummary={proposal.aiSummary}
       />
 
       {/* Zone 5: The Debate — structured pro/con rationales */}

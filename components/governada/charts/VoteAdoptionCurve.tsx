@@ -5,6 +5,7 @@ import { scaleLinear } from 'd3-scale';
 import { area, stack, stackOrderNone, stackOffsetNone, type Series } from 'd3-shape';
 import { useChartDimensions, AreaGradient } from '@/lib/charts';
 import { cn } from '@/lib/utils';
+import type { VotePowerByEpoch } from '@/lib/data';
 
 interface VotePoint {
   epoch: number;
@@ -15,6 +16,8 @@ interface VotePoint {
 
 interface VoteAdoptionCurveProps {
   votes: VotePoint[];
+  /** When provided and non-empty, chart defaults to ADA voting power mode */
+  powerByEpoch?: VotePowerByEpoch[];
   className?: string;
 }
 
@@ -34,15 +37,52 @@ const STACK_KEYS = ['yes', 'no', 'abstain'] as const;
 
 type StackDatum = { epoch: number; yes: number; no: number; abstain: number };
 
-export function VoteAdoptionCurve({ votes, className }: VoteAdoptionCurveProps) {
+/** Format lovelace as compact ADA (e.g., 1.2B, 45.3M, 800K) */
+function formatAdaCompact(lovelace: number): string {
+  const ada = lovelace / 1_000_000;
+  if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${(ada / 1_000).toFixed(1)}K`;
+  return `${Math.round(ada)}`;
+}
+
+export function VoteAdoptionCurve({ votes, powerByEpoch, className }: VoteAdoptionCurveProps) {
   const { containerRef, dimensions } = useChartDimensions(220, {
     top: 28,
     right: 110,
     bottom: 32,
-    left: 48,
+    left: 56,
   });
 
-  const sorted = useMemo(() => [...votes].sort((a, b) => a.epoch - b.epoch), [votes]);
+  // Determine if we have meaningful power data
+  const hasPowerData = useMemo(() => {
+    if (!powerByEpoch || powerByEpoch.length === 0) return false;
+    return powerByEpoch.some((d) => d.yesPower > 0 || d.noPower > 0 || d.abstainPower > 0);
+  }, [powerByEpoch]);
+
+  const isPowerMode = hasPowerData;
+
+  // Build sorted source data — power or count mode
+  const sorted = useMemo(() => {
+    if (isPowerMode && powerByEpoch) {
+      return [...powerByEpoch]
+        .sort((a, b) => a.epoch - b.epoch)
+        .map((d) => ({
+          epoch: d.epoch,
+          yes: d.yesPower,
+          no: d.noPower,
+          abstain: d.abstainPower,
+        }));
+    }
+    return [...votes]
+      .sort((a, b) => a.epoch - b.epoch)
+      .map((d) => ({
+        epoch: d.epoch,
+        yes: d.yesCount,
+        no: d.noCount,
+        abstain: d.abstainCount,
+      }));
+  }, [isPowerMode, powerByEpoch, votes]);
 
   // Build cumulative stack data
   const stackData: StackDatum[] = useMemo(() => {
@@ -51,9 +91,9 @@ export function VoteAdoptionCurve({ votes, className }: VoteAdoptionCurveProps) 
       const prev = result[i - 1];
       result.push({
         epoch: sorted[i].epoch,
-        yes: (prev?.yes ?? 0) + sorted[i].yesCount,
-        no: (prev?.no ?? 0) + sorted[i].noCount,
-        abstain: (prev?.abstain ?? 0) + sorted[i].abstainCount,
+        yes: (prev?.yes ?? 0) + sorted[i].yes,
+        no: (prev?.no ?? 0) + sorted[i].no,
+        abstain: (prev?.abstain ?? 0) + sorted[i].abstain,
       });
     }
     return result;
@@ -109,6 +149,12 @@ export function VoteAdoptionCurve({ votes, className }: VoteAdoptionCurveProps) 
 
   const yTicks = useMemo(() => yScale.ticks(5), [yScale]);
 
+  // Format Y axis labels
+  const formatYTick = useMemo(() => {
+    if (!isPowerMode) return (v: number) => String(v);
+    return (v: number) => formatAdaCompact(v);
+  }, [isPowerMode]);
+
   const isSingleEpoch = stackData.length === 1;
 
   // Single-epoch bar rendering
@@ -157,12 +203,14 @@ export function VoteAdoptionCurve({ votes, className }: VoteAdoptionCurveProps) 
     return <div ref={containerRef} className={cn('w-full', className)} style={{ height: 220 }} />;
   }
 
+  const yAxisLabel = isPowerMode ? 'ADA' : 'Votes';
+
   return (
     <div
       ref={containerRef}
       className={cn('w-full', className)}
       role="img"
-      aria-label="Vote adoption over time"
+      aria-label={`Vote adoption over time${isPowerMode ? ' (voting power in ADA)' : ''}`}
     >
       <svg width={dimensions.width} height={220} className="overflow-visible" aria-hidden="true">
         <defs>
@@ -302,9 +350,22 @@ export function VoteAdoptionCurve({ votes, className }: VoteAdoptionCurveProps) 
               fontSize={11}
               fontFamily="var(--font-geist-mono)"
             >
-              {tick}
+              {formatYTick(tick)}
             </text>
           ))}
+
+          {/* Y axis label */}
+          <text
+            x={-margin.left + 8}
+            y={-12}
+            textAnchor="start"
+            fill="currentColor"
+            className="text-muted-foreground"
+            fontSize={10}
+            fontFamily="var(--font-geist-sans)"
+          >
+            {yAxisLabel}
+          </text>
 
           {/* Legend — top right */}
           <g transform={`translate(${innerWidth + 14}, 0)`}>

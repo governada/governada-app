@@ -927,6 +927,86 @@ export async function getVotesByProposal(
 }
 
 // ============================================================================
+// VOTE POWER BY EPOCH (for adoption curve)
+// ============================================================================
+
+export interface VotePowerByEpoch {
+  epoch: number;
+  yesPower: number;
+  noPower: number;
+  abstainPower: number;
+  yesCount: number;
+  noCount: number;
+  abstainCount: number;
+}
+
+/**
+ * Fetch aggregated voting power and counts per epoch for a proposal.
+ * Used by the VoteAdoptionCurve chart to show ADA-weighted power over time.
+ */
+export async function getVotePowerByEpoch(
+  txHash: string,
+  proposalIndex: number,
+): Promise<VotePowerByEpoch[]> {
+  try {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from('drep_votes')
+      .select('epoch_no, vote, voting_power_lovelace')
+      .eq('proposal_tx_hash', txHash)
+      .eq('proposal_index', proposalIndex)
+      .not('epoch_no', 'is', null);
+
+    if (error || !data) return [];
+
+    // Aggregate by epoch
+    const byEpoch = new Map<
+      number,
+      {
+        yesPower: number;
+        noPower: number;
+        abstainPower: number;
+        yesCount: number;
+        noCount: number;
+        abstainCount: number;
+      }
+    >();
+
+    for (const row of data) {
+      const epoch = row.epoch_no!;
+      const power = Number(row.voting_power_lovelace) || 0;
+      const bucket = byEpoch.get(epoch) ?? {
+        yesPower: 0,
+        noPower: 0,
+        abstainPower: 0,
+        yesCount: 0,
+        noCount: 0,
+        abstainCount: 0,
+      };
+
+      if (row.vote === 'Yes') {
+        bucket.yesPower += power;
+        bucket.yesCount++;
+      } else if (row.vote === 'No') {
+        bucket.noPower += power;
+        bucket.noCount++;
+      } else {
+        bucket.abstainPower += power;
+        bucket.abstainCount++;
+      }
+
+      byEpoch.set(epoch, bucket);
+    }
+
+    return [...byEpoch.entries()].sort(([a], [b]) => a - b).map(([epoch, d]) => ({ epoch, ...d }));
+  } catch (err) {
+    logger.error('[Data] getVotePowerByEpoch error', { error: err });
+    return [];
+  }
+}
+
+// ============================================================================
 // SPO & CC VOTES
 // ============================================================================
 

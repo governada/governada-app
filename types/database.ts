@@ -528,6 +528,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      cc_fidelity_proposal_snapshots: {
+        Row: {
+          cc_hot_id: string;
+          constitutional_grounding_score: number | null;
+          eligible_proposals: number | null;
+          fidelity_score: number | null;
+          participation_score: number | null;
+          proposal_epoch: number | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          rationale_quality_score: number | null;
+          snapshot_at: string | null;
+          votes_cast: number | null;
+        };
+        Insert: {
+          cc_hot_id: string;
+          constitutional_grounding_score?: number | null;
+          eligible_proposals?: number | null;
+          fidelity_score?: number | null;
+          participation_score?: number | null;
+          proposal_epoch?: number | null;
+          proposal_index?: number;
+          proposal_tx_hash: string;
+          rationale_quality_score?: number | null;
+          snapshot_at?: string | null;
+          votes_cast?: number | null;
+        };
+        Update: {
+          cc_hot_id?: string;
+          constitutional_grounding_score?: number | null;
+          eligible_proposals?: number | null;
+          fidelity_score?: number | null;
+          participation_score?: number | null;
+          proposal_epoch?: number | null;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          rationale_quality_score?: number | null;
+          snapshot_at?: string | null;
+          votes_cast?: number | null;
+        };
+        Relationships: [];
+      };
       cc_fidelity_snapshots: {
         Row: {
           cc_hot_id: string;
@@ -564,52 +606,10 @@ export type Database = {
         };
         Relationships: [];
       };
-      cc_fidelity_proposal_snapshots: {
-        Row: {
-          cc_hot_id: string;
-          constitutional_grounding_score: number | null;
-          eligible_proposals: number | null;
-          fidelity_score: number | null;
-          participation_score: number | null;
-          proposal_epoch: number | null;
-          proposal_index: number;
-          proposal_tx_hash: string;
-          reasoning_quality_score: number | null;
-          snapshotted_at: string | null;
-          votes_cast: number | null;
-        };
-        Insert: {
-          cc_hot_id: string;
-          constitutional_grounding_score?: number | null;
-          eligible_proposals?: number | null;
-          fidelity_score?: number | null;
-          participation_score?: number | null;
-          proposal_epoch?: number | null;
-          proposal_index: number;
-          proposal_tx_hash: string;
-          reasoning_quality_score?: number | null;
-          snapshotted_at?: string | null;
-          votes_cast?: number | null;
-        };
-        Update: {
-          cc_hot_id?: string;
-          constitutional_grounding_score?: number | null;
-          eligible_proposals?: number | null;
-          fidelity_score?: number | null;
-          participation_score?: number | null;
-          proposal_epoch?: number | null;
-          proposal_index?: number;
-          proposal_tx_hash?: string;
-          reasoning_quality_score?: number | null;
-          snapshotted_at?: string | null;
-          votes_cast?: number | null;
-        };
-        Relationships: [];
-      };
       cc_members: {
         Row: {
-          authorization_epoch: number | null;
           author_name: string | null;
+          authorization_epoch: number | null;
           avg_article_coverage: number | null;
           avg_reasoning_quality: number | null;
           cc_cold_id: string | null;
@@ -629,8 +629,8 @@ export type Database = {
           votes_cast: number | null;
         };
         Insert: {
-          authorization_epoch?: number | null;
           author_name?: string | null;
+          authorization_epoch?: number | null;
           avg_article_coverage?: number | null;
           avg_reasoning_quality?: number | null;
           cc_cold_id?: string | null;
@@ -650,8 +650,8 @@ export type Database = {
           votes_cast?: number | null;
         };
         Update: {
-          authorization_epoch?: number | null;
           author_name?: string | null;
+          authorization_epoch?: number | null;
           avg_article_coverage?: number | null;
           avg_reasoning_quality?: number | null;
           cc_cold_id?: string | null;
@@ -3039,6 +3039,89 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      proposal_brief_feedback: {
+        Row: {
+          brief_id: string;
+          created_at: string;
+          helpful: boolean;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          brief_id: string;
+          created_at?: string;
+          helpful: boolean;
+          id?: string;
+          user_id: string;
+        };
+        Update: {
+          brief_id?: string;
+          created_at?: string;
+          helpful?: boolean;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_brief_feedback_brief_id_fkey';
+            columns: ['brief_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_briefs';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      proposal_briefs: {
+        Row: {
+          content: Json;
+          conviction_score: number;
+          created_at: string;
+          generation_time_ms: number | null;
+          helpful_count: number;
+          id: string;
+          model_used: string | null;
+          not_helpful_count: number;
+          polarization_score: number;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          rationale_count: number;
+          rationale_hash: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          content?: Json;
+          conviction_score?: number;
+          created_at?: string;
+          generation_time_ms?: number | null;
+          helpful_count?: number;
+          id?: string;
+          model_used?: string | null;
+          not_helpful_count?: number;
+          polarization_score?: number;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          rationale_count?: number;
+          rationale_hash?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          content?: Json;
+          conviction_score?: number;
+          created_at?: string;
+          generation_time_ms?: number | null;
+          helpful_count?: number;
+          id?: string;
+          model_used?: string | null;
+          not_helpful_count?: number;
+          polarization_score?: number;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          rationale_count?: number;
+          rationale_hash?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       proposal_classifications: {
         Row: {

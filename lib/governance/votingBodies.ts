@@ -50,3 +50,16 @@ export function canBodyVote(body: GovernanceBody, proposalType: string): boolean
   if (body === 'cc') return CC_VOTABLE_TYPES.includes(proposalType);
   return false;
 }
+
+/**
+ * Human-readable note explaining why certain governance bodies
+ * are not eligible to vote on a given proposal type.
+ * Returns null when all bodies are eligible.
+ */
+export function getIneligibilityNote(proposalType: string): string | null {
+  if (DREP_ONLY_TYPES.includes(proposalType)) {
+    const label = proposalType === 'TreasuryWithdrawals' ? 'Treasury Withdrawals' : 'Info Actions';
+    return `SPOs and CC members are not eligible to vote on ${label}.`;
+  }
+  return null;
+}

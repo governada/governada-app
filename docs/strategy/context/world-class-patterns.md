@@ -205,6 +205,42 @@ _(Patterns for finding, filtering, matching, recommendation)_
 - **Applicable to**: DRep score trajectory chart with tier names, per-epoch score change attribution
 - **Adoption difficulty**: Easy — score history + tiers exist, need timeline chart + per-epoch attribution
 
+#### Viewer-Relative Profile (Decision Engine Pattern)
+
+- **Source**: ISideWith (quiz → candidate match) + LinkedIn "How You Match" (gap analysis) + FiveThirtyEight Trump Score (predicted vs. actual)
+- **Discovered**: 2026-03-14 (explore-feature: DRep profiles)
+- **What they do**: ISideWith shows per-issue agreement/disagreement with candidates after user answers quiz. LinkedIn shows which job requirements you meet/miss. FiveThirtyEight shows the delta between predicted and actual legislator behavior based on constituency.
+- **Why it's world-class**: Transforms a static entity page into a personalized decision tool. The profile adapts to the viewer, making evaluation feel personal rather than generic. Gap analysis (where you DON'T align) is more actionable than match percentage. The "predicted vs. actual" framing surfaces the most interesting behavior — surprises and deviations.
+- **Applicable to**: DRep profiles showing viewer-specific alignment with per-proposal agreement/disagreement breakdown. Inline quiz for viewers without data. Delegation simulation ("if you had delegated 6 months ago...").
+- **Adoption difficulty**: Medium — matching engine exists, needs proposal-level alignment computation + viewer-aware rendering
+
+#### Prompt-Based Personality Expression
+
+- **Source**: Hinge prompts — https://hinge.co/newsroom/prompt-feedback
+- **Discovered**: 2026-03-14 (explore-feature: DRep profiles)
+- **What they do**: Profiles built around 3 written prompts chosen from hundreds ("I'm looking for someone who...", "My most controversial opinion is..."). AI coaches users to write better responses. Likes on text prompts are 47% more likely to lead to a date than likes on photos.
+- **Why it's world-class**: Structured prompts force personality expression within constraints while remaining comparable across profiles. Text outperforming photos proves substance drives decisions when UX enables it. The prompt library means everyone answers different questions, making profiles feel unique.
+- **Applicable to**: DRep governance prompts ("The governance decision I'm most proud of...", "I believe Cardano's treasury should...", "The biggest risk to governance is..."). Standardized yet personal. Enables comparison.
+- **Adoption difficulty**: Easy — need prompt library + DRep prompt responses stored in metadata
+
+#### Multi-Pillar Evaluation with Forward-Looking Separation
+
+- **Source**: Morningstar Medalist Rating — https://www.morningstar.com/company/morningstar-ratings-faq
+- **Discovered**: 2026-03-14 (explore-feature: DRep profiles)
+- **What they do**: Five pillars (People, Parent, Process, Performance, Price) each rated separately. Separates "what happened" (Performance) from "how they operate" (Process, People) and "will it continue" (Parent, Price). Peer-relative star ratings within category.
+- **Why it's world-class**: Prevents single-score blindness. A 5-star fund in one category may return less than a 2-star in another — context and category matter. Separating backward-looking metrics from forward-looking assessment prevents anchoring on past performance alone.
+- **Applicable to**: DRep evaluation separating Track Record (past votes, outcomes) from Operating Style (consistency, transparency, responsiveness) and Outlook (delegation momentum, alignment trend, engagement trajectory). Peer-relative within size tier.
+- **Adoption difficulty**: Medium — scoring pillars exist, need reframing into past/present/future narrative
+
+#### Anti-Pattern: Single-Dimensional Score (Klout Failure)
+
+- **Source**: Klout (shut down 2018) — https://www.sunsethq.com/blog/why-did-klout-fail
+- **Discovered**: 2026-03-14 (explore-feature: DRep profiles)
+- **What they did**: Single 1-100 "influence score" from social media. Justin Bieber scored higher than Obama. 95% of variance explained by follower count. Gameable, contextless, no predictive value.
+- **Why it's notable**: Proves that reducing multi-dimensional behavior to a single number without visible dimensional breakdown destroys meaning and trust. Cross-context mashup ignored domain relevance. Perverse incentives made content boring as users optimized for the score.
+- **Applicable to**: AVOID in governance scoring. Always show dimensional breakdown alongside composite score. Include anti-metrics (pair participation with quality). Make methodology transparent. Don't let any single input dominate.
+- **Adoption difficulty**: N/A — anti-pattern to avoid
+
 ### Data Visualization & Intelligence
 
 #### Sankey Money Flow Visualization
@@ -606,6 +642,82 @@ _(Patterns for finding, filtering, matching, recommendation)_
 - **Why it's world-class**: Solves notification fatigue by designing for periphery first, foreground only when thresholds crossed. Default state is quiet — alerts earn trust by not crying wolf.
 - **Applicable to**: Citizen inbox default is quiet. Most epochs: "All is well." Alerts only for threshold crossings (DRep missed vote, alignment drift > moderate, score dropped tier).
 - **Adoption difficulty**: Easy — quiet mode already exists, needs threshold calibration
+
+### Deliberation & Debate
+
+_(Patterns for structured discussion, argument quality, consensus finding, governance discourse)_
+
+#### Bridging Over Majority (Cross-Partisan Agreement)
+
+- **Source**: X/Twitter Community Notes + Pol.is/vTaiwan — https://en.wikipedia.org/wiki/Community_Notes + https://pol.is/
+- **Discovered**: 2026-03-14
+- **What they do**: Community Notes publishes context notes only when contributors who historically disagree both rate them helpful (bridging algorithm, 0.4+ threshold). Pol.is uses PCA to visualize opinion clusters and surfaces "bridging statements" that earn agreement across groups. vTaiwan used this to pass gig economy regulation with 90%+ approval.
+- **Why it's world-class**: Inverts the typical incentive structure — instead of rewarding the most popular take, rewards the most unifying one. Reduces polarization by design. Community Notes reduced misinformation engagement 25-34% in A/B tests.
+- **Applicable to**: Proposal debate section — surface DRep arguments that earn agreement from DReps who typically vote differently. "Bridging rationales" as a new quality signal.
+- **Adoption difficulty**: Medium — needs voting bloc classification + cross-bloc agreement scoring
+
+#### Standalone Arguments, No Direct Replies
+
+- **Source**: Your Priorities (Citizens Foundation) — https://citizens.is/your-priorities-features-overview/
+- **Discovered**: 2026-03-14
+- **What they do**: Users add "points for" or "points against" an idea. Others can vote a point up/down but CANNOT reply directly — they must write a standalone counterpoint. AI scans for toxicity. Used by 100+ governments, 100M+ citizens.
+- **Why it's world-class**: Makes trolling structurally impossible. Forces quality argumentation by eliminating the ad-hominem reply chain. Produces clean, analyzable signal rather than threaded noise.
+- **Applicable to**: Any citizen participation beyond sentiment — if Governada ever allows text contributions, this pattern prevents the failure mode that killed every governance forum.
+- **Adoption difficulty**: Easy — the constraint IS the feature
+
+#### Argument Trees with Visual Hierarchy
+
+- **Source**: Kialo — https://www.kialo-edu.com/
+- **Discovered**: 2026-03-14
+- **What they do**: Every contribution must be tagged as pro or con to a specific claim, creating a navigable argument tree. Users view as tree or sunburst visualization. Flaws in reasoning become visually obvious. Forces structured thinking over emotional reactions.
+- **Why it's world-class**: Makes the STRUCTURE of a debate visible, not just the volume. Users can navigate to the specific sub-argument they care about. Quality is self-evident from the tree shape.
+- **Applicable to**: Deep-dive debate view for engaged users — AI could auto-extract claim trees from DRep rationales
+- **Adoption difficulty**: Hard — requires argument extraction + tree visualization + significant UX design
+
+#### AI Consensus Synthesis (Habermas Machine)
+
+- **Source**: Google DeepMind Habermas Machine — https://www.science.org/doi/10.1126/science.adq2852
+- **Discovered**: 2026-03-14
+- **What they do**: LLM writes "group statements" capturing shared perspectives of discussants, inspired by Habermas's communicative action theory. In experiments, groups consistently preferred AI-generated consensus statements over human-written ones — rated higher for quality, clarity, informativeness, and fairness.
+- **Why it's world-class**: Proves AI can find genuine common ground better than humans. The synthesis isn't a summary — it's a bridge document that both sides endorse.
+- **Applicable to**: Proposal debate synthesis — "Here's what DReps who voted differently actually agree on." Requires careful minority representation auditing.
+- **Adoption difficulty**: Medium — AI infrastructure exists, needs calibration + bias auditing
+
+#### Opinion Clustering and Interactive Maps
+
+- **Source**: Talk to the City (AI Objectives Institute) — https://ai.objectives.institute/talk-to-the-city
+- **Discovered**: 2026-03-14
+- **What they do**: Open-source AI pipeline extracts key arguments from democratic input, clusters using UMAP + HDBSCAN + GPT-4, visualizes as navigable opinion maps. Used by Taiwan's Ministry of Digital Affairs for AI governance deliberation with 1000+ participants. Key learning: most users preferred simple cluster views over scatter plots.
+- **Why it's world-class**: Scales deliberation to thousands without losing nuance. The interactive map lets users explore the landscape of opinion rather than reading every comment.
+- **Applicable to**: Cross-proposal opinion mapping — visualize where the Cardano community stands on governance themes, not just individual proposals
+- **Adoption difficulty**: Hard — requires clustering pipeline + visualization + significant data volume
+
+#### Pairwise Comparison for Argument Quality
+
+- **Source**: All Our Ideas (Princeton) — http://www.allourideas.org/about
+- **Discovered**: 2026-03-14
+- **What they do**: Present two arguments at a time, ask which is more compelling. Users can also submit new arguments. Algorithm prioritizes showing under-voted items. 29.7M responses collected. Cognitively simpler than rating all options.
+- **Why it's world-class**: Eliminates choice paralysis and position bias. Produces clean ordinal rankings with minimal cognitive load. The "submit new" option ensures collective intelligence isn't limited to pre-defined options.
+- **Applicable to**: Surfacing the strongest arguments for/against proposals — instead of upvoting individual rationales, pairwise comparison produces more reliable signal
+- **Adoption difficulty**: Medium — needs comparison UI + ranking algorithm
+
+#### Polarization as Explicit Metric
+
+- **Source**: Ethelo — https://ethelo.com/technology/
+- **Discovered**: 2026-03-14
+- **What they do**: "Conflict" metric explicitly quantifies how polarized the group is on a decision. The Ethelo Score measures both popularity AND fairness of distribution. Shows not just the majority position but the distribution shape — are people clustered or spread?
+- **Why it's world-class**: Most voting systems hide polarization behind majority numbers. Ethelo makes the disagreement visible, which changes how decision-makers interpret results.
+- **Applicable to**: Proposal sentiment display — showing polarization level alongside approval/opposition bars. "73% support, low polarization" vs "73% support, high polarization" are very different signals.
+- **Adoption difficulty**: Easy — can be computed from existing sentiment data
+
+#### Progressive Trust for Discussion Quality
+
+- **Source**: Discourse — https://www.discourse.org/ + Hacker News
+- **Discovered**: 2026-03-14
+- **What they do**: Discourse: 5 trust levels (New → Basic → Member → Regular → Leader), each unlocking capabilities. HN: downvoting restricted to 500+ karma users. Both: quality improves because newcomers earn capabilities through demonstrated good behavior, not just time.
+- **Why it's world-class**: Solves the scale/quality tradeoff that kills most discussion platforms. Quality doesn't degrade as user count grows because capabilities are earned.
+- **Applicable to**: Any future text participation features — gate deeper actions behind governance engagement history (participation score, delegation history, civic identity level)
+- **Adoption difficulty**: Easy — civic identity / milestones infrastructure already exists
 
 ### Performance & Perceived Speed
 

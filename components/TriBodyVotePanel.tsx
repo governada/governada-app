@@ -6,7 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { TriBodyVoteBar } from '@/components/TriBodyVoteBar';
 import { ThresholdMeter } from '@/components/ThresholdMeter';
 import { Users, Server, ShieldCheck, TrendingUp, TrendingDown, Equal } from 'lucide-react';
-import { getVotingBodies, type GovernanceBody } from '@/lib/governance/votingBodies';
+import {
+  getVotingBodies,
+  getIneligibilityNote,
+  type GovernanceBody,
+} from '@/lib/governance/votingBodies';
 import type { TriBodyVotes } from '@/lib/data';
 
 const BODY_CONFIG: Record<GovernanceBody, { label: string; icon: typeof Users; color: string }> = {
@@ -40,11 +44,13 @@ function BodyColumn({
   icon: Icon,
   color,
   votes,
+  isOpen,
 }: {
   label: string;
   icon: typeof Users;
   color: string;
   votes: { yes: number; no: number; abstain: number };
+  isOpen?: boolean;
 }) {
   const total = votes.yes + votes.no + votes.abstain;
   if (total === 0) {
@@ -54,7 +60,9 @@ function BodyColumn({
           <Icon className={`h-4 w-4 ${color}`} />
           <span className="text-sm font-medium">{label}</span>
         </div>
-        <p className="text-xs text-muted-foreground">No votes yet</p>
+        <p className="text-xs text-muted-foreground">
+          {isOpen ? 'No votes yet' : `No ${label} participated`}
+        </p>
       </div>
     );
   }
@@ -157,7 +165,7 @@ export function TriBodyVotePanel({
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle>
-            {eligibleBodies.length === 1 ? 'DRep Governance Votes' : 'Governance Votes'}
+            {eligibleBodies.length === 1 ? 'DRep Voting Power' : 'Governance Voting Power'}
           </CardTitle>
           {alignment && eligibleBodies.length > 1 && (
             <Badge
@@ -183,32 +191,9 @@ export function TriBodyVotePanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <TriBodyVoteBar
-          size="lg"
-          drep={triBody.drep}
-          spo={hasSpo ? triBody.spo : undefined}
-          cc={hasCc ? triBody.cc : undefined}
-        />
-
-        <div className={`grid ${gridCols} gap-3`}>
-          {eligibleBodies.map((body) => {
-            const config = BODY_CONFIG[body];
-            return (
-              <BodyColumn
-                key={body}
-                label={config.label}
-                icon={config.icon}
-                color={config.color}
-                votes={triBody[body]}
-              />
-            );
-          })}
-        </div>
-
-        {/* Integrated DRep voting power threshold (replaces standalone card) */}
+        {/* PRIMARY: DRep voting power threshold — this is what determines outcomes */}
         {showThreshold && (
-          <div className="pt-2 border-t border-border/50">
-            <p className="text-xs font-medium text-muted-foreground mb-2">DRep Voting Power</p>
+          <div>
             <ThresholdMeter
               txHash={txHash}
               proposalIndex={proposalIndex}
@@ -218,13 +203,24 @@ export function TriBodyVotePanel({
               abstainCount={abstainCount!}
               totalVotes={totalVotes!}
               isOpen={isOpen!}
-              variant="compact"
+              variant="full"
             />
-            <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-              {totalVotes} DReps voted on this proposal
-            </p>
           </div>
         )}
+
+        {/* SECONDARY: Per-body vote breakdown bars (counts in tooltips) */}
+        <TriBodyVoteBar
+          size="lg"
+          drep={triBody.drep}
+          spo={hasSpo ? triBody.spo : undefined}
+          cc={hasCc ? triBody.cc : undefined}
+        />
+
+        {/* Ineligibility note when some governance bodies cannot vote */}
+        {(() => {
+          const note = getIneligibilityNote(proposalType);
+          return note ? <p className="text-xs text-muted-foreground text-center">{note}</p> : null;
+        })()}
 
         {alignmentCallout && (
           <div className="rounded-md bg-muted/40 px-3 py-2 text-sm text-muted-foreground">

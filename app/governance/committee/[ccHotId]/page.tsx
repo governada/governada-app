@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { getCCFidelityHistory, getCCMembersFidelity } from '@/lib/data';
+import {
+  getCCFidelityHistory,
+  getCCMembersFidelity,
+  getCCProposalFidelityHistory,
+} from '@/lib/data';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { Breadcrumb } from '@/components/shared/Breadcrumb';
 import { CCMemberProfileClient } from '@/components/cc/CCMemberProfileClient';
@@ -39,6 +43,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     { data: rationales },
     { data: alignmentRows },
     fidelityHistory,
+    proposalFidelityHistory,
     allMembers,
     { data: proposals },
   ] = await Promise.all([
@@ -60,6 +65,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
         'proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct, spo_yes_pct, spo_no_pct',
       ),
     getCCFidelityHistory(decodedId),
+    getCCProposalFidelityHistory(decodedId),
     getCCMembersFidelity(),
     supabase.from('proposals').select('tx_hash, proposal_index, title, proposal_type'),
   ]);
@@ -166,6 +172,14 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
       }
     : null;
 
+  // Derive authorization epoch from earliest vote if not stored on the member
+  const authorizationEpoch: number | null =
+    (member as Record<string, unknown>)?.authorization_epoch != null
+      ? Number((member as Record<string, unknown>).authorization_epoch)
+      : safeVotes.length > 0
+        ? Math.min(...safeVotes.map((v) => v.epoch as number))
+        : null;
+
   const profileData = {
     ccHotId: decodedId,
     authorName,
@@ -173,6 +187,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     fidelityGrade: member?.fidelity_grade ?? null,
     status: member?.status ?? null,
     expirationEpoch: member?.expiration_epoch ?? null,
+    authorizationEpoch,
     rank: rank > 0 ? rank : null,
     totalScored,
     totalVotes,
@@ -191,6 +206,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     pillarScores,
     enrichedVotes,
     fidelityHistory,
+    proposalFidelityHistory,
   };
 
   return (

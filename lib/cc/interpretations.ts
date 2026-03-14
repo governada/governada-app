@@ -282,6 +282,22 @@ export function generateMemberVerdict(input: MemberVerdictInput): string {
 }
 
 // ---------------------------------------------------------------------------
+// Term Context
+// ---------------------------------------------------------------------------
+
+export function interpretTermContext(
+  authorizationEpoch: number | null,
+  expirationEpoch: number | null,
+  eligibleProposals: number,
+  totalProposals: number,
+): string {
+  if (authorizationEpoch == null) return 'Authorization epoch unknown.';
+  const expStr = expirationEpoch != null ? `, term ends epoch ${expirationEpoch}` : '';
+  if (totalProposals === 0) return `Authorized since epoch ${authorizationEpoch}${expStr}.`;
+  return `Authorized since epoch ${authorizationEpoch}${expStr}. ${eligibleProposals} of ${totalProposals} total proposals fell within their term.`;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

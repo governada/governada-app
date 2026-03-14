@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Vote,
@@ -12,9 +13,15 @@ import {
   Scale,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ArrowRight,
+  ArrowLeft,
+  TrendingUp,
+  Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import dynamic from 'next/dynamic';
 
@@ -23,6 +30,8 @@ const CCTransparencyTrend = dynamic(
     import('@/components/cc/CCTransparencyTrend').then((m) => ({ default: m.CCTransparencyTrend })),
   { ssr: false, loading: () => <div className="h-48 animate-pulse bg-muted rounded-xl" /> },
 );
+import { CCRecentVotes } from '@/components/cc/CCRecentVotes';
+import { CCConstitutionalReasoning } from '@/components/cc/CCConstitutionalReasoning';
 import { CopyableAddress } from '@/components/CopyableAddress';
 import {
   interpretFidelityScore,
@@ -32,13 +41,13 @@ import {
   interpretPillarStrengthWeakness,
 } from '@/lib/cc/interpretations';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
-import type { CCFidelitySnapshot } from '@/lib/data';
+import type { CCFidelitySnapshot, CCProposalFidelitySnapshot } from '@/lib/data';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface EnrichedVote {
+export interface EnrichedVote {
   proposalTxHash: string;
   proposalIndex: number;
   vote: string;
@@ -65,6 +74,7 @@ interface ProfileData {
   fidelityGrade: string | null;
   status: string | null;
   expirationEpoch: number | null;
+  authorizationEpoch: number | null;
   rank: number | null;
   totalScored: number;
   totalVotes: number;
@@ -83,6 +93,7 @@ interface ProfileData {
   pillarScores: PillarScores | null;
   enrichedVotes: EnrichedVote[];
   fidelityHistory: CCFidelitySnapshot[];
+  proposalFidelityHistory?: CCProposalFidelitySnapshot[];
 }
 
 // ---------------------------------------------------------------------------
@@ -260,6 +271,27 @@ function KeyStats({ data }: { data: ProfileData }) {
 }
 
 // ---------------------------------------------------------------------------
+// Term Context Line
+// ---------------------------------------------------------------------------
+
+function TermContext({ data }: { data: ProfileData }) {
+  const parts: string[] = [];
+  if (data.authorizationEpoch != null) {
+    parts.push(`Authorized since epoch ${data.authorizationEpoch}`);
+  }
+  if (data.expirationEpoch != null) {
+    parts.push(`Term expires epoch ${data.expirationEpoch}`);
+  }
+  if (parts.length === 0) return null;
+  return (
+    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+      <ShieldCheck className="h-3 w-3 shrink-0" />
+      {parts.join(' \u2022 ')}
+    </p>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PillarBar (reused from old page, adapted)
 // ---------------------------------------------------------------------------
 
@@ -302,65 +334,131 @@ function PillarBar({
 }
 
 // ---------------------------------------------------------------------------
-// Overview Tab
+// Pillar Breakdown (extracted for reuse between overview and deep)
 // ---------------------------------------------------------------------------
 
-function OverviewTab({ data }: { data: ProfileData }) {
+function PillarBreakdown({ data }: { data: ProfileData }) {
+  if (!data.pillarScores || data.fidelityScore == null) return null;
   return (
-    <div className="space-y-6">
-      {/* Pillar breakdown */}
-      {data.pillarScores && data.fidelityScore != null && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Scale className="h-4 w-4" />
-            Constitutional Fidelity Breakdown
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <PillarBar
-              icon={<Vote className="h-3.5 w-3.5" />}
-              label="Participation"
-              weight="30%"
-              score={data.pillarScores.participation}
-              delay={0}
-            />
-            <PillarBar
-              icon={<BookOpen className="h-3.5 w-3.5" />}
-              label="Constitutional Grounding"
-              weight="40%"
-              score={data.pillarScores.constitutionalGrounding}
-              delay={0.1}
-            />
-            <PillarBar
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-              label="Reasoning Quality"
-              weight="30%"
-              score={data.pillarScores.reasoningQuality}
-              delay={0.2}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Fidelity trend */}
-      <CCTransparencyTrend history={data.fidelityHistory} />
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Scale className="h-4 w-4" />
+        Constitutional Fidelity Breakdown
+      </h3>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <PillarBar
+          icon={<Vote className="h-3.5 w-3.5" />}
+          label="Participation"
+          weight="30%"
+          score={data.pillarScores.participation}
+          delay={0}
+        />
+        <PillarBar
+          icon={<BookOpen className="h-3.5 w-3.5" />}
+          label="Constitutional Grounding"
+          weight="40%"
+          score={data.pillarScores.constitutionalGrounding}
+          delay={0.1}
+        />
+        <PillarBar
+          icon={<Sparkles className="h-3.5 w-3.5" />}
+          label="Reasoning Quality"
+          weight="30%"
+          score={data.pillarScores.reasoningQuality}
+          delay={0.2}
+        />
+      </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Voting Record Tab (paginated)
+// Voting Record Tab (paginated, with filters for Level 3)
 // ---------------------------------------------------------------------------
 
 function VotingRecordTab({ votes }: { votes: EnrichedVote[] }) {
   const [page, setPage] = useState(0);
-  const totalPages = Math.ceil(votes.length / VOTES_PER_PAGE);
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [alignmentFilter, setAlignmentFilter] = useState<'all' | 'aligned' | 'diverged'>('all');
+
+  // Available proposal types
+  const proposalTypes = useMemo(() => {
+    const types = new Set(votes.map((v) => v.proposalType));
+    return Array.from(types).sort();
+  }, [votes]);
+
+  // Filtered votes
+  const filteredVotes = useMemo(() => {
+    let result = votes;
+    if (typeFilter !== 'all') {
+      result = result.filter((v) => v.proposalType === typeFilter);
+    }
+    if (alignmentFilter !== 'all') {
+      result = result.filter((v) => {
+        if (!v.drepMajority || v.drepMajority === 'Abstain') return false;
+        const isAligned = v.vote === v.drepMajority;
+        return alignmentFilter === 'aligned' ? isAligned : !isAligned;
+      });
+    }
+    return result;
+  }, [votes, typeFilter, alignmentFilter]);
+
+  const totalPages = Math.ceil(filteredVotes.length / VOTES_PER_PAGE);
   const pageVotes = useMemo(
-    () => votes.slice(page * VOTES_PER_PAGE, (page + 1) * VOTES_PER_PAGE),
-    [votes, page],
+    () => filteredVotes.slice(page * VOTES_PER_PAGE, (page + 1) * VOTES_PER_PAGE),
+    [filteredVotes, page],
   );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [typeFilter, alignmentFilter]);
 
   return (
     <div className="space-y-3">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="relative">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="appearance-none rounded-lg border border-border/60 bg-card/30 px-3 py-1.5 pr-7 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">All types</option>
+            {proposalTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+        </div>
+        <div className="relative">
+          <select
+            value={alignmentFilter}
+            onChange={(e) => setAlignmentFilter(e.target.value as typeof alignmentFilter)}
+            className="appearance-none rounded-lg border border-border/60 bg-card/30 px-3 py-1.5 pr-7 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">All alignment</option>
+            <option value="aligned">Aligned with DReps</option>
+            <option value="diverged">Diverged from DReps</option>
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+        </div>
+        {(typeFilter !== 'all' || alignmentFilter !== 'all') && (
+          <button
+            onClick={() => {
+              setTypeFilter('all');
+              setAlignmentFilter('all');
+            }}
+            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-border/60">
         <table className="w-full text-sm">
           <thead>
@@ -447,6 +545,13 @@ function VotingRecordTab({ votes }: { votes: EnrichedVote[] }) {
                 </tr>
               );
             })}
+            {pageVotes.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  No votes match the current filters.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -456,7 +561,8 @@ function VotingRecordTab({ votes }: { votes: EnrichedVote[] }) {
         <div className="flex items-center justify-between px-1">
           <p className="text-xs text-muted-foreground">
             Showing {page * VOTES_PER_PAGE + 1}-
-            {Math.min((page + 1) * VOTES_PER_PAGE, votes.length)} of {votes.length} votes
+            {Math.min((page + 1) * VOTES_PER_PAGE, filteredVotes.length)} of {filteredVotes.length}{' '}
+            votes
           </p>
           <div className="flex items-center gap-1">
             <button
@@ -484,7 +590,7 @@ function VotingRecordTab({ votes }: { votes: EnrichedVote[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Alignment Tab
+// Alignment Tab (enhanced with principled vs silent divergence)
 // ---------------------------------------------------------------------------
 
 function AlignmentTab({ data }: { data: ProfileData }) {
@@ -511,14 +617,18 @@ function AlignmentTab({ data }: { data: ProfileData }) {
     });
   }, [data.enrichedVotes]);
 
-  // Tension list: votes where this member diverged from DRep majority
-  const tensions = useMemo(
-    () =>
-      data.enrichedVotes.filter(
-        (v) => v.drepMajority && v.drepMajority !== 'Abstain' && v.vote !== v.drepMajority,
-      ),
-    [data.enrichedVotes],
-  );
+  // Split diverged votes into principled (has rationale) vs silent (no rationale)
+  const { principledDivergences, silentDivergences } = useMemo(() => {
+    const diverged = data.enrichedVotes.filter(
+      (v) => v.drepMajority && v.drepMajority !== 'Abstain' && v.vote !== v.drepMajority,
+    );
+    return {
+      principledDivergences: diverged.filter((v) => v.hasRationale),
+      silentDivergences: diverged.filter((v) => !v.hasRationale),
+    };
+  }, [data.enrichedVotes]);
+
+  const totalDivergences = principledDivergences.length + silentDivergences.length;
 
   return (
     <div className="space-y-6">
@@ -568,38 +678,53 @@ function AlignmentTab({ data }: { data: ProfileData }) {
         </div>
       )}
 
-      {/* Tension list */}
-      {tensions.length > 0 && (
+      {/* Principled vs Silent Divergence */}
+      {totalDivergences > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold">Diverged from DRep Majority ({tensions.length})</h3>
-          <div className="rounded-xl border border-border/60 divide-y divide-border/40 overflow-hidden">
-            {tensions.map((v) => (
-              <Link
-                key={`${v.proposalTxHash}-${v.proposalIndex}`}
-                href={`/proposal/${v.proposalTxHash}/${v.proposalIndex}`}
-                className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
-              >
-                <span className="text-sm truncate">
-                  {v.proposalTitle ?? `${v.proposalTxHash.slice(0, 12)}\u2026`}
-                </span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge
-                    variant="outline"
-                    className={
-                      v.vote === 'Yes'
-                        ? 'text-emerald-500 border-emerald-500/40'
-                        : v.vote === 'No'
-                          ? 'text-rose-500 border-rose-500/40'
-                          : 'text-amber-500 border-amber-500/40'
-                    }
-                  >
-                    {v.vote}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground">vs {v.drepMajority}</span>
-                </div>
-              </Link>
-            ))}
+          <h3 className="text-sm font-semibold">
+            Diverged from DRep Majority ({totalDivergences})
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 mb-3">
+            <div className="rounded-xl border border-border/60 bg-card/30 px-4 py-3 text-center space-y-1">
+              <p className="text-lg font-bold tabular-nums text-emerald-500">
+                {principledDivergences.length}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Principled (with rationale)</p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-card/30 px-4 py-3 text-center space-y-1">
+              <p className="text-lg font-bold tabular-nums text-amber-500">
+                {silentDivergences.length}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Silent (no rationale)</p>
+            </div>
           </div>
+
+          {/* Principled divergences */}
+          {principledDivergences.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-emerald-500 flex items-center gap-1.5">
+                <BookOpen className="h-3 w-3" />
+                Principled Divergences
+              </h4>
+              <div className="rounded-xl border border-border/60 divide-y divide-border/40 overflow-hidden">
+                {principledDivergences.map((v) => (
+                  <DivergenceRow key={`${v.proposalTxHash}-${v.proposalIndex}`} vote={v} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Silent divergences */}
+          {silentDivergences.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-amber-500">Silent Divergences</h4>
+              <div className="rounded-xl border border-border/60 divide-y divide-border/40 overflow-hidden">
+                {silentDivergences.map((v) => (
+                  <DivergenceRow key={`${v.proposalTxHash}-${v.proposalIndex}`} vote={v} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -659,11 +784,164 @@ function AlignmentTab({ data }: { data: ProfileData }) {
   );
 }
 
+/** Shared divergence row used in both principled/silent lists */
+function DivergenceRow({ vote: v }: { vote: EnrichedVote }) {
+  return (
+    <Link
+      href={`/proposal/${v.proposalTxHash}/${v.proposalIndex}`}
+      className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
+    >
+      <span className="text-sm truncate">
+        {v.proposalTitle ?? `${v.proposalTxHash.slice(0, 12)}\u2026`}
+      </span>
+      <div className="flex items-center gap-2 shrink-0">
+        <Badge
+          variant="outline"
+          className={
+            v.vote === 'Yes'
+              ? 'text-emerald-500 border-emerald-500/40'
+              : v.vote === 'No'
+                ? 'text-rose-500 border-rose-500/40'
+                : 'text-amber-500 border-amber-500/40'
+          }
+        >
+          {v.vote}
+        </Badge>
+        <span className="text-[10px] text-muted-foreground">vs {v.drepMajority}</span>
+      </div>
+    </Link>
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Main Client Component
+// Level 2: Overview Mode (default)
 // ---------------------------------------------------------------------------
 
-export function CCMemberProfileClient({ data }: { data: ProfileData }) {
+function OverviewMode({
+  data,
+  onViewFullRecord,
+}: {
+  data: ProfileData;
+  onViewFullRecord: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Term context */}
+      <TermContext data={data} />
+
+      {/* Pillar bars */}
+      <PillarBreakdown data={data} />
+
+      {/* Compact trend sparkline */}
+      <div className="[&_.card]:border-0 [&_.card]:bg-transparent [&_.card]:shadow-none [&_[style*='height']]:!h-32">
+        <CCTransparencyTrend
+          history={data.fidelityHistory}
+          proposalSnapshots={data.proposalFidelityHistory}
+        />
+      </div>
+
+      {/* Recent votes */}
+      <CCRecentVotes votes={data.enrichedVotes} maxVotes={5} />
+
+      {/* View full record button */}
+      <motion.div variants={fadeInUp} className="flex justify-center pt-2">
+        <Button variant="outline" onClick={onViewFullRecord} className="gap-2">
+          View full record
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Level 3: Deep Analysis Mode
+// ---------------------------------------------------------------------------
+
+function DeepMode({ data, onBackToOverview }: { data: ProfileData; onBackToOverview: () => void }) {
+  return (
+    <div className="space-y-6">
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={onBackToOverview} className="gap-1.5 -ml-2">
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to overview
+        </Button>
+        <Link
+          href={`/governance/committee/compare?members=${encodeURIComponent(data.ccHotId)}`}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Compare with others
+        </Link>
+      </div>
+
+      {/* Full tabbed interface */}
+      <Tabs defaultValue="votes">
+        <TabsList variant="line" className="w-full justify-start">
+          <TabsTrigger value="votes">
+            Voting Record
+            <span className="ml-1 text-[10px] text-muted-foreground tabular-nums">
+              ({data.enrichedVotes.length})
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="reasoning">Constitutional Reasoning</TabsTrigger>
+          <TabsTrigger value="alignment">Alignment</TabsTrigger>
+          <TabsTrigger value="trend">
+            <TrendingUp className="h-3.5 w-3.5 mr-1" />
+            Trend & Context
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="votes" className="pt-4">
+          <VotingRecordTab votes={data.enrichedVotes} />
+        </TabsContent>
+
+        <TabsContent value="reasoning" className="pt-4">
+          <CCConstitutionalReasoning votes={data.enrichedVotes} />
+        </TabsContent>
+
+        <TabsContent value="alignment" className="pt-4">
+          <AlignmentTab data={data} />
+        </TabsContent>
+
+        <TabsContent value="trend" className="pt-4">
+          <div className="space-y-6">
+            <TermContext data={data} />
+            <CCTransparencyTrend
+              history={data.fidelityHistory}
+              proposalSnapshots={data.proposalFidelityHistory}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inner component that uses useSearchParams (needs Suspense boundary)
+// ---------------------------------------------------------------------------
+
+function CCMemberProfileInner({ data }: { data: ProfileData }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [depth, setDepth] = useState<'overview' | 'deep'>(
+    searchParams.get('depth') === 'deep' ? 'deep' : 'overview',
+  );
+
+  const updateDepth = (newDepth: 'overview' | 'deep') => {
+    setDepth(newDepth);
+    const params = new URLSearchParams(searchParams.toString());
+    if (newDepth === 'deep') {
+      params.set('depth', 'deep');
+    } else {
+      params.delete('depth');
+    }
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+  };
+
   return (
     <motion.div
       variants={staggerContainer}
@@ -681,33 +959,37 @@ export function CCMemberProfileClient({ data }: { data: ProfileData }) {
         <KeyStats data={data} />
       </motion.div>
 
-      {/* Tabbed Content */}
+      {/* Depth-dependent content */}
       <motion.div variants={fadeInUp}>
-        <Tabs defaultValue="overview">
-          <TabsList variant="line" className="w-full justify-start">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="votes">
-              Voting Record
-              <span className="ml-1 text-[10px] text-muted-foreground tabular-nums">
-                ({data.enrichedVotes.length})
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="alignment">Alignment</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="pt-4">
-            <OverviewTab data={data} />
-          </TabsContent>
-
-          <TabsContent value="votes" className="pt-4">
-            <VotingRecordTab votes={data.enrichedVotes} />
-          </TabsContent>
-
-          <TabsContent value="alignment" className="pt-4">
-            <AlignmentTab data={data} />
-          </TabsContent>
-        </Tabs>
+        {depth === 'overview' ? (
+          <OverviewMode data={data} onViewFullRecord={() => updateDepth('deep')} />
+        ) : (
+          <DeepMode data={data} onBackToOverview={() => updateDepth('overview')} />
+        )}
       </motion.div>
     </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Client Component (with Suspense for useSearchParams)
+// ---------------------------------------------------------------------------
+
+export function CCMemberProfileClient({ data }: { data: ProfileData }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <div className="h-32 animate-pulse bg-muted rounded-xl" />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="h-28 animate-pulse bg-muted rounded-xl" />
+            <div className="h-28 animate-pulse bg-muted rounded-xl" />
+            <div className="h-28 animate-pulse bg-muted rounded-xl" />
+          </div>
+        </div>
+      }
+    >
+      <CCMemberProfileInner data={data} />
+    </Suspense>
   );
 }

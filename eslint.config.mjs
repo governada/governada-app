@@ -48,6 +48,7 @@ export default [
       '__tests__/**',
       'tests/**',
       'analytics/**',
+      '.claude/worktrees/**',
       '*.cjs',
     ],
   },

@@ -133,6 +133,7 @@ export const syncCcRationales = inngest.createFunction(
           cc_cold_id: string;
           status: string;
           expiration_epoch: number;
+          authorization_epoch: number | null;
           has_script: boolean;
         }> = [];
 
@@ -145,6 +146,7 @@ export const syncCcRationales = inngest.createFunction(
                   cc_cold_id: m.cc_cold_id ?? null,
                   status: m.status ?? 'unknown',
                   expiration_epoch: m.expiration_epoch ?? null,
+                  authorization_epoch: m.start_epoch ?? null,
                   has_script: m.cc_hot_has_script ?? false,
                 });
               }
@@ -177,6 +179,7 @@ export const syncCcRationales = inngest.createFunction(
               author_name: authorMap.get(hotId) ?? null,
               status: m.status,
               expiration_epoch: m.expiration_epoch,
+              authorization_epoch: m.authorization_epoch,
               has_script: m.has_script,
               updated_at: new Date().toISOString(),
             },
@@ -337,7 +340,7 @@ export const syncCcRationales = inngest.createFunction(
       // Get proposals for eligible count and type lookups
       const { data: proposals } = await supabase
         .from('proposals')
-        .select('tx_hash, proposal_index, proposal_type, block_time');
+        .select('tx_hash, proposal_index, proposal_type, block_time, proposed_epoch');
 
       // Get rationales
       const { data: rationales } = await supabase
@@ -368,10 +371,26 @@ export const syncCcRationales = inngest.createFunction(
         });
       }
 
-      // Total eligible proposals (all proposals in the system)
-      const totalEligibleProposals = new Set(
+      // Global fallback eligible count
+      const globalEligibleProposals = new Set(
         proposals.map((p) => `${p.tx_hash}:${p.proposal_index}`),
       ).size;
+
+      // Fetch cc_members authorization/expiration epochs for per-member eligibility
+      const { data: ccMembers } = await supabase
+        .from('cc_members')
+        .select('cc_hot_id, authorization_epoch, expiration_epoch');
+
+      const memberEpochMap = new Map<
+        string,
+        { authorization_epoch: number | null; expiration_epoch: number | null }
+      >();
+      for (const m of ccMembers ?? []) {
+        memberEpochMap.set(m.cc_hot_id, {
+          authorization_epoch: m.authorization_epoch,
+          expiration_epoch: m.expiration_epoch,
+        });
+      }
 
       // Group votes by member
       const memberVotes = new Map<string, CCMemberVoteData[]>();
@@ -389,12 +408,24 @@ export const syncCcRationales = inngest.createFunction(
 
       let scored = 0;
       for (const [ccHotId, mvotes] of memberVotes) {
+        // Per-member eligible proposals based on authorization/expiration epochs
+        const memberEligible = proposals.filter((p) => {
+          const epochs = memberEpochMap.get(ccHotId);
+          if (!epochs?.authorization_epoch || !p.proposed_epoch) return true; // fallback
+          if (p.proposed_epoch < epochs.authorization_epoch) return false;
+          if (epochs.expiration_epoch && p.proposed_epoch > epochs.expiration_epoch) return false;
+          return true;
+        });
+        const memberEligibleCount = new Set(
+          memberEligible.map((p) => `${p.tx_hash}:${p.proposal_index}`),
+        ).size;
+
         const result = computeFullConstitutionalFidelity({
           ccHotId,
           votes: mvotes,
           proposalMap,
           rationaleMap,
-          totalEligibleProposals,
+          totalEligibleProposals: memberEligibleCount || globalEligibleProposals,
         });
 
         // Update cc_members with Constitutional Fidelity Score
@@ -476,11 +507,164 @@ export const syncCcRationales = inngest.createFunction(
       return { scored, epoch: currentEpoch };
     });
 
+    // Step 5: Create proposal-anchored fidelity snapshots for terminal proposals
+    const proposalSnapshotResult = await step.run('snapshot-proposal-scores', async () => {
+      const supabase = getSupabaseAdmin();
+
+      // Get current epoch
+      const { data: stats } = await supabase
+        .from('governance_stats')
+        .select('current_epoch')
+        .eq('id', 1)
+        .single();
+      const currentEpoch = stats?.current_epoch ?? 0;
+
+      // Fetch proposals that have reached a terminal state
+      const { data: allProposals } = await supabase
+        .from('proposals')
+        .select(
+          'tx_hash, proposal_index, proposed_epoch, ratified_epoch, dropped_epoch, enacted_epoch, expired_epoch, expiration_epoch',
+        );
+
+      if (!allProposals?.length) return { snapshotted: 0 };
+
+      const terminalProposals = allProposals.filter(
+        (p) =>
+          p.ratified_epoch != null ||
+          p.dropped_epoch != null ||
+          p.enacted_epoch != null ||
+          p.expired_epoch != null ||
+          (p.expiration_epoch != null && p.expiration_epoch <= currentEpoch),
+      );
+
+      if (terminalProposals.length === 0) return { snapshotted: 0 };
+
+      // Fetch existing snapshots to skip already-snapshotted proposals
+      const { data: existingSnapshots } = await supabase
+        .from('cc_fidelity_proposal_snapshots')
+        .select('cc_hot_id, proposal_tx_hash, proposal_index');
+
+      const existingKeys = new Set(
+        (existingSnapshots ?? []).map(
+          (s) => `${s.cc_hot_id}:${s.proposal_tx_hash}:${s.proposal_index}`,
+        ),
+      );
+
+      // Fetch CC votes on terminal proposals
+      const { data: ccVotes } = await supabase
+        .from('cc_votes')
+        .select('cc_hot_id, proposal_tx_hash, proposal_index');
+
+      // Fetch current cumulative fidelity scores from cc_members
+      const { data: members } = await supabase
+        .from('cc_members')
+        .select(
+          'cc_hot_id, fidelity_score, participation_score, constitutional_grounding_score, rationale_quality_score, votes_cast, eligible_proposals',
+        );
+
+      const memberScoreMap = new Map<
+        string,
+        {
+          fidelity_score: number | null;
+          participation_score: number | null;
+          constitutional_grounding_score: number | null;
+          rationale_quality_score: number | null;
+          votes_cast: number | null;
+          eligible_proposals: number | null;
+        }
+      >();
+      for (const m of members ?? []) {
+        memberScoreMap.set(m.cc_hot_id, {
+          fidelity_score: m.fidelity_score,
+          participation_score: m.participation_score,
+          constitutional_grounding_score: m.constitutional_grounding_score,
+          rationale_quality_score: m.rationale_quality_score,
+          votes_cast: m.votes_cast,
+          eligible_proposals: m.eligible_proposals,
+        });
+      }
+
+      // Build set of terminal proposal keys
+      const terminalKeys = new Set(
+        terminalProposals.map((p) => `${p.tx_hash}:${p.proposal_index}`),
+      );
+      const terminalEpochMap = new Map<string, number | null>();
+      for (const p of terminalProposals) {
+        terminalEpochMap.set(`${p.tx_hash}:${p.proposal_index}`, p.proposed_epoch);
+      }
+
+      // For each CC vote on a terminal proposal, create a snapshot if not already exists
+      let snapshotted = 0;
+      const rows: Array<{
+        cc_hot_id: string;
+        proposal_tx_hash: string;
+        proposal_index: number;
+        proposal_epoch: number | null;
+        fidelity_score: number | null;
+        participation_score: number | null;
+        constitutional_grounding_score: number | null;
+        reasoning_quality_score: number | null;
+        votes_cast: number | null;
+        eligible_proposals: number | null;
+        snapshotted_at: string;
+      }> = [];
+
+      for (const v of ccVotes ?? []) {
+        const pKey = `${v.proposal_tx_hash}:${v.proposal_index}`;
+        if (!terminalKeys.has(pKey)) continue;
+
+        const snapKey = `${v.cc_hot_id}:${v.proposal_tx_hash}:${v.proposal_index}`;
+        if (existingKeys.has(snapKey)) continue;
+
+        const scores = memberScoreMap.get(v.cc_hot_id);
+        if (!scores) continue;
+
+        rows.push({
+          cc_hot_id: v.cc_hot_id,
+          proposal_tx_hash: v.proposal_tx_hash,
+          proposal_index: v.proposal_index,
+          proposal_epoch: terminalEpochMap.get(pKey) ?? null,
+          fidelity_score: scores.fidelity_score,
+          participation_score: scores.participation_score,
+          constitutional_grounding_score: scores.constitutional_grounding_score,
+          reasoning_quality_score: scores.rationale_quality_score,
+          votes_cast: scores.votes_cast,
+          eligible_proposals: scores.eligible_proposals,
+          snapshotted_at: new Date().toISOString(),
+        });
+      }
+
+      // Batch upsert in chunks of 50
+      for (let i = 0; i < rows.length; i += 50) {
+        const batch = rows.slice(i, i + 50);
+        const { error } = await supabase
+          .from('cc_fidelity_proposal_snapshots')
+          .upsert(batch, { onConflict: 'cc_hot_id,proposal_tx_hash,proposal_index' });
+
+        if (error) {
+          logger.error('[sync-cc-rationales] Proposal snapshot upsert failed', {
+            error: error.message,
+            batch: i,
+          });
+        } else {
+          snapshotted += batch.length;
+        }
+      }
+
+      logger.info('[sync-cc-rationales] Proposal fidelity snapshots created', {
+        snapshotted,
+        terminalProposals: terminalProposals.length,
+      });
+
+      return { snapshotted };
+    });
+
     return {
       rationales: fetchResult,
       members: memberResult,
       scores: scoreResult,
       transparency: transparencyResult,
+      proposalSnapshots: proposalSnapshotResult,
     };
   },
 );

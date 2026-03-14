@@ -1039,6 +1039,7 @@ export interface CCMemberFidelity {
   authorName: string | null;
   status: string | null;
   expirationEpoch: number | null;
+  authorizationEpoch: number | null;
   fidelityScore: number | null;
   fidelityGrade: string | null;
   participationScore: number | null;
@@ -1060,7 +1061,7 @@ export async function getCCMembersFidelity(): Promise<CCMemberFidelity[]> {
     const { data, error } = await supabase
       .from('cc_members')
       .select(
-        'cc_hot_id, author_name, status, expiration_epoch, fidelity_score, fidelity_grade, participation_score, rationale_quality_score, constitutional_grounding_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, votes_cast, eligible_proposals',
+        'cc_hot_id, author_name, status, expiration_epoch, authorization_epoch, fidelity_score, fidelity_grade, participation_score, rationale_quality_score, constitutional_grounding_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, votes_cast, eligible_proposals',
       )
       .order('fidelity_score', { ascending: false, nullsFirst: false });
 
@@ -1070,6 +1071,7 @@ export async function getCCMembersFidelity(): Promise<CCMemberFidelity[]> {
       authorName: m.author_name,
       status: m.status,
       expirationEpoch: m.expiration_epoch,
+      authorizationEpoch: m.authorization_epoch,
       fidelityScore: m.fidelity_score,
       fidelityGrade: m.fidelity_grade,
       participationScore: m.participation_score,
@@ -1088,6 +1090,54 @@ export async function getCCMembersFidelity(): Promise<CCMemberFidelity[]> {
 
 /** @deprecated Use getCCMembersFidelity */
 export const getCCMembersTransparency = getCCMembersFidelity;
+
+// ============================================================================
+// CC PROPOSAL FIDELITY SNAPSHOTS
+// ============================================================================
+
+export interface CCProposalFidelitySnapshot {
+  proposalTxHash: string;
+  proposalIndex: number;
+  proposalEpoch: number;
+  fidelityScore: number;
+  participationScore: number;
+  constitutionalGroundingScore: number;
+  reasoningQualityScore: number;
+  votesCast: number;
+  eligibleProposals: number;
+}
+
+export async function getCCProposalFidelityHistory(
+  ccHotId: string,
+): Promise<CCProposalFidelitySnapshot[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('cc_fidelity_proposal_snapshots')
+      .select(
+        'proposal_tx_hash, proposal_index, proposal_epoch, fidelity_score, participation_score, constitutional_grounding_score, reasoning_quality_score, votes_cast, eligible_proposals',
+      )
+      .eq('cc_hot_id', ccHotId)
+      .order('proposal_epoch', { ascending: true, nullsFirst: false });
+
+    if (error || !data) return [];
+    return data
+      .filter((s) => s.proposal_epoch != null && s.fidelity_score != null)
+      .map((s) => ({
+        proposalTxHash: s.proposal_tx_hash,
+        proposalIndex: s.proposal_index,
+        proposalEpoch: s.proposal_epoch!,
+        fidelityScore: s.fidelity_score!,
+        participationScore: s.participation_score ?? 0,
+        constitutionalGroundingScore: s.constitutional_grounding_score ?? 0,
+        reasoningQualityScore: s.reasoning_quality_score ?? 0,
+        votesCast: s.votes_cast ?? 0,
+        eligibleProposals: s.eligible_proposals ?? 0,
+      }));
+  } catch {
+    return [];
+  }
+}
 
 // ============================================================================
 // CC HEALTH SUMMARY & MEMBER VERDICTS

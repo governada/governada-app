@@ -9,7 +9,7 @@ import { TrendingUp } from 'lucide-react';
 import { useChartDimensions } from '@/lib/charts/useChartDimensions';
 import { GlowFilter } from '@/lib/charts/GlowDefs';
 import { chartTheme } from '@/lib/charts/theme';
-import type { CCFidelitySnapshot } from '@/lib/data';
+import type { CCFidelitySnapshot, CCProposalFidelitySnapshot } from '@/lib/data';
 
 const PILLAR_KEYS = ['Participation', 'Grounding', 'Reasoning'] as const;
 const PILLAR_COLORS = [
@@ -20,26 +20,39 @@ const PILLAR_COLORS = [
 
 interface CCTransparencyTrendProps {
   history: CCFidelitySnapshot[];
+  /** Proposal-anchored snapshots — used instead of epoch-based when available */
+  proposalSnapshots?: CCProposalFidelitySnapshot[];
 }
 
-export function CCTransparencyTrend({ history }: CCTransparencyTrendProps) {
+export function CCTransparencyTrend({ history, proposalSnapshots }: CCTransparencyTrendProps) {
   const [showPillars, setShowPillars] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { containerRef, dimensions } = useChartDimensions(250);
   const { width, innerWidth, innerHeight, margin } = dimensions;
 
-  const chartData = useMemo(
-    () =>
-      history.map((s) => ({
-        label: `E${s.epochNo}`,
-        epochNo: s.epochNo,
+  // Prefer proposal-anchored snapshots when available (event-driven scoring)
+  const useProposalMode = (proposalSnapshots?.length ?? 0) >= 2;
+
+  const chartData = useMemo(() => {
+    if (useProposalMode && proposalSnapshots) {
+      return proposalSnapshots.map((s, i) => ({
+        label: `P${i + 1}`,
+        epochNo: s.proposalEpoch,
         Index: s.fidelityScore,
         Participation: s.participationScore,
         Grounding: s.constitutionalGroundingScore,
         Reasoning: s.reasoningQualityScore,
-      })),
-    [history],
-  );
+      }));
+    }
+    return history.map((s) => ({
+      label: `E${s.epochNo}`,
+      epochNo: s.epochNo,
+      Index: s.fidelityScore,
+      Participation: s.participationScore,
+      Grounding: s.constitutionalGroundingScore,
+      Reasoning: s.reasoningQualityScore,
+    }));
+  }, [history, proposalSnapshots, useProposalMode]);
 
   const xScale = useMemo(
     () =>

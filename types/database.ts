@@ -564,8 +564,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      cc_fidelity_proposal_snapshots: {
+        Row: {
+          cc_hot_id: string;
+          constitutional_grounding_score: number | null;
+          eligible_proposals: number | null;
+          fidelity_score: number | null;
+          participation_score: number | null;
+          proposal_epoch: number | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          reasoning_quality_score: number | null;
+          snapshotted_at: string | null;
+          votes_cast: number | null;
+        };
+        Insert: {
+          cc_hot_id: string;
+          constitutional_grounding_score?: number | null;
+          eligible_proposals?: number | null;
+          fidelity_score?: number | null;
+          participation_score?: number | null;
+          proposal_epoch?: number | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          reasoning_quality_score?: number | null;
+          snapshotted_at?: string | null;
+          votes_cast?: number | null;
+        };
+        Update: {
+          cc_hot_id?: string;
+          constitutional_grounding_score?: number | null;
+          eligible_proposals?: number | null;
+          fidelity_score?: number | null;
+          participation_score?: number | null;
+          proposal_epoch?: number | null;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          reasoning_quality_score?: number | null;
+          snapshotted_at?: string | null;
+          votes_cast?: number | null;
+        };
+        Relationships: [];
+      };
       cc_members: {
         Row: {
+          authorization_epoch: number | null;
           author_name: string | null;
           avg_article_coverage: number | null;
           avg_reasoning_quality: number | null;
@@ -586,6 +629,7 @@ export type Database = {
           votes_cast: number | null;
         };
         Insert: {
+          authorization_epoch?: number | null;
           author_name?: string | null;
           avg_article_coverage?: number | null;
           avg_reasoning_quality?: number | null;
@@ -606,6 +650,7 @@ export type Database = {
           votes_cast?: number | null;
         };
         Update: {
+          authorization_epoch?: number | null;
           author_name?: string | null;
           avg_article_coverage?: number | null;
           avg_reasoning_quality?: number | null;

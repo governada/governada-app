@@ -12,16 +12,18 @@ export const GET = withRouteHandler(async () => {
   // Parallel fetches: active members, votes, rationale names, health, verdicts
   const [
     { data: activeMembers, error: membersError },
-    { data: votes, error: votesError },
+    { data: votes, error: _votesError },
     { data: rationaleNames },
     health,
     verdicts,
   ] = await Promise.all([
     supabase
       .from('cc_members')
-      .select('cc_hot_id, author_name, fidelity_grade, fidelity_score, status')
+      .select(
+        'cc_hot_id, author_name, fidelity_grade, fidelity_score, status, rationale_provision_rate',
+      )
       .eq('status', 'authorized'),
-    supabase.from('cc_votes').select('cc_hot_id, vote'),
+    supabase.from('cc_votes').select('cc_hot_id, vote, proposal_tx_hash, proposal_index'),
     supabase.from('cc_rationales').select('cc_hot_id, author_name').not('author_name', 'is', null),
     getCCHealthSummary(),
     getCCMemberVerdicts(),
@@ -52,6 +54,22 @@ export const GET = withRouteHandler(async () => {
     else existing.abstain++;
     voteMap.set(v.cc_hot_id, existing);
   }
+
+  // Compute aggregate stats
+  const proposalSet = new Set<string>();
+  for (const v of votes ?? []) {
+    proposalSet.add(`${v.proposal_tx_hash}:${v.proposal_index}`);
+  }
+  const totalProposalsReviewed = proposalSet.size;
+  const totalCCVotes = (votes ?? []).length;
+
+  const ratesWithValues = (activeMembers ?? [])
+    .map((m) => m.rationale_provision_rate)
+    .filter((r): r is number => r != null);
+  const avgRationaleRate =
+    ratesWithValues.length > 0
+      ? Math.round(ratesWithValues.reduce((a, b) => a + b, 0) / ratesWithValues.length)
+      : null;
 
   // Build verdict lookup
   const verdictMap = new Map(verdicts.map((v) => [v.ccHotId, v]));
@@ -84,8 +102,10 @@ export const GET = withRouteHandler(async () => {
       return b.voteCount - a.voteCount;
     });
 
+  const stats = { totalProposalsReviewed, avgRationaleRate, totalCCVotes };
+
   return NextResponse.json(
-    { members, health },
+    { members, health, stats },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300',

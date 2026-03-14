@@ -219,6 +219,12 @@ function Methodology() {
               </div>
             ))}
           </div>
+          <Link
+            href="/governance/committee/data"
+            className="inline-block text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+          >
+            View full methodology &amp; data export &rarr;
+          </Link>
         </div>
       )}
     </div>
@@ -261,6 +267,7 @@ export default function CommitteePage() {
 
   const members = useMemo(() => data?.members ?? [], [data]);
   const health = data?.health;
+  const stats = data?.stats;
 
   const sorted = useMemo(
     () =>
@@ -295,9 +302,41 @@ export default function CommitteePage() {
           {/* Section 2: Key Insight (persona-adapted) */}
           <CCInsightCard health={health} members={members} segment={segment} />
 
-          {/* Section 3: Member Rankings */}
+          {/* Section 3: Aggregate Stats */}
+          {stats && (
+            <motion.div variants={fadeInUp} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums">{health.activeMembers}</p>
+                <p className="text-xs text-muted-foreground">Active Members</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums">{stats.totalProposalsReviewed}</p>
+                <p className="text-xs text-muted-foreground">Proposals Reviewed</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums">
+                  {stats.avgRationaleRate != null ? `${stats.avgRationaleRate}%` : '—'}
+                </p>
+                <p className="text-xs text-muted-foreground">Avg Rationale Rate</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums">{stats.totalCCVotes}</p>
+                <p className="text-xs text-muted-foreground">Total Votes</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Section 4: Member Rankings */}
           <motion.div variants={fadeInUp} className="space-y-3">
-            <h2 className="text-base font-semibold">Member Rankings</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Member Rankings</h2>
+              <Link
+                href="/governance/committee/compare"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Compare Members
+              </Link>
+            </div>
 
             {sorted.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
@@ -321,7 +360,7 @@ export default function CommitteePage() {
             )}
           </motion.div>
 
-          {/* Section 4: Methodology (collapsed) */}
+          {/* Section 5: Methodology (collapsed) */}
           <motion.div variants={fadeInUp}>
             <Methodology />
           </motion.div>

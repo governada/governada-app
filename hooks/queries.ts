@@ -27,6 +27,12 @@ export interface CCHealthSummaryResponse {
   tensionCount: number;
 }
 
+export interface CCCommitteeStats {
+  totalProposalsReviewed: number;
+  avgRationaleRate: number | null;
+  totalCCVotes: number;
+}
+
 export interface CommitteeMemberQuickView {
   ccHotId: string;
   name: string | null;
@@ -42,7 +48,11 @@ export interface CommitteeMemberQuickView {
 }
 
 export function useCommitteeMembers() {
-  return useQuery<{ members: CommitteeMemberQuickView[]; health: CCHealthSummaryResponse }>({
+  return useQuery<{
+    members: CommitteeMemberQuickView[];
+    health: CCHealthSummaryResponse;
+    stats: CCCommitteeStats;
+  }>({
     queryKey: ['cc-members'],
     queryFn: () => fetchJson('/api/governance/committee'),
     staleTime: 120_000,

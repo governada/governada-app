@@ -65,7 +65,7 @@ export function computeRationaleProvision(totalVotes: number, votesWithRationale
 // ---------------------------------------------------------------------------
 
 /** Expected articles per proposal type (simplified mapping). */
-const EXPECTED_ARTICLES: Record<string, string[]> = {
+export const EXPECTED_ARTICLES: Record<string, string[]> = {
   TreasuryWithdrawals: ['Article II, § 6', 'Article II, § 7'],
   ParameterChange: ['Article II, § 6', 'Article III'],
   HardForkInitiation: ['Article II, § 6', 'Article III, § 6'],

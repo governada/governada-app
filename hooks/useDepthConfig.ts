@@ -65,6 +65,49 @@ const GOVERNANCE_CONFIG = {
   },
 } as const satisfies Record<GovernanceDepth, object>;
 
+const HEALTH_CONFIG = {
+  hands_off: {
+    showTabs: false,
+    availableTabs: [] as readonly string[],
+    showActivityTicker: false,
+    showTrends: false,
+    showObservatory: false,
+    alertLevel: 'none' as const,
+    showGHIExplorerTrends: false,
+    communityIntel: 'none' as const,
+  },
+  informed: {
+    showTabs: false,
+    availableTabs: [] as readonly string[],
+    showActivityTicker: false,
+    showTrends: false,
+    showObservatory: false,
+    alertLevel: 'critical' as const,
+    showGHIExplorerTrends: false,
+    communityIntel: 'none' as const,
+  },
+  engaged: {
+    showTabs: true,
+    availableTabs: ['now', 'history'] as readonly string[],
+    showActivityTicker: false,
+    showTrends: false,
+    showObservatory: false,
+    alertLevel: 'full' as const,
+    showGHIExplorerTrends: false,
+    communityIntel: 'temperature' as const,
+  },
+  deep: {
+    showTabs: true,
+    availableTabs: ['now', 'history', 'observatory'] as readonly string[],
+    showActivityTicker: true,
+    showTrends: true,
+    showObservatory: true,
+    alertLevel: 'full' as const,
+    showGHIExplorerTrends: true,
+    communityIntel: 'all' as const,
+  },
+} as const satisfies Record<GovernanceDepth, object>;
+
 // ---------------------------------------------------------------------------
 // Type mapping
 // ---------------------------------------------------------------------------
@@ -72,6 +115,7 @@ const GOVERNANCE_CONFIG = {
 type SurfaceConfigs = {
   hub: (typeof HUB_CONFIG)[GovernanceDepth];
   governance: (typeof GOVERNANCE_CONFIG)[GovernanceDepth];
+  health: (typeof HEALTH_CONFIG)[GovernanceDepth];
 };
 
 // ---------------------------------------------------------------------------
@@ -86,9 +130,14 @@ type SurfaceConfigs = {
  */
 export function useDepthConfig<S extends keyof SurfaceConfigs>(surface: S): SurfaceConfigs[S] {
   const { depth } = useGovernanceDepth();
-  const configs: { hub: typeof HUB_CONFIG; governance: typeof GOVERNANCE_CONFIG } = {
+  const configs: {
+    hub: typeof HUB_CONFIG;
+    governance: typeof GOVERNANCE_CONFIG;
+    health: typeof HEALTH_CONFIG;
+  } = {
     hub: HUB_CONFIG,
     governance: GOVERNANCE_CONFIG,
+    health: HEALTH_CONFIG,
   };
   return configs[surface][depth] as SurfaceConfigs[S];
 }

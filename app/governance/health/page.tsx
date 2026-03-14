@@ -7,6 +7,7 @@ import { FunnelExploreTracker } from '@/components/funnel/FunnelExploreTracker';
 import { GovernadaPulseOverview } from '@/components/governada/pulse/GovernadaPulseOverview';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FeatureGate } from '@/components/FeatureGate';
+import { DepthGate } from '@/components/providers/DepthGate';
 import { GovernanceTemperature } from '@/components/community/GovernanceTemperature';
 import { CitizenMandate } from '@/components/community/CitizenMandate';
 import { SentimentDivergence } from '@/components/community/SentimentDivergence';
@@ -61,20 +62,24 @@ export default function HealthPage() {
           <GovernadaPulseOverview />
         </Suspense>
 
-        {/* Community Intelligence — all feature-flagged */}
-        <FeatureGate flag="governance_temperature">
-          <GovernanceTemperature />
-        </FeatureGate>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <FeatureGate flag="community_mandate">
-            <CitizenMandate />
+        {/* Community Intelligence — feature-flagged + depth-gated */}
+        <DepthGate minDepth="engaged">
+          <FeatureGate flag="governance_temperature">
+            <GovernanceTemperature />
           </FeatureGate>
+        </DepthGate>
 
-          <FeatureGate flag="sentiment_divergence">
-            <SentimentDivergence />
-          </FeatureGate>
-        </div>
+        <DepthGate minDepth="deep">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <FeatureGate flag="community_mandate">
+              <CitizenMandate />
+            </FeatureGate>
+
+            <FeatureGate flag="sentiment_divergence">
+              <SentimentDivergence />
+            </FeatureGate>
+          </div>
+        </DepthGate>
       </div>
     </>
   );

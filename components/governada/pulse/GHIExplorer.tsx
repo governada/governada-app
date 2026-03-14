@@ -34,6 +34,8 @@ interface GHIExplorerProps {
   componentTrends: Record<string, { direction: string; delta: number }>;
   band: string;
   score: number;
+  /** When false, hides sparklines, calibration zones, and trend deltas */
+  showTrends?: boolean;
 }
 
 const BAND_COLORS: Record<string, string> = {
@@ -149,6 +151,7 @@ export function GHIExplorer({
   componentTrends,
   band,
   score,
+  showTrends = true,
 }: GHIExplorerProps) {
   const [expanded, setExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -245,27 +248,30 @@ export function GHIExplorer({
                       />
                     </div>
 
-                    {/* Zone indicator */}
-                    {curve && <ZoneIndicator value={comp.value} curve={curve} />}
+                    {/* Zone indicator (deep only) */}
+                    {showTrends && curve && <ZoneIndicator value={comp.value} curve={curve} />}
 
-                    {/* Footer: sparkline + trend */}
-                    <div className="flex items-center justify-between">
-                      <MiniSparkline data={sparkData} />
-                      {trend && trend.delta !== 0 && (
-                        <span
-                          className={cn(
-                            'text-[10px] font-medium',
-                            trend.direction === 'up'
-                              ? 'text-emerald-500'
-                              : trend.direction === 'down'
-                                ? 'text-rose-500'
-                                : 'text-muted-foreground',
-                          )}
-                        >
-                          {trend.direction === 'up' ? '↑' : '↓'} {Math.abs(trend.delta).toFixed(1)}
-                        </span>
-                      )}
-                    </div>
+                    {/* Footer: sparkline + trend (deep only) */}
+                    {showTrends && (
+                      <div className="flex items-center justify-between">
+                        <MiniSparkline data={sparkData} />
+                        {trend && trend.delta !== 0 && (
+                          <span
+                            className={cn(
+                              'text-[10px] font-medium',
+                              trend.direction === 'up'
+                                ? 'text-emerald-500'
+                                : trend.direction === 'down'
+                                  ? 'text-rose-500'
+                                  : 'text-muted-foreground',
+                            )}
+                          >
+                            {trend.direction === 'up' ? '↑' : '↓'}{' '}
+                            {Math.abs(trend.delta).toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}

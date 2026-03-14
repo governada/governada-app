@@ -110,6 +110,14 @@ function GHIMinimal() {
   };
   const scoreColor = BAND_COLORS[band] ?? BAND_COLORS.fair;
 
+  const BAND_VERDICTS: Record<string, string> = {
+    strong: 'Governance is thriving. Nothing needs your attention.',
+    good: 'Governance is healthy. No action needed.',
+    fair: 'Governance needs attention. Some areas are underperforming.',
+    critical: 'Governance is struggling. Participation and accountability are low.',
+  };
+  const verdict = BAND_VERDICTS[band] ?? BAND_VERDICTS.fair;
+
   return (
     <div
       className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 space-y-1"
@@ -127,7 +135,7 @@ function GHIMinimal() {
         </span>
         <TrendIcon className={cn('h-4 w-4', trendColor)} />
       </div>
-      <p className="text-xs text-muted-foreground capitalize">{band}</p>
+      <p className="text-xs text-muted-foreground">{verdict}</p>
     </div>
   );
 }
@@ -270,7 +278,7 @@ export function GovernadaPulseOverview() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { isAtLeast } = useGovernanceDepth();
-  const depthConfig = useDepthConfig('governance');
+  const healthConfig = useDepthConfig('health');
 
   const activeTab = resolvePulseTab(searchParams.get('tab'));
 
@@ -348,7 +356,7 @@ export function GovernadaPulseOverview() {
     return <GHIMinimal />;
   }
 
-  // ── Informed: score + dimension breakdown + briefing & alerts, no tabs ──
+  // ── Informed: score + dimension breakdown + briefing & critical alerts only ──
   if (!isAtLeast('engaged')) {
     return (
       <div className="space-y-6">
@@ -361,12 +369,16 @@ export function GovernadaPulseOverview() {
           losers={losers}
           criticalProposals={pulse?.criticalProposals}
           loading={loading}
+          alertLevel={healthConfig.alertLevel as 'critical' | 'full'}
         />
       </div>
     );
   }
 
-  // ── Engaged + Deep: full dashboard (current behavior = Engaged baseline) ─
+  // ── Engaged + Deep: full dashboard, config-driven ──────────────────────
+  const visibleTabs = TABS.filter((t) => healthConfig.availableTabs.includes(t.id));
+  // If user navigated to a tab their depth doesn't include, fall back to 'now'
+  const safeTab = healthConfig.availableTabs.includes(activeTab) ? activeTab : 'now';
 
   return (
     <div className="space-y-6 pt-4" data-discovery="gov-health">
@@ -390,17 +402,17 @@ export function GovernadaPulseOverview() {
         role="tablist"
         aria-label="Pulse view"
       >
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             role="tab"
-            aria-selected={activeTab === tab.id}
+            aria-selected={safeTab === tab.id}
             aria-controls={`pulse-tabpanel-${tab.id}`}
             className={cn(
               'px-4 py-2 text-sm font-medium shrink-0 border-b-2 transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-              activeTab === tab.id
+              safeTab === tab.id
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
@@ -410,23 +422,24 @@ export function GovernadaPulseOverview() {
         ))}
       </div>
 
-      {activeTab === 'observatory' && (
+      {/* ── Observatory tab (deep only) ───── */}
+      {healthConfig.showObservatory && safeTab === 'observatory' && (
         <div role="tabpanel" id="pulse-tabpanel-observatory" aria-label="Observatory">
           <GovernadaObservatory />
         </div>
       )}
 
       {/* ── History tab ───── */}
-      {activeTab === 'history' && (
+      {safeTab === 'history' && (
         <div className="space-y-8" role="tabpanel" id="pulse-tabpanel-history" aria-label="History">
           <GovernadaEpochReport />
-          <GovernadaGovernanceTrends />
+          {healthConfig.showTrends && <GovernadaGovernanceTrends />}
           <GovernadaGovernanceCalendar />
         </div>
       )}
 
       {/* ── Now tab ──────── */}
-      {activeTab === 'now' && (
+      {safeTab === 'now' && (
         <div className="space-y-8" role="tabpanel" id="pulse-tabpanel-now" aria-label="Now">
           {/* 1. GHI Verdict */}
           <GHIHero />
@@ -450,6 +463,7 @@ export function GovernadaPulseOverview() {
             losers={losers}
             criticalProposals={pulse?.criticalProposals}
             loading={loading}
+            alertLevel={healthConfig.alertLevel as 'critical' | 'full'}
           />
 
           {/* 5. GHI Explorer (click-to-expand breakdown) */}
@@ -461,6 +475,7 @@ export function GovernadaPulseOverview() {
               componentTrends={ghiData.componentTrends}
               band={ghiData.current.band}
               score={ghiData.current.score}
+              showTrends={healthConfig.showGHIExplorerTrends}
             />
           )}
           {!ghiData?.current && !loading && (
@@ -471,12 +486,11 @@ export function GovernadaPulseOverview() {
             />
           )}
 
-          {/* 6. Live Activity Ticker */}
-          <ActivityTicker variant="inline" />
+          {/* 6. Live Activity Ticker (deep only) */}
+          {healthConfig.showActivityTicker && <ActivityTicker variant="inline" />}
 
           {/* 7. Deep: historical overlay placeholder */}
           <DepthGate minDepth="deep">
-            {/* TODO: Phase 6+ — Historical health overlay, cross-epoch comparison, health projections */}
             <div className="rounded-xl border border-dashed border-border/40 bg-card/30 p-4 text-center">
               <p className="text-xs text-muted-foreground/60">
                 Historical health overlay and epoch comparison coming soon

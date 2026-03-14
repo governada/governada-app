@@ -26,6 +26,8 @@ interface GovernanceAlertsProps {
   losers?: LeaderboardEntry[];
   criticalProposals?: number;
   loading?: boolean;
+  /** Filter alerts by level: 'critical' shows only priority 0, 'full' shows all */
+  alertLevel?: 'critical' | 'full';
 }
 
 interface Alert {
@@ -133,7 +135,7 @@ function buildAlerts(props: GovernanceAlertsProps): Alert[] {
 }
 
 export function GovernanceAlerts(props: GovernanceAlertsProps) {
-  const { loading } = props;
+  const { loading, alertLevel = 'full' } = props;
 
   if (loading) {
     return (
@@ -144,7 +146,8 @@ export function GovernanceAlerts(props: GovernanceAlertsProps) {
     );
   }
 
-  const alerts = buildAlerts(props);
+  const allAlerts = buildAlerts(props);
+  const alerts = alertLevel === 'critical' ? allAlerts.filter((a) => a.priority === 0) : allAlerts;
 
   return (
     <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3">

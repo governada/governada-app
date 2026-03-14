@@ -1,4 +1,4 @@
-import { SectionPillBar } from '@/components/civica/SectionPillBar';
+import { SectionPillBar } from '@/components/governada/SectionPillBar';
 import { SectionSpotlightTrigger } from '@/components/discovery/SectionSpotlightTrigger';
 
 export default function GovernanceLayout({ children }: { children: React.ReactNode }) {

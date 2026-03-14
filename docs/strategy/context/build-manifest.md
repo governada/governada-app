@@ -35,9 +35,9 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 
 ## Foundation — Shipped Features (needs recomposition into new architecture)
 
-- [x] Epoch Briefing component | `components/civica/home/EpochBriefing.tsx`
-- [x] Civic Identity Card | `components/civica/shared/CivicIdentityCard.tsx`
-- [x] Treasury Citizen View | `components/civica/home/TreasuryCitizenView.tsx`
+- [x] Epoch Briefing component | `components/governada/home/EpochBriefing.tsx`
+- [x] Civic Identity Card | `components/governada/shared/CivicIdentityCard.tsx`
+- [x] Treasury Citizen View | `components/governada/home/TreasuryCitizenView.tsx`
 - [x] Citizen milestone detection | migration 051, `citizen_milestones` table
 - [x] Generate citizen briefings Inngest function
 - [x] Vote casting (CIP-95/MeshJS) | PR #143
@@ -75,10 +75,10 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 
 ### Navigation shell
 
-- [x] Desktop sidebar — persona-adaptive, collapsible | `components/civica/CivicaSidebar.tsx`
-- [x] Mobile bottom bar — 4 items, persona-adaptive | `components/civica/CivicaBottomNav.tsx`
-- [x] Mobile pill bar — section sub-page navigation | `components/civica/SectionPillBar.tsx`
-- [x] Desktop top bar — search, notifications, user menu | `components/civica/CivicaHeader.tsx`
+- [x] Desktop sidebar — persona-adaptive, collapsible | `components/governada/GovernadaSidebar.tsx`
+- [x] Mobile bottom bar — 4 items, persona-adaptive | `components/governada/GovernadaBottomNav.tsx`
+- [x] Mobile pill bar — section sub-page navigation | `components/governada/SectionPillBar.tsx`
+- [x] Desktop top bar — search, notifications, user menu | `components/governada/GovernadaHeader.tsx`
 - [x] Route redirects (301s) for old routes | `next.config.ts` (15+ redirects) + `middleware.ts`
 
 ### Hub card system
@@ -93,10 +93,10 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 
 ### MLE per persona
 
-- [x] Citizen MLE — Hub with cards + delegation dual-rep view | `components/civica/home/HomeCitizen.tsx`
-- [x] DRep MLE — Workspace action queue, vote flow | `components/civica/home/HomeDRep.tsx`
-- [x] SPO MLE — Workspace gov score, pool profile | `components/civica/home/HomeSPO.tsx`
-- [x] Anonymous MLE — landing with value prop + two CTAs | `components/civica/home/HomeAnonymous.tsx`
+- [x] Citizen MLE — Hub with cards + delegation dual-rep view | `components/governada/home/HomeCitizen.tsx`
+- [x] DRep MLE — Workspace action queue, vote flow | `components/governada/home/HomeDRep.tsx`
+- [x] SPO MLE — Workspace gov score, pool profile | `components/governada/home/HomeSPO.tsx`
+- [x] Anonymous MLE — landing with value prop + two CTAs | `components/governada/home/HomeAnonymous.tsx`
 
 ### Definition of done
 
@@ -119,8 +119,8 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 ### 1b: Governance section populated
 
 - [x] `/governance/proposals` — active proposals, status, deadlines | `ProposalsBrowse.tsx`
-- [x] `/governance/representatives` — DRep directory with scores | `CivicaDRepBrowse.tsx`
-- [x] `/governance/pools` — pool directory with governance scores | `CivicaSPOBrowse.tsx`
+- [x] `/governance/representatives` — DRep directory with scores | `GovernadaDRepBrowse.tsx`
+- [x] `/governance/pools` — pool directory with governance scores | `GovernadaSPOBrowse.tsx`
 - [x] `/governance/committee` — CC transparency | `app/governance/committee/page.tsx`
 - [x] `/governance/treasury` — treasury spending transparency | `TreasuryOverview.tsx`
 - [x] `/governance/health` — GHI + epoch history | `app/governance/health/page.tsx`
@@ -154,7 +154,7 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 - [x] Stale `/discover` route references purged (46 files) — all internal links now point to `/governance/*` routes directly
 - [x] Match results "Browse All DReps/SPOs" links fixed → `/governance/representatives` and `/governance/pools`
 - [x] Help page: heading "Learn" → "Help", stale links fixed, cards reduced from 6 to 4 (per UX constraints)
-- [x] Score narratives surfaced on DRep browse cards — `getScoreNarrative()` rendered as subtitle on `CivicaDRepCard`
+- [x] Score narratives surfaced on DRep browse cards — `getScoreNarrative()` rendered as subtitle on `GovernadaDRepCard`
 - [x] Landing page SSR optimized — heavy `info` JSONB fetch replaced with count-only queries (`head: true`)
 - [x] BrandedLoader "$governada" → "Governada", tagline → "Governance Intelligence for Cardano"
 - [x] `/governance` anonymous redirect moved to middleware (server-side, no client-side skeleton flash)

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
-import { SPOScorecardView } from '@/components/civica/identity/SPOScorecardView';
+import { SPOScorecardView } from '@/components/governada/identity/SPOScorecardView';
 
 export const metadata: Metadata = {
   title: 'Governada — Pool Scorecard',

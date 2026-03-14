@@ -45,18 +45,18 @@ Behind a toggle: all existing detail sections (stats grid, footprint, engagement
 
 ### What EXISTS
 
-| Component                          | File                                                  | Status                                  |
-| ---------------------------------- | ----------------------------------------------------- | --------------------------------------- |
-| GovernanceRings (3 SVG rings)      | `components/civica/identity/GovernanceRings.tsx`      | ✅ Shipped                              |
-| GovernancePulse (0-100 score)      | `components/civica/identity/GovernancePulse.tsx`      | ✅ Shipped                              |
-| IdentityNarrative (template)       | `components/civica/identity/IdentityNarrative.tsx`    | ✅ Shipped (template, not AI)           |
-| MilestoneStamps (compact row)      | `components/civica/identity/MilestoneStamps.tsx`      | ✅ Shipped                              |
-| Ring computation engine            | `lib/governanceRings.ts`                              | ✅ Shipped                              |
-| CivicIdentityProfile (rings-first) | `components/civica/identity/CivicIdentityProfile.tsx` | ✅ Shipped                              |
-| Archetype system (4 labels/dim)    | `lib/drepIdentity.ts`                                 | ✅ Shipped (DRep-level only)            |
-| Milestone sharing                  | `CitizenMilestoneCelebration.tsx` + OG routes         | ✅ Pre-existing                         |
-| Governance Wrapped (epoch stats)   | `governance_wrapped` table + Inngest function         | ✅ Pre-existing (stats, not narrative)  |
-| Anthropic SDK integration          | `lib/ai.ts`                                           | ✅ Pre-existing (not used for identity) |
+| Component                          | File                                                     | Status                                  |
+| ---------------------------------- | -------------------------------------------------------- | --------------------------------------- |
+| GovernanceRings (3 SVG rings)      | `components/governada/identity/GovernanceRings.tsx`      | ✅ Shipped                              |
+| GovernancePulse (0-100 score)      | `components/governada/identity/GovernancePulse.tsx`      | ✅ Shipped                              |
+| IdentityNarrative (template)       | `components/governada/identity/IdentityNarrative.tsx`    | ✅ Shipped (template, not AI)           |
+| MilestoneStamps (compact row)      | `components/governada/identity/MilestoneStamps.tsx`      | ✅ Shipped                              |
+| Ring computation engine            | `lib/governanceRings.ts`                                 | ✅ Shipped                              |
+| CivicIdentityProfile (rings-first) | `components/governada/identity/CivicIdentityProfile.tsx` | ✅ Shipped                              |
+| Archetype system (4 labels/dim)    | `lib/drepIdentity.ts`                                    | ✅ Shipped (DRep-level only)            |
+| Milestone sharing                  | `CitizenMilestoneCelebration.tsx` + OG routes            | ✅ Pre-existing                         |
+| Governance Wrapped (epoch stats)   | `governance_wrapped` table + Inngest function            | ✅ Pre-existing (stats, not narrative)  |
+| Anthropic SDK integration          | `lib/ai.ts`                                              | ✅ Pre-existing (not used for identity) |
 
 ### What DOES NOT EXIST
 
@@ -330,23 +330,23 @@ Phase 3
 
 ## Files Reference
 
-| File                                                         | Purpose                     | Phase                          |
-| ------------------------------------------------------------ | --------------------------- | ------------------------------ |
-| `lib/governanceRings.ts`                                     | Ring computation engine     | 1 ✅                           |
-| `components/civica/identity/GovernanceRings.tsx`             | SVG ring visualization      | 1 ✅                           |
-| `components/civica/identity/GovernancePulse.tsx`             | Pulse number display        | 1 ✅                           |
-| `components/civica/identity/IdentityNarrative.tsx`           | Template/AI narrative       | 1 ✅ (template), 2A (AI)       |
-| `components/civica/identity/MilestoneStamps.tsx`             | Compact stamp row           | 1 ✅                           |
-| `components/civica/identity/CivicIdentityProfile.tsx`        | Main identity layout        | 1 ✅                           |
-| `lib/drepIdentity.ts`                                        | Archetype system            | 1 ✅ (4 labels), 2E (compound) |
-| `lib/ai.ts`                                                  | Anthropic SDK wrapper       | Pre-existing, used by 2A       |
-| `lib/citizenMilestones.ts`                                   | 20 milestone definitions    | Pre-existing                   |
-| `components/civica/identity/CitizenMilestoneCelebration.tsx` | Celebration modal + sharing | Pre-existing, extended by 2F   |
-| `app/api/you/identity-narrative/route.ts`                    | AI narrative API            | 2A (new)                       |
-| `lib/identity/narrativePrompt.ts`                            | Claude prompt for narrative | 2A (new)                       |
-| `app/api/you/ring-history/route.ts`                          | Ring snapshot history API   | 2C (new)                       |
-| `components/civica/identity/PulseHistoryChart.tsx`           | Pulse trend sparkline       | 2D (new)                       |
-| `lib/alignment/citizenClusters.ts`                           | Citizen PCA clustering      | 3A (new)                       |
+| File                                                            | Purpose                     | Phase                          |
+| --------------------------------------------------------------- | --------------------------- | ------------------------------ |
+| `lib/governanceRings.ts`                                        | Ring computation engine     | 1 ✅                           |
+| `components/governada/identity/GovernanceRings.tsx`             | SVG ring visualization      | 1 ✅                           |
+| `components/governada/identity/GovernancePulse.tsx`             | Pulse number display        | 1 ✅                           |
+| `components/governada/identity/IdentityNarrative.tsx`           | Template/AI narrative       | 1 ✅ (template), 2A (AI)       |
+| `components/governada/identity/MilestoneStamps.tsx`             | Compact stamp row           | 1 ✅                           |
+| `components/governada/identity/CivicIdentityProfile.tsx`        | Main identity layout        | 1 ✅                           |
+| `lib/drepIdentity.ts`                                           | Archetype system            | 1 ✅ (4 labels), 2E (compound) |
+| `lib/ai.ts`                                                     | Anthropic SDK wrapper       | Pre-existing, used by 2A       |
+| `lib/citizenMilestones.ts`                                      | 20 milestone definitions    | Pre-existing                   |
+| `components/governada/identity/CitizenMilestoneCelebration.tsx` | Celebration modal + sharing | Pre-existing, extended by 2F   |
+| `app/api/you/identity-narrative/route.ts`                       | AI narrative API            | 2A (new)                       |
+| `lib/identity/narrativePrompt.ts`                               | Claude prompt for narrative | 2A (new)                       |
+| `app/api/you/ring-history/route.ts`                             | Ring snapshot history API   | 2C (new)                       |
+| `components/governada/identity/PulseHistoryChart.tsx`           | Pulse trend sparkline       | 2D (new)                       |
+| `lib/alignment/citizenClusters.ts`                              | Citizen PCA clustering      | 3A (new)                       |
 
 ## UX Constraints
 

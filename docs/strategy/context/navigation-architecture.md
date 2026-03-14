@@ -484,7 +484,7 @@ app/
 
 ### Shell Component Update
 
-The `CivicaShell` (or its replacement) must:
+The `GovernadaShell` (or its replacement) must:
 
 1. Render the sidebar on desktop (≥1024px) and bottom bar on mobile (<1024px)
 2. Read persona from `useSegment()` to determine which nav items to show

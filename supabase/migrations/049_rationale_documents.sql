@@ -1,4 +1,4 @@
--- Stores CIP-100 JSON-LD rationale documents submitted by DReps via Civica.
+-- Stores CIP-100 JSON-LD rationale documents submitted by DReps via Governada.
 -- Served at /api/rationale/[hash] as the on-chain vote anchor URL.
 
 CREATE TABLE IF NOT EXISTS rationale_documents (

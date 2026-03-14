@@ -3,17 +3,17 @@
 ## Current Phase: Phase 3B (My Gov Completion + DRep Profile Redesign)
 
 See `docs/strategy/ultimate-vision.md` for full build sequence.
-See `.cursor/plans/civica_phase_3b_eab7f1b4.plan.md` for this phase's detailed plan.
+See `.cursor/plans/governada_phase_3b_eab7f1b4.plan.md` for this phase's detailed plan.
 
 ## Completed
 
 - [x] Governada Shell Foundation (Phase 1A) — PR #77 merged
-  - Feature flag `civica_frontend` in feature_flags table
+  - Feature flag `governada_frontend` in feature_flags table
   - SegmentProvider + useSegment() hook
   - TierThemeProvider + useTierTheme() hook
-  - CivicaHeader (desktop) + CivicaBottomNav (mobile) 4-tab nav
+  - GovernadaHeader (desktop) + GovernadaBottomNav (mobile) 4-tab nav
   - Tier color palette + motion tokens in globals.css
-  - Root layout branching (old shell when flag off, CivicaShell when on)
+  - Root layout branching (old shell when flag off, GovernadaShell when on)
   - /my-gov stub page (auth-gated)
 
 - [x] Governada Phase 1B — GovTerm, Metadata, Home Pages
@@ -24,22 +24,22 @@ See `.cursor/plans/civica_phase_3b_eab7f1b4.plan.md` for this phase's detailed p
   - Home/citizen: DRep report card, pillar bars, epoch callout
   - Home/DRep: score hero, sparkline, quick win card, competitive context
   - Home/SPO: governance score hero, claim prompt, competitive neighbors
-  - CivicaHomePage segment dispatcher
+  - GovernadaHomePage segment dispatcher
   - useDRepReportCard, useDashboardCompetitive, useSPOPoolCompetitive hooks
 
 - [x] Governada Phase 2A — Discover, Cards, Leaderboard
-  - CivicaDRepCard: tier-colored browse card with score, tier badge, 6-axis alignment mini-bars, hover expansion
-  - CivicaSPOCard: tier-colored pool card with governance score, participation/consistency/reliability bars, claimed badge
+  - GovernadaDRepCard: tier-colored browse card with score, tier badge, 6-axis alignment mini-bars, hover expansion
+  - GovernadaSPOCard: tier-colored pool card with governance score, participation/consistency/reliability bars, claimed badge
   - tierStyles.ts: shared token map (border/bg/glow/badge per tier)
-  - CivicaDiscover: 5-tab shell (DReps / SPOs / Proposals / Committee / Rankings), sticky tab bar
-  - CivicaDRepBrowse: SSR DRep grid with search, tier filter chips, alignment filter, active-only toggle, 24/page pagination
-  - CivicaSPOBrowse: client-fetched SPO grid with search + tier + claimed filters
+  - GovernadaDiscover: 5-tab shell (DReps / SPOs / Proposals / Committee / Rankings), sticky tab bar
+  - GovernadaDRepBrowse: SSR DRep grid with search, tier filter chips, alignment filter, active-only toggle, 24/page pagination
+  - GovernadaSPOBrowse: client-fetched SPO grid with search + tier + claimed filters
   - ProposalsBrowse: lightweight proposal list with search + status filter
-  - CivicaLeaderboard: ranked DRep table with tier filter chips, delta trend arrows, 7-day movers strip, 25/page pagination
-  - app/discover/page.tsx + app/pulse/page.tsx: civica_frontend flag-gated rendering
+  - GovernadaLeaderboard: ranked DRep table with tier filter chips, delta trend arrows, 7-day movers strip, 25/page pagination
+  - app/discover/page.tsx + app/pulse/page.tsx: governada_frontend flag-gated rendering
 
 - [x] Governada Phase 2B — Pulse deep dive + My Gov action feed
-  - CivicaPulse: full Pulse page with GHI, cross-chain observatory, AI State of Governance narrative, governance calendar
+  - GovernadaPulse: full Pulse page with GHI, cross-chain observatory, AI State of Governance narrative, governance calendar
   - Action feed architecture (lib/actionFeed.ts + ActionFeed component)
   - CitizenCommandCenter: delegation health card, recent DRep votes, action feed
   - DRepCommandCenter: score gauge, stats row, pending votes widget, action feed
@@ -52,7 +52,7 @@ See `.cursor/plans/civica_phase_3b_eab7f1b4.plan.md` for this phase's detailed p
   - SPO claim flow (wallet-verified pool ownership)
 
 - [x] Governada Phase 3B — My Gov completion + DRep Profile Redesign
-  - Feature flag audit: restored civica_frontend, drep_communication, score_tiers, alignment_drift,
+  - Feature flag audit: restored governada_frontend, drep_communication, score_tiers, alignment_drift,
     spo_claim_flow, spo_governance_identity flags deleted by migration 039
   - My Gov Inbox (4.5): multi-segment notification hub, filter tabs (All/Proposals/Score/Alignment/System),
     read/unread state (localStorage), deep-link CTAs, DRep pending proposals detail

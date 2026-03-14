@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { QuickMatchFlow } from '@/components/civica/match/QuickMatchFlow';
+import { QuickMatchFlow } from '@/components/governada/match/QuickMatchFlow';
 
 export const dynamic = 'force-dynamic';
 

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { FunnelExploreTracker } from '@/components/funnel/FunnelExploreTracker';
-import { CivicaSPOBrowse } from '@/components/civica/discover/CivicaSPOBrowse';
+import { GovernadaSPOBrowse } from '@/components/governada/discover/GovernadaSPOBrowse';
 
 export const metadata: Metadata = {
   title: 'Governada — Pools',
@@ -27,7 +27,7 @@ export default function PoolsPage() {
     <div className="container mx-auto px-4 sm:px-6 py-6">
       <PageViewTracker event="governance_pools_viewed" />
       <FunnelExploreTracker />
-      <CivicaSPOBrowse />
+      <GovernadaSPOBrowse />
     </div>
   );
 }

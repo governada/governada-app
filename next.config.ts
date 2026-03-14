@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
       { source: '/learn', destination: '/help', permanent: true },
       { source: '/methodology', destination: '/help/methodology', permanent: true },
 
-      // Legacy routes (pre-civica)
+      // Legacy routes (pre-governada)
       { source: '/governance/calendar', destination: '/governance/health', permanent: true },
       { source: '/dashboard', destination: '/', permanent: true },
       { source: '/dashboard/spo', destination: '/', permanent: true },

@@ -2,7 +2,7 @@
 
 import { useWallet } from '@/utils/wallet';
 import { ProposalOutcomeCard } from '@/components/ProposalOutcomeCard';
-import { ProposalOutcomeTracker } from '@/components/civica/proposals/ProposalOutcomeTracker';
+import { ProposalOutcomeTracker } from '@/components/governada/proposals/ProposalOutcomeTracker';
 import { useProposalOutcome } from '@/hooks/queries';
 import type { ProposalOutcome } from '@/lib/proposalOutcomes';
 

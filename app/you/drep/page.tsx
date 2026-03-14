@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
-import { DRepScorecardView } from '@/components/civica/identity/DRepScorecardView';
+import { DRepScorecardView } from '@/components/governada/identity/DRepScorecardView';
 
 export const metadata: Metadata = {
   title: 'Governada — DRep Scorecard',

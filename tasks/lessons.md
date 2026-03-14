@@ -75,7 +75,7 @@ Use `next/dynamic` with `ssr: false` for components importing heavy libs (Three.
 
 ## Multi-Phase Branch Strategy
 
-**Pattern**: When a phase branch (`civica-phase-2a`) is based on a previous phase branch that was squash-merged into `main`, rebasing will produce `add/add` conflicts because the squash commit has different SHAs. **Never rebase in this situation.** Instead: (1) create new branch from latest `main`, (2) `git log` the old branch to identify phase-specific commits, (3) cherry-pick only those commits onto the new branch, (4) force-push the new branch to update the existing PR. This keeps history clean and avoids conflict hell.
+**Pattern**: When a phase branch (`governada-phase-2a`) is based on a previous phase branch that was squash-merged into `main`, rebasing will produce `add/add` conflicts because the squash commit has different SHAs. **Never rebase in this situation.** Instead: (1) create new branch from latest `main`, (2) `git log` the old branch to identify phase-specific commits, (3) cherry-pick only those commits onto the new branch, (4) force-push the new branch to update the existing PR. This keeps history clean and avoids conflict hell.
 
 ## Railway Deployment Monitoring
 

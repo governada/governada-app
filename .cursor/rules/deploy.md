@@ -55,10 +55,10 @@ Any `app/` file importing `@/lib/supabase` (directly or via `@/lib/data`) that i
 ## Environment
 
 - **Supabase project**: `pbfprhbaayvcrxokgicr`
-- **Production URL**: `https://drepscore.io` (Civica domain TBD)
+- **Production URL**: `https://drepscore.io` (Governada domain TBD)
 - **GitHub CLI**: Always `gh auth switch --user drepscore` before `gh` API calls. `tim-dd` account lacks collaborator perms.
 - **MCP config** (`.cursor/mcp.json`): gitignored, contains secrets — NEVER overwrite
-- **Railway CLI**: Installed globally (`railway`). Use `railway logs` for build/deploy logs, `railway status` for current state. Linked to the Civica (formerly drepscore) project
+- **Railway CLI**: Installed globally (`railway`). Use `railway logs` for build/deploy logs, `railway status` for current state. Linked to the Governada (formerly drepscore) project
 - **Inngest**: PUT `https://drepscore.io/api/inngest` after every deploy to sync functions. 22 durable functions total (see `architecture.md`). Verify with `npm run inngest:status`
 - **Post-deploy autonomous**: After any deploy, autonomously:
   1. Poll `railway deployment list` until latest shows `SUCCESS` — do not skip this step

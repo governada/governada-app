@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import { HexScore } from '@/components/HexScore';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
-import { TierBadge } from '@/components/civica/cards/TierBadge';
+import { TierBadge } from '@/components/governada/cards/TierBadge';
 import { DelegateButton } from '@/components/DelegateButton';
 import { PageViewTracker } from '@/components/PageViewTracker';
 

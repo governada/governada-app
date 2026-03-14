@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { FunnelExploreTracker } from '@/components/funnel/FunnelExploreTracker';
-import { ProposalsBrowse } from '@/components/civica/discover/ProposalsBrowse';
+import { ProposalsBrowse } from '@/components/governada/discover/ProposalsBrowse';
 
 export const metadata: Metadata = {
   title: 'Governada — Proposals',

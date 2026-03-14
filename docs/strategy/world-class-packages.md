@@ -53,7 +53,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
 
 ### QP-1: Accessibility Foundation
 
-**Problem:** ~5 accessibility patterns across 66+ civica components. No systematic aria usage, no keyboard navigation, no focus management, no screen reader optimization. A governance platform that excludes users with disabilities cannot claim to represent an inclusive ecosystem.
+**Problem:** ~5 accessibility patterns across 66+ governada components. No systematic aria usage, no keyboard navigation, no focus management, no screen reader optimization. A governance platform that excludes users with disabilities cannot claim to represent an inclusive ecosystem.
 
 **Goal:** Establish accessibility infrastructure and remediate all static/presentational components. Target WCAG 2.1 AA compliance.
 
@@ -85,7 +85,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
 
 - `app/layout.tsx`, `app/(main)/layout.tsx` -- landmarks, skip-to-content
 - `components/ui/` -- all shadcn primitives (verify Radix a11y defaults are preserved)
-- `components/civica/shared/` -- shared components used everywhere
+- `components/governada/shared/` -- shared components used everywhere
 - All chart components in `components/charts/` or similar -- these are the hardest to make accessible
 - Navigation components: sidebar, mobile nav, command palette
 
@@ -102,7 +102,7 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
 **Scope:**
 
 1. **Tab interfaces**
-   - `CivicaDiscover` tabs (`/discover`): add `role="tablist"`, `role="tab"`, `role="tabpanel"`, `aria-selected`, `aria-controls`
+   - `GovernadaDiscover` tabs (`/discover`): add `role="tablist"`, `role="tab"`, `role="tabpanel"`, `aria-selected`, `aria-controls`
    - DRep/SPO profile tabs: same pattern
    - Keyboard: Arrow keys navigate between tabs, Tab moves into panel content
 
@@ -133,12 +133,12 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
 
 **Key files to modify:**
 
-- `components/civica/match/QuickMatchFlow.tsx` -- step indicator, results loading
-- `components/civica/proposals/VoteCastingPanel.tsx` or `VoteRationaleFlow.tsx` -- form roles
+- `components/governada/match/QuickMatchFlow.tsx` -- step indicator, results loading
+- `components/governada/proposals/VoteCastingPanel.tsx` or `VoteRationaleFlow.tsx` -- form roles
 - `components/engagement/ProposalSentiment.tsx` -- radiogroup
 - `components/engagement/PrioritySignals.tsx` -- drag alternative
 - `components/engagement/ConcernFlags.tsx` -- toggle buttons
-- `components/civica/home/EpochBriefing.tsx` -- live regions on carousel
+- `components/governada/home/EpochBriefing.tsx` -- live regions on carousel
 - `components/ui/dialog.tsx`, `components/ui/tabs.tsx` -- verify Radix defaults
 
 **Verification:** Complete every user flow using keyboard only (no mouse). Verify with VoiceOver (Mac) or NVDA (Windows) that all state changes are announced.
@@ -296,9 +296,9 @@ PR Group I (QP-13)        ─── depends on all other QPs (validate final sta
 **Key files to modify:**
 
 - `components/Providers.tsx` -- TanStack Query defaults
-- `components/civica/home/EpochBriefing.tsx` -- primary error handling target
-- `components/civica/match/QuickMatchFlow.tsx` -- conversion funnel resilience
-- `components/civica/proposals/VoteRationaleFlow.tsx` -- vote operation resilience
+- `components/governada/home/EpochBriefing.tsx` -- primary error handling target
+- `components/governada/match/QuickMatchFlow.tsx` -- conversion funnel resilience
+- `components/governada/proposals/VoteRationaleFlow.tsx` -- vote operation resilience
 - `app/(main)/error.tsx` and route-group error files -- new
 - `hooks/useNetworkStatus.ts` -- new
 
@@ -486,8 +486,8 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
 
 - New: `lib/motion.ts` -- animation system tokens and variants
 - New: `components/ui/AnimatedList.tsx` -- stagger wrapper
-- `components/civica/home/EpochBriefing.tsx` -- entrance sequence
-- `components/civica/match/QuickMatchFlow.tsx` -- results animation
+- `components/governada/home/EpochBriefing.tsx` -- entrance sequence
+- `components/governada/match/QuickMatchFlow.tsx` -- results animation
 - `components/engagement/ProposalSentiment.tsx` -- optimistic update
 - `components/engagement/ConcernFlags.tsx` -- optimistic update
 - `components/engagement/PrioritySignals.tsx` -- optimistic update
@@ -555,10 +555,10 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
 - New: `lib/glossary.ts`
 - New or enhanced: `components/ui/GovTerm.tsx`
 - New: `hooks/useFirstVisit.ts`
-- `components/civica/home/EpochBriefing.tsx` -- treasury term tooltips
-- `components/civica/home/HomeAnonymous.tsx` -- delegation explainer
-- `components/civica/match/QuickMatchFlow.tsx` -- match context
-- `components/civica/proposals/VoteRationaleFlow.tsx` -- rationale context
+- `components/governada/home/EpochBriefing.tsx` -- treasury term tooltips
+- `components/governada/home/HomeAnonymous.tsx` -- delegation explainer
+- `components/governada/match/QuickMatchFlow.tsx` -- match context
+- `components/governada/proposals/VoteRationaleFlow.tsx` -- rationale context
 - DRep/SPO score display components -- "why this score" popover
 
 **Verification:** Have someone unfamiliar with Cardano governance navigate from homepage → match → delegate → briefing → engage. They should understand every concept encountered without external research.
@@ -611,10 +611,10 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
 **Key files to modify:**
 
 - New: `app/(main)/my-gov/identity/page.tsx` -- identity page
-- New: `components/civica/identity/CivicIdentityProfile.tsx` -- full profile component
-- New: `components/civica/identity/MilestoneGallery.tsx` -- milestone display
-- `components/civica/home/EpochBriefing.tsx` -- enhanced civic strip
-- `components/civica/shared/CivicIdentityCard.tsx` -- make clickable, add recent milestone
+- New: `components/governada/identity/CivicIdentityProfile.tsx` -- full profile component
+- New: `components/governada/identity/MilestoneGallery.tsx` -- milestone display
+- `components/governada/home/EpochBriefing.tsx` -- enhanced civic strip
+- `components/governada/shared/CivicIdentityCard.tsx` -- make clickable, add recent milestone
 - New or enhanced: `app/api/og/civic-identity/[userId]/route.tsx` -- OG image
 - `lib/citizenMilestones.ts` -- add milestone metadata (icons, descriptions, share text)
 
@@ -674,7 +674,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
 
 **Key files to modify:**
 
-- `components/civica/home/EpochBriefing.tsx` -- "your voice" section
+- `components/governada/home/EpochBriefing.tsx` -- "your voice" section
 - `app/api/briefing/citizen/route.ts` -- fetch citizen engagement + outcomes
 - `components/DRepCitizenSignals.tsx` -- divergence detail
 - `app/(main)/engage/page.tsx` -- priority recap section
@@ -807,7 +807,7 @@ These are not reconciled. A DRep's PCA position may contradict their manual dime
 - SPO profile components: add endorsement section
 - `inngest/functions/precompute-engagement-signals.ts` -- endorsement aggregation
 - `/discover` page components -- endorsement column
-- `components/civica/home/EpochBriefing.tsx` -- endorsement mention
+- `components/governada/home/EpochBriefing.tsx` -- endorsement mention
 
 **Verification:** Connect wallet, navigate to a DRep profile, endorse them for "treasury oversight" and "communication." See endorsement reflected on their profile. Verify it appears in the discover page sort and in the citizen's next briefing.
 

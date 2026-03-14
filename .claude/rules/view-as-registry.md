@@ -30,7 +30,7 @@ Any PR that introduces a new user state dimension or value that changes what use
 | ------------------------------------------ | ----------------------------------------------------- |
 | `lib/admin/viewAsRegistry.ts`              | Registry definitions (presets, dimensions, types)     |
 | `components/providers/SegmentProvider.tsx` | Override state management + context                   |
-| `components/civica/CivicaHeader.tsx`       | View As menu (renders from registry)                  |
+| `components/governada/GovernadaHeader.tsx` | View As menu (renders from registry)                  |
 | `hooks/useEngagement.ts`                   | Applies engagement/credibility overrides to hook data |
 
 ## Adding a new dimension (checklist)
@@ -41,4 +41,4 @@ Any PR that introduces a new user state dimension or value that changes what use
 4. Extend `SegmentState` in `SegmentProvider.tsx` with a convenience getter
 5. Update `DEFAULT_STATE` in SegmentProvider
 6. In the consuming hook, use `useSegment().dimensionOverrides` to patch data when override is active
-7. The CivicaHeader menu auto-renders new dimensions from `CROSS_CUTTING_DIMENSIONS` — no menu changes needed
+7. The GovernadaHeader menu auto-renders new dimensions from `CROSS_CUTTING_DIMENSIONS` — no menu changes needed

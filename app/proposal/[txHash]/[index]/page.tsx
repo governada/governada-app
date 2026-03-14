@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProposalByKey, getVotesByProposal, getVotePowerByEpoch } from '@/lib/data';
+import {
+  getProposalByKey,
+  getVotesByProposal,
+  getVotePowerByEpoch,
+  getVotingPowerSummary,
+} from '@/lib/data';
 import { blockTimeToEpoch } from '@/lib/koios';
 import { getTreasuryBalance, getNclUtilization } from '@/lib/treasury';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,11 +32,13 @@ import { ProposalDepthSection } from '@/components/governada/proposals/ProposalD
 import { getFeatureFlag } from '@/lib/featureFlags';
 import { getProposalBrief } from '@/lib/proposalBrief';
 import { computeConvictionPulseData } from '@/lib/convictionPulse';
+import { getHistoricalBaseRate, computeVoteProjection } from '@/lib/voteProjection';
 import { CompactHeader } from '@/components/governada/proposals/CompactHeader';
 import { ConvictionPulseViz } from '@/components/governada/proposals/ConvictionPulseViz';
 import { InlineActionNudge } from '@/components/governada/proposals/InlineActionNudge';
 import { LivingBrief } from '@/components/governada/proposals/LivingBrief';
 import { SourceMaterial } from '@/components/governada/proposals/SourceMaterial';
+import { VoteProgress } from '@/components/governada/proposals/VoteProgress';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,6 +164,34 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       )
     : null;
 
+  // Compute vote projection for the new layout
+  let voteProjection = null;
+  if (livingBriefEnabled) {
+    try {
+      const [powerSummary, baseRate] = await Promise.all([
+        getVotingPowerSummary(txHash, proposalIndex, proposal.proposalType),
+        getHistoricalBaseRate(proposal.proposalType),
+      ]);
+      voteProjection = computeVoteProjection({
+        yesPower: powerSummary.yesPower,
+        noPower: powerSummary.noPower,
+        abstainPower: powerSummary.abstainPower,
+        totalActivePower: powerSummary.totalActivePower,
+        threshold: powerSummary.threshold,
+        proposalType: proposal.proposalType,
+        proposedEpoch: proposal.proposedEpoch,
+        expirationEpoch: proposal.expirationEpoch,
+        currentEpoch,
+        powerByEpoch: votePowerByEpoch,
+        historicalPassRate: baseRate.passRate,
+        historicalSampleSize: baseRate.sampleSize,
+        historicalEvidence: baseRate.evidence,
+      });
+    } catch {
+      // Non-critical — page renders without projection
+    }
+  }
+
   // JSON-LD structured data for governance proposal
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -211,6 +246,9 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
       {/* Zone 2: Conviction Pulse */}
       {pulseData && pulseData.totalVoters > 0 && <ConvictionPulseViz data={pulseData} />}
+
+      {/* Zone 2.5: Vote Progress */}
+      {voteProjection && <VoteProgress projection={voteProjection} isOpen={isOpen} />}
 
       {/* Zone 3: Action Nudge */}
       <ProposalDepthSection section="actionZone">

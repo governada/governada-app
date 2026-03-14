@@ -38,30 +38,104 @@ const HUB_CONFIG = {
   },
 } as const satisfies Record<GovernanceDepth, object>;
 
+/** Which sections are visible on the proposal detail page at each depth level */
+export type ProposalSection =
+  | 'hero'
+  | 'actionZone'
+  | 'intelligenceBriefing'
+  | 'debate'
+  | 'communitySignals'
+  | 'lifecycle'
+  | 'adoptionCurve'
+  | 'voterTabs'
+  | 'description'
+  | 'similarProposals'
+  | 'outcomeSection';
+
+const PROPOSAL_SECTIONS_HANDS_OFF: Record<ProposalSection, boolean> = {
+  hero: true,
+  actionZone: false,
+  intelligenceBriefing: true,
+  debate: false,
+  communitySignals: false,
+  lifecycle: false,
+  adoptionCurve: false,
+  voterTabs: false,
+  description: false,
+  similarProposals: false,
+  outcomeSection: false,
+};
+
+const PROPOSAL_SECTIONS_INFORMED: Record<ProposalSection, boolean> = {
+  hero: true,
+  actionZone: true,
+  intelligenceBriefing: true,
+  debate: false,
+  communitySignals: true,
+  lifecycle: false,
+  adoptionCurve: false,
+  voterTabs: false,
+  description: false,
+  similarProposals: false,
+  outcomeSection: false,
+};
+
+const PROPOSAL_SECTIONS_ENGAGED: Record<ProposalSection, boolean> = {
+  hero: true,
+  actionZone: true,
+  intelligenceBriefing: true,
+  debate: true,
+  communitySignals: true,
+  lifecycle: true,
+  adoptionCurve: true,
+  voterTabs: false,
+  description: true,
+  similarProposals: false,
+  outcomeSection: true,
+};
+
+const PROPOSAL_SECTIONS_DEEP: Record<ProposalSection, boolean> = {
+  hero: true,
+  actionZone: true,
+  intelligenceBriefing: true,
+  debate: true,
+  communitySignals: true,
+  lifecycle: true,
+  adoptionCurve: true,
+  voterTabs: true,
+  description: true,
+  similarProposals: true,
+  outcomeSection: true,
+};
+
 const GOVERNANCE_CONFIG = {
   hands_off: {
     showRationales: false,
     showHistoricalTrends: false,
     showDRepPosition: false,
     proposalDetail: 'headline' as const,
+    proposalSections: PROPOSAL_SECTIONS_HANDS_OFF,
   },
   informed: {
     showRationales: false,
     showHistoricalTrends: false,
     showDRepPosition: true,
     proposalDetail: 'summary' as const,
+    proposalSections: PROPOSAL_SECTIONS_INFORMED,
   },
   engaged: {
     showRationales: true,
     showHistoricalTrends: false,
     showDRepPosition: true,
     proposalDetail: 'full' as const,
+    proposalSections: PROPOSAL_SECTIONS_ENGAGED,
   },
   deep: {
     showRationales: true,
     showHistoricalTrends: true,
     showDRepPosition: true,
     proposalDetail: 'full' as const,
+    proposalSections: PROPOSAL_SECTIONS_DEEP,
   },
 } as const satisfies Record<GovernanceDepth, object>;
 

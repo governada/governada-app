@@ -11,14 +11,18 @@ import { Button } from '@/components/ui/button';
 import { CopyableAddress } from '@/components/CopyableAddress';
 import { ChevronDown, ChevronUp, Users, Server, ShieldCheck } from 'lucide-react';
 import { type ProposalStatus, STATUS_STYLES } from '@/utils/proposalPriority';
+import { getVotingBodies } from '@/lib/governance/votingBodies';
 
 type Tab = 'dreps' | 'spos' | 'cc';
+
+const BODY_TO_TAB: Record<string, Tab> = { drep: 'dreps', spo: 'spos', cc: 'cc' };
 
 interface ProposalVoterTabsProps {
   votes: ProposalVoteDetail[];
   txHash: string;
   proposalIndex: number;
   status?: ProposalStatus;
+  proposalType?: string;
 }
 
 function VoteBadge({ vote }: { vote: string }) {
@@ -145,16 +149,23 @@ export function ProposalVoterTabs({
   txHash,
   proposalIndex,
   status,
+  proposalType,
 }: ProposalVoterTabsProps) {
+  const eligibleTabs = useMemo(() => {
+    if (!proposalType) return new Set<Tab>(['dreps', 'spos', 'cc']);
+    return new Set(getVotingBodies(proposalType).map((b) => BODY_TO_TAB[b]));
+  }, [proposalType]);
+
   const [tab, setTab] = useState<Tab>('dreps');
 
   const tabs: { key: Tab; label: string; icon: typeof Users; count?: number }[] = useMemo(
-    () => [
-      { key: 'dreps', label: 'DReps', icon: Users, count: votes.length },
-      { key: 'spos', label: 'SPOs', icon: Server },
-      { key: 'cc', label: 'CC', icon: ShieldCheck },
-    ],
-    [votes.length],
+    () =>
+      [
+        { key: 'dreps' as Tab, label: 'DReps', icon: Users, count: votes.length },
+        { key: 'spos' as Tab, label: 'SPOs', icon: Server },
+        { key: 'cc' as Tab, label: 'CC', icon: ShieldCheck },
+      ].filter((t) => eligibleTabs.has(t.key)),
+    [votes.length, eligibleTabs],
   );
 
   const statusStyle = status ? STATUS_STYLES[status] : null;

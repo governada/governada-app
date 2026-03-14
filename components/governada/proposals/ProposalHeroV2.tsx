@@ -9,6 +9,7 @@ import {
   TypeExplainerTooltip,
 } from '@/components/ProposalStatusBadge';
 import { ProposalVerdict } from './ProposalVerdict';
+import { OutcomeExplainer } from './OutcomeExplainer';
 import { getProposalTheme } from './proposal-theme';
 import { cn } from '@/lib/utils';
 import type { TriBodyVotes } from '@/lib/data';
@@ -187,6 +188,18 @@ export function ProposalHeroV2({
             proposalType={proposalType}
             accentColor={theme.accent}
           />
+          {!isOpen && (
+            <OutcomeExplainer
+              txHash={txHash}
+              proposalIndex={proposalIndex}
+              proposalType={proposalType}
+              status={status}
+              yesCount={yesCount}
+              noCount={noCount}
+              abstainCount={abstainCount}
+              totalVotes={totalVotes}
+            />
+          )}
         </div>
       </div>
 

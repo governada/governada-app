@@ -175,13 +175,50 @@ export function ProposalLifecycleTimeline({
   const remaining = isOpen && expirationEpoch ? Math.max(0, expirationEpoch - currentEpoch) : null;
   const remainingDays = remaining != null ? remaining * 5 : null;
 
+  // Derive terminal state for outcome-specific styling
+  const terminalState: 'enacted' | 'ratified' | 'dropped' | 'expired' | 'open' = enactedEpoch
+    ? 'enacted'
+    : ratifiedEpoch
+      ? 'ratified'
+      : droppedEpoch
+        ? 'dropped'
+        : expiredEpoch
+          ? 'expired'
+          : 'open';
+
+  const cardRing = {
+    enacted: 'ring-1 ring-emerald-500/20',
+    ratified: 'ring-1 ring-emerald-500/20',
+    dropped: 'ring-1 ring-red-500/20',
+    expired: 'ring-1 ring-muted-foreground/20',
+    open: '',
+  }[terminalState];
+
+  const titleIcon = {
+    enacted: CheckCircle2,
+    ratified: CheckCircle2,
+    dropped: XCircle,
+    expired: AlertTriangle,
+    open: Clock,
+  }[terminalState];
+
+  const titleIconColor = {
+    enacted: 'text-emerald-500',
+    ratified: 'text-emerald-500',
+    dropped: 'text-red-400',
+    expired: 'text-muted-foreground',
+    open: '',
+  }[terminalState];
+
+  const TitleIcon = titleIcon;
+
   // Use flex layout for clean spacing — no absolute positioning overlap issues
   return (
-    <Card>
+    <Card className={cardRing}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Clock className="h-4 w-4" />
+            <TitleIcon className={cn('h-4 w-4', titleIconColor)} />
             Lifecycle
           </CardTitle>
           {remainingDays != null && remaining != null && remaining > 0 && (
@@ -249,7 +286,11 @@ export function ProposalLifecycleTimeline({
                     <div
                       className={cn(
                         'h-0.5 w-full rounded-full',
-                        segmentFilled ? 'bg-primary/40' : 'bg-border',
+                        segmentFilled
+                          ? terminalState === 'expired' || terminalState === 'dropped'
+                            ? 'bg-muted-foreground/20'
+                            : 'bg-primary/40'
+                          : 'bg-border',
                       )}
                     />
                   </div>

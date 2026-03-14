@@ -267,6 +267,36 @@ export function CitizenEngagementSection({
   }
 
   const community = sentimentResults?.community ?? { support: 0, oppose: 0, unsure: 0, total: 0 };
+
+  // Compact summary for closed proposals where user hasn't voted
+  if (!isOpen && !hasVoted) {
+    if (community.total === 0) return null;
+    const topSentiment =
+      community.support >= community.oppose && community.support >= community.unsure
+        ? 'Support'
+        : community.oppose >= community.unsure
+          ? 'Oppose'
+          : 'Unsure';
+    const topPct = Math.round(
+      ((topSentiment === 'Support'
+        ? community.support
+        : topSentiment === 'Oppose'
+          ? community.oppose
+          : community.unsure) /
+        community.total) *
+        100,
+    );
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+        <BarChart3 className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span>
+          {community.total} citizen{community.total !== 1 ? 's' : ''} shared their opinion —{' '}
+          {topPct}% {topSentiment}
+        </span>
+      </div>
+    );
+  }
+
   const showButtons = isOpen && (!hasVoted || changingVote) && connected;
 
   const flags = concernResults?.flags ?? {};

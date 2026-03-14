@@ -2,7 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Sparkles, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Sparkles,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Scale,
+  BookOpen,
+  Users,
+  TrendingUp,
+  MessageSquare,
+  Eye,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +21,8 @@ import { MarkdownContent } from '@/components/MarkdownContent';
 import { ShareActions } from '@/components/ShareActions';
 import { BriefFeedback } from './BriefFeedback';
 import { cn } from '@/lib/utils';
+import { getRelevantArticles } from '@/lib/constitution';
+import { getVotingBodies } from '@/lib/governance/votingBodies';
 import type { ProposalBriefContent } from '@/lib/proposalBrief';
 
 interface LivingBriefProps {
@@ -28,9 +41,44 @@ interface LivingBriefProps {
   aiSummary: string | null;
   txHash: string;
   proposalIndex: number;
+  // First Look context
+  proposalType: string;
+  yesCount: number;
+  noCount: number;
+  abstainCount: number;
+  historicalContext: string | null;
 }
 
-/** Inline rationale card for the 1-2 rationale tier */
+// ---------------------------------------------------------------------------
+// Shared sub-components
+// ---------------------------------------------------------------------------
+
+/** Section card used in both First Look and full brief */
+function SectionCard({
+  icon: Icon,
+  title,
+  children,
+  className,
+}: {
+  icon?: typeof Scale;
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn('rounded-lg border border-border/30 bg-background/30 p-4 space-y-2', className)}
+    >
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+        {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+/** Inline rationale card for early voices */
 function InlineRationaleCard({
   drepId,
   drepName,
@@ -112,6 +160,35 @@ function BriefSkeleton() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Voting requirements helper
+// ---------------------------------------------------------------------------
+
+function getVotingRequirementsSummary(proposalType: string): string {
+  const bodies = getVotingBodies(proposalType);
+  const hasSpo = bodies.includes('spo');
+  const hasCc = bodies.includes('cc');
+
+  if (proposalType === 'InfoAction') {
+    return 'This is an advisory action — DReps vote but there is no binding threshold. The result signals community sentiment.';
+  }
+
+  const parts: string[] = ['Requires DRep approval'];
+  if (hasSpo) parts.push('SPO approval');
+  if (hasCc) parts.push('Constitutional Committee confirmation');
+
+  if (parts.length === 1) {
+    return `${parts[0]}. SPOs and the Constitutional Committee do not vote on this type of proposal.`;
+  }
+
+  const last = parts.pop()!;
+  return `${parts.join(', ')}, and ${last}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export function LivingBrief({
   brief: initialBrief,
   briefId: initialBriefId,
@@ -122,6 +199,11 @@ export function LivingBrief({
   aiSummary,
   txHash,
   proposalIndex,
+  proposalType,
+  yesCount,
+  noCount,
+  abstainCount,
+  historicalContext,
 }: LivingBriefProps) {
   const briefUrl = `https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`;
   const shareText = `Living Brief on this Cardano governance proposal via @Governada`;
@@ -181,7 +263,7 @@ export function LivingBrief({
   const briefId = initialBriefId ?? fetchedBriefId;
   const isStale = initialIsStale ?? fetchedIsStale;
 
-  // Loading state
+  // Loading state (generating brief)
   if (isLoading || (isGenerating && !brief)) {
     return (
       <section className="rounded-2xl border border-border/50 bg-card/50 overflow-hidden">
@@ -209,98 +291,23 @@ export function LivingBrief({
     );
   }
 
-  // ─── Tier 1: 0 rationales ────────────────────────────────────────────
-  if (rationaleCount === 0) {
-    return (
-      <section className="rounded-2xl border border-border/50 bg-card/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h2 className="text-lg font-semibold">Living Brief</h2>
-          </div>
-        </div>
-        <div className="p-6 space-y-4">
-          {aiSummary ? (
-            <div className="bg-primary/5 border-l-2 border-primary/40 rounded-r-lg p-3">
-              <MarkdownContent content={aiSummary} className="text-sm leading-relaxed" />
-              <p className="text-[10px] text-muted-foreground mt-2">
-                AI-generated summary from proposal metadata
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No summary available yet.
-            </p>
-          )}
-          <p className="text-sm text-muted-foreground text-center py-2">
-            No DRep rationales submitted yet. The Living Brief will generate automatically once
-            representatives begin publishing their reasoning.
-          </p>
-        </div>
-      </section>
-    );
-  }
-
-  // ─── Tier 2: 1-2 rationales (no full brief) ─────────────────────────
+  // ─── First Look: pre-brief intelligence (0-2 rationales or brief not yet generated) ──
   if (rationaleCount <= 2 || !brief) {
-    const rationalesWithText = rationales.filter((r) => r.rationaleAiSummary || r.rationaleText);
-
     return (
-      <section className="rounded-2xl border border-border/50 bg-card/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-semibold">Living Brief</h2>
-              {isStale && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] gap-1 text-amber-500 border-amber-500/30"
-                >
-                  <RefreshCw className="h-3 w-3 animate-spin" />
-                  Updating...
-                </Badge>
-              )}
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {rationaleCount} rationale{rationaleCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
-        <div className="p-6 space-y-4">
-          {aiSummary && (
-            <div className="bg-primary/5 border-l-2 border-primary/40 rounded-r-lg p-3">
-              <MarkdownContent content={aiSummary} className="text-sm leading-relaxed" />
-              <p className="text-[10px] text-muted-foreground mt-2">
-                AI-generated summary from proposal metadata
-              </p>
-            </div>
-          )}
-
-          {rationalesWithText.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground">Early Rationales</h3>
-              {rationalesWithText.map((r) => (
-                <InlineRationaleCard
-                  key={r.drepId}
-                  drepId={r.drepId}
-                  drepName={r.drepName}
-                  vote={r.vote}
-                  text={r.rationaleAiSummary || r.rationaleText}
-                />
-              ))}
-            </div>
-          )}
-
-          <p className="text-[10px] text-muted-foreground text-center pt-2">
-            The full Living Brief will generate once 3+ DRep rationales are available.
-          </p>
-        </div>
-      </section>
+      <FirstLook
+        aiSummary={aiSummary}
+        proposalType={proposalType}
+        yesCount={yesCount}
+        noCount={noCount}
+        abstainCount={abstainCount}
+        historicalContext={historicalContext}
+        rationaleCount={rationaleCount}
+        rationales={rationales}
+      />
     );
   }
 
-  // ─── Tier 3: Full Living Brief ───────────────────────────────────────
+  // ─── Full Living Brief ────────────────────────────────────────────────
   return (
     <section className="rounded-2xl border border-border/50 bg-card/50 overflow-hidden">
       <div className="px-6 py-4 border-b border-border/50">
@@ -378,6 +385,144 @@ export function LivingBrief({
           AI-generated summary based on {rationaleCount} DRep rationale
           {rationaleCount !== 1 ? 's' : ''}. This analysis may not reflect all perspectives.
         </p>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// First Look — structured context before the debate develops
+// ---------------------------------------------------------------------------
+
+function FirstLook({
+  aiSummary,
+  proposalType,
+  yesCount,
+  noCount,
+  abstainCount,
+  historicalContext,
+  rationaleCount,
+  rationales,
+}: {
+  aiSummary: string | null;
+  proposalType: string;
+  yesCount: number;
+  noCount: number;
+  abstainCount: number;
+  historicalContext: string | null;
+  rationaleCount: number;
+  rationales: LivingBriefProps['rationales'];
+}) {
+  const totalVotes = yesCount + noCount + abstainCount;
+  const articles = getRelevantArticles(proposalType);
+  const votingRequirements = getVotingRequirementsSummary(proposalType);
+  const rationalesWithText = rationales.filter((r) => r.rationaleAiSummary || r.rationaleText);
+
+  // Build the early signal message
+  let watchMessage: string;
+  if (totalVotes === 0 && rationaleCount === 0) {
+    watchMessage =
+      'Voting has not begun yet. The Living Brief will build automatically as DReps cast votes and publish their reasoning.';
+  } else if (rationaleCount === 0) {
+    watchMessage = `${totalVotes} DRep${totalVotes !== 1 ? 's have' : ' has'} voted but none have published rationale yet. The Living Brief will synthesize the debate once representatives explain their reasoning.`;
+  } else {
+    watchMessage = `${totalVotes} DRep${totalVotes !== 1 ? 's have' : ' has'} voted, ${rationaleCount} with published rationale. The full Living Brief will generate once 3 or more rationales are available.`;
+  }
+
+  return (
+    <section className="rounded-2xl border border-border/50 bg-card/50 overflow-hidden">
+      <div className="px-6 py-4 border-b border-border/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" />
+            <h2 className="text-lg font-semibold">First Look</h2>
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              Awaiting debate
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        {/* 1. What This Means */}
+        {aiSummary && (
+          <SectionCard icon={BookOpen} title="What This Means">
+            <MarkdownContent
+              content={aiSummary}
+              className="text-sm leading-relaxed text-foreground/80"
+            />
+          </SectionCard>
+        )}
+
+        {/* 2. Scale & Context (treasury proposals only) */}
+        {historicalContext && (
+          <SectionCard icon={TrendingUp} title="Scale & Context">
+            <p className="text-sm text-foreground/80">{historicalContext}</p>
+          </SectionCard>
+        )}
+
+        {/* 3. Constitutional Guardrails */}
+        {articles.length > 0 && (
+          <SectionCard icon={Scale} title="Constitutional Guardrails">
+            <p className="text-sm text-foreground/80 mb-2">
+              DReps will evaluate this proposal against these sections of the Cardano Constitution:
+            </p>
+            <div className="space-y-1.5">
+              {articles
+                .filter((a) => !a.id.startsWith('Article I') && !a.id.startsWith('Article II'))
+                .slice(0, 3)
+                .map((article) => (
+                  <div
+                    key={article.id}
+                    className="text-xs text-foreground/70 bg-muted/30 rounded px-2.5 py-1.5"
+                  >
+                    <span className="font-medium text-foreground/80">{article.id}</span>
+                    {' — '}
+                    {article.text.length > 160 ? article.text.slice(0, 160) + '...' : article.text}
+                  </div>
+                ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* 4. What Needs to Happen */}
+        <SectionCard icon={Users} title="What Needs to Happen">
+          <p className="text-sm text-foreground/80">{votingRequirements}</p>
+          {totalVotes > 0 && (
+            <div className="flex items-center gap-3 pt-1">
+              <span className="text-xs text-emerald-500 font-medium">{yesCount} Yes</span>
+              <span className="text-xs text-red-500 font-medium">{noCount} No</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                {abstainCount} Abstain
+              </span>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* 5. Early Voices (1-2 rationales) */}
+        {rationalesWithText.length > 0 && (
+          <SectionCard icon={MessageSquare} title="Early Voices">
+            <p className="text-xs text-muted-foreground mb-2">
+              First perspectives from DReps who have explained their vote
+            </p>
+            <div className="space-y-3">
+              {rationalesWithText.map((r) => (
+                <InlineRationaleCard
+                  key={r.drepId}
+                  drepId={r.drepId}
+                  drepName={r.drepName}
+                  vote={r.vote}
+                  text={r.rationaleAiSummary || r.rationaleText}
+                />
+              ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* 6. Watch This Space */}
+        <div className="bg-muted/30 rounded-lg px-4 py-3 text-center">
+          <p className="text-sm text-muted-foreground">{watchMessage}</p>
+        </div>
       </div>
     </section>
   );

@@ -82,12 +82,30 @@ export default async function ProposalDetailPage({ params }: PageProps) {
   // Living Brief feature flag
   const livingBriefEnabled = await getFeatureFlag('living_brief', false);
 
-  // Fetch brief data if enabled (non-blocking, defaults to null)
+  // Fetch brief data + historical context if enabled (non-blocking, defaults to null)
   const brief = livingBriefEnabled
     ? await getProposalBrief(txHash, proposalIndex).catch(() => null)
     : null;
 
-  // eslint-disable-next-line react-hooks/purity -- server component: Date.now() is fine during SSR
+  let historicalContext: string | null = null;
+  if (
+    livingBriefEnabled &&
+    proposal.proposalType === 'TreasuryWithdrawals' &&
+    proposal.withdrawalAmount
+  ) {
+    try {
+      const { getProposalHistoricalContext } = await import('@/lib/proposalContext');
+      const ctx = await getProposalHistoricalContext(txHash, proposalIndex);
+      if (ctx) {
+        const amtAda = proposal.withdrawalAmount / 1_000_000;
+        historicalContext = `This requests ${amtAda.toLocaleString()} ADA from the treasury, placing it at the ${Math.round(ctx.amountPercentile)}th percentile of all treasury proposals (median request: ${ctx.medianWithdrawalAda.toLocaleString()} ADA across ${ctx.totalTreasuryProposals} proposals).`;
+      }
+    } catch {
+      // Non-critical
+    }
+  }
+
+   
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
   const status = getProposalStatus(proposal);
   const isOpen = status === 'open';
@@ -216,6 +234,11 @@ export default async function ProposalDetailPage({ params }: PageProps) {
           aiSummary={proposal.aiSummary}
           txHash={txHash}
           proposalIndex={proposalIndex}
+          proposalType={proposal.proposalType}
+          yesCount={proposal.yesCount}
+          noCount={proposal.noCount}
+          abstainCount={proposal.abstainCount}
+          historicalContext={historicalContext}
         />
       </ProposalDepthSection>
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
   CheckCircle2,
@@ -25,9 +25,10 @@ import {
   Shield,
   Sparkles,
   Share2,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { briefingContainer, briefingItem } from '@/lib/animations';
+import { briefingContainer, briefingItem, spring } from '@/lib/animations';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import {
   useEpochConsequence,
@@ -53,6 +54,7 @@ import { CommunityConsensus } from './CommunityConsensus';
 import { DelegationHealthSummary } from './DelegationHealthSummary';
 import { DepthDiscoveryFooter } from './DepthDiscoveryFooter';
 import { WhatChanged } from '@/components/hub/WhatChanged';
+import { playMilestoneChime } from '@/lib/sounds';
 
 type SentimentChoice = 'support' | 'oppose' | 'unsure';
 
@@ -947,6 +949,104 @@ function EpochHeadline({
   );
 }
 
+/* ── Coverage Celebration (post-delegation moment) ────────────── */
+
+const COVERAGE_FLAG = 'governada:coverage-just-delegated';
+
+function CoverageCelebration() {
+  const { delegatedDrep, delegatedPool } = useSegment();
+  const { data: poolRaw } = useSPOSummary(delegatedPool);
+  const shouldReduceMotion = useReducedMotion();
+  const [show, setShow] = useState(false);
+  const chimedRef = useRef(false);
+
+  // Check for the flag on mount
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(COVERAGE_FLAG)) {
+        sessionStorage.removeItem(COVERAGE_FLAG);
+        setShow(true);
+      }
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, []);
+
+  // Play chime once
+  useEffect(() => {
+    if (!show || chimedRef.current) return;
+    chimedRef.current = true;
+    playMilestoneChime();
+    import('@/lib/posthog')
+      .then(({ posthog }) => {
+        posthog.capture('coverage_celebration_shown');
+      })
+      .catch(() => {});
+  }, [show]);
+
+  // Auto-dismiss after 5 seconds (slightly longer than standard milestone)
+  useEffect(() => {
+    if (!show) return;
+    const timer = setTimeout(() => setShow(false), 5000);
+    return () => clearTimeout(timer);
+  }, [show]);
+
+  const dismiss = useCallback(() => setShow(false), []);
+
+  if (!show) return null;
+
+  // Compute coverage message (mirrors PoolAndCoverage logic)
+  const pool = poolRaw as Record<string, unknown> | undefined;
+  const poolVoteCount = (pool?.voteCount as number) ?? 0;
+  const poolIsGovActive = poolVoteCount > 0;
+  const hasDrep = !!delegatedDrep;
+  const hasPool = !!delegatedPool;
+  const drepCovered = hasDrep ? 5 : 0;
+  const poolCovered = hasPool && poolIsGovActive ? 2 : 0;
+  const covered = drepCovered + poolCovered;
+
+  let message: string;
+  if (covered === 7) {
+    message = '7 of 7 — full governance coverage!';
+  } else if (hasDrep && hasPool && !poolIsGovActive) {
+    message = `${covered} of 7 decision types now covered. Your staking pool could cover the remaining 2 types.`;
+  } else {
+    message = `${covered} of 7 decision types now covered by your representative.`;
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="coverage-celebration"
+        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 50, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        transition={spring.bouncy}
+        className="fixed bottom-24 sm:bottom-8 left-4 sm:left-auto sm:right-4 z-40 w-[300px] max-w-[calc(100vw-2rem)]"
+      >
+        <div className="rounded-xl border border-emerald-500/30 bg-card/95 backdrop-blur-xl shadow-2xl shadow-emerald-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500/15 shrink-0">
+              <Shield className="h-4.5 w-4.5 text-emerald-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-emerald-500">Governance Coverage Activated</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{message}</p>
+            </div>
+            <button
+              onClick={dismiss}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════════
  * MAIN COMPONENT — thin orchestrator with DepthGate wiring
  * ══════════════════════════════════════════════════════════════════ */
@@ -1065,6 +1165,9 @@ export function CitizenHub() {
           Find a representative
         </Link>
       </motion.div>
+
+      {/* ── Coverage progression moment (post-delegation) ──── */}
+      <CoverageCelebration />
     </motion.div>
   );
 }

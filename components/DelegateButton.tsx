@@ -111,7 +111,14 @@ export function DelegateButton({ drepId, drepName, size = 'sm', className }: Del
         drepName={drepName}
         score={ceremonyScore || 0}
         alignments={ceremonyAlignments}
-        onContinue={() => setShowCeremony(false)}
+        onContinue={() => {
+          try {
+            sessionStorage.setItem('governada:coverage-just-delegated', '1');
+          } catch {
+            /* sessionStorage unavailable */
+          }
+          setShowCeremony(false);
+        }}
       />
     );
   }

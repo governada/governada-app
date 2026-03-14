@@ -4,7 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import type { NclUtilization, DRepNclImpact } from '@/lib/treasury';
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  const headers: Record<string, string> = {};
+  try {
+    const { getStoredSession } = await import('@/lib/supabaseAuth');
+    const token = getStoredSession();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  } catch {
+    // No session available — proceed without auth
+  }
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }

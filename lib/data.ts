@@ -526,6 +526,7 @@ export async function getDRepById(drepId: string): Promise<EnrichedDRep | null> 
       .from('dreps')
       .select('*')
       .eq('id', drepId)
+      .abortSignal(AbortSignal.timeout(10_000))
       .single();
 
     if (supabaseError) {

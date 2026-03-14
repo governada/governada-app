@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Users, Compass, Activity, Vote } from 'lucide-react';
+import { ArrowRight, Users, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
@@ -100,26 +100,16 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           </Button>
         </div>
 
-        {/* Live social proof stats */}
-        {pulseData && (
+        {/* Narrative social proof — frames raw numbers as personal stakes */}
+        {pulseData && pulseData.activeProposals > 0 && (
           <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <SocialProofStat
-                icon={Users}
-                value={pulseData.activeDReps}
-                label="representatives ready to vote for you"
-              />
-              <SocialProofStat
-                icon={Vote}
-                value={pulseData.activeProposals}
-                label="decisions being made right now"
-              />
-              <SocialProofStat
-                icon={Activity}
-                value={pulseData.totalDelegators}
-                label="ADA holders participating"
-              />
-            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed text-center">
+              Right now,{' '}
+              <strong className="text-foreground">{pulseData.activeProposals} proposals</strong> are
+              deciding how Cardano&apos;s treasury is spent.{' '}
+              <strong className="text-foreground">{pulseData.activeDReps} representatives</strong>{' '}
+              are voting on your behalf. Your ADA gives you a say.
+            </p>
           </div>
         )}
 
@@ -144,30 +134,6 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           </Link>
         </div>
       </section>
-    </div>
-  );
-}
-
-/* ─── Social proof stat ───────────────────────────────── */
-
-function SocialProofStat({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: typeof Users;
-  value: number;
-  label: string;
-}) {
-  const formatted = value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 text-primary/70" />
-        <span className="text-lg font-bold text-foreground tabular-nums">{formatted}</span>
-      </div>
-      <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
     </div>
   );
 }

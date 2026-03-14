@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/nextjs';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
-export default function Error({
+export default function GovernanceError({
   error,
   reset,
 }: {
@@ -32,9 +32,10 @@ export default function Error({
           />
         </svg>
       </div>
-      <h2 className="text-xl font-semibold">Something went wrong</h2>
+      <h2 className="text-xl font-semibold">Unable to load governance data</h2>
       <p className="text-muted-foreground max-w-md text-sm">
-        An unexpected error occurred. Our team has been notified and is looking into it.
+        We had trouble loading the governance data. This is usually a temporary issue with our data
+        sync.
       </p>
       <div className="flex gap-3 mt-2">
         <button
@@ -44,10 +45,10 @@ export default function Error({
           Try again
         </button>
         <Link
-          href="/help/support"
+          href="/"
           className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
         >
-          Get help
+          Back to home
         </Link>
       </div>
     </div>

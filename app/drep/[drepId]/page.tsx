@@ -66,6 +66,7 @@ import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
+import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
 import { TrustCard } from '@/components/civica/profiles/TrustCard';
 import { RecordSummaryCard } from '@/components/civica/profiles/RecordSummaryCard';
 import { TrajectoryCard } from '@/components/civica/profiles/TrajectoryCard';
@@ -371,31 +372,47 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   let openProposals: Awaited<ReturnType<typeof getOpenProposalsForDRep>> = [];
   let endorsementCount = 0;
 
-  try {
-    [
-      scoreHistory,
-      percentile,
-      rank,
-      delegationTrend,
-      linkChecks,
-      isClaimed,
-      spoAlignPct,
-      openProposals,
-      endorsementCount,
-    ] = await Promise.all([
-      getScoreHistory(drep.drepId),
-      getDRepPercentile(drep.drepScore),
-      getDRepRank(drep.drepId),
-      getDRepDelegationTrend(drep.drepId),
-      getSocialLinkChecks(drep.drepId),
-      isDRepClaimed(drep.drepId),
-      getSpoAlignment(drep.votes),
-      getOpenProposalsForDRep(drep.drepId),
-      getEndorsementCount('drep', drep.drepId),
-    ]);
-  } catch (err) {
-    console.error('[DRepProfile] Secondary data fetch failed, using defaults:', err);
+  // Wrap each secondary fetch with an 8-second timeout so a single slow fetch
+  // cannot block the entire page render. Timed-out fetches return their default value.
+  const SECONDARY_FETCH_TIMEOUT = 8_000;
+  function withTimeout<T>(promise: Promise<T>, fallback: T, label: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((resolve) =>
+        setTimeout(() => {
+          console.warn(
+            `[DRepProfile] Secondary fetch timed out after ${SECONDARY_FETCH_TIMEOUT}ms: ${label}`,
+          );
+          resolve(fallback);
+        }, SECONDARY_FETCH_TIMEOUT),
+      ),
+    ]).catch((err) => {
+      console.error(`[DRepProfile] Secondary fetch failed: ${label}`, err);
+      return fallback;
+    });
   }
+
+  [
+    scoreHistory,
+    percentile,
+    rank,
+    delegationTrend,
+    linkChecks,
+    isClaimed,
+    spoAlignPct,
+    openProposals,
+    endorsementCount,
+  ] = await Promise.all([
+    withTimeout(getScoreHistory(drep.drepId), [], 'scoreHistory'),
+    withTimeout(getDRepPercentile(drep.drepScore), 0, 'percentile'),
+    withTimeout(getDRepRank(drep.drepId), 0, 'rank'),
+    withTimeout(getDRepDelegationTrend(drep.drepId), [], 'delegationTrend'),
+    withTimeout(getSocialLinkChecks(drep.drepId), [], 'linkChecks'),
+    withTimeout(isDRepClaimed(drep.drepId), false, 'isClaimed'),
+    withTimeout(getSpoAlignment(drep.votes), null, 'spoAlignPct'),
+    withTimeout(getOpenProposalsForDRep(drep.drepId), [], 'openProposals'),
+    withTimeout(getEndorsementCount('drep', drep.drepId), 0, 'endorsementCount'),
+  ]);
 
   const pendingProposalCount = openProposals.length;
 
@@ -598,6 +615,16 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         noVotes={drep.noVotes}
         abstainVotes={drep.abstainVotes}
         drepId={drep.drepId}
+      />
+
+      {/* ── Delegation Impact Preview — undelegated citizens only ── */}
+      <DelegationImpactPreview
+        drepName={drepName}
+        participationRate={drep.effectiveParticipation}
+        totalVotes={drep.totalVotes}
+        rationaleRate={drep.rationaleRate}
+        votingPowerAda={drep.votingPower}
+        delegatorCount={drep.delegatorCount}
       />
 
       {/* 5. Identity metadata row — governance participants only */}

@@ -105,7 +105,6 @@ export default async function ProposalDetailPage({ params }: PageProps) {
     }
   }
 
-   
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
   const status = getProposalStatus(proposal);
   const isOpen = status === 'open';

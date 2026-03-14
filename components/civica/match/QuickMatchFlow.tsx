@@ -46,6 +46,7 @@ import type { AlignmentScores } from '@/lib/drepIdentity';
 import { getDominantDimension, getIdentityColor, getPersonalityLabel } from '@/lib/drepIdentity';
 import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
+import { generateMatchNarrative } from '@/lib/matching/matchNarrative';
 import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
 import { saveMatchProfile, loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
 import { emitDiscoveryEvent } from '@/lib/discovery/events';
@@ -627,20 +628,12 @@ function getPersonalityDescription(label: string): string {
   return descriptions[label] || "Your unique governance values shape how you see Cardano's future.";
 }
 
-function getMatchNarrative(match: MatchResult): string {
-  const { agreeDimensions, differDimensions, matchScore } = match;
-  const strength = matchScore >= 80 ? 'Strong' : matchScore >= 60 ? 'Good' : 'Moderate';
-
-  if (agreeDimensions.length > 0 && differDimensions.length > 0) {
-    return `${strength} alignment on ${agreeDimensions.slice(0, 2).join(' and ')} — you differ on ${differDimensions[0]}.`;
-  }
-  if (agreeDimensions.length > 0) {
-    return `${strength} alignment on ${agreeDimensions.slice(0, 2).join(' and ')}.`;
-  }
-  if (differDimensions.length > 0) {
-    return `${strength} overall match — you differ on ${differDimensions.slice(0, 2).join(' and ')}.`;
-  }
-  return `${strength} alignment across your governance values.`;
+function getMatchNarrative(match: MatchResult, confidence?: ConfidenceBreakdown): string {
+  return generateMatchNarrative({
+    agreeDimensions: match.agreeDimensions,
+    differDimensions: match.differDimensions,
+    confidence,
+  });
 }
 
 function buildShareableUrl(results: QuickMatchResponse): string {
@@ -910,7 +903,7 @@ function ResultsScreen({
                           </div>
                         )}
                         <p className="text-sm text-muted-foreground">
-                          {getMatchNarrative(heroMatch)}
+                          {getMatchNarrative(heroMatch, activeResults.confidenceBreakdown)}
                         </p>
                         <div
                           className="flex gap-2 justify-center pt-1"
@@ -944,6 +937,7 @@ function ResultsScreen({
                   match={match}
                   userAlignments={drepResults.userAlignments}
                   matchType={activeTab}
+                  confidenceBreakdown={activeResults.confidenceBreakdown}
                 />
               </div>
             ))}
@@ -1138,12 +1132,14 @@ function QuickMatchResultCard({
   userAlignments,
   matchType = 'drep',
   isNearMiss = false,
+  confidenceBreakdown,
 }: {
   rank: number;
   match: MatchResult;
   userAlignments: AlignmentScores;
   matchType?: MatchType;
   isNearMiss?: boolean;
+  confidenceBreakdown?: ConfidenceBreakdown;
 }) {
   const displayName = formatEntityName(match, matchType);
   const isSPO = matchType === 'spo';
@@ -1265,6 +1261,13 @@ function QuickMatchResultCard({
                   </span>
                 ))}
               </div>
+            )}
+
+            {/* Match narrative */}
+            {(match.agreeDimensions.length > 0 || match.differDimensions.length > 0) && (
+              <p className="text-sm text-muted-foreground">
+                {getMatchNarrative(match, confidenceBreakdown)}
+              </p>
             )}
 
             <div className="flex gap-2 mt-1">

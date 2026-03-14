@@ -213,10 +213,10 @@ export function GovernadaHeader() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 hidden sm:block transition-[background-color,border-color,backdrop-filter] duration-300',
+        'sticky top-0 z-50 hidden md:block transition-[background-color,border-color,backdrop-filter] duration-300',
         headerTransparent
           ? 'bg-transparent'
-          : 'border-b border-border/30 bg-background/30 backdrop-blur-xl',
+          : 'border-b border-border/30 bg-background/80 backdrop-blur-xl',
       )}
     >
       <div className="mx-auto max-w-7xl flex items-center justify-between h-14 px-6">

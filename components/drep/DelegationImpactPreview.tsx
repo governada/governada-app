@@ -1,6 +1,7 @@
 'use client';
 
 import { useSegment } from '@/components/providers/SegmentProvider';
+import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Vote, FileText, Users } from 'lucide-react';
 
@@ -11,12 +12,16 @@ interface DelegationImpactPreviewProps {
   rationaleRate: number;
   votingPowerAda: number;
   delegatorCount: number;
+  compact?: boolean;
 }
 
 /**
  * Shows undelegated citizens what delegating to this DRep would mean in practice.
  * Hidden for anonymous users (who haven't connected a wallet) and for users
  * who already have a delegation.
+ *
+ * At hands_off depth, renders a compact single-line summary instead of the
+ * full 3-column grid.
  */
 export function DelegationImpactPreview({
   drepName,
@@ -25,11 +30,28 @@ export function DelegationImpactPreview({
   rationaleRate,
   votingPowerAda,
   delegatorCount,
+  compact,
 }: DelegationImpactPreviewProps) {
   const { segment, delegatedDrep } = useSegment();
+  const { isAtLeast } = useGovernanceDepth();
 
   // Only show to citizens who are NOT currently delegated
   if (segment !== 'citizen' || delegatedDrep) return null;
+
+  const isCompact = compact ?? !isAtLeast('informed');
+
+  if (isCompact) {
+    return (
+      <Card className="border-border/50 bg-card/70 backdrop-blur-md py-3">
+        <CardContent className="flex items-center gap-3">
+          <Vote className="h-4 w-4 shrink-0 text-primary/70" />
+          <p className="text-sm text-muted-foreground">
+            Votes on {participationRate}% of proposals &middot; {rationaleRate}% with reasoning
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-border/50 bg-card/70 backdrop-blur-md py-4">

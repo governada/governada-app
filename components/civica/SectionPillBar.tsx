@@ -24,7 +24,7 @@ export function SectionPillBar({ section: _section }: SectionPillBarProps) {
   if (!items || items.length < 2) return null;
 
   return (
-    <div className="sticky top-14 z-20 lg:hidden border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <div className="sticky top-0 sm:top-14 z-20 lg:hidden border-b border-border/50 bg-background/80 backdrop-blur-xl pt-[env(safe-area-inset-top)] sm:pt-0">
       <nav
         className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto scrollbar-none"
         aria-label="Section navigation"

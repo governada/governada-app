@@ -563,6 +563,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           isActive: drep.isActive,
           totalVotes: drep.totalVotes,
           sizeTier: drep.sizeTier,
+          scoreMomentum: drep.scoreMomentum ?? null,
+          endorsementCount: endorsementCount,
         })}
         narrativeAccentColor={getIdentityColor(getDominantDimension(alignments)).hex}
       >

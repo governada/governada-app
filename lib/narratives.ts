@@ -37,14 +37,6 @@ function participationWord(rate: number): string {
   return 'relatively few proposals';
 }
 
-function rationaleWord(rate: number): string {
-  if (rate >= 90) return 'always explains their reasoning';
-  if (rate >= 70) return 'regularly provides reasoning';
-  if (rate >= 40) return 'sometimes explains their votes';
-  if (rate > 0) return 'occasionally provides reasoning';
-  return 'has not yet published vote rationale';
-}
-
 function trendWord(delta: number): string {
   if (delta > 10) return 'surging';
   if (delta > 3) return 'climbing';
@@ -71,6 +63,12 @@ export interface DRepNarrativeData {
   isActive: boolean;
   totalVotes: number;
   sizeTier: string;
+  /** Optional: total active DReps for rank context */
+  totalActiveDReps?: number;
+  /** Optional: score momentum for trajectory */
+  scoreMomentum?: number | null;
+  /** Optional: endorsement count for social proof */
+  endorsementCount?: number;
 }
 
 /**
@@ -110,46 +108,76 @@ Output only the 2-sentence profile. No quotation marks, no preamble.`;
 
 export function generateDRepNarrative(data: DRepNarrativeData): string | null {
   if (!data.isActive && data.totalVotes === 0) {
-    return `${data.name} is registered but hasn't participated in governance yet — their story is just beginning.`;
+    return `Registered as a DRep but hasn't cast a vote yet. Their governance record is a blank slate — check back once they start participating.`;
   }
 
   if (!data.isActive) {
-    return `${data.name} is currently inactive in governance. They previously voted on ${data.totalVotes} proposal${data.totalVotes !== 1 ? 's' : ''} and have ${data.delegatorCount.toLocaleString()} delegator${data.delegatorCount !== 1 ? 's' : ''} representing ${formatAdaCompact(data.votingPower)} ADA.`;
+    return `Currently inactive. Previously voted on ${data.totalVotes} proposal${data.totalVotes !== 1 ? 's' : ''} with ${data.delegatorCount.toLocaleString()} delegator${data.delegatorCount !== 1 ? 's' : ''} representing ${formatAdaCompact(data.votingPower)} ADA. Inactive DReps can't vote on your behalf.`;
   }
 
   const dominant = getDominantDimension(data.alignments);
   const dominantLabel = getDimensionLabel(dominant).toLowerCase();
+  const tier = computeTier(data.drepScore);
   const parts: string[] = [];
 
-  const focusIntro = pick([
-    `A ${dominantLabel}-focused DRep who votes on ${participationWord(data.participationRate)}`,
-    `With a focus on ${dominantLabel}, ${data.name} votes on ${participationWord(data.participationRate)}`,
-    `${data.name} brings a ${dominantLabel} perspective and votes on ${participationWord(data.participationRate)}`,
-  ]);
+  // Sentence 1: Thesis — what kind of participant are they?
+  const pRate = Math.round(data.participationRate);
+  const rRate = Math.round(data.rationaleRate);
 
-  parts.push(`${focusIntro} and ${rationaleWord(data.rationaleRate)}.`);
-
-  const contextParts: string[] = [];
-  if (data.rank && data.rank <= 20) {
-    contextParts.push(`Ranked #${data.rank}`);
-  }
-  if (data.delegatorCount > 0) {
-    contextParts.push(
-      `${data.delegatorCount.toLocaleString()} delegator${data.delegatorCount !== 1 ? 's' : ''}`,
+  if (pRate >= 80 && rRate >= 70) {
+    parts.push(
+      `Votes on ${_pct(data.participationRate)} of proposals and explains their reasoning ${_pct(data.rationaleRate)} of the time — a ${dominantLabel} advocate who shows up and does the work.`,
+    );
+  } else if (pRate >= 60) {
+    parts.push(
+      `Votes on ${_pct(data.participationRate)} of proposals${rRate >= 40 ? ` with rationale ${_pct(data.rationaleRate)} of the time` : ' but rarely explains their reasoning'}. Leans toward ${dominantLabel}.`,
+    );
+  } else {
+    parts.push(
+      `Has voted on ${_pct(data.participationRate)} of proposals${data.totalVotes > 0 ? ` (${data.totalVotes} total)` : ''}. ${rRate > 0 ? `Provides reasoning ${_pct(data.rationaleRate)} of the time.` : 'Has not published vote rationale yet.'}`,
     );
   }
-  if (data.votingPower > 0) {
-    contextParts.push(`${formatAdaCompact(data.votingPower)} ADA delegated`);
+
+  // Sentence 2: Context — rank, trajectory, social proof
+  const contextBits: string[] = [];
+
+  // Rank context (specific, not vague)
+  if (data.rank && data.totalActiveDReps && data.totalActiveDReps > 0) {
+    const topPct = Math.max(1, Math.round((data.rank / data.totalActiveDReps) * 100));
+    if (topPct <= 10) {
+      contextBits.push(`top ${topPct}% of active DReps`);
+    } else if (topPct <= 25) {
+      contextBits.push(`ranked #${data.rank} of ${data.totalActiveDReps}`);
+    }
+  } else if (data.rank && data.rank <= 20) {
+    contextBits.push(`ranked #${data.rank}`);
   }
 
-  if (contextParts.length > 0) {
-    const sizeComment =
-      data.sizeTier === 'Whale'
-        ? ' — one of the largest voices in governance'
-        : data.sizeTier === 'Large'
-          ? ' — a significant voice in governance'
-          : '';
-    parts.push(`${contextParts.join(' · ')}${sizeComment}.`);
+  // Trajectory
+  if (data.scoreMomentum && Math.abs(data.scoreMomentum) > 0.5) {
+    contextBits.push(data.scoreMomentum > 0 ? 'score trending up' : 'score trending down');
+  }
+
+  // Social proof
+  if (data.endorsementCount && data.endorsementCount >= 3) {
+    contextBits.push(`trusted by ${data.endorsementCount} citizens`);
+  }
+
+  // Delegation size
+  if (data.delegatorCount > 0) {
+    contextBits.push(
+      `${data.delegatorCount.toLocaleString()} delegator${data.delegatorCount !== 1 ? 's' : ''} · ${formatAdaCompact(data.votingPower)} ADA`,
+    );
+  }
+
+  if (contextBits.length > 0) {
+    const tierPrefix =
+      tier === 'Gold' || tier === 'Diamond' || tier === 'Legendary' ? `${tier}-tier` : '';
+    if (tierPrefix) {
+      parts.push(`${tierPrefix}: ${contextBits.join(', ')}.`);
+    } else {
+      parts.push(`${contextBits.join(', ').replace(/^./, (c) => c.toUpperCase())}.`);
+    }
   }
 
   return parts.join(' ');

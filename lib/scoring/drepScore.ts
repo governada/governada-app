@@ -5,12 +5,11 @@
  * piecewise linear curves. Your actions = your score, independent of
  * how other DReps perform.
  *
- * Confidence dampening still applies to calibrated scores for low-data DReps.
+ * Confidence gates tier assignment (via getDRepTierCap), NOT score magnitude.
  * Momentum is computed from score history via simple linear regression.
  */
 
 import { PILLAR_WEIGHTS, type DRepScoreResult } from './types';
-import { dampenPercentile } from './confidence';
 import { calibrate, DREP_PILLAR_CALIBRATION } from './calibration';
 
 /**
@@ -51,19 +50,12 @@ export function computeDRepScores(
     const rlRaw = rawReliability.get(drepId) ?? 0;
     const giRaw = rawIdentity.get(drepId) ?? 0;
 
-    let eqCal = dampenPercentile(
-      calibrate(eqRaw, DREP_PILLAR_CALIBRATION.engagementQuality),
-      confidence,
-    );
-    let epCal = dampenPercentile(
-      calibrate(epRaw, DREP_PILLAR_CALIBRATION.effectiveParticipation),
-      confidence,
-    );
-    let rlCal = dampenPercentile(calibrate(rlRaw, DREP_PILLAR_CALIBRATION.reliability), confidence);
-    const giCal = dampenPercentile(
-      calibrate(giRaw, DREP_PILLAR_CALIBRATION.governanceIdentity),
-      confidence,
-    );
+    // Absolute calibration — no confidence dampening on quality scores.
+    // Confidence only gates tier assignment (via getDRepTierCap).
+    let eqCal = Math.round(calibrate(eqRaw, DREP_PILLAR_CALIBRATION.engagementQuality));
+    let epCal = Math.round(calibrate(epRaw, DREP_PILLAR_CALIBRATION.effectiveParticipation));
+    let rlCal = Math.round(calibrate(rlRaw, DREP_PILLAR_CALIBRATION.reliability));
+    const giCal = Math.round(calibrate(giRaw, DREP_PILLAR_CALIBRATION.governanceIdentity));
 
     // Zero-activity override: when ALL three activity pillars have raw score 0,
     // the DRep has never participated in governance. Force calibrated scores

@@ -4,7 +4,6 @@
  * Absolute calibrated scoring (not percentile), proposal-aware reliability, 30-day momentum.
  */
 
-import { dampenPercentile } from './confidence';
 import { DECAY_LAMBDA } from './types';
 import {
   SPO_PILLAR_WEIGHTS as _SPO_WEIGHTS,
@@ -97,14 +96,12 @@ export function computeSpoScores(
     const rlRaw = reliabilityRawMap.get(poolId) ?? 0;
     const giRaw = identityScores.get(poolId) ?? 0;
 
-    // Absolute calibrated scoring — your actions = your score
-    let pCal = dampenPercentile(calibrate(pRaw, SPO_PILLAR_CALIBRATION.participation), confidence);
-    let dCal = dampenPercentile(calibrate(dRaw, SPO_PILLAR_CALIBRATION.deliberation), confidence);
-    let rlCal = dampenPercentile(calibrate(rlRaw, SPO_PILLAR_CALIBRATION.reliability), confidence);
-    const giCal = dampenPercentile(
-      calibrate(giRaw, SPO_PILLAR_CALIBRATION.governanceIdentity),
-      confidence,
-    );
+    // Absolute calibration — no confidence dampening on quality scores.
+    // Confidence only gates tier assignment (via CONFIDENCE_TIER_THRESHOLD).
+    let pCal = Math.round(calibrate(pRaw, SPO_PILLAR_CALIBRATION.participation));
+    let dCal = Math.round(calibrate(dRaw, SPO_PILLAR_CALIBRATION.deliberation));
+    let rlCal = Math.round(calibrate(rlRaw, SPO_PILLAR_CALIBRATION.reliability));
+    const giCal = Math.round(calibrate(giRaw, SPO_PILLAR_CALIBRATION.governanceIdentity));
 
     // Zero-activity override: if all 3 activity pillars have raw 0, force calibrated to 0
     if (pRaw === 0 && dRaw === 0 && rlRaw === 0) {

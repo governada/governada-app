@@ -4,107 +4,67 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  Heart,
-  Info,
-  RefreshCw,
-  RotateCcw,
-  Wallet,
-  Check,
-  Landmark,
-  Code2,
-  MessageSquare,
-  Users,
-} from 'lucide-react';
+import { Heart, RefreshCw, Wallet, Check } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
 import { useEndorsements, type EndorsementResults } from '@/hooks/useEngagement';
 import type { EndorsementType } from '@/lib/api/schemas/engagement';
 
-const ENDORSEMENT_CONFIG: {
-  type: EndorsementType;
-  label: string;
-  icon: typeof Heart;
-  tooltip: string;
-}[] = [
-  {
-    type: 'general',
-    label: 'General',
-    icon: Heart,
-    tooltip: 'Overall trust and confidence in this representative',
-  },
-  {
-    type: 'treasury_oversight',
-    label: 'Treasury',
-    icon: Landmark,
-    tooltip: 'Trust in their judgment on treasury spending proposals',
-  },
-  {
-    type: 'technical_expertise',
-    label: 'Technical',
-    icon: Code2,
-    tooltip: 'Trust in their ability to evaluate technical protocol changes',
-  },
-  {
-    type: 'communication',
-    label: 'Communication',
-    icon: MessageSquare,
-    tooltip: 'Recognition of clear, consistent communication with delegators',
-  },
-  {
-    type: 'community_leadership',
-    label: 'Community',
-    icon: Users,
-    tooltip: 'Recognition of community engagement and accessibility',
-  },
-];
-
 interface CitizenEndorsementsProps {
   entityType: 'drep' | 'spo';
   entityId: string;
+  /** Compact inline mode (no card wrapper) */
+  inline?: boolean;
 }
 
-export function CitizenEndorsements({ entityType, entityId }: CitizenEndorsementsProps) {
+/**
+ * Citizen Trust Signal — simplified from 5 categories to a single toggle.
+ * Uses 'general' endorsement type. Total count includes all legacy types for continuity.
+ */
+export function CitizenEndorsements({ entityType, entityId, inline }: CitizenEndorsementsProps) {
   const { connected, isAuthenticated, authenticate } = useWallet();
   const queryClient = useQueryClient();
   const { data: results, isLoading, isError, refetch } = useEndorsements(entityType, entityId);
 
-  const [toggling, setToggling] = useState<string | null>(null);
+  const [toggling, setToggling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const queryKey = ['endorsements', entityType, entityId];
+  const endorsementType: EndorsementType = 'general';
 
-  const toggleEndorsement = async (endorsementType: EndorsementType) => {
+  const toggleTrust = async () => {
     hapticLight();
     if (!isAuthenticated) {
       const ok = await authenticate();
       if (!ok) return;
     }
 
-    setToggling(endorsementType);
+    setToggling(true);
     setError(null);
 
-    // Optimistic update
     const previousData = queryClient.getQueryData<EndorsementResults>(queryKey);
     queryClient.setQueryData<EndorsementResults>(queryKey, (old) => {
       if (!old) return old;
       const isRemoving = old.userEndorsements.includes(endorsementType);
       const newByType = { ...old.byType };
-      let newUserEndorsements: string[];
 
       if (isRemoving) {
         newByType[endorsementType] = Math.max(0, (newByType[endorsementType] || 0) - 1);
-        newUserEndorsements = old.userEndorsements.filter((t) => t !== endorsementType);
+        return {
+          ...old,
+          byType: newByType,
+          total: Object.values(newByType).reduce((s, n) => s + n, 0),
+          userEndorsements: old.userEndorsements.filter((t) => t !== endorsementType),
+        };
       } else {
         newByType[endorsementType] = (newByType[endorsementType] || 0) + 1;
-        newUserEndorsements = [...old.userEndorsements, endorsementType];
+        return {
+          ...old,
+          byType: newByType,
+          total: Object.values(newByType).reduce((s, n) => s + n, 0),
+          userEndorsements: [...old.userEndorsements, endorsementType],
+        };
       }
-
-      const newTotal = Object.values(newByType).reduce((sum, n) => sum + n, 0);
-      return { ...old, byType: newByType, total: newTotal, userEndorsements: newUserEndorsements };
     });
 
     try {
@@ -140,197 +100,85 @@ export function CitizenEndorsements({ entityType, entityId }: CitizenEndorsement
       if (previousData) queryClient.setQueryData(queryKey, previousData);
       setError(err instanceof Error ? err.message : 'Endorsement failed');
     } finally {
-      setToggling(null);
+      setToggling(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card className="ring-1 ring-border/50">
-        <CardHeader className="pb-2">
-          <Skeleton className="h-4 w-36" />
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Skeleton className="h-4 w-48" />
-          <div className="flex flex-wrap gap-1.5">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-8 w-24 rounded-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (isError) {
-    return (
-      <Card className="ring-1 ring-border/50">
-        <CardContent className="py-4 text-center space-y-2">
-          <p className="text-xs text-muted-foreground">Couldn&apos;t load endorsements</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RotateCcw className="mr-1.5 h-3 w-3" />
-            Try again
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const total = results?.total ?? 0;
-  const byType = results?.byType ?? {};
   const userEndorsements = new Set(results?.userEndorsements ?? []);
-  const hasEndorsed = userEndorsements.size > 0;
+  const hasTrusted = userEndorsements.has(endorsementType);
+  const entityLabel = entityType === 'drep' ? 'DRep' : 'pool';
+
+  if (isLoading) {
+    return inline ? (
+      <Skeleton className="h-8 w-32 rounded-full" />
+    ) : (
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-8 w-32 rounded-full" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+    );
+  }
+
+  if (isError) return null;
+
+  const trustButton = (
+    <button
+      onClick={
+        connected ? toggleTrust : () => window.dispatchEvent(new CustomEvent('openWalletConnect'))
+      }
+      disabled={toggling}
+      aria-pressed={hasTrusted}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-150 border
+        motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.97]
+        ${
+          hasTrusted
+            ? 'bg-primary/10 border-primary/30 text-primary'
+            : 'bg-transparent border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground'
+        }
+      `}
+    >
+      {toggling ? (
+        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+      ) : hasTrusted ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : connected ? (
+        <Heart className="h-3.5 w-3.5" />
+      ) : (
+        <Wallet className="h-3.5 w-3.5" />
+      )}
+      {hasTrusted ? 'Trusted' : connected ? 'I Trust' : 'Connect to Trust'}
+      {total > 0 && <span className="ml-0.5 tabular-nums opacity-70">{total}</span>}
+    </button>
+  );
+
+  if (inline) {
+    return (
+      <div className="flex items-center gap-2">
+        {trustButton}
+        {total > 0 && !inline && (
+          <span className="text-xs text-muted-foreground">
+            {total} citizen{total !== 1 ? 's' : ''} trust this {entityLabel}
+            {hasTrusted && <span className="text-primary"> — including you</span>}
+          </span>
+        )}
+        {error && <span className="text-xs text-destructive">{error}</span>}
+      </div>
+    );
+  }
 
   return (
-    <Card className="ring-1 ring-border/50">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm flex items-center gap-1.5 text-muted-foreground font-medium">
-            <Heart className="h-3.5 w-3.5" />
-            Citizen Endorsements
-          </CardTitle>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-[240px]">
-                <p className="text-xs">
-                  Endorse this {entityType === 'drep' ? 'DRep' : 'SPO'} to signal your trust.
-                  Endorsements are social proof alongside the algorithmic score.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-3">
-        {/* Intro line */}
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Endorsements signal trust in specific governance competencies, complementing the
-          algorithmic score with social proof.
-        </p>
-
-        {/* Summary line */}
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        {trustButton}
         {total > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Endorsed by <span className="font-medium text-foreground tabular-nums">{total}</span>{' '}
-            citizen
-            {total !== 1 ? 's' : ''}
-            {hasEndorsed && <span className="text-primary"> (including you)</span>}
-          </p>
+          <span className="text-xs text-muted-foreground">
+            {total} citizen{total !== 1 ? 's' : ''} trust this {entityLabel}
+            {hasTrusted && <span className="text-primary"> — including you</span>}
+          </span>
         )}
-
-        {total === 0 && !connected && (
-          <p className="text-xs text-muted-foreground">
-            No endorsements yet. Be the first to endorse.
-          </p>
-        )}
-
-        {/* Endorsement type pills */}
-        {connected && (
-          <div
-            className="flex flex-wrap gap-1.5"
-            role="group"
-            aria-label={`Endorse this ${entityType === 'drep' ? 'DRep' : 'SPO'}`}
-          >
-            {ENDORSEMENT_CONFIG.map(({ type, label, icon: Icon, tooltip }) => {
-              const isActive = userEndorsements.has(type);
-              const count = byType[type] || 0;
-              const isCurrentlyToggling = toggling === type;
-
-              return (
-                <TooltipProvider key={type}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => toggleEndorsement(type)}
-                        disabled={toggling !== null}
-                        aria-pressed={isActive}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all duration-150 border
-                          motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.97]
-                          ${
-                            isActive
-                              ? 'bg-primary/10 border-primary/30 text-primary'
-                              : 'bg-transparent border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                          }
-                          ${toggling !== null && !isCurrentlyToggling ? 'opacity-50' : ''}
-                        `}
-                      >
-                        {isCurrentlyToggling ? (
-                          <RefreshCw className="h-3 w-3 animate-spin" />
-                        ) : isActive ? (
-                          <Check className="h-3 w-3" />
-                        ) : (
-                          <Icon className="h-3 w-3" />
-                        )}
-                        {label}
-                        {count > 0 && (
-                          <span className="ml-0.5 tabular-nums opacity-70">{count}</span>
-                        )}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[220px]">
-                      <p className="text-xs">{tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              );
-            })}
-          </div>
-        )}
-
-        {/* CTA for unconnected users */}
-        {!connected && (
-          <div className="relative">
-            <div className="opacity-30 pointer-events-none blur-[1px]">
-              <div className="flex flex-wrap gap-1.5">
-                {ENDORSEMENT_CONFIG.map(({ type, label, icon: Icon }) => (
-                  <span
-                    key={type}
-                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs border border-border/60"
-                  >
-                    <Icon className="h-3 w-3" />
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 h-7 text-xs"
-                onClick={() => {
-                  const event = new CustomEvent('openWalletConnect');
-                  window.dispatchEvent(event);
-                }}
-              >
-                <Wallet className="h-3 w-3" />
-                Connect to Endorse
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Type breakdown when there are endorsements and user is not connected */}
-        {total > 0 && !connected && (
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            {ENDORSEMENT_CONFIG.filter(({ type }) => (byType[type] || 0) > 0).map(
-              ({ type, label }) => (
-                <span key={type}>
-                  {byType[type]} {label.toLowerCase()}
-                </span>
-              ),
-            )}
-          </div>
-        )}
-
-        <div aria-live="polite" role="status">
-          {error && <p className="text-xs text-destructive">{error}</p>}
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
   );
 }

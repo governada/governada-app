@@ -371,50 +371,62 @@ describe('computeDRepScores', () => {
     expect(partial.composite).toBeGreaterThan(0);
   });
 
-  // ── Confidence dampening ──
+  // ── Confidence does NOT affect calibrated scores (only tier assignment) ──
 
-  it('dampens low-confidence DRep calibrated scores toward median', () => {
-    // Three DReps: d1 (top, low confidence) should be pulled toward median.
-    // d3 (top, full confidence) should NOT be pulled toward median.
+  it('confidence does not affect composite — same raw scores produce same composite', () => {
+    // Two DReps with identical raw scores but different confidence levels
+    // should produce identical composites (confidence only gates tier, not score).
     const confidences = new Map([
-      ['d1', 50],
-      ['d2', 100],
-      ['d3', 100],
+      ['low_conf', 30],
+      ['high_conf', 100],
     ]);
 
     const results = computeDRepScores(
       new Map([
-        ['d1', 90],
-        ['d2', 50],
-        ['d3', 90],
+        ['low_conf', 90],
+        ['high_conf', 90],
       ]),
       new Map([
-        ['d1', 90],
-        ['d2', 50],
-        ['d3', 90],
+        ['low_conf', 90],
+        ['high_conf', 90],
       ]),
       new Map([
-        ['d1', 90],
-        ['d2', 50],
-        ['d3', 90],
+        ['low_conf', 90],
+        ['high_conf', 90],
       ]),
       new Map([
-        ['d1', 90],
-        ['d2', 50],
-        ['d3', 90],
+        ['low_conf', 90],
+        ['high_conf', 90],
       ]),
       new Map(),
       confidences,
     );
 
-    const d1 = results.get('d1')!;
-    const d3 = results.get('d3')!;
+    const low = results.get('low_conf')!;
+    const high = results.get('high_conf')!;
 
-    // d1 (low confidence) should score lower than d3 (full confidence)
-    // because dampening pulls d1 toward 50
-    expect(d1.composite).toBeLessThan(d3.composite);
-    // d1 should be closer to 50 than d3 is
-    expect(Math.abs(d1.composite - 50)).toBeLessThan(Math.abs(d3.composite - 50));
+    // Same raw scores → same composite, regardless of confidence
+    expect(low.composite).toBe(high.composite);
+    // Confidence is stored for downstream tier cap logic
+    expect(low.confidence).toBe(30);
+    expect(high.confidence).toBe(100);
+  });
+
+  // ── Scoring invariant: excellent DReps can reach 85+ ──
+
+  it('DRep with excellent raw metrics achieves 85+ composite', () => {
+    // Invariant: the scoring model must allow top performers to reach Gold/Diamond.
+    // If this test fails, something is compressing scores artificially.
+    const results = computeDRepScores(
+      new Map([['top', 90]]),
+      new Map([['top', 85]]),
+      new Map([['top', 80]]),
+      new Map([['top', 75]]),
+      new Map(),
+    );
+
+    const top = results.get('top')!;
+    expect(top.composite).toBeGreaterThanOrEqual(85);
   });
 });
 

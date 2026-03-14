@@ -24,8 +24,9 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
     let integritySaved = 0;
 
     try {
-      const results = await Promise.allSettled([
-        // Step 1: Delegator counts
+      // Step 1: Delegator counts — must complete BEFORE power snapshots
+      // so that drep_power_snapshots have fresh Koios delegator counts.
+      const step1Result = await Promise.allSettled([
         (async () => {
           const { data: dreps } = await supabase
             .from('dreps')
@@ -62,8 +63,17 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
           }
           return updated;
         })(),
+      ]);
 
-        // Step 2: Power snapshots (includes delegator_count for Governance Identity pillar)
+      if (step1Result[0].status === 'fulfilled') {
+        delegatorsUpdated = step1Result[0].value;
+      } else {
+        errors.push(`Delegators: ${errMsg(step1Result[0].reason)}`);
+      }
+
+      // Step 2 + 3: Power snapshots (reads fresh delegator counts) + Integrity — parallel
+      const results = await Promise.allSettled([
+        // Step 2: Power snapshots (reads fresh delegator counts written by Step 1)
         (async () => {
           const { data: dreps } = await supabase
             .from('dreps')
@@ -94,7 +104,7 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
             const batch = rows.slice(i, i + BATCH_SIZE);
             const { error: batchErr } = await supabase
               .from('drep_power_snapshots')
-              .upsert(batch, { onConflict: 'drep_id,epoch_no', ignoreDuplicates: true });
+              .upsert(batch, { onConflict: 'drep_id,epoch_no' });
             if (batchErr)
               logger.error('[Secondary] power_snapshots batch upsert error', {
                 error: batchErr.message,
@@ -156,14 +166,13 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
 
       results.forEach((r, i) => {
         if (r.status === 'rejected') {
-          const label = ['Delegators', 'Power snapshots', 'Integrity'][i];
+          const label = ['Power snapshots', 'Integrity'][i];
           errors.push(`${label}: ${errMsg(r.reason)}`);
         }
       });
 
-      if (results[0].status === 'fulfilled') delegatorsUpdated = results[0].value;
-      if (results[1].status === 'fulfilled') powerSnapshots = results[1].value;
-      if (results[2].status === 'fulfilled') integritySaved = results[2].value;
+      if (results[0].status === 'fulfilled') powerSnapshots = results[0].value;
+      if (results[1].status === 'fulfilled') integritySaved = results[1].value;
     } catch (err) {
       errors.push(`Unhandled: ${errMsg(err)}`);
     }

@@ -338,6 +338,18 @@ function YourDRepSummary({ dreps }: { dreps: EnrichedDRep[] }) {
           </Button>
         </div>
       )}
+      {/* Score health nudge for hands-off users */}
+      {yourDrep && yourDrep.drepScore != null && yourDrep.drepScore < 40 && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-1.5">
+          <p className="text-xs text-amber-400/90">
+            Your representative&apos;s governance score is {yourDrep.drepScore}/100 — below average.
+            A low score means less participation, fewer explanations, or inconsistent voting.
+          </p>
+          <Button variant="outline" size="sm" asChild className="h-7 text-xs">
+            <Link href="/match">Explore alternatives &rarr;</Link>
+          </Button>
+        </div>
+      )}
       <p className="text-xs text-muted-foreground/60">
         {dreps.length > 0 ? `${dreps.length} DReps registered` : ''}
       </p>
@@ -628,20 +640,27 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
       {/* ── Content ──────────────────────────────────────────────── */}
       {isInformedOnly ? (
         /* Informed: top DReps by score, compact card grid, no filters */
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {activeItems.slice(0, 12).map((drep, i) => (
-            <div
-              key={drep.drepId}
-              className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
-              style={{ animationDelay: `${Math.min(i, 11) * 30}ms` }}
-            >
-              <GovernadaDRepCard
-                drep={drep}
-                rank={i + 1}
-                endorsementCount={endorsementCounts[drep.drepId]}
-              />
-            </div>
-          ))}
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground leading-relaxed max-w-lg">
+            Scores reflect participation, rationale quality, reliability, and profile completeness.
+            Higher is better — Gold (70+) and Diamond (85+) DReps are the most engaged voices in
+            governance.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {activeItems.slice(0, 12).map((drep, i) => (
+              <div
+                key={drep.drepId}
+                className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
+                style={{ animationDelay: `${Math.min(i, 11) * 30}ms` }}
+              >
+                <GovernadaDRepCard
+                  drep={drep}
+                  rank={i + 1}
+                  endorsementCount={endorsementCounts[drep.drepId]}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       ) : pageItems.length === 0 && inactiveItems.length === 0 ? (
         <div className="py-16 text-center space-y-2">

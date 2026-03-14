@@ -1508,6 +1508,8 @@ export async function getDRepRank(drepId: string): Promise<number | null> {
 
 /**
  * Returns epoch-by-epoch delegation power snapshots for a DRep.
+ * Reads from drep_power_snapshots (populated by secondary sync with fresh Koios data)
+ * rather than delegation_snapshots (which used stale DB counts).
  */
 export async function getDRepDelegationTrend(
   drepId: string,
@@ -1515,14 +1517,14 @@ export async function getDRepDelegationTrend(
   try {
     const supabase = createClient();
     const { data } = await supabase
-      .from('delegation_snapshots')
-      .select('epoch, total_power_lovelace, delegator_count')
+      .from('drep_power_snapshots')
+      .select('epoch_no, amount_lovelace, delegator_count')
       .eq('drep_id', drepId)
-      .order('epoch', { ascending: true })
+      .order('epoch_no', { ascending: true })
       .limit(30);
     return (data ?? []).map((s) => ({
-      epoch: s.epoch,
-      votingPowerAda: Math.round(Number(s.total_power_lovelace) / 1_000_000),
+      epoch: s.epoch_no,
+      votingPowerAda: Math.round(Number(s.amount_lovelace) / 1_000_000),
       delegatorCount: s.delegator_count ?? 0,
     }));
   } catch (err) {

@@ -204,18 +204,19 @@ export function WalletConnectModal({
                   </Button>
                 ))
               ) : (
-                <div className="text-center py-6 space-y-3">
-                  <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground opacity-50" />
-                  <div className="space-y-1">
-                    <p className="font-medium text-foreground">No Cardano wallet detected</p>
-                    <p className="text-sm text-muted-foreground">
-                      You need a CIP-95 compatible wallet to participate in governance.
+                <div className="text-center py-6 space-y-4">
+                  <div className="text-muted-foreground">
+                    <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="font-medium text-foreground">No Cardano wallets detected</p>
+                    <p className="text-sm mt-1">
+                      You need a Cardano wallet extension to connect. We&apos;ll help you get set
+                      up.
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                    <Link href="/get-started">
-                      Need help getting set up?
-                      <ExternalLink className="h-3.5 w-3.5" />
+                  <Button asChild className="w-full">
+                    <Link href="/get-started" onClick={() => onOpenChange(false)}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Get started with a wallet
                     </Link>
                   </Button>
                 </div>

@@ -400,6 +400,13 @@ function ActiveProposalCard({ proposal }: { proposal: ConsequenceProposal }) {
         </div>
       )}
 
+      {/* Depth nudge for connected users at informed (can see bars, can't vote) */}
+      {!hasVoted && connected && !showSentiment && (
+        <p className="text-[10px] text-muted-foreground/60 pt-1">
+          Adjust depth to Engaged to share your view
+        </p>
+      )}
+
       {/* Connect CTA for unconnected users */}
       {!hasVoted && !connected && (
         <Button
@@ -586,6 +593,44 @@ function PoolAndCoverage({
  * SECTION COMPONENTS — each owns its data hooks so DepthGate
  * prevents hook execution when the section is gated out.
  * ══════════════════════════════════════════════════════════════════ */
+
+/* ── Proposal Headlines (hands_off fallback) ─────────────────── */
+
+function ProposalHeadlines() {
+  const { stakeAddress } = useSegment();
+  const { data: consequence } = useEpochConsequence(stakeAddress);
+
+  const decided = consequence?.decidedProposals ?? [];
+  const active = consequence?.activeProposals ?? [];
+  const proposals = [...active, ...decided].slice(0, 2);
+
+  if (proposals.length === 0) return null;
+
+  return (
+    <Section>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+        Governance activity
+      </h2>
+      <div className="space-y-1.5">
+        {proposals.map((p) => (
+          <Link
+            key={`${p.txHash}:${p.index}`}
+            href={`/proposal/${p.txHash}/${p.index}`}
+            className="block text-sm text-foreground/80 hover:text-primary transition-colors line-clamp-1"
+          >
+            {p.title ?? 'Untitled Proposal'}
+          </Link>
+        ))}
+      </div>
+      <Link
+        href="/governance/proposals"
+        className="mt-2 block text-xs text-primary hover:underline"
+      >
+        See all proposals
+      </Link>
+    </Section>
+  );
+}
 
 /* ── Decided Proposals Section (informed+) ────────────────────── */
 
@@ -1115,14 +1160,25 @@ export function CitizenHub() {
 
       {/* ── Governance Pulse teaser (undelegated citizens only) */}
       {!delegatedDrep && (
-        <GovernancePulse
-          activeProposalCount={consequence?.activeProposals?.length ?? 0}
-          aiHeadline={aiHeadline}
-        />
+        <DepthGate
+          minDepth="informed"
+          fallback={
+            <GovernancePulse
+              activeProposalCount={consequence?.activeProposals?.length ?? 0}
+              aiHeadline={null}
+              compact
+            />
+          }
+        >
+          <GovernancePulse
+            activeProposalCount={consequence?.activeProposals?.length ?? 0}
+            aiHeadline={aiHeadline}
+          />
+        </DepthGate>
       )}
 
-      {/* ── Decided proposals (informed+) ──────────────────── */}
-      <DepthGate minDepth="informed">
+      {/* ── Decided proposals (informed+, headlines fallback for hands_off) */}
+      <DepthGate minDepth="informed" fallback={<ProposalHeadlines />}>
         <DecidedProposalsSection />
       </DepthGate>
 

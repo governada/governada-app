@@ -220,6 +220,12 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
           </>
         )}
       </Button>
+      {!canDelegate && (
+        <p className="text-xs text-muted-foreground text-center leading-relaxed">
+          Delegation lets this DRep vote on your behalf. You keep full control of your ADA and can
+          change or remove your delegation at any time.
+        </p>
+      )}
       <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
           <Shield className="h-3 w-3 shrink-0" />

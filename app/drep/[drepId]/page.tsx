@@ -686,27 +686,23 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </div>
       </SegmentGate>
 
-      {/* ── Chapter 3: The Record — hidden for anonymous ── */}
-      <SegmentGate hide={['anonymous']}>
-        <RecordSummaryCard
-          drepId={drep.drepId}
-          totalVotes={drep.totalVotes}
-          participationRate={drep.effectiveParticipation}
-          rationaleRate={drep.rationaleRate}
-        />
-      </SegmentGate>
+      {/* ── Chapter 3: The Record — public data, visible to all ── */}
+      <RecordSummaryCard
+        drepId={drep.drepId}
+        totalVotes={drep.totalVotes}
+        participationRate={drep.effectiveParticipation}
+        rationaleRate={drep.rationaleRate}
+      />
 
-      {/* ── Chapter 4: Trajectory — hidden for anonymous ── */}
-      <SegmentGate hide={['anonymous']}>
-        <TrajectoryCard
-          scoreHistory={scoreHistory}
-          delegationTrend={delegationTrend}
-          currentScore={drep.drepScore}
-          scoreMomentum={drep.scoreMomentum}
-          delegatorCount={drep.delegatorCount}
-          votingPowerFormatted={formatAda(drep.votingPower)}
-        />
-      </SegmentGate>
+      {/* ── Chapter 4: Trajectory — public data, visible to all ── */}
+      <TrajectoryCard
+        scoreHistory={scoreHistory}
+        delegationTrend={delegationTrend}
+        currentScore={drep.drepScore}
+        scoreMomentum={drep.scoreMomentum}
+        delegatorCount={drep.delegatorCount}
+        votingPowerFormatted={formatAda(drep.votingPower)}
+      />
 
       {/* ── Citizen Endorsements — visible to all (social proof) ── */}
       <CitizenEndorsements entityType="drep" entityId={drep.drepId} />

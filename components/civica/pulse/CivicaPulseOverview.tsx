@@ -348,9 +348,22 @@ export function CivicaPulseOverview() {
     return <GHIMinimal />;
   }
 
-  // ── Informed: score + dimension breakdown, no tabs ─────────────────────
+  // ── Informed: score + dimension breakdown + briefing & alerts, no tabs ──
   if (!isAtLeast('engaged')) {
-    return <GHIInformedView />;
+    return (
+      <div className="space-y-6">
+        <GHIInformedView />
+        <GovernanceBriefing />
+        <GovernanceAlerts
+          communityGap={pulse?.communityGap}
+          spotlightProposal={pulse?.spotlightProposal}
+          gainers={gainers}
+          losers={losers}
+          criticalProposals={pulse?.criticalProposals}
+          loading={loading}
+        />
+      </div>
+    );
   }
 
   // ── Engaged + Deep: full dashboard (current behavior = Engaged baseline) ─

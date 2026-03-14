@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Sparkles, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -113,10 +113,10 @@ function BriefSkeleton() {
 }
 
 export function LivingBrief({
-  brief,
-  briefId,
+  brief: initialBrief,
+  briefId: initialBriefId,
   isLoading,
-  isStale,
+  isStale: initialIsStale,
   rationaleCount,
   rationales,
   aiSummary,
@@ -126,18 +126,84 @@ export function LivingBrief({
   const briefUrl = `https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`;
   const shareText = `Living Brief on this Cardano governance proposal via @Governada`;
 
+  // Client-side brief fetching: triggers generation + polls when brief is missing but rationales exist
+  const [fetchedBrief, setFetchedBrief] = useState<ProposalBriefContent | null>(null);
+  const [fetchedBriefId, setFetchedBriefId] = useState<string | null>(null);
+  const [fetchedIsStale, setFetchedIsStale] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const shouldFetch = !initialBrief && rationaleCount >= 3;
+
+  useEffect(() => {
+    if (!shouldFetch) return;
+
+    let cancelled = false;
+    setIsGenerating(true);
+
+    async function fetchBrief() {
+      try {
+        const res = await fetch(
+          `/api/proposal/brief?txHash=${encodeURIComponent(txHash)}&index=${proposalIndex}`,
+        );
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+
+        if (data.brief) {
+          setFetchedBrief(data.brief.content);
+          setFetchedBriefId(data.brief.id);
+          setFetchedIsStale(data.brief.isStale ?? false);
+          setIsGenerating(false);
+        } else if (data.reason === 'generating') {
+          // Poll again in 10 seconds
+          pollRef.current = setTimeout(() => {
+            if (!cancelled) fetchBrief();
+          }, 10_000);
+        } else {
+          // insufficient_rationales or other — stop polling
+          setIsGenerating(false);
+        }
+      } catch {
+        setIsGenerating(false);
+      }
+    }
+
+    fetchBrief();
+
+    return () => {
+      cancelled = true;
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
+  }, [shouldFetch, txHash, proposalIndex]);
+
+  // Use fetched brief if initial was null
+  const brief = initialBrief ?? fetchedBrief;
+  const briefId = initialBriefId ?? fetchedBriefId;
+  const isStale = initialIsStale ?? fetchedIsStale;
+
   // Loading state
-  if (isLoading) {
+  if (isLoading || (isGenerating && !brief)) {
     return (
       <section className="rounded-2xl border border-border/50 bg-card/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-border/50">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <h2 className="text-lg font-semibold">Living Brief</h2>
+            {isGenerating && (
+              <Badge variant="outline" className="text-[10px] gap-1 text-primary border-primary/30">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Generating...
+              </Badge>
+            )}
           </div>
         </div>
         <div className="p-6">
           <BriefSkeleton />
+          {isGenerating && (
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              Synthesizing {rationaleCount} DRep rationales into an intelligence brief...
+            </p>
+          )}
         </div>
       </section>
     );

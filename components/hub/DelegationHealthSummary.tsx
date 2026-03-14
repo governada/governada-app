@@ -17,6 +17,7 @@ import { useGovernanceHolder, useSPOSummary } from '@/hooks/queries';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /** Convert epoch number to a human-readable date range */
 function epochDateRange(epoch: number): string {
@@ -87,8 +88,8 @@ export function DelegationHealthSummary() {
   let status: HealthStatus;
   let statusLabel: string;
   if (!hasDrep) {
-    status = 'red';
-    statusLabel = 'No representative';
+    status = 'yellow';
+    statusLabel = "You haven't delegated yet";
   } else if (!drepIsActive) {
     status = 'red';
     statusLabel = 'Representative inactive';
@@ -219,9 +220,30 @@ export function DelegationHealthSummary() {
         {/* Coverage */}
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Coverage</span>
-          <span className="tabular-nums font-medium text-foreground">
-            {covered}/{totalTypes} decision types
-          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="tabular-nums font-medium text-foreground cursor-help border-b border-dotted border-muted-foreground/30">
+                  {covered}/{totalTypes} decision types
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[260px] space-y-1.5 py-2.5 px-3">
+                <p className="font-semibold text-[11px]">7 governance decision types in Cardano</p>
+                <ol className="list-decimal list-inside text-[10px] leading-relaxed space-y-0.5 opacity-90">
+                  <li>Constitutional Committee updates</li>
+                  <li>Constitutional changes</li>
+                  <li>Hard fork initiation</li>
+                  <li>Protocol parameter changes</li>
+                  <li>Treasury withdrawals</li>
+                  <li>Info actions</li>
+                  <li>No confidence motions</li>
+                </ol>
+                <p className="text-[10px] opacity-70 pt-0.5">
+                  Your DRep covers 5 types. Your staking pool can cover the remaining 2.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Next check */}

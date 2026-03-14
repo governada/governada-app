@@ -16,7 +16,9 @@ import { generateSpoNarrative } from '@/lib/narratives';
 import { cn } from '@/lib/utils';
 
 const TierCelebrationManager = nextDynamic(() =>
-  import('@/components/civica/shared/TierCelebrationManager').then((m) => m.TierCelebrationManager),
+  import('@/components/governada/shared/TierCelebrationManager').then(
+    (m) => m.TierCelebrationManager,
+  ),
 );
 const CitizenEndorsements = nextDynamic(
   () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
@@ -24,36 +26,38 @@ const CitizenEndorsements = nextDynamic(
 );
 const DetailedAnalysisGate = nextDynamic(
   () =>
-    import('@/components/civica/shared/DetailedAnalysisGate').then((m) => m.DetailedAnalysisGate),
+    import('@/components/governada/shared/DetailedAnalysisGate').then(
+      (m) => m.DetailedAnalysisGate,
+    ),
   { loading: () => <div className="h-16 animate-pulse bg-muted rounded-xl" /> },
 );
 const SpoTrustCard = nextDynamic(
-  () => import('@/components/civica/profiles/SpoTrustCard').then((m) => m.SpoTrustCard),
+  () => import('@/components/governada/profiles/SpoTrustCard').then((m) => m.SpoTrustCard),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-xl" /> },
 );
 const SpoIdentityCard = nextDynamic(
-  () => import('@/components/civica/profiles/SpoIdentityCard').then((m) => m.SpoIdentityCard),
+  () => import('@/components/governada/profiles/SpoIdentityCard').then((m) => m.SpoIdentityCard),
   { loading: () => <div className="h-24 animate-pulse bg-muted rounded-xl" /> },
 );
 const InterBodyDynamicsCard = nextDynamic(
   () =>
-    import('@/components/civica/profiles/InterBodyDynamicsCard').then(
+    import('@/components/governada/profiles/InterBodyDynamicsCard').then(
       (m) => m.InterBodyDynamicsCard,
     ),
   { loading: () => <div className="h-40 animate-pulse bg-muted rounded-xl" /> },
 );
 const SpoProfileTabsV2 = nextDynamic(
-  () => import('@/components/civica/profiles/SpoProfileTabsV2').then((m) => m.SpoProfileTabsV2),
+  () => import('@/components/governada/profiles/SpoProfileTabsV2').then((m) => m.SpoProfileTabsV2),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-xl" /> },
 );
 
-import { SpoProfileHero } from '@/components/civica/profiles/SpoProfileHero';
+import { SpoProfileHero } from '@/components/governada/profiles/SpoProfileHero';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
-import { PoolClaimCard } from '@/components/civica/profiles/PoolClaimCard';
-import { PoolProfileEditorGate } from '@/components/civica/profiles/PoolProfileEditorGate';
+import { PoolClaimCard } from '@/components/governada/profiles/PoolClaimCard';
+import { PoolProfileEditorGate } from '@/components/governada/profiles/PoolProfileEditorGate';
 import { FeatureGate } from '@/components/FeatureGate';
 import { computeTier, computeTierProgress } from '@/lib/scoring/tiers';
-import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/civica/cards/tierStyles';
+import { tierKey, TIER_BADGE_BG, TIER_SCORE_COLOR } from '@/components/governada/cards/tierStyles';
 
 export const dynamic = 'force-dynamic';
 

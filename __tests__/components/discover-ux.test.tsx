@@ -299,8 +299,8 @@ vi.mock('lucide-react', () => ({
   ChevronRight: () => <span data-testid="icon-right" />,
 }));
 
-import { DiscoverFilterBar } from '@/components/civica/discover/DiscoverFilterBar';
-import { DiscoverPagination } from '@/components/civica/discover/DiscoverPagination';
+import { DiscoverFilterBar } from '@/components/governada/discover/DiscoverFilterBar';
+import { DiscoverPagination } from '@/components/governada/discover/DiscoverPagination';
 
 describe('DiscoverFilterBar', () => {
   const defaultProps = {

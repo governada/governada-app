@@ -42,7 +42,7 @@ export interface SegmentState {
   isViewingAs: boolean;
 }
 
-const STORAGE_KEY = 'civica_segment';
+const STORAGE_KEY = 'governada_segment';
 
 const noop = () => {};
 const noopDimensions = () => {};

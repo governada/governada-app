@@ -59,7 +59,7 @@ const MilestoneBadges = nextDynamic(
 );
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
 const SimilarDReps = nextDynamic(
-  () => import('@/components/civica/profiles/SimilarDReps').then((m) => m.SimilarDReps),
+  () => import('@/components/governada/profiles/SimilarDReps').then((m) => m.SimilarDReps),
   { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
 );
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
@@ -67,9 +67,9 @@ import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
 import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
-import { TrustCard } from '@/components/civica/profiles/TrustCard';
-import { RecordSummaryCard } from '@/components/civica/profiles/RecordSummaryCard';
-import { TrajectoryCard } from '@/components/civica/profiles/TrajectoryCard';
+import { TrustCard } from '@/components/governada/profiles/TrustCard';
+import { RecordSummaryCard } from '@/components/governada/profiles/RecordSummaryCard';
+import { TrajectoryCard } from '@/components/governada/profiles/TrajectoryCard';
 const CitizenEndorsements = nextDynamic(
   () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
   { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
@@ -79,7 +79,9 @@ const AlignmentTrajectory = nextDynamic(
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
 const TierCelebrationManager = nextDynamic(() =>
-  import('@/components/civica/shared/TierCelebrationManager').then((m) => m.TierCelebrationManager),
+  import('@/components/governada/shared/TierCelebrationManager').then(
+    (m) => m.TierCelebrationManager,
+  ),
 );
 import {
   extractAlignments,
@@ -89,9 +91,10 @@ import {
 } from '@/lib/drepIdentity';
 import { computeTierProgress } from '@/lib/scoring/tiers';
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
-import { DRepProfileTabsV2 } from '@/components/civica/profiles/DRepProfileTabsV2';
+import { DRepProfileTabsV2 } from '@/components/governada/profiles/DRepProfileTabsV2';
 const DRepStatementsTab = nextDynamic(
-  () => import('@/components/civica/profiles/DRepStatementsTab').then((m) => m.DRepStatementsTab),
+  () =>
+    import('@/components/governada/profiles/DRepStatementsTab').then((m) => m.DRepStatementsTab),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
 import { getDRepTraitTags } from '@/lib/alignment';
@@ -100,8 +103,8 @@ import { generateDRepNarrative } from '@/lib/narratives';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
-import { DRepOutcomeSummary } from '@/components/civica/profiles/DRepOutcomeSummary';
-import { ScoreAnalysisGate } from '@/components/civica/profiles/ScoreAnalysisGate';
+import { DRepOutcomeSummary } from '@/components/governada/profiles/DRepOutcomeSummary';
+import { ScoreAnalysisGate } from '@/components/governada/profiles/ScoreAnalysisGate';
 import { getProposalOutcomesBatch } from '@/lib/proposalOutcomes';
 import {
   getDRepById,
@@ -471,7 +474,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   const drepName = getDRepPrimaryName(drep);
   const traitTags = getDRepTraitTags(drep as unknown as EnrichedDRep);
 
-  // Use hysteresis-aware label when civica is enabled (last_personality_label is null for
+  // Use hysteresis-aware label when governada is enabled (last_personality_label is null for
   // all DReps currently — hysteresis kicks in once the sync pipeline starts persisting labels)
   const lastPersonalityLabel =
     ((drep as unknown as Record<string, unknown>).lastPersonalityLabel as string | null) ?? null;

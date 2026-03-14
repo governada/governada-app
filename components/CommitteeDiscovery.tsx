@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCommitteeMembers } from '@/hooks/queries';
 import type { CommitteeMemberQuickView } from '@/hooks/queries';
-import { DiscoverFilterBar } from '@/components/civica/discover/DiscoverFilterBar';
+import { DiscoverFilterBar } from '@/components/governada/discover/DiscoverFilterBar';
 
 const GRADE_COLORS: Record<string, string> = {
   A: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30',

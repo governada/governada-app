@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { VoteRationaleFlow } from '@/components/civica/proposals/VoteRationaleFlow';
+import { VoteRationaleFlow } from '@/components/governada/proposals/VoteRationaleFlow';
 import type { CockpitData, CockpitProposal } from '@/hooks/queries';
 
 // ── Intelligence overlays ─────────────────────────────────────────────

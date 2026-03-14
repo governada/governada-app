@@ -6,7 +6,7 @@ import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Share2, X } from 'lucide-react';
-import { ShareModal } from '@/components/civica/shared/ShareModal';
+import { ShareModal } from '@/components/governada/shared/ShareModal';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { spring } from '@/lib/animations';
 

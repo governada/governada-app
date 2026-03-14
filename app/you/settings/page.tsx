@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
-import { CivicaProfile } from '@/components/civica/mygov/CivicaProfile';
+import { GovernadaProfile } from '@/components/governada/mygov/GovernadaProfile';
 
 export const metadata: Metadata = {
   title: 'Governada — Profile & Settings',
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
-      <CivicaProfile />
+      <GovernadaProfile />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
-import { CivicaDiscover } from '@/components/civica/discover/CivicaDiscover';
+import { GovernadaDiscover } from '@/components/governada/discover/GovernadaDiscover';
 import { createClient } from '@/lib/supabase';
 
 export const metadata: Metadata = {
@@ -76,7 +76,7 @@ export default async function DiscoverPage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6">
       <PageViewTracker event="discover_page_viewed" />
-      <CivicaDiscover
+      <GovernadaDiscover
         totalAvailable={totalAvailable}
         proposalCount={proposalCount}
         ccMemberCount={ccMemberCount}

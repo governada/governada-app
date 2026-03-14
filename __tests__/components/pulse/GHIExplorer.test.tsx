@@ -30,12 +30,12 @@ vi.mock('@/lib/animations', () => ({
   spring: { smooth: {} },
 }));
 
-vi.mock('@/components/civica/shared/ShareModal', () => ({
+vi.mock('@/components/governada/shared/ShareModal', () => ({
   ShareModal: ({ open }: { open: boolean }) =>
     open ? <div data-testid="share-modal">Share Modal</div> : null,
 }));
 
-import { GHIExplorer } from '@/components/civica/pulse/GHIExplorer';
+import { GHIExplorer } from '@/components/governada/pulse/GHIExplorer';
 
 afterEach(() => {
   cleanup();

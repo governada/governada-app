@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
-import { CivicIdentityProfile } from '@/components/civica/identity/CivicIdentityProfile';
+import { CivicIdentityProfile } from '@/components/governada/identity/CivicIdentityProfile';
 
 export const metadata: Metadata = {
   title: 'Governada — Civic Identity',

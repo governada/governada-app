@@ -5,7 +5,7 @@
  * RULE: Every new user state that changes what a user sees MUST be added here.
  * See `.claude/rules/view-as-registry.md` for the enforcement rule.
  *
- * The admin "View as" menu in CivicaHeader renders directly from this registry.
+ * The admin "View as" menu in GovernadaHeader renders directly from this registry.
  * If it's not here, it's not testable. If it's not testable, it doesn't ship.
  */
 

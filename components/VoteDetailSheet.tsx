@@ -14,8 +14,8 @@ import { ExternalLink, Copy, Check, ArrowRight, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { getProposalTheme } from '@/components/civica/proposals/proposal-theme';
-import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
+import { getProposalTheme } from '@/components/governada/proposals/proposal-theme';
+import { ProposalDeliveryBadge } from '@/components/governada/proposals/ProposalDeliveryBadge';
 
 interface VoteDetailSheetProps {
   vote: VoteRecord | null;

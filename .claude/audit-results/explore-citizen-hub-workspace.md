@@ -16,15 +16,15 @@
 
 | Component              | What It Does                                                                                                            | Where It Lives                        | Status                    |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------- |
-| `CitizenCommandCenter` | Full intelligence dashboard: DRep report card, alignment bars (6D), epoch context, recommended actions, score sparkline | `components/civica/mygov/`            | Built, feature-gated      |
-| `EpochBriefing`        | Comprehensive briefing: DRep performance, treasury transparency, "Your Voice" section, civic identity strip             | `components/civica/home/`             | Built, feature-gated      |
-| `CivicIdentityCard`    | Delegation streak, proposals influenced, ADA governed, shareable                                                        | `components/civica/shared/`           | Built                     |
-| `CivicIdentityProfile` | Full footprint: health status (Champion/Active/Participant/Observer), milestones                                        | `components/civica/identity/`         | Built, at `/you/identity` |
-| `TreasuryCitizenView`  | Treasury balance, runway, pending proposals, "Where Your Money Goes"                                                    | `components/civica/home/`             | Built, feature-gated      |
+| `CitizenCommandCenter` | Full intelligence dashboard: DRep report card, alignment bars (6D), epoch context, recommended actions, score sparkline | `components/governada/mygov/`         | Built, feature-gated      |
+| `EpochBriefing`        | Comprehensive briefing: DRep performance, treasury transparency, "Your Voice" section, civic identity strip             | `components/governada/home/`          | Built, feature-gated      |
+| `CivicIdentityCard`    | Delegation streak, proposals influenced, ADA governed, shareable                                                        | `components/governada/shared/`        | Built                     |
+| `CivicIdentityProfile` | Full footprint: health status (Champion/Active/Participant/Observer), milestones                                        | `components/governada/identity/`      | Built, at `/you/identity` |
+| `TreasuryCitizenView`  | Treasury balance, runway, pending proposals, "Where Your Money Goes"                                                    | `components/governada/home/`          | Built, feature-gated      |
 | Engagement system      | Sentiment voting, concern flags, impact tags, priority signals, assemblies, endorsements                                | `hooks/useEngagement.ts` + components | Built, feature-gated      |
 | Engagement levels      | Registered → Informed → Engaged → Champion progression                                                                  | `lib/citizen/engagementLevel.ts`      | Built                     |
 | Citizen credibility    | Weight computation (0.1-1.0) based on delegation, engagement, balance                                                   | `lib/citizenCredibility.ts`           | Built                     |
-| Milestone gallery      | Earned badges with celebration moments                                                                                  | `components/civica/identity/`         | Built                     |
+| Milestone gallery      | Earned badges with celebration moments                                                                                  | `components/governada/identity/`      | Built                     |
 
 **What citizens actually see (the Hub):** 6 abstract status cards (alert, representation, coverage, governance-health, briefing, engagement). No depth. No workspace. No engagement mechanisms surfaced.
 

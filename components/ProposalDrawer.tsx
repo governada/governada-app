@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ExternalLink, TrendingUp, Clock, FileText, Users, Vote } from 'lucide-react';
 import { RationaleAssistant } from '@/components/RationaleAssistant';
 import { DelegatorPulse } from '@/components/DelegatorPulse';
-import { getProposalTheme } from '@/components/civica/proposals/proposal-theme';
+import { getProposalTheme } from '@/components/governada/proposals/proposal-theme';
 
 interface ProposalDrawerProps {
   open: boolean;

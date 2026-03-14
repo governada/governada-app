@@ -5,7 +5,7 @@
 
 import type { AlignmentScores } from '@/lib/drepIdentity';
 
-const STORAGE_KEY = 'civica_match_profile';
+const STORAGE_KEY = 'governada_match_profile';
 
 export interface StoredMatchProfile {
   userAlignments: AlignmentScores;

@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'civica-visited-pages';
+const STORAGE_KEY = 'governada-visited-pages';
 
 function getVisited(): Set<string> {
   if (typeof window === 'undefined') return new Set();

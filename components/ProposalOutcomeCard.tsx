@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShareActions } from '@/components/ShareActions';
 import { posthog } from '@/lib/posthog';
-import { ProposalDeliveryBadge } from '@/components/civica/proposals/ProposalDeliveryBadge';
+import { ProposalDeliveryBadge } from '@/components/governada/proposals/ProposalDeliveryBadge';
 import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 
 type Outcome = 'ratified' | 'enacted' | 'dropped' | 'expired';

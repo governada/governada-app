@@ -12,19 +12,19 @@ import { ProposalOutcomeSection } from '@/components/ProposalOutcomeSection';
 import { ProposalVoterTabs } from '@/components/ProposalVoterTabs';
 import { SimilarProposals } from '@/components/SimilarProposals';
 import { PageViewTracker } from '@/components/PageViewTracker';
-import { VoteAdoptionCurve } from '@/components/civica/charts/VoteAdoptionCurve';
-import { ProposalDimensionTags } from '@/components/civica/proposals/ProposalDimensionTags';
-import { ProposalLifecycleTimeline } from '@/components/civica/proposals/ProposalLifecycleTimeline';
+import { VoteAdoptionCurve } from '@/components/governada/charts/VoteAdoptionCurve';
+import { ProposalDimensionTags } from '@/components/governada/proposals/ProposalDimensionTags';
+import { ProposalLifecycleTimeline } from '@/components/governada/proposals/ProposalLifecycleTimeline';
 import { ImpactTags } from '@/components/engagement/ImpactTags';
 import { EngagementSummary } from '@/components/engagement/EngagementSummary';
 import { ConcernFlagBanner } from '@/components/engagement/ConcernFlagBanner';
 import { ProposalSentimentSection } from '@/components/engagement/ProposalSentimentSection';
 import { ConcernFlagsSection } from '@/components/engagement/ConcernFlagsSection';
-import { ProposalHeroV2 } from '@/components/civica/proposals/ProposalHeroV2';
+import { ProposalHeroV2 } from '@/components/governada/proposals/ProposalHeroV2';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
-import { IntelligenceBriefing } from '@/components/civica/proposals/IntelligenceBriefing';
-import { DebateSection } from '@/components/civica/proposals/DebateSection';
-import { ActionPanel } from '@/components/civica/proposals/ActionPanel';
+import { IntelligenceBriefing } from '@/components/governada/proposals/IntelligenceBriefing';
+import { DebateSection } from '@/components/governada/proposals/DebateSection';
+import { ActionPanel } from '@/components/governada/proposals/ActionPanel';
 
 export const dynamic = 'force-dynamic';
 

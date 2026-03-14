@@ -10,7 +10,7 @@ import { KeyboardShortcuts } from '@/components/KeyboardShortcuts';
 import { ShortcutsHelpOverlay } from '@/components/ShortcutsHelpOverlay';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { CivicaShell } from '@/components/civica/CivicaShell';
+import { GovernadaShell } from '@/components/governada/GovernadaShell';
 import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
 
 const geistSans = Geist({
@@ -89,7 +89,7 @@ export default function RootLayout({
                 Skip to main content
               </a>
               <GovernanceFontProvider />
-              <CivicaShell>{children}</CivicaShell>
+              <GovernadaShell>{children}</GovernadaShell>
               <CommandPalette />
               <KeyboardShortcuts />
               <ShortcutsHelpOverlay />

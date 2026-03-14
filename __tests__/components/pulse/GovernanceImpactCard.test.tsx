@@ -74,7 +74,7 @@ vi.mock('@/hooks/queries', () => ({
   useEpochSummary: (...args: unknown[]) => mockUseEpochSummary(...args),
 }));
 
-import { GovernanceImpactCard } from '@/components/civica/pulse/GovernanceImpactCard';
+import { GovernanceImpactCard } from '@/components/governada/pulse/GovernanceImpactCard';
 
 afterEach(() => {
   cleanup();

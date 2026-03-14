@@ -4,7 +4,7 @@
  * DiscoveryHub — Orchestrator component.
  *
  * Mounts the floating FAB and manages the Sheet panel state.
- * Lazy-loaded in CivicaShell for zero impact on initial page load.
+ * Lazy-loaded in GovernadaShell for zero impact on initial page load.
  */
 
 import { useState, useCallback } from 'react';

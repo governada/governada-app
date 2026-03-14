@@ -1,12 +1,12 @@
 ---
-description: Civica architecture, data flow, scoring model, and key file map
+description: Governada architecture, data flow, scoring model, and key file map
 globs: ['lib/**', 'utils/**', 'app/api/**', 'components/**', 'app/**']
 alwaysApply: false
 ---
 
 <!-- LINE BUDGET: 120 lines. Inngest/sync details → architecture-jobs.md. DB tables → query via Supabase MCP. -->
 
-# Civica Architecture
+# Governada Architecture
 
 ## What This Is
 
@@ -172,7 +172,7 @@ The `lib/data.ts` `mapRow()` function unpacks `info` into flat `EnrichedDRep` pr
 
 Any API route that uses JSX (e.g., `ImageResponse` from `next/og`) **must** use the `.tsx` extension, not `.ts`. TypeScript will not parse JSX syntax in `.ts` files. This applies to all OG image routes under `app/api/og/` and the badge route under `app/api/badge/`.
 
-## UX Principles (Civica Vision)
+## UX Principles (Governada Vision)
 
 - **Citizens first** — every screen answers "what does a citizen need here?"
 - **Action over information** — command center is an action feed, not a data wall
@@ -186,4 +186,4 @@ Any API route that uses JSX (e.g., `ImageResponse` from `next/og`) **must** use 
 
 ## Production URL
 
-https://drepscore.io (Civica domain TBD)
+https://drepscore.io (Governada domain TBD)

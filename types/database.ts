@@ -4166,6 +4166,7 @@ export type Database = {
           last_epoch_visited: number | null;
           last_push_check: string | null;
           last_visit_at: string | null;
+          notification_preferences: Json | null;
           onboarding_checklist: Json | null;
           poll_count: number | null;
           prefs: Json | null;
@@ -4188,6 +4189,7 @@ export type Database = {
           last_epoch_visited?: number | null;
           last_push_check?: string | null;
           last_visit_at?: string | null;
+          notification_preferences?: Json | null;
           onboarding_checklist?: Json | null;
           poll_count?: number | null;
           prefs?: Json | null;
@@ -4210,6 +4212,7 @@ export type Database = {
           last_epoch_visited?: number | null;
           last_push_check?: string | null;
           last_visit_at?: string | null;
+          notification_preferences?: Json | null;
           onboarding_checklist?: Json | null;
           poll_count?: number | null;
           prefs?: Json | null;

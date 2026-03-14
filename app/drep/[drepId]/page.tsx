@@ -66,6 +66,7 @@ import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
+import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
 import { TrustCard } from '@/components/civica/profiles/TrustCard';
 import { RecordSummaryCard } from '@/components/civica/profiles/RecordSummaryCard';
 import { TrajectoryCard } from '@/components/civica/profiles/TrajectoryCard';
@@ -614,6 +615,16 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         noVotes={drep.noVotes}
         abstainVotes={drep.abstainVotes}
         drepId={drep.drepId}
+      />
+
+      {/* ── Delegation Impact Preview — undelegated citizens only ── */}
+      <DelegationImpactPreview
+        drepName={drepName}
+        participationRate={drep.effectiveParticipation}
+        totalVotes={drep.totalVotes}
+        rationaleRate={drep.rationaleRate}
+        votingPowerAda={drep.votingPower}
+        delegatorCount={drep.delegatorCount}
       />
 
       {/* 5. Identity metadata row — governance participants only */}

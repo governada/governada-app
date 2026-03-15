@@ -47,12 +47,51 @@ export interface CommitteeMemberQuickView {
   narrativeVerdict: string | null;
 }
 
+// Constitutional Intelligence types for committee endpoint
+
+export interface CCAgreementMatrixEntry {
+  memberA: string;
+  memberB: string;
+  voteAgreementPct: number;
+  reasoningSimilarityPct: number;
+  totalSharedProposals: number;
+}
+
+export interface CCBloc {
+  label: string;
+  members: { ccHotId: string; name: string | null }[];
+  internalAgreementPct: number;
+}
+
+export interface CCArchetype {
+  ccHotId: string;
+  label: string;
+  description: string | null;
+  mostAlignedMember: string | null;
+  mostAlignedPct: number | null;
+  mostDivergentMember: string | null;
+  mostDivergentPct: number | null;
+}
+
+export interface CCBriefing {
+  headline: string;
+  executiveSummary: string;
+  keyFindings: { finding: string; severity: string }[];
+  whatChanged: string | null;
+}
+
+export interface CommitteeResponse {
+  members: CommitteeMemberQuickView[];
+  health: CCHealthSummaryResponse;
+  stats: CCCommitteeStats;
+  agreementMatrix: CCAgreementMatrixEntry[];
+  blocs: CCBloc[];
+  archetypes: CCArchetype[];
+  briefing: CCBriefing | null;
+}
+
 export function useCommitteeMembers() {
-  return useQuery<{
-    members: CommitteeMemberQuickView[];
-    health: CCHealthSummaryResponse;
-    stats: CCCommitteeStats;
-  }>({
+  return useQuery<CommitteeResponse>({
     queryKey: ['cc-members'],
     queryFn: () => fetchJson('/api/governance/committee'),
     staleTime: 120_000,
@@ -875,5 +914,118 @@ export function useDelegatorIntelligence(drepId: string | null | undefined) {
       ),
     enabled: !!drepId,
     staleTime: 120_000,
+  });
+}
+
+// ── Constitutional Intelligence ──────────────────────────────────────────────
+
+export interface CCMemberIntelligence {
+  chamberPosition: {
+    archetypeLabel: string;
+    archetypeDescription: string | null;
+    mostAligned: { memberId: string; pct: number } | null;
+    mostDivergent: { memberId: string; pct: number } | null;
+    blocLabel: string;
+    soleDissenterCount: number;
+    soleDissenterProposals: string[];
+    strictnessScore: number;
+    independenceProfile: string;
+  } | null;
+  dossier: {
+    executiveSummary: string;
+    behavioralPatterns: string | null;
+    constitutionalProfile: string | null;
+  } | null;
+  keyFinding: { finding: string; severity: string } | null;
+  pairwiseAlignment: {
+    memberId: string;
+    voteAgreementPct: number;
+    reasoningSimilarityPct: number;
+    sharedProposals: number;
+  }[];
+  interpretationHistory: {
+    article: string;
+    entries: {
+      proposalTxHash: string;
+      proposalIndex: number;
+      epoch: number;
+      stance: string;
+      summary: string;
+      consistentWithPrior: boolean;
+      driftNote: string | null;
+    }[];
+  }[];
+  rationaleAnalyses: {
+    proposalTxHash: string;
+    proposalIndex: number;
+    deliberationQuality: number;
+    rationalityScore: number;
+    reciprocityScore: number;
+    clarityScore: number;
+    notableFinding: string | null;
+    findingSeverity: string | null;
+    novelInterpretation: boolean;
+    contradictsOwnPrecedent: boolean;
+  }[];
+}
+
+export function useCCMemberIntelligence(ccHotId: string) {
+  return useQuery<CCMemberIntelligence>({
+    queryKey: ['cc-member-intelligence', ccHotId],
+    queryFn: () =>
+      fetchJson<CCMemberIntelligence>(`/api/governance/committee/${encodeURIComponent(ccHotId)}`),
+    staleTime: 2 * 60 * 1000,
+    enabled: !!ccHotId,
+  });
+}
+
+export interface CCBriefingFull {
+  headline: string;
+  executiveSummary: string;
+  keyFindings: { finding: string; severity: string }[];
+  whatChanged: string | null;
+  fullNarrative: string | null;
+  generatedAt: string;
+}
+
+export function useCCBriefing(persona?: string) {
+  return useQuery<{ briefing: CCBriefingFull | null }>({
+    queryKey: ['cc-briefing', persona ?? 'default'],
+    queryFn: () =>
+      fetchJson<{ briefing: CCBriefingFull | null }>(
+        `/api/governance/committee/briefing${persona ? `?persona=${encodeURIComponent(persona)}` : ''}`,
+      ),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export interface CCPrediction {
+  proposalTxHash: string;
+  proposalIndex: number;
+  proposalTitle: string | null;
+  proposalType: string | null;
+  predictedOutcome: string;
+  predictedSplit: Record<string, string[]> | null;
+  confidence: number;
+  reasoning: string | null;
+  keyArticle: string | null;
+  tensionFlag: boolean;
+  predictedAt: string;
+}
+
+export interface CCPredictionsResponse {
+  predictions: CCPrediction[];
+  accuracy: {
+    totalPredictions: number;
+    correct: number;
+    accuracyPct: number | null;
+  };
+}
+
+export function useCCPredictions() {
+  return useQuery<CCPredictionsResponse>({
+    queryKey: ['cc-predictions'],
+    queryFn: () => fetchJson<CCPredictionsResponse>('/api/governance/committee/predict'),
+    staleTime: 2 * 60 * 1000,
   });
 }

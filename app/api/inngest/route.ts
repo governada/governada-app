@@ -43,6 +43,9 @@ import {
   generateProposalBriefOnDemand,
   generateProposalBriefsBatch,
 } from '@/inngest/functions/generate-proposal-briefs';
+import { computeCcRelations } from '@/inngest/functions/compute-cc-relations';
+import { analyzeCcRationales } from '@/inngest/functions/analyze-cc-rationales';
+import { generateCcBriefing } from '@/inngest/functions/generate-cc-briefing';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
@@ -87,5 +90,8 @@ export const { GET, POST, PUT } = serve({
     snapshotCitizenRings,
     generateProposalBriefOnDemand,
     generateProposalBriefsBatch,
+    computeCcRelations,
+    analyzeCcRationales,
+    generateCcBriefing,
   ],
 });

@@ -236,6 +236,14 @@ export const syncSpoAndCcVotes = inngest.createFunction(
       });
     });
 
+    // Emit events for downstream Constitutional Intelligence pipeline
+    if (ccResult.fetched > 0) {
+      await step.sendEvent('cc-votes-synced', {
+        name: 'cc/votes.synced',
+        data: { count: ccResult.fetched },
+      });
+    }
+
     return {
       spo: spoResult,
       cc: ccResult,

@@ -32,7 +32,13 @@ const CCTransparencyTrend = dynamic(
 );
 import { CCRecentVotes } from '@/components/cc/CCRecentVotes';
 import { CCConstitutionalReasoning } from '@/components/cc/CCConstitutionalReasoning';
+import { CCKeyFinding } from '@/components/cc/CCKeyFinding';
+import { CCDossierSummary } from '@/components/cc/CCDossierSummary';
+import { CCChamberPosition } from '@/components/cc/CCChamberPosition';
+import { CCInterpretationProfile } from '@/components/cc/CCInterpretationProfile';
 import { CopyableAddress } from '@/components/CopyableAddress';
+import { useCCMemberIntelligence } from '@/hooks/queries';
+import type { CCMemberIntelligence } from '@/hooks/queries';
 import {
   interpretFidelityScore,
   interpretParticipation,
@@ -122,7 +128,13 @@ const VOTES_PER_PAGE = 10;
 // Hero Section
 // ---------------------------------------------------------------------------
 
-function ProfileHero({ data }: { data: ProfileData }) {
+function ProfileHero({
+  data,
+  intelligence,
+}: {
+  data: ProfileData;
+  intelligence: CCMemberIntelligence | undefined;
+}) {
   const displayName =
     data.authorName ?? `${data.ccHotId.slice(0, 12)}\u2026${data.ccHotId.slice(-6)}`;
   const grade = data.fidelityGrade ? GRADE_COLORS[data.fidelityGrade] : null;
@@ -178,11 +190,31 @@ function ProfileHero({ data }: { data: ProfileData }) {
               Rank {data.rank}/{data.totalScored}
             </Badge>
           )}
+          {intelligence?.chamberPosition && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <ShieldCheck className="h-3 w-3" />
+              {intelligence.chamberPosition.archetypeLabel}
+            </Badge>
+          )}
         </div>
 
         {/* Narrative verdict */}
         {verdict && <p className="text-sm text-muted-foreground leading-relaxed">{verdict}</p>}
         {pillarSummary && <p className="text-xs text-muted-foreground">{pillarSummary}</p>}
+        {intelligence?.chamberPosition?.mostAligned && (
+          <p className="text-xs text-muted-foreground">
+            Agrees most with {intelligence.chamberPosition.mostAligned.memberId.slice(0, 12)}
+            &hellip; ({intelligence.chamberPosition.mostAligned.pct}%)
+            {intelligence.chamberPosition.mostDivergent && (
+              <>
+                {' '}
+                &middot; Diverges most from{' '}
+                {intelligence.chamberPosition.mostDivergent.memberId.slice(0, 12)}&hellip; (
+                {intelligence.chamberPosition.mostDivergent.pct}%)
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       {/* Right: Score card */}
@@ -858,7 +890,15 @@ function OverviewMode({
 // Level 3: Deep Analysis Mode
 // ---------------------------------------------------------------------------
 
-function DeepMode({ data, onBackToOverview }: { data: ProfileData; onBackToOverview: () => void }) {
+function DeepMode({
+  data,
+  intelligence,
+  onBackToOverview,
+}: {
+  data: ProfileData;
+  intelligence: CCMemberIntelligence | undefined;
+  onBackToOverview: () => void;
+}) {
   return (
     <div className="space-y-6">
       {/* Navigation */}
@@ -886,6 +926,14 @@ function DeepMode({ data, onBackToOverview }: { data: ProfileData; onBackToOverv
           </TabsTrigger>
           <TabsTrigger value="reasoning">Constitutional Reasoning</TabsTrigger>
           <TabsTrigger value="alignment">Alignment</TabsTrigger>
+          <TabsTrigger value="chamber">
+            <Users className="h-3.5 w-3.5 mr-1" />
+            Chamber
+          </TabsTrigger>
+          <TabsTrigger value="interpretation">
+            <BookOpen className="h-3.5 w-3.5 mr-1" />
+            Interpretation
+          </TabsTrigger>
           <TabsTrigger value="trend">
             <TrendingUp className="h-3.5 w-3.5 mr-1" />
             Trend & Context
@@ -902,6 +950,19 @@ function DeepMode({ data, onBackToOverview }: { data: ProfileData; onBackToOverv
 
         <TabsContent value="alignment" className="pt-4">
           <AlignmentTab data={data} />
+        </TabsContent>
+
+        <TabsContent value="chamber" className="pt-4">
+          <CCChamberPosition
+            pairwiseAlignment={intelligence?.pairwiseAlignment ?? []}
+            allMembers={[]}
+          />
+        </TabsContent>
+
+        <TabsContent value="interpretation" className="pt-4">
+          <CCInterpretationProfile
+            interpretationHistory={intelligence?.interpretationHistory ?? []}
+          />
         </TabsContent>
 
         <TabsContent value="trend" className="pt-4">
@@ -926,6 +987,7 @@ function CCMemberProfileInner({ data }: { data: ProfileData }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { data: intelligence } = useCCMemberIntelligence(data.ccHotId);
   const [depth, setDepth] = useState<'overview' | 'deep'>(
     searchParams.get('depth') === 'deep' ? 'deep' : 'overview',
   );
@@ -951,20 +1013,43 @@ function CCMemberProfileInner({ data }: { data: ProfileData }) {
     >
       {/* Hero */}
       <motion.div variants={fadeInUp}>
-        <ProfileHero data={data} />
+        <ProfileHero data={data} intelligence={intelligence} />
       </motion.div>
+
+      {/* Key Finding */}
+      {intelligence?.keyFinding && (
+        <motion.div variants={fadeInUp}>
+          <CCKeyFinding
+            finding={intelligence.keyFinding.finding}
+            severity={
+              intelligence.keyFinding.severity as 'info' | 'noteworthy' | 'concern' | 'critical'
+            }
+          />
+        </motion.div>
+      )}
 
       {/* Key Stats */}
       <motion.div variants={fadeInUp}>
         <KeyStats data={data} />
       </motion.div>
 
+      {/* Dossier Summary */}
+      {intelligence?.dossier && (
+        <motion.div variants={fadeInUp}>
+          <CCDossierSummary dossier={intelligence.dossier} />
+        </motion.div>
+      )}
+
       {/* Depth-dependent content */}
       <motion.div variants={fadeInUp}>
         {depth === 'overview' ? (
           <OverviewMode data={data} onViewFullRecord={() => updateDepth('deep')} />
         ) : (
-          <DeepMode data={data} onBackToOverview={() => updateDepth('overview')} />
+          <DeepMode
+            data={data}
+            intelligence={intelligence}
+            onBackToOverview={() => updateDepth('overview')}
+          />
         )}
       </motion.div>
     </motion.div>

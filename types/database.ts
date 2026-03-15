@@ -528,6 +528,78 @@ export type Database = {
         };
         Relationships: [];
       };
+      cc_agreement_matrix: {
+        Row: {
+          agreed_count: number | null;
+          agreement_pct: number | null;
+          computed_at: string | null;
+          disagreed_count: number | null;
+          last_disagreement_index: number | null;
+          last_disagreement_proposal: string | null;
+          member_a: string;
+          member_b: string;
+          reasoning_similarity_pct: number | null;
+          shared_articles_count: number | null;
+          total_articles_union: number | null;
+          total_shared_proposals: number | null;
+        };
+        Insert: {
+          agreed_count?: number | null;
+          agreement_pct?: number | null;
+          computed_at?: string | null;
+          disagreed_count?: number | null;
+          last_disagreement_index?: number | null;
+          last_disagreement_proposal?: string | null;
+          member_a: string;
+          member_b: string;
+          reasoning_similarity_pct?: number | null;
+          shared_articles_count?: number | null;
+          total_articles_union?: number | null;
+          total_shared_proposals?: number | null;
+        };
+        Update: {
+          agreed_count?: number | null;
+          agreement_pct?: number | null;
+          computed_at?: string | null;
+          disagreed_count?: number | null;
+          last_disagreement_index?: number | null;
+          last_disagreement_proposal?: string | null;
+          member_a?: string;
+          member_b?: string;
+          reasoning_similarity_pct?: number | null;
+          shared_articles_count?: number | null;
+          total_articles_union?: number | null;
+          total_shared_proposals?: number | null;
+        };
+        Relationships: [];
+      };
+      cc_bloc_assignments: {
+        Row: {
+          bloc_label: string;
+          cc_hot_id: string;
+          computed_at: string | null;
+          id: string;
+          internal_agreement_pct: number | null;
+          member_count: number | null;
+        };
+        Insert: {
+          bloc_label: string;
+          cc_hot_id: string;
+          computed_at?: string | null;
+          id?: string;
+          internal_agreement_pct?: number | null;
+          member_count?: number | null;
+        };
+        Update: {
+          bloc_label?: string;
+          cc_hot_id?: string;
+          computed_at?: string | null;
+          id?: string;
+          internal_agreement_pct?: number | null;
+          member_count?: number | null;
+        };
+        Relationships: [];
+      };
       cc_fidelity_proposal_snapshots: {
         Row: {
           cc_hot_id: string;
@@ -606,6 +678,147 @@ export type Database = {
         };
         Relationships: [];
       };
+      cc_intelligence_briefs: {
+        Row: {
+          brief_type: string;
+          citations: Json | null;
+          executive_summary: string | null;
+          expires_at: string | null;
+          full_narrative: string | null;
+          generated_at: string | null;
+          headline: string | null;
+          id: string;
+          input_hash: string | null;
+          key_findings: Json | null;
+          model_version: string;
+          persona_variant: string | null;
+          reference_id: string;
+          what_changed: string | null;
+        };
+        Insert: {
+          brief_type: string;
+          citations?: Json | null;
+          executive_summary?: string | null;
+          expires_at?: string | null;
+          full_narrative?: string | null;
+          generated_at?: string | null;
+          headline?: string | null;
+          id?: string;
+          input_hash?: string | null;
+          key_findings?: Json | null;
+          model_version: string;
+          persona_variant?: string | null;
+          reference_id: string;
+          what_changed?: string | null;
+        };
+        Update: {
+          brief_type?: string;
+          citations?: Json | null;
+          executive_summary?: string | null;
+          expires_at?: string | null;
+          full_narrative?: string | null;
+          generated_at?: string | null;
+          headline?: string | null;
+          id?: string;
+          input_hash?: string | null;
+          key_findings?: Json | null;
+          model_version?: string;
+          persona_variant?: string | null;
+          reference_id?: string;
+          what_changed?: string | null;
+        };
+        Relationships: [];
+      };
+      cc_interpretation_history: {
+        Row: {
+          article: string;
+          cc_hot_id: string;
+          consistent_with_prior: boolean | null;
+          created_at: string | null;
+          drift_note: string | null;
+          epoch: number | null;
+          id: string;
+          interpretation_stance: string | null;
+          interpretation_summary: string | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+        };
+        Insert: {
+          article: string;
+          cc_hot_id: string;
+          consistent_with_prior?: boolean | null;
+          created_at?: string | null;
+          drift_note?: string | null;
+          epoch?: number | null;
+          id?: string;
+          interpretation_stance?: string | null;
+          interpretation_summary?: string | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+        };
+        Update: {
+          article?: string;
+          cc_hot_id?: string;
+          consistent_with_prior?: boolean | null;
+          created_at?: string | null;
+          drift_note?: string | null;
+          epoch?: number | null;
+          id?: string;
+          interpretation_stance?: string | null;
+          interpretation_summary?: string | null;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+        };
+        Relationships: [];
+      };
+      cc_member_archetypes: {
+        Row: {
+          archetype_description: string | null;
+          archetype_label: string;
+          cc_hot_id: string;
+          computed_at: string | null;
+          independence_profile: string | null;
+          most_aligned_member: string | null;
+          most_aligned_pct: number | null;
+          most_divergent_member: string | null;
+          most_divergent_pct: number | null;
+          sole_dissenter_count: number | null;
+          sole_dissenter_proposals: Json | null;
+          specialization: Json | null;
+          strictness_score: number | null;
+        };
+        Insert: {
+          archetype_description?: string | null;
+          archetype_label: string;
+          cc_hot_id: string;
+          computed_at?: string | null;
+          independence_profile?: string | null;
+          most_aligned_member?: string | null;
+          most_aligned_pct?: number | null;
+          most_divergent_member?: string | null;
+          most_divergent_pct?: number | null;
+          sole_dissenter_count?: number | null;
+          sole_dissenter_proposals?: Json | null;
+          specialization?: Json | null;
+          strictness_score?: number | null;
+        };
+        Update: {
+          archetype_description?: string | null;
+          archetype_label?: string;
+          cc_hot_id?: string;
+          computed_at?: string | null;
+          independence_profile?: string | null;
+          most_aligned_member?: string | null;
+          most_aligned_pct?: number | null;
+          most_divergent_member?: string | null;
+          most_divergent_pct?: number | null;
+          sole_dissenter_count?: number | null;
+          sole_dissenter_proposals?: Json | null;
+          specialization?: Json | null;
+          strictness_score?: number | null;
+        };
+        Relationships: [];
+      };
       cc_members: {
         Row: {
           author_name: string | null;
@@ -669,6 +882,153 @@ export type Database = {
           status?: string | null;
           updated_at?: string | null;
           votes_cast?: number | null;
+        };
+        Relationships: [];
+      };
+      cc_precedent_links: {
+        Row: {
+          created_at: string | null;
+          explanation: string | null;
+          id: string;
+          relationship: string;
+          shared_articles: Json | null;
+          source_index: number;
+          source_tx_hash: string;
+          target_index: number;
+          target_tx_hash: string;
+        };
+        Insert: {
+          created_at?: string | null;
+          explanation?: string | null;
+          id?: string;
+          relationship: string;
+          shared_articles?: Json | null;
+          source_index: number;
+          source_tx_hash: string;
+          target_index: number;
+          target_tx_hash: string;
+        };
+        Update: {
+          created_at?: string | null;
+          explanation?: string | null;
+          id?: string;
+          relationship?: string;
+          shared_articles?: Json | null;
+          source_index?: number;
+          source_tx_hash?: string;
+          target_index?: number;
+          target_tx_hash?: string;
+        };
+        Relationships: [];
+      };
+      cc_predictive_signals: {
+        Row: {
+          actual_outcome: string | null;
+          confidence: number | null;
+          id: string;
+          key_article: string | null;
+          model_version: string;
+          predicted_at: string | null;
+          predicted_outcome: string | null;
+          predicted_split: Json | null;
+          prediction_accurate: boolean | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          reasoning: string | null;
+          tension_flag: boolean | null;
+        };
+        Insert: {
+          actual_outcome?: string | null;
+          confidence?: number | null;
+          id?: string;
+          key_article?: string | null;
+          model_version: string;
+          predicted_at?: string | null;
+          predicted_outcome?: string | null;
+          predicted_split?: Json | null;
+          prediction_accurate?: boolean | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          reasoning?: string | null;
+          tension_flag?: boolean | null;
+        };
+        Update: {
+          actual_outcome?: string | null;
+          confidence?: number | null;
+          id?: string;
+          key_article?: string | null;
+          model_version?: string;
+          predicted_at?: string | null;
+          predicted_outcome?: string | null;
+          predicted_split?: Json | null;
+          prediction_accurate?: boolean | null;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          reasoning?: string | null;
+          tension_flag?: boolean | null;
+        };
+        Relationships: [];
+      };
+      cc_rationale_analysis: {
+        Row: {
+          analyzed_at: string | null;
+          articles_analyzed: Json | null;
+          cc_hot_id: string;
+          clarity_score: number | null;
+          contradicts_own_precedent: boolean | null;
+          deliberation_quality: number | null;
+          finding_severity: string | null;
+          id: string;
+          interpretation_stance: string | null;
+          key_arguments: Json | null;
+          logical_structure: string | null;
+          model_version: string;
+          notable_finding: string | null;
+          novel_interpretation: boolean | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          rationality_score: number | null;
+          reciprocity_score: number | null;
+        };
+        Insert: {
+          analyzed_at?: string | null;
+          articles_analyzed?: Json | null;
+          cc_hot_id: string;
+          clarity_score?: number | null;
+          contradicts_own_precedent?: boolean | null;
+          deliberation_quality?: number | null;
+          finding_severity?: string | null;
+          id?: string;
+          interpretation_stance?: string | null;
+          key_arguments?: Json | null;
+          logical_structure?: string | null;
+          model_version: string;
+          notable_finding?: string | null;
+          novel_interpretation?: boolean | null;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          rationality_score?: number | null;
+          reciprocity_score?: number | null;
+        };
+        Update: {
+          analyzed_at?: string | null;
+          articles_analyzed?: Json | null;
+          cc_hot_id?: string;
+          clarity_score?: number | null;
+          contradicts_own_precedent?: boolean | null;
+          deliberation_quality?: number | null;
+          finding_severity?: string | null;
+          id?: string;
+          interpretation_stance?: string | null;
+          key_arguments?: Json | null;
+          logical_structure?: string | null;
+          model_version?: string;
+          notable_finding?: string | null;
+          novel_interpretation?: boolean | null;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          rationality_score?: number | null;
+          reciprocity_score?: number | null;
         };
         Relationships: [];
       };

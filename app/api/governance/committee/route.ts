@@ -9,13 +9,18 @@ export const dynamic = 'force-dynamic';
 export const GET = withRouteHandler(async () => {
   const supabase = createClient();
 
-  // Parallel fetches: active members, votes, rationale names, health, verdicts
+  // Parallel fetches: active members, votes, rationale names, health, verdicts,
+  // plus new Constitutional Intelligence data
   const [
     { data: activeMembers, error: membersError },
     { data: votes, error: _votesError },
     { data: rationaleNames },
     health,
     verdicts,
+    { data: matrixRows },
+    { data: blocRows },
+    { data: archetypeRows },
+    { data: briefingRow },
   ] = await Promise.all([
     supabase
       .from('cc_members')
@@ -27,6 +32,17 @@ export const GET = withRouteHandler(async () => {
     supabase.from('cc_rationales').select('cc_hot_id, author_name').not('author_name', 'is', null),
     getCCHealthSummary(),
     getCCMemberVerdicts(),
+    supabase.from('cc_agreement_matrix').select('*'),
+    supabase.from('cc_bloc_assignments').select('*').order('computed_at', { ascending: false }),
+    supabase.from('cc_member_archetypes').select('*'),
+    supabase
+      .from('cc_intelligence_briefs')
+      .select('*')
+      .eq('brief_type', 'committee_epoch')
+      .eq('persona_variant', 'default')
+      .order('generated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (membersError) {
@@ -104,8 +120,86 @@ export const GET = withRouteHandler(async () => {
 
   const stats = { totalProposalsReviewed, avgRationaleRate, totalCCVotes };
 
+  // Build member name lookup for bloc resolution
+  const memberNameMap = new Map<string, string | null>();
+  for (const m of members) {
+    memberNameMap.set(m.ccHotId, m.name);
+  }
+
+  // Agreement matrix (camelCase)
+  const agreementMatrix = (matrixRows ?? []).map((row) => ({
+    memberA: row.member_a as string,
+    memberB: row.member_b as string,
+    voteAgreementPct: Number(row.agreement_pct),
+    reasoningSimilarityPct: Number(row.reasoning_similarity_pct),
+    totalSharedProposals: row.total_shared_proposals as number,
+  }));
+
+  // Blocs: deduplicate to latest computed_at per member, then group by label
+  const seenBlocMembers = new Set<string>();
+  const latestBlocRows: Array<{ cc_hot_id: string; bloc_label: string; computed_at: string }> = [];
+  for (const row of blocRows ?? []) {
+    const id = row.cc_hot_id as string;
+    if (!seenBlocMembers.has(id)) {
+      seenBlocMembers.add(id);
+      latestBlocRows.push(row as { cc_hot_id: string; bloc_label: string; computed_at: string });
+    }
+  }
+
+  const blocMap = new Map<string, { members: { ccHotId: string; name: string | null }[] }>();
+  for (const row of latestBlocRows) {
+    const label = row.bloc_label;
+    const entry = blocMap.get(label) ?? { members: [] };
+    entry.members.push({
+      ccHotId: row.cc_hot_id,
+      name: memberNameMap.get(row.cc_hot_id) ?? null,
+    });
+    blocMap.set(label, entry);
+  }
+
+  // Calculate internal agreement for each bloc from the matrix
+  const blocs = Array.from(blocMap.entries()).map(([label, { members: blocMembers }]) => {
+    const memberIds = new Set(blocMembers.map((m) => m.ccHotId));
+    const internalPairs = (matrixRows ?? []).filter(
+      (row) => memberIds.has(row.member_a as string) && memberIds.has(row.member_b as string),
+    );
+    const avgAgreement =
+      internalPairs.length > 0
+        ? Math.round(
+            internalPairs.reduce((sum, r) => sum + Number(r.agreement_pct), 0) /
+              internalPairs.length,
+          )
+        : 0;
+    return {
+      label,
+      members: blocMembers,
+      internalAgreementPct: avgAgreement,
+    };
+  });
+
+  // Archetypes
+  const archetypes = (archetypeRows ?? []).map((row) => ({
+    ccHotId: row.cc_hot_id as string,
+    label: row.archetype_label as string,
+    description: (row.archetype_description as string) ?? null,
+    mostAlignedMember: (row.most_aligned_member as string) ?? null,
+    mostAlignedPct: row.most_aligned_pct != null ? Number(row.most_aligned_pct) : null,
+    mostDivergentMember: (row.most_divergent_member as string) ?? null,
+    mostDivergentPct: row.most_divergent_pct != null ? Number(row.most_divergent_pct) : null,
+  }));
+
+  // Briefing (graceful null if none exists)
+  const briefing = briefingRow
+    ? {
+        headline: briefingRow.headline as string,
+        executiveSummary: briefingRow.executive_summary as string,
+        keyFindings: briefingRow.key_findings as { finding: string; severity: string }[],
+        whatChanged: (briefingRow.what_changed as string) ?? null,
+      }
+    : null;
+
   return NextResponse.json(
-    { members, health, stats },
+    { members, health, stats, agreementMatrix, blocs, archetypes, briefing },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=300',

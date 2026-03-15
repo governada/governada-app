@@ -7,9 +7,12 @@ import { ChevronDown, ChevronUp, Vote, BookOpen, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCommitteeMembers } from '@/hooks/queries';
-import type { CommitteeMemberQuickView } from '@/hooks/queries';
+import type { CommitteeMemberQuickView, CCArchetype } from '@/hooks/queries';
 import { CCHealthVerdict } from '@/components/cc/CCHealthVerdict';
-import { CCInsightCard } from '@/components/cc/CCInsightCard';
+import { CCBriefingCard } from '@/components/cc/CCBriefingCard';
+import { CCHeatmap } from '@/components/cc/CCHeatmap';
+import { CCBlocBadges } from '@/components/cc/CCBlocBadges';
+import { CCPredictions } from '@/components/cc/CCPredictions';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
@@ -36,10 +39,29 @@ function fidelityBarColor(score: number | null): string {
 }
 
 // ---------------------------------------------------------------------------
+// Archetype chip
+// ---------------------------------------------------------------------------
+
+function ArchetypeChip({ archetype }: { archetype: CCArchetype | undefined }) {
+  if (!archetype) return null;
+  return (
+    <span className="inline-flex items-center rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium leading-none">
+      {archetype.label}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Member Row
 // ---------------------------------------------------------------------------
 
-function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
+function MemberRow({
+  member,
+  archetype,
+}: {
+  member: CommitteeMemberQuickView;
+  archetype: CCArchetype | undefined;
+}) {
   const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
   const gradeStyle = member.fidelityGrade ? (GRADE_COLORS[member.fidelityGrade] ?? '') : '';
 
@@ -69,16 +91,19 @@ function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
         </span>
       )}
 
-      {/* Name + verdict */}
+      {/* Name + verdict + archetype */}
       <div className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium group-hover:text-primary transition-colors">
           {displayName}
         </span>
-        {member.narrativeVerdict && (
-          <span className="block truncate text-xs text-muted-foreground mt-0.5">
-            {member.narrativeVerdict}
-          </span>
-        )}
+        <div className="flex items-center gap-2 mt-0.5">
+          {member.narrativeVerdict && (
+            <span className="truncate text-xs text-muted-foreground">
+              {member.narrativeVerdict}
+            </span>
+          )}
+          <ArchetypeChip archetype={archetype} />
+        </div>
       </div>
 
       {/* Fidelity bar (hidden on mobile) */}
@@ -106,7 +131,13 @@ function MemberRow({ member }: { member: CommitteeMemberQuickView }) {
 // Member Card (mobile)
 // ---------------------------------------------------------------------------
 
-function MemberCard({ member }: { member: CommitteeMemberQuickView }) {
+function MemberCard({
+  member,
+  archetype,
+}: {
+  member: CommitteeMemberQuickView;
+  archetype: CCArchetype | undefined;
+}) {
   const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
   const gradeStyle = member.fidelityGrade ? (GRADE_COLORS[member.fidelityGrade] ?? '') : '';
 
@@ -157,12 +188,15 @@ function MemberCard({ member }: { member: CommitteeMemberQuickView }) {
             </span>
           </div>
 
-          {/* Narrative verdict */}
-          {member.narrativeVerdict && (
-            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
-              {member.narrativeVerdict}
-            </p>
-          )}
+          {/* Narrative verdict + archetype */}
+          <div className="flex items-center gap-2 mt-1.5">
+            {member.narrativeVerdict && (
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {member.narrativeVerdict}
+              </p>
+            )}
+            <ArchetypeChip archetype={archetype} />
+          </div>
         </div>
       </div>
     </Link>
@@ -240,6 +274,7 @@ function CommitteePageSkeleton() {
     <div className="space-y-6">
       <Skeleton className="h-40 rounded-2xl" />
       <Skeleton className="h-20 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
       <div className="rounded-xl border divide-y">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3.5">
@@ -267,7 +302,25 @@ export default function CommitteePage() {
 
   const members = useMemo(() => data?.members ?? [], [data]);
   const health = data?.health;
-  const stats = data?.stats;
+  const agreementMatrix = data?.agreementMatrix ?? [];
+  const blocs = data?.blocs ?? [];
+  const archetypes = data?.archetypes ?? [];
+  const briefing = data?.briefing ?? null;
+
+  // Build archetype lookup by ccHotId
+  const archetypeMap = useMemo(() => {
+    const map = new Map<string, CCArchetype>();
+    for (const a of archetypes) {
+      map.set(a.ccHotId, a);
+    }
+    return map;
+  }, [archetypes]);
+
+  // Members list for heatmap (minimal shape)
+  const membersList = useMemo(
+    () => members.map((m) => ({ ccHotId: m.ccHotId, name: m.name })),
+    [members],
+  );
 
   const sorted = useMemo(
     () =>
@@ -299,37 +352,30 @@ export default function CommitteePage() {
             <CCHealthVerdict health={health} />
           </motion.div>
 
-          {/* Section 2: Key Insight (persona-adapted) */}
-          <CCInsightCard health={health} members={members} segment={segment} />
+          {/* Section 2: AI Briefing */}
+          <CCBriefingCard briefing={briefing} />
 
-          {/* Section 3: Aggregate Stats */}
-          {stats && (
-            <motion.div variants={fadeInUp} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
-                <p className="text-2xl font-bold tabular-nums">{health.activeMembers}</p>
-                <p className="text-xs text-muted-foreground">Active Members</p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
-                <p className="text-2xl font-bold tabular-nums">{stats.totalProposalsReviewed}</p>
-                <p className="text-xs text-muted-foreground">Proposals Reviewed</p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
-                <p className="text-2xl font-bold tabular-nums">
-                  {stats.avgRationaleRate != null ? `${stats.avgRationaleRate}%` : '—'}
-                </p>
-                <p className="text-xs text-muted-foreground">Avg Rationale Rate</p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-card/30 p-3 text-center">
-                <p className="text-2xl font-bold tabular-nums">{stats.totalCCVotes}</p>
-                <p className="text-xs text-muted-foreground">Total Votes</p>
-              </div>
+          {/* Section 3: Constitutional Reasoning Heatmap (THE dominant visual) */}
+          {agreementMatrix.length > 0 && membersList.length >= 2 && (
+            <CCHeatmap agreementMatrix={agreementMatrix} members={membersList} />
+          )}
+
+          {/* Section 4: Reasoning Blocs */}
+          {blocs.length > 0 && (
+            <motion.div variants={fadeInUp}>
+              <CCBlocBadges blocs={blocs} />
             </motion.div>
           )}
 
-          {/* Section 4: Member Rankings */}
+          {/* Section 5: Predictive Signals */}
+          <motion.div variants={fadeInUp}>
+            <CCPredictions />
+          </motion.div>
+
+          {/* Section 6: Member Directory */}
           <motion.div variants={fadeInUp} className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Member Rankings</h2>
+              <h2 className="text-base font-semibold">Member Directory</h2>
               <Link
                 href="/governance/committee/compare"
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -347,20 +393,28 @@ export default function CommitteePage() {
                 {/* Desktop: compact rows */}
                 <div className="hidden sm:block rounded-xl border border-border/60 divide-y divide-border/40 overflow-hidden">
                   {sorted.map((member) => (
-                    <MemberRow key={member.ccHotId} member={member} />
+                    <MemberRow
+                      key={member.ccHotId}
+                      member={member}
+                      archetype={archetypeMap.get(member.ccHotId)}
+                    />
                   ))}
                 </div>
                 {/* Mobile: touch-friendly cards */}
                 <div className="grid gap-3 sm:hidden">
                   {sorted.map((member) => (
-                    <MemberCard key={member.ccHotId} member={member} />
+                    <MemberCard
+                      key={member.ccHotId}
+                      member={member}
+                      archetype={archetypeMap.get(member.ccHotId)}
+                    />
                   ))}
                 </div>
               </>
             )}
           </motion.div>
 
-          {/* Section 5: Methodology (collapsed) */}
+          {/* Section 6: Methodology (collapsed) */}
           <motion.div variants={fadeInUp}>
             <Methodology />
           </motion.div>

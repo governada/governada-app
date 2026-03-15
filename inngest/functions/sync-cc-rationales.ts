@@ -659,6 +659,12 @@ export const syncCcRationales = inngest.createFunction(
       return { snapshotted };
     });
 
+    // Emit event for downstream Constitutional Intelligence pipeline
+    await step.sendEvent('cc-rationale-sync-done', {
+      name: 'cc/rationales.synced',
+      data: { count: fetchResult?.cached ?? 0 },
+    });
+
     return {
       rationales: fetchResult,
       members: memberResult,

@@ -1,7 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { SyncLogger, batchUpsert, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
+import { SyncLogger, batchUpsert, fetchAll, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
 import {
   computeSpoScores,
   computeProposalMarginMultipliers,
@@ -132,29 +132,35 @@ export const syncSpoScores = inngest.createFunction(
       const syncLog = new SyncLogger(supabase, 'spo_scores');
       await syncLog.start();
 
-      const [
-        { data: voteRows },
-        { data: proposalRows },
-        { data: classificationRows },
-        { data: statsRow },
-        { data: poolRows },
-      ] = await Promise.all([
-        supabase
-          .from('spo_votes')
-          .select('pool_id, proposal_tx_hash, proposal_index, vote, block_time, epoch'),
-        supabase
-          .from('proposals')
-          .select(
-            'tx_hash, proposal_index, proposal_type, treasury_tier, withdrawal_amount, block_time, proposed_epoch, expired_epoch, ratified_epoch, dropped_epoch',
-          ),
-        supabase.from('proposal_classifications').select('*'),
-        supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
-        supabase
-          .from('pools')
-          .select(
-            'pool_id, ticker, pool_name, governance_statement, homepage_url, social_links, metadata_hash_verified, delegator_count',
-          ),
+      // Use fetchAll to paginate past PostgREST row limits
+      const [voteRows, proposalRows, classificationRows, poolRows] = await Promise.all([
+        fetchAll(
+          supabase
+            .from('spo_votes')
+            .select('pool_id, proposal_tx_hash, proposal_index, vote, block_time, epoch'),
+        ),
+        fetchAll(
+          supabase
+            .from('proposals')
+            .select(
+              'tx_hash, proposal_index, proposal_type, treasury_tier, withdrawal_amount, block_time, proposed_epoch, expired_epoch, ratified_epoch, dropped_epoch',
+            ),
+        ),
+        fetchAll(supabase.from('proposal_classifications').select('*')),
+        fetchAll(
+          supabase
+            .from('pools')
+            .select(
+              'pool_id, ticker, pool_name, governance_statement, homepage_url, social_links, metadata_hash_verified, delegator_count',
+            ),
+        ),
       ]);
+
+      const { data: statsRow } = await supabase
+        .from('governance_stats')
+        .select('current_epoch')
+        .eq('id', 1)
+        .single();
 
       const currentEpoch =
         statsRow?.current_epoch ?? blockTimeToEpoch(Math.floor(Date.now() / 1000));

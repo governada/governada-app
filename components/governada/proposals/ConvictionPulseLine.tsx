@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useId } from 'react';
 import type { ConvictionPulseData } from '@/lib/convictionPulse';
 import type { VotePowerByEpoch } from '@/lib/data';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -58,146 +58,103 @@ function formatAda(ada: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Pulse waveform generation
+// Heartbeat waveform generation
 // ---------------------------------------------------------------------------
 
-interface PulsePoint {
+interface BeatPosition {
   epoch: number;
+  x: number;
+  peakY: number;
+  intensity: number;
+  yesRatio: number;
   totalPower: number;
-  yesPower: number;
-  noPower: number;
-  abstainPower: number;
   totalVotes: number;
-  yesRatio: number; // 0-1, proportion of yes power
 }
 
-function buildPulsePoints(powerByEpoch: VotePowerByEpoch[]): PulsePoint[] {
-  return powerByEpoch
-    .sort((a, b) => a.epoch - b.epoch)
-    .map((ep) => {
-      const totalPower = ep.yesPower + ep.noPower + ep.abstainPower;
-      return {
-        epoch: ep.epoch,
-        totalPower,
-        yesPower: ep.yesPower,
-        noPower: ep.noPower,
-        abstainPower: ep.abstainPower,
-        totalVotes: ep.yesCount + ep.noCount + ep.abstainCount,
-        yesRatio: totalPower > 0 ? ep.yesPower / totalPower : 0.5,
-      };
-    });
-}
-
-/**
- * Generate an EKG-style SVG path for pulse points.
- *
- * For each epoch with activity, we draw a characteristic heartbeat shape:
- * baseline → small dip (P-wave) → sharp peak (QRS) → undershoot → recovery (T-wave) → baseline
- *
- * The peak height is proportional to voting power deployed that epoch.
- */
-function generatePulsePath(
-  points: PulsePoint[],
+function generateHeartbeat(
+  powerByEpoch: VotePowerByEpoch[],
   width: number,
   height: number,
   proposedEpoch: number | null,
   expirationEpoch: number | null,
   currentEpoch: number,
-): { path: string; segments: PulseSegment[] } {
-  if (points.length === 0) {
-    return {
-      path: `M 0 ${height * 0.6} L ${width} ${height * 0.6}`,
-      segments: [],
-    };
+): { mainPath: string; totalLength: number; beatPositions: BeatPosition[] } {
+  const baseline = height * 0.55;
+  const sorted = [...powerByEpoch].sort((a, b) => a.epoch - b.epoch);
+
+  if (sorted.length === 0) {
+    const path = `M 0 ${baseline} L ${width} ${baseline}`;
+    return { mainPath: path, totalLength: width, beatPositions: [] };
   }
 
-  const baseline = height * 0.65;
-  const maxPeakHeight = height * 0.55;
-
-  // Timeline: from first vote epoch to expiration (or current + 2)
-  const startEpoch = proposedEpoch ?? points[0].epoch;
+  const startEpoch = proposedEpoch ?? sorted[0].epoch;
   const endEpoch =
-    expirationEpoch ?? Math.max(currentEpoch + 2, points[points.length - 1].epoch + 2);
+    expirationEpoch ?? Math.max(currentEpoch + 2, sorted[sorted.length - 1].epoch + 2);
   const epochSpan = Math.max(1, endEpoch - startEpoch);
+  const pxPerEpoch = width / epochSpan;
 
-  // Normalize power for peak heights
-  const maxPower = Math.max(1, ...points.map((p) => p.totalPower));
+  const maxPower = Math.max(1, ...sorted.map((p) => p.yesPower + p.noPower + p.abstainPower));
 
-  const segments: PulseSegment[] = [];
-  const pathParts: string[] = [];
+  const beatPositions: BeatPosition[] = [];
+  const parts: string[] = [];
+  parts.push(`M 0 ${baseline}`);
 
-  // Start at baseline
-  pathParts.push(`M 0 ${baseline}`);
+  let currentX = 0;
 
-  // For each epoch in the timeline, draw flat line or pulse
-  const epochWidth = width / epochSpan;
-  let lastX = 0;
+  for (const epoch of sorted) {
+    const totalPower = epoch.yesPower + epoch.noPower + epoch.abstainPower;
+    const intensity = Math.max(0.35, totalPower / maxPower);
+    const peakAmplitude = height * 0.42 * intensity;
 
-  for (const point of points) {
-    const epochOffset = point.epoch - startEpoch;
-    const centerX = (epochOffset + 0.5) * epochWidth;
-    const peakHeight = (point.totalPower / maxPower) * maxPeakHeight;
+    const epochX = ((epoch.epoch - startEpoch + 0.5) / epochSpan) * width;
+    const beatWidth = Math.max(pxPerEpoch * 0.7, 50);
+    const halfBeat = beatWidth / 2;
 
-    // Flat line to this epoch
-    if (centerX - epochWidth * 0.4 > lastX) {
-      pathParts.push(`L ${centerX - epochWidth * 0.4} ${baseline}`);
+    // Flatline to beat start
+    const beatStart = epochX - halfBeat;
+    if (beatStart > currentX + 2) {
+      parts.push(`L ${beatStart} ${baseline}`);
     }
 
-    // P-wave: small dip before the main spike
-    const pWaveX = centerX - epochWidth * 0.25;
-    const pWaveY = baseline + peakHeight * 0.08;
-    pathParts.push(`L ${pWaveX} ${pWaveY}`);
+    // P-wave: gentle bump
+    const pStart = beatStart;
+    const pPeak = pStart + halfBeat * 0.25;
+    const pEnd = pStart + halfBeat * 0.4;
+    parts.push(`L ${pStart} ${baseline}`);
+    parts.push(`Q ${pPeak} ${baseline - peakAmplitude * 0.12} ${pEnd} ${baseline}`);
 
-    // QRS complex: sharp spike up
-    const qX = centerX - epochWidth * 0.1;
-    const rX = centerX;
-    const sX = centerX + epochWidth * 0.1;
-    const qY = baseline + peakHeight * 0.05; // small dip before spike
-    const rY = baseline - peakHeight; // peak (negative = up in SVG)
-    const sY = baseline + peakHeight * 0.15; // undershoot after spike
+    // QRS complex: the dramatic spike
+    const qPoint = pEnd + halfBeat * 0.05;
+    const rPoint = epochX;
+    const sPoint = epochX + halfBeat * 0.15;
+    parts.push(`L ${qPoint} ${baseline + peakAmplitude * 0.08}`);
+    parts.push(`L ${rPoint} ${baseline - peakAmplitude}`);
+    parts.push(`L ${sPoint} ${baseline + peakAmplitude * 0.22}`);
 
-    pathParts.push(`L ${qX} ${qY}`);
-    pathParts.push(`L ${rX} ${rY}`);
-    pathParts.push(`L ${sX} ${sY}`);
+    // T-wave: recovery bump
+    const tPeak = sPoint + halfBeat * 0.25;
+    const tEnd = sPoint + halfBeat * 0.45;
+    parts.push(`Q ${tPeak} ${baseline - peakAmplitude * 0.15} ${tEnd} ${baseline}`);
 
-    // T-wave: gentle recovery bump
-    const tX = centerX + epochWidth * 0.25;
-    const tY = baseline - peakHeight * 0.12;
-    pathParts.push(`L ${tX} ${tY}`);
+    currentX = tEnd;
 
-    // Return to baseline
-    const endX = centerX + epochWidth * 0.4;
-    pathParts.push(`L ${endX} ${baseline}`);
+    const yesRatio = totalPower > 0 ? epoch.yesPower / totalPower : 0.5;
 
-    lastX = endX;
-
-    segments.push({
-      epoch: point.epoch,
-      centerX,
-      peakY: rY,
-      yesRatio: point.yesRatio,
-      totalPower: point.totalPower,
-      totalVotes: point.totalVotes,
-      yesPower: point.yesPower,
-      noPower: point.noPower,
+    beatPositions.push({
+      epoch: epoch.epoch,
+      x: epochX,
+      peakY: baseline - peakAmplitude,
+      intensity,
+      yesRatio,
+      totalPower,
+      totalVotes: epoch.yesCount + epoch.noCount + epoch.abstainCount,
     });
   }
 
-  // Flat line to end
-  pathParts.push(`L ${width} ${baseline}`);
+  parts.push(`L ${width} ${baseline}`);
+  const totalLength = width * 1.5 + sorted.length * 120;
 
-  return { path: pathParts.join(' '), segments };
-}
-
-interface PulseSegment {
-  epoch: number;
-  centerX: number;
-  peakY: number;
-  yesRatio: number;
-  totalPower: number;
-  totalVotes: number;
-  yesPower: number;
-  noPower: number;
+  return { mainPath: parts.join(' '), totalLength, beatPositions };
 }
 
 // ---------------------------------------------------------------------------
@@ -212,59 +169,46 @@ export function ConvictionPulseLine({
   currentEpoch,
   className,
 }: ConvictionPulseLineProps) {
-  const svgWidth = 600;
-  const svgHeight = 80;
+  const uniqueId = useId();
+  const svgWidth = 800;
+  const svgHeight = 100;
 
-  const pulsePoints = useMemo(() => buildPulsePoints(powerByEpoch), [powerByEpoch]);
-
-  const { path, segments } = useMemo(
+  const { mainPath, totalLength, beatPositions } = useMemo(
     () =>
-      generatePulsePath(
-        pulsePoints,
+      generateHeartbeat(
+        powerByEpoch,
         svgWidth,
         svgHeight,
         proposedEpoch,
         expirationEpoch,
         currentEpoch,
       ),
-    [pulsePoints, proposedEpoch, expirationEpoch, currentEpoch],
+    [powerByEpoch, proposedEpoch, expirationEpoch, currentEpoch],
   );
 
-  // Compute the dominant color based on overall yes/no balance
-  const totalYes = pulsePoints.reduce((s, p) => s + p.yesPower, 0);
-  const totalNo = pulsePoints.reduce((s, p) => s + p.noPower, 0);
+  // Color based on overall vote balance
+  const totalYes = powerByEpoch.reduce((s, p) => s + p.yesPower, 0);
+  const totalNo = powerByEpoch.reduce((s, p) => s + p.noPower, 0);
   const totalAll = totalYes + totalNo || 1;
-  const overallYesRatio = totalYes / totalAll;
+  const yesRatio = totalYes / totalAll;
 
-  // Gradient from red through neutral to green based on yes ratio
-  const pulseColor =
-    overallYesRatio > 0.65
-      ? '#10b981' // emerald
-      : overallYesRatio > 0.45
-        ? '#a1a1aa' // zinc (contested)
-        : '#ef4444'; // red
+  const pulseColor = yesRatio > 0.6 ? '#10b981' : yesRatio > 0.4 ? '#8b5cf6' : '#ef4444';
 
-  const glowColor =
-    overallYesRatio > 0.65
-      ? 'rgba(16, 185, 129, 0.15)'
-      : overallYesRatio > 0.45
-        ? 'rgba(161, 161, 170, 0.1)'
-        : 'rgba(239, 68, 68, 0.15)';
-
-  // Current epoch marker position
-  const startEpoch = proposedEpoch ?? pulsePoints[0]?.epoch ?? currentEpoch;
+  // Scan line position
+  const startEpoch = proposedEpoch ?? powerByEpoch[0]?.epoch ?? currentEpoch;
   const endEpoch =
     expirationEpoch ??
-    Math.max(currentEpoch + 2, (pulsePoints[pulsePoints.length - 1]?.epoch ?? currentEpoch) + 2);
+    Math.max(currentEpoch + 2, (powerByEpoch[powerByEpoch.length - 1]?.epoch ?? currentEpoch) + 2);
   const epochSpan = Math.max(1, endEpoch - startEpoch);
   const nowX = ((currentEpoch - startEpoch + 0.5) / epochSpan) * svgWidth;
 
-  const hasPulseData = pulsePoints.length > 0;
+  const hasPulseData = powerByEpoch.length > 0;
+  const cssId = uniqueId.replace(/:/g, '');
 
   return (
-    <div className={cn('rounded-xl border border-border/50 bg-card/50 p-4 space-y-3', className)}>
+    <div className={cn('rounded-xl border border-border/50 bg-card/50 overflow-hidden', className)}>
       {/* Metrics row */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="px-5 pt-4 pb-2 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-5">
           <MetricDisplay
             label="Conviction"
@@ -284,125 +228,179 @@ export function ConvictionPulseLine({
         </div>
       </div>
 
-      {/* Pulse waveform */}
-      {hasPulseData ? (
-        <div className="relative">
-          <svg
-            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full"
-            style={{ height: '80px' }}
-            role="img"
-            aria-label="Conviction pulse waveform showing voting activity over time"
-          >
-            <defs>
-              {/* Glow filter for the pulse line */}
-              <filter id="pulse-glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
+      {/* Animated pulse waveform */}
+      <div className="relative px-2 pb-3">
+        {/* Scoped animation styles */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes pdraw${cssId} {
+                from { stroke-dashoffset: ${totalLength}; }
+                to   { stroke-dashoffset: 0; }
+              }
+              @keyframes pscan${cssId} {
+                0%, 100% { opacity: 0.25; }
+                50%      { opacity: 0.7; }
+              }
+              .pl${cssId} {
+                stroke-dasharray: ${totalLength};
+                stroke-dashoffset: ${totalLength};
+                animation: pdraw${cssId} 2.5s ease-out forwards;
+              }
+              .sc${cssId} {
+                animation: pscan${cssId} 2s ease-in-out infinite;
+              }
+            `,
+          }}
+        />
 
-            {/* Subtle baseline reference */}
-            <line
-              x1="0"
-              y1={svgHeight * 0.65}
-              x2={svgWidth}
-              y2={svgHeight * 0.65}
-              stroke="currentColor"
-              strokeOpacity={0.06}
-              strokeWidth={1}
-              strokeDasharray="4 4"
-            />
+        <svg
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          className="w-full"
+          style={{ height: '100px' }}
+          role="img"
+          aria-label="Conviction pulse — heartbeat waveform showing voting activity over time"
+        >
+          <defs>
+            <filter id={`gl${cssId}`} x="-10%" y="-30%" width="120%" height="160%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <filter id={`og${cssId}`} x="-20%" y="-50%" width="140%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            </filter>
+            <linearGradient id={`sg${cssId}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={pulseColor} stopOpacity="0" />
+              <stop offset="40%" stopColor={pulseColor} stopOpacity="0.5" />
+              <stop offset="60%" stopColor={pulseColor} stopOpacity="0.5" />
+              <stop offset="100%" stopColor={pulseColor} stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-            {/* Area fill under the pulse */}
-            <path d={`${path} L ${svgWidth} ${svgHeight} L 0 ${svgHeight} Z`} fill={glowColor} />
+          {/* Monitor grid */}
+          <g opacity="0.04" stroke="currentColor">
+            {Array.from({ length: 9 }, (_, i) => (
+              <line
+                key={`h${i}`}
+                x1="0"
+                y1={(i + 1) * 10}
+                x2={svgWidth}
+                y2={(i + 1) * 10}
+                strokeWidth="0.5"
+              />
+            ))}
+            {Array.from({ length: 15 }, (_, i) => (
+              <line
+                key={`v${i}`}
+                x1={(i + 1) * (svgWidth / 16)}
+                y1="0"
+                x2={(i + 1) * (svgWidth / 16)}
+                y2={svgHeight}
+                strokeWidth="0.5"
+              />
+            ))}
+          </g>
 
-            {/* The pulse line itself */}
+          {/* Outer glow (blurred shadow of the line) */}
+          {hasPulseData && (
             <path
-              d={path}
+              d={mainPath}
               fill="none"
               stroke={pulseColor}
-              strokeWidth={2}
+              strokeWidth={6}
               strokeLinecap="round"
               strokeLinejoin="round"
-              filter="url(#pulse-glow)"
+              filter={`url(#og${cssId})`}
+              opacity={0.3}
+              className={`pl${cssId}`}
             />
+          )}
 
-            {/* Per-segment peak color dots (shows yes/no balance per epoch) */}
-            {segments.map((seg) => {
-              const dotColor =
-                seg.yesRatio > 0.65 ? '#10b981' : seg.yesRatio > 0.35 ? '#a1a1aa' : '#ef4444';
-              return (
+          {/* Main animated pulse line */}
+          <path
+            d={mainPath}
+            fill="none"
+            stroke={pulseColor}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter={`url(#gl${cssId})`}
+            className={hasPulseData ? `pl${cssId}` : undefined}
+          />
+
+          {/* Beat peak dots with glow rings */}
+          {beatPositions.map((beat) => {
+            const dotColor =
+              beat.yesRatio > 0.6 ? '#10b981' : beat.yesRatio > 0.4 ? '#8b5cf6' : '#ef4444';
+            return (
+              <g key={beat.epoch}>
                 <circle
-                  key={seg.epoch}
-                  cx={seg.centerX}
-                  cy={seg.peakY}
-                  r={3}
+                  cx={beat.x}
+                  cy={beat.peakY}
+                  r={7}
+                  fill="none"
+                  stroke={dotColor}
+                  strokeWidth={1}
+                  opacity={0.25}
+                  className={`pl${cssId}`}
+                />
+                <circle
+                  cx={beat.x}
+                  cy={beat.peakY}
+                  r={3.5}
                   fill={dotColor}
-                  fillOpacity={0.9}
-                  className="transition-opacity"
+                  className={`pl${cssId}`}
                 >
                   <title>
-                    {`Epoch ${seg.epoch}: ${seg.totalVotes} votes, ${formatAda(seg.totalPower / 1_000_000)} ADA (${Math.round(seg.yesRatio * 100)}% Yes)`}
+                    {`Epoch ${beat.epoch}: ${beat.totalVotes} votes, ${formatAda(beat.totalPower / 1_000_000)} ADA (${Math.round(beat.yesRatio * 100)}% Yes)`}
                   </title>
                 </circle>
-              );
-            })}
+              </g>
+            );
+          })}
 
-            {/* Current epoch marker (scan line) */}
-            {nowX > 0 && nowX < svgWidth && (
-              <>
-                <line
-                  x1={nowX}
-                  y1={0}
-                  x2={nowX}
-                  y2={svgHeight}
-                  stroke={pulseColor}
-                  strokeOpacity={0.3}
-                  strokeWidth={1}
-                  strokeDasharray="2 3"
-                />
-                <text
-                  x={nowX}
-                  y={svgHeight - 2}
-                  textAnchor="middle"
-                  className="fill-muted-foreground"
-                  fontSize="8"
-                >
-                  now
-                </text>
-              </>
-            )}
+          {/* Pulsing scan line at current epoch */}
+          {nowX > 0 && nowX < svgWidth && (
+            <rect
+              x={nowX - 1.5}
+              y={0}
+              width={3}
+              height={svgHeight}
+              fill={`url(#sg${cssId})`}
+              className={`sc${cssId}`}
+            />
+          )}
 
-            {/* Future region (after current epoch) — dimmed */}
-            {nowX < svgWidth && (
-              <rect
-                x={nowX}
-                y={0}
-                width={svgWidth - nowX}
-                height={svgHeight}
-                fill="currentColor"
-                fillOpacity={0.03}
-              />
-            )}
-          </svg>
+          {/* Dimmed future region */}
+          {nowX > 0 && nowX < svgWidth && (
+            <rect
+              x={nowX}
+              y={0}
+              width={svgWidth - nowX}
+              height={svgHeight}
+              fill="currentColor"
+              fillOpacity={0.04}
+            />
+          )}
+        </svg>
 
-          {/* Summary label */}
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-xs text-muted-foreground">{data.label}</span>
-            {pulsePoints.length > 1 && (
-              <span className="text-xs text-muted-foreground">
-                {pulsePoints.length} epochs of activity
-              </span>
-            )}
-          </div>
+        {/* Label row */}
+        <div className="flex items-center justify-between px-3 mt-0.5">
+          <span className="text-xs text-muted-foreground">{data.label}</span>
+          {beatPositions.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {beatPositions.length} epoch{beatPositions.length !== 1 ? 's' : ''} of activity
+            </span>
+          )}
         </div>
-      ) : (
-        <div className="flex items-center justify-center h-16 text-sm text-muted-foreground">
-          No voting activity yet — the pulse will appear as DReps cast their votes.
+      </div>
+
+      {/* Empty state */}
+      {!hasPulseData && (
+        <div className="px-5 pb-4 -mt-2">
+          <p className="text-sm text-muted-foreground text-center">
+            The pulse will appear as DReps cast their votes.
+          </p>
         </div>
       )}
     </div>

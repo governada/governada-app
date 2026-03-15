@@ -54,6 +54,9 @@ import {
 import { useWallet } from '@/utils/wallet';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { hapticLight } from '@/lib/haptics';
+import { useDepthConfig } from '@/hooks/useDepthConfig';
+import { DepthUpgradeInline } from '@/components/shared/DepthUpgradeInline';
+import { DepthUpgradeNudge } from '@/components/shared/DepthUpgradeNudge';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -372,6 +375,7 @@ function EpochBriefingContent({
   const [activeSection, setActiveSection] = useState(0);
   const [direction, setDirection] = useState(0);
   const { data: drepEndorsements } = useEndorsements('drep', data?.drepPerformance?.id ?? '');
+  const depthConfig = useDepthConfig('briefing');
 
   const sections = useMemo<BriefingSection[]>(() => {
     if (!data) return [];
@@ -581,11 +585,18 @@ function EpochBriefingContent({
     </div>
   ) : null;
 
-  const narrativeSection = data.recap?.narrative ? (
-    <div className="py-5 border-b border-border">
-      <p className="text-base sm:text-lg leading-relaxed text-foreground">{data.recap.narrative}</p>
-    </div>
-  ) : null;
+  const narrativeSection =
+    depthConfig.showNarrative && data.recap?.narrative ? (
+      <div className="py-5 border-b border-border">
+        <p className="text-base sm:text-lg leading-relaxed text-foreground">
+          {data.recap.narrative}
+        </p>
+      </div>
+    ) : null;
+
+  const totalHeadlines = data.headlines?.length ?? 0;
+  const displayedHeadlineCount = Math.min(totalHeadlines, depthConfig.headlineLimit);
+  const hiddenHeadlineCount = totalHeadlines - displayedHeadlineCount;
 
   const headlinesSection =
     data.headlines && data.headlines.length > 0 ? (
@@ -595,7 +606,7 @@ function EpochBriefingContent({
         </p>
         <ul className="space-y-2.5">
           {data.headlines
-            .slice(0, 4)
+            .slice(0, depthConfig.headlineLimit)
             .map(
               (
                 h: { type: string; title: string; description: string; nclContext?: string },
@@ -617,8 +628,17 @@ function EpochBriefingContent({
               ),
             )}
         </ul>
+        <DepthUpgradeInline
+          hiddenCount={hiddenHeadlineCount}
+          requiredDepth="engaged"
+          feature="headlines"
+        />
       </div>
     ) : null;
+
+  const drepDetail = depthConfig.drepDetail;
+  const showDrepChange = drepDetail === 'score_verdict_change' || drepDetail === 'full';
+  const showDrepFullStats = drepDetail === 'full';
 
   const drepSection = data.drepPerformance ? (
     <div className="py-5 border-b border-border">
@@ -635,15 +655,19 @@ function EpochBriefingContent({
           </Link>
           <p className="text-sm text-muted-foreground mt-0.5">
             {data.drepPerformance.verdict}
-            {' \u00B7 '}
-            {data.drepPerformance.votesCast ?? 0} vote
-            {(data.drepPerformance.votesCast ?? 0) !== 1 ? 's' : ''} cast
-            {(data.drepPerformance.rationales ?? 0) > 0 &&
-              `, ${data.drepPerformance.rationales} rationale${(data.drepPerformance.rationales ?? 0) !== 1 ? 's' : ''}`}
-            {data.drepPerformance.participationRate != null &&
-              ` \u00B7 ${data.drepPerformance.participationRate}% participation`}
+            {showDrepFullStats && (
+              <>
+                {' \u00B7 '}
+                {data.drepPerformance.votesCast ?? 0} vote
+                {(data.drepPerformance.votesCast ?? 0) !== 1 ? 's' : ''} cast
+                {(data.drepPerformance.rationales ?? 0) > 0 &&
+                  `, ${data.drepPerformance.rationales} rationale${(data.drepPerformance.rationales ?? 0) !== 1 ? 's' : ''}`}
+                {data.drepPerformance.participationRate != null &&
+                  ` \u00B7 ${data.drepPerformance.participationRate}% participation`}
+              </>
+            )}
           </p>
-          {drepEndorsements && drepEndorsements.total > 0 && (
+          {showDrepFullStats && drepEndorsements && drepEndorsements.total > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
               {drepEndorsements.total} citizen endorsement
               {drepEndorsements.total !== 1 ? 's' : ''}
@@ -666,22 +690,24 @@ function EpochBriefingContent({
           >
             {data.drepPerformance.score}
           </p>
-          {data.drepPerformance.scoreChange != null && data.drepPerformance.scoreChange !== 0 && (
-            <span
-              className={cn(
-                'inline-flex items-center gap-0.5 text-xs font-medium',
-                data.drepPerformance.scoreChange > 0 ? 'text-emerald-500' : 'text-rose-500',
-              )}
-              aria-label={`Score ${data.drepPerformance.scoreChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(data.drepPerformance.scoreChange)}`}
-            >
-              {data.drepPerformance.scoreChange > 0 ? (
-                <ArrowUp className="h-3 w-3" aria-hidden="true" />
-              ) : (
-                <ArrowDown className="h-3 w-3" aria-hidden="true" />
-              )}
-              {Math.abs(data.drepPerformance.scoreChange)}
-            </span>
-          )}
+          {showDrepChange &&
+            data.drepPerformance.scoreChange != null &&
+            data.drepPerformance.scoreChange !== 0 && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-0.5 text-xs font-medium',
+                  data.drepPerformance.scoreChange > 0 ? 'text-emerald-500' : 'text-rose-500',
+                )}
+                aria-label={`Score ${data.drepPerformance.scoreChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(data.drepPerformance.scoreChange)}`}
+              >
+                {data.drepPerformance.scoreChange > 0 ? (
+                  <ArrowUp className="h-3 w-3" aria-hidden="true" />
+                ) : (
+                  <ArrowDown className="h-3 w-3" aria-hidden="true" />
+                )}
+                {Math.abs(data.drepPerformance.scoreChange)}
+              </span>
+            )}
         </div>
       </div>
     </div>
@@ -690,7 +716,7 @@ function EpochBriefingContent({
   /* ── Your Voice This Epoch ──────────────────────────────────── */
 
   const voiceSection =
-    voiceData && voiceData.summary && voiceData.summary.totalVotes > 0 ? (
+    depthConfig.showVoice && voiceData && voiceData.summary && voiceData.summary.totalVotes > 0 ? (
       <div className="py-5 border-b border-border">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -775,6 +801,10 @@ function EpochBriefingContent({
       </div>
     ) : null;
 
+  const treasuryDetail = depthConfig.treasuryDetail;
+  const showTreasuryRunway = treasuryDetail === 'balance_runway' || treasuryDetail === 'full';
+  const showTreasuryFull = treasuryDetail === 'full';
+
   const treasurySection = (
     <div className="py-5 border-b border-border">
       <div className="flex items-center justify-between mb-3">
@@ -795,7 +825,7 @@ function EpochBriefingContent({
           in the <GovTerm term="treasury">treasury</GovTerm>
         </span>
       </p>
-      {treasury?.runwayMonths != null && (
+      {showTreasuryRunway && treasury?.runwayMonths != null && (
         <p className="text-sm text-muted-foreground mt-1">
           {treasury.runwayMonths >= 999
             ? '10+ year '
@@ -804,7 +834,7 @@ function EpochBriefingContent({
           {' at current spending rate'}
         </p>
       )}
-      {nclUtilization && (
+      {showTreasuryFull && nclUtilization && (
         <div className="mt-2.5 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">
@@ -842,17 +872,19 @@ function EpochBriefingContent({
           </div>
         </div>
       )}
-      {data.treasury?.proportionalShareAda != null && data.treasury.proportionalShareAda > 0 && (
-        <p className="text-sm text-muted-foreground mt-1">
-          Your DRep&apos;s {formatAdaCompact(data.treasury.drepDelegatedAda ?? 0)} ADA{' '}
-          <GovTerm term="delegation">delegation</GovTerm> represents{' '}
-          <span className="font-medium text-foreground">
-            {formatAdaCompact(data.treasury.proportionalShareAda)} ADA
-          </span>{' '}
-          <GovTerm term="proportional share">of the treasury</GovTerm>
-        </p>
-      )}
-      {pendingProposals.length > 0 && (
+      {showTreasuryFull &&
+        data.treasury?.proportionalShareAda != null &&
+        data.treasury.proportionalShareAda > 0 && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Your DRep&apos;s {formatAdaCompact(data.treasury.drepDelegatedAda ?? 0)} ADA{' '}
+            <GovTerm term="delegation">delegation</GovTerm> represents{' '}
+            <span className="font-medium text-foreground">
+              {formatAdaCompact(data.treasury.proportionalShareAda)} ADA
+            </span>{' '}
+            <GovTerm term="proportional share">of the treasury</GovTerm>
+          </p>
+        )}
+      {showTreasuryFull && pendingProposals.length > 0 && (
         <div className="mt-3 space-y-1">
           <p className="text-xs font-medium text-muted-foreground">Awaiting decision</p>
           {pendingProposals.map((item, idx) => (
@@ -874,12 +906,14 @@ function EpochBriefingContent({
           ))}
         </div>
       )}
-      {pendingProposals.length === 0 && (data.treasury?.pendingProposals ?? 0) > 0 && (
-        <p className="text-sm text-muted-foreground mt-1">
-          {data.treasury!.pendingProposals} proposal
-          {data.treasury!.pendingProposals !== 1 ? 's' : ''} requesting funds
-        </p>
-      )}
+      {showTreasuryFull &&
+        pendingProposals.length === 0 &&
+        (data.treasury?.pendingProposals ?? 0) > 0 && (
+          <p className="text-sm text-muted-foreground mt-1">
+            {data.treasury!.pendingProposals} proposal
+            {data.treasury!.pendingProposals !== 1 ? 's' : ''} requesting funds
+          </p>
+        )}
     </div>
   );
 
@@ -919,7 +953,7 @@ function EpochBriefingContent({
   } as const;
 
   const lookingAheadSection =
-    data.lookingAhead && data.lookingAhead.length > 0 ? (
+    depthConfig.showLookingAhead && data.lookingAhead && data.lookingAhead.length > 0 ? (
       <div className="py-5 border-b border-border">
         <div className="flex items-center gap-2 mb-3">
           <Telescope className="h-4 w-4 text-primary" aria-hidden="true" />
@@ -953,14 +987,15 @@ function EpochBriefingContent({
 
   /* ── Gap 30: Inline engagement prompt ────────────────────────── */
 
-  const engagementPromptSection = data.featuredProposal ? (
-    <InlineSentimentPrompt
-      txHash={data.featuredProposal.txHash}
-      proposalIndex={data.featuredProposal.index}
-      title={data.featuredProposal.title}
-      existingTotal={data.featuredProposal.sentimentTotal}
-    />
-  ) : null;
+  const engagementPromptSection =
+    depthConfig.showEngagement && data.featuredProposal ? (
+      <InlineSentimentPrompt
+        txHash={data.featuredProposal.txHash}
+        proposalIndex={data.featuredProposal.index}
+        title={data.featuredProposal.title}
+        existingTotal={data.featuredProposal.sentimentTotal}
+      />
+    ) : null;
 
   const civicIdentityStrip = identity ? (
     <Link
@@ -1023,6 +1058,13 @@ function EpochBriefingContent({
     </Link>
   ) : null;
 
+  /* ── Depth upgrade nudge at bottom when sections are hidden ── */
+  const hasHiddenSections =
+    !depthConfig.showVoice || !depthConfig.showLookingAhead || !depthConfig.showEngagement;
+  const bottomNudge = hasHiddenSections ? (
+    <DepthUpgradeNudge feature="deeper governance analysis" requiredDepth="engaged" />
+  ) : null;
+
   /* ── Mobile: swipeable section carousel ─────────────────────── */
 
   if (isMobile && sections.length > 1) {
@@ -1081,6 +1123,7 @@ function EpochBriefingContent({
 
         <DotIndicators count={sections.length} activeIndex={activeSection} />
 
+        {bottomNudge}
         {civicIdentityStrip}
       </article>
     );
@@ -1113,6 +1156,7 @@ function EpochBriefingContent({
       {lookingAheadSection && (
         <motion.div variants={briefingItem}>{lookingAheadSection}</motion.div>
       )}
+      {bottomNudge && <motion.div variants={briefingItem}>{bottomNudge}</motion.div>}
       <motion.div variants={briefingItem}>{civicIdentityStrip}</motion.div>
     </motion.article>
   );

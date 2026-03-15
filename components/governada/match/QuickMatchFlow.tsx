@@ -66,6 +66,7 @@ import {
   type QuickMatchAnswers,
 } from '@/hooks/useQuickMatch';
 import { PoolMatchEnhancement } from '@/components/governada/match/PoolMatchEnhancement';
+import { QuizExplainer } from '@/components/governada/match/QuizExplainer';
 
 /* ─── Question definitions ──────────────────────────────── */
 
@@ -443,6 +444,7 @@ function QuestionScreen({
       <div className="text-center space-y-2">
         <h2 className="font-display text-xl sm:text-2xl font-bold">{question.title}</h2>
         <p className="text-sm text-muted-foreground">{question.subtitle}</p>
+        <QuizExplainer dimension={question.id} />
       </div>
 
       <div className="grid gap-3">

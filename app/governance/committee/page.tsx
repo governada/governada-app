@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCommitteeMembers } from '@/hooks/queries';
 import type { CommitteeMemberQuickView, CCArchetype } from '@/hooks/queries';
 import { CCHealthVerdict } from '@/components/cc/CCHealthVerdict';
+import { CCExplainerBanner } from '@/components/cc/CCExplainerBanner';
 import { CCBriefingCard } from '@/components/cc/CCBriefingCard';
 import { CCHeatmap } from '@/components/cc/CCHeatmap';
 import { CCBlocBadges } from '@/components/cc/CCBlocBadges';
@@ -353,6 +354,9 @@ export default function CommitteePage() {
           <motion.div variants={fadeInUp}>
             <CCHealthVerdict health={health} />
           </motion.div>
+
+          {/* CC Explainer — only visible to informed-depth users */}
+          <CCExplainerBanner memberCount={members.length} />
 
           {/* Section 2: AI Briefing */}
           <CCBriefingCard briefing={briefing} />

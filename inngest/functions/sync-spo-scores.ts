@@ -171,7 +171,22 @@ export const syncSpoScores = inngest.createFunction(
 
       try {
         const nowSeconds = Math.floor(Date.now() / 1000);
-        const proposalContexts = new Map<string, { blockTime: number; importanceWeight: number }>();
+
+        // CIP-1694: SPOs can only vote on these governance action types.
+        // TreasuryWithdrawals, InfoAction, and NewConstitution/UpdateConstitution
+        // are DRep-only — SPOs must NOT be penalized for not voting on them.
+        const SPO_ELIGIBLE_TYPES = new Set([
+          'HardForkInitiation',
+          'NoConfidence',
+          'NewCommittee',
+          'NewConstitutionalCommittee',
+          'ParameterChange',
+        ]);
+
+        const proposalContexts = new Map<
+          string,
+          { blockTime: number; importanceWeight: number; proposalType: string }
+        >();
         const allProposalTypes = new Set<string>();
         const proposalBlockTimes = new Map<string, number>();
         const proposalEpochs = new Map<string, number>();
@@ -186,6 +201,7 @@ export const syncSpoScores = inngest.createFunction(
           proposalContexts.set(key, {
             blockTime: p.block_time || 0,
             importanceWeight: weight,
+            proposalType: p.proposal_type,
           });
           proposalBlockTimes.set(key, p.block_time || 0);
           allProposalTypes.add(p.proposal_type);
@@ -195,9 +211,13 @@ export const syncSpoScores = inngest.createFunction(
         }
 
         // Build set of epochs that had votable proposals (for proposal-aware reliability)
+        // Only count epochs with SPO-eligible proposals
         const activeEpochs = new Set<number>();
-        for (const epoch of proposalEpochs.values()) {
-          activeEpochs.add(epoch);
+        for (const [key, epoch] of proposalEpochs) {
+          const ctx = proposalContexts.get(key);
+          if (ctx && SPO_ELIGIBLE_TYPES.has(ctx.proposalType)) {
+            activeEpochs.add(epoch);
+          }
         }
         // Also include epochs where votes were cast
         for (const v of voteRows as SpoVoteRow[]) {
@@ -205,9 +225,13 @@ export const syncSpoScores = inngest.createFunction(
           activeEpochs.add(epoch);
         }
 
+        // Total weighted pool: only SPO-eligible proposals count in the denominator.
+        // Including TreasuryWithdrawals/InfoAction (58% of proposals) was inflating
+        // the denominator with proposals SPOs literally cannot vote on.
         let totalWeightedPool = 0;
         const { DECAY_LAMBDA } = await import('@/lib/scoring/types');
         for (const [, ctx] of proposalContexts) {
+          if (!SPO_ELIGIBLE_TYPES.has(ctx.proposalType)) continue;
           const ageDays = Math.max(0, (nowSeconds - ctx.blockTime) / 86400);
           totalWeightedPool += ctx.importanceWeight * Math.exp(-DECAY_LAMBDA * ageDays);
         }
@@ -272,13 +296,18 @@ export const syncSpoScores = inngest.createFunction(
             })),
           );
         }
+        // Filter proposal types to SPO-eligible only for deliberation entropy + confidence
+        const spoEligibleProposalTypes = new Set(
+          [...allProposalTypes].filter((t) => SPO_ELIGIBLE_TYPES.has(t)),
+        );
+
         const deliberationScores = computeSpoDeliberationQuality(
           deliberationVotes,
-          allProposalTypes,
+          spoEligibleProposalTypes,
           nowSeconds,
         );
 
-        // Compute confidence per pool
+        // Compute confidence per pool (type coverage against SPO-eligible types only)
         const confidences = new Map<string, number>();
         for (const [poolId, votes] of poolVotes) {
           const epochs = new Set(votes.map((v) => v.epoch));
@@ -286,7 +315,13 @@ export const syncSpoScores = inngest.createFunction(
           const epochSpan =
             sortedEpochs.length > 1 ? sortedEpochs[sortedEpochs.length - 1] - sortedEpochs[0] : 0;
           const types = new Set(votes.map((v) => v.proposalType));
-          const typeCoverage = allProposalTypes.size > 0 ? types.size / allProposalTypes.size : 0;
+          const spoEligibleVotedTypes = new Set(
+            [...types].filter((t) => SPO_ELIGIBLE_TYPES.has(t)),
+          );
+          const typeCoverage =
+            spoEligibleProposalTypes.size > 0
+              ? spoEligibleVotedTypes.size / spoEligibleProposalTypes.size
+              : 0;
           confidences.set(poolId, computeConfidence(votes.length, epochSpan, typeCoverage));
         }
 
@@ -339,7 +374,7 @@ export const syncSpoScores = inngest.createFunction(
           allVotes,
           totalWeightedPool,
           currentEpoch,
-          allProposalTypes,
+          spoEligibleProposalTypes,
           identityScores,
           deliberationScores,
           confidences,

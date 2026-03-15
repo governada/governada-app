@@ -13,6 +13,7 @@ import { CCBriefingCard } from '@/components/cc/CCBriefingCard';
 import { CCHeatmap } from '@/components/cc/CCHeatmap';
 import { CCBlocBadges } from '@/components/cc/CCBlocBadges';
 import { CCPredictions } from '@/components/cc/CCPredictions';
+import { CCPersonaInsightBanner } from '@/components/cc/CCPersonaInsightBanner';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
@@ -302,6 +303,7 @@ export default function CommitteePage() {
 
   const members = useMemo(() => data?.members ?? [], [data]);
   const health = data?.health;
+  const stats = data?.stats;
   const agreementMatrix = data?.agreementMatrix ?? [];
   const blocs = data?.blocs ?? [];
   const archetypes = data?.archetypes ?? [];
@@ -354,6 +356,13 @@ export default function CommitteePage() {
 
           {/* Section 2: AI Briefing */}
           <CCBriefingCard briefing={briefing} />
+
+          {/* Section 2.5: Persona-specific Insight */}
+          {stats && (
+            <motion.div variants={fadeInUp}>
+              <CCPersonaInsightBanner health={health} stats={stats} members={members} />
+            </motion.div>
+          )}
 
           {/* Section 3: Constitutional Reasoning Heatmap (THE dominant visual) */}
           {agreementMatrix.length > 0 && membersList.length >= 2 && (

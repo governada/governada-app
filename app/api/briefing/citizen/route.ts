@@ -51,6 +51,18 @@ interface EngagementOutcome {
   outcome: string | null; // 'ratified' | 'dropped' | 'expired' | null (still active)
 }
 
+interface LookingAheadItem {
+  icon: 'vote' | 'trend-up' | 'trend-down';
+  text: string;
+}
+
+interface FeaturedProposal {
+  txHash: string;
+  index: number;
+  title: string;
+  sentimentTotal: number;
+}
+
 interface BriefingResponse {
   epoch: number;
 
@@ -88,6 +100,12 @@ interface BriefingResponse {
 
   /** Citizen's engagement outcomes — "Your voice this epoch" section */
   engagementOutcomes: EngagementOutcome[] | null;
+
+  /** Forward-looking items (Gap 10) */
+  lookingAhead: LookingAheadItem[] | null;
+
+  /** Featured proposal for inline engagement (Gap 30) */
+  featuredProposal: FeaturedProposal | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -479,11 +497,11 @@ export const GET = withRouteHandler(
     const pendingProposals = pendingTreasuryResult.count ?? 0;
 
     // -----------------------------------------------------------------------
-    // 6. Active & critical proposals
+    // 6. Active & critical proposals (enriched for featured proposal + looking ahead)
     // -----------------------------------------------------------------------
     const { data: activeProposals } = await supabase
       .from('proposals')
-      .select('proposal_type')
+      .select('tx_hash, proposal_index, proposal_type, title, proposed_epoch')
       .is('ratified_epoch', null)
       .is('expired_epoch', null)
       .is('dropped_epoch', null);
@@ -589,7 +607,84 @@ export const GET = withRouteHandler(
     }
 
     // -----------------------------------------------------------------------
-    // 8. Build response
+    // 8. Looking Ahead — forward-looking items (Gap 10)
+    // -----------------------------------------------------------------------
+    const lookingAheadItems: LookingAheadItem[] = [];
+
+    // Proposals expiring soon: those proposed 6+ epochs ago are nearing expiry
+    // (governance action lifetime is typically 6 epochs)
+    if (activeCount > 0 && activeProposals) {
+      const expiringCount = activeProposals.filter(
+        (p) => p.proposed_epoch != null && currentEpoch - p.proposed_epoch >= 4,
+      ).length;
+      if (expiringCount > 0) {
+        lookingAheadItems.push({
+          icon: 'vote',
+          text: `${expiringCount} proposal${expiringCount !== 1 ? 's' : ''} expir${expiringCount !== 1 ? 'e' : 'es'} soon — your DRep may need to vote`,
+        });
+      }
+    }
+
+    // DRep score trend over recent epochs
+    if (drepId && drepPerformance) {
+      const { data: recentScores } = await supabase
+        .from('drep_score_history')
+        .select('score')
+        .eq('drep_id', drepId)
+        .order('snapshot_date', { ascending: false })
+        .limit(4);
+
+      if (recentScores && recentScores.length >= 3) {
+        const newest = recentScores[0].score ?? 0;
+        const oldest = recentScores[recentScores.length - 1].score ?? 0;
+        const delta = Math.round((newest - oldest) * 10) / 10;
+        if (Math.abs(delta) >= 2) {
+          lookingAheadItems.push({
+            icon: delta > 0 ? 'trend-up' : 'trend-down',
+            text: `Your DRep\u2019s score has ${delta > 0 ? 'risen' : 'fallen'} ${Math.abs(delta)} points over the last ${recentScores.length - 1} epochs`,
+          });
+        }
+      }
+    }
+
+    const lookingAhead = lookingAheadItems.length > 0 ? lookingAheadItems.slice(0, 2) : null;
+
+    // -----------------------------------------------------------------------
+    // 9. Featured proposal for inline engagement (Gap 30)
+    // -----------------------------------------------------------------------
+    let featuredProposal: FeaturedProposal | null = null;
+
+    if (activeProposals && activeProposals.length > 0) {
+      // Pick the most recent proposal with a title (most likely to be interesting)
+      const titled = activeProposals
+        .filter((p) => p.title && p.tx_hash)
+        .sort((a, b) => (b.proposed_epoch ?? 0) - (a.proposed_epoch ?? 0));
+
+      const pick = titled[0] ?? null;
+      if (pick) {
+        // Fetch sentiment total for this proposal
+        const entityId = `${pick.tx_hash}:${pick.proposal_index ?? 0}`;
+        const { data: agg } = await supabase
+          .from('engagement_signal_aggregations')
+          .select('data')
+          .eq('entity_type', 'proposal')
+          .eq('signal_type', 'sentiment')
+          .eq('entity_id', entityId)
+          .maybeSingle();
+
+        const aggData = agg?.data as { total?: number } | null;
+
+        featuredProposal = {
+          txHash: pick.tx_hash,
+          index: pick.proposal_index ?? 0,
+          title: pick.title!,
+          sentimentTotal: aggData?.total ?? 0,
+        };
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 10. Build response
     // -----------------------------------------------------------------------
     const { health, headline } = computeHealth(
       drepId,
@@ -649,6 +744,10 @@ export const GET = withRouteHandler(
         : null,
 
       engagementOutcomes,
+
+      lookingAhead,
+
+      featuredProposal,
     };
 
     return NextResponse.json(response, {

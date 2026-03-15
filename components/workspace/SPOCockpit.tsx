@@ -1,18 +1,27 @@
 'use client';
 
 import Link from 'next/link';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
+function formatAdaCompact(ada: number): string {
+  if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${(ada / 1_000).toFixed(0)}K`;
+  return ada.toLocaleString();
+}
+
 /**
- * SPO Governance Cockpit — Governance score overview for SPOs.
+ * SPO Governance Cockpit — leads with delegation intelligence,
+ * governance score as supporting context.
  *
  * Depth-adaptive layout:
- * - Hands-Off: Governance score + pending governance actions (status widget)
- * - Informed:  + delegator count + recent governance actions (operational summary)
+ * - Hands-Off: Delegation hero + governance score (status widget)
+ * - Informed:  + delegator count + vote/participation stats (operational summary)
  * - Engaged:   Current full cockpit (default for SPOs)
  * - Deep:      + pool comparison analytics placeholder
  *
@@ -45,6 +54,16 @@ export function SPOCockpit() {
   const voteCount = (summary?.voteCount as number) ?? (pool?.vote_count as number) ?? 0;
   const participationRate = Math.round((summary?.participationRate as number) ?? 0);
 
+  // Delegation data from summary API
+  const delegatorCount = (summary?.delegatorCount as number) ?? 0;
+  const liveStakeAda = (summary?.liveStakeAda as number) ?? 0;
+  const scoreDelta = (summary?.scoreDelta as number) ?? null;
+  const momentum = (summary?.momentum as string) ?? (competitive?.momentum as string) ?? null;
+
+  // Determine delegation growth framing
+  const isGrowing = momentum === 'rising' || (scoreDelta != null && scoreDelta > 0);
+  const isShrinking = momentum === 'falling' || (scoreDelta != null && scoreDelta < 0);
+
   // Improvement suggestions based on score components
   const suggestions: string[] = [];
   if (voteCount === 0)
@@ -56,7 +75,70 @@ export function SPOCockpit() {
 
   return (
     <div className="space-y-6" data-discovery="spo-score">
-      {/* Score overview — all depths (governance score is core info) */}
+      {/* Delegation hero — all depths (this is what SPOs care about most) */}
+      <div
+        className={`rounded-2xl border p-5 space-y-3 ${
+          isGrowing
+            ? 'border-emerald-500/30 bg-emerald-500/5'
+            : isShrinking
+              ? 'border-amber-500/30 bg-amber-500/5'
+              : 'border-border bg-card'
+        }`}
+        data-discovery="ws-spo-delegation"
+      >
+        {/* Headline: stake + growth framing */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">Delegation</h2>
+            {isGrowing ? (
+              <p className="text-sm text-emerald-400 flex items-center gap-1">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Delegation growing &mdash; governance participation may be helping
+              </p>
+            ) : isShrinking ? (
+              <p className="text-sm text-amber-400 flex items-center gap-1">
+                <TrendingDown className="h-3.5 w-3.5" />
+                Delegation trending down &mdash; stay active on proposals to improve visibility
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Minus className="h-3.5 w-3.5" />
+                Delegation stable
+              </p>
+            )}
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-3xl font-bold tabular-nums text-foreground">
+              {liveStakeAda > 0
+                ? `₳${formatAdaCompact(liveStakeAda)}`
+                : delegatorCount.toLocaleString()}
+            </span>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {liveStakeAda > 0 ? 'live stake' : 'delegators'}
+            </p>
+          </div>
+        </div>
+
+        {/* Delegation metrics — informed+ (operational detail) */}
+        <DepthGate minDepth="informed">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-muted/50 p-3 text-center">
+              <p className="text-xl font-bold tabular-nums text-foreground">
+                {delegatorCount.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Delegators</p>
+            </div>
+            <div className="rounded-xl bg-muted/50 p-3 text-center">
+              <p className="text-xl font-bold tabular-nums text-foreground">
+                {liveStakeAda > 0 ? `₳${formatAdaCompact(liveStakeAda)}` : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Voting Power</p>
+            </div>
+          </div>
+        </DepthGate>
+      </div>
+
+      {/* Score overview — all depths (governance score as supporting context) */}
       <div
         className="rounded-2xl border border-border bg-card p-5 space-y-4"
         data-discovery="ws-spo-score"

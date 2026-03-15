@@ -41,6 +41,7 @@ import { InlineActionNudge } from '@/components/governada/proposals/InlineAction
 import { LivingBrief } from '@/components/governada/proposals/LivingBrief';
 import { SourceMaterial } from '@/components/governada/proposals/SourceMaterial';
 import { YourRepresentativeCard } from '@/components/governada/proposals/YourRepresentativeCard';
+import { CitizenProposalSummary } from '@/components/governada/proposals/CitizenProposalSummary';
 // VoteProgress is now integrated into ConvictionTugOfWar
 
 export const dynamic = 'force-dynamic';
@@ -265,7 +266,6 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       />
 
       {/* 1-line summary — answers "what is this?" above the fold */}
-      {/* 1-line summary — answers "what is this?" above the fold */}
       {(proposal.aiSummary || proposal.abstract) && (
         <p className="text-sm text-foreground/70 leading-relaxed line-clamp-2 -mt-2">
           {proposal.aiSummary || proposal.abstract}
@@ -274,6 +274,15 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
       {/* Your Representative — shows citizen's DRep and their vote */}
       <YourRepresentativeCard txHash={txHash} proposalIndex={proposalIndex} />
+      {/* Citizen-friendly expanded summary — richer context for non-experts */}
+      <CitizenProposalSummary
+        title={title}
+        proposalType={proposal.proposalType}
+        abstract={proposal.abstract}
+        aiSummary={proposal.aiSummary}
+        withdrawalAmount={proposal.withdrawalAmount}
+        treasuryBalanceAda={treasury?.balanceAda ?? null}
+      />
 
       {/* Zone 2: Force Balance + Vote Progress (unified) */}
       {pulseData && pulseData.totalVoters > 0 && (
@@ -424,6 +433,15 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
       {/* Your Representative — shows citizen's DRep and their vote */}
       <YourRepresentativeCard txHash={txHash} proposalIndex={proposalIndex} />
+      {/* Citizen-friendly expanded summary — richer context for non-experts */}
+      <CitizenProposalSummary
+        title={title}
+        proposalType={proposal.proposalType}
+        abstract={proposal.abstract}
+        aiSummary={proposal.aiSummary}
+        withdrawalAmount={proposal.withdrawalAmount}
+        treasuryBalanceAda={treasury?.balanceAda ?? null}
+      />
 
       {/* Zone 2: Primary Action — persona-branching (DRep/SPO vote flow vs citizen engagement) */}
       <ProposalDepthSection section="actionZone">

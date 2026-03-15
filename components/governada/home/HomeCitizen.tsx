@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Zap, ArrowRight, Vote, BarChart3, Bell } from 'lucide-react';
+import { Zap, ArrowRight, Vote, BarChart3, Bell, Gavel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GovTerm } from '@/components/GovTerm';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -122,6 +122,47 @@ function UndelegatedHome({ pulseData }: { pulseData: PulseData }) {
           </div>
         </div>
       </section>
+
+      {/* Consequence framing — gentle nudge about what they're missing */}
+      {(pulseData.votesThisWeek > 0 || pulseData.activeProposals > 0) && (
+        <section className="mx-auto w-full max-w-2xl px-4 mt-6">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
+            <Gavel className="h-5 w-5 text-amber-500/70 shrink-0 mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="text-sm text-foreground/80 leading-relaxed">
+                {pulseData.votesThisWeek > 0 ? (
+                  <>
+                    Last epoch,{' '}
+                    <span className="font-semibold text-amber-400">
+                      {pulseData.votesThisWeek} decisions
+                    </span>{' '}
+                    were cast &mdash; your ADA had no voice.
+                  </>
+                ) : (
+                  <>
+                    There are{' '}
+                    <span className="font-semibold text-amber-400">
+                      {pulseData.activeProposals} open proposals
+                    </span>{' '}
+                    being decided right now &mdash; without your input.
+                  </>
+                )}
+              </p>
+              {Number(pulseData.totalAdaGoverned.replace(/,/g, '')) > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  &#x20B3;{pulseData.totalAdaGoverned} is already represented. Yours could be too.
+                </p>
+              )}
+              <Link
+                href="/match"
+                className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors mt-0.5"
+              >
+                Find my representative <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Governance pulse stats */}
       <section className="mx-auto w-full max-w-2xl px-4 mt-8">

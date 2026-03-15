@@ -23,6 +23,13 @@ import {
   Trophy,
   Clock,
   Star,
+  Telescope,
+  TrendingUp,
+  TrendingDown,
+  ThumbsUp,
+  ThumbsDown,
+  HelpCircle,
+  MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +51,9 @@ import {
   type CitizenVoiceProposal,
   type CitizenVoiceData,
 } from '@/hooks/useEngagement';
+import { useWallet } from '@/utils/wallet';
+import { getStoredSession } from '@/lib/supabaseAuth';
+import { hapticLight } from '@/lib/haptics';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -279,6 +289,18 @@ interface EpochBriefingDRepPerformance {
   scoreChange?: number;
 }
 
+interface LookingAheadItem {
+  icon: 'vote' | 'trend-up' | 'trend-down';
+  text: string;
+}
+
+interface FeaturedProposal {
+  txHash: string;
+  index: number;
+  title: string;
+  sentimentTotal: number;
+}
+
 interface EpochBriefingData {
   epoch: number;
   status?: {
@@ -300,6 +322,8 @@ interface EpochBriefingData {
     activeProposals?: number;
     critical?: number;
   };
+  lookingAhead?: LookingAheadItem[] | null;
+  featuredProposal?: FeaturedProposal | null;
   [key: string]: unknown;
 }
 
@@ -437,7 +461,36 @@ function EpochBriefingContent({
     </header>
   );
 
-  const statusBanner = (
+  /* ── Gap 8: Conditional hero — compact pill when healthy, expanded when not ── */
+  const hasNotableEvent =
+    !!data.status?.drepDeregistered ||
+    (data.drepPerformance?.scoreChange != null && data.drepPerformance.scoreChange <= -5);
+  const isCalm = health === 'green' && !hasNotableEvent;
+
+  const statusBanner = isCalm ? (
+    /* Compact green pill — delegation healthy, let content lead */
+    <div className="py-3 border-b border-border flex items-center justify-between gap-3">
+      <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />
+        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          Your delegation is healthy
+        </span>
+      </div>
+      {data.status?.delegatedTo ? (
+        <Link
+          href={`/drep/${data.status.delegatedTo.id}`}
+          className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors min-h-[44px] sm:min-h-0 inline-flex items-center"
+        >
+          {data.status.delegatedTo.name}
+        </Link>
+      ) : (
+        <Button asChild size="sm" variant="ghost" className="text-xs h-7">
+          <Link href="/match">Find My DRep</Link>
+        </Button>
+      )}
+    </div>
+  ) : (
+    /* Expanded status banner for yellow/red health or notable events */
     <div
       className={cn(
         'py-4 border-b border-border',
@@ -857,6 +910,58 @@ function EpochBriefingContent({
       </div>
     ) : null;
 
+  /* ── Gap 10: Looking Ahead — predictive section ──────────────── */
+
+  const LOOKING_AHEAD_ICONS = {
+    vote: Vote,
+    'trend-up': TrendingUp,
+    'trend-down': TrendingDown,
+  } as const;
+
+  const lookingAheadSection =
+    data.lookingAhead && data.lookingAhead.length > 0 ? (
+      <div className="py-5 border-b border-border">
+        <div className="flex items-center gap-2 mb-3">
+          <Telescope className="h-4 w-4 text-primary" aria-hidden="true" />
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Looking Ahead
+          </p>
+        </div>
+        <ul className="space-y-2">
+          {data.lookingAhead.map((item, i) => {
+            const IconComp = LOOKING_AHEAD_ICONS[item.icon] ?? Vote;
+            return (
+              <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                <IconComp
+                  className={cn(
+                    'h-4 w-4 shrink-0 mt-0.5',
+                    item.icon === 'trend-up'
+                      ? 'text-emerald-500'
+                      : item.icon === 'trend-down'
+                        ? 'text-rose-500'
+                        : 'text-muted-foreground',
+                  )}
+                  aria-hidden="true"
+                />
+                <span>{item.text}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ) : null;
+
+  /* ── Gap 30: Inline engagement prompt ────────────────────────── */
+
+  const engagementPromptSection = data.featuredProposal ? (
+    <InlineSentimentPrompt
+      txHash={data.featuredProposal.txHash}
+      proposalIndex={data.featuredProposal.index}
+      title={data.featuredProposal.title}
+      existingTotal={data.featuredProposal.sentimentTotal}
+    />
+  ) : null;
+
   const civicIdentityStrip = identity ? (
     <Link
       href="/my-gov/identity"
@@ -928,6 +1033,7 @@ function EpochBriefingContent({
             <>
               {narrativeSection}
               {headlinesSection}
+              {engagementPromptSection}
             </>
           );
         case 'drep':
@@ -938,6 +1044,7 @@ function EpochBriefingContent({
               {voiceSection}
               {treasurySection}
               {upcomingSection}
+              {lookingAheadSection}
             </>
           );
         default:
@@ -996,11 +1103,165 @@ function EpochBriefingContent({
       )}
       <motion.div variants={briefingItem}>{narrativeSection}</motion.div>
       <motion.div variants={briefingItem}>{headlinesSection}</motion.div>
+      {engagementPromptSection && (
+        <motion.div variants={briefingItem}>{engagementPromptSection}</motion.div>
+      )}
       <motion.div variants={briefingItem}>{drepSection}</motion.div>
       <motion.div variants={briefingItem}>{voiceSection}</motion.div>
       <motion.div variants={briefingItem}>{treasurySection}</motion.div>
       <motion.div variants={briefingItem}>{upcomingSection}</motion.div>
+      {lookingAheadSection && (
+        <motion.div variants={briefingItem}>{lookingAheadSection}</motion.div>
+      )}
       <motion.div variants={briefingItem}>{civicIdentityStrip}</motion.div>
     </motion.article>
+  );
+}
+
+/* ── Gap 30: Inline Sentiment Prompt ──────────────────────────── */
+
+type SentimentChoice = 'support' | 'oppose' | 'unsure';
+
+function InlineSentimentPrompt({
+  txHash,
+  proposalIndex,
+  title,
+  existingTotal,
+}: {
+  txHash: string;
+  proposalIndex: number;
+  title: string;
+  existingTotal: number;
+}) {
+  const { connected, isAuthenticated, authenticate, delegatedDrepId, address } = useWallet();
+  const [voted, setVoted] = useState<SentimentChoice | null>(null);
+  const [voting, setVoting] = useState(false);
+  const [communityTotal, setCommunityTotal] = useState(existingTotal);
+
+  const handleVote = async (sentiment: SentimentChoice) => {
+    hapticLight();
+
+    if (!connected) {
+      window.dispatchEvent(new CustomEvent('openWalletConnect'));
+      return;
+    }
+
+    if (!isAuthenticated) {
+      const ok = await authenticate();
+      if (!ok) return;
+    }
+
+    setVoting(true);
+    try {
+      const token = getStoredSession();
+      if (!token) throw new Error('Not authenticated');
+
+      let stakeAddress: string | undefined;
+      if (address) {
+        try {
+          const { resolveRewardAddress } = await import('@meshsdk/core');
+          stakeAddress = resolveRewardAddress(address);
+        } catch {
+          /* script addresses won't resolve */
+        }
+      }
+
+      const res = await fetch('/api/engagement/sentiment/vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          proposalTxHash: txHash,
+          proposalIndex,
+          sentiment,
+          stakeAddress,
+          delegatedDrepId,
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const result = await res.json();
+      setVoted(sentiment);
+      setCommunityTotal(result.community?.total ?? communityTotal + 1);
+
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('citizen_briefing_inline_sentiment', {
+            proposal_tx_hash: txHash,
+            proposal_index: proposalIndex,
+            sentiment,
+          });
+        })
+        .catch(() => {});
+    } catch {
+      /* silent — non-critical engagement action */
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  const CHOICES: {
+    key: SentimentChoice;
+    label: string;
+    icon: typeof ThumbsUp;
+    activeColor: string;
+  }[] = [
+    { key: 'support', label: 'Support', icon: ThumbsUp, activeColor: 'text-emerald-500' },
+    { key: 'oppose', label: 'Oppose', icon: ThumbsDown, activeColor: 'text-rose-500' },
+    { key: 'unsure', label: 'Unsure', icon: HelpCircle, activeColor: 'text-amber-500' },
+  ];
+
+  // Truncate title for compact display
+  const displayTitle = title.length > 60 ? `${title.slice(0, 57)}...` : title;
+
+  return (
+    <div className="py-5 border-b border-border">
+      <div className="flex items-start gap-2.5">
+        <MessageCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-foreground">
+            Your take on{' '}
+            <Link
+              href={`/proposal/${txHash}/${proposalIndex}`}
+              className="font-medium text-primary hover:underline"
+            >
+              {displayTitle}
+            </Link>
+            ?
+          </p>
+
+          {voted ? (
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              Thanks{communityTotal > 1 ? ` — ${communityTotal} citizens have weighed in` : ''}
+            </p>
+          ) : (
+            <div className="flex gap-2 mt-2">
+              {CHOICES.map(({ key, label, icon: Icon, activeColor }) => (
+                <button
+                  key={key}
+                  disabled={voting}
+                  onClick={() => handleVote(key)}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-3 py-1.5',
+                    'text-xs font-medium transition-colors min-h-[32px]',
+                    'border border-border hover:border-primary/30',
+                    'hover:bg-muted/50 active:scale-[0.97]',
+                    voting && 'opacity-50 pointer-events-none',
+                  )}
+                  aria-label={`Vote ${label}`}
+                >
+                  <Icon className={cn('h-3 w-3', activeColor)} aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

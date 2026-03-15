@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp,
   TrendingDown,
@@ -9,9 +10,10 @@ import {
   Users,
   AlertTriangle,
   ChevronRight,
-  Trophy,
   CheckCircle2,
   Info,
+  Coins,
+  Newspaper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,7 @@ import {
   useDashboardUrgent,
   useDashboardCompetitive,
   useDashboardDelegatorTrends,
+  useTreasuryCurrent,
 } from '@/hooks/queries';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import dynamic from 'next/dynamic';
@@ -95,13 +98,52 @@ function SparkLine({ history }: { history: { score: number }[] }) {
   );
 }
 
+/* ── Citizen briefing hook (compact) ────────────────────────── */
+
+interface BriefingHeadline {
+  type: string;
+  title: string;
+  description: string;
+}
+
+interface CitizenBriefingCompact {
+  epoch: number;
+  headlines?: BriefingHeadline[];
+}
+
+function useCitizenBriefingCompact(stakeAddress: string | null) {
+  return useQuery<CitizenBriefingCompact>({
+    queryKey: ['citizen-briefing', stakeAddress],
+    queryFn: async () => {
+      const url = stakeAddress
+        ? `/api/briefing/citizen?wallet=${encodeURIComponent(stakeAddress)}`
+        : '/api/briefing/citizen';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+function formatAdaCompact(ada: number): string {
+  if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
+  if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
+  if (ada >= 1_000) return `${(ada / 1_000).toFixed(0)}K`;
+  return ada.toFixed(0);
+}
+
+/* ── Main component ─────────────────────────────────────────── */
+
 export function HomeDRep() {
-  const { drepId } = useSegment();
+  const { drepId, stakeAddress } = useSegment();
 
   const { data: reportCardRaw, isLoading: rcLoading } = useDRepReportCard(drepId);
   const { data: urgentDataRaw, isLoading: urgentLoading } = useDashboardUrgent(drepId);
-  const { data: competitiveRaw, isLoading: compLoading } = useDashboardCompetitive(drepId);
+  const { data: competitiveRaw } = useDashboardCompetitive(drepId);
   const { data: delegatorTrendsRaw } = useDashboardDelegatorTrends(drepId);
+  const { data: briefingData } = useCitizenBriefingCompact(stakeAddress);
+  const { data: rawTreasury } = useTreasuryCurrent();
 
   const reportCard = reportCardRaw as
     | {
@@ -123,14 +165,13 @@ export function HomeDRep() {
     | {
         rank?: number;
         totalActive?: number;
-        nearbyAbove?: Record<string, unknown>[];
-        nearbyBelow?: Record<string, unknown>[];
         [key: string]: unknown;
       }
     | undefined;
   const delegatorTrends = delegatorTrendsRaw as
-    | { current?: number; [key: string]: unknown }
+    | { current?: number; delta?: number; [key: string]: unknown }
     | undefined;
+  const treasury = rawTreasury as { balance?: number; trend?: string } | undefined;
 
   const score: number = reportCard?.score ?? 0;
   const tier = reportCard?.tier ?? (score ? computeTier(score) : 'Emerging');
@@ -138,6 +179,7 @@ export function HomeDRep() {
   const rank: number | null = competitive?.rank ?? null;
   const totalActive: number = competitive?.totalActive ?? 0;
   const delegatorCount: number = delegatorTrends?.current ?? 0;
+  const delegatorDelta: number = (delegatorTrends?.delta as number) ?? 0;
 
   const urgentItems = urgentData?.urgent ?? [];
   const topUrgent = urgentItems[0] ?? null;
@@ -164,6 +206,9 @@ export function HomeDRep() {
       : momentum !== null && momentum < -0.5
         ? 'Sliding'
         : 'Stable';
+
+  // Citizen briefing headlines (compact — max 3)
+  const briefingHeadlines = briefingData?.headlines?.slice(0, 3) ?? [];
 
   return (
     <div className="relative flex flex-col">
@@ -235,10 +280,10 @@ export function HomeDRep() {
 
       {/* ── Content cards ─────────────────────────────────────────── */}
       <div className="mx-auto max-w-3xl px-4 -mt-4 pb-16 space-y-4 relative z-10">
-        {/* ── Score + pillars card ─────────────────────────────────── */}
+        {/* ── Score hero card (simplified — no pillar breakdown) ───── */}
         <div
           className={cn(
-            'rounded-2xl border p-6 space-y-4',
+            'rounded-2xl border p-6',
             TIER_BG[tier] ?? 'bg-card/70 border-border/50 backdrop-blur-md',
           )}
         >
@@ -295,39 +340,6 @@ export function HomeDRep() {
               {reportCard?.scoreHistory && <SparkLine history={reportCard.scoreHistory} />}
             </div>
           </div>
-
-          {/* Pillar bars */}
-          {reportCard?.pillars && (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-              {[
-                { key: 'engagementQuality', label: 'Engagement', weight: '35%' },
-                { key: 'effectiveParticipation', label: 'Participation', weight: '25%' },
-                { key: 'reliability', label: 'Reliability', weight: '25%' },
-                { key: 'governanceIdentity', label: 'Identity', weight: '15%' },
-              ].map(({ key, label, weight }) => {
-                const v = Math.round(reportCard.pillars![key] ?? 0);
-                return (
-                  <div key={key} className="space-y-0.5">
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
-                      <span>
-                        {label} <span className="opacity-50">({weight})</span>
-                      </span>
-                      <span className="tabular-nums font-medium text-foreground">{v}</span>
-                    </div>
-                    <div className="h-1 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${v}%`,
-                          background: `hsl(var(--primary) / ${0.4 + v / 200})`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* ── Delegator headline ───────────────────────────────────── */}
@@ -338,6 +350,17 @@ export function HomeDRep() {
               {delegatorCount.toLocaleString()}
             </span>{' '}
             delegators trust you with their <GovTerm term="votingPower">voting power</GovTerm>
+            {delegatorDelta !== 0 && (
+              <span
+                className={cn(
+                  'ml-1.5 text-xs font-medium',
+                  delegatorDelta > 0 ? 'text-emerald-500' : 'text-rose-500',
+                )}
+              >
+                ({delegatorDelta > 0 ? '+' : ''}
+                {delegatorDelta} this epoch)
+              </span>
+            )}
           </p>
         </div>
 
@@ -347,7 +370,9 @@ export function HomeDRep() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
               <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
-                Quick Win — Vote Expiring
+                {urgentItems.length === 1
+                  ? 'Quick Win — Vote Expiring'
+                  : `${urgentItems.length} proposals need your vote`}
               </p>
             </div>
             <p className="text-sm font-medium text-foreground line-clamp-2">{topUrgent.title}</p>
@@ -384,50 +409,67 @@ export function HomeDRep() {
           </div>
         )}
 
-        {/* ── Competitive context ──────────────────────────────────── */}
-        {!compLoading && (competitive?.nearbyAbove?.length ?? 0) > 0 && (
-          <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Competitive Context
-              </p>
-            </div>
-            <div className="space-y-2">
-              {competitive!.nearbyAbove?.map((d) => (
-                <div key={d.drepId as string} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground truncate max-w-[200px]">
-                    #{d.rank as React.ReactNode} {d.name as React.ReactNode}
-                  </span>
-                  <span className="tabular-nums font-medium text-foreground">
-                    {d.score as React.ReactNode}
-                  </span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between text-xs border-t border-border pt-2">
-                <span className="font-medium text-primary">#{rank} You</span>
-                <span className="tabular-nums font-bold text-primary">{score}</span>
-              </div>
-              {competitive!.nearbyBelow?.map((d) => (
-                <div key={d.drepId as string} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground truncate max-w-[200px]">
-                    #{d.rank as React.ReactNode} {d.name as React.ReactNode}
-                  </span>
-                  <span className="tabular-nums font-medium text-foreground">
-                    {d.score as React.ReactNode}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Full profile CTA */}
+        {/* ── Workspace CTA ──────────────────────────────────────── */}
         <Button asChild variant="outline" className="w-full">
-          <Link href={`/drep/${drepId}`}>
-            View full profile <ArrowRight className="ml-2 h-4 w-4" />
+          <Link href="/workspace">
+            Open workspace <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
+
+        {/* ── As a Citizen — governance briefing layer ───────────── */}
+        <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Newspaper className="h-4 w-4 text-muted-foreground shrink-0" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              As a Citizen
+            </p>
+          </div>
+
+          {/* Epoch headlines (condensed) */}
+          {briefingHeadlines.length > 0 ? (
+            <ul className="space-y-1.5">
+              {briefingHeadlines.map((h, i) => (
+                <li key={i} className="flex gap-2 items-start">
+                  <span className="text-primary font-bold text-sm leading-none mt-0.5">&bull;</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{h.title}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{h.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No notable governance events this epoch.
+            </p>
+          )}
+
+          {/* Treasury one-liner */}
+          {treasury?.balance != null && treasury.balance > 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Coins className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                Treasury:{' '}
+                <span className="font-semibold text-foreground tabular-nums">
+                  {formatAdaCompact(treasury.balance)} ADA
+                </span>
+                {treasury.trend === 'growing' && (
+                  <TrendingUp className="inline h-3 w-3 text-emerald-500 ml-1" />
+                )}
+                {treasury.trend === 'shrinking' && (
+                  <TrendingDown className="inline h-3 w-3 text-rose-500 ml-1" />
+                )}
+              </span>
+            </div>
+          )}
+
+          <Link
+            href="/governance/health"
+            className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+          >
+            View full briefing <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import { ActionFeed } from './ActionFeed';
 import { CockpitHeatmap } from './CockpitHeatmap';
 import { DelegationHealth } from './DelegationHealth';
 import { CockpitSkeleton } from './CockpitSkeleton';
+import { DelegatorMovementCard } from './DelegatorMovementCard';
 import { AlertCircle } from 'lucide-react';
 
 /**
@@ -56,6 +57,17 @@ export function DRepCockpit() {
       <DepthGate minDepth="engaged">
         <ActionFeed actionFeed={data.actionFeed} />
       </DepthGate>
+
+      {/* Delegator movement alert — surfaces significant changes */}
+      <DelegatorMovementCard
+        currentDelegators={data.delegation.currentDelegators ?? 0}
+        delegatorDelta={data.delegation.delegatorDelta}
+        snapshotDelegators={
+          data.delegation.snapshots.length >= 2
+            ? data.delegation.snapshots[data.delegation.snapshots.length - 2]?.delegatorCount
+            : undefined
+        }
+      />
 
       {/* Bottom row: Delegation visible at all depths, Heatmap engaged+ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

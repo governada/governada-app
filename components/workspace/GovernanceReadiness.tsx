@@ -3,6 +3,7 @@
 import { CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CockpitData } from '@/hooks/queries';
+import { ScoreImpactPreview } from './ScoreImpactPreview';
 
 type Status = 'clear' | 'action' | 'urgent';
 
@@ -104,6 +105,12 @@ export function GovernanceReadiness({ data }: { data: CockpitData }) {
   const items = getReadinessItems(data);
   const allClear = items.every((i) => i.status === 'clear');
 
+  const { actionFeed, score } = data;
+  const pendingCount = actionFeed.pendingCount;
+  // Total eligible = pending + already voted (use pending + all proposals we know about)
+  const totalEligible = pendingCount + actionFeed.unexplainedVotes.length + pendingCount;
+  const currentParticipation = score.pillars.effectiveParticipation;
+
   return (
     <div
       className={cn(
@@ -115,6 +122,15 @@ export function GovernanceReadiness({ data }: { data: CockpitData }) {
         <h3 className="text-sm font-semibold text-foreground">Governance Readiness</h3>
         {allClear && <span className="text-xs font-medium text-emerald-500">All clear</span>}
       </div>
+
+      {/* Score impact preview — show potential gain from voting */}
+      {pendingCount > 0 && (
+        <ScoreImpactPreview
+          pendingCount={pendingCount}
+          currentParticipationRate={currentParticipation}
+          totalEligibleProposals={Math.max(totalEligible, pendingCount)}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         {items.map((item) => {

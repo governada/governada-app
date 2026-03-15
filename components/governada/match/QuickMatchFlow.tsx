@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -22,6 +22,9 @@ import {
   Users,
   Share2,
   Check,
+  Globe,
+  Crown,
+  Minus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,8 +51,7 @@ import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
 import { generateMatchNarrative } from '@/lib/matching/matchNarrative';
 import { MatchConfidenceCTA } from '@/components/matching/MatchConfidenceCTA';
-import { saveMatchProfile, loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
-import { emitDiscoveryEvent } from '@/lib/discovery/events';
+import { loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
 import {
   webShare,
   canWebShare,
@@ -57,36 +59,12 @@ import {
   trackShare,
   buildMatchResultUrl,
 } from '@/lib/share';
-
-/* ─── Types ─────────────────────────────────────────────── */
-
-interface MatchResult {
-  drepId: string;
-  drepName: string | null;
-  drepScore: number;
-  matchScore: number;
-  identityColor: string;
-  personalityLabel: string;
-  alignments: AlignmentScores;
-  agreeDimensions: string[];
-  differDimensions: string[];
-  // Enriched behavioral data
-  voteCount?: number;
-  participationPct?: number;
-  rationaleRate?: number;
-  delegatorCount?: number;
-  tier?: string | null;
-  signatureInsight?: string | null;
-}
-
-interface QuickMatchResponse {
-  matches: MatchResult[];
-  nearMisses?: MatchResult[];
-  userAlignments: AlignmentScores;
-  personalityLabel: string;
-  identityColor: string;
-  confidenceBreakdown?: ConfidenceBreakdown;
-}
+import {
+  useQuickMatch,
+  type QuickMatchResponse,
+  type MatchResult,
+  type QuickMatchAnswers,
+} from '@/hooks/useQuickMatch';
 
 /* ─── Question definitions ──────────────────────────────── */
 
@@ -180,138 +158,136 @@ const QUESTIONS: Question[] = [
       },
     ],
   },
+  {
+    id: 'decentralization',
+    title: 'How should voting power be distributed?',
+    subtitle:
+      'Governance power distribution shapes who influences Cardano\u2019s future direction.',
+    options: [
+      {
+        value: 'spread_widely',
+        label: 'Spread Widely',
+        description: 'No single entity should have outsized influence. Distribute power broadly.',
+        icon: Globe,
+      },
+      {
+        value: 'concentrated',
+        label: 'Concentrated',
+        description: 'Focus power among the most active and qualified participants.',
+        icon: Crown,
+      },
+      {
+        value: 'current_fine',
+        label: 'Current Is Fine',
+        description: 'The current distribution works. Focus energy on other issues.',
+        icon: Minus,
+      },
+    ],
+  },
 ];
 
 /* ─── Component ─────────────────────────────────────────── */
 
-type Step = 'intro' | 0 | 1 | 2 | 'loading' | 'results' | 'error';
+const TOTAL_QUESTIONS = QUESTIONS.length;
+type Step = 'intro' | 0 | 1 | 2 | 3 | 'loading' | 'results' | 'error';
 type MatchType = 'drep' | 'spo';
 
 export function QuickMatchFlow() {
   const [step, setStep] = useState<Step>('intro');
-  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
-  const [drepResults, setDrepResults] = useState<QuickMatchResponse | null>(null);
-  const [spoResults, setSpoResults] = useState<QuickMatchResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [storedProfile, setStoredProfile] = useState<StoredMatchProfile | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
   const posthog = usePostHog();
 
+  const {
+    state: matchState,
+    setAnswer: setMatchAnswer,
+    submit,
+    reset: resetMatch,
+  } = useQuickMatch({
+    onComplete: () => {
+      setStep('results');
+    },
+  });
+
   const partialIdentityColor = useMemo(() => {
-    if (Object.keys(answers).length === 0) return 'hsl(var(--primary))';
-    const partial = buildAlignmentFromAnswers(answers);
+    const answerEntries = Object.entries(matchState.answers).filter(([, v]) => v);
+    if (answerEntries.length === 0) return 'hsl(var(--primary))';
+    const answersRecord: Record<string, string> = {};
+    for (const [k, v] of answerEntries) {
+      if (v) answersRecord[k] = v;
+    }
+    const partial = buildAlignmentFromAnswers(answersRecord);
     const dominant = getDominantDimension(partial);
     return getIdentityColor(dominant).hex;
-  }, [answers]);
+  }, [matchState.answers]);
 
   // Load stored match profile on mount
   useEffect(() => {
     setStoredProfile(loadMatchProfile());
   }, []);
 
-  const fetchBothMatches = useCallback(async (finalAnswers: Record<string, string>) => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const fetchOne = async (type: MatchType) => {
-      const res = await fetch('/api/governance/quick-match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          treasury: finalAnswers.treasury,
-          protocol: finalAnswers.protocol,
-          transparency: finalAnswers.transparency,
-          match_type: type,
-        }),
-        signal: controller.signal,
-      });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      return res.json() as Promise<QuickMatchResponse>;
-    };
-
-    try {
-      const [drepData, spoData] = await Promise.all([fetchOne('drep'), fetchOne('spo')]);
-      setDrepResults(drepData);
-      setSpoResults(spoData);
-      setStep('results');
-      emitDiscoveryEvent('match_completed');
-
-      // Funnel: match completed + results viewed
-      trackFunnel(FUNNEL_EVENTS.MATCH_COMPLETED, {
-        personality: drepData.personalityLabel,
-        drep_matches: drepData.matches.length,
-        spo_matches: spoData.matches.length,
-      });
-      trackFunnel(FUNNEL_EVENTS.MATCH_RESULT_VIEWED, {
-        top_match_score: drepData.matches[0]?.matchScore ?? 0,
-      });
-
-      // Mark quick match as completed for authenticated users
-      const token = getStoredSession();
-      if (token) {
-        fetch('/api/governance/quick-match/mark-completed', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        }).catch(() => {});
-      }
-
-      // Persist match profile (use DRep data for user alignments — same for both)
-      saveMatchProfile({
-        userAlignments: drepData.userAlignments,
-        personalityLabel: drepData.personalityLabel,
-        identityColor: drepData.identityColor,
-        matchType: 'drep',
-        answers: finalAnswers,
-        timestamp: Date.now(),
-      });
-      setStoredProfile(null);
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+  // Transition to error state when hook reports an error
+  useEffect(() => {
+    if (matchState.error && step === 'loading') {
       setStep('error');
     }
-  }, []);
+  }, [matchState.error, step]);
 
   const handleAnswer = useCallback(
     (questionId: string, value: string) => {
       setSelected(value);
-      const newAnswers = { ...answers, [questionId]: value };
-      setAnswers(newAnswers);
+      setMatchAnswer(questionId, value);
 
       // Auto-advance after brief feedback
       setTimeout(() => {
         setSelected(null);
         const currentQ = typeof step === 'number' ? step : -1;
-        if (currentQ < 2) {
-          setStep((currentQ + 1) as 0 | 1 | 2);
+        if (currentQ < TOTAL_QUESTIONS - 1) {
+          setStep((currentQ + 1) as 0 | 1 | 2 | 3);
         } else {
-          // All questions answered — fetch both DRep and SPO matches
+          // All questions answered — submit via hook
           setStep('loading');
-          fetchBothMatches(newAnswers);
+          const newAnswers = { ...matchState.answers, [questionId]: value } as QuickMatchAnswers;
+          submit(newAnswers);
         }
       }, 350);
     },
-    [answers, step, fetchBothMatches],
+    [matchState.answers, step, setMatchAnswer, submit],
   );
 
   const restart = useCallback(() => {
     setStep('intro');
-    setAnswers({});
     setSelected(null);
-    setDrepResults(null);
-    setSpoResults(null);
-    setError(null);
-  }, []);
+    resetMatch();
+  }, [resetMatch]);
+
+  const fetchStoredResults = useCallback(
+    (profile: StoredMatchProfile) => {
+      for (const [k, v] of Object.entries(profile.answers)) {
+        setMatchAnswer(k, v);
+      }
+      setStep('loading');
+      submit(profile.answers as QuickMatchAnswers);
+    },
+    [setMatchAnswer, submit],
+  );
 
   const goBack = useCallback(() => {
     if (typeof step === 'number' && step > 0) {
-      setStep((step - 1) as 0 | 1 | 2);
+      setStep((step - 1) as 0 | 1 | 2 | 3);
     } else if (step === 0) {
       setStep('intro');
     }
   }, [step]);
+
+  // Build answers record for loading screen
+  const answersRecord = useMemo(() => {
+    const record: Record<string, string> = {};
+    for (const [k, v] of Object.entries(matchState.answers)) {
+      if (v) record[k] = v;
+    }
+    return record;
+  }, [matchState.answers]);
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] flex flex-col">
@@ -332,10 +308,10 @@ export function QuickMatchFlow() {
                 role="progressbar"
                 aria-valuenow={typeof step === 'number' ? step + 1 : 0}
                 aria-valuemin={1}
-                aria-valuemax={3}
-                aria-label={`Question ${typeof step === 'number' ? step + 1 : 0} of 3`}
+                aria-valuemax={TOTAL_QUESTIONS}
+                aria-label={`Question ${typeof step === 'number' ? step + 1 : 0} of ${TOTAL_QUESTIONS}`}
               >
-                {[0, 1, 2].map((i) => (
+                {Array.from({ length: TOTAL_QUESTIONS }, (_, i) => (
                   <div key={i} className="h-1 flex-1 rounded-full overflow-hidden bg-muted">
                     <div
                       className={cn(
@@ -348,7 +324,7 @@ export function QuickMatchFlow() {
                 ))}
               </div>
               <span className="text-xs text-muted-foreground tabular-nums" aria-hidden="true">
-                {step + 1}/3
+                {step + 1}/{TOTAL_QUESTIONS}
               </span>
             </div>
           </div>
@@ -367,9 +343,7 @@ export function QuickMatchFlow() {
             storedProfile={storedProfile}
             onViewPrevious={() => {
               if (storedProfile) {
-                setAnswers(storedProfile.answers);
-                setStep('loading');
-                fetchBothMatches(storedProfile.answers);
+                fetchStoredResults(storedProfile);
               }
             }}
           />
@@ -381,11 +355,15 @@ export function QuickMatchFlow() {
             onSelect={(value) => handleAnswer(QUESTIONS[step].id, value)}
           />
         )}
-        {step === 'loading' && <LoadingScreen answers={answers} />}
-        {step === 'results' && drepResults && spoResults && (
-          <ResultsScreen drepResults={drepResults} spoResults={spoResults} onRestart={restart} />
+        {step === 'loading' && <LoadingScreen answers={answersRecord} />}
+        {step === 'results' && matchState.drepResult && matchState.spoResult && (
+          <ResultsScreen
+            drepResults={matchState.drepResult}
+            spoResults={matchState.spoResult}
+            onRestart={restart}
+          />
         )}
-        {step === 'error' && <ErrorScreen message={error} onRetry={restart} />}
+        {step === 'error' && <ErrorScreen message={matchState.error} onRetry={restart} />}
       </div>
     </div>
   );
@@ -412,8 +390,8 @@ function IntroScreen({
           Build Your Governance Team
         </h1>
         <p className="text-muted-foreground text-base sm:text-lg leading-relaxed">
-          Answer 3 questions about what you care about and see who votes like you. We&apos;ll match
-          you with DReps and SPOs who share your vision. Under 60 seconds.
+          Answer 4 quick questions about what you care about and see who votes like you. We&apos;ll
+          match you with DReps and SPOs who share your vision. Under 60 seconds.
         </p>
         <p className="text-xs text-muted-foreground/80 max-w-md mx-auto">
           Your governance team votes on proposals and secures the network on your behalf.{' '}

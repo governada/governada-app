@@ -48,7 +48,7 @@ describe('calculateProgressiveConfidence', () => {
 
   it('returns 100 for all maxed inputs', () => {
     const inputs: ConfidenceInputs = {
-      quizAnswerCount: 3,
+      quizAnswerCount: 4,
       pollVoteCount: 15,
       proposalTypesVoted: 4,
       engagementActionCount: 10,
@@ -67,7 +67,7 @@ describe('calculateProgressiveConfidence', () => {
       hasDelegation: false,
     });
     const fullQuiz = calculateProgressiveConfidence({
-      quizAnswerCount: 3,
+      quizAnswerCount: 4,
       pollVoteCount: 0,
       proposalTypesVoted: 0,
       engagementActionCount: 0,

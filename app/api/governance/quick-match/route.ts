@@ -1,7 +1,10 @@
 /**
- * Quick Match API — converts 3 value-based answers into an alignment vector
- * and matches against DRep (or SPO) alignment scores using Euclidean distance.
+ * Quick Match API — converts value-based answers (3 required + 1 optional) into an alignment
+ * vector and matches against DRep (or SPO) alignment scores using Euclidean distance.
  * No wallet/auth required. Supports match_type: 'drep' | 'spo'.
+ *
+ * Required: treasury, protocol, transparency
+ * Optional: decentralization (added in WS-5a for complete 6D coverage)
  */
 
 import { NextResponse } from 'next/server';
@@ -133,6 +136,7 @@ export const POST = withRouteHandler(async (request) => {
     treasury?: string;
     protocol?: string;
     transparency?: string;
+    decentralization?: string;
     match_type?: 'drep' | 'spo';
   };
   try {
@@ -141,7 +145,7 @@ export const POST = withRouteHandler(async (request) => {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { treasury, protocol, transparency, match_type = 'drep' } = body;
+  const { treasury, protocol, transparency, decentralization, match_type = 'drep' } = body;
 
   if (!treasury || !ANSWER_VECTORS.treasury[treasury]) {
     return NextResponse.json({ error: 'Invalid treasury answer' }, { status: 400 });
@@ -151,6 +155,10 @@ export const POST = withRouteHandler(async (request) => {
   }
   if (!transparency || !ANSWER_VECTORS.transparency[transparency]) {
     return NextResponse.json({ error: 'Invalid transparency answer' }, { status: 400 });
+  }
+  // Decentralization is optional — validate only if provided
+  if (decentralization && !ANSWER_VECTORS.decentralization[decentralization]) {
+    return NextResponse.json({ error: 'Invalid decentralization answer' }, { status: 400 });
   }
 
   // Build user alignment vector from answers
@@ -163,11 +171,18 @@ export const POST = withRouteHandler(async (request) => {
     transparency: 50,
   };
 
-  for (const [, dimScores] of [
+  const answerPairs: [string, Partial<AlignmentScores>][] = [
     ['treasury', ANSWER_VECTORS.treasury[treasury]],
     ['protocol', ANSWER_VECTORS.protocol[protocol]],
     ['transparency', ANSWER_VECTORS.transparency[transparency]],
-  ] as [string, Partial<AlignmentScores>][]) {
+  ];
+
+  // Add decentralization answer if provided (backward compatible — old clients omit it)
+  if (decentralization && ANSWER_VECTORS.decentralization[decentralization]) {
+    answerPairs.push(['decentralization', ANSWER_VECTORS.decentralization[decentralization]]);
+  }
+
+  for (const [, dimScores] of answerPairs) {
     for (const dim of DIMENSIONS) {
       if (dimScores[dim] !== undefined) {
         userAlignments[dim] = dimScores[dim]!;
@@ -176,6 +191,7 @@ export const POST = withRouteHandler(async (request) => {
   }
 
   const supabase = getSupabaseAdmin();
+  const quizAnswerCount = decentralization ? 4 : 3;
 
   if (match_type === 'spo') {
     // SPO matching — query pools table with behavioral data
@@ -229,9 +245,9 @@ export const POST = withRouteHandler(async (request) => {
     const dominant = getDominantDimension(userAlignments);
     const identityColor = getIdentityColor(dominant);
 
-    // Baseline confidence from 3 quiz answers
+    // Baseline confidence from quiz answers (3 required + optional decentralization)
     const spoConfidenceBreakdown = calculateProgressiveConfidence({
-      quizAnswerCount: 3,
+      quizAnswerCount,
       pollVoteCount: 0,
       proposalTypesVoted: 0,
       engagementActionCount: 0,
@@ -242,6 +258,7 @@ export const POST = withRouteHandler(async (request) => {
       treasury,
       protocol,
       transparency,
+      decentralization: decentralization ?? null,
       match_type: 'spo',
       personality_label: personalityLabel,
       top_match_score: ranked[0]?.matchScore ?? null,
@@ -338,9 +355,9 @@ export const POST = withRouteHandler(async (request) => {
   const dominant = getDominantDimension(userAlignments);
   const identityColor = getIdentityColor(dominant);
 
-  // Baseline confidence from 3 quiz answers (no other data yet for anonymous users)
+  // Baseline confidence from quiz answers (3 required + optional decentralization)
   const confidenceBreakdown = calculateProgressiveConfidence({
-    quizAnswerCount: 3,
+    quizAnswerCount,
     pollVoteCount: 0,
     proposalTypesVoted: 0,
     engagementActionCount: 0,
@@ -351,6 +368,7 @@ export const POST = withRouteHandler(async (request) => {
     treasury,
     protocol,
     transparency,
+    decentralization: decentralization ?? null,
     match_type: 'drep',
     personality_label: personalityLabel,
     top_match_score: topRanked[0]?.matchScore ?? null,

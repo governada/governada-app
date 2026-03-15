@@ -21,6 +21,17 @@ export const ANSWER_VECTORS: Record<string, Record<string, Partial<AlignmentScor
     nice_to_have: { transparency: 55, decentralization: 50 },
     doesnt_matter: { transparency: 20, decentralization: 35 },
   },
+  decentralization: {
+    spread_widely: {
+      decentralization: 85,
+    },
+    concentrated: {
+      decentralization: 20,
+    },
+    current_fine: {
+      decentralization: 50,
+    },
+  },
 };
 
 /**

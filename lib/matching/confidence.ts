@@ -70,7 +70,7 @@ const WEIGHTS = {
 } as const;
 
 const TARGETS = {
-  quizAnswers: 3, // 3 quick match questions
+  quizAnswers: 4, // 4 quick match questions (treasury, protocol, transparency, decentralization)
   pollVotes: 15, // 15 proposal votes for full confidence
   proposalDiversity: 4, // 4 out of 6 proposal types
   engagement: 10, // 10 engagement actions
@@ -182,7 +182,7 @@ function getNextAction(
             type: 'take_quiz',
             label: 'Take the Quick Match quiz',
             description:
-              'Answer 3 questions about your governance values to establish a baseline match profile.',
+              'Answer 4 questions about your governance values to establish a baseline match profile.',
             href: '/match',
             potentialGain: gap,
           });

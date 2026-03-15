@@ -65,6 +65,7 @@ import {
   type MatchResult,
   type QuickMatchAnswers,
 } from '@/hooks/useQuickMatch';
+import { PoolMatchEnhancement } from '@/components/governada/match/PoolMatchEnhancement';
 
 /* ─── Question definitions ──────────────────────────────── */
 
@@ -929,6 +930,12 @@ function ResultsScreen({
           />
         )}
       </div>
+
+      {/* Pool match enhancement — complement DRep matches with governance-active pools */}
+      <PoolMatchEnhancement
+        spoMatches={spoResults.matches}
+        isDRepTabActive={activeTab === 'drep'}
+      />
 
       {/* Confidence breakdown + improvement CTAs */}
       {drepResults.confidenceBreakdown && (

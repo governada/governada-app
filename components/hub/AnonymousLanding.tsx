@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { GovernanceConsequenceCard } from './GovernanceConsequenceCard';
+import { GovernanceClimatePreview } from './GovernanceClimatePreview';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -130,6 +132,23 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
               {t('are voting on your behalf. Your ADA gives you a say.')}
             </p>
           </div>
+        )}
+
+        {/* Governance consequence card — why governance matters to your ADA */}
+        {pulseData && (
+          <GovernanceConsequenceCard
+            activeProposals={pulseData.activeProposals}
+            totalDelegators={pulseData.totalDelegators}
+          />
+        )}
+
+        {/* Governance climate preview — one-line interpreted intelligence */}
+        {pulseData && (
+          <GovernanceClimatePreview
+            activeProposals={pulseData.activeProposals}
+            activeDReps={pulseData.activeDReps}
+            totalDelegators={pulseData.totalDelegators}
+          />
         )}
 
         {/* Secondary discovery links */}

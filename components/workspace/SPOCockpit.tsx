@@ -7,6 +7,7 @@ import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GovernanceDelegationProof } from './GovernanceDelegationProof';
 
 function formatAdaCompact(ada: number): string {
   if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
@@ -167,6 +168,11 @@ export function SPOCockpit() {
           </div>
         </DepthGate>
       </div>
+
+      {/* Governance-drives-delegation proof — informed+ */}
+      <DepthGate minDepth="informed">
+        <GovernanceDelegationProof participationRate={participationRate} governanceScore={score} />
+      </DepthGate>
 
       {/* Improvement suggestions — engaged+ (full cockpit experience) */}
       <DepthGate minDepth="engaged">

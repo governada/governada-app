@@ -144,6 +144,45 @@ const GOVERNANCE_CONFIG = {
   },
 } as const satisfies Record<GovernanceDepth, object>;
 
+const BRIEFING_CONFIG = {
+  hands_off: {
+    headlineLimit: 2,
+    showNarrative: false,
+    showVoice: false,
+    showLookingAhead: false,
+    showEngagement: false,
+    treasuryDetail: 'balance_only' as const,
+    drepDetail: 'score_verdict' as const,
+  },
+  informed: {
+    headlineLimit: 3,
+    showNarrative: true,
+    showVoice: false,
+    showLookingAhead: false,
+    showEngagement: false,
+    treasuryDetail: 'balance_runway' as const,
+    drepDetail: 'score_verdict_change' as const,
+  },
+  engaged: {
+    headlineLimit: 4,
+    showNarrative: true,
+    showVoice: true,
+    showLookingAhead: true,
+    showEngagement: true,
+    treasuryDetail: 'full' as const,
+    drepDetail: 'full' as const,
+  },
+  deep: {
+    headlineLimit: 4,
+    showNarrative: true,
+    showVoice: true,
+    showLookingAhead: true,
+    showEngagement: true,
+    treasuryDetail: 'full' as const,
+    drepDetail: 'full' as const,
+  },
+} as const satisfies Record<GovernanceDepth, object>;
+
 const HEALTH_CONFIG = {
   hands_off: {
     showTabs: false,
@@ -194,6 +233,7 @@ const HEALTH_CONFIG = {
 type SurfaceConfigs = {
   hub: (typeof HUB_CONFIG)[GovernanceDepth];
   governance: (typeof GOVERNANCE_CONFIG)[GovernanceDepth];
+  briefing: (typeof BRIEFING_CONFIG)[GovernanceDepth];
   health: (typeof HEALTH_CONFIG)[GovernanceDepth];
 };
 
@@ -212,10 +252,12 @@ export function useDepthConfig<S extends keyof SurfaceConfigs>(surface: S): Surf
   const configs: {
     hub: typeof HUB_CONFIG;
     governance: typeof GOVERNANCE_CONFIG;
+    briefing: typeof BRIEFING_CONFIG;
     health: typeof HEALTH_CONFIG;
   } = {
     hub: HUB_CONFIG,
     governance: GOVERNANCE_CONFIG,
+    briefing: BRIEFING_CONFIG,
     health: HEALTH_CONFIG,
   };
   return configs[surface][depth] as SurfaceConfigs[S];

@@ -6,8 +6,13 @@ import { buildAlignmentFromAnswers, ANSWER_VECTORS } from '@/lib/matching/answer
 // The pure functions we CAN test directly are in answerVectors.ts.
 
 describe('ANSWER_VECTORS', () => {
-  it('has entries for all 3 question IDs', () => {
-    expect(Object.keys(ANSWER_VECTORS)).toEqual(['treasury', 'protocol', 'transparency']);
+  it('has entries for all 4 question IDs', () => {
+    expect(Object.keys(ANSWER_VECTORS)).toEqual([
+      'treasury',
+      'protocol',
+      'transparency',
+      'decentralization',
+    ]);
   });
 
   it('treasury has 3 options', () => {

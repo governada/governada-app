@@ -6,9 +6,20 @@ import type { VotePowerByEpoch } from '@/lib/data';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
+interface PowerFallback {
+  yesPower: number;
+  noPower: number;
+  abstainPower: number;
+  yesCount: number;
+  noCount: number;
+  abstainCount: number;
+}
+
 interface ConvictionTugOfWarProps {
   data: ConvictionPulseData;
   powerByEpoch: VotePowerByEpoch[];
+  /** Canonical power data from proposal_voting_summary — used when per-vote power is null */
+  powerFallback?: PowerFallback | null;
   className?: string;
 }
 
@@ -66,17 +77,33 @@ function formatAdaShort(ada: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ConvictionTugOfWar({ data, powerByEpoch, className }: ConvictionTugOfWarProps) {
+export function ConvictionTugOfWar({
+  data,
+  powerByEpoch,
+  powerFallback,
+  className,
+}: ConvictionTugOfWarProps) {
   const cssId = useId().replace(/:/g, '');
 
-  // Aggregate vote power from epoch data
+  // Aggregate vote power — prefer per-epoch data, fall back to canonical summary
   const totals = useMemo(() => {
-    const yes = powerByEpoch.reduce((s, p) => s + p.yesPower, 0);
-    const no = powerByEpoch.reduce((s, p) => s + p.noPower, 0);
-    const abstain = powerByEpoch.reduce((s, p) => s + p.abstainPower, 0);
-    const yesCount = powerByEpoch.reduce((s, p) => s + p.yesCount, 0);
-    const noCount = powerByEpoch.reduce((s, p) => s + p.noCount, 0);
-    const abstainCount = powerByEpoch.reduce((s, p) => s + p.abstainCount, 0);
+    let yes = powerByEpoch.reduce((s, p) => s + p.yesPower, 0);
+    let no = powerByEpoch.reduce((s, p) => s + p.noPower, 0);
+    let abstain = powerByEpoch.reduce((s, p) => s + p.abstainPower, 0);
+    let yesCount = powerByEpoch.reduce((s, p) => s + p.yesCount, 0);
+    let noCount = powerByEpoch.reduce((s, p) => s + p.noCount, 0);
+    let abstainCount = powerByEpoch.reduce((s, p) => s + p.abstainCount, 0);
+
+    // Fall back to canonical data if per-vote power is missing
+    if (yes + no + abstain === 0 && powerFallback) {
+      yes = powerFallback.yesPower;
+      no = powerFallback.noPower;
+      abstain = powerFallback.abstainPower;
+      yesCount = powerFallback.yesCount;
+      noCount = powerFallback.noCount;
+      abstainCount = powerFallback.abstainCount;
+    }
+
     const total = yes + no + abstain;
     return {
       yes,
@@ -89,7 +116,7 @@ export function ConvictionTugOfWar({ data, powerByEpoch, className }: Conviction
       yesPct: total > 0 ? (yes / total) * 100 : 50,
       noPct: total > 0 ? (no / total) * 100 : 50,
     };
-  }, [powerByEpoch]);
+  }, [powerByEpoch, powerFallback]);
 
   // The balance point: where No ends and Yes begins (as fraction 0-1)
   // 0 = all Yes, 1 = all No. We flip so Yes is right, No is left.

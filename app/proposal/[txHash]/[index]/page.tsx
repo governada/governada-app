@@ -164,20 +164,29 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       )
     : null;
 
-  // Compute vote projection for the new layout
+  // Compute vote projection + power summary for the new layout
   let voteProjection = null;
+  let powerSummary: {
+    yesPower: number;
+    noPower: number;
+    abstainPower: number;
+    yesCount: number;
+    noCount: number;
+    abstainCount: number;
+  } | null = null;
   if (livingBriefEnabled) {
     try {
-      const [powerSummary, baseRate] = await Promise.all([
+      const [ps, baseRate] = await Promise.all([
         getVotingPowerSummary(txHash, proposalIndex, proposal.proposalType),
         getHistoricalBaseRate(proposal.proposalType),
       ]);
+      powerSummary = ps;
       voteProjection = computeVoteProjection({
-        yesPower: powerSummary.yesPower,
-        noPower: powerSummary.noPower,
-        abstainPower: powerSummary.abstainPower,
-        totalActivePower: powerSummary.totalActivePower,
-        threshold: powerSummary.threshold,
+        yesPower: ps.yesPower,
+        noPower: ps.noPower,
+        abstainPower: ps.abstainPower,
+        totalActivePower: ps.totalActivePower,
+        threshold: ps.threshold,
         proposalType: proposal.proposalType,
         proposedEpoch: proposal.proposedEpoch,
         expirationEpoch: proposal.expirationEpoch,
@@ -246,7 +255,11 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
       {/* Zone 2: Conviction Pulse */}
       {pulseData && pulseData.totalVoters > 0 && (
-        <ConvictionTugOfWar data={pulseData} powerByEpoch={votePowerByEpoch} />
+        <ConvictionTugOfWar
+          data={pulseData}
+          powerByEpoch={votePowerByEpoch}
+          powerFallback={powerSummary}
+        />
       )}
 
       {/* Zone 2.5: Vote Progress */}

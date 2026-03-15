@@ -133,17 +133,11 @@ const nextConfig: NextConfig = {
 
 const analyzed = withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })(nextConfig);
 
-// Only apply Sentry webpack wrapping when SENTRY_ORG is configured.
-// Without it, Sentry's auto-instrumentation can inject broken error boundaries
-// that crash during static pre-rendering. Error reporting still works via
-// instrumentation.ts onRequestError when the DSN is set at runtime.
-export default process.env.SENTRY_ORG
-  ? withSentryConfig(analyzed, {
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      silent: !process.env.CI,
-      sourcemaps: {
-        disable: !process.env.SENTRY_AUTH_TOKEN,
-      },
-    })
-  : analyzed;
+export default withSentryConfig(analyzed, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+});

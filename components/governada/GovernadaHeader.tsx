@@ -10,8 +10,6 @@ import {
   User,
   Users,
   LogOut,
-  Sun,
-  Moon,
   Eye,
   Shield,
   ShieldCheck,
@@ -23,9 +21,10 @@ import {
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPickerDropdown } from './DepthPickerDropdown';
 import { DepthPromptModal } from './DepthPromptModal';
-import { useTheme } from 'next-themes';
+import { LanguagePicker } from './LanguagePicker';
 import { cn } from '@/lib/utils';
 import { HELP_ITEMS } from '@/lib/nav/config';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useWallet } from '@/utils/wallet-context';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 import { TIER_SCORE_COLOR, type TierKey } from '@/components/governada/cards/tierStyles';
@@ -92,6 +91,7 @@ function formatRelativeTime(dateStr: string): string {
 
 function NotificationBell({ unreadCount }: { unreadCount: number }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: notifData } = useNotifications(true);
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
@@ -104,7 +104,7 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
           variant="ghost"
           size="icon"
           className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
-          aria-label="Notifications"
+          aria-label={t('Notifications')}
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
@@ -116,7 +116,7 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notifications</span>
+          <span>{t('Notifications')}</span>
           {unreadCount > 0 && (
             <button
               onClick={(e) => {
@@ -126,14 +126,14 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
               className="text-[10px] font-normal text-primary hover:underline cursor-pointer"
             >
               <CheckCheck className="inline h-3 w-3 mr-0.5" />
-              Mark all read
+              {t('Mark all read')}
             </button>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {recent.length === 0 && (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-            No notifications yet
+            {t('No notifications yet')}
           </div>
         )}
         {recent.map((n: Notification) => (
@@ -164,7 +164,7 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="justify-center text-xs text-primary">
-              <Link href="/you/inbox">View all notifications</Link>
+              <Link href="/you/inbox">{t('View all notifications')}</Link>
             </DropdownMenuItem>
           </>
         )}
@@ -175,6 +175,7 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
 
 export function GovernadaHeader() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
   const {
     segment,
@@ -191,7 +192,6 @@ export function GovernadaHeader() {
   const hasDimensionOverrides = Object.values(dimensionOverrides).some((v) => v != null);
   const presetsBySegment = getPresetsBySegment();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
-  const { resolvedTheme, setTheme } = useTheme();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [pickerPreset, setPickerPreset] = useState<SegmentPreset | null>(null);
   // For dual-role 2-step picker: stash the first pick while the second picker is open
@@ -260,7 +260,7 @@ export function GovernadaHeader() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                aria-label="Help"
+                aria-label={t('Help')}
               >
                 <HelpCircle className="h-4 w-4" />
               </Button>
@@ -270,24 +270,15 @@ export function GovernadaHeader() {
                 <DropdownMenuItem key={href} asChild>
                   <Link href={href}>
                     <Icon className="h-4 w-4" />
-                    {label}
+                    {t(label)}
                   </Link>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            aria-label="Toggle theme"
-            suppressHydrationWarning
-          >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
-          </Button>
+          {/* Language picker */}
+          <LanguagePicker />
 
           {connected && isAuthenticated ? (
             <DropdownMenu>
@@ -320,7 +311,7 @@ export function GovernadaHeader() {
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onSelect={() => router.push('/you/settings')}>
                   <User className="h-4 w-4" />
-                  Profile & Settings
+                  {t('Profile & Settings')}
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>
@@ -467,14 +458,19 @@ export function GovernadaHeader() {
                   }}
                 >
                   <LogOut className="h-4 w-4" />
-                  Disconnect Wallet
+                  {t('Disconnect Wallet')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={() => setWalletModalOpen(true)}>
-                Connect Wallet
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+                onClick={() => setWalletModalOpen(true)}
+              >
+                {t('Connect Wallet')}
               </Button>
               <WalletConnectModal open={walletModalOpen} onOpenChange={setWalletModalOpen} />
             </>

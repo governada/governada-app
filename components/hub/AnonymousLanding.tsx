@@ -6,6 +6,7 @@ import { ArrowRight, Users, Compass, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -34,6 +35,8 @@ interface AnonymousLandingProps {
  * PostHog funnel instrumented at every interaction.
  */
 export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     trackFunnel(FUNNEL_EVENTS.LANDING_VIEWED);
   }, []);
@@ -52,9 +55,9 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
         {/* Hero content */}
         <div className="relative z-10 text-center max-w-lg px-6 sm:pt-14">
           <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight hero-text-shadow">
-            Your ADA gives you
+            {t('Your ADA gives you')}
             <br />
-            <span className="text-primary">a voice.</span>
+            <span className="text-primary">{t('a voice.')}</span>
           </h1>
           <p
             className="mt-4 text-lg sm:text-xl text-white/90 font-medium"
@@ -62,7 +65,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
               textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
             }}
           >
-            Choose who votes for you. It takes 60 seconds.
+            {t('Choose who votes for you. It takes 60 seconds.')}
           </p>
         </div>
       </section>
@@ -79,7 +82,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           >
             <Link href="/match">
               <Users className="h-5 w-5" />
-              Choose Your Representative
+              {t('Choose Your Representative')}
               <ArrowRight className="h-5 w-5" />
             </Link>
           </Button>
@@ -94,7 +97,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           >
             <Link href="/governance">
               <Compass className="h-4 w-4" />
-              See What&apos;s Happening
+              {t("See What's Happening")}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -109,7 +112,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           >
             <Link href="/get-started">
               <Rocket className="h-4 w-4" />
-              New to Cardano Governance? Get Started
+              {t('New to Cardano Governance? Get Started')}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -119,11 +122,14 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
         {pulseData && pulseData.activeProposals > 0 && (
           <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4">
             <p className="text-sm text-muted-foreground leading-relaxed text-center">
-              Right now,{' '}
-              <strong className="text-foreground">{pulseData.activeProposals} proposals</strong> are
-              deciding how Cardano&apos;s treasury is spent.{' '}
-              <strong className="text-foreground">{pulseData.activeDReps} representatives</strong>{' '}
-              are voting on your behalf. Your ADA gives you a say.
+              <strong className="text-foreground">
+                {pulseData.activeProposals} {t('Proposals').toLowerCase()}
+              </strong>{' '}
+              {t("proposals are deciding how Cardano's treasury is spent.")}{' '}
+              <strong className="text-foreground">
+                {pulseData.activeDReps} {t('Representatives').toLowerCase()}
+              </strong>{' '}
+              {t('are voting on your behalf. Your ADA gives you a say.')}
             </p>
           </div>
         )}
@@ -135,7 +141,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
             className="text-muted-foreground/70 hover:text-primary transition-colors"
             onClick={() => trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_health' })}
           >
-            How is Cardano being managed? &rarr;
+            {t('How is Cardano being managed?')} &rarr;
           </Link>
           <span className="text-border">|</span>
           <Link
@@ -145,7 +151,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
               trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_proposals' })
             }
           >
-            What decisions are being made? &rarr;
+            {t('What decisions are being made?')} &rarr;
           </Link>
         </div>
       </section>

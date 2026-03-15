@@ -12,6 +12,7 @@ import { InstallPrompt } from '@/components/InstallPrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { GovernadaShell } from '@/components/governada/GovernadaShell';
 import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
+import { LocaleProvider } from '@/components/providers/LocaleProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -78,25 +79,32 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
-        <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
-          <Providers>
-            <NavDirectionProvider>
-              <BrandedLoader />
-              <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none"
-              >
-                Skip to main content
-              </a>
-              <GovernanceFontProvider />
-              <GovernadaShell>{children}</GovernadaShell>
-              <CommandPalette />
-              <KeyboardShortcuts />
-              <ShortcutsHelpOverlay />
-              <InstallPrompt />
-              <OfflineBanner />
-            </NavDirectionProvider>
-          </Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          forcedTheme="dark"
+          disableTransitionOnChange
+        >
+          <LocaleProvider>
+            <Providers>
+              <NavDirectionProvider>
+                <BrandedLoader />
+                <a
+                  href="#main-content"
+                  className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none"
+                >
+                  Skip to main content
+                </a>
+                <GovernanceFontProvider />
+                <GovernadaShell>{children}</GovernadaShell>
+                <CommandPalette />
+                <KeyboardShortcuts />
+                <ShortcutsHelpOverlay />
+                <InstallPrompt />
+                <OfflineBanner />
+              </NavDirectionProvider>
+            </Providers>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

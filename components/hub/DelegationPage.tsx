@@ -13,11 +13,15 @@ import {
   Minus,
   Server,
   Info,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useGovernanceHolder, useSPOSummary, useAlignmentDrift } from '@/hooks/queries';
 import { FeatureGate } from '@/components/FeatureGate';
 import { DRepTreasuryStewardship } from '@/components/delegation/DRepTreasuryStewardship';
+import { DelegationStory } from './DelegationStory';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { computeTier } from '@/lib/scoring/tiers';
@@ -311,8 +315,26 @@ function PoolSection() {
   );
 }
 
+/* ─── Coverage action type definitions ─────────────────── */
+
+interface ActionType {
+  id: string;
+  label: string;
+  coveredBy: 'drep' | 'pool';
+}
+
+const ACTION_TYPES: ActionType[] = [
+  { id: 'TreasuryWithdrawals', label: 'Treasury withdrawals', coveredBy: 'drep' },
+  { id: 'ParameterChange', label: 'Parameter changes', coveredBy: 'pool' },
+  { id: 'HardForkInitiation', label: 'Hard fork initiation', coveredBy: 'pool' },
+  { id: 'NoConfidence', label: 'No confidence', coveredBy: 'drep' },
+  { id: 'NewConstitution', label: 'New constitution', coveredBy: 'drep' },
+  { id: 'NewCommittee', label: 'Committee updates', coveredBy: 'drep' },
+  { id: 'InfoAction', label: 'Info actions', coveredBy: 'drep' },
+];
+
 /**
- * CoverageSummary — Explains what governance coverage is and shows the citizen's status.
+ * CoverageSummary — Hero element showing governance coverage as the dominant visual.
  *
  * Governance coverage = having active representation across governance action types.
  * DReps vote on most governance actions. SPOs vote on protocol parameters and hard forks.
@@ -327,66 +349,156 @@ function CoverageSummary({
   hasPool: boolean;
   poolIsGovActive: boolean;
 }) {
-  const coveredTypes = hasDrep ? 5 : 0; // DReps cover: NoConfidence, NewConstitution, UpdateCommittee, TreasuryWithdrawals, InfoAction
-  const poolCoveredTypes = hasPool && poolIsGovActive ? 2 : 0; // SPOs cover: HardForkInitiation, ProtocolParameterChange
   const totalTypes = 7;
-  const covered = coveredTypes + poolCoveredTypes;
-  const pct = Math.round((covered / totalTypes) * 100);
 
-  const gaps: string[] = [];
-  if (!hasDrep)
-    gaps.push('No DRep — your ADA has no voice on treasury, committee, or constitutional votes');
-  if (!hasPool)
-    gaps.push('No stake pool — you have no representation on protocol parameters or hard forks');
-  else if (!poolIsGovActive)
-    gaps.push(
-      "Your pool hasn't voted — consider a governance-active pool for protocol parameter coverage",
-    );
+  // Determine which action types are covered
+  const coveredActions = ACTION_TYPES.map((action) => {
+    if (action.coveredBy === 'drep') {
+      return { ...action, covered: hasDrep, source: hasDrep ? 'DRep' : null };
+    }
+    return {
+      ...action,
+      covered: hasPool && poolIsGovActive,
+      source: hasPool && poolIsGovActive ? 'Pool' : null,
+    };
+  });
+
+  const covered = coveredActions.filter((a) => a.covered).length;
+  const pct = Math.round((covered / totalTypes) * 100);
 
   let verdict: string;
   let verdictColor: string;
+  let ringColor: string;
+  let borderAccent: string;
   if (pct === 100) {
     verdict = 'Full coverage';
     verdictColor = 'text-emerald-600 dark:text-emerald-400';
+    ringColor = 'stroke-emerald-500';
+    borderAccent = 'border-emerald-500/30';
   } else if (pct >= 50) {
     verdict = 'Partial coverage';
     verdictColor = 'text-amber-600 dark:text-amber-400';
+    ringColor = 'stroke-amber-500';
+    borderAccent = 'border-amber-500/30';
   } else {
     verdict = 'Low coverage';
     verdictColor = 'text-red-600 dark:text-red-400';
+    ringColor = 'stroke-red-500';
+    borderAccent = 'border-red-500/30';
   }
 
+  // Build narrative explanation
+  const drepActions = coveredActions.filter((a) => a.coveredBy === 'drep' && a.covered);
+  const poolActions = coveredActions.filter((a) => a.coveredBy === 'pool' && a.covered);
+  const uncoveredActions = coveredActions.filter((a) => !a.covered);
+
+  let narrative: string;
+  if (covered === totalTypes) {
+    narrative =
+      'Your DRep covers treasury, constitutional, and committee votes. Your pool covers protocol parameters and hard forks. You have full governance representation.';
+  } else {
+    const parts: string[] = [];
+    if (drepActions.length > 0) {
+      parts.push(`Your DRep covers ${drepActions.map((a) => a.label.toLowerCase()).join(', ')}`);
+    }
+    if (poolActions.length > 0) {
+      parts.push(`Your pool covers ${poolActions.map((a) => a.label.toLowerCase()).join(', ')}`);
+    }
+    if (!hasPool) {
+      parts.push(
+        "You don't have a governance-active pool — this leaves hard fork and parameter votes uncovered",
+      );
+    } else if (!poolIsGovActive) {
+      parts.push(
+        "Your pool hasn't voted on governance — protocol parameter and hard fork votes are uncovered",
+      );
+    }
+    if (!hasDrep) {
+      parts.push(
+        'Without a DRep, you have no representation on treasury, constitutional, or committee votes',
+      );
+    }
+    narrative = parts.join('. ') + '.';
+  }
+
+  // SVG ring dimensions
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <h2 className={`text-lg font-semibold ${verdictColor}`}>{verdict}</h2>
+    <div className={cn('rounded-2xl border-2 bg-card p-6 space-y-5', borderAccent)}>
+      {/* Hero: ring + verdict */}
+      <div className="flex items-center gap-6">
+        {/* Progress ring */}
+        <div className="relative shrink-0">
+          <svg width="96" height="96" viewBox="0 0 96 96" className="rotate-[-90deg]">
+            <circle
+              cx="48"
+              cy="48"
+              r={radius}
+              fill="none"
+              strokeWidth="8"
+              className="stroke-muted"
+            />
+            <circle
+              cx="48"
+              cy="48"
+              r={radius}
+              fill="none"
+              strokeWidth="8"
+              strokeLinecap="round"
+              className={cn('transition-all duration-700', ringColor)}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className={cn('text-2xl font-bold tabular-nums', verdictColor)}>
+              {covered}/{totalTypes}
+            </span>
+          </div>
+        </div>
+
+        {/* Verdict text */}
+        <div className="space-y-1 min-w-0">
+          <h2 className={cn('text-xl font-bold', verdictColor)}>{verdict}</h2>
           <p className="text-sm text-muted-foreground">
-            {covered} of {totalTypes} governance action types covered
+            Your governance coverage: {covered} of {totalTypes} action types
           </p>
         </div>
-        <span className={`text-3xl font-bold tabular-nums ${verdictColor}`}>{pct}%</span>
       </div>
 
-      {/* Coverage bar */}
-      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${
-            pct === 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500'
-          }`}
-          style={{ width: `${pct}%` }}
-        />
+      {/* Narrative */}
+      <p className="text-sm text-muted-foreground leading-relaxed">{narrative}</p>
+
+      {/* Action type checklist */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {coveredActions.map((action) => (
+          <div key={action.id} className="flex items-center gap-2 text-sm">
+            {action.covered ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+            ) : (
+              <Circle className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+            )}
+            <span className={cn(action.covered ? 'text-foreground' : 'text-muted-foreground/60')}>
+              {action.label}
+            </span>
+            {action.source && (
+              <span className="text-xs text-muted-foreground/50">({action.source})</span>
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* Gaps */}
-      {gaps.length > 0 && (
-        <div className="space-y-1.5">
-          {gaps.map((gap) => (
-            <div key={gap} className="flex items-start gap-2 text-sm">
-              <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
-              <span className="text-muted-foreground">{gap}</span>
-            </div>
-          ))}
+      {/* Uncovered types warning */}
+      {uncoveredActions.length > 0 && (
+        <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 space-y-1">
+          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Missing coverage</p>
+          <p className="text-xs text-muted-foreground">
+            {uncoveredActions.map((a) => a.label).join(', ')} — these action types have no
+            representation for your ADA.
+          </p>
         </div>
       )}
 
@@ -454,6 +566,9 @@ export function DelegationPage() {
 
       <DRepSection />
       <PoolSection />
+
+      {/* Your Story — longitudinal delegation narrative */}
+      {!!delegatedDrep && <DelegationStory />}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { DecisionEngine } from './DecisionEngine';
 import { DiscoveryMode } from './DiscoveryMode';
+import { AIDelegationVerdict } from './AIDelegationVerdict';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { RecordSummaryCard } from './RecordSummaryCard';
 import { TrajectoryCard } from './TrajectoryCard';
@@ -247,6 +248,20 @@ export function DRepProfileClient({
           treasuryProposalCount={treasuryProposalCount}
         />
       )}
+
+      {/* ── AI Delegation Verdict ── */}
+      <AIDelegationVerdict
+        drepId={drepId}
+        alignmentScore={
+          alignmentData?.alignment?.overallAlignment != null
+            ? Math.round(alignmentData.alignment.overallAlignment * 100)
+            : undefined
+        }
+        participationRate={participationRate}
+        tier={tier}
+        score={currentScore}
+        rationales={totalVotes > 0 ? Math.round((rationaleRate / 100) * totalVotes) : 0}
+      />
 
       {/* ── Evidence Layer (depth-gated) ── */}
       <DepthGate minDepth="informed">

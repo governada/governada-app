@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useId } from 'react';
+import { useMemo, useId, useRef, useEffect, useCallback } from 'react';
 import type { ConvictionPulseData } from '@/lib/convictionPulse';
 import type { VotePowerByEpoch } from '@/lib/data';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -173,7 +173,10 @@ export function ConvictionPulseLine({
   const svgWidth = 800;
   const svgHeight = 100;
 
-  const { mainPath, totalLength, beatPositions } = useMemo(
+  const mainPathRef = useRef<SVGPathElement>(null);
+  const glowPathRef = useRef<SVGPathElement>(null);
+
+  const { mainPath, beatPositions } = useMemo(
     () =>
       generateHeartbeat(
         powerByEpoch,
@@ -205,6 +208,60 @@ export function ConvictionPulseLine({
   const hasPulseData = powerByEpoch.length > 0;
   const cssId = uniqueId.replace(/:/g, '');
 
+  // Animate path drawing + continuous glow pulse via Web Animations API
+  useEffect(() => {
+    if (!hasPulseData) return;
+    const path = mainPathRef.current;
+    const glow = glowPathRef.current;
+    if (!path) return;
+
+    const length = path.getTotalLength();
+    path.style.strokeDasharray = `${length}`;
+    path.style.strokeDashoffset = `${length}`;
+    path.animate([{ strokeDashoffset: `${length}` }, { strokeDashoffset: '0' }], {
+      duration: 2500,
+      easing: 'ease-out',
+      fill: 'forwards',
+    });
+
+    if (glow) {
+      const gl = glow.getTotalLength();
+      glow.style.strokeDasharray = `${gl}`;
+      glow.style.strokeDashoffset = `${gl}`;
+      glow.animate([{ strokeDashoffset: `${gl}` }, { strokeDashoffset: '0' }], {
+        duration: 2500,
+        easing: 'ease-out',
+        fill: 'forwards',
+      });
+    }
+
+    // After draw completes, start continuous pulsing
+    const t = setTimeout(() => {
+      path.animate([{ opacity: 1 }, { opacity: 0.5 }, { opacity: 1 }], {
+        duration: 3000,
+        iterations: Infinity,
+        easing: 'ease-in-out',
+      });
+      glow?.animate([{ opacity: 0.25 }, { opacity: 0.5 }, { opacity: 0.25 }], {
+        duration: 3000,
+        iterations: Infinity,
+        easing: 'ease-in-out',
+      });
+    }, 2600);
+
+    return () => clearTimeout(t);
+  }, [hasPulseData, mainPath]);
+
+  // Scan line pulsing via callback ref
+  const scanCallback = useCallback((el: SVGRectElement | null) => {
+    if (!el) return;
+    el.animate([{ opacity: '0.15' }, { opacity: '0.8' }, { opacity: '0.15' }], {
+      duration: 2000,
+      iterations: Infinity,
+      easing: 'ease-in-out',
+    });
+  }, []);
+
   return (
     <div className={cn('rounded-xl border border-border/50 bg-card/50 overflow-hidden', className)}>
       {/* Metrics row */}
@@ -230,30 +287,6 @@ export function ConvictionPulseLine({
 
       {/* Animated pulse waveform */}
       <div className="relative px-2 pb-3">
-        {/* Scoped animation styles */}
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-              @keyframes pdraw${cssId} {
-                from { stroke-dashoffset: ${totalLength}; }
-                to   { stroke-dashoffset: 0; }
-              }
-              @keyframes pscan${cssId} {
-                0%, 100% { opacity: 0.25; }
-                50%      { opacity: 0.7; }
-              }
-              .pl${cssId} {
-                stroke-dasharray: ${totalLength};
-                stroke-dashoffset: ${totalLength};
-                animation: pdraw${cssId} 2.5s ease-out forwards;
-              }
-              .sc${cssId} {
-                animation: pscan${cssId} 2s ease-in-out infinite;
-              }
-            `,
-          }}
-        />
-
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
           className="w-full"
@@ -304,6 +337,7 @@ export function ConvictionPulseLine({
           {/* Outer glow (blurred shadow of the line) */}
           {hasPulseData && (
             <path
+              ref={glowPathRef}
               d={mainPath}
               fill="none"
               stroke={pulseColor}
@@ -311,13 +345,13 @@ export function ConvictionPulseLine({
               strokeLinecap="round"
               strokeLinejoin="round"
               filter={`url(#og${cssId})`}
-              opacity={0.3}
-              className={`pl${cssId}`}
+              opacity={0.25}
             />
           )}
 
           {/* Main animated pulse line */}
           <path
+            ref={mainPathRef}
             d={mainPath}
             fill="none"
             stroke={pulseColor}
@@ -325,7 +359,6 @@ export function ConvictionPulseLine({
             strokeLinecap="round"
             strokeLinejoin="round"
             filter={`url(#gl${cssId})`}
-            className={hasPulseData ? `pl${cssId}` : undefined}
           />
 
           {/* Beat peak dots with glow rings */}
@@ -341,16 +374,9 @@ export function ConvictionPulseLine({
                   fill="none"
                   stroke={dotColor}
                   strokeWidth={1}
-                  opacity={0.25}
-                  className={`pl${cssId}`}
+                  opacity={0.3}
                 />
-                <circle
-                  cx={beat.x}
-                  cy={beat.peakY}
-                  r={3.5}
-                  fill={dotColor}
-                  className={`pl${cssId}`}
-                >
+                <circle cx={beat.x} cy={beat.peakY} r={3.5} fill={dotColor}>
                   <title>
                     {`Epoch ${beat.epoch}: ${beat.totalVotes} votes, ${formatAda(beat.totalPower / 1_000_000)} ADA (${Math.round(beat.yesRatio * 100)}% Yes)`}
                   </title>
@@ -362,12 +388,12 @@ export function ConvictionPulseLine({
           {/* Pulsing scan line at current epoch */}
           {nowX > 0 && nowX < svgWidth && (
             <rect
+              ref={scanCallback}
               x={nowX - 1.5}
               y={0}
               width={3}
               height={svgHeight}
               fill={`url(#sg${cssId})`}
-              className={`sc${cssId}`}
             />
           )}
 

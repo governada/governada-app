@@ -10,18 +10,19 @@ import { useSegment } from '@/components/providers/SegmentProvider';
  * Polls every 30 seconds. Returns empty map while loading/error.
  */
 export function useSidebarMetrics(): Record<string, string> {
-  const { segment, drepId, poolId, stakeAddress } = useSegment();
+  const { segment, drepId, poolId, stakeAddress, delegatedDrep } = useSegment();
 
   const params = new URLSearchParams();
   if (drepId) params.set('drepId', drepId);
   if (poolId) params.set('poolId', poolId);
   if (stakeAddress) params.set('stakeAddress', stakeAddress);
+  if (delegatedDrep) params.set('delegatedDrepId', delegatedDrep);
 
   const queryString = params.toString();
   const url = queryString ? `/api/sidebar-metrics?${queryString}` : '/api/sidebar-metrics';
 
   const { data } = useQuery<Record<string, string>>({
-    queryKey: ['sidebar-metrics', segment, drepId, poolId, stakeAddress],
+    queryKey: ['sidebar-metrics', segment, drepId, poolId, stakeAddress, delegatedDrep],
     queryFn: async () => {
       const res = await fetch(url);
       if (!res.ok) return {};

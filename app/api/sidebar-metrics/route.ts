@@ -11,10 +11,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
-import { getOpenProposalsForDRep, getDRepById } from '@/lib/data';
+import { getOpenProposalsForDRep, getDRepById, getVotedThisEpoch } from '@/lib/data';
 import { getTreasuryBalance } from '@/lib/treasury';
 import { computeTier } from '@/lib/scoring/tiers';
 import { blockTimeToEpoch } from '@/lib/koios';
+import { getDRepPrimaryName } from '@/utils/display';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   const drepId = request.nextUrl.searchParams.get('drepId');
   const poolId = request.nextUrl.searchParams.get('poolId');
   const stakeAddress = request.nextUrl.searchParams.get('stakeAddress');
+  const delegatedDrepId = request.nextUrl.searchParams.get('delegatedDrepId');
 
   // ── Governance metrics (everyone) ─────────────────────────────────────
 
@@ -161,6 +163,31 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       if (pool.active_stake) {
         metrics['home.delegatedAda'] = formatAda(Number(pool.active_stake));
       }
+    }
+  }
+
+  // ── Citizen delegation metrics ─────────────────────────────────────────
+
+  if (delegatedDrepId && !drepId) {
+    // Citizen with delegation — show their DRep's activity
+    const [delegatedDrep, votedThisEpoch] = await Promise.all([
+      getDRepById(delegatedDrepId),
+      getVotedThisEpoch(delegatedDrepId, epoch),
+    ]);
+
+    if (delegatedDrep) {
+      const drepName = getDRepPrimaryName(delegatedDrep);
+      const score = Math.round(delegatedDrep.drepScore ?? 0);
+      const momentum = delegatedDrep.scoreMomentum ?? 0;
+      const arrow = momentum > 1 ? ' ↑' : momentum < -1 ? ' ↓' : '';
+
+      // Delegation sublabel: DRep name + score
+      metrics['you.coverage'] = `${drepName} · ${score}${arrow}`;
+
+      // Citizen epoch context: DRep name + epoch votes
+      metrics['citizen.drepName'] = drepName;
+      metrics['citizen.drepEpochVotes'] = String(votedThisEpoch);
+      metrics['citizen.drepScore'] = `${score}${arrow}`;
     }
   }
 

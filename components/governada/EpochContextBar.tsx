@@ -64,8 +64,17 @@ export function EpochContextBar({ sidebarCollapsed }: { sidebarCollapsed: boolea
         if (proposals) parts.push(proposals);
         return parts.join(' · ') || proposals;
       }
-      case 'citizen':
+      case 'citizen': {
+        const drepName = metrics['citizen.drepName'];
+        const epochVotes = metrics['citizen.drepEpochVotes'];
+        if (drepName && epochVotes) {
+          return `${drepName}: ${epochVotes} ${t('votes this epoch')}`;
+        }
+        if (drepName) {
+          return `${t('Your DRep')}: ${drepName}`;
+        }
         return proposals;
+      }
       case 'cc':
         return proposals;
       case 'anonymous':

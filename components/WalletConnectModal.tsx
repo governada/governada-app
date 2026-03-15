@@ -38,6 +38,17 @@ type Step = 'connect' | 'sign' | 'push' | 'success';
 
 const PREFERRED_WALLETS = ['eternl', 'lace', 'nami', 'typhon', 'vespr'];
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 function sortWallets(wallets: string[]): string[] {
   return [...wallets].sort((a, b) => {
     const aIdx = PREFERRED_WALLETS.indexOf(a.toLowerCase());
@@ -67,6 +78,7 @@ export function WalletConnectModal({
     disconnect,
   } = useWallet();
 
+  const isMobile = useIsMobile();
   const [step, setStep] = useState<Step>('connect');
   const [authenticating, setAuthenticating] = useState(false);
   const [pushRequested, setPushRequested] = useState(false);
@@ -84,23 +96,35 @@ export function WalletConnectModal({
     posthog.capture('wallet_selected', { wallet_name: walletName });
     clearError();
     setSelectedWallet(walletName);
-    await connect(walletName);
+    try {
+      await connect(walletName);
+    } catch {
+      // connect() sets error state internally via categorizeError;
+      // this catch prevents unhandled promise rejections from surfacing as silent failures
+    }
   };
 
   // Auto-authenticate once wallet connects — skip the manual sign step.
-  // The wallet extension will prompt the user to sign immediately after connection.
+  // On mobile: stay on "connect" step visually (shows inline loading) to reduce perceived steps.
+  // On desktop: advance to "sign" step for the full verification UI.
   useEffect(() => {
     if (connected && address && !error && step === 'connect') {
-      setStep('sign');
+      if (!isMobile) setStep('sign');
       // Auto-trigger authentication so user doesn't land in connected-but-not-authenticated state
       (async () => {
         clearError();
         setAuthenticating(true);
-        const success = await authenticate();
-        setAuthenticating(false);
-        if (success) {
-          posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
-          setStep(skipPushPrompt ? 'success' : 'push');
+        try {
+          const success = await authenticate();
+          if (success) {
+            posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
+            // On mobile, skip push prompt entirely to reduce steps
+            setStep(skipPushPrompt || isMobile ? 'success' : 'push');
+          }
+        } catch {
+          // authenticate() sets error state internally; no additional handling needed
+        } finally {
+          setAuthenticating(false);
         }
       })();
     }
@@ -110,7 +134,11 @@ export function WalletConnectModal({
   const handleTryAgain = async () => {
     clearError();
     if (selectedWallet) {
-      await connect(selectedWallet);
+      try {
+        await connect(selectedWallet);
+      } catch {
+        // connect() sets error state internally
+      }
     }
   };
 
@@ -124,12 +152,16 @@ export function WalletConnectModal({
   const handleSign = async () => {
     clearError();
     setAuthenticating(true);
-    const success = await authenticate();
-    setAuthenticating(false);
-
-    if (success) {
-      posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
-      setStep(skipPushPrompt ? 'success' : 'push');
+    try {
+      const success = await authenticate();
+      if (success) {
+        posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
+        setStep(skipPushPrompt || isMobile ? 'success' : 'push');
+      }
+    } catch {
+      // authenticate() sets error state internally
+    } finally {
+      setAuthenticating(false);
     }
   };
 
@@ -160,6 +192,15 @@ export function WalletConnectModal({
     setTimeout(() => setStep('connect'), 300);
   };
 
+  // On mobile, auto-close after success to reduce friction
+  useEffect(() => {
+    if (step === 'success' && isMobile) {
+      const timer = setTimeout(handleClose, 1500);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleClose is stable enough for this effect
+  }, [step, isMobile]);
+
   const shortenAddress = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
 
   return (
@@ -177,51 +218,64 @@ export function WalletConnectModal({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
-              <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>
-                Read-only signature verification. We never request transactions or access to your
-                funds.
-              </span>
-            </div>
-
-            <div className="space-y-2 py-2">
-              {availableWallets.length > 0 ? (
-                sortWallets(availableWallets).map((walletName) => (
-                  <Button
-                    key={walletName}
-                    variant="outline"
-                    className="w-full justify-start gap-2 h-12"
-                    onClick={() => handleWalletSelect(walletName)}
-                    disabled={connecting}
-                  >
-                    {connecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wallet className="h-4 w-4" />
-                    )}
-                    <span className="capitalize">{walletName}</span>
-                  </Button>
-                ))
-              ) : (
-                <div className="text-center py-6 space-y-4">
-                  <div className="text-muted-foreground">
-                    <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="font-medium text-foreground">No Cardano wallets detected</p>
-                    <p className="text-sm mt-1">
-                      You need a Cardano wallet extension to connect. We&apos;ll help you get set
-                      up.
-                    </p>
-                  </div>
-                  <Button asChild className="w-full">
-                    <Link href="/get-started" onClick={() => onOpenChange(false)}>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Get started with a wallet
-                    </Link>
-                  </Button>
+            {/* Mobile: show inline loading state during auto-authentication */}
+            {isMobile && authenticating ? (
+              <div className="py-8 text-center space-y-3">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                <p className="text-sm text-muted-foreground">
+                  Verifying ownership — check your wallet app...
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="p-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                  <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    Read-only signature verification. We never request transactions or access to
+                    your funds.
+                  </span>
                 </div>
-              )}
-            </div>
+
+                <div className="space-y-2 py-2">
+                  {availableWallets.length > 0 ? (
+                    sortWallets(availableWallets).map((walletName) => (
+                      <Button
+                        key={walletName}
+                        variant="outline"
+                        className="w-full justify-start gap-2 h-12"
+                        onClick={() => handleWalletSelect(walletName)}
+                        disabled={connecting}
+                      >
+                        {connecting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Wallet className="h-4 w-4" />
+                        )}
+                        <span className="capitalize">{walletName}</span>
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 space-y-4">
+                      <div className="text-muted-foreground">
+                        <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="font-medium text-foreground">No Cardano wallets detected</p>
+                        <p className="text-sm mt-1">
+                          {isMobile
+                            ? 'Open this page in your wallet app\u2019s built-in browser (Eternl, Lace, etc.) to connect.'
+                            : 'You need a Cardano wallet extension to connect. We\u2019ll help you get set up.'}
+                        </p>
+                      </div>
+                      <Button asChild className="w-full">
+                        <Link href="/get-started" onClick={() => onOpenChange(false)}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Get started with a wallet
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {error && (
               <div className="space-y-3">
@@ -283,9 +337,9 @@ export function WalletConnectModal({
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900 text-sm">
                 <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">What to expect:</p>
                 <ul className="text-blue-700 dark:text-blue-300 space-y-1 text-xs">
-                  <li>• Your wallet will show &quot;Sign in to Governada&quot;</li>
-                  <li>• This is free — no ADA will be sent</li>
-                  <li>• You can ignore the technical hex codes</li>
+                  <li>&bull; Your wallet will show &quot;Sign in to Governada&quot;</li>
+                  <li>&bull; This is free — no ADA will be sent</li>
+                  <li>&bull; You can ignore the technical hex codes</li>
                 </ul>
               </div>
 

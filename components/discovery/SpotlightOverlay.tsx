@@ -33,7 +33,8 @@ interface TargetRect {
 const PADDING = 8; // px around target element
 const TOOLTIP_GAP = 12; // px between target and tooltip
 const RETRY_INTERVAL_MS = 300;
-const MAX_RETRIES = 10; // 10 * 300ms = 3s max wait for DOM
+const MAX_RETRIES = 15; // 15 * 300ms = 4.5s max wait for DOM (more time for mobile)
+const SCROLL_SETTLE_MS = 400; // wait for scrollIntoView to finish before measuring
 
 export function SpotlightOverlay({
   step,
@@ -68,8 +69,10 @@ export function SpotlightOverlay({
         });
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
-        setTooltipPosition(spaceBelow > 200 || spaceBelow > spaceAbove ? 'bottom' : 'top');
-      }, 300);
+        // On small screens (mobile), require less space for the tooltip
+        const minSpace = window.innerWidth < 640 ? 140 : 200;
+        setTooltipPosition(spaceBelow > minSpace || spaceBelow > spaceAbove ? 'bottom' : 'top');
+      }, SCROLL_SETTLE_MS);
     };
 
     const findTarget = () => {
@@ -128,21 +131,26 @@ export function SpotlightOverlay({
     height: targetRect.height + PADDING * 2,
   };
 
-  // Tooltip position
+  // Tooltip position — clamp within viewport, especially on mobile
+  const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 640;
   const tooltipStyle: React.CSSProperties = {
     position: 'absolute',
-    left: Math.max(16, Math.min(cutout.left, window.innerWidth - 320)),
-    maxWidth: 'min(320px, calc(100vw - 32px))',
+    left: isMobileViewport ? 16 : Math.max(16, Math.min(cutout.left, window.innerWidth - 320)),
+    maxWidth: isMobileViewport ? window.innerWidth - 32 : 320,
     ...(tooltipPosition === 'bottom'
-      ? { top: cutout.top + cutout.height + TOOLTIP_GAP }
-      : { top: cutout.top - TOOLTIP_GAP, transform: 'translateY(-100%)' }),
+      ? { top: Math.min(cutout.top + cutout.height + TOOLTIP_GAP, window.innerHeight - 160) }
+      : { top: Math.max(cutout.top - TOOLTIP_GAP, 16), transform: 'translateY(-100%)' }),
   };
 
   const overlay = (
-    <div className="fixed inset-0 z-[60]" role="dialog" aria-label="Guided tour">
-      {/* Backdrop with cutout */}
+    <div
+      className="fixed inset-0 z-[60] pointer-events-none"
+      role="dialog"
+      aria-label="Guided tour"
+    >
+      {/* Backdrop with cutout — pointer-events-auto so clicks on dark area advance */}
       <div
-        className="absolute inset-0 bg-black/50 transition-all duration-300"
+        className="absolute inset-0 bg-black/50 transition-all duration-300 pointer-events-auto"
         onClick={onNext}
         style={{
           clipPath: `polygon(
@@ -168,7 +176,7 @@ export function SpotlightOverlay({
         }}
       />
 
-      {/* Tooltip card */}
+      {/* Tooltip card — pointer-events-auto so buttons are tappable on mobile */}
       <AnimatePresence mode="wait">
         <motion.div
           key={step.id}
@@ -178,7 +186,7 @@ export function SpotlightOverlay({
           exit={{ opacity: 0, y: -10 }}
           transition={spring.smooth}
           style={tooltipStyle}
-          className="rounded-xl border border-white/[0.08] bg-card/95 backdrop-blur-xl shadow-2xl p-4 space-y-3"
+          className="rounded-xl border border-white/[0.08] bg-card/95 backdrop-blur-xl shadow-2xl p-4 space-y-3 pointer-events-auto"
         >
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -188,8 +196,11 @@ export function SpotlightOverlay({
               </p>
             </div>
             <button
-              onClick={onSkip}
-              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSkip();
+              }}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-2 -m-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label="End tour"
             >
               <X className="h-4 w-4" />
@@ -213,17 +224,27 @@ export function SpotlightOverlay({
               ))}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onSkip}
-                className="h-7 text-xs text-muted-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSkip();
+                }}
+                className="h-9 text-xs text-muted-foreground min-w-[44px]"
               >
                 <SkipForward className="h-3 w-3 mr-1" />
                 Skip
               </Button>
-              <Button size="sm" onClick={onNext} className="h-7 text-xs">
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNext();
+                }}
+                className="h-9 text-xs min-w-[44px]"
+              >
                 {stepIndex < totalSteps - 1 ? (
                   <>
                     Next

@@ -422,7 +422,11 @@ export async function fetchAll<T = Record<string, unknown>>(
     const to = from + PAGE_SIZE - 1;
     const query = isFactory ? queryOrFactory() : queryOrFactory;
     const { data, error } = await query.range(from, to);
-    if (error) throw new Error(`fetchAll page ${page}: ${errMsg(error)}`);
+    if (error) {
+      const detail =
+        errMsg(error) || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      throw new Error(`fetchAll page ${page}: ${detail}`);
+    }
     if (!data || data.length === 0) break;
     all.push(...data);
     if (data.length < PAGE_SIZE) break;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkSignature, DataSignature, resolveRewardAddress } from '@meshsdk/core';
+import type { DataSignature } from '@meshsdk/core';
 import { createSessionToken, SESSION_MAX_AGE_SECONDS } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { verifyNonce } from '@/lib/nonce';
@@ -13,6 +13,10 @@ export const dynamic = 'force-dynamic';
 
 export const POST = withRouteHandler(
   async (request: NextRequest) => {
+    // Lazy-load @meshsdk/core to avoid libsodium initialization crash at server startup.
+    // The WASM/asm.js init in libsodium-wrappers-sumo fails in slim containers when loaded eagerly.
+    const { checkSignature, resolveRewardAddress } = await import('@meshsdk/core');
+
     const body = WalletAuthSchema.parse(await request.json());
     const { address, nonce, nonceSignature, signature, key } = body;
 

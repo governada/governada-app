@@ -34,7 +34,7 @@ import { getProposalBrief } from '@/lib/proposalBrief';
 import { computeConvictionPulseData } from '@/lib/convictionPulse';
 import { getHistoricalBaseRate, computeVoteProjection } from '@/lib/voteProjection';
 import { CompactHeader } from '@/components/governada/proposals/CompactHeader';
-import { ConvictionPulseViz } from '@/components/governada/proposals/ConvictionPulseViz';
+import { ConvictionPulseLine } from '@/components/governada/proposals/ConvictionPulseLine';
 import { InlineActionNudge } from '@/components/governada/proposals/InlineActionNudge';
 import { LivingBrief } from '@/components/governada/proposals/LivingBrief';
 import { SourceMaterial } from '@/components/governada/proposals/SourceMaterial';
@@ -245,7 +245,15 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       />
 
       {/* Zone 2: Conviction Pulse */}
-      {pulseData && pulseData.totalVoters > 0 && <ConvictionPulseViz data={pulseData} />}
+      {pulseData && pulseData.totalVoters > 0 && (
+        <ConvictionPulseLine
+          data={pulseData}
+          powerByEpoch={votePowerByEpoch}
+          proposedEpoch={proposal.proposedEpoch}
+          expirationEpoch={proposal.expirationEpoch}
+          currentEpoch={currentEpoch}
+        />
+      )}
 
       {/* Zone 2.5: Vote Progress */}
       {voteProjection && <VoteProgress projection={voteProjection} isOpen={isOpen} />}

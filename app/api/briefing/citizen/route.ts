@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
+import { getActiveNclPeriod } from '@/lib/treasury';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,8 @@ interface Headline {
   title: string;
   description: string;
   type: HeadlineType;
+  /** For treasury headlines: "Uses ~X% of this epoch's spending limit" */
+  nclContext?: string;
 }
 
 interface DRepPerformance {
@@ -172,6 +175,7 @@ function buildHeadlines(
     treasury_withdrawn_ada: number | null;
     ai_narrative: string | null;
   } | null,
+  nclLimitAda: number | null,
 ): Headline[] {
   const headlines: Headline[] = [];
   if (!recap) return headlines;
@@ -194,10 +198,21 @@ function buildHeadlines(
         : ada >= 1_000
           ? `${Math.round(ada / 1_000)}K`
           : new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(ada);
+
+    // Compute NCL context: what % of the spending limit this withdrawal represents
+    let nclContext: string | undefined;
+    if (nclLimitAda && nclLimitAda > 0) {
+      const pct = Math.round((ada / nclLimitAda) * 100);
+      if (pct > 0) {
+        nclContext = `Uses ~${pct}% of this period's spending limit`;
+      }
+    }
+
     headlines.push({
       title: `Treasury paid out ${formatted} ADA`,
       description: 'Approved withdrawal proposals were executed from the community treasury',
       type: 'treasury',
+      nclContext,
     });
   }
 
@@ -447,30 +462,33 @@ export const GET = withRouteHandler(
     // -----------------------------------------------------------------------
     // 5. Treasury data
     // -----------------------------------------------------------------------
-    const [treasuryResult, previousTreasuryResult, pendingTreasuryResult] = await Promise.all([
-      // Latest treasury snapshot
-      supabase
-        .from('treasury_snapshots')
-        .select('epoch_no, balance_lovelace')
-        .order('epoch_no', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      // Previous treasury snapshot (for trend)
-      supabase
-        .from('treasury_snapshots')
-        .select('balance_lovelace')
-        .order('epoch_no', { ascending: false })
-        .range(1, 1)
-        .maybeSingle(),
-      // Count pending treasury withdrawal proposals
-      supabase
-        .from('proposals')
-        .select('tx_hash', { count: 'exact', head: true })
-        .like('proposal_type', '%TreasuryWithdrawals%')
-        .is('ratified_epoch', null)
-        .is('expired_epoch', null)
-        .is('dropped_epoch', null),
-    ]);
+    const [treasuryResult, previousTreasuryResult, pendingTreasuryResult, nclPeriod] =
+      await Promise.all([
+        // Latest treasury snapshot
+        supabase
+          .from('treasury_snapshots')
+          .select('epoch_no, balance_lovelace')
+          .order('epoch_no', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        // Previous treasury snapshot (for trend)
+        supabase
+          .from('treasury_snapshots')
+          .select('balance_lovelace')
+          .order('epoch_no', { ascending: false })
+          .range(1, 1)
+          .maybeSingle(),
+        // Count pending treasury withdrawal proposals
+        supabase
+          .from('proposals')
+          .select('tx_hash', { count: 'exact', head: true })
+          .like('proposal_type', '%TreasuryWithdrawals%')
+          .is('ratified_epoch', null)
+          .is('expired_epoch', null)
+          .is('dropped_epoch', null),
+        // NCL period for consequence framing on treasury headlines
+        getActiveNclPeriod(),
+      ]);
 
     const latestBalance = treasuryResult.data?.balance_lovelace ?? 0;
     const previousBalance = previousTreasuryResult.data?.balance_lovelace ?? null;
@@ -591,6 +609,8 @@ export const GET = withRouteHandler(
     // -----------------------------------------------------------------------
     // 8. Build response
     // -----------------------------------------------------------------------
+    const nclLimitAda = nclPeriod?.nclAda ?? null;
+
     const { health, headline } = computeHealth(
       drepId,
       drepScore,
@@ -618,7 +638,7 @@ export const GET = withRouteHandler(
         drepDeregistered: drepDeregistered || undefined,
       },
 
-      headlines: buildHeadlines(recap),
+      headlines: buildHeadlines(recap, nclLimitAda),
 
       drepPerformance,
 

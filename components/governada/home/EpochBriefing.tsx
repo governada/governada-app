@@ -22,6 +22,7 @@ import {
   Megaphone,
   Trophy,
   Clock,
+  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -287,7 +288,7 @@ interface EpochBriefingData {
     drepDeregistered?: boolean;
   };
   recap?: { narrative?: string };
-  headlines?: { type: string; title: string; description: string }[];
+  headlines?: { type: string; title: string; description: string; nclContext?: string }[];
   drepPerformance?: EpochBriefingDRepPerformance;
   treasury?: {
     balanceAda?: number;
@@ -499,6 +500,34 @@ function EpochBriefingContent({
     </div>
   ) : null;
 
+  const milestoneCelebration = (identity?.recentMilestone as string | undefined) ? (
+    <div className="py-4 border-b border-border">
+      <Link
+        href="/you"
+        className="group block rounded-lg border border-amber-500/30 bg-amber-50 dark:bg-amber-900/20 p-4 transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/30"
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-500/20 shrink-0">
+            <Trophy className="h-5 w-5 text-amber-500" aria-hidden="true" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Star className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+              Milestone unlocked!
+            </p>
+            <p className="text-base font-medium text-foreground mt-1">
+              {identity!.recentMilestone as React.ReactNode}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1.5 group-hover:text-primary transition-colors inline-flex items-center gap-1">
+              View your civic identity
+              <ArrowRight className="h-3 w-3" />
+            </p>
+          </div>
+        </div>
+      </Link>
+    </div>
+  ) : null;
+
   const narrativeSection = data.recap?.narrative ? (
     <div className="py-5 border-b border-border">
       <p className="text-base sm:text-lg leading-relaxed text-foreground">{data.recap.narrative}</p>
@@ -514,15 +543,26 @@ function EpochBriefingContent({
         <ul className="space-y-2.5">
           {data.headlines
             .slice(0, 4)
-            .map((h: { type: string; title: string; description: string }, i: number) => (
-              <li key={i} className="flex gap-3 min-h-[44px] items-start">
-                <span className="text-primary font-bold text-lg leading-none mt-0.5">&bull;</span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">{h.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{h.description}</p>
-                </div>
-              </li>
-            ))}
+            .map(
+              (
+                h: { type: string; title: string; description: string; nclContext?: string },
+                i: number,
+              ) => (
+                <li key={i} className="flex gap-3 min-h-[44px] items-start">
+                  <span className="text-primary font-bold text-lg leading-none mt-0.5">&bull;</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{h.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{h.description}</p>
+                    {h.nclContext && (
+                      <p className="text-xs text-amber-500/80 mt-0.5 flex items-center gap-1">
+                        <Coins className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        {h.nclContext}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ),
+            )}
         </ul>
       </div>
     ) : null;
@@ -910,6 +950,7 @@ function EpochBriefingContent({
         {briefingHeader}
         {statusBanner}
         {deregisteredAlert}
+        {milestoneCelebration}
 
         <div className="py-3">
           <SectionTabs sections={sections} activeIndex={activeSection} onSelect={navigateSection} />
@@ -950,6 +991,9 @@ function EpochBriefingContent({
       <motion.div variants={briefingItem}>{briefingHeader}</motion.div>
       <motion.div variants={briefingItem}>{statusBanner}</motion.div>
       {deregisteredAlert && <motion.div variants={briefingItem}>{deregisteredAlert}</motion.div>}
+      {milestoneCelebration && (
+        <motion.div variants={briefingItem}>{milestoneCelebration}</motion.div>
+      )}
       <motion.div variants={briefingItem}>{narrativeSection}</motion.div>
       <motion.div variants={briefingItem}>{headlinesSection}</motion.div>
       <motion.div variants={briefingItem}>{drepSection}</motion.div>

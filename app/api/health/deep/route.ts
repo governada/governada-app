@@ -65,11 +65,13 @@ export const GET = withRouteHandler(
       probeRedis(),
     ]);
 
-    const allHealthy =
-      supabase.status === 'healthy' && koios.status === 'healthy' && redis.status === 'healthy';
+    // Supabase is critical — pages read from it. Redis is nice-to-have (rate-limit
+    // falls back to in-memory). Koios is background-only (Inngest sync jobs).
+    const coreHealthy = supabase.status === 'healthy';
+    const allHealthy = coreHealthy && koios.status === 'healthy' && redis.status === 'healthy';
 
     return NextResponse.json({
-      status: allHealthy ? 'healthy' : 'degraded',
+      status: allHealthy ? 'healthy' : coreHealthy ? 'degraded' : 'critical',
       dependencies: { supabase, koios, redis },
       timestamp: new Date().toISOString(),
     });

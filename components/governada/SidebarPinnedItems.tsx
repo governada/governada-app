@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { Pin, X, User, FileText, Building2, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePinnedItems, type PinnedEntityType } from '@/hooks/usePinnedItems';
+import { useExplorePath } from '@/hooks/useExplorePath';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const ENTITY_ICONS: Record<PinnedEntityType, typeof User> = {
@@ -36,8 +38,22 @@ export function SidebarPinnedItems({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const { t } = useTranslation();
   const { pinnedItems, unpin } = usePinnedItems();
+  const { segment } = useSegment();
+  const { explorePath } = useExplorePath();
 
-  if (pinnedItems.length === 0) return null;
+  // Show discovery hint when empty + authenticated + has browsed entities
+  if (pinnedItems.length === 0) {
+    if (segment !== 'anonymous' && explorePath.length > 0 && !collapsed) {
+      return (
+        <div className="mt-4 border-t border-border/30 pt-3 px-3">
+          <p className="text-[10px] text-muted-foreground/40 leading-relaxed">
+            {t('Pin DReps, proposals, or pools for quick access')}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="mt-4 border-t border-border/30 pt-3">

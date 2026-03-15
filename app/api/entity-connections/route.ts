@@ -17,6 +17,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   const entityType = request.nextUrl.searchParams.get('type') as EntityType;
   const entityId = request.nextUrl.searchParams.get('id');
   const viewerDrepId = request.nextUrl.searchParams.get('viewerDrepId');
+  const viewerStakeAddress = request.nextUrl.searchParams.get('viewerStakeAddress');
 
   if (!entityType || !VALID_TYPES.has(entityType)) {
     return NextResponse.json({ error: 'Invalid entity type' }, { status: 400 });
@@ -25,7 +26,10 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     return NextResponse.json({ error: 'Missing entity id' }, { status: 400 });
   }
 
-  const connections = await getEntityConnections(entityType, entityId, viewerDrepId);
+  const connections = await getEntityConnections(entityType, entityId, {
+    viewerDrepId,
+    viewerStakeAddress,
+  });
 
   return NextResponse.json(
     { connections },

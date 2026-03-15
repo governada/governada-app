@@ -22,8 +22,10 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
 
   const drepId = request.nextUrl.searchParams.get('drepId');
   const poolId = request.nextUrl.searchParams.get('poolId');
+  const stakeAddress = request.nextUrl.searchParams.get('stakeAddress');
+  const delegatedDrepId = request.nextUrl.searchParams.get('delegatedDrepId');
 
-  const items = await getActionQueue(segment, { drepId, poolId });
+  const items = await getActionQueue(segment, { drepId, poolId, stakeAddress, delegatedDrepId });
 
   return NextResponse.json(
     { items },

@@ -2,10 +2,10 @@
  * Sidebar Metrics API — lightweight endpoint for Living Sidebar sub-labels.
  *
  * Returns all metrics as formatted display strings keyed by sublabelKey.
- * Queries cached data from Supabase — no expensive computations.
+ * Enriched with trend indicators (↑↓), tier names, and urgency counts.
  *
  * Auth-optional: anonymous users get governance-level metrics only.
- * Authenticated users get persona-specific metrics (scores, pending votes, etc.).
+ * Authenticated users get persona-specific metrics.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,6 +13,8 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getOpenProposalsForDRep, getDRepById } from '@/lib/data';
 import { getTreasuryBalance } from '@/lib/treasury';
+import { computeTier } from '@/lib/scoring/tiers';
+import { blockTimeToEpoch } from '@/lib/koios';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,18 +33,32 @@ function formatAdaFromAda(ada: number): string {
   return `${Math.round(ada)} ₳`;
 }
 
+function trendArrow(current: number, previous: number): string {
+  if (current > previous + 0.5) return ' ↑';
+  if (current < previous - 0.5) return ' ↓';
+  return '';
+}
+
+/** Critical proposal types that warrant urgency */
+const CRITICAL_TYPES = [
+  'HardForkInitiation',
+  'NoConfidence',
+  'NewConstitution',
+  'UpdateConstitution',
+];
+
 export const GET = withRouteHandler(async (request: NextRequest) => {
   const supabase = getSupabaseAdmin();
   const metrics: Record<string, string> = {};
+  const epoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
-  // Parse optional auth context from query params
   const drepId = request.nextUrl.searchParams.get('drepId');
   const poolId = request.nextUrl.searchParams.get('poolId');
   const stakeAddress = request.nextUrl.searchParams.get('stakeAddress');
 
-  // ── Governance metrics (everyone gets these) ──────────────────────────
+  // ── Governance metrics (everyone) ─────────────────────────────────────
 
-  const [activeProposalCount, drepCount, ghiSnapshot, treasury] = await Promise.all([
+  const [activeProposals, drepCount, ghiSnapshots, treasury, criticalCount] = await Promise.all([
     supabase
       .from('proposals')
       .select('tx_hash', { count: 'exact', head: true })
@@ -58,17 +74,32 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       .from('ghi_snapshots')
       .select('ghi_score')
       .order('epoch_no', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(2),
     getTreasuryBalance(),
+    supabase
+      .from('proposals')
+      .select('tx_hash', { count: 'exact', head: true })
+      .in('proposal_type', CRITICAL_TYPES)
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
   ]);
 
-  metrics['gov.activeProposals'] = `${activeProposalCount.count ?? 0} active`;
+  // Active proposals with critical count
+  const totalActive = activeProposals.count ?? 0;
+  const critical = criticalCount.count ?? 0;
+  metrics['gov.activeProposals'] =
+    critical > 0 ? `${totalActive} active · ${critical} critical` : `${totalActive} active`;
+
   metrics['gov.activeDreps'] = `${drepCount.count ?? 0} DReps`;
 
-  const ghiScore = ghiSnapshot.data?.ghi_score;
-  if (ghiScore != null) {
-    metrics['gov.ghiScore'] = `GHI ${Number(ghiScore).toFixed(1)}`;
+  // GHI with trend
+  const ghiData = ghiSnapshots.data ?? [];
+  if (ghiData.length >= 1) {
+    const current = Number(ghiData[0].ghi_score);
+    const trend = ghiData.length >= 2 ? trendArrow(current, Number(ghiData[1].ghi_score)) : '';
+    metrics['gov.ghiScore'] = `GHI ${current.toFixed(1)}${trend}`;
   }
 
   if (treasury) {
@@ -84,10 +115,26 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     ]);
 
     if (drep) {
+      // Pending votes with urgency count
       const pending = pendingProposals.length;
-      metrics['home.pendingVotes'] = pending > 0 ? `${pending} pending` : 'All voted';
+      const urgent = pendingProposals.filter(
+        (p) => p.expirationEpoch && p.expirationEpoch - epoch <= 2,
+      ).length;
+      if (pending > 0) {
+        metrics['home.pendingVotes'] =
+          urgent > 0 ? `${pending} pending · ${urgent} urgent` : `${pending} pending`;
+      } else {
+        metrics['home.pendingVotes'] = 'All voted';
+      }
+
       metrics['home.totalVotes'] = `${drep.totalVotes ?? 0} votes`;
-      metrics['you.drepScore'] = `${Math.round(drep.drepScore ?? 0)}`;
+
+      // Score with trend + tier
+      const score = Math.round(drep.drepScore ?? 0);
+      const tier = computeTier(drep.drepScore ?? 0);
+      const momentum = drep.scoreMomentum ?? 0;
+      const arrow = momentum > 1 ? ' ↑' : momentum < -1 ? ' ↓' : '';
+      metrics['you.drepScore'] = `${score}${arrow} · ${tier}`;
 
       if (drep.votingPowerLovelace) {
         metrics['home.delegatedAda'] = formatAda(Number(drep.votingPowerLovelace));
@@ -106,8 +153,10 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
 
     if (pool) {
       if (pool.governance_score != null) {
-        metrics['home.govScore'] = `${Math.round(pool.governance_score)}`;
-        metrics['you.spoScore'] = `${Math.round(pool.governance_score)}`;
+        const score = Math.round(pool.governance_score);
+        const tier = computeTier(pool.governance_score);
+        metrics['home.govScore'] = `${score} · ${tier}`;
+        metrics['you.spoScore'] = `${score} · ${tier}`;
       }
       if (pool.active_stake) {
         metrics['home.delegatedAda'] = formatAda(Number(pool.active_stake));

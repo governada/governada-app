@@ -2,7 +2,8 @@
  * Entity Connections — computes relationships between governance entities.
  *
  * Each entity page gets a Connected panel showing up to 10 related entities.
- * Personal connections (viewer's DRep, viewer's alignment) are sorted first.
+ * Personal connections (viewer's DRep vote, alignment match %) are sorted first.
+ * Enriched with "why this matters" context strings.
  *
  * Designed for server-side computation with 15-minute cache headers.
  */
@@ -19,6 +20,7 @@ import {
   getProposalsByIds,
 } from '@/lib/data';
 import { findSimilarByClassification } from '@/lib/proposalSimilarity';
+import { getTreasuryBalance } from '@/lib/treasury';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export type EntityType = 'drep' | 'proposal' | 'pool' | 'cc';
@@ -32,16 +34,21 @@ export interface EntityConnection {
   personalized: boolean;
 }
 
+export interface ConnectionContext {
+  viewerDrepId?: string | null;
+  viewerStakeAddress?: string | null;
+}
+
 export async function getEntityConnections(
   entityType: EntityType,
   entityId: string,
-  viewerDrepId?: string | null,
+  context?: ConnectionContext,
 ): Promise<EntityConnection[]> {
   switch (entityType) {
     case 'drep':
-      return getDRepConnections(entityId, viewerDrepId);
+      return getDRepConnections(entityId, context);
     case 'proposal':
-      return getProposalConnections(entityId, viewerDrepId);
+      return getProposalConnections(entityId, context);
     case 'pool':
       return getPoolConnections(entityId);
     case 'cc':
@@ -53,13 +60,63 @@ export async function getEntityConnections(
 
 async function getDRepConnections(
   drepId: string,
-  viewerDrepId?: string | null,
+  context?: ConnectionContext,
 ): Promise<EntityConnection[]> {
   const connections: EntityConnection[] = [];
+  const viewerDrepId = context?.viewerDrepId;
 
   const [drep, votes] = await Promise.all([getDRepById(drepId), getVotesByDRepId(drepId)]);
 
   if (!drep) return connections;
+
+  // Viewer alignment match (personalized, goes first)
+  if (viewerDrepId && viewerDrepId !== drepId) {
+    const viewerDrep = await getDRepById(viewerDrepId);
+    if (
+      viewerDrep &&
+      drep.alignmentTreasuryConservative != null &&
+      viewerDrep.alignmentTreasuryConservative != null
+    ) {
+      // Compute simple alignment match from 6D alignment vectors
+      const dims = [
+        'alignmentTreasuryConservative',
+        'alignmentTreasuryGrowth',
+        'alignmentDecentralization',
+        'alignmentSecurity',
+        'alignmentInnovation',
+        'alignmentTransparency',
+      ] as const;
+      let sumSqDiff = 0;
+      let validDims = 0;
+      for (const dim of dims) {
+        const a = (drep as unknown as Record<string, unknown>)[dim] as number | null;
+        const b = (viewerDrep as unknown as Record<string, unknown>)[dim] as number | null;
+        if (a != null && b != null) {
+          sumSqDiff += (a - b) ** 2;
+          validDims++;
+        }
+      }
+      if (validDims > 0) {
+        const distance = Math.sqrt(sumSqDiff / validDims);
+        const matchPct = Math.max(0, Math.round((1 - distance / 100) * 100));
+        connections.push({
+          label: `${matchPct}% aligned with your DRep`,
+          sublabel: matchPct < 50 ? 'Significant differences' : 'Similar governance values',
+          href: `/drep/${encodeURIComponent(viewerDrepId)}`,
+          icon: 'user',
+          personalized: true,
+        });
+      }
+    } else {
+      connections.push({
+        label: 'Your DRep',
+        sublabel: 'Compare governance records',
+        href: `/drep/${encodeURIComponent(viewerDrepId)}`,
+        icon: 'user',
+        personalized: true,
+      });
+    }
+  }
 
   // Delegation stats
   if (drep.delegatorCount != null && drep.delegatorCount > 0) {
@@ -75,40 +132,36 @@ async function getDRepConnections(
     });
   }
 
-  // Recent proposals voted on (up to 3)
+  // Recent proposals voted on (up to 3) — with proposal titles
   const recentVotes = votes.slice(0, 3);
-  for (const vote of recentVotes) {
-    connections.push({
-      label: `Voted ${vote.vote}`,
-      sublabel: `Proposal ${vote.proposal_tx_hash.slice(0, 8)}...#${vote.proposal_index}`,
-      href: `/proposal/${vote.proposal_tx_hash}/${vote.proposal_index}`,
-      icon: 'vote',
-      personalized: false,
-    });
-  }
+  if (recentVotes.length > 0) {
+    const proposalIds = recentVotes.map((v) => ({
+      txHash: v.proposal_tx_hash,
+      index: v.proposal_index,
+    }));
+    const proposalMap = await getProposalsByIds(proposalIds);
 
-  // Viewer alignment match (if viewer has a DRep)
-  if (viewerDrepId && viewerDrepId !== drepId) {
-    connections.unshift({
-      label: 'Your DRep',
-      sublabel: 'Compare alignment',
-      href: `/drep/${encodeURIComponent(viewerDrepId)}`,
-      icon: 'user',
-      personalized: true,
-    });
+    for (const vote of recentVotes) {
+      const proposal = proposalMap.get(vote.proposal_tx_hash);
+      connections.push({
+        label: `Voted ${vote.vote}`,
+        sublabel:
+          proposal?.title?.slice(0, 45) ??
+          `Proposal ${vote.proposal_tx_hash.slice(0, 8)}...#${vote.proposal_index}`,
+        href: `/proposal/${vote.proposal_tx_hash}/${vote.proposal_index}`,
+        icon: 'vote',
+        personalized: false,
+      });
+    }
   }
 
   // Score context
   if (drep.drepScore != null) {
+    const momentum = drep.scoreMomentum ?? 0;
+    const arrow = momentum > 1 ? ' ↑' : momentum < -1 ? ' ↓' : '';
     connections.push({
-      label: `Score: ${Math.round(drep.drepScore)}`,
-      sublabel: drep.scoreMomentum
-        ? drep.scoreMomentum > 0
-          ? 'Trending up'
-          : drep.scoreMomentum < 0
-            ? 'Trending down'
-            : 'Stable'
-        : undefined,
+      label: `Score: ${Math.round(drep.drepScore)}${arrow}`,
+      sublabel: momentum > 1 ? 'Trending up' : momentum < -1 ? 'Trending down' : 'Stable',
       href: `/you/drep`,
       icon: 'trending',
       personalized: false,
@@ -122,11 +175,11 @@ async function getDRepConnections(
 
 async function getProposalConnections(
   compositeId: string,
-  viewerDrepId?: string | null,
+  context?: ConnectionContext,
 ): Promise<EntityConnection[]> {
   const connections: EntityConnection[] = [];
+  const viewerDrepId = context?.viewerDrepId;
 
-  // Parse composite ID: "txHash/index"
   const parts = compositeId.split('/');
   if (parts.length !== 2) return connections;
   const [txHash, indexStr] = parts;
@@ -140,7 +193,7 @@ async function getProposalConnections(
     findSimilarByClassification(txHash, proposalIndex, 3),
   ]);
 
-  // Viewer's DRep vote (personalized, goes first)
+  // Viewer's DRep vote (personalized)
   if (viewerDrepId) {
     const viewerVote = drepVotes.find((v) => v.drepId === viewerDrepId);
     if (viewerVote) {
@@ -154,13 +207,44 @@ async function getProposalConnections(
     }
   }
 
-  // Vote breakdown summary
+  // Treasury impact (for treasury withdrawal proposals)
+  if (proposal?.proposalType === 'TreasuryWithdrawals' && proposal.withdrawalAmount) {
+    const treasury = await getTreasuryBalance();
+    const amountAda = proposal.withdrawalAmount / 1_000_000;
+    const pct =
+      treasury?.balanceAda && treasury.balanceAda > 0
+        ? ((amountAda / treasury.balanceAda) * 100).toFixed(1)
+        : null;
+    connections.push({
+      label: `Requests ${formatAdaShort(proposal.withdrawalAmount)}`,
+      sublabel: pct ? `${pct}% of treasury` : undefined,
+      href: '/governance/treasury',
+      icon: 'trending',
+      personalized: false,
+    });
+  }
+
+  // Proposal type context — "why this matters"
+  if (proposal?.proposalType) {
+    const typeContext = getProposalTypeContext(proposal.proposalType);
+    if (typeContext) {
+      connections.push({
+        label: typeContext.label,
+        sublabel: typeContext.sublabel,
+        href: `/proposal/${txHash}/${proposalIndex}`,
+        icon: 'link',
+        personalized: false,
+      });
+    }
+  }
+
+  // Vote breakdown
   const yesCount = proposal?.yesCount ?? drepVotes.filter((v) => v.vote === 'Yes').length;
   const noCount = proposal?.noCount ?? drepVotes.filter((v) => v.vote === 'No').length;
   const abstainCount =
     proposal?.abstainCount ?? drepVotes.filter((v) => v.vote === 'Abstain').length;
   connections.push({
-    label: `DRep votes: ${yesCount} Yes / ${noCount} No / ${abstainCount} Abstain`,
+    label: `${yesCount} Yes / ${noCount} No / ${abstainCount} Abstain`,
     sublabel: `${drepVotes.length} DReps voted`,
     href: `/proposal/${txHash}/${proposalIndex}`,
     icon: 'vote',
@@ -190,17 +274,6 @@ async function getProposalConnections(
     });
   }
 
-  // Top voting DReps (first 3 with names)
-  const namedVoters = drepVotes.filter((v) => v.drepName).slice(0, 3);
-  for (const voter of namedVoters) {
-    connections.push({
-      label: `${voter.drepName} voted ${voter.vote}`,
-      href: `/drep/${encodeURIComponent(voter.drepId)}`,
-      icon: 'user',
-      personalized: false,
-    });
-  }
-
   // Similar proposals
   for (const sim of similar) {
     connections.push({
@@ -221,7 +294,6 @@ async function getPoolConnections(poolId: string): Promise<EntityConnection[]> {
   const connections: EntityConnection[] = [];
   const supabase = getSupabaseAdmin();
 
-  // Get pool info
   const { data: pool } = await supabase
     .from('pools')
     .select('pool_id, pool_name, governance_score, active_stake')
@@ -230,7 +302,6 @@ async function getPoolConnections(poolId: string): Promise<EntityConnection[]> {
 
   if (!pool) return connections;
 
-  // Governance score
   if (pool.governance_score != null) {
     connections.push({
       label: `Gov Score: ${Math.round(pool.governance_score)}`,
@@ -240,7 +311,7 @@ async function getPoolConnections(poolId: string): Promise<EntityConnection[]> {
     });
   }
 
-  // Find proposals this pool voted on (via spo_votes table)
+  // Recent votes with proposal titles
   const { data: poolVotes } = await supabase
     .from('spo_votes')
     .select('proposal_tx_hash, proposal_index, vote')
@@ -249,7 +320,6 @@ async function getPoolConnections(poolId: string): Promise<EntityConnection[]> {
     .limit(5);
 
   if (poolVotes && poolVotes.length > 0) {
-    // Fetch proposal titles for the votes
     const proposalIds = poolVotes.map((v) => ({
       txHash: v.proposal_tx_hash,
       index: v.proposal_index,
@@ -269,7 +339,7 @@ async function getPoolConnections(poolId: string): Promise<EntityConnection[]> {
     }
   }
 
-  // Similar pools by governance score (within +/- 10 points)
+  // Similar pools
   if (pool.governance_score != null) {
     const { data: similarPools } = await supabase
       .from('pools')
@@ -306,7 +376,6 @@ async function getCCConnections(ccHotId: string): Promise<EntityConnection[]> {
 
   const thisMember = allMembers.find((m) => m.ccHotId === ccHotId);
 
-  // Fidelity score
   if (thisMember?.fidelityScore != null) {
     connections.push({
       label: `Fidelity: ${Math.round(thisMember.fidelityScore)}`,
@@ -317,7 +386,6 @@ async function getCCConnections(ccHotId: string): Promise<EntityConnection[]> {
     });
   }
 
-  // Participation rate
   if (
     thisMember?.votesCast != null &&
     thisMember?.eligibleProposals != null &&
@@ -333,7 +401,6 @@ async function getCCConnections(ccHotId: string): Promise<EntityConnection[]> {
     });
   }
 
-  // Other CC members (top 3 by fidelity, excluding self)
   const otherMembers = allMembers.filter((m) => m.ccHotId !== ccHotId).slice(0, 3);
   for (const member of otherMembers) {
     connections.push({
@@ -346,7 +413,6 @@ async function getCCConnections(ccHotId: string): Promise<EntityConnection[]> {
     });
   }
 
-  // Recent fidelity trend
   if (fidelityHistory.length >= 2) {
     const latest = fidelityHistory[0];
     const prev = fidelityHistory[1];
@@ -375,4 +441,34 @@ function formatAdaShort(lovelace: number): string {
   if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(0)}M ₳`;
   if (ada >= 1_000) return `${(ada / 1_000).toFixed(1)}K ₳`;
   return `${Math.round(ada)} ₳`;
+}
+
+function getProposalTypeContext(type: string): { label: string; sublabel: string } | null {
+  switch (type) {
+    case 'HardForkInitiation':
+      return {
+        label: 'Critical: Hard Fork',
+        sublabel: 'Major protocol upgrade affecting all users',
+      };
+    case 'NoConfidence':
+      return {
+        label: 'Critical: No Confidence',
+        sublabel: 'Motion to replace the Constitutional Committee',
+      };
+    case 'NewConstitution':
+    case 'UpdateConstitution':
+      return {
+        label: 'Critical: Constitution Change',
+        sublabel: 'Amends the foundational governance document',
+      };
+    case 'ParameterChange':
+      return {
+        label: 'Parameter Change',
+        sublabel: 'Modifies protocol parameters (fees, rewards, etc.)',
+      };
+    case 'TreasuryWithdrawals':
+      return null; // Handled separately with amount
+    default:
+      return null;
+  }
 }

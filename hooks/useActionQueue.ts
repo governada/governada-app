@@ -9,14 +9,16 @@ import type { ActionItem } from '@/lib/actionQueue';
  * Polls every 60 seconds for fresh urgency data.
  */
 export function useActionQueue() {
-  const { segment, drepId, poolId } = useSegment();
+  const { segment, drepId, poolId, stakeAddress, delegatedDrep } = useSegment();
 
   const params = new URLSearchParams({ segment });
   if (drepId) params.set('drepId', drepId);
   if (poolId) params.set('poolId', poolId);
+  if (stakeAddress) params.set('stakeAddress', stakeAddress);
+  if (delegatedDrep) params.set('delegatedDrepId', delegatedDrep);
 
   return useQuery<{ items: ActionItem[] }>({
-    queryKey: ['action-queue', segment, drepId, poolId],
+    queryKey: ['action-queue', segment, drepId, poolId, delegatedDrep],
     queryFn: async () => {
       const res = await fetch(`/api/action-queue?${params}`);
       if (!res.ok) return { items: [] };

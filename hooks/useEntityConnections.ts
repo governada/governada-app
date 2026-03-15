@@ -9,16 +9,17 @@ import type { EntityType, EntityConnection } from '@/lib/entityConnections';
  * Automatically includes viewer's DRep for personalization.
  */
 export function useEntityConnections(entityType: EntityType, entityId: string) {
-  const { delegatedDrep } = useSegment();
+  const { delegatedDrep, stakeAddress } = useSegment();
 
   const params = new URLSearchParams({
     type: entityType,
     id: entityId,
   });
   if (delegatedDrep) params.set('viewerDrepId', delegatedDrep);
+  if (stakeAddress) params.set('viewerStakeAddress', stakeAddress);
 
   return useQuery<{ connections: EntityConnection[] }>({
-    queryKey: ['entity-connections', entityType, entityId, delegatedDrep],
+    queryKey: ['entity-connections', entityType, entityId, delegatedDrep, stakeAddress],
     queryFn: async () => {
       const res = await fetch(`/api/entity-connections?${params}`);
       if (!res.ok) return { connections: [] };

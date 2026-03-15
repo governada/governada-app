@@ -6,6 +6,7 @@ import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GovernanceDelegationProof } from './GovernanceDelegationProof';
 
 /**
  * SPO Governance Cockpit — Governance score overview for SPOs.
@@ -85,6 +86,11 @@ export function SPOCockpit() {
           </div>
         </DepthGate>
       </div>
+
+      {/* Governance-drives-delegation proof — informed+ */}
+      <DepthGate minDepth="informed">
+        <GovernanceDelegationProof participationRate={participationRate} governanceScore={score} />
+      </DepthGate>
 
       {/* Improvement suggestions — engaged+ (full cockpit experience) */}
       <DepthGate minDepth="engaged">

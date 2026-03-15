@@ -545,7 +545,6 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         entityType="drep"
         entityId={drep.drepId}
         entityName={drepName}
-        enabled
         ogImageUrl={`/api/og/wrapped/drep/${encodeURIComponent(drep.drepId)}`}
         shareUrl={`https://governada.io/drep/${encodeURIComponent(drep.drepId)}`}
       />

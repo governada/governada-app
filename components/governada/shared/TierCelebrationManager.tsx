@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useWallet } from '@/utils/wallet-context';
 import { CelebrationOverlay } from './CelebrationOverlay';
 
 interface TierChange {
@@ -24,7 +25,8 @@ interface TierCelebrationManagerProps {
   entityType: 'drep' | 'spo';
   entityId: string;
   entityName: string;
-  enabled: boolean;
+  /** For SPO profiles: the userId that claimed this pool */
+  claimedBy?: string | null;
   ogImageUrl?: string;
   shareUrl?: string;
 }
@@ -33,15 +35,20 @@ export function TierCelebrationManager({
   entityType,
   entityId,
   entityName,
-  enabled,
+  claimedBy,
   ogImageUrl,
   shareUrl,
 }: TierCelebrationManagerProps) {
+  const { isAuthenticated, ownDRepId, userId } = useWallet();
   const [change, setChange] = useState<TierChange | null>(null);
   const [milestone, setMilestone] = useState<{ score: number } | null>(null);
 
+  const isOwner =
+    isAuthenticated &&
+    (entityType === 'drep' ? ownDRepId === entityId : !!claimedBy && userId === claimedBy);
+
   useEffect(() => {
-    if (!enabled) return;
+    if (!isOwner) return;
 
     const storageKey = `tier_celebration_seen_${entityType}_${entityId}`;
     const lastVisit = localStorage.getItem(storageKey);
@@ -76,7 +83,7 @@ export function TierCelebrationManager({
         }
       })
       .catch(() => {});
-  }, [enabled, entityType, entityId]);
+  }, [isOwner, entityType, entityId]);
 
   const handleDismiss = () => {
     const storageKey = `tier_celebration_seen_${entityType}_${entityId}`;

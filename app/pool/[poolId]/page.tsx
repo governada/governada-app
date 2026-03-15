@@ -726,7 +726,7 @@ export default async function PoolProfilePage({ params }: PageProps) {
           entityType="spo"
           entityId={poolId}
           entityName={displayName}
-          enabled
+          claimedBy={claimedBy}
           ogImageUrl={`/api/og/staking/${encodeURIComponent(poolId)}`}
           shareUrl={`https://governada.io/pool/${encodeURIComponent(poolId)}`}
         />

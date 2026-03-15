@@ -11,6 +11,7 @@ import { DRepCockpit } from '@/components/workspace/DRepCockpit';
 import { CompetitiveContext } from '@/components/workspace/CompetitiveContext';
 import { ProfileShareToolkit } from '@/components/workspace/ProfileShareToolkit';
 import { SPOCockpit } from '@/components/workspace/SPOCockpit';
+import { ActionQueueCard } from '@/components/governada/ActionQueueCard';
 
 interface PulseData {
   totalAdaGoverned: string;
@@ -58,6 +59,9 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
   if (segment === 'citizen') {
     return (
       <>
+        <div className="mx-auto w-full max-w-2xl px-4 pt-6">
+          <ActionQueueCard />
+        </div>
         <OnboardingChecklist />
         <CitizenHub />
       </>
@@ -68,6 +72,7 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
   if (segment === 'drep') {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
+        <ActionQueueCard />
         <h1 className="text-xl font-bold text-foreground">Governance Cockpit</h1>
         <DRepCockpit />
         {/* Competitive context — deep only (competitive intelligence) */}
@@ -88,6 +93,7 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
   if (segment === 'spo') {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
+        <ActionQueueCard />
         <h1 className="text-xl font-bold text-foreground">Governance Overview</h1>
         <SPOCockpit />
         {/* Profile sharing — engaged+ (workspace integration) */}

@@ -14,6 +14,7 @@ import {
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { SidebarPinnedItems } from './SidebarPinnedItems';
+import { useSidebarMetrics } from '@/hooks/useSidebarMetrics';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -30,6 +31,7 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
 
   const sections = getSidebarSections({ segment, drepId, poolId, depth });
+  const sidebarMetrics = useSidebarMetrics();
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -51,6 +53,7 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
   const renderItem = (item: NavItem) => {
     const active = isActive(item.href);
     const badge = getBadgeCount(item);
+    const sublabel = item.sublabelKey ? sidebarMetrics[item.sublabelKey] : undefined;
     return (
       <Link
         key={item.href}
@@ -76,7 +79,16 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
             </span>
           )}
         </span>
-        {!collapsed && <span className="truncate">{t(item.label)}</span>}
+        {!collapsed && (
+          <span className="flex flex-col min-w-0">
+            <span className="truncate">{t(item.label)}</span>
+            {sublabel && (
+              <span className="text-[10px] text-muted-foreground/60 truncate leading-tight">
+                {sublabel}
+              </span>
+            )}
+          </span>
+        )}
       </Link>
     );
   };

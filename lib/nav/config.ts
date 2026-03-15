@@ -61,6 +61,8 @@ export interface NavItem {
   requiresAuth?: boolean;
   /** Minimum governance depth to show this item (undefined = all) */
   minDepth?: GovernanceDepth;
+  /** Key for Living Sidebar sub-label (e.g., 'home.pendingVotes') */
+  sublabelKey?: string;
 }
 
 /** A labelled group of items within a section (for dual-role workspace) */
@@ -95,16 +97,31 @@ export interface BottomBarConfig {
 
 /** Home sub-items for DRep persona (workspace tools shown under Home) */
 export const HOME_DREP_ITEMS: NavItem[] = [
-  { href: '/workspace', label: 'Cockpit', icon: Vote },
-  { href: '/workspace/votes', label: 'Voting Record', icon: ScrollText },
-  { href: '/workspace/delegators', label: 'Delegators', icon: Users },
+  { href: '/workspace', label: 'Cockpit', icon: Vote, sublabelKey: 'home.pendingVotes' },
+  {
+    href: '/workspace/votes',
+    label: 'Voting Record',
+    icon: ScrollText,
+    sublabelKey: 'home.totalVotes',
+  },
+  {
+    href: '/workspace/delegators',
+    label: 'Delegators',
+    icon: Users,
+    sublabelKey: 'home.delegatedAda',
+  },
 ];
 
 /** Home sub-items for SPO persona (workspace tools shown under Home) */
 export const HOME_SPO_ITEMS: NavItem[] = [
-  { href: '/workspace', label: 'Gov Score', icon: BarChart3 },
+  { href: '/workspace', label: 'Gov Score', icon: BarChart3, sublabelKey: 'home.govScore' },
   { href: '/workspace/pool-profile', label: 'Pool Profile', icon: Building },
-  { href: '/workspace/delegators', label: 'Delegators', icon: Users },
+  {
+    href: '/workspace/delegators',
+    label: 'Delegators',
+    icon: Users,
+    sublabelKey: 'home.delegatedAda',
+  },
   { href: '/workspace/position', label: 'Position', icon: Trophy },
 ];
 
@@ -113,18 +130,33 @@ export const WORKSPACE_DREP_ITEMS = HOME_DREP_ITEMS;
 export const WORKSPACE_SPO_ITEMS = HOME_SPO_ITEMS;
 
 export const GOVERNANCE_ITEMS: NavItem[] = [
-  { href: '/governance/proposals', label: 'Proposals', icon: FileText },
-  { href: '/governance/representatives', label: 'Representatives', icon: Users },
+  {
+    href: '/governance/proposals',
+    label: 'Proposals',
+    icon: FileText,
+    sublabelKey: 'gov.activeProposals',
+  },
+  {
+    href: '/governance/representatives',
+    label: 'Representatives',
+    icon: Users,
+    sublabelKey: 'gov.activeDreps',
+  },
   { href: '/governance/pools', label: 'Pools', icon: Building2 },
   { href: '/governance/committee', label: 'Committee', icon: Shield },
-  { href: '/governance/treasury', label: 'Treasury', icon: Wallet },
-  { href: '/governance/health', label: 'Health', icon: Activity },
+  {
+    href: '/governance/treasury',
+    label: 'Treasury',
+    icon: Wallet,
+    sublabelKey: 'gov.treasuryBalance',
+  },
+  { href: '/governance/health', label: 'Health', icon: Activity, sublabelKey: 'gov.ghiScore' },
 ];
 
 /** Base You items — all authenticated personas */
 const YOU_BASE: NavItem[] = [
   { href: '/you', label: 'Identity', icon: UserCog },
-  { href: '/you/inbox', label: 'Inbox', icon: Bell, badge: 'unread' },
+  { href: '/you/inbox', label: 'Inbox', icon: Bell, badge: 'unread', sublabelKey: 'you.unread' },
   { href: '/you/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -146,6 +178,7 @@ export function getYouItems(
       label: 'DRep Scorecard',
       icon: BadgeCheck,
       segments: ['drep'],
+      sublabelKey: 'you.drepScore',
     });
   if (hasSpo)
     insertItems.push({
@@ -153,6 +186,7 @@ export function getYouItems(
       label: 'Pool Scorecard',
       icon: BarChart3,
       segments: ['spo'],
+      sublabelKey: 'you.spoScore',
     });
 
   // Add delegation page for citizens (and DRep/SPO who are also citizens)
@@ -161,6 +195,7 @@ export function getYouItems(
       href: '/you/delegation',
       label: 'Delegation',
       icon: Link2,
+      sublabelKey: 'you.coverage',
     });
   }
 

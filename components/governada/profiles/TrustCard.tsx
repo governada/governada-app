@@ -4,7 +4,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Shield, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Landmark,
+} from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { spring } from '@/lib/animations';
@@ -47,6 +55,8 @@ interface TrustCardProps {
   noVotes: number;
   abstainVotes: number;
   drepId: string;
+  treasuryJudgmentScore: number | null;
+  treasuryProposalCount: number;
 }
 
 function TrustMetric({
@@ -110,6 +120,8 @@ export function TrustCard({
   noVotes,
   abstainVotes,
   drepId,
+  treasuryJudgmentScore,
+  treasuryProposalCount,
 }: TrustCardProps) {
   const { segment } = useSegment();
   const isAnonymous = segment === 'anonymous';
@@ -215,6 +227,14 @@ export function TrustCard({
                 label="Citizen Endorsements"
                 value={endorsementCount.toLocaleString()}
                 tooltip="Number of citizens who have endorsed this DRep across governance competencies"
+              />
+            )}
+            {treasuryJudgmentScore !== null && treasuryProposalCount > 0 && (
+              <TrustMetric
+                label="Treasury Stewardship"
+                value={`${treasuryJudgmentScore}% delivery`}
+                subtext={`on ${treasuryProposalCount} spending proposal${treasuryProposalCount !== 1 ? 's' : ''}`}
+                tooltip="Delivery rate of treasury proposals this DRep voted to approve"
               />
             )}
           </>

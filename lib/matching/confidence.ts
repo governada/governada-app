@@ -3,10 +3,11 @@
  *
  * Confidence grows as the user provides more data sources:
  * - Quiz answers (Quick Match 3-question quiz): 20% max
- * - Poll votes (Governance DNA Quiz real-proposal votes): 40% max
+ * - Poll votes (Governance DNA Quiz real-proposal votes): 35% max
  * - Proposal type diversity (votes spanning different proposal types): 10% max
- * - Engagement signals (sentiment, endorsements, concern flags, etc.): 15% max
+ * - Engagement signals (sentiment, endorsements, concern flags, etc.): 10% max
  * - Delegation confirmation (active delegation to any DRep): 15% max
+ * - Treasury judgment (accountability poll votes on funded proposals): 10% max
  *
  * Total max: 100%
  */
@@ -35,7 +36,8 @@ export type ConfidenceSourceKey =
   | 'pollVotes'
   | 'proposalDiversity'
   | 'engagement'
-  | 'delegation';
+  | 'delegation'
+  | 'treasuryJudgment';
 
 export interface ConfidenceBreakdown {
   /** Overall confidence score (0-100) */
@@ -48,7 +50,13 @@ export interface ConfidenceBreakdown {
 
 export interface ConfidenceAction {
   /** Action type for routing */
-  type: 'take_quiz' | 'vote_proposals' | 'diversify_votes' | 'engage' | 'delegate';
+  type:
+    | 'take_quiz'
+    | 'vote_proposals'
+    | 'diversify_votes'
+    | 'engage'
+    | 'delegate'
+    | 'treasury_engage';
   /** Short description */
   label: string;
   /** Longer description */
@@ -63,10 +71,11 @@ export interface ConfidenceAction {
 
 const WEIGHTS = {
   quizAnswers: 20,
-  pollVotes: 40,
+  pollVotes: 35,
   proposalDiversity: 10,
-  engagement: 15,
+  engagement: 10,
   delegation: 15,
+  treasuryJudgment: 10,
 } as const;
 
 const TARGETS = {
@@ -75,6 +84,7 @@ const TARGETS = {
   proposalDiversity: 4, // 4 out of 6 proposal types
   engagement: 10, // 10 engagement actions
   delegation: 1, // 1 active delegation
+  treasuryJudgment: 5, // 5 treasury accountability judgments
 } as const;
 
 /* ─── Input data ───────────────────────────────────────── */
@@ -90,6 +100,8 @@ export interface ConfidenceInputs {
   engagementActionCount: number;
   /** Whether user has an active DRep delegation */
   hasDelegation: boolean;
+  /** Number of treasury accountability judgments (poll votes on funded proposal outcomes) */
+  treasuryJudgmentCount?: number;
 }
 
 /* ─── Core calculation ─────────────────────────────────── */
@@ -148,6 +160,19 @@ export function calculateProgressiveConfidence(inputs: ConfidenceInputs): Confid
       current: inputs.hasDelegation ? 1 : 0,
       target: TARGETS.delegation,
       active: inputs.hasDelegation,
+    },
+    {
+      key: 'treasuryJudgment',
+      label: 'Treasury judgment',
+      score: sourceScore(
+        inputs.treasuryJudgmentCount ?? 0,
+        TARGETS.treasuryJudgment,
+        WEIGHTS.treasuryJudgment,
+      ),
+      maxScore: WEIGHTS.treasuryJudgment,
+      current: Math.min(inputs.treasuryJudgmentCount ?? 0, TARGETS.treasuryJudgment),
+      target: TARGETS.treasuryJudgment,
+      active: (inputs.treasuryJudgmentCount ?? 0) > 0,
     },
   ];
 
@@ -223,6 +248,16 @@ function getNextAction(
           label: 'Delegate to a DRep',
           description: 'Confirm your governance values by delegating to a DRep who represents you.',
           href: '/governance/representatives',
+          potentialGain: gap,
+        });
+        break;
+      case 'treasuryJudgment':
+        actions.push({
+          type: 'treasury_engage',
+          label: 'Rate treasury outcomes',
+          description:
+            'Judge whether funded proposals delivered on their promises to sharpen your fiscal alignment.',
+          href: '/governance/treasury',
           potentialGain: gap,
         });
         break;

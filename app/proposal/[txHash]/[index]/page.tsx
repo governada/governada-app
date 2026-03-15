@@ -251,6 +251,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         currentEpoch={currentEpoch}
         withdrawalAmount={proposal.withdrawalAmount}
         blockTime={proposal.blockTime}
+        treasuryBalanceAda={treasury?.balanceAda ?? null}
       />
 
       {/* 1-line summary — answers "what is this?" above the fold */}
@@ -298,6 +299,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
           noCount={proposal.noCount}
           abstainCount={proposal.abstainCount}
           historicalContext={historicalContext}
+          nclUtilization={nclUtilization}
         />
       </ProposalDepthSection>
 

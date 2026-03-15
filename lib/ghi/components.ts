@@ -10,6 +10,7 @@
  */
 
 import { createClient } from '@/lib/supabase';
+import { calculateTreasuryHealthScore } from '@/lib/treasury';
 import { computeEDI, type EDIResult } from './ediMetrics';
 
 // ---------------------------------------------------------------------------
@@ -494,7 +495,28 @@ export async function computeCCConstitutionalFidelity({
 }
 
 // ---------------------------------------------------------------------------
-// 2H. System Stability (10%)
+// 2H. Treasury Health (8%)
+// ---------------------------------------------------------------------------
+
+export async function computeTreasuryHealth(_input: ComponentInput): Promise<ComponentScore> {
+  const health = await calculateTreasuryHealthScore();
+  if (!health) return { raw: 0 };
+
+  return {
+    raw: health.score,
+    detail: {
+      balanceTrend: health.components.balanceTrend,
+      withdrawalVelocity: health.components.withdrawalVelocity,
+      incomeStability: health.components.incomeStability,
+      pendingLoad: health.components.pendingLoad,
+      runwayAdequacy: health.components.runwayAdequacy,
+      nclDiscipline: health.components.nclDiscipline,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2I. System Stability (10%)
 // ---------------------------------------------------------------------------
 
 export async function computeSystemStability({

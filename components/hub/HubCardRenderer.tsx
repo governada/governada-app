@@ -18,6 +18,7 @@ import {
 } from './cards/StatusCard';
 import { CoverageCard } from './cards/CoverageCard';
 import { BriefingCard } from './cards/BriefingCard';
+import { TreasuryPulseCard } from './cards/TreasuryPulseCard';
 import { CommunityConsensus } from './CommunityConsensus';
 
 /** Map card IDs to their React components */
@@ -33,6 +34,7 @@ const CARD_COMPONENTS: Record<CardId, React.ComponentType> = {
   'spo-governance-score': SPOGovernanceScoreCard,
   'spo-delegators': SPODelegatorsCard,
   briefing: BriefingCard,
+  'treasury-pulse': TreasuryPulseCard,
   'discovery-match': DiscoveryMatchCard,
   'discovery-explore': DiscoveryExploreCard,
 };

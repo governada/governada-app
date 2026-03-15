@@ -513,6 +513,12 @@ export const GHI_CALIBRATION = {
     targetHigh: 75,
     ceiling: 90,
   },
+  treasuryHealth: {
+    floor: 20,
+    targetLow: 40,
+    targetHigh: 70,
+    ceiling: 90,
+  },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -522,19 +528,21 @@ export const GHI_CALIBRATION = {
 /**
  * GHI component weights (must sum to 1.0).
  *
- * Engagement (35%): DRep Participation (15%) + SPO Participation (10%) + Citizen Engagement (10%)
- * Quality (40%): Deliberation Quality (15%) + Governance Effectiveness (15%) + CC Constitutional Fidelity (10%)
- * Resilience (25%): Power Distribution (15%) + System Stability (10%)
+ * Engagement (32%): DRep Participation (14%) + SPO Participation (9%) + Citizen Engagement (9%)
+ * Quality (37%): Deliberation Quality (14%) + Governance Effectiveness (14%) + CC Constitutional Fidelity (9%)
+ * Resilience (23%): Power Distribution (14%) + System Stability (9%)
+ * Sustainability (8%): Treasury Health (8%)
  */
 export const GHI_COMPONENT_WEIGHTS = {
-  'DRep Participation': 0.15,
-  'SPO Participation': 0.1,
-  'Citizen Engagement': 0.1,
-  'Deliberation Quality': 0.15,
-  'Governance Effectiveness': 0.15,
-  'CC Constitutional Fidelity': 0.1,
-  'Power Distribution': 0.15,
-  'System Stability': 0.1,
+  'DRep Participation': 0.14,
+  'SPO Participation': 0.09,
+  'Citizen Engagement': 0.09,
+  'Deliberation Quality': 0.14,
+  'Governance Effectiveness': 0.14,
+  'CC Constitutional Fidelity': 0.09,
+  'Power Distribution': 0.14,
+  'System Stability': 0.09,
+  'Treasury Health': 0.08,
 } as const;
 
 /**

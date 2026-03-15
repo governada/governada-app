@@ -53,6 +53,7 @@ describe('calculateProgressiveConfidence', () => {
       proposalTypesVoted: 4,
       engagementActionCount: 10,
       hasDelegation: true,
+      treasuryJudgmentCount: 5,
     };
     const result = calculateProgressiveConfidence(inputs);
     expect(result.overall).toBe(100);
@@ -76,7 +77,7 @@ describe('calculateProgressiveConfidence', () => {
     expect(fullQuiz.overall - noQuiz.overall).toBe(20);
   });
 
-  it('poll votes contribute up to 40 points', () => {
+  it('poll votes contribute up to 35 points', () => {
     const noPoll = calculateProgressiveConfidence({
       quizAnswerCount: 0,
       pollVoteCount: 0,
@@ -91,7 +92,7 @@ describe('calculateProgressiveConfidence', () => {
       engagementActionCount: 0,
       hasDelegation: false,
     });
-    expect(fullPoll.overall - noPoll.overall).toBe(40);
+    expect(fullPoll.overall - noPoll.overall).toBe(35);
   });
 
   it('delegation contributes exactly 15 points', () => {
@@ -115,23 +116,24 @@ describe('calculateProgressiveConfidence', () => {
   it('suggests next action based on highest potential gain', () => {
     const result = calculateProgressiveConfidence({
       quizAnswerCount: 3, // maxed
-      pollVoteCount: 0, // empty → 40 point gap (highest)
+      pollVoteCount: 0, // empty → 35 point gap (highest)
       proposalTypesVoted: 0,
       engagementActionCount: 0,
       hasDelegation: false,
     });
     expect(result.nextAction).not.toBeNull();
     expect(result.nextAction!.type).toBe('vote_proposals');
-    expect(result.nextAction!.potentialGain).toBe(40);
+    expect(result.nextAction!.potentialGain).toBe(35);
   });
 
   it('returns null next action when all sources are maxed', () => {
     const result = calculateProgressiveConfidence({
-      quizAnswerCount: 3,
+      quizAnswerCount: 4,
       pollVoteCount: 15,
       proposalTypesVoted: 4,
       engagementActionCount: 10,
       hasDelegation: true,
+      treasuryJudgmentCount: 5,
     });
     expect(result.nextAction).toBeNull();
   });
@@ -143,6 +145,7 @@ describe('calculateProgressiveConfidence', () => {
       proposalTypesVoted: 2,
       engagementActionCount: 3,
       hasDelegation: true,
+      treasuryJudgmentCount: 2,
     });
     const keys = result.sources.map((s) => s.key);
     expect(keys).toContain('quizAnswers');
@@ -150,15 +153,60 @@ describe('calculateProgressiveConfidence', () => {
     expect(keys).toContain('proposalDiversity');
     expect(keys).toContain('engagement');
     expect(keys).toContain('delegation');
+    expect(keys).toContain('treasuryJudgment');
+  });
+
+  it('treasury judgment contributes up to 10 points', () => {
+    const noTreasury = calculateProgressiveConfidence({
+      quizAnswerCount: 0,
+      pollVoteCount: 0,
+      proposalTypesVoted: 0,
+      engagementActionCount: 0,
+      hasDelegation: false,
+      treasuryJudgmentCount: 0,
+    });
+    const fullTreasury = calculateProgressiveConfidence({
+      quizAnswerCount: 0,
+      pollVoteCount: 0,
+      proposalTypesVoted: 0,
+      engagementActionCount: 0,
+      hasDelegation: false,
+      treasuryJudgmentCount: 5,
+    });
+    expect(fullTreasury.overall - noTreasury.overall).toBe(10);
+  });
+
+  it('treasury judgment defaults to 0 when omitted', () => {
+    const withoutField = calculateProgressiveConfidence({
+      quizAnswerCount: 0,
+      pollVoteCount: 0,
+      proposalTypesVoted: 0,
+      engagementActionCount: 0,
+      hasDelegation: false,
+    });
+    const withZero = calculateProgressiveConfidence({
+      quizAnswerCount: 0,
+      pollVoteCount: 0,
+      proposalTypesVoted: 0,
+      engagementActionCount: 0,
+      hasDelegation: false,
+      treasuryJudgmentCount: 0,
+    });
+    expect(withoutField.overall).toBe(withZero.overall);
+    const treasurySource = withoutField.sources.find((s) => s.key === 'treasuryJudgment');
+    expect(treasurySource).toBeDefined();
+    expect(treasurySource!.score).toBe(0);
+    expect(treasurySource!.active).toBe(false);
   });
 
   it('caps input at target (no extra credit)', () => {
     const result = calculateProgressiveConfidence({
-      quizAnswerCount: 10, // way over target of 3
+      quizAnswerCount: 10, // way over target of 4
       pollVoteCount: 100, // way over target of 15
       proposalTypesVoted: 20,
       engagementActionCount: 100,
       hasDelegation: true,
+      treasuryJudgmentCount: 50, // way over target of 5
     });
     expect(result.overall).toBe(100); // still 100, not higher
   });

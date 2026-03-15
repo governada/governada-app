@@ -121,6 +121,7 @@ import { SegmentGate } from '@/components/shared/SegmentGate';
 import { computeTrustSignals } from '@/components/governada/profiles/TrustSignals';
 import { DRepProfileClient } from '@/components/governada/profiles/DRepProfileClient';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { getDRepTreasuryTrackRecord } from '@/lib/treasury';
 
 interface DRepDetailPageProps {
   params: Promise<{ drepId: string }>;
@@ -371,6 +372,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   let spoAlignPct: number | null = null;
   let openProposals: Awaited<ReturnType<typeof getOpenProposalsForDRep>> = [];
   let endorsementCount = 0;
+  let treasuryRecord: Awaited<ReturnType<typeof getDRepTreasuryTrackRecord>> | null = null;
 
   // Wrap each secondary fetch with an 8-second timeout so a single slow fetch
   // cannot block the entire page render. Timed-out fetches return their default value.
@@ -402,6 +404,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     spoAlignPct,
     openProposals,
     endorsementCount,
+    treasuryRecord,
   ] = await Promise.all([
     withTimeout(getScoreHistory(drep.drepId), [], 'scoreHistory'),
     withTimeout(getDRepPercentile(drep.drepScore), 0, 'percentile'),
@@ -412,9 +415,14 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     withTimeout(getSpoAlignment(drep.votes), null, 'spoAlignPct'),
     withTimeout(getOpenProposalsForDRep(drep.drepId), [], 'openProposals'),
     withTimeout(getEndorsementCount('drep', drep.drepId), 0, 'endorsementCount'),
+    withTimeout(getDRepTreasuryTrackRecord(drep.drepId), null, 'treasuryRecord'),
   ]);
 
   const pendingProposalCount = openProposals.length;
+
+  // Treasury stewardship signals — summary-level only
+  const treasuryJudgmentScore = treasuryRecord?.judgmentScore ?? null;
+  const treasuryProposalCount = treasuryRecord?.totalProposals ?? 0;
 
   // Check if viewer is authenticated (hide certain elements for anonymous visitors)
   let isViewerAuthenticated = false;
@@ -640,6 +648,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         votingPowerFormatted={formatAda(drep.votingPower)}
         totalVotes={drep.totalVotes}
         rationaleRate={drep.rationaleRate}
+        treasuryJudgmentScore={treasuryJudgmentScore}
+        treasuryProposalCount={treasuryProposalCount}
       />
 
       {/* ── Trust Card — governance participants view (preserved for governance depth) ── */}
@@ -657,6 +667,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           noVotes={drep.noVotes}
           abstainVotes={drep.abstainVotes}
           drepId={drep.drepId}
+          treasuryJudgmentScore={treasuryJudgmentScore}
+          treasuryProposalCount={treasuryProposalCount}
         />
       </SegmentGate>
 

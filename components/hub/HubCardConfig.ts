@@ -24,6 +24,7 @@ export type CardId =
   | 'drep-score'
   | 'spo-governance-score'
   | 'spo-delegators'
+  | 'treasury-pulse'
   | 'discovery-match'
   | 'discovery-explore';
 
@@ -62,6 +63,13 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     conditional: false,
     href: '/governance/health',
   },
+  'treasury-pulse': {
+    id: 'treasury-pulse',
+    type: 'status',
+    priority: 4,
+    conditional: false,
+    href: '/governance/treasury',
+  },
   alert: {
     id: 'alert',
     type: 'action',
@@ -72,7 +80,7 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
   briefing: {
     id: 'briefing',
     type: 'status',
-    priority: 4,
+    priority: 5,
     conditional: true,
     href: '/governance/briefing',
   },
@@ -143,10 +151,24 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
 /** Which cards each persona sees, in render order (action > status > engagement > discovery) */
 export const PERSONA_CARDS: Record<UserSegment, CardId[]> = {
   anonymous: ['discovery-match', 'discovery-explore'],
-  citizen: ['alert', 'representation', 'coverage', 'governance-health', 'briefing', 'engagement'],
-  drep: ['drep-action-queue', 'drep-delegators', 'drep-score', 'governance-health'],
-  spo: ['spo-governance-score', 'spo-delegators', 'governance-health'],
-  cc: ['representation', 'coverage', 'governance-health', 'engagement'],
+  citizen: [
+    'alert',
+    'representation',
+    'coverage',
+    'governance-health',
+    'treasury-pulse',
+    'briefing',
+    'engagement',
+  ],
+  drep: [
+    'drep-action-queue',
+    'drep-delegators',
+    'drep-score',
+    'governance-health',
+    'treasury-pulse',
+  ],
+  spo: ['spo-governance-score', 'spo-delegators', 'governance-health', 'treasury-pulse'],
+  cc: ['representation', 'coverage', 'governance-health', 'treasury-pulse', 'engagement'],
 };
 
 /** Sort cards by type priority, then by card priority within type */

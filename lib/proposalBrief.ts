@@ -79,6 +79,7 @@ export interface BriefGenerationInput {
   concernFlags: string[];
   constitutionalArticles: string[];
   historicalContext: string | null;
+  treasuryHealthContext: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -293,6 +294,85 @@ export async function assembleProposalBriefInput(
       }
     }
 
+    // Treasury health context for TreasuryWithdrawals (best-effort, parallel fetch)
+    let treasuryHealthContext: string | null = null;
+    if (proposal.proposalType === 'TreasuryWithdrawals' && proposal.withdrawalAmount) {
+      try {
+        const {
+          getNclUtilization,
+          findSimilarProposals,
+          calculateRunwayMonths,
+          calculateBurnRate,
+          getTreasuryBalance,
+          getTreasuryTrend,
+        } = await import('@/lib/treasury');
+
+        const [ncl, balance, trend, similar] = await Promise.all([
+          getNclUtilization(),
+          getTreasuryBalance(),
+          getTreasuryTrend(30),
+          findSimilarProposals(
+            proposal.title || '',
+            proposal.withdrawalAmount / 1_000_000,
+            proposal.treasuryTier ?? null,
+            txHash,
+          ),
+        ]);
+
+        const parts: string[] = [];
+
+        if (balance) {
+          parts.push(
+            `Treasury balance: ${balance.balanceAda.toLocaleString()} ADA (epoch ${balance.epoch}).`,
+          );
+        }
+
+        if (trend.length >= 2) {
+          const burnRate = calculateBurnRate(trend, 10);
+          if (burnRate > 0 && balance) {
+            const runway = calculateRunwayMonths(balance.balanceAda, burnRate);
+            parts.push(
+              `Burn rate: ~${Math.round(burnRate).toLocaleString()} ADA/epoch. Runway: ${runway === Infinity ? '10+ years' : `${Math.round(runway)} months`}.`,
+            );
+          }
+        }
+
+        if (ncl) {
+          parts.push(
+            `NCL budget utilization: ${Math.round(ncl.utilizationPct)}% enacted, ${Math.round(ncl.projectedUtilizationPct)}% projected (including pending). ${ncl.epochsRemaining} epochs remaining in budget period.`,
+          );
+          if (ncl.projectedUtilizationPct > 80) {
+            parts.push(
+              'Warning: projected utilization exceeds 80% of budget period limit — elevated stewardship scrutiny warranted.',
+            );
+          }
+        }
+
+        if (similar.length > 0) {
+          const enacted = similar.filter((s) => s.outcome === 'enacted');
+          const rejected = similar.filter(
+            (s) => s.outcome === 'dropped' || s.outcome === 'expired',
+          );
+          if (enacted.length > 0) {
+            parts.push(
+              `${enacted.length} similar proposal${enacted.length !== 1 ? 's' : ''} enacted previously (${enacted.map((s) => `"${s.title}" at ${s.withdrawalAda.toLocaleString()} ADA`).join('; ')}).`,
+            );
+          }
+          if (rejected.length > 0) {
+            parts.push(
+              `${rejected.length} similar proposal${rejected.length !== 1 ? 's' : ''} rejected or expired (${rejected.map((s) => `"${s.title}"`).join('; ')}).`,
+            );
+          }
+        }
+
+        if (parts.length > 0) {
+          treasuryHealthContext = parts.join(' ');
+        }
+      } catch {
+        // Non-critical
+      }
+    }
+
     // Citizen sentiment (best-effort)
     let citizenSentiment: number | null = null;
     try {
@@ -329,6 +409,7 @@ export async function assembleProposalBriefInput(
       concernFlags,
       constitutionalArticles: articles.map((a) => `${a.id}: ${a.text}`),
       historicalContext,
+      treasuryHealthContext,
     };
   } catch (err) {
     logger.error('[ProposalBrief] Context assembly failed', { txHash, error: err });
@@ -411,6 +492,7 @@ ${abstainRationales || '  (none provided)'}
 ${input.citizenSentiment != null ? `## Citizen Sentiment: ${input.citizenSentiment}/100` : ''}
 ${input.concernFlags.length > 0 ? `## Community Concerns: ${input.concernFlags.join(', ')}` : ''}
 ${input.historicalContext ? `## Historical Context: ${input.historicalContext}` : ''}
+${input.treasuryHealthContext ? `## Treasury Health Context\n${input.treasuryHealthContext}` : ''}
 ${input.constitutionalArticles.length > 0 ? `## Relevant Constitutional Articles:\n${input.constitutionalArticles.map((a) => `  - ${a}`).join('\n')}` : ''}
 
 Return JSON with this exact structure:

@@ -50,6 +50,8 @@ export interface DRepProfileClientProps {
   votingPowerFormatted: string;
   totalVotes: number;
   rationaleRate: number;
+  treasuryJudgmentScore: number | null;
+  treasuryProposalCount: number;
 }
 
 /* ─── Alignment fetcher ───────────────────────────────── */
@@ -100,6 +102,8 @@ export function DRepProfileClient({
   votingPowerFormatted,
   totalVotes,
   rationaleRate,
+  treasuryJudgmentScore,
+  treasuryProposalCount,
 }: DRepProfileClientProps) {
   const { delegatedDrep } = useSegment();
 
@@ -227,6 +231,8 @@ export function DRepProfileClient({
             endorsementCount={endorsementCount}
             delegationTrend={trendLabel}
             onMatchComplete={handleMatchComplete}
+            treasuryJudgmentScore={treasuryJudgmentScore}
+            treasuryProposalCount={treasuryProposalCount}
           />
         )
       ) : (
@@ -237,6 +243,8 @@ export function DRepProfileClient({
           endorsementCount={endorsementCount}
           delegationTrend={trendLabel}
           onMatchComplete={handleMatchComplete}
+          treasuryJudgmentScore={treasuryJudgmentScore}
+          treasuryProposalCount={treasuryProposalCount}
         />
       )}
 

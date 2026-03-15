@@ -11,6 +11,7 @@ interface CompactHeaderProps {
   currentEpoch: number;
   withdrawalAmount: number | null;
   blockTime: number | null;
+  treasuryBalanceAda?: number | null;
 }
 
 function formatTreasuryCompact(amount: number): string {
@@ -38,6 +39,7 @@ export function CompactHeader({
   currentEpoch,
   withdrawalAmount,
   blockTime,
+  treasuryBalanceAda,
 }: CompactHeaderProps) {
   const theme = getProposalTheme(proposalType);
   const TypeIcon = theme.icon;
@@ -101,6 +103,10 @@ export function CompactHeader({
               className="text-xs tabular-nums font-semibold text-amber-400 border-amber-400/30"
             >
               &#x20B3; {formatTreasuryCompact(withdrawalAmount / 1_000_000)} ADA
+              {proposalType === 'TreasuryWithdrawals' &&
+                treasuryBalanceAda != null &&
+                treasuryBalanceAda > 0 &&
+                ` · ${((withdrawalAmount / 1_000_000 / treasuryBalanceAda) * 100).toFixed(2)}% of treasury`}
             </Badge>
           )}
 

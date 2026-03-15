@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { getRelevantArticles } from '@/lib/constitution';
 import { getVotingBodies } from '@/lib/governance/votingBodies';
 import type { ProposalBriefContent } from '@/lib/proposalBrief';
+import type { NclUtilization } from '@/lib/treasury';
 
 interface LivingBriefProps {
   brief: ProposalBriefContent | null;
@@ -47,6 +48,7 @@ interface LivingBriefProps {
   noCount: number;
   abstainCount: number;
   historicalContext: string | null;
+  nclUtilization?: NclUtilization | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +206,7 @@ export function LivingBrief({
   noCount,
   abstainCount,
   historicalContext,
+  nclUtilization,
 }: LivingBriefProps) {
   const briefUrl = `https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`;
   const shareText = `Living Brief on this Cardano governance proposal via @Governada`;
@@ -303,6 +306,7 @@ export function LivingBrief({
         historicalContext={historicalContext}
         rationaleCount={rationaleCount}
         rationales={rationales}
+        nclUtilization={nclUtilization ?? null}
       />
     );
   }
@@ -403,6 +407,7 @@ function FirstLook({
   historicalContext,
   rationaleCount,
   rationales,
+  nclUtilization,
 }: {
   aiSummary: string | null;
   proposalType: string;
@@ -412,6 +417,7 @@ function FirstLook({
   historicalContext: string | null;
   rationaleCount: number;
   rationales: LivingBriefProps['rationales'];
+  nclUtilization: NclUtilization | null;
 }) {
   const totalVotes = yesCount + noCount + abstainCount;
   const articles = getRelevantArticles(proposalType);
@@ -455,9 +461,31 @@ function FirstLook({
         )}
 
         {/* 2. Scale & Context (treasury proposals only) */}
-        {historicalContext && (
+        {(historicalContext || nclUtilization) && proposalType === 'TreasuryWithdrawals' && (
           <SectionCard icon={TrendingUp} title="Scale & Context">
-            <p className="text-sm text-foreground/80">{historicalContext}</p>
+            {historicalContext && <p className="text-sm text-foreground/80">{historicalContext}</p>}
+            {nclUtilization && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-sm text-foreground/80">
+                  If approved, budget utilization rises from{' '}
+                  {Math.round(nclUtilization.utilizationPct)}% to{' '}
+                  {Math.round(nclUtilization.projectedUtilizationPct)}%.
+                </p>
+                {nclUtilization.projectedUtilizationPct > 80 && (
+                  <p className="text-sm font-medium text-amber-500">
+                    Projected utilization exceeds 80% of the budget period limit — elevated
+                    stewardship scrutiny expected.
+                  </p>
+                )}
+                {nclUtilization.epochsRemaining > 0 &&
+                  nclUtilization.epochsRemaining * (5 / 30.44) < 24 && (
+                    <p className="text-sm text-foreground/70">
+                      {Math.round(nclUtilization.epochsRemaining * (5 / 30.44))} months remaining in
+                      the current budget period.
+                    </p>
+                  )}
+              </div>
+            )}
           </SectionCard>
         )}
 

@@ -17,6 +17,7 @@ import {
   computeCCConstitutionalFidelity,
   computePowerDistribution,
   computeSystemStability,
+  computeTreasuryHealth,
   type ComponentInput,
 } from './components';
 import type { EDIResult } from './ediMetrics';
@@ -99,6 +100,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     ccFidelity,
     power,
     stability,
+    treasuryHealth,
   ] = await Promise.all([
     computeDRepParticipation(input),
     computeSPOParticipation(input),
@@ -107,6 +109,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     computeCCConstitutionalFidelity(input),
     computePowerDistribution(input),
     computeSystemStability(input),
+    computeTreasuryHealth(input),
   ]);
 
   // Citizen engagement: only compute if flag is on
@@ -126,6 +129,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     'CC Constitutional Fidelity': calibrate(ccFidelity.raw, CALIBRATION.ccConstitutionalFidelity),
     'Power Distribution': calibrate(power.raw, CALIBRATION.powerDistribution),
     'System Stability': calibrate(stability.raw, CALIBRATION.systemStability),
+    'Treasury Health': calibrate(treasuryHealth.raw, CALIBRATION.treasuryHealth),
   };
 
   const components: GHIComponent[] = Object.entries(calibrated).map(([name, value]) => {

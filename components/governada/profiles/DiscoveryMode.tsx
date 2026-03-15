@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Users, TrendingUp, TrendingDown, Minus, Heart } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Minus, Heart, ShieldCheck } from 'lucide-react';
 import { InlineQuickMatch } from './InlineQuickMatch';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import type { AlignmentScores } from '@/lib/drepIdentity';
@@ -16,6 +16,8 @@ interface DiscoveryModeProps {
   endorsementCount: number;
   delegationTrend: 'growing' | 'stable' | 'declining';
   onMatchComplete: (alignment: AlignmentScores) => void;
+  treasuryJudgmentScore: number | null;
+  treasuryProposalCount: number;
   className?: string;
 }
 
@@ -36,6 +38,8 @@ export function DiscoveryMode({
   endorsementCount,
   delegationTrend,
   onMatchComplete,
+  treasuryJudgmentScore,
+  treasuryProposalCount,
   className,
 }: DiscoveryModeProps) {
   const { isAtLeast } = useGovernanceDepth();
@@ -86,6 +90,16 @@ export function DiscoveryMode({
               {endorsementCount}
             </span>{' '}
             citizen endorsements
+          </div>
+        )}
+
+        {treasuryJudgmentScore !== null && treasuryProposalCount > 0 && (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 text-primary/70" />
+            <span className="font-medium text-foreground tabular-nums">
+              {treasuryJudgmentScore}%
+            </span>{' '}
+            delivery on approved spending
           </div>
         )}
       </div>

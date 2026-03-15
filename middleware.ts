@@ -1,5 +1,6 @@
 /**
  * Next.js Middleware
+ * - Locale detection from Accept-Language header + cookie persistence
  * - Query-param redirects for old /discover?tab= routes
  * - Auth gate for protected routes (workspace, you)
  * - CORS for /api/v1/* routes
@@ -7,6 +8,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
+  isValidLocale,
+  parseAcceptLanguage,
+} from '@/lib/i18n/config';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -28,6 +35,20 @@ const DISCOVER_TAB_MAP: Record<string, string> = {
 
 const AUTH_REQUIRED_PATHS = ['/workspace', '/you'];
 
+/** Set the locale cookie on a response if not already set correctly */
+function withLocale(response: NextResponse, request: NextRequest): NextResponse {
+  const existing = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (existing && isValidLocale(existing)) return response;
+
+  const detected = parseAcceptLanguage(request.headers.get('accept-language') || '');
+  response.cookies.set(LOCALE_COOKIE, detected, {
+    path: '/',
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: 'lax',
+  });
+  return response;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
@@ -36,7 +57,10 @@ export function middleware(request: NextRequest) {
   if (pathname === '/discover') {
     const tab = searchParams.get('tab');
     if (tab && DISCOVER_TAB_MAP[tab]) {
-      return NextResponse.redirect(new URL(DISCOVER_TAB_MAP[tab], request.url), 301);
+      return withLocale(
+        NextResponse.redirect(new URL(DISCOVER_TAB_MAP[tab], request.url), 301),
+        request,
+      );
     }
     // No tab param → handled by next.config.ts redirect to /governance
   }
@@ -45,7 +69,10 @@ export function middleware(request: NextRequest) {
   if (pathname === '/pulse') {
     const tab = searchParams.get('tab');
     if (tab === 'history') {
-      return NextResponse.redirect(new URL('/governance/health', request.url), 301);
+      return withLocale(
+        NextResponse.redirect(new URL('/governance/health', request.url), 301),
+        request,
+      );
     }
   }
 
@@ -53,7 +80,10 @@ export function middleware(request: NextRequest) {
   if (pathname === '/governance') {
     const session = request.cookies.get('drepscore_session');
     if (!session?.value) {
-      return NextResponse.redirect(new URL('/governance/proposals', request.url));
+      return withLocale(
+        NextResponse.redirect(new URL('/governance/proposals', request.url)),
+        request,
+      );
     }
   }
 
@@ -68,35 +98,35 @@ export function middleware(request: NextRequest) {
       if (isPrefetch) {
         return new NextResponse(null, { status: 204 });
       }
-      return NextResponse.redirect(new URL('/', request.url));
+      return withLocale(NextResponse.redirect(new URL('/', request.url)), request);
     }
   }
 
   // ── CORS for public API ───────────────────────────────────────────
-  if (!pathname.startsWith('/api/v1')) {
-    return NextResponse.next();
+  if (pathname.startsWith('/api/v1')) {
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+    }
+
+    const response = NextResponse.next();
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      response.headers.set(key, value);
+    }
+    return response;
   }
 
-  if (request.method === 'OPTIONS') {
-    return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
-  }
-
-  const response = NextResponse.next();
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    response.headers.set(key, value);
-  }
-
-  return response;
+  // ── Default: pass through with locale cookie ──────────────────────
+  return withLocale(NextResponse.next(), request);
 }
 
 export const config = {
   matcher: [
-    '/api/v1/:path*',
-    '/discover',
-    '/governance',
-    '/pulse',
-    '/workspace/:path*',
-    '/you/:path*',
-    '/delegation/:path*',
+    /*
+     * Match all routes except:
+     * - _next (static files, images, HMR)
+     * - api (except /api/v1 which needs CORS — handled inside middleware)
+     * - Static public assets
+     */
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|sw\\.js|workbox-|icons/|og-image).*)',
   ],
 };

@@ -10,6 +10,7 @@ import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
 import { GovernadaSidebar } from './GovernadaSidebar';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -112,6 +113,7 @@ function BackgroundGlobe({
  */
 export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const isHomepage = pathname === '/';
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -158,8 +160,9 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <p className="text-xs text-muted-foreground/70">
-            Governada is an independent community project and is not affiliated with, endorsed by,
-            or associated with the Cardano Foundation, IOG, or EMURGO.
+            {t(
+              'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',
+            )}
           </p>
         </footer>
         <GovernadaBottomNav />

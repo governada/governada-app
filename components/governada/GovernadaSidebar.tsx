@@ -14,6 +14,7 @@ import {
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface GovernadaSidebarProps {
   collapsed: boolean;

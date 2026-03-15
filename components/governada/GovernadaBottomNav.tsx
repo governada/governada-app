@@ -7,9 +7,11 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { getBottomBarItems } from '@/lib/nav/config';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function GovernadaBottomNav() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const { segment, stakeAddress } = useSegment();
   const { depth } = useGovernanceDepth();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
@@ -40,7 +42,7 @@ export function GovernadaBottomNav() {
                 active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
               )}
               aria-current={active ? 'page' : undefined}
-              aria-label={label}
+              aria-label={t(label)}
             >
               <div className="relative inline-flex">
                 <Icon className="h-5 w-5" />
@@ -50,7 +52,7 @@ export function GovernadaBottomNav() {
                   </span>
                 )}
               </div>
-              <span className="text-[10px] font-medium leading-tight">{label}</span>
+              <span className="text-[10px] font-medium leading-tight">{t(label)}</span>
               {active && (
                 <span className="absolute bottom-[calc(env(safe-area-inset-bottom)+2px)] h-0.5 w-6 rounded-full bg-primary" />
               )}

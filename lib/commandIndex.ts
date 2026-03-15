@@ -7,8 +7,6 @@ import {
   Landmark,
   Code2,
   Home,
-  Sun,
-  Moon,
   Wallet,
   LogOut,
   HelpCircle,
@@ -109,20 +107,11 @@ export const PAGE_COMMANDS: CommandItem[] = [
 ];
 
 export function buildActionCommands(opts: {
-  toggleTheme: () => void;
-  isDark: boolean;
   openWallet: () => void;
   isAuthenticated: boolean;
   logout: () => void;
 }): CommandItem[] {
   const actions: CommandItem[] = [
-    {
-      id: 'action-theme',
-      label: opts.isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-      group: 'actions',
-      icon: opts.isDark ? Sun : Moon,
-      action: opts.toggleTheme,
-    },
     {
       id: 'action-shortcuts',
       label: 'Keyboard Shortcuts',

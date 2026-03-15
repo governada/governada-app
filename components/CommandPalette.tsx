@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Command } from 'cmdk';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { useWallet } from '@/utils/wallet';
 import { Search, ArrowRight } from 'lucide-react';
 import {
@@ -20,7 +19,6 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const router = useRouter();
-  const { resolvedTheme, setTheme } = useTheme();
   const { isAuthenticated, logout } = useWallet();
 
   const [dreps, setDreps] = useState<SearchableDRep[]>([]);
@@ -52,17 +50,11 @@ export function CommandPalette() {
     }
   }, [open]);
 
-  const toggleTheme = useCallback(() => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  }, [resolvedTheme, setTheme]);
-
   const openWallet = useCallback(() => {
     window.dispatchEvent(new CustomEvent('openWalletConnect', { detail: {} }));
   }, []);
 
   const actionCommands = buildActionCommands({
-    toggleTheme,
-    isDark: resolvedTheme === 'dark',
     openWallet,
     isAuthenticated,
     logout,

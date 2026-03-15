@@ -1,0 +1,305 @@
+/**
+ * Targeted UI translations for Path B i18n.
+ *
+ * Only the highest-impact UI chrome is translated manually.
+ * Everything else relies on browser auto-translate.
+ * English text serves as the key — no translation needed for 'en'.
+ */
+
+import type { SupportedLocale } from './config';
+
+const translations: Record<Exclude<SupportedLocale, 'en'>, Record<string, string>> = {
+  ja: {
+    // Navigation
+    Home: 'ホーム',
+    Governance: 'ガバナンス',
+    Workspace: 'ワークスペース',
+    You: 'あなた',
+    Help: 'ヘルプ',
+    Match: 'マッチ',
+    // Governance sub-nav
+    Proposals: '提案',
+    Representatives: '代表者',
+    Pools: 'プール',
+    Committee: '委員会',
+    Treasury: '財務',
+    Health: '健全性',
+    // Workspace sub-nav
+    Cockpit: 'コックピット',
+    'Voting Record': '投票記録',
+    Delegators: '委任者',
+    'Gov Score': 'ガバナンススコア',
+    'Pool Profile': 'プールプロフィール',
+    Position: 'ポジション',
+    // You sub-nav
+    Identity: 'アイデンティティ',
+    Inbox: '受信箱',
+    Settings: '設定',
+    'DRep Scorecard': 'DRepスコアカード',
+    'Pool Scorecard': 'プールスコアカード',
+    // Help sub-nav
+    'Get Started': '始めましょう',
+    FAQ: 'よくある質問',
+    Glossary: '用語集',
+    Methodology: '方法論',
+    Support: 'サポート',
+    // Header actions
+    'Connect Wallet': 'ウォレットを接続',
+    'Disconnect Wallet': 'ウォレットを切断',
+    'Profile & Settings': 'プロフィールと設定',
+    Notifications: '通知',
+    'No notifications yet': 'まだ通知はありません',
+    'Mark all read': 'すべて既読にする',
+    'View all notifications': 'すべての通知を見る',
+    Collapse: '折りたたむ',
+    // Landing page
+    'Your ADA gives you': 'あなたのADAが与えるのは',
+    'a voice.': '発言権。',
+    'Choose who votes for you. It takes 60 seconds.':
+      'あなたの代わりに投票する人を選びましょう。60秒で完了します。',
+    'Choose Your Representative': 'あなたの代表者を選ぶ',
+    "See What's Happening": '何が起きているか見る',
+    'New to Cardano Governance? Get Started': 'Cardanoガバナンスは初めてですか？始めましょう',
+    'How is Cardano being managed?': 'Cardanoはどう管理されていますか？',
+    'What decisions are being made?': 'どんな決定がされていますか？',
+    // Social proof (template — {count} stays as-is)
+    "proposals are deciding how Cardano's treasury is spent.":
+      '件の提案がCardanoの財務資金の使途を決めています。',
+    'are voting on your behalf. Your ADA gives you a say.':
+      'があなたに代わって投票しています。あなたのADAで発言できます。',
+    // Footer
+    'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.':
+      'Governadaは独立したコミュニティプロジェクトであり、Cardano Foundation、IOG、またはEMURGOとは提携・推薦・関連していません。',
+    // Sidebar
+    'Skip to main content': 'メインコンテンツへスキップ',
+  },
+
+  es: {
+    Home: 'Inicio',
+    Governance: 'Gobernanza',
+    Workspace: 'Espacio de trabajo',
+    You: 'Tú',
+    Help: 'Ayuda',
+    Match: 'Emparejar',
+    Proposals: 'Propuestas',
+    Representatives: 'Representantes',
+    Pools: 'Pools',
+    Committee: 'Comité',
+    Treasury: 'Tesoro',
+    Health: 'Salud',
+    Cockpit: 'Panel',
+    'Voting Record': 'Registro de votos',
+    Delegators: 'Delegadores',
+    'Gov Score': 'Puntuación Gov',
+    'Pool Profile': 'Perfil del Pool',
+    Position: 'Posición',
+    Identity: 'Identidad',
+    Inbox: 'Bandeja de entrada',
+    Settings: 'Configuración',
+    'DRep Scorecard': 'Tarjeta DRep',
+    'Pool Scorecard': 'Tarjeta del Pool',
+    'Get Started': 'Comenzar',
+    FAQ: 'Preguntas frecuentes',
+    Glossary: 'Glosario',
+    Methodology: 'Metodología',
+    Support: 'Soporte',
+    'Connect Wallet': 'Conectar Billetera',
+    'Disconnect Wallet': 'Desconectar Billetera',
+    'Profile & Settings': 'Perfil y Configuración',
+    Notifications: 'Notificaciones',
+    'No notifications yet': 'Aún no hay notificaciones',
+    'Mark all read': 'Marcar todo leído',
+    'View all notifications': 'Ver todas las notificaciones',
+    Collapse: 'Contraer',
+    'Your ADA gives you': 'Tu ADA te da',
+    'a voice.': 'una voz.',
+    'Choose who votes for you. It takes 60 seconds.':
+      'Elige quién vota por ti. Solo toma 60 segundos.',
+    'Choose Your Representative': 'Elige tu Representante',
+    "See What's Happening": 'Mira lo que está pasando',
+    'New to Cardano Governance? Get Started': '¿Nuevo en la Gobernanza de Cardano? Comienza aquí',
+    'How is Cardano being managed?': '¿Cómo se está gestionando Cardano?',
+    'What decisions are being made?': '¿Qué decisiones se están tomando?',
+    "proposals are deciding how Cardano's treasury is spent.":
+      'propuestas están decidiendo cómo se gasta el tesoro de Cardano.',
+    'are voting on your behalf. Your ADA gives you a say.':
+      'están votando en tu nombre. Tu ADA te da voz.',
+    'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.':
+      'Governada es un proyecto comunitario independiente y no está afiliado, respaldado ni asociado con la Cardano Foundation, IOG o EMURGO.',
+    'Skip to main content': 'Saltar al contenido principal',
+  },
+
+  pt: {
+    Home: 'Início',
+    Governance: 'Governança',
+    Workspace: 'Área de Trabalho',
+    You: 'Você',
+    Help: 'Ajuda',
+    Match: 'Combinar',
+    Proposals: 'Propostas',
+    Representatives: 'Representantes',
+    Pools: 'Pools',
+    Committee: 'Comitê',
+    Treasury: 'Tesouro',
+    Health: 'Saúde',
+    Cockpit: 'Painel',
+    'Voting Record': 'Registro de votos',
+    Delegators: 'Delegadores',
+    'Gov Score': 'Pontuação Gov',
+    'Pool Profile': 'Perfil do Pool',
+    Position: 'Posição',
+    Identity: 'Identidade',
+    Inbox: 'Caixa de entrada',
+    Settings: 'Configurações',
+    'DRep Scorecard': 'Cartão DRep',
+    'Pool Scorecard': 'Cartão do Pool',
+    'Get Started': 'Começar',
+    FAQ: 'Perguntas frequentes',
+    Glossary: 'Glossário',
+    Methodology: 'Metodologia',
+    Support: 'Suporte',
+    'Connect Wallet': 'Conectar Carteira',
+    'Disconnect Wallet': 'Desconectar Carteira',
+    'Profile & Settings': 'Perfil e Configurações',
+    Notifications: 'Notificações',
+    'No notifications yet': 'Nenhuma notificação ainda',
+    'Mark all read': 'Marcar tudo como lido',
+    'View all notifications': 'Ver todas as notificações',
+    Collapse: 'Recolher',
+    'Your ADA gives you': 'Seu ADA te dá',
+    'a voice.': 'uma voz.',
+    'Choose who votes for you. It takes 60 seconds.':
+      'Escolha quem vota por você. Leva apenas 60 segundos.',
+    'Choose Your Representative': 'Escolha seu Representante',
+    "See What's Happening": 'Veja o que está acontecendo',
+    'New to Cardano Governance? Get Started': 'Novo na Governança Cardano? Comece aqui',
+    'How is Cardano being managed?': 'Como Cardano está sendo gerenciado?',
+    'What decisions are being made?': 'Que decisões estão sendo tomadas?',
+    "proposals are deciding how Cardano's treasury is spent.":
+      'propostas estão decidindo como o tesouro de Cardano é gasto.',
+    'are voting on your behalf. Your ADA gives you a say.':
+      'estão votando em seu nome. Seu ADA te dá voz.',
+    'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.':
+      'Governada é um projeto comunitário independente e não é afiliado, endossado ou associado à Cardano Foundation, IOG ou EMURGO.',
+    'Skip to main content': 'Pular para o conteúdo principal',
+  },
+
+  id: {
+    Home: 'Beranda',
+    Governance: 'Tata Kelola',
+    Workspace: 'Ruang Kerja',
+    You: 'Anda',
+    Help: 'Bantuan',
+    Match: 'Cocokkan',
+    Proposals: 'Proposal',
+    Representatives: 'Perwakilan',
+    Pools: 'Pool',
+    Committee: 'Komite',
+    Treasury: 'Kas',
+    Health: 'Kesehatan',
+    Cockpit: 'Dasbor',
+    'Voting Record': 'Riwayat Suara',
+    Delegators: 'Pendelegasi',
+    'Gov Score': 'Skor Gov',
+    'Pool Profile': 'Profil Pool',
+    Position: 'Posisi',
+    Identity: 'Identitas',
+    Inbox: 'Kotak Masuk',
+    Settings: 'Pengaturan',
+    'DRep Scorecard': 'Kartu Skor DRep',
+    'Pool Scorecard': 'Kartu Skor Pool',
+    'Get Started': 'Mulai',
+    FAQ: 'FAQ',
+    Glossary: 'Glosarium',
+    Methodology: 'Metodologi',
+    Support: 'Dukungan',
+    'Connect Wallet': 'Hubungkan Dompet',
+    'Disconnect Wallet': 'Putuskan Dompet',
+    'Profile & Settings': 'Profil & Pengaturan',
+    Notifications: 'Notifikasi',
+    'No notifications yet': 'Belum ada notifikasi',
+    'Mark all read': 'Tandai semua dibaca',
+    'View all notifications': 'Lihat semua notifikasi',
+    Collapse: 'Ciutkan',
+    'Your ADA gives you': 'ADA Anda memberi Anda',
+    'a voice.': 'suara.',
+    'Choose who votes for you. It takes 60 seconds.':
+      'Pilih siapa yang memilih untuk Anda. Hanya butuh 60 detik.',
+    'Choose Your Representative': 'Pilih Perwakilan Anda',
+    "See What's Happening": 'Lihat Apa yang Terjadi',
+    'New to Cardano Governance? Get Started': 'Baru di Tata Kelola Cardano? Mulai di Sini',
+    'How is Cardano being managed?': 'Bagaimana Cardano dikelola?',
+    'What decisions are being made?': 'Keputusan apa yang sedang dibuat?',
+    "proposals are deciding how Cardano's treasury is spent.":
+      'proposal sedang memutuskan bagaimana kas Cardano dibelanjakan.',
+    'are voting on your behalf. Your ADA gives you a say.':
+      'sedang memilih atas nama Anda. ADA Anda memberi Anda suara.',
+    'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.':
+      'Governada adalah proyek komunitas independen dan tidak berafiliasi, didukung, atau terkait dengan Cardano Foundation, IOG, atau EMURGO.',
+    'Skip to main content': 'Langsung ke konten utama',
+  },
+
+  ko: {
+    Home: '홈',
+    Governance: '거버넌스',
+    Workspace: '작업공간',
+    You: '내 정보',
+    Help: '도움말',
+    Match: '매칭',
+    Proposals: '제안',
+    Representatives: '대표자',
+    Pools: '풀',
+    Committee: '위원회',
+    Treasury: '재무',
+    Health: '건강',
+    Cockpit: '대시보드',
+    'Voting Record': '투표 기록',
+    Delegators: '위임자',
+    'Gov Score': '거버넌스 점수',
+    'Pool Profile': '풀 프로필',
+    Position: '포지션',
+    Identity: '아이덴티티',
+    Inbox: '받은편지함',
+    Settings: '설정',
+    'DRep Scorecard': 'DRep 스코어카드',
+    'Pool Scorecard': '풀 스코어카드',
+    'Get Started': '시작하기',
+    FAQ: 'FAQ',
+    Glossary: '용어집',
+    Methodology: '방법론',
+    Support: '지원',
+    'Connect Wallet': '지갑 연결',
+    'Disconnect Wallet': '지갑 연결 해제',
+    'Profile & Settings': '프로필 및 설정',
+    Notifications: '알림',
+    'No notifications yet': '아직 알림이 없습니다',
+    'Mark all read': '모두 읽음 표시',
+    'View all notifications': '모든 알림 보기',
+    Collapse: '접기',
+    'Your ADA gives you': '당신의 ADA가 드리는 것은',
+    'a voice.': '목소리입니다.',
+    'Choose who votes for you. It takes 60 seconds.':
+      '누가 당신을 대신해 투표할지 선택하세요. 60초면 됩니다.',
+    'Choose Your Representative': '대표자 선택하기',
+    "See What's Happening": '무슨 일이 일어나고 있는지 보기',
+    'New to Cardano Governance? Get Started': 'Cardano 거버넌스가 처음이신가요? 시작하기',
+    'How is Cardano being managed?': 'Cardano는 어떻게 관리되고 있나요?',
+    'What decisions are being made?': '어떤 결정이 내려지고 있나요?',
+    "proposals are deciding how Cardano's treasury is spent.":
+      '개의 제안이 Cardano 재무 지출을 결정하고 있습니다.',
+    'are voting on your behalf. Your ADA gives you a say.':
+      '이 당신을 대신해 투표하고 있습니다. 당신의 ADA로 발언할 수 있습니다.',
+    'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.':
+      'Governada는 독립적인 커뮤니티 프로젝트이며 Cardano Foundation, IOG 또는 EMURGO와 제휴, 보증 또는 관련이 없습니다.',
+    'Skip to main content': '본문으로 건너뛰기',
+  },
+};
+
+/**
+ * Translate a UI string. Uses the English text as the key.
+ * Returns the translated string for the given locale, falling back to English (the key itself).
+ */
+export function translate(locale: SupportedLocale, key: string): string {
+  if (locale === 'en') return key;
+  return translations[locale]?.[key] ?? key;
+}

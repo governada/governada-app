@@ -5,10 +5,10 @@
 
 import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
 
-const AGREE_THRESHOLD = 70;
-const DIFFER_THRESHOLD = 40;
+export const AGREE_THRESHOLD = 70;
+export const DIFFER_THRESHOLD = 40;
 
-const DIMENSION_LABELS: Record<AlignmentDimension, string> = {
+export const DIMENSION_LABELS: Record<AlignmentDimension, string> = {
   treasuryConservative: 'Treasury Conservative',
   treasuryGrowth: 'Treasury Growth',
   decentralization: 'Decentralization',
@@ -17,7 +17,7 @@ const DIMENSION_LABELS: Record<AlignmentDimension, string> = {
   transparency: 'Transparency',
 };
 
-const DIMENSIONS: AlignmentDimension[] = [
+export const DIMENSIONS: AlignmentDimension[] = [
   'treasuryConservative',
   'treasuryGrowth',
   'decentralization',

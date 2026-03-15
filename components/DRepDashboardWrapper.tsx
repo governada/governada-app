@@ -7,14 +7,35 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight, Wallet, Share2, Check, Pencil } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
+import { CitizenViewPanel } from '@/components/governada/profiles/CitizenViewPanel';
+import type { TrustSignal } from '@/components/governada/profiles/TrustSignals';
 
 interface DRepDashboardWrapperProps {
   drepId: string;
   drepName: string;
   isClaimed: boolean;
+  /** Trust signals for CitizenViewPanel (shown to DRep owners) */
+  trustSignals?: TrustSignal[];
+  /** Tier label for CitizenViewPanel */
+  tier?: string;
+  /** Delegator count for CitizenViewPanel */
+  delegatorCount?: number;
+  /** Participation rate for CitizenViewPanel */
+  participationRate?: number;
+  /** Rationale rate for CitizenViewPanel */
+  rationaleRate?: number;
 }
 
-export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashboardWrapperProps) {
+export function DRepDashboardWrapper({
+  drepId,
+  drepName,
+  isClaimed,
+  trustSignals,
+  tier,
+  delegatorCount,
+  participationRate,
+  rationaleRate,
+}: DRepDashboardWrapperProps) {
   const { isAuthenticated, ownDRepId } = useWallet();
   const { segment } = useSegment();
   const [copied, setCopied] = useState(false);
@@ -53,24 +74,36 @@ export function DRepDashboardWrapper({ drepId, drepName, isClaimed }: DRepDashbo
 
   if (isOwner) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <Sparkles className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-sm font-medium truncate">Your DRep profile</span>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm font-medium truncate">Your DRep profile</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {shareButton}
+            <Link href="/workspace">
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+                <Pencil className="h-3.5 w-3.5" /> Edit Profile
+              </Button>
+            </Link>
+            <Link href="/workspace">
+              <Button size="sm" className="gap-1.5 text-xs">
+                Open Workspace <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {shareButton}
-          <Link href="/workspace">
-            <Button size="sm" variant="outline" className="gap-1.5 text-xs">
-              <Pencil className="h-3.5 w-3.5" /> Edit Profile
-            </Button>
-          </Link>
-          <Link href="/workspace">
-            <Button size="sm" className="gap-1.5 text-xs">
-              Open Workspace <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
+        {trustSignals && trustSignals.length > 0 && tier && (
+          <CitizenViewPanel
+            drepId={drepId}
+            trustSignals={trustSignals}
+            tier={tier}
+            delegatorCount={delegatorCount ?? 0}
+            participationRate={participationRate ?? 0}
+            rationaleRate={rationaleRate ?? 0}
+          />
+        )}
       </div>
     );
   }

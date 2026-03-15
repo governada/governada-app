@@ -15,6 +15,7 @@ import { getVotesByDRepId, getProposalsByIds } from '@/lib/data';
 import type { ProposalOutcome } from '@/lib/proposalOutcomes';
 import { getProposalOutcomesBatch } from '@/lib/proposalOutcomes';
 import { predictUserStance, type VoteClassification } from './proposalAlignment';
+import { createClient } from '@/lib/supabase';
 
 /* ─── Constants ───────────────────────────────────────── */
 
@@ -57,6 +58,8 @@ export interface SimulationInput {
   userAlignment?: AlignmentScores | null;
   currentEpoch?: number;
   lookbackEpochs?: number;
+  /** Total proposals in the epoch window (from the proposals table). */
+  totalProposalCount?: number | null;
 }
 
 /* ─── Helpers ─────────────────────────────────────────── */
@@ -139,6 +142,7 @@ export function computeDelegationSimulation(input: SimulationInput): DelegationS
     userAlignment,
     currentEpoch,
     lookbackEpochs = DEFAULT_LOOKBACK_EPOCHS,
+    totalProposalCount,
   } = input;
 
   // Determine epoch window
@@ -228,8 +232,9 @@ export function computeDelegationSimulation(input: SimulationInput): DelegationS
   }
 
   // Aggregate stats
-  // totalProposals = how many unique proposals the DRep voted on in window
-  const totalProposals = drepVotedOn;
+  // totalProposals = actual proposals in the epoch window (from DB), falling back to drepVotedOn
+  const totalProposals =
+    totalProposalCount != null && totalProposalCount > 0 ? totalProposalCount : drepVotedOn;
   const participationRate = totalProposals > 0 ? drepVotedOn / totalProposals : 0;
 
   const deliverySuccessRate =
@@ -272,6 +277,8 @@ export async function fetchDelegationSimulation(
   userAlignment?: AlignmentScores | null,
   lookbackEpochs?: number,
 ): Promise<DelegationSimulation> {
+  const effectiveLookback = lookbackEpochs ?? DEFAULT_LOOKBACK_EPOCHS;
+
   // Fetch DRep votes (already ordered by block_time DESC)
   const drepVotes = await getVotesByDRepId(drepId);
 
@@ -280,9 +287,16 @@ export async function fetchDelegationSimulation(
       drepVotes: [],
       proposals: new Map(),
       outcomes: new Map(),
-      lookbackEpochs,
+      lookbackEpochs: effectiveLookback,
     });
   }
+
+  // Determine epoch window for total proposal count
+  const latestEpoch = Math.max(
+    ...drepVotes.filter((v) => v.epoch_no !== null).map((v) => v.epoch_no!),
+    0,
+  );
+  const cutoffEpoch = latestEpoch - effectiveLookback;
 
   // Build proposal ID list for batch fetches
   const proposalIds = drepVotes.map((v) => ({
@@ -295,10 +309,15 @@ export async function fetchDelegationSimulation(
     proposalIndex: v.proposal_index,
   }));
 
-  // Parallel data fetches
-  const [proposals, outcomes] = await Promise.all([
+  // Parallel data fetches — include total proposal count for the epoch window
+  const [proposals, outcomes, totalProposalResult] = await Promise.all([
     getProposalsByIds(proposalIds),
     getProposalOutcomesBatch(outcomeKeys),
+    createClient()
+      .from('proposals')
+      .select('*', { count: 'exact', head: true })
+      .gte('proposed_epoch', cutoffEpoch)
+      .then((r) => r.count ?? null),
   ]);
 
   return computeDelegationSimulation({
@@ -306,6 +325,7 @@ export async function fetchDelegationSimulation(
     proposals,
     outcomes,
     userAlignment,
-    lookbackEpochs,
+    lookbackEpochs: effectiveLookback,
+    totalProposalCount: totalProposalResult,
   });
 }

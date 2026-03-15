@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Users, TrendingUp, TrendingDown, Minus, Heart } from 'lucide-react';
 import { InlineQuickMatch } from './InlineQuickMatch';
@@ -39,9 +40,20 @@ export function DiscoveryMode({
 }: DiscoveryModeProps) {
   const { isAtLeast } = useGovernanceDepth();
 
-  // Deep depth users are assumed to have alignment data already;
-  // don't show quiz for them (per depth gating table)
-  if (isAtLeast('deep')) return null;
+  // Deep depth users without alignment data — show a prompt to take the quiz
+  if (isAtLeast('deep') as boolean) {
+    return (
+      <div className={cn('rounded-lg border p-6 text-center', className)}>
+        <p className="text-muted-foreground">
+          Take the{' '}
+          <Link href="/match" className="underline">
+            Quick Match quiz
+          </Link>{' '}
+          to see how this DRep aligns with your governance values.
+        </p>
+      </div>
+    );
+  }
 
   const trend = TREND_CONFIG[delegationTrend];
   const TrendIcon = trend.icon;

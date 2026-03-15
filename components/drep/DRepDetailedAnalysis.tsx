@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
+import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -15,14 +16,18 @@ interface DRepDetailedAnalysisProps {
  *
  * - Citizens and anonymous users see a collapsed "Show detailed analysis" toggle.
  * - DReps, SPOs, CC members, and researchers see everything expanded by default.
+ * - Deep-depth citizens also see it expanded by default.
  *
  * When expanded, a sticky collapse bar appears at the top so users can easily
  * collapse and return to the core profile as they scroll through the analysis.
  */
 export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
   const { segment, isLoading } = useSegment();
+  const { isAtLeast } = useGovernanceDepth();
 
   const isDetailedSegment = segment === 'drep' || segment === 'spo' || segment === 'cc';
+  const isDeepCitizen = segment === 'citizen' && isAtLeast('deep');
+  const shouldAutoExpand = isDetailedSegment || isDeepCitizen;
 
   // User toggle: null = not yet toggled by user, use segment-derived default
   const [userToggled, setUserToggled] = useState<boolean | null>(null);
@@ -31,8 +36,8 @@ export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
   const [showStickyCollapse, setShowStickyCollapse] = useState(false);
   const gateRef = useRef<HTMLDivElement>(null);
 
-  // Derived expanded state: user toggle wins, else expand for confirmed detailed segments
-  const expanded = userToggled !== null ? userToggled : !isLoading && isDetailedSegment;
+  // Derived expanded state: user toggle wins, else expand for confirmed detailed segments or deep citizens
+  const expanded = userToggled !== null ? userToggled : !isLoading && shouldAutoExpand;
 
   // IntersectionObserver to show sticky collapse when the gate top scrolls out of viewport
   useEffect(() => {
@@ -59,8 +64,8 @@ export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
     gateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  // For confirmed detailed segments, render children directly (no gate)
-  if (!isLoading && isDetailedSegment) {
+  // For confirmed detailed segments or deep citizens, render children directly (no gate)
+  if (!isLoading && shouldAutoExpand) {
     return <>{children}</>;
   }
 

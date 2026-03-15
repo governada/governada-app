@@ -170,9 +170,18 @@ export function DRepProfileHero({
           >
             {isGovernanceParticipant ? (
               <GovernanceRadar alignments={alignments} size="full" centerScore={score} />
-            ) : // For citizens: no big score number — TrustSignals shown inline above
-            // Show a compact tier + personality visual instead
-            trustSignals && tier ? null : (
+            ) : trustSignals && tier ? (
+              // Citizens with trust signals: show tier + delegate CTA
+              <div className="flex flex-col items-center justify-center gap-3 px-6">
+                <div className="text-center">
+                  <div className="text-4xl font-bold" style={{ color: identityColor.hex }}>
+                    {tier}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">Governance Tier</div>
+                </div>
+                {children && <div className="flex flex-wrap gap-2">{children}</div>}
+              </div>
+            ) : (
               <div className="flex flex-col items-center justify-center px-6">
                 <div
                   className="text-6xl font-bold font-mono tabular-nums"

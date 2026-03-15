@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { AlignmentSummary } from '@/lib/matching/proposalAlignment';
 import type { DelegationSimulation } from '@/lib/matching/delegationSimulation';
@@ -23,6 +23,15 @@ interface AlignmentResponse {
   simulation: DelegationSimulation | null;
   comparison: null;
   trustSignals: TrustSignal[];
+}
+
+/** Lightweight DRep info for comparison strip */
+interface ComparisonDRepInfo {
+  drepId: string;
+  name: string;
+  score: number;
+  tier: string;
+  participationRate: number;
 }
 
 export interface DRepProfileClientProps {
@@ -115,6 +124,34 @@ export function DRepProfileClient({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Fetch comparison DRep alignment (for ComparisonStrip) when viewer is delegated elsewhere
+  const { data: comparisonAlignmentData } = useQuery<AlignmentResponse | null>({
+    queryKey: ['drep-alignment-comparison', delegatedDrep, alignmentHash],
+    queryFn: async () => {
+      const res = await fetch(`/api/drep/${encodeURIComponent(delegatedDrep!)}/alignment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAlignment: localAlignment }),
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!delegatedDrep && delegatedDrep !== drepId && !!localAlignment,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch comparison DRep basic info (name, score, tier, participation rate)
+  const { data: comparisonDRepInfo } = useQuery<ComparisonDRepInfo | null>({
+    queryKey: ['drep-basic-info', delegatedDrep],
+    queryFn: async () => {
+      const res = await fetch(`/api/drep/${encodeURIComponent(delegatedDrep!)}/basic`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!delegatedDrep && delegatedDrep !== drepId,
+    staleTime: 10 * 60 * 1000,
+  });
+
   // Handle quiz completion — transition from Discovery to Decision Engine
   const handleMatchComplete = useCallback((alignment: AlignmentScores) => {
     // Save to localStorage (match existing pattern)
@@ -136,10 +173,17 @@ export function DRepProfileClient({
   const hasAlignmentData = !!alignmentData?.alignment;
 
   // Build comparison data for ComparisonStrip
-  // TODO: In the future, fetch comparison DRep data from the API
-  // For now, comparison is null (the strip will not render)
-  const comparisonDrep = null;
-  const comparisonType = delegatedDrep ? ('current_drep' as const) : null;
+  const comparisonDrep =
+    delegatedDrep && delegatedDrep !== drepId && comparisonDRepInfo
+      ? {
+          drepId: delegatedDrep,
+          name: comparisonDRepInfo.name,
+          alignment: comparisonAlignmentData?.alignment?.overallAlignment ?? null,
+          participationRate: comparisonDRepInfo.participationRate,
+          tier: comparisonDRepInfo.tier,
+        }
+      : null;
+  const comparisonType = comparisonDrep ? ('current_drep' as const) : null;
 
   const viewingDrepData = {
     drepId,
@@ -156,9 +200,13 @@ export function DRepProfileClient({
       {/* ── Decision Engine or Discovery Mode ── */}
       {hasAlignment ? (
         alignmentLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <span className="ml-2 text-sm text-muted-foreground">Calculating alignment...</span>
+          <div className={cn('space-y-4 animate-pulse')}>
+            <div className="h-8 w-48 rounded bg-muted" />
+            <div className="h-6 w-32 rounded bg-muted" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="h-24 rounded-lg bg-muted" />
+              <div className="h-24 rounded-lg bg-muted" />
+            </div>
           </div>
         ) : hasAlignmentData ? (
           <DecisionEngine

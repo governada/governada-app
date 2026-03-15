@@ -358,11 +358,23 @@ export const POST = withRouteHandler(
         proposalIndex: v.proposal_index,
       }));
 
-      // Parallel data fetches
-      const [classifications, proposals, outcomes] = await Promise.all([
+      // Determine epoch window for total proposal count
+      const latestEpoch = Math.max(
+        ...drepVotes.filter((v) => v.epoch_no !== null).map((v) => v.epoch_no!),
+        0,
+      );
+      const cutoffEpoch = latestEpoch - 36; // DEFAULT_LOOKBACK_EPOCHS
+
+      // Parallel data fetches — include total proposal count for participation rate
+      const [classifications, proposals, outcomes, totalProposalCount] = await Promise.all([
         fetchClassifications(txHashes),
         getProposalsByIds(proposalIds),
         getProposalOutcomesBatch(outcomeKeys),
+        createClient()
+          .from('proposals')
+          .select('*', { count: 'exact', head: true })
+          .gte('proposed_epoch', cutoffEpoch)
+          .then((r) => r.count ?? null),
       ]);
 
       // Build VoteWithClassification array for WS-1
@@ -400,6 +412,7 @@ export const POST = withRouteHandler(
             outcomes,
             classifications,
             userAlignment,
+            totalProposalCount,
           }),
         ),
       ]);

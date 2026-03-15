@@ -486,12 +486,18 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   });
 
   // Compute trust signals server-side for the hero
+  // Extract previous delegator count from delegation trend for the delegation_trend signal
+  const previousEpochData =
+    delegationTrend.length >= 2 ? delegationTrend[delegationTrend.length - 2] : null;
+  const previousDelegatorCount = previousEpochData?.delegatorCount ?? null;
+
   const trustSignals = computeTrustSignals({
     effectiveParticipation: drep.effectiveParticipation,
     rationaleRate: drep.rationaleRate,
     reliabilityStreak: drep.reliabilityStreak,
     reliabilityRecency: drep.reliabilityRecency,
     delegatorCount: drep.delegatorCount,
+    previousDelegatorCount,
     profileCompleteness: drep.profileCompleteness,
     metadataHashVerified: drep.metadataHashVerified,
   });
@@ -737,7 +743,16 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       {/* Dashboard wrapper — hidden for anonymous (claim prompt confuses non-DReps) */}
       <SegmentGate hide={['anonymous']}>
         <Suspense fallback={null}>
-          <DRepDashboardWrapper drepId={drep.drepId} drepName={drepName} isClaimed={isClaimed} />
+          <DRepDashboardWrapper
+            drepId={drep.drepId}
+            drepName={drepName}
+            isClaimed={isClaimed}
+            trustSignals={trustSignals}
+            tier={tierProgress.currentTier}
+            delegatorCount={drep.delegatorCount}
+            participationRate={drep.effectiveParticipation}
+            rationaleRate={drep.rationaleRate}
+          />
         </Suspense>
       </SegmentGate>
 

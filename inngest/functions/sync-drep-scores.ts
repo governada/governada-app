@@ -23,7 +23,7 @@ import {
   type ProposalVotingSummary,
   type DRepProfileData,
 } from '@/lib/scoring';
-import { batchUpsert, fetchAll, SyncLogger, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
+import { batchUpsert, SyncLogger, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const syncDrepScores = inngest.createFunction(
@@ -58,37 +58,56 @@ export const syncDrepScores = inngest.createFunction(
         // ── Step 1: Load all data ──────────────────────────────────────
         const s1 = Date.now();
 
-        // Use fetchAll to paginate past PostgREST row limits.
-        // drep_votes (15K+ rows) was silently truncated by .range(0, 99999),
-        // causing 384+ DReps to get 0 scores despite having votes.
-        const [drepRows, voteRows, proposalRows, summaryRows] = await Promise.all([
-          fetchAll(() =>
+        // Small tables: .range(0, 99999) is fine (< 1100 rows each).
+        // drep_votes (15K+ rows) needs manual pagination to bypass PostgREST max_rows.
+        const [{ data: drepRows }, { data: proposalRows }, { data: summaryRows }] =
+          await Promise.all([
             supabase
               .from('dreps')
-              .select('id, info, metadata, metadata_hash_verified, anchor_hash'),
-          ),
-          fetchAll(() =>
-            supabase
-              .from('drep_votes')
-              .select(
-                'drep_id, proposal_tx_hash, proposal_index, vote, block_time, epoch_no, rationale_quality',
-              ),
-          ),
-          fetchAll(() =>
+              .select('id, info, metadata, metadata_hash_verified, anchor_hash')
+              .range(0, 99999),
             supabase
               .from('proposals')
               .select(
                 'tx_hash, proposal_index, proposal_type, treasury_tier, withdrawal_amount, block_time, proposed_epoch, expired_epoch, ratified_epoch, dropped_epoch',
-              ),
-          ),
-          fetchAll(() =>
+              )
+              .range(0, 99999),
             supabase
               .from('proposal_voting_summary')
               .select(
                 'proposal_tx_hash, proposal_index, drep_yes_vote_power, drep_no_vote_power, drep_abstain_vote_power',
-              ),
-          ),
-        ]);
+              )
+              .range(0, 99999),
+          ]);
+
+        // Paginate drep_votes (15K+ rows exceed PostgREST max_rows limit)
+        const voteRows: Array<{
+          drep_id: string;
+          proposal_tx_hash: string;
+          proposal_index: number;
+          vote: string;
+          block_time: number;
+          epoch_no: number | null;
+          rationale_quality: number | null;
+        }> = [];
+        {
+          const VOTE_PAGE = 1000;
+          let vPage = 0;
+          while (true) {
+            const { data, error } = await supabase
+              .from('drep_votes')
+              .select(
+                'drep_id, proposal_tx_hash, proposal_index, vote, block_time, epoch_no, rationale_quality',
+              )
+              .range(vPage * VOTE_PAGE, (vPage + 1) * VOTE_PAGE - 1);
+            if (error) throw new Error(`drep_votes page ${vPage}: ${JSON.stringify(error)}`);
+            if (!data?.length) break;
+            voteRows.push(...data);
+            if (data.length < VOTE_PAGE) break;
+            vPage++;
+          }
+          logger.info('[scoring] Loaded drep_votes', { total: voteRows.length, pages: vPage + 1 });
+        }
 
         if (!drepRows?.length || !voteRows?.length) {
           logger.info('[scoring] No DReps or votes — skipping');
@@ -167,7 +186,7 @@ export const syncDrepScores = inngest.createFunction(
           const voteData: VoteData = {
             drepId: v.drep_id,
             proposalKey,
-            vote: v.vote,
+            vote: v.vote as 'Yes' | 'No' | 'Abstain',
             blockTime: v.block_time,
             proposalBlockTime: proposalBlockTimes.get(proposalKey) || 0,
             proposalType: ctx?.proposalType || 'InfoAction',
@@ -272,18 +291,16 @@ export const syncDrepScores = inngest.createFunction(
         const s4 = Date.now();
         const drepIds = [...drepVotes.keys()];
 
-        const cutoffDate = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
-        const historyRows = await fetchAll(() =>
-          supabase
-            .from('drep_score_history')
-            .select('drep_id, snapshot_date, score')
-            .in('drep_id', drepIds)
-            .gte('snapshot_date', cutoffDate)
-            .order('snapshot_date', { ascending: true }),
-        );
+        const { data: historyRows } = await supabase
+          .from('drep_score_history')
+          .select('drep_id, snapshot_date, score')
+          .in('drep_id', drepIds)
+          .gte('snapshot_date', new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10))
+          .order('snapshot_date', { ascending: true })
+          .range(0, 99999);
 
         const scoreHistory = new Map<string, { date: string; score: number }[]>();
-        for (const h of historyRows) {
+        for (const h of historyRows || []) {
           if (!scoreHistory.has(h.drep_id)) scoreHistory.set(h.drep_id, []);
           scoreHistory.get(h.drep_id)!.push({ date: h.snapshot_date, score: h.score });
         }
@@ -309,9 +326,11 @@ export const syncDrepScores = inngest.createFunction(
 
         // Load existing tiers BEFORE writing new scores so we can detect changes
         const drepIdList = [...finalScores.keys()];
-        const priorDreps = await fetchAll(() =>
-          supabase.from('dreps').select('id, score, current_tier').in('id', drepIdList),
-        );
+        const { data: priorDreps } = await supabase
+          .from('dreps')
+          .select('id, score, current_tier')
+          .in('id', drepIdList)
+          .range(0, 99999);
 
         const oldTierMap = new Map<string, { score: number; tier: string | null }>();
         for (const d of priorDreps || []) {

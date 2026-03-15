@@ -142,7 +142,7 @@ async function getDRepConnections(
     const proposalMap = await getProposalsByIds(proposalIds);
 
     for (const vote of recentVotes) {
-      const proposal = proposalMap.get(vote.proposal_tx_hash);
+      const proposal = proposalMap.get(`${vote.proposal_tx_hash}-${vote.proposal_index}`);
       connections.push({
         label: `Voted ${vote.vote}`,
         sublabel:
@@ -327,7 +327,7 @@ async function getPoolConnections(poolId: string): Promise<EntityConnection[]> {
     const proposalMap = await getProposalsByIds(proposalIds);
 
     for (const vote of poolVotes.slice(0, 3)) {
-      const proposal = proposalMap.get(vote.proposal_tx_hash);
+      const proposal = proposalMap.get(`${vote.proposal_tx_hash}-${vote.proposal_index}`);
       connections.push({
         label: `Voted ${vote.vote}`,
         sublabel:

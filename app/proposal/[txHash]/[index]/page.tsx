@@ -25,6 +25,7 @@ import { ConcernFlagBanner } from '@/components/engagement/ConcernFlagBanner';
 import { ProposalHeroV2 } from '@/components/governada/proposals/ProposalHeroV2';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { PinButton } from '@/components/shared/PinButton';
+import { EntityPageConnections } from '@/components/shared/EntityPageConnections';
 import { IntelligenceBriefing } from '@/components/governada/proposals/IntelligenceBriefing';
 import { DebateSection } from '@/components/governada/proposals/DebateSection';
 import { ProposalActionZone } from '@/components/governada/proposals/ProposalActionZone';
@@ -243,6 +244,12 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         <WatchEntityButton entityType="proposal" entityId={`${txHash}:${proposalIndex}`} />
         <PinButton type="proposal" id={`${txHash}/${proposalIndex}`} label={title} />
       </div>
+      <EntityPageConnections
+        entityType="proposal"
+        entityId={`${txHash}/${proposalIndex}`}
+        entityLabel={title}
+        entityHref={`/proposal/${txHash}/${proposalIndex}`}
+      />
 
       {/* Zone 1: Compact Header */}
       <CompactHeader
@@ -378,6 +385,12 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         <WatchEntityButton entityType="proposal" entityId={`${txHash}:${proposalIndex}`} />
         <PinButton type="proposal" id={`${txHash}/${proposalIndex}`} label={title} />
       </div>
+      <EntityPageConnections
+        entityType="proposal"
+        entityId={`${txHash}/${proposalIndex}`}
+        entityLabel={title}
+        entityHref={`/proposal/${txHash}/${proposalIndex}`}
+      />
 
       {/* Zone 1: Hero — type-specific gradient, verdict strip, prominent title */}
       <ProposalHeroV2

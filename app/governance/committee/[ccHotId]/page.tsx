@@ -9,6 +9,7 @@ import {
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { Breadcrumb } from '@/components/shared/Breadcrumb';
 import { PinButton } from '@/components/shared/PinButton';
+import { EntityPageConnections } from '@/components/shared/EntityPageConnections';
 import { CCMemberProfileClient } from '@/components/cc/CCMemberProfileClient';
 
 export const dynamic = 'force-dynamic';
@@ -227,6 +228,12 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
           label={authorName ?? `CC ${decodedId.slice(0, 12)}\u2026`}
         />
       </div>
+      <EntityPageConnections
+        entityType="cc"
+        entityId={decodedId}
+        entityLabel={authorName ?? `CC ${decodedId.slice(0, 12)}\u2026`}
+        entityHref={`/governance/committee/${encodeURIComponent(decodedId)}`}
+      />
       <CCMemberProfileClient data={profileData} />
     </div>
   );

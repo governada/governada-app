@@ -97,6 +97,7 @@ import { generateDRepNarrative } from '@/lib/narratives';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { PinButton } from '@/components/shared/PinButton';
+import { EntityPageConnections } from '@/components/shared/EntityPageConnections';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
 import { DRepOutcomeSummary } from '@/components/governada/profiles/DRepOutcomeSummary';
 import { ScoreAnalysisGate } from '@/components/governada/profiles/ScoreAnalysisGate';
@@ -556,6 +557,12 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
           { label: 'Representatives', href: '/' },
           { label: drepName },
         ]}
+      />
+      <EntityPageConnections
+        entityType="drep"
+        entityId={drep.drepId}
+        entityLabel={drepName}
+        entityHref={`/drep/${encodeURIComponent(drep.drepId)}`}
       />
 
       {/* ════════════════════════════════════════════

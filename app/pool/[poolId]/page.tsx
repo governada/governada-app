@@ -54,6 +54,7 @@ const SpoProfileTabsV2 = nextDynamic(
 import { SpoProfileHero } from '@/components/governada/profiles/SpoProfileHero';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { PinButton } from '@/components/shared/PinButton';
+import { EntityPageConnections } from '@/components/shared/EntityPageConnections';
 import { PoolClaimCard } from '@/components/governada/profiles/PoolClaimCard';
 import { PoolProfileEditorGate } from '@/components/governada/profiles/PoolProfileEditorGate';
 import { FeatureGate } from '@/components/FeatureGate';
@@ -738,6 +739,12 @@ export default async function PoolProfilePage({ params }: PageProps) {
             { label: 'Pools', href: '/governance/pools' },
             { label: ticker ? `${displayName} [${ticker}]` : displayName },
           ]}
+        />
+        <EntityPageConnections
+          entityType="pool"
+          entityId={poolId}
+          entityLabel={displayName}
+          entityHref={`/pool/${encodeURIComponent(poolId)}`}
         />
 
         {/* Chapter 1: The Story — Hero */}

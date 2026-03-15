@@ -23,7 +23,7 @@ import {
   type ProposalVotingSummary,
   type DRepProfileData,
 } from '@/lib/scoring';
-import { batchUpsert, SyncLogger, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
+import { batchUpsert, fetchAll, SyncLogger, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const syncDrepScores = inngest.createFunction(
@@ -58,34 +58,36 @@ export const syncDrepScores = inngest.createFunction(
         // ── Step 1: Load all data ──────────────────────────────────────
         const s1 = Date.now();
 
-        const [
-          { data: drepRows },
-          { data: voteRows },
-          { data: proposalRows },
-          { data: summaryRows },
-        ] = await Promise.all([
-          supabase
-            .from('dreps')
-            .select('id, info, metadata, metadata_hash_verified, anchor_hash')
-            .range(0, 99999),
-          supabase
-            .from('drep_votes')
-            .select(
-              'drep_id, proposal_tx_hash, proposal_index, vote, block_time, epoch_no, rationale_quality',
-            )
-            .range(0, 99999),
-          supabase
-            .from('proposals')
-            .select(
-              'tx_hash, proposal_index, proposal_type, treasury_tier, withdrawal_amount, block_time, proposed_epoch, expired_epoch, ratified_epoch, dropped_epoch',
-            )
-            .range(0, 99999),
-          supabase
-            .from('proposal_voting_summary')
-            .select(
-              'proposal_tx_hash, proposal_index, drep_yes_vote_power, drep_no_vote_power, drep_abstain_vote_power',
-            )
-            .range(0, 99999),
+        // Use fetchAll to paginate past PostgREST row limits.
+        // drep_votes (15K+ rows) was silently truncated by .range(0, 99999),
+        // causing 384+ DReps to get 0 scores despite having votes.
+        const [drepRows, voteRows, proposalRows, summaryRows] = await Promise.all([
+          fetchAll(
+            supabase
+              .from('dreps')
+              .select('id, info, metadata, metadata_hash_verified, anchor_hash'),
+          ),
+          fetchAll(
+            supabase
+              .from('drep_votes')
+              .select(
+                'drep_id, proposal_tx_hash, proposal_index, vote, block_time, epoch_no, rationale_quality',
+              ),
+          ),
+          fetchAll(
+            supabase
+              .from('proposals')
+              .select(
+                'tx_hash, proposal_index, proposal_type, treasury_tier, withdrawal_amount, block_time, proposed_epoch, expired_epoch, ratified_epoch, dropped_epoch',
+              ),
+          ),
+          fetchAll(
+            supabase
+              .from('proposal_voting_summary')
+              .select(
+                'proposal_tx_hash, proposal_index, drep_yes_vote_power, drep_no_vote_power, drep_abstain_vote_power',
+              ),
+          ),
         ]);
 
         if (!drepRows?.length || !voteRows?.length) {
@@ -270,16 +272,17 @@ export const syncDrepScores = inngest.createFunction(
         const s4 = Date.now();
         const drepIds = [...drepVotes.keys()];
 
-        const { data: historyRows } = await supabase
-          .from('drep_score_history')
-          .select('drep_id, snapshot_date, score')
-          .in('drep_id', drepIds)
-          .gte('snapshot_date', new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10))
-          .order('snapshot_date', { ascending: true })
-          .range(0, 99999);
+        const historyRows = await fetchAll(
+          supabase
+            .from('drep_score_history')
+            .select('drep_id, snapshot_date, score')
+            .in('drep_id', drepIds)
+            .gte('snapshot_date', new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10))
+            .order('snapshot_date', { ascending: true }),
+        );
 
         const scoreHistory = new Map<string, { date: string; score: number }[]>();
-        for (const h of historyRows || []) {
+        for (const h of historyRows) {
           if (!scoreHistory.has(h.drep_id)) scoreHistory.set(h.drep_id, []);
           scoreHistory.get(h.drep_id)!.push({ date: h.snapshot_date, score: h.score });
         }
@@ -305,11 +308,9 @@ export const syncDrepScores = inngest.createFunction(
 
         // Load existing tiers BEFORE writing new scores so we can detect changes
         const drepIdList = [...finalScores.keys()];
-        const { data: priorDreps } = await supabase
-          .from('dreps')
-          .select('id, score, current_tier')
-          .in('id', drepIdList)
-          .range(0, 99999);
+        const priorDreps = await fetchAll(
+          supabase.from('dreps').select('id, score, current_tier').in('id', drepIdList),
+        );
 
         const oldTierMap = new Map<string, { score: number; tier: string | null }>();
         for (const d of priorDreps || []) {

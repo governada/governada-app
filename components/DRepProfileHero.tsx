@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Users, TrendingUp, Award } from 'lucide-react';
 import { MatchContextBadge } from '@/components/matching/MatchContextBadge';
 import { useSegment } from '@/components/providers/SegmentProvider';
+import { TrustSignals, type TrustSignal } from '@/components/governada/profiles/TrustSignals';
 
 interface DRepProfileHeroProps {
   name: string;
@@ -30,6 +31,10 @@ interface DRepProfileHeroProps {
   matchScore?: number | null;
   narrative?: string | null;
   narrativeAccentColor?: string;
+  /** Trust signals for the Decision Engine display */
+  trustSignals?: TrustSignal[];
+  /** Tier label (e.g. 'Gold', 'Silver') */
+  tier?: string;
   children?: React.ReactNode;
 }
 
@@ -45,6 +50,8 @@ export function DRepProfileHero({
   matchScore,
   narrative,
   narrativeAccentColor,
+  trustSignals,
+  tier,
   children,
 }: DRepProfileHeroProps) {
   const { segment } = useSegment();
@@ -87,6 +94,11 @@ export function DRepProfileHero({
                 </p>
               )}
             </div>
+
+            {/* Trust Signals — replaces raw score for citizens */}
+            {trustSignals && tier && !isGovernanceParticipant && (
+              <TrustSignals tier={tier} signals={trustSignals} />
+            )}
 
             {/* AI narrative summary — above the fold */}
             {narrative && (
@@ -151,14 +163,16 @@ export function DRepProfileHero({
             {children && <div className="pt-2 flex flex-wrap gap-2">{children}</div>}
           </motion.div>
 
-          {/* Right: Signature visuals — radar for governance participants, score for others */}
+          {/* Right: Signature visuals — radar for governance participants, trust signals already shown for citizens */}
           <motion.div
             className="flex items-center justify-center lg:justify-end"
             variants={fadeInUp}
           >
             {isGovernanceParticipant ? (
               <GovernanceRadar alignments={alignments} size="full" centerScore={score} />
-            ) : (
+            ) : // For citizens: no big score number — TrustSignals shown inline above
+            // Show a compact tier + personality visual instead
+            trustSignals && tier ? null : (
               <div className="flex flex-col items-center justify-center px-6">
                 <div
                   className="text-6xl font-bold font-mono tabular-nums"

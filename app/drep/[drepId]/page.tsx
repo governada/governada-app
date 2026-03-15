@@ -1,14 +1,15 @@
 /**
- * DRep Detail Page — Chapter-based progressive disclosure.
+ * DRep Detail Page — Decision Engine layout.
  *
- * Ch1 "The Story" (Hero): Name, score, personality, AI narrative (above fold).
- * Ch2 "Trust at a Glance" (TrustCard): Unified trust metrics, citizen sentiment.
- * Ch3 "The Record" (RecordSummaryCard): Treasury track record + delivery outcomes.
- * Ch4 "Trajectory" (TrajectoryCard): Score evolution + delegation momentum.
- * Ch5 "Detailed Analysis" (DRepDetailedAnalysis): Gated deep-dive — treasury stance,
- *      philosophy, endorsements, similar DReps, tabbed analysis.
+ * Two rendering modes based on viewer alignment data:
+ * - Decision Engine: alignment-first (viewer has quiz/vote data)
+ * - Discovery Mode: quiz-first (viewer has no alignment data)
  *
- * Anonymous: Ch1 + Ch2 (core only). Citizen+: All chapters. Governance: Ch5 expanded.
+ * Server component handles data fetching; DRepProfileClient manages
+ * the Decision/Discovery toggle client-side.
+ *
+ * Evidence layer (heatmap, record, trajectory, detailed analysis) is
+ * depth-gated and rendered below the Decision Engine / Discovery Mode.
  */
 
 import { notFound } from 'next/navigation';
@@ -58,18 +59,11 @@ const MilestoneBadges = nextDynamic(
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
 );
 import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEditor';
-const SimilarDReps = nextDynamic(
-  () => import('@/components/governada/profiles/SimilarDReps').then((m) => m.SimilarDReps),
-  { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
-);
-import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
 import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
 import { TrustCard } from '@/components/governada/profiles/TrustCard';
-import { RecordSummaryCard } from '@/components/governada/profiles/RecordSummaryCard';
-import { TrajectoryCard } from '@/components/governada/profiles/TrajectoryCard';
 const CitizenEndorsements = nextDynamic(
   () => import('@/components/engagement/CitizenEndorsements').then((m) => m.CitizenEndorsements),
   { loading: () => <div className="h-20 animate-pulse bg-muted rounded-lg" /> },
@@ -124,6 +118,9 @@ import { createClient } from '@/lib/supabase';
 import { BASE_URL } from '@/lib/constants';
 import { Suspense } from 'react';
 import { SegmentGate } from '@/components/shared/SegmentGate';
+import { computeTrustSignals } from '@/components/governada/profiles/TrustSignals';
+import { DRepProfileClient } from '@/components/governada/profiles/DRepProfileClient';
+import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 
 interface DRepDetailPageProps {
   params: Promise<{ drepId: string }>;
@@ -488,6 +485,17 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     governanceIdentity: drep.governanceIdentity,
   });
 
+  // Compute trust signals server-side for the hero
+  const trustSignals = computeTrustSignals({
+    effectiveParticipation: drep.effectiveParticipation,
+    rationaleRate: drep.rationaleRate,
+    reliabilityStreak: drep.reliabilityStreak,
+    reliabilityRecency: drep.reliabilityRecency,
+    delegatorCount: drep.delegatorCount,
+    profileCompleteness: drep.profileCompleteness,
+    metadataHashVerified: drep.metadataHashVerified,
+  });
+
   // Phase B: Statements tab — shows vote explanations, positions, epoch updates, and Q&A
   // For DRep owners, also shows a "Write Statement" button
   const statementsContent = <DRepStatementsTab drepId={drep.drepId} />;
@@ -537,10 +545,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       />
 
       {/* ════════════════════════════════════════════
-          VP1 — "The Story" (above fold)
+          HERO — Slimmed with TrustSignals for citizens
           ════════════════════════════════════════════ */}
-
-      {/* ── Chapter 1: The Story (Hero) ── */}
       <DRepProfileHero
         name={drepName}
         score={drep.drepScore}
@@ -551,6 +557,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         traitTags={traitTags}
         isActive={drep.isActive}
         matchScore={matchScore}
+        trustSignals={trustSignals}
+        tier={tierProgress.currentTier}
         narrative={generateDRepNarrative({
           name: drepName,
           participationRate: drep.effectiveParticipation,
@@ -573,7 +581,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         <WatchEntityButton entityType="drep" entityId={drep.drepId} />
       </DRepProfileHero>
 
-      {/* 3. Tier Progress + Momentum — governance participants only */}
+      {/* Tier Progress + Momentum — governance participants only */}
       {isViewerAuthenticated && tierProgress.pointsToNext != null && (
         <SegmentGate show={['drep', 'spo', 'cc']}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md px-4 sm:px-5 py-3">
@@ -606,21 +614,45 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </SegmentGate>
       )}
 
-      {/* ── Chapter 2: Trust at a Glance ── */}
-      <TrustCard
-        score={drep.drepScore}
-        percentile={percentile}
-        identityLabel={identityLabel}
-        participationRate={drep.effectiveParticipation}
-        rationaleRate={drep.rationaleRate}
-        spoAlignPct={spoAlignPct}
-        endorsementCount={endorsementCount}
-        totalVotes={drep.totalVotes}
-        yesVotes={drep.yesVotes}
-        noVotes={drep.noVotes}
-        abstainVotes={drep.abstainVotes}
+      {/* ════════════════════════════════════════════
+          DECISION ENGINE / DISCOVERY MODE
+          Client component manages the toggle between modes.
+          Evidence layer (heatmap, record, trajectory) is inside.
+          ════════════════════════════════════════════ */}
+      <DRepProfileClient
         drepId={drep.drepId}
+        drepName={drepName}
+        drepScore={drep.drepScore}
+        delegatorCount={drep.delegatorCount}
+        endorsementCount={endorsementCount}
+        participationRate={drep.effectiveParticipation}
+        tier={tierProgress.currentTier}
+        scoreHistory={scoreHistory}
+        delegationTrend={delegationTrend}
+        currentScore={drep.drepScore}
+        scoreMomentum={drep.scoreMomentum}
+        votingPowerFormatted={formatAda(drep.votingPower)}
+        totalVotes={drep.totalVotes}
+        rationaleRate={drep.rationaleRate}
       />
+
+      {/* ── Trust Card — governance participants view (preserved for governance depth) ── */}
+      <SegmentGate show={['drep', 'spo', 'cc']}>
+        <TrustCard
+          score={drep.drepScore}
+          percentile={percentile}
+          identityLabel={identityLabel}
+          participationRate={drep.effectiveParticipation}
+          rationaleRate={drep.rationaleRate}
+          spoAlignPct={spoAlignPct}
+          endorsementCount={endorsementCount}
+          totalVotes={drep.totalVotes}
+          yesVotes={drep.yesVotes}
+          noVotes={drep.noVotes}
+          abstainVotes={drep.abstainVotes}
+          drepId={drep.drepId}
+        />
+      </SegmentGate>
 
       {/* ── Delegation Impact Preview — undelegated citizens only ── */}
       <DelegationImpactPreview
@@ -632,7 +664,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         delegatorCount={drep.delegatorCount}
       />
 
-      {/* 5. Identity metadata row — governance participants only */}
+      {/* Identity metadata row — governance participants only */}
       <SegmentGate show={['drep', 'spo', 'cc']}>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-sm text-muted-foreground overflow-hidden">
           {drep.ticker && (
@@ -691,24 +723,6 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </div>
       </SegmentGate>
 
-      {/* ── Chapter 3: The Record — public data, visible to all ── */}
-      <RecordSummaryCard
-        drepId={drep.drepId}
-        totalVotes={drep.totalVotes}
-        participationRate={drep.effectiveParticipation}
-        rationaleRate={drep.rationaleRate}
-      />
-
-      {/* ── Chapter 4: Trajectory — public data, visible to all ── */}
-      <TrajectoryCard
-        scoreHistory={scoreHistory}
-        delegationTrend={delegationTrend}
-        currentScore={drep.drepScore}
-        scoreMomentum={drep.scoreMomentum}
-        delegatorCount={drep.delegatorCount}
-        votingPowerFormatted={formatAda(drep.votingPower)}
-      />
-
       {/* ── Citizen Endorsements — visible to all (social proof) ── */}
       <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
 
@@ -720,7 +734,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         references={drep.metadata?.references as Array<{ uri: string; label?: string }> | undefined}
       />
 
-      {/* 7. Dashboard wrapper — hidden for anonymous (claim prompt confuses non-DReps) */}
+      {/* Dashboard wrapper — hidden for anonymous (claim prompt confuses non-DReps) */}
       <SegmentGate hide={['anonymous']}>
         <Suspense fallback={null}>
           <DRepDashboardWrapper drepId={drep.drepId} drepName={drepName} isClaimed={isClaimed} />
@@ -741,9 +755,6 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
 
         {/* Citizen Endorsements — interactive version for detailed analysis */}
         <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
-
-        {/* Similar DReps */}
-        <SimilarDReps drepId={drep.drepId} />
 
         {/* ════════════════════════════════════════════
             VP2 — "The Record" (below fold, tabbed)

@@ -1,0 +1,221 @@
+'use client';
+
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import type { AlignmentScores } from '@/lib/drepIdentity';
+import type { AlignmentSummary } from '@/lib/matching/proposalAlignment';
+import type { DelegationSimulation } from '@/lib/matching/delegationSimulation';
+import type { TrustSignal } from './TrustSignals';
+import { loadMatchProfile, saveMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
+import { useSegment } from '@/components/providers/SegmentProvider';
+import { DepthGate } from '@/components/providers/DepthGate';
+import { DecisionEngine } from './DecisionEngine';
+import { DiscoveryMode } from './DiscoveryMode';
+import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { RecordSummaryCard } from './RecordSummaryCard';
+import { TrajectoryCard } from './TrajectoryCard';
+
+/* ─── Types ───────────────────────────────────────────── */
+
+interface AlignmentResponse {
+  alignment: AlignmentSummary | null;
+  simulation: DelegationSimulation | null;
+  comparison: null;
+  trustSignals: TrustSignal[];
+}
+
+export interface DRepProfileClientProps {
+  drepId: string;
+  drepName: string;
+  drepScore: number;
+  delegatorCount: number;
+  endorsementCount: number;
+  participationRate: number;
+  tier: string;
+  /** Data for the evidence layer */
+  scoreHistory: { date: string; score: number }[];
+  delegationTrend: { epoch: number; votingPowerAda: number; delegatorCount: number }[];
+  currentScore: number;
+  scoreMomentum: number | null;
+  votingPowerFormatted: string;
+  totalVotes: number;
+  rationaleRate: number;
+}
+
+/* ─── Alignment fetcher ───────────────────────────────── */
+
+async function fetchAlignment(
+  drepId: string,
+  userAlignment: AlignmentScores,
+): Promise<AlignmentResponse> {
+  const res = await fetch(`/api/drep/${encodeURIComponent(drepId)}/alignment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userAlignment }),
+  });
+  if (!res.ok) throw new Error(`Alignment API error: ${res.status}`);
+  return res.json();
+}
+
+/* ─── Delegation trend classifier ─────────────────────── */
+
+function classifyDelegationTrend(
+  trend: { epoch: number; delegatorCount: number }[],
+): 'growing' | 'stable' | 'declining' {
+  if (trend.length < 2) return 'stable';
+  const latest = trend[trend.length - 1];
+  const previous = trend[trend.length - 2];
+  if (!latest || !previous || previous.delegatorCount === 0) return 'stable';
+  const change =
+    ((latest.delegatorCount - previous.delegatorCount) / previous.delegatorCount) * 100;
+  if (change > 5) return 'growing';
+  if (change < -5) return 'declining';
+  return 'stable';
+}
+
+/* ─── Component ───────────────────────────────────────── */
+
+export function DRepProfileClient({
+  drepId,
+  drepName,
+  drepScore: _drepScore,
+  delegatorCount,
+  endorsementCount,
+  participationRate,
+  tier,
+  scoreHistory,
+  delegationTrend,
+  currentScore,
+  scoreMomentum,
+  votingPowerFormatted,
+  totalVotes,
+  rationaleRate,
+}: DRepProfileClientProps) {
+  const { delegatedDrep } = useSegment();
+
+  // Check localStorage for existing quiz results
+  const [localAlignment, setLocalAlignment] = useState<AlignmentScores | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const profile = loadMatchProfile();
+    return profile?.userAlignments ?? null;
+  });
+
+  // Hash alignment for stable cache key
+  const alignmentHash = useMemo(() => {
+    if (!localAlignment) return null;
+    return JSON.stringify(localAlignment);
+  }, [localAlignment]);
+
+  // Fetch alignment data from API when user has alignment scores
+  const { data: alignmentData, isLoading: alignmentLoading } = useQuery<AlignmentResponse>({
+    queryKey: ['drep-alignment', drepId, alignmentHash],
+    queryFn: () => fetchAlignment(drepId, localAlignment!),
+    enabled: !!localAlignment,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Handle quiz completion — transition from Discovery to Decision Engine
+  const handleMatchComplete = useCallback((alignment: AlignmentScores) => {
+    // Save to localStorage (match existing pattern)
+    saveMatchProfile({
+      userAlignments: alignment,
+      personalityLabel: '',
+      identityColor: '',
+      matchType: 'drep',
+      answers: {},
+      timestamp: Date.now(),
+    } satisfies StoredMatchProfile);
+
+    // Update local state to trigger Decision Engine mode
+    setLocalAlignment(alignment);
+  }, []);
+
+  // Determine rendering mode
+  const hasAlignment = !!localAlignment;
+  const hasAlignmentData = !!alignmentData?.alignment;
+
+  // Build comparison data for ComparisonStrip
+  // TODO: In the future, fetch comparison DRep data from the API
+  // For now, comparison is null (the strip will not render)
+  const comparisonDrep = null;
+  const comparisonType = delegatedDrep ? ('current_drep' as const) : null;
+
+  const viewingDrepData = {
+    drepId,
+    name: drepName,
+    alignment: alignmentData?.alignment?.overallAlignment ?? null,
+    participationRate,
+    tier,
+  };
+
+  const trendLabel = classifyDelegationTrend(delegationTrend);
+
+  return (
+    <div className="space-y-6">
+      {/* ── Decision Engine or Discovery Mode ── */}
+      {hasAlignment ? (
+        alignmentLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-2 text-sm text-muted-foreground">Calculating alignment...</span>
+          </div>
+        ) : hasAlignmentData ? (
+          <DecisionEngine
+            drepId={drepId}
+            drepName={drepName}
+            alignment={alignmentData!.alignment!}
+            simulation={alignmentData!.simulation}
+            comparisonDrep={comparisonDrep}
+            comparisonType={comparisonType}
+            viewingDrepData={viewingDrepData}
+          />
+        ) : (
+          // Has alignment but API returned no data (e.g., DRep has no classified votes)
+          <DiscoveryMode
+            drepId={drepId}
+            drepName={drepName}
+            delegatorCount={delegatorCount}
+            endorsementCount={endorsementCount}
+            delegationTrend={trendLabel}
+            onMatchComplete={handleMatchComplete}
+          />
+        )
+      ) : (
+        <DiscoveryMode
+          drepId={drepId}
+          drepName={drepName}
+          delegatorCount={delegatorCount}
+          endorsementCount={endorsementCount}
+          delegationTrend={trendLabel}
+          onMatchComplete={handleMatchComplete}
+        />
+      )}
+
+      {/* ── Evidence Layer (depth-gated) ── */}
+      <DepthGate minDepth="informed">
+        <ActivityHeatmap drepId={drepId} />
+      </DepthGate>
+
+      <DepthGate minDepth="informed">
+        <RecordSummaryCard
+          drepId={drepId}
+          totalVotes={totalVotes}
+          participationRate={participationRate}
+          rationaleRate={rationaleRate}
+        />
+      </DepthGate>
+
+      <DepthGate minDepth="engaged">
+        <TrajectoryCard
+          scoreHistory={scoreHistory}
+          delegationTrend={delegationTrend}
+          currentScore={currentScore}
+          scoreMomentum={scoreMomentum}
+          delegatorCount={delegatorCount}
+          votingPowerFormatted={votingPowerFormatted}
+        />
+      </DepthGate>
+    </div>
+  );
+}

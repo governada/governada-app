@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useId, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useId, useRef, useEffect, useState } from 'react';
 import type { ConvictionPulseData } from '@/lib/convictionPulse';
 import type { VotePowerByEpoch } from '@/lib/data';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -173,9 +173,6 @@ export function ConvictionPulseLine({
   const svgWidth = 800;
   const svgHeight = 100;
 
-  const mainPathRef = useRef<SVGPathElement>(null);
-  const glowPathRef = useRef<SVGPathElement>(null);
-
   const { mainPath, beatPositions } = useMemo(
     () =>
       generateHeartbeat(
@@ -208,58 +205,64 @@ export function ConvictionPulseLine({
   const hasPulseData = powerByEpoch.length > 0;
   const cssId = uniqueId.replace(/:/g, '');
 
-  // Animate path drawing + continuous glow pulse via Web Animations API
+  // --- Animation: clip-path reveal from left to right ---
+  const [revealX, setRevealX] = useState(hasPulseData ? 0 : svgWidth);
+  const [glowOpacity, setGlowOpacity] = useState(1);
+  const animStarted = useRef(false);
+
   useEffect(() => {
-    if (!hasPulseData) return;
-    const path = mainPathRef.current;
-    const glow = glowPathRef.current;
-    if (!path) return;
+    if (!hasPulseData || animStarted.current) return;
+    animStarted.current = true;
 
-    const length = path.getTotalLength();
-    path.style.strokeDasharray = `${length}`;
-    path.style.strokeDashoffset = `${length}`;
-    path.animate([{ strokeDashoffset: `${length}` }, { strokeDashoffset: '0' }], {
-      duration: 2500,
-      easing: 'ease-out',
-      fill: 'forwards',
-    });
+    const duration = 2500;
+    const start = performance.now();
 
-    if (glow) {
-      const gl = glow.getTotalLength();
-      glow.style.strokeDasharray = `${gl}`;
-      glow.style.strokeDashoffset = `${gl}`;
-      glow.animate([{ strokeDashoffset: `${gl}` }, { strokeDashoffset: '0' }], {
-        duration: 2500,
-        easing: 'ease-out',
-        fill: 'forwards',
-      });
+    function tick(now: number) {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / duration);
+      // Cubic ease-out
+      const eased = 1 - Math.pow(1 - t, 3);
+      setRevealX(eased * svgWidth);
+      if (t < 1) requestAnimationFrame(tick);
     }
 
-    // After draw completes, start continuous pulsing
-    const t = setTimeout(() => {
-      path.animate([{ opacity: 1 }, { opacity: 0.5 }, { opacity: 1 }], {
-        duration: 3000,
-        iterations: Infinity,
-        easing: 'ease-in-out',
-      });
-      glow?.animate([{ opacity: 0.25 }, { opacity: 0.5 }, { opacity: 0.25 }], {
-        duration: 3000,
-        iterations: Infinity,
-        easing: 'ease-in-out',
-      });
-    }, 2600);
+    requestAnimationFrame(tick);
+  }, [hasPulseData]);
 
-    return () => clearTimeout(t);
-  }, [hasPulseData, mainPath]);
+  // Continuous breathing glow after reveal completes
+  useEffect(() => {
+    if (revealX < svgWidth - 1) return;
 
-  // Scan line pulsing via callback ref
-  const scanCallback = useCallback((el: SVGRectElement | null) => {
-    if (!el) return;
-    el.animate([{ opacity: '0.15' }, { opacity: '0.8' }, { opacity: '0.15' }], {
-      duration: 2000,
-      iterations: Infinity,
-      easing: 'ease-in-out',
-    });
+    let frame: number;
+    const start = performance.now();
+
+    function breathe(now: number) {
+      const t = ((now - start) % 3000) / 3000;
+      // Sine wave oscillation: 1.0 → 0.5 → 1.0
+      const opacity = 0.75 + 0.25 * Math.cos(t * Math.PI * 2);
+      setGlowOpacity(opacity);
+      frame = requestAnimationFrame(breathe);
+    }
+
+    frame = requestAnimationFrame(breathe);
+    return () => cancelAnimationFrame(frame);
+  }, [revealX]);
+
+  // Scan line pulsing
+  const [scanOpacity, setScanOpacity] = useState(0.3);
+  useEffect(() => {
+    let frame: number;
+    const start = performance.now();
+
+    function pulse(now: number) {
+      const t = ((now - start) % 2000) / 2000;
+      const opacity = 0.15 + 0.65 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2));
+      setScanOpacity(opacity);
+      frame = requestAnimationFrame(pulse);
+    }
+
+    frame = requestAnimationFrame(pulse);
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   return (
@@ -295,19 +298,23 @@ export function ConvictionPulseLine({
           aria-label="Conviction pulse — heartbeat waveform showing voting activity over time"
         >
           <defs>
-            <filter id={`gl${cssId}`} x="-10%" y="-30%" width="120%" height="160%">
+            <filter id={`gl-${cssId}`} x="-10%" y="-30%" width="120%" height="160%">
               <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
-            <filter id={`og${cssId}`} x="-20%" y="-50%" width="140%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <filter id={`og-${cssId}`} x="-20%" y="-50%" width="140%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6" />
             </filter>
-            <linearGradient id={`sg${cssId}`} x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`sg-${cssId}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={pulseColor} stopOpacity="0" />
-              <stop offset="40%" stopColor={pulseColor} stopOpacity="0.5" />
-              <stop offset="60%" stopColor={pulseColor} stopOpacity="0.5" />
+              <stop offset="40%" stopColor={pulseColor} stopOpacity="0.6" />
+              <stop offset="60%" stopColor={pulseColor} stopOpacity="0.6" />
               <stop offset="100%" stopColor={pulseColor} stopOpacity="0" />
             </linearGradient>
+            {/* Clip path for left-to-right reveal animation */}
+            <clipPath id={`reveal-${cssId}`}>
+              <rect x="0" y="0" width={revealX} height={svgHeight} />
+            </clipPath>
           </defs>
 
           {/* Monitor grid */}
@@ -334,66 +341,72 @@ export function ConvictionPulseLine({
             ))}
           </g>
 
-          {/* Outer glow (blurred shadow of the line) */}
-          {hasPulseData && (
+          {/* All animated content clipped by the reveal rect */}
+          <g clipPath={`url(#reveal-${cssId})`} style={{ opacity: glowOpacity }}>
+            {/* Outer glow (blurred shadow) */}
+            {hasPulseData && (
+              <path
+                d={mainPath}
+                fill="none"
+                stroke={pulseColor}
+                strokeWidth={8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter={`url(#og-${cssId})`}
+                opacity={0.3}
+              />
+            )}
+
+            {/* Main pulse line */}
             <path
-              ref={glowPathRef}
               d={mainPath}
               fill="none"
               stroke={pulseColor}
-              strokeWidth={6}
+              strokeWidth={2.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              filter={`url(#og${cssId})`}
-              opacity={0.25}
+              filter={`url(#gl-${cssId})`}
             />
+
+            {/* Beat peak dots with glow rings */}
+            {beatPositions.map((beat) => {
+              const dotColor =
+                beat.yesRatio > 0.6 ? '#10b981' : beat.yesRatio > 0.4 ? '#8b5cf6' : '#ef4444';
+              return (
+                <g key={beat.epoch}>
+                  <circle
+                    cx={beat.x}
+                    cy={beat.peakY}
+                    r={7}
+                    fill="none"
+                    stroke={dotColor}
+                    strokeWidth={1}
+                    opacity={0.3}
+                  />
+                  <circle cx={beat.x} cy={beat.peakY} r={3.5} fill={dotColor}>
+                    <title>
+                      {`Epoch ${beat.epoch}: ${beat.totalVotes} votes, ${formatAda(beat.totalPower / 1_000_000)} ADA (${Math.round(beat.yesRatio * 100)}% Yes)`}
+                    </title>
+                  </circle>
+                </g>
+              );
+            })}
+          </g>
+
+          {/* Bright cursor dot at the reveal edge */}
+          {hasPulseData && revealX < svgWidth - 1 && (
+            <circle cx={revealX} cy={svgHeight * 0.55} r={4} fill={pulseColor} opacity={0.9} />
           )}
 
-          {/* Main animated pulse line */}
-          <path
-            ref={mainPathRef}
-            d={mainPath}
-            fill="none"
-            stroke={pulseColor}
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter={`url(#gl${cssId})`}
-          />
-
-          {/* Beat peak dots with glow rings */}
-          {beatPositions.map((beat) => {
-            const dotColor =
-              beat.yesRatio > 0.6 ? '#10b981' : beat.yesRatio > 0.4 ? '#8b5cf6' : '#ef4444';
-            return (
-              <g key={beat.epoch}>
-                <circle
-                  cx={beat.x}
-                  cy={beat.peakY}
-                  r={7}
-                  fill="none"
-                  stroke={dotColor}
-                  strokeWidth={1}
-                  opacity={0.3}
-                />
-                <circle cx={beat.x} cy={beat.peakY} r={3.5} fill={dotColor}>
-                  <title>
-                    {`Epoch ${beat.epoch}: ${beat.totalVotes} votes, ${formatAda(beat.totalPower / 1_000_000)} ADA (${Math.round(beat.yesRatio * 100)}% Yes)`}
-                  </title>
-                </circle>
-              </g>
-            );
-          })}
-
           {/* Pulsing scan line at current epoch */}
-          {nowX > 0 && nowX < svgWidth && (
+          {nowX > 0 && nowX < svgWidth && revealX >= svgWidth - 1 && (
             <rect
-              ref={scanCallback}
               x={nowX - 1.5}
               y={0}
               width={3}
               height={svgHeight}
-              fill={`url(#sg${cssId})`}
+              fill={`url(#sg-${cssId})`}
+              opacity={scanOpacity}
             />
           )}
 

@@ -56,10 +56,10 @@ export default async function ClaimPage({ params }: ClaimPageProps) {
       drepId={drep.drepId}
       name={name}
       score={drep.drepScore}
-      participation={drep.effectiveParticipation}
-      rationale={drep.rationaleRate}
-      reliability={drep.reliabilityScore}
-      profile={drep.profileCompleteness}
+      engagement={drep.engagementQuality ?? drep.rationaleRate}
+      participation={drep.effectiveParticipationV3 ?? drep.effectiveParticipation}
+      reliability={drep.reliabilityV3 ?? drep.reliabilityScore}
+      identity={drep.governanceIdentity ?? drep.profileCompleteness}
       isClaimed={claimed}
     />
   );

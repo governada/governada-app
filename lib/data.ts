@@ -334,6 +334,13 @@ export async function getActiveProposalEpochs(): Promise<Map<number, number>> {
 }
 
 /**
+ * Last known-good proposal count, updated periodically.
+ * Used as fallback when Supabase is unreachable. Must be kept roughly current
+ * to avoid inflating participation rates.
+ */
+const FALLBACK_PROPOSAL_COUNT = 300;
+
+/**
  * Get the actual total number of governance proposals from the proposals table.
  * Used as the denominator for participation rate calculations.
  */
@@ -347,13 +354,13 @@ export async function getActualProposalCount(): Promise<number> {
 
     if (error) {
       logger.warn('[Data] getActualProposalCount query failed', { error: error.message });
-      return 88; // fallback based on known count
+      return FALLBACK_PROPOSAL_COUNT;
     }
 
-    return count && count > 0 ? count : 88;
+    return count && count > 0 ? count : FALLBACK_PROPOSAL_COUNT;
   } catch (err) {
     logger.error('[Data] getActualProposalCount error', { error: err });
-    return 88;
+    return FALLBACK_PROPOSAL_COUNT;
   }
 }
 
@@ -1621,8 +1628,12 @@ export async function getDRepPercentile(score: number): Promise<number> {
     const supabase = createClient();
 
     const [{ count: belowCount }, { count: totalCount }] = await Promise.all([
-      supabase.from('dreps').select('*', { count: 'exact', head: true }).lt('score', score),
-      supabase.from('dreps').select('*', { count: 'exact', head: true }),
+      supabase
+        .from('dreps')
+        .select('*', { count: 'exact', head: true })
+        .gt('score', 0)
+        .lt('score', score),
+      supabase.from('dreps').select('*', { count: 'exact', head: true }).gt('score', 0),
     ]);
 
     if (!totalCount || totalCount === 0) return 0;

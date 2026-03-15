@@ -29,10 +29,10 @@ interface ClaimPageClientProps {
   drepId: string;
   name: string;
   score: number;
+  engagement: number;
   participation: number;
-  rationale: number;
   reliability: number;
-  profile: number;
+  identity: number;
   isClaimed: boolean;
 }
 
@@ -116,16 +116,16 @@ function PillarBar({ label, value, max }: { label: string; value: number; max: n
 }
 
 function getLowestPillar(p: {
+  engagement: number;
   participation: number;
-  rationale: number;
   reliability: number;
-  profile: number;
+  identity: number;
 }) {
   const pillars = [
-    { key: 'Participation', value: p.participation },
-    { key: 'Rationale', value: p.rationale },
+    { key: 'Engagement Quality', value: p.engagement },
+    { key: 'Effective Participation', value: p.participation },
     { key: 'Reliability', value: p.reliability },
-    { key: 'Profile', value: p.profile },
+    { key: 'Governance Identity', value: p.identity },
   ];
   return pillars.reduce((min, curr) => (curr.value < min.value ? curr : min));
 }
@@ -134,10 +134,10 @@ export function ClaimPageClient({
   drepId,
   name,
   score,
+  engagement,
   participation,
-  rationale,
   reliability,
-  profile,
+  identity,
   isClaimed,
 }: ClaimPageClientProps) {
   const router = useRouter();
@@ -148,8 +148,8 @@ export function ClaimPageClient({
   const [showCelebration, setShowCelebration] = useState(false);
 
   const lowestPillar = useMemo(
-    () => getLowestPillar({ participation, rationale, reliability, profile }),
-    [participation, rationale, reliability, profile],
+    () => getLowestPillar({ engagement, participation, reliability, identity }),
+    [engagement, participation, reliability, identity],
   );
 
   useEffect(() => {
@@ -240,9 +240,9 @@ export function ClaimPageClient({
         name={name}
         score={score}
         participation={participation}
-        rationale={rationale}
+        rationale={engagement}
         reliability={reliability}
-        profile={profile}
+        profile={identity}
         onContinue={() => router.push('/my-gov')}
       />
     );
@@ -290,10 +290,10 @@ export function ClaimPageClient({
       <div className="flex flex-col items-center space-y-4">
         <ScoreRing score={score} />
         <div className="space-y-2 w-full max-w-md">
-          <PillarBar label="Participation" value={participation} max={30} />
-          <PillarBar label="Rationale" value={rationale} max={35} />
-          <PillarBar label="Reliability" value={reliability} max={20} />
-          <PillarBar label="Profile" value={profile} max={15} />
+          <PillarBar label="Engagement" value={engagement} max={35} />
+          <PillarBar label="Participation" value={participation} max={25} />
+          <PillarBar label="Reliability" value={reliability} max={25} />
+          <PillarBar label="Identity" value={identity} max={15} />
         </div>
         <p className="text-xs text-muted-foreground">
           Biggest opportunity:{' '}

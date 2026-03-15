@@ -14,14 +14,9 @@ import { SPOCockpit } from '@/components/workspace/SPOCockpit';
 import { ActionQueueCard } from '@/components/governada/ActionQueueCard';
 
 interface PulseData {
-  totalAdaGoverned: string;
   activeProposals: number;
   activeDReps: number;
   totalDReps: number;
-  votesThisWeek: number;
-  claimedDReps: number;
-  activeSpOs: number;
-  ccMembers: number;
   totalDelegators: number;
 }
 

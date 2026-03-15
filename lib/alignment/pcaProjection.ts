@@ -62,7 +62,7 @@ export function projectPCAToDimensions(
   }
 
   // For each dimension, compute the DRep's projected score
-  const scores: Record<string, number> = {};
+  const scores: Record<string, number | null> = {};
 
   for (const dim of DIMENSION_KEYS) {
     const field = CLASSIFICATION_FIELDS[dim];
@@ -99,7 +99,7 @@ export function projectPCAToDimensions(
       const normalized = sigmoid(projectedValue) * 100;
       scores[dim] = Math.round(Math.max(0, Math.min(100, normalized)));
     } else {
-      scores[dim] = 50; // neutral fallback
+      scores[dim] = null; // no relevant data for this dimension
     }
   }
 

@@ -561,13 +561,13 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
   let verified = 0;
   let failed = 0;
 
-  const metaHashUpdates: { id: string; metadata_hash_verified: boolean }[] = [];
+  const metaHashUpdates: { id: string; metadata_hash_verified: boolean | null }[] = [];
 
-  // Mark DReps without anchor data so they don't block the queue
+  // DReps without anchor data get null (not checked) rather than false (failed)
   for (const id of drepIds) {
     const anchor = anchorMap.get(id);
     if (!anchor) {
-      metaHashUpdates.push({ id, metadata_hash_verified: false });
+      metaHashUpdates.push({ id, metadata_hash_verified: null });
       continue;
     }
     try {

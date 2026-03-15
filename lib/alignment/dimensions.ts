@@ -23,12 +23,12 @@ export interface DRepContext {
 }
 
 export interface DimensionScores {
-  treasuryConservative: number;
-  treasuryGrowth: number;
-  decentralization: number;
-  security: number;
-  innovation: number;
-  transparency: number;
+  treasuryConservative: number | null;
+  treasuryGrowth: number | null;
+  decentralization: number | null;
+  security: number | null;
+  innovation: number | null;
+  transparency: number | null;
 }
 
 const HALF_LIFE_MS = 6 * 30 * 24 * 60 * 60 * 1000;
@@ -68,9 +68,13 @@ export function computeDimensionScores(
   };
 }
 
-function calcTreasuryConservative(inputs: DimensionInput[], now: number, maxAda: number): number {
+function calcTreasuryConservative(
+  inputs: DimensionInput[],
+  now: number,
+  maxAda: number,
+): number | null {
   const relevant = inputs.filter((i) => (i.classification?.dimTreasuryConservative ?? 0) > 0.2);
-  if (relevant.length === 0) return 50;
+  if (relevant.length === 0) return null;
 
   let weightedSum = 0;
   let totalWeight = 0;
@@ -90,13 +94,13 @@ function calcTreasuryConservative(inputs: DimensionInput[], now: number, maxAda:
     totalWeight += weight;
   }
 
-  if (totalWeight === 0) return 50;
+  if (totalWeight === 0) return null;
   return Math.round((weightedSum / totalWeight) * 100);
 }
 
-function calcTreasuryGrowth(inputs: DimensionInput[], now: number, maxAda: number): number {
+function calcTreasuryGrowth(inputs: DimensionInput[], now: number, maxAda: number): number | null {
   const relevant = inputs.filter((i) => (i.classification?.dimTreasuryGrowth ?? 0) > 0.2);
-  if (relevant.length === 0) return 50;
+  if (relevant.length === 0) return null;
 
   let weightedSum = 0;
   let totalWeight = 0;
@@ -127,13 +131,19 @@ function calcTreasuryGrowth(inputs: DimensionInput[], now: number, maxAda: numbe
     totalWeight += weight;
   }
 
-  if (totalWeight === 0) return 50;
+  if (totalWeight === 0) return null;
   return Math.round((weightedSum / totalWeight) * 100);
 }
 
-function calcDecentralization(inputs: DimensionInput[], drep: DRepContext, now: number): number {
+function calcDecentralization(
+  inputs: DimensionInput[],
+  drep: DRepContext,
+  now: number,
+): number | null {
   // Vote pattern on decentralization-relevant proposals
   const relevant = inputs.filter((i) => (i.classification?.dimDecentralization ?? 0) > 0.2);
+
+  if (relevant.length === 0 && inputs.length === 0) return null;
 
   let voteScore = 50;
   if (relevant.length > 0) {
@@ -170,11 +180,11 @@ function calcDecentralization(inputs: DimensionInput[], drep: DRepContext, now: 
   return clamp(voteScore + breadthBonus);
 }
 
-function calcSecurity(inputs: DimensionInput[], drep: DRepContext, now: number): number {
+function calcSecurity(inputs: DimensionInput[], drep: DRepContext, now: number): number | null {
   const relevant = inputs.filter((i) => (i.classification?.dimSecurity ?? 0) > 0.2);
 
   if (relevant.length === 0) {
-    return Math.round(drep.participationRate * 0.5 + drep.rationaleRate * 0.5);
+    return null;
   }
 
   // Caution rate: No/Abstain on security proposals
@@ -193,7 +203,7 @@ function calcSecurity(inputs: DimensionInput[], drep: DRepContext, now: number):
     totalWeight += weight;
   }
 
-  if (totalWeight === 0) return 50;
+  if (totalWeight === 0) return null;
 
   const cautionRate = (cautionCount / totalWeight) * 100;
   const rationaleRate = (rationaleCount / totalWeight) * 100;
@@ -202,8 +212,10 @@ function calcSecurity(inputs: DimensionInput[], drep: DRepContext, now: number):
   return Math.round(cautionRate * 0.5 + rationaleRate * 0.3 + participationRate * 0.2);
 }
 
-function calcInnovation(inputs: DimensionInput[], drep: DRepContext, now: number): number {
+function calcInnovation(inputs: DimensionInput[], drep: DRepContext, now: number): number | null {
   const relevant = inputs.filter((i) => (i.classification?.dimInnovation ?? 0) > 0.2);
+
+  if (relevant.length === 0 && inputs.length === 0) return null;
 
   // Support rate on innovation proposals (0.4 weight)
   let supportScore = 50;
@@ -238,7 +250,9 @@ function calcInnovation(inputs: DimensionInput[], drep: DRepContext, now: number
   return Math.round(supportScore * 0.4 + infoEngagement * 0.3 + breadth * 0.3);
 }
 
-function calcTransparency(inputs: DimensionInput[], drep: DRepContext): number {
+function calcTransparency(inputs: DimensionInput[], drep: DRepContext): number | null {
+  if (inputs.length === 0) return null;
+
   // AI rationale quality (0.6 weight)
   const withQuality = inputs.filter((i) => i.rationaleQuality != null);
   let avgQuality = 50;

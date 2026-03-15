@@ -77,8 +77,8 @@ export function validateDimensionIndependence(rows: NormalizedScoreRow[]): Valid
       const dim1 = DIMENSIONS[i];
       const dim2 = DIMENSIONS[j];
 
-      const x = rows.map((r) => r[dim1]);
-      const y = rows.map((r) => r[dim2]);
+      const x = rows.map((r) => r[dim1] ?? 50);
+      const y = rows.map((r) => r[dim2] ?? 50);
 
       const r = pearsonCorrelation(x, y);
       const result: CorrelationResult = {

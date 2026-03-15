@@ -96,12 +96,12 @@ const DB_PROPOSAL_COLUMNS =
 
 interface SerializedScoreRow {
   drepId: string;
-  treasuryConservative: number;
-  treasuryGrowth: number;
-  decentralization: number;
-  security: number;
-  innovation: number;
-  transparency: number;
+  treasuryConservative: number | null;
+  treasuryGrowth: number | null;
+  decentralization: number | null;
+  security: number | null;
+  innovation: number | null;
+  transparency: number | null;
   pTreasuryConservative: number;
   pTreasuryGrowth: number;
   pDecentralization: number;

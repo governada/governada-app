@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
-import { getOpenProposalsForDRep, getDRepById, getActualProposalCount } from '@/lib/data';
+import { getOpenProposalsForDRep, getDRepById } from '@/lib/data';
 import { getTreasuryBalance } from '@/lib/treasury';
 
 export const dynamic = 'force-dynamic';
@@ -42,12 +42,18 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
 
   // ── Governance metrics (everyone gets these) ──────────────────────────
 
-  const [proposalCount, drepCount, ghiSnapshot, treasury] = await Promise.all([
-    getActualProposalCount(),
+  const [activeProposalCount, drepCount, ghiSnapshot, treasury] = await Promise.all([
+    supabase
+      .from('proposals')
+      .select('tx_hash', { count: 'exact', head: true })
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
     supabase
       .from('dreps')
-      .select('drep_id', { count: 'exact', head: true })
-      .not('status', 'eq', 'Retired'),
+      .select('id', { count: 'exact', head: true })
+      .eq('info->>isActive', 'true'),
     supabase
       .from('ghi_snapshots')
       .select('ghi_score')
@@ -57,7 +63,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     getTreasuryBalance(),
   ]);
 
-  metrics['gov.activeProposals'] = `${proposalCount} active`;
+  metrics['gov.activeProposals'] = `${activeProposalCount.count ?? 0} active`;
   metrics['gov.activeDreps'] = `${drepCount.count ?? 0} DReps`;
 
   const ghiScore = ghiSnapshot.data?.ghi_score;

@@ -15,10 +15,8 @@ const ConstellationScene = dynamic(
 
 interface AnonymousLandingProps {
   pulseData?: {
-    totalAdaGoverned: string;
     activeProposals: number;
     activeDReps: number;
-    activeSpOs: number;
     totalDelegators: number;
   };
 }

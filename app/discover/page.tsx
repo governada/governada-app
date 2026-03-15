@@ -25,7 +25,10 @@ export const dynamic = 'force-dynamic';
 async function getDRepCount(): Promise<number> {
   try {
     const supabase = createClient();
-    const { count } = await supabase.from('dreps').select('*', { count: 'exact', head: true });
+    const { count } = await supabase
+      .from('dreps')
+      .select('id', { count: 'exact', head: true })
+      .eq('info->>isActive', 'true');
     return count ?? 0;
   } catch {
     return 0;

@@ -58,14 +58,9 @@ async function getGovernancePulse() {
   }
 
   return {
-    totalAdaGoverned: '',
     activeProposals: openProposalsResult.count ?? 0,
     activeDReps: activeDRepsResult.count ?? 0,
     totalDReps: totalDRepsResult.count ?? 0,
-    votesThisWeek: 0,
-    claimedDReps: 0,
-    activeSpOs: 0,
-    ccMembers: 0,
     totalDelegators,
   };
 }

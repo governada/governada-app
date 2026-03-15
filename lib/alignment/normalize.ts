@@ -5,12 +5,12 @@
 
 export interface RawScoreRow {
   drepId: string;
-  treasuryConservative: number;
-  treasuryGrowth: number;
-  decentralization: number;
-  security: number;
-  innovation: number;
-  transparency: number;
+  treasuryConservative: number | null;
+  treasuryGrowth: number | null;
+  decentralization: number | null;
+  security: number | null;
+  innovation: number | null;
+  transparency: number | null;
 }
 
 export interface NormalizedScoreRow extends RawScoreRow {
@@ -43,14 +43,16 @@ const DIMENSIONS: DimensionKey[] = [
 export function normalizeToPercentiles(rows: RawScoreRow[]): NormalizedScoreRow[] {
   if (rows.length === 0) return [];
 
-  const n = rows.length;
   const percentiles = new Map<string, Record<DimensionKey, number>>();
 
   for (const dim of DIMENSIONS) {
-    // Sort by raw score ascending, preserving index
-    const sorted = rows
-      .map((row, idx) => ({ drepId: row.drepId, value: row[dim], idx }))
+    // Only rank DReps that have data for this dimension (skip nulls)
+    const withData = rows.filter((row) => row[dim] != null);
+    const sorted = withData
+      .map((row) => ({ drepId: row.drepId, value: row[dim] as number }))
       .sort((a, b) => a.value - b.value);
+
+    const nd = sorted.length;
 
     // Assign ranks with tie-handling (average rank for ties)
     let i = 0;
@@ -59,17 +61,27 @@ export function normalizeToPercentiles(rows: RawScoreRow[]): NormalizedScoreRow[
       while (j < sorted.length && sorted[j].value === sorted[i].value) j++;
 
       const avgRank = (i + j - 1) / 2; // 0-indexed average rank for this tie group
-      const percentile = Math.round((avgRank / (n - 1)) * 100);
+      const percentile = nd <= 1 ? 50 : Math.round((avgRank / (nd - 1)) * 100);
 
       for (let k = i; k < j; k++) {
         const drepId = sorted[k].drepId;
         if (!percentiles.has(drepId)) {
           percentiles.set(drepId, {} as Record<DimensionKey, number>);
         }
-        percentiles.get(drepId)![dim] = n === 1 ? 50 : percentile;
+        percentiles.get(drepId)![dim] = percentile;
       }
 
       i = j;
+    }
+
+    // DReps with null for this dimension get percentile 50 (neutral)
+    for (const row of rows) {
+      if (row[dim] == null) {
+        if (!percentiles.has(row.drepId)) {
+          percentiles.set(row.drepId, {} as Record<DimensionKey, number>);
+        }
+        percentiles.get(row.drepId)![dim] = 50;
+      }
     }
   }
 

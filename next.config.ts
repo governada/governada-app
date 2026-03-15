@@ -88,6 +88,9 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
 
+      // Three Worlds IA — delegation moved under You
+      { source: '/delegation', destination: '/you/delegation', permanent: true },
+
       // Workspace cockpit consolidation — old sub-pages → cockpit
       { source: '/workspace/rationales', destination: '/workspace', permanent: false },
       { source: '/workspace/performance', destination: '/workspace', permanent: false },

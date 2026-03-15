@@ -8,6 +8,7 @@ import {
 } from '@/lib/data';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { Breadcrumb } from '@/components/shared/Breadcrumb';
+import { PinButton } from '@/components/shared/PinButton';
 import { CCMemberProfileClient } from '@/components/cc/CCMemberProfileClient';
 
 export const dynamic = 'force-dynamic';
@@ -212,13 +213,20 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   return (
     <div className="container mx-auto px-4 py-6 sm:py-8 space-y-6">
       <PageViewTracker event="cc_member_profile_viewed" properties={{ cc_hot_id: decodedId }} />
-      <Breadcrumb
-        items={[
-          { label: 'Governance', href: '/' },
-          { label: 'Committee', href: '/governance/committee' },
-          { label: authorName ?? `CC ${decodedId.slice(0, 12)}\u2026` },
-        ]}
-      />
+      <div className="flex items-center justify-between">
+        <Breadcrumb
+          items={[
+            { label: 'Governance', href: '/' },
+            { label: 'Committee', href: '/governance/committee' },
+            { label: authorName ?? `CC ${decodedId.slice(0, 12)}\u2026` },
+          ]}
+        />
+        <PinButton
+          type="cc"
+          id={decodedId}
+          label={authorName ?? `CC ${decodedId.slice(0, 12)}\u2026`}
+        />
+      </div>
       <CCMemberProfileClient data={profileData} />
     </div>
   );

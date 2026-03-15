@@ -7,5 +7,5 @@ export const dynamic = 'force-dynamic';
  * Redirect any direct visits to the home page.
  */
 export default function Delegation() {
-  redirect('/');
+  redirect('/you/delegation');
 }

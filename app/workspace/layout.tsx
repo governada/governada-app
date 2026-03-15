@@ -4,7 +4,7 @@ import { SectionSpotlightTrigger } from '@/components/discovery/SectionSpotlight
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SectionPillBar section="workspace" />
+      <SectionPillBar section="home" />
       <SectionSpotlightTrigger section="workspace" />
       {children}
     </>

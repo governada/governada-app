@@ -13,6 +13,7 @@ import {
 } from '@/lib/nav/config';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
+import { SidebarPinnedItems } from './SidebarPinnedItems';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -130,16 +131,23 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
             {/* Section header / single link */}
             {section.items || section.groups ? (
               <>
-                {/* Section label (not clickable) */}
+                {/* Section label — clickable for Home (navigates to /) */}
                 {!collapsed && (
-                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  <Link
+                    href={section.href}
+                    className="block px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  >
                     {t(section.label)}
-                  </div>
+                  </Link>
                 )}
                 {collapsed && (
-                  <div className="flex justify-center py-1.5">
-                    <section.icon className="h-4 w-4 text-muted-foreground/40" />
-                  </div>
+                  <Link
+                    href={section.href}
+                    className="flex justify-center py-1.5"
+                    title={t(section.label)}
+                  >
+                    <section.icon className="h-4 w-4 text-muted-foreground/40 hover:text-muted-foreground transition-colors" />
+                  </Link>
                 )}
                 {/* Sub-items (flat or grouped) */}
                 {renderSectionItems(section)}
@@ -167,6 +175,8 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
             )}
           </div>
         ))}
+        {/* Pinned entities */}
+        <SidebarPinnedItems collapsed={collapsed} />
       </nav>
 
       {/* Collapse toggle */}

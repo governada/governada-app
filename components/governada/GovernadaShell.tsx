@@ -9,6 +9,7 @@ import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
 import { GovernadaSidebar } from './GovernadaSidebar';
+import { EpochContextBar } from './EpochContextBar';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -139,6 +140,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
         <SyncFreshnessBanner />
         <GovernadaHeader />
         <GovernadaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+        <EpochContextBar sidebarCollapsed={sidebarCollapsed} />
 
         {/* Global constellation globe — subtle glassmorphic background */}
         <BackgroundGlobe isHomepage={isHomepage} sidebarCollapsed={sidebarCollapsed} />

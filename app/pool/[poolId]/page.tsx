@@ -53,6 +53,7 @@ const SpoProfileTabsV2 = nextDynamic(
 
 import { SpoProfileHero } from '@/components/governada/profiles/SpoProfileHero';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
+import { PinButton } from '@/components/shared/PinButton';
 import { PoolClaimCard } from '@/components/governada/profiles/PoolClaimCard';
 import { PoolProfileEditorGate } from '@/components/governada/profiles/PoolProfileEditorGate';
 import { FeatureGate } from '@/components/FeatureGate';
@@ -755,6 +756,7 @@ export default async function PoolProfilePage({ params }: PageProps) {
           isClaimed={!!claimedBy}
         >
           <WatchEntityButton entityType="spo" entityId={poolId} />
+          <PinButton type="pool" id={poolId} label={displayName} />
         </SpoProfileHero>
 
         {/* Chapter 2: Trust at a Glance — persona-gated trust metrics */}

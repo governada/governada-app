@@ -96,6 +96,7 @@ import type { EnrichedDRep } from '@/lib/koios';
 import { generateDRepNarrative } from '@/lib/narratives';
 import { SocialProofBadge } from '@/components/SocialProofBadge';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
+import { PinButton } from '@/components/shared/PinButton';
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
 import { DRepOutcomeSummary } from '@/components/governada/profiles/DRepOutcomeSummary';
 import { ScoreAnalysisGate } from '@/components/governada/profiles/ScoreAnalysisGate';
@@ -592,6 +593,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
         <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
         <WatchEntityButton entityType="drep" entityId={drep.drepId} />
+        <PinButton type="drep" id={drep.drepId} label={drepName} />
       </DRepProfileHero>
 
       {/* Tier Progress + Momentum — governance participants only */}

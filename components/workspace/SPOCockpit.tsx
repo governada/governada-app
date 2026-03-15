@@ -1,13 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { TrendingUp, TrendingDown, Minus, Newspaper, ArrowRight } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DepthUpgradeNudge } from '@/components/shared/DepthUpgradeNudge';
 import { GovernanceDelegationProof } from './GovernanceDelegationProof';
+
+// Lightweight type for the briefing data we consume
+interface SPOBriefingData {
+  epoch: number;
+  headlines?: { title: string; description: string; type: string }[];
+  treasury: {
+    balanceAda: number;
+    trend: string;
+  };
+}
 
 function formatAdaCompact(ada: number): string {
   if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
@@ -216,6 +228,90 @@ export function SPOCockpit() {
           </p>
         </div>
       </DepthGate>
+
+      {/* Governance This Epoch — informed+ (citizen governance intelligence for SPOs) */}
+      <DepthGate minDepth="informed">
+        <GovernanceThisEpoch />
+      </DepthGate>
+
+      {/* Depth upgrade nudge — shows when user could see more at a higher depth */}
+      <DepthUpgradeNudge feature="governance analytics" requiredDepth="engaged" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Governance This Epoch — condensed citizen briefing for SPOs
+// ---------------------------------------------------------------------------
+
+function GovernanceThisEpoch() {
+  const { data: briefing, isLoading } = useQuery<SPOBriefingData>({
+    queryKey: ['citizen-briefing-spo'],
+    queryFn: async () => {
+      const res = await fetch('/api/briefing/citizen');
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <Skeleton className="h-5 w-44" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+    );
+  }
+
+  if (!briefing) return null;
+
+  const headlines = (briefing.headlines ?? []).slice(0, 3);
+  const treasuryAda = briefing.treasury?.balanceAda ?? 0;
+
+  // Compute approximate runway in years (treasury / ~73M ADA annual burn estimate)
+  const ANNUAL_BURN_ESTIMATE = 73_000_000;
+  const runwayYears = treasuryAda > 0 ? Math.round(treasuryAda / ANNUAL_BURN_ESTIMATE) : null;
+
+  // Nothing to show
+  if (headlines.length === 0 && treasuryAda === 0) return null;
+
+  return (
+    <div
+      className="rounded-2xl border border-border bg-card p-5 space-y-3"
+      data-discovery="ws-spo-epoch-briefing"
+    >
+      <div className="flex items-center gap-2">
+        <Newspaper className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-lg font-semibold text-foreground">Governance This Epoch</h2>
+      </div>
+
+      {headlines.length > 0 && (
+        <ul className="space-y-1">
+          {headlines.map((h, i) => (
+            <li key={i} className="text-sm text-muted-foreground truncate">
+              <span className="text-primary font-bold mr-1.5">&bull;</span>
+              {h.title}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {treasuryAda > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Treasury: ₳{formatAdaCompact(treasuryAda)}
+          {runwayYears != null && runwayYears > 0 && ` (~${runwayYears} year runway)`}
+        </p>
+      )}
+
+      <Link
+        href="/governance/health"
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+      >
+        View full briefing
+        <ArrowRight className="h-3 w-3" />
+      </Link>
     </div>
   );
 }

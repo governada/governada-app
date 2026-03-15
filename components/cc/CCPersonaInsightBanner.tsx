@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Shield, Users, Server, Eye, Scale } from 'lucide-react';
+import Link from 'next/link';
+import { Shield, Users, Server, Eye, Scale, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 import type {
@@ -9,6 +10,12 @@ import type {
   CCCommitteeStats,
   CommitteeMemberQuickView,
 } from '@/hooks/queries';
+
+interface InsightResult {
+  text: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,17 +58,24 @@ function getIndependenceLabel(avgFidelity: number | null): string {
   return 'low';
 }
 
-function buildCitizenInsight(health: CCHealthSummaryResponse, stats: CCCommitteeStats): string {
+function buildCitizenInsight(
+  health: CCHealthSummaryResponse,
+  stats: CCCommitteeStats,
+): InsightResult {
   const reviewed = stats.totalProposalsReviewed;
   const total = health.totalMembers;
   const independence = getIndependenceLabel(health.avgFidelity);
   if (reviewed > 0) {
-    return `The Constitutional Committee reviewed ${reviewed} proposal${reviewed !== 1 ? 's' : ''} with ${total} active member${total !== 1 ? 's' : ''}. Their independence score is ${independence}.`;
+    return {
+      text: `The Constitutional Committee reviewed ${reviewed} proposal${reviewed !== 1 ? 's' : ''} with ${total} active member${total !== 1 ? 's' : ''}. Their independence score is ${independence}.`,
+    };
   }
-  return `The Constitutional Committee has ${total} member${total !== 1 ? 's' : ''} with an independence score rated ${independence}. They verify whether proposals follow Cardano's constitution.`;
+  return {
+    text: `The Constitutional Committee has ${total} member${total !== 1 ? 's' : ''} with an independence score rated ${independence}. They verify whether proposals follow Cardano's constitution.`,
+  };
 }
 
-function buildDRepInsight(health: CCHealthSummaryResponse, stats: CCCommitteeStats): string {
+function buildDRepInsight(health: CCHealthSummaryResponse, stats: CCCommitteeStats): InsightResult {
   const avgFidelity = health.avgFidelity != null ? Math.round(health.avgFidelity) : null;
   const reviewed = stats.totalProposalsReviewed;
   const tensionAreas: string[] = [];
@@ -70,12 +84,16 @@ function buildDRepInsight(health: CCHealthSummaryResponse, stats: CCCommitteeSta
   const tensionStr =
     tensionAreas.length > 0 ? ` Key tension areas: ${tensionAreas.join(', ')}.` : '';
   if (avgFidelity != null) {
-    return `CC average fidelity score: ${avgFidelity}%. ${health.tensionCount} tension${health.tensionCount !== 1 ? 's' : ''} detected in recent votes.${tensionStr}`;
+    return {
+      text: `CC average fidelity score: ${avgFidelity}%. ${health.tensionCount} tension${health.tensionCount !== 1 ? 's' : ''} detected in recent votes.${tensionStr}`,
+    };
   }
-  return `The CC is currently ${health.status}. ${health.tensionCount} tension${health.tensionCount !== 1 ? 's' : ''} in recent votes.${tensionStr}`;
+  return {
+    text: `The CC is currently ${health.status}. ${health.tensionCount} tension${health.tensionCount !== 1 ? 's' : ''} in recent votes.${tensionStr}`,
+  };
 }
 
-function buildSPOInsight(health: CCHealthSummaryResponse, stats: CCCommitteeStats): string {
+function buildSPOInsight(health: CCHealthSummaryResponse, stats: CCCommitteeStats): InsightResult {
   const status = health.status;
   const reviewed = stats.totalProposalsReviewed;
   const statusLabel =
@@ -84,22 +102,32 @@ function buildSPOInsight(health: CCHealthSummaryResponse, stats: CCCommitteeStat
       : status === 'attention'
         ? 'under scrutiny'
         : 'in critical state';
-  return `The CC is ${statusLabel} with ${reviewed} proposal${reviewed !== 1 ? 's' : ''} reviewed. CC decisions on parameter changes and hard forks directly affect pool operations.`;
+  return {
+    text: `The CC is ${statusLabel} with ${reviewed} proposal${reviewed !== 1 ? 's' : ''} reviewed. CC decisions on parameter changes and hard forks directly affect pool operations.`,
+  };
 }
 
-function buildAnonymousInsight(health: CCHealthSummaryResponse): string {
-  return `The Constitutional Committee checks whether proposals follow Cardano's constitution. Currently ${health.activeMembers} of ${health.totalMembers} members are active.`;
+function buildAnonymousInsight(health: CCHealthSummaryResponse): InsightResult {
+  return {
+    text: `The Constitutional Committee checks whether proposals follow Cardano's constitution. Currently ${health.activeMembers} of ${health.totalMembers} members are active.`,
+  };
 }
 
-function buildCCMemberInsight(members: CommitteeMemberQuickView[]): string {
+function buildCCMemberInsight(members: CommitteeMemberQuickView[]): InsightResult {
   const ranked = members
     .filter((m) => m.rank != null)
     .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
   const total = ranked.length;
   if (total === 0) {
-    return 'Your fidelity ranking is not yet available. Vote on more proposals to build your constitutional track record.';
+    return {
+      text: 'Your fidelity ranking is not yet available. Vote on more proposals to build your constitutional track record.',
+    };
   }
-  return `There are ${total} ranked committee members. Review your fidelity ranking in the member directory below.`;
+  return {
+    text: `There are ${total} active committee members. Your voting record and constitutional reasoning are publicly tracked below.`,
+    ctaLabel: 'Review your fidelity ranking',
+    ctaHref: '/governance/committee',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +137,7 @@ function buildCCMemberInsight(members: CommitteeMemberQuickView[]): string {
 export function CCPersonaInsightBanner({ health, stats, members }: CCPersonaInsightBannerProps) {
   const { segment } = useSegment();
 
-  const insight = useMemo(() => {
+  const insight = useMemo((): InsightResult => {
     switch (segment) {
       case 'citizen':
         return buildCitizenInsight(health, stats);
@@ -139,7 +167,18 @@ export function CCPersonaInsightBanner({ health, stats, members }: CCPersonaInsi
         <div className="mt-0.5 shrink-0">
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">{insight}</p>
+        <div className="space-y-1.5">
+          <p className="text-sm text-muted-foreground leading-relaxed">{insight.text}</p>
+          {insight.ctaHref && insight.ctaLabel && (
+            <Link
+              href={insight.ctaHref}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              {insight.ctaLabel}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

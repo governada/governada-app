@@ -778,18 +778,29 @@ export default async function PoolProfilePage({ params }: PageProps) {
           <PinButton type="pool" id={poolId} label={displayName} />
         </SpoProfileHero>
 
-        {/* Chapter 1.5: Governance Philosophy — prominent accent-bordered statement */}
+        {/* Chapter 1.5: Governance Philosophy — prominent accent-bordered blockquote */}
         {governanceStatement && (
-          <div className="rounded-xl border border-primary/20 bg-card/70 backdrop-blur-md px-5 py-5">
+          <div className="rounded-xl border-l-4 border-l-primary border border-primary/20 bg-card/70 backdrop-blur-md px-5 py-5">
             <div className="flex items-center gap-2 mb-3">
               <MessageSquare className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Governance Philosophy
               </span>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap border-l-2 border-primary/40 pl-4">
-              {governanceStatement}
-            </p>
+            <div className="relative pl-4">
+              <span
+                className="absolute -left-1 -top-2 text-3xl leading-none text-primary/40 select-none"
+                aria-hidden="true"
+              >
+                &ldquo;
+              </span>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap italic">
+                {governanceStatement}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground/70 font-medium">
+                &mdash; {displayName}
+              </p>
+            </div>
           </div>
         )}
 

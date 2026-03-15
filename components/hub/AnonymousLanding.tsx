@@ -86,36 +86,38 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
               <ArrowRight className="h-5 w-5" />
             </Link>
           </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="lg"
-            className="w-full gap-2"
-            onClick={() =>
-              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_secondary' })
-            }
-          >
-            <Link href="/governance">
-              <Compass className="h-4 w-4" />
-              {t("See What's Happening")}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="lg"
-            className="w-full gap-2 text-muted-foreground hover:text-primary"
-            onClick={() =>
-              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_get_started' })
-            }
-          >
-            <Link href="/get-started">
-              <Rocket className="h-4 w-4" />
-              {t('New to Cardano Governance? Get Started')}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="w-full gap-2"
+              onClick={() =>
+                trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_secondary' })
+              }
+            >
+              <Link href="/governance">
+                <Compass className="h-4 w-4" />
+                {t("See What's Happening")}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="w-full gap-2"
+              onClick={() =>
+                trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_get_started' })
+              }
+            >
+              <Link href="/get-started">
+                <Rocket className="h-4 w-4" />
+                {t('Get Started')}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Narrative social proof — frames raw numbers as personal stakes */}

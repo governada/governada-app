@@ -198,16 +198,26 @@ export const GET = withRouteHandler(async (request) => {
         action = `Check Railway/Inngest logs for ${config.label}. Retrigger via Inngest Cloud (event: ${config.event}).`;
       }
 
-      // Show success rate to give context — a single transient failure among hundreds
-      // of successes is very different from a pattern of repeated failures.
+      // Determine severity: a single transient failure among hundreds of successes
+      // is a warning, not critical. Only escalate if there's a pattern of failures.
       const successRate = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 0;
       const failureContext =
         successRate >= 95
           ? `${failureCount} failures out of ${totalCount} runs (${successRate}% success rate)`
           : `${failureCount}/${totalCount} runs failed`;
 
+      // Transient: high success rate + known transient error (429, 503, deployment restart).
+      const isTransient =
+        successRate >= 95 &&
+        (row.last_error?.includes('429') ||
+          row.last_error?.includes('503') ||
+          row.last_error?.includes('deployment restart') ||
+          row.last_error?.includes('Process terminated') ||
+          !row.last_error);
+      const level = isTransient ? 'warning' : 'critical';
+
       alerts.push({
-        level: 'critical',
+        level,
         metric: `${config.label} — Last Run Failed`,
         value: `${errorDetail}\n${failureContext} · ${runAge}`,
         threshold: 'must succeed',

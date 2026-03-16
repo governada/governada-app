@@ -11,6 +11,7 @@ import {
   BarChart3,
   Medal,
   Activity,
+  Shield,
 } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
@@ -19,6 +20,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DepthUpgradeNudge } from '@/components/shared/DepthUpgradeNudge';
 import { GovernanceDelegationProof } from './GovernanceDelegationProof';
+import {
+  type AlignmentScores,
+  getPersonalityLabel,
+  getDominantDimension,
+  getIdentityColor,
+} from '@/lib/drepIdentity';
+import { computeTier } from '@/lib/scoring/tiers';
 
 // Types for competitive endpoint data
 interface NeighborPool {
@@ -102,6 +110,25 @@ export function SPOCockpit() {
   const neighbors = (competitive?.neighbors as NeighborPool[]) ?? [];
   const scoreHistory = (competitive?.scoreHistory as ScoreSnapshot[]) ?? [];
 
+  // Identity badge: personality from alignment data, fallback to tier
+  const alignment = (summary as Record<string, unknown> | undefined)?.alignment as
+    | AlignmentScores
+    | undefined;
+  const hasAlignment =
+    alignment != null &&
+    (alignment.treasuryConservative != null ||
+      alignment.treasuryGrowth != null ||
+      alignment.decentralization != null ||
+      alignment.security != null ||
+      alignment.innovation != null ||
+      alignment.transparency != null);
+  const personalityLabel = hasAlignment ? getPersonalityLabel(alignment!) : null;
+  const identityColor = hasAlignment ? getIdentityColor(getDominantDimension(alignment!)) : null;
+  const tier =
+    (pool?.tier as string) ??
+    ((summary as Record<string, unknown> | undefined)?.tier as string | undefined) ??
+    (score > 0 ? computeTier(score) : null);
+
   // Determine delegation growth framing
   const isGrowing = momentum === 'rising' || (scoreDelta != null && scoreDelta > 0);
   const isShrinking = momentum === 'falling' || (scoreDelta != null && scoreDelta < 0);
@@ -160,6 +187,25 @@ export function SPOCockpit() {
             </p>
           </div>
         </div>
+
+        {/* Identity badge — all depths (governance personality or tier) */}
+        {(personalityLabel || tier) && (
+          <div className="flex items-center gap-1.5">
+            <Shield
+              className="h-3.5 w-3.5 shrink-0"
+              style={{ color: identityColor?.hex ?? 'currentColor' }}
+            />
+            <span
+              className="text-sm font-medium"
+              style={{ color: identityColor?.hex ?? undefined }}
+            >
+              {personalityLabel ?? tier}
+            </span>
+            {personalityLabel && tier && (
+              <span className="text-xs text-muted-foreground">&middot; {tier}</span>
+            )}
+          </div>
+        )}
 
         {/* Delegation metrics — informed+ (operational detail) */}
         <DepthGate minDepth="informed">

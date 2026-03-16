@@ -6,6 +6,7 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
 import { useTreasuryPending } from '@/hooks/queries';
 import { useDRepTreasuryRecord } from '@/hooks/useDRepTreasuryRecord';
+import { DepthGate } from '@/components/providers/DepthGate';
 
 /** Approximate circulating ADA supply (~37B). Updated periodically by sync. */
 const CIRCULATING_SUPPLY_ADA = 37_000_000_000;
@@ -78,60 +79,64 @@ export function TreasuryPersonalImpact({
           </div>
         )}
 
-        {/* DRep voting record summary */}
-        {hasDRepData && record && (
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            <div>
-              <span className="text-muted-foreground">{label} approved </span>
-              <span className="font-semibold text-emerald-400">
-                ₳{formatAda(record.approvedAda)}
-              </span>
-              <span className="text-muted-foreground text-xs ml-1">
-                ({record.approvedCount} proposals)
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{label} opposed </span>
-              <span className="font-semibold text-red-400">₳{formatAda(record.opposedAda)}</span>
-              <span className="text-muted-foreground text-xs ml-1">({record.opposedCount})</span>
-            </div>
-            {record.abstainedCount > 0 && (
+        {/* DRep voting record & judgment — engaged+ (detailed analysis) */}
+        <DepthGate minDepth="engaged">
+          {hasDRepData && record && (
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
               <div>
-                <span className="text-muted-foreground">Abstained </span>
-                <span className="font-semibold">{record.abstainedCount}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Judgment score */}
-        {hasDRepData && record?.judgmentScore !== null && record?.judgmentScore !== undefined && (
-          <div className="text-sm">
-            <span className="text-muted-foreground">
-              Of what {isCitizen ? 'they' : 'you'} approved,{' '}
-            </span>
-            <span className="font-semibold">{record.judgmentScore}%</span>
-            <span className="text-muted-foreground"> delivered results</span>
-          </div>
-        )}
-
-        {/* Pending impact projection */}
-        {pendingTotalAda > 0 && (
-          <div className="text-sm text-muted-foreground pt-2 border-t border-border/30">
-            If all {pending?.proposals.length ?? 0} pending proposals pass:{' '}
-            <span className="font-semibold text-foreground">₳{formatAda(pendingTotalAda)}</span>{' '}
-            leaves the treasury
-            {postPendingUtilization !== null && nclUtilizationPct !== null && (
-              <span>
-                {' '}
-                — budget utilization{' '}
-                <span className="font-semibold text-foreground">
-                  {Math.round(nclUtilizationPct)}% → {postPendingUtilization}%
+                <span className="text-muted-foreground">{label} approved </span>
+                <span className="font-semibold text-emerald-400">
+                  ₳{formatAda(record.approvedAda)}
                 </span>
+                <span className="text-muted-foreground text-xs ml-1">
+                  ({record.approvedCount} proposals)
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">{label} opposed </span>
+                <span className="font-semibold text-red-400">₳{formatAda(record.opposedAda)}</span>
+                <span className="text-muted-foreground text-xs ml-1">({record.opposedCount})</span>
+              </div>
+              {record.abstainedCount > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Abstained </span>
+                  <span className="font-semibold">{record.abstainedCount}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Judgment score */}
+          {hasDRepData && record?.judgmentScore !== null && record?.judgmentScore !== undefined && (
+            <div className="text-sm">
+              <span className="text-muted-foreground">
+                Of what {isCitizen ? 'they' : 'you'} approved,{' '}
               </span>
-            )}
-          </div>
-        )}
+              <span className="font-semibold">{record.judgmentScore}%</span>
+              <span className="text-muted-foreground"> delivered results</span>
+            </div>
+          )}
+        </DepthGate>
+
+        {/* Pending impact projection — engaged+ */}
+        <DepthGate minDepth="engaged">
+          {pendingTotalAda > 0 && (
+            <div className="text-sm text-muted-foreground pt-2 border-t border-border/30">
+              If all {pending?.proposals.length ?? 0} pending proposals pass:{' '}
+              <span className="font-semibold text-foreground">₳{formatAda(pendingTotalAda)}</span>{' '}
+              leaves the treasury
+              {postPendingUtilization !== null && nclUtilizationPct !== null && (
+                <span>
+                  {' '}
+                  — budget utilization{' '}
+                  <span className="font-semibold text-foreground">
+                    {Math.round(nclUtilizationPct)}% → {postPendingUtilization}%
+                  </span>
+                </span>
+              )}
+            </div>
+          )}
+        </DepthGate>
       </div>
     </div>
   );

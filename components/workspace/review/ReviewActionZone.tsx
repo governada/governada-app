@@ -30,7 +30,9 @@ import { ContributionOverlapBanner } from './ContributionOverlapBanner';
 import { DiversityFields } from './DiversityFields';
 import { PostVoteShare } from './PostVoteShare';
 import { ScoreImpactPreview } from './ScoreImpactPreview';
+import { useSaveJournalEntry } from '@/hooks/useDecisionJournal';
 import type { ReviewQueueItem } from '@/lib/workspace/types';
+import type { JournalPosition } from '@/lib/workspace/types';
 
 interface ReviewActionZoneProps {
   item: ReviewQueueItem;
@@ -241,6 +243,7 @@ export function ReviewActionZone({
   const { connected, ownDRepId } = useWallet();
   const { segment, poolId, isViewingAs, drepId: overrideDrepId } = useSegment();
   const { phase, startVote, confirmVote, reset, isProcessing, canVote: hookCanVote } = useVote();
+  const saveJournal = useSaveJournalEntry();
 
   // Determine voter role and credential from segment
   const voterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
@@ -273,6 +276,27 @@ export function ReviewActionZone({
       setFlowStep('success');
       onVote?.(item.txHash, item.proposalIndex, selectedVote || 'Yes');
 
+      // Persist diversity fields to decision journal
+      const hasDiversityData =
+        steelmanText.trim().length > 0 ||
+        keyAssumptions.trim().length > 0 ||
+        diversityConfidence !== 50;
+      if (hasDiversityData) {
+        const voteToPosition: Record<string, JournalPosition> = {
+          Yes: 'lean_yes',
+          No: 'lean_no',
+          Abstain: 'undecided',
+        };
+        saveJournal.mutate({
+          proposalTxHash: item.txHash,
+          proposalIndex: item.proposalIndex,
+          position: voteToPosition[selectedVote || 'Yes'] ?? 'undecided',
+          confidence: diversityConfidence,
+          steelmanText: steelmanText.trim() || undefined,
+          keyAssumptions: keyAssumptions.trim() || undefined,
+        });
+      }
+
       import('@/lib/posthog')
         .then(({ posthog }) => {
           posthog.capture('review_vote_cast', {
@@ -281,6 +305,7 @@ export function ReviewActionZone({
             vote: selectedVote,
             voter_role: voterRole,
             had_rationale: rationaleText.trim().length > 0,
+            had_diversity_fields: hasDiversityData,
           });
         })
         .catch(() => {});

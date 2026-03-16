@@ -216,7 +216,7 @@ export function GovernadaHeader() {
         'sticky top-0 z-50 hidden md:block transition-[background-color,border-color,backdrop-filter] duration-300',
         headerTransparent
           ? 'bg-transparent'
-          : 'border-b border-border/30 bg-background/80 backdrop-blur-xl',
+          : 'border-b border-border/20 bg-background/60 backdrop-blur-xl',
       )}
     >
       <div className="mx-auto max-w-7xl flex items-center justify-between h-14 px-6">

@@ -187,20 +187,34 @@ export function GovernadaSPOCard({ pool, rank }: GovernadaSPOCardProps) {
 
         {/* Key metrics row */}
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-2 flex-wrap">
-          <span className="tabular-nums font-medium">
+          <span
+            className="tabular-nums font-medium"
+            title="Total governance votes cast by this pool"
+          >
             {pool.voteCount} vote{pool.voteCount !== 1 ? 's' : ''}
           </span>
           {pool.participationPct != null && (
-            <span className="tabular-nums">{Math.round(pool.participationPct)}% participation</span>
+            <span
+              className="tabular-nums"
+              title="Percentage of eligible proposals this pool voted on"
+            >
+              {Math.round(pool.participationPct)}% participation
+            </span>
           )}
           {pool.delegatorCount > 0 && (
-            <span className="flex items-center gap-0.5 tabular-nums">
+            <span
+              className="flex items-center gap-0.5 tabular-nums"
+              title="Number of wallets delegating to this pool"
+            >
               <Users className="h-3 w-3" />
               {pool.delegatorCount.toLocaleString()}
             </span>
           )}
           {pool.liveStakeAda > 0 && (
-            <span className="flex items-center gap-0.5 tabular-nums">
+            <span
+              className="flex items-center gap-0.5 tabular-nums"
+              title="Total ADA delegated to this pool (voting power)"
+            >
               <Coins className="h-3 w-3" />₳{formatAda(pool.liveStakeAda)}
             </span>
           )}
@@ -209,13 +223,22 @@ export function GovernadaSPOCard({ pool, rank }: GovernadaSPOCardProps) {
         {/* Footer: momentum + CTA */}
         <div className="mt-auto flex items-center justify-between pt-2 border-t border-border/30">
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-0.5">
+            <span className="flex items-center gap-0.5" title="Score trend over recent epochs">
               {momentum !== null && momentum > 0.5 ? (
-                <TrendingUp className="h-3 w-3 text-emerald-400" aria-hidden="true" />
+                <>
+                  <TrendingUp className="h-3 w-3 text-emerald-400" aria-hidden="true" />
+                  <span className="text-emerald-400">Rising</span>
+                </>
               ) : momentum !== null && momentum < -0.5 ? (
-                <TrendingDown className="h-3 w-3 text-rose-400" aria-hidden="true" />
+                <>
+                  <TrendingDown className="h-3 w-3 text-rose-400" aria-hidden="true" />
+                  <span className="text-rose-400">Falling</span>
+                </>
               ) : (
-                <Minus className="h-3 w-3 text-muted-foreground/40" aria-hidden="true" />
+                <>
+                  <Minus className="h-3 w-3 text-muted-foreground/40" aria-hidden="true" />
+                  <span>Stable</span>
+                </>
               )}
             </span>
             {isProvisional && <span className="text-amber-500/80">Provisional</span>}

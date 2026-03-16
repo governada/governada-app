@@ -65,7 +65,7 @@ export function GovernanceTemperature() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Thermometer className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-bold">Governance Temperature</h3>
+          <h3 className="text-sm font-bold">Governance Pulse</h3>
         </div>
         <span className="text-xs text-muted-foreground">Epoch {data.epoch}</span>
       </div>

@@ -69,7 +69,12 @@ export function DRepDetailedAnalysis({ children }: DRepDetailedAnalysisProps) {
     return <>{children}</>;
   }
 
-  // Citizens, anonymous, and loading state: show collapsed gate (stable layout)
+  // Anonymous users: hide detailed analysis entirely
+  if (!isLoading && segment === 'anonymous') {
+    return null;
+  }
+
+  // Citizens and loading state: show collapsed gate (stable layout)
   return (
     <div className="space-y-4" ref={gateRef}>
       {!expanded && (

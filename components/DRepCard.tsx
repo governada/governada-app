@@ -36,9 +36,21 @@ export function DRepCard({
   const score = drep.drepScore ?? 0;
 
   const pillarBars = [
-    { label: 'Participation', value: drep.effectiveParticipation },
-    { label: 'Rationale', value: drep.rationaleRate },
-    { label: 'Reliability', value: drep.reliabilityScore },
+    {
+      label: 'Participation',
+      value: drep.effectiveParticipation,
+      tooltip: 'How often this DRep votes on available proposals',
+    },
+    {
+      label: 'Rationale',
+      value: drep.rationaleRate,
+      tooltip: 'How consistently this DRep explains their votes',
+    },
+    {
+      label: 'Reliability',
+      value: drep.reliabilityScore,
+      tooltip: 'Can delegators count on this DRep to keep showing up?',
+    },
   ];
 
   return (
@@ -135,7 +147,7 @@ export function DRepCard({
       {/* Pillar mini-bars */}
       <div className="grid grid-cols-3 gap-2">
         {pillarBars.map((pillar) => (
-          <div key={pillar.label} className="space-y-0.5">
+          <div key={pillar.label} className="space-y-0.5" title={pillar.tooltip}>
             <div className="flex justify-between text-[10px] text-muted-foreground">
               <span>{pillar.label}</span>
               <span className="tabular-nums">{Math.round(pillar.value)}%</span>

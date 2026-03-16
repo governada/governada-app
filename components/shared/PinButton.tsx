@@ -2,6 +2,7 @@
 
 import { Pin, PinOff } from 'lucide-react';
 import { usePinnedItems, type PinnedEntityType } from '@/hooks/usePinnedItems';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -17,7 +18,11 @@ interface PinButtonProps {
  */
 export function PinButton({ type, id, label }: PinButtonProps) {
   const { isPinned, pin, unpin } = usePinnedItems();
+  const { segment } = useSegment();
   const pinned = isPinned(type, id);
+
+  // Anonymous users cannot pin — requires wallet connection
+  if (segment === 'anonymous') return null;
 
   return (
     <TooltipProvider>

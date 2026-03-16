@@ -296,7 +296,7 @@ export function QuickMatchFlow() {
     <div className="min-h-[calc(100vh-3.5rem)] flex flex-col">
       {/* Progress bar */}
       {typeof step === 'number' && (
-        <div className="sticky top-14 z-10 bg-background/80 backdrop-blur-sm border-b border-border/30">
+        <div className="sticky top-14 z-10 bg-background border-b border-border/50">
           <div className="mx-auto max-w-2xl px-4 py-3">
             <div className="flex items-center gap-3">
               <button
@@ -736,53 +736,58 @@ function ResultsScreen({
         <ShareButton results={drepResults} />
       </div>
 
-      {/* Tab toggle */}
-      <div className="flex justify-center">
-        <div
-          className="inline-flex rounded-lg border border-border p-0.5 bg-muted/30"
-          role="tablist"
-          aria-label="Match results"
-        >
-          <button
-            onClick={() => setActiveTab('drep')}
-            role="tab"
-            aria-selected={activeTab === 'drep'}
-            className={cn(
-              'px-4 py-1.5 rounded-md text-sm font-medium transition-all',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-              activeTab === 'drep'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
+      {/* Team explanation + tab toggle */}
+      <div className="space-y-3">
+        <div className="text-center max-w-md mx-auto">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Your governance team has two roles: <strong className="text-foreground">a DRep</strong>{' '}
+            who votes on proposals for you, and <strong className="text-foreground">an SPO</strong>{' '}
+            who secures the network. Pick one of each.
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <div
+            className="inline-flex rounded-lg border border-border p-0.5 bg-muted/30"
+            role="tablist"
+            aria-label="Match results"
           >
-            <Users className="h-3.5 w-3.5 inline mr-1.5" aria-hidden="true" />
-            DReps
-            {drepResults.matches.length > 0 && (
-              <span className="ml-1.5 text-xs text-muted-foreground">
-                ({drepResults.matches.length})
+            <button
+              onClick={() => setActiveTab('drep')}
+              role="tab"
+              aria-selected={activeTab === 'drep'}
+              className={cn(
+                'px-5 py-2 rounded-md text-sm font-medium transition-all',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                activeTab === 'drep'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Users className="h-4 w-4 inline mr-1.5" aria-hidden="true" />
+              DReps
+              <span className="ml-1 text-[10px] text-muted-foreground/80 block">
+                Votes on proposals
               </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('spo')}
-            role="tab"
-            aria-selected={activeTab === 'spo'}
-            className={cn(
-              'px-4 py-1.5 rounded-md text-sm font-medium transition-all',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-              activeTab === 'spo'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Server className="h-3.5 w-3.5 inline mr-1.5" aria-hidden="true" />
-            SPOs
-            {spoResults.matches.length > 0 && (
-              <span className="ml-1.5 text-xs text-muted-foreground">
-                ({spoResults.matches.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('spo')}
+              role="tab"
+              aria-selected={activeTab === 'spo'}
+              className={cn(
+                'px-5 py-2 rounded-md text-sm font-medium transition-all',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                activeTab === 'spo'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Server className="h-4 w-4 inline mr-1.5" aria-hidden="true" />
+              SPOs
+              <span className="ml-1 text-[10px] text-muted-foreground/80 block">
+                Secures the network
               </span>
-            )}
-          </button>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -825,6 +830,7 @@ function ResultsScreen({
                           userAlignments={drepResults.userAlignments}
                           drepAlignments={heroMatch.alignments}
                           size={180}
+                          animate
                         />
                       </div>
                       <div className="text-center space-y-2">

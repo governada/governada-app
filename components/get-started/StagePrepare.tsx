@@ -78,10 +78,14 @@ function WalletRecommendations({ onDone }: { onDone: () => void }) {
       variants={staggerContainer}
       className="space-y-4"
     >
-      <motion.div variants={fadeInUp} className="space-y-1">
+      <motion.div variants={fadeInUp} className="space-y-2">
         <h3 className="text-lg font-semibold">Recommended Wallets</h3>
         <p className="text-sm text-muted-foreground">
           You need a Cardano wallet to participate in governance. Here are our top picks.
+        </p>
+        <p className="text-xs text-blue-300/80">
+          A wallet is like a digital keychain — it lets you prove ownership of your ADA without ever
+          giving anyone access to it. Your funds remain fully in your control.
         </p>
       </motion.div>
 
@@ -418,6 +422,10 @@ export function StagePrepare({ passport, onComplete }: StagePrepareProps) {
             <h1 className="text-2xl font-bold tracking-tight">Get the tools you need</h1>
             <p className="text-muted-foreground">
               To participate in governance, you need a Cardano wallet. Which best describes you?
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Don&apos;t worry — your ADA never leaves your wallet. Delegation and staking are safe,
+              reversible, and fee-free.
             </p>
           </motion.div>
 

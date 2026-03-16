@@ -73,7 +73,9 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   ]);
 
   const safeVotes = votes ?? [];
-  if (safeVotes.length === 0) notFound();
+
+  // Allow pages for CC members with no votes yet (newly seated members)
+  if (safeVotes.length === 0 && !member) notFound();
 
   // Build lookups
   const proposalMap = new Map<string, { title: string | null; type: string }>();

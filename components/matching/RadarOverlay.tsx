@@ -16,6 +16,8 @@ interface RadarOverlayProps {
   drepAlignments: AlignmentScores | null | undefined;
   size?: number;
   className?: string;
+  /** Animate the two shapes merging together */
+  animate?: boolean;
 }
 
 const PADDING = 20;
@@ -44,6 +46,7 @@ export function RadarOverlay({
   drepAlignments,
   size = 160,
   className,
+  animate = false,
 }: RadarOverlayProps) {
   const cx = size / 2;
   const cy = size / 2;
@@ -98,6 +101,10 @@ export function RadarOverlay({
 
   const rings = [0.25, 0.5, 0.75, 1];
   const showLabels = size >= 140;
+
+  // Animation offset — shapes start displaced and merge together
+  const offset = size * 0.15;
+  const animDuration = '1.2s';
 
   return (
     <svg
@@ -163,65 +170,120 @@ export function RadarOverlay({
       })}
 
       {/* Entity shape (background) — with gradient fill and glow */}
-      <polygon
-        points={drepPoints}
-        fill={`url(#${uid}-entity)`}
-        stroke={entityColor.hex}
-        strokeWidth={1.5}
-        strokeOpacity={0.6}
-        strokeLinejoin="round"
-        filter={`url(#${uid}-glow)`}
-      />
-      <polygon
-        points={drepPoints}
-        fill={`url(#${uid}-entity)`}
-        stroke={entityColor.hex}
-        strokeWidth={1.5}
-        strokeOpacity={0.7}
-        strokeLinejoin="round"
-      />
+      <g>
+        {animate && (
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            from={`${offset} 0`}
+            to="0 0"
+            dur={animDuration}
+            fill="freeze"
+            calcMode="spline"
+            keySplines="0.16 1 0.3 1"
+          />
+        )}
+        <polygon
+          points={drepPoints}
+          fill={`url(#${uid}-entity)`}
+          stroke={entityColor.hex}
+          strokeWidth={1.5}
+          strokeOpacity={0.6}
+          strokeLinejoin="round"
+          filter={`url(#${uid}-glow)`}
+        />
+        <polygon
+          points={drepPoints}
+          fill={`url(#${uid}-entity)`}
+          stroke={entityColor.hex}
+          strokeWidth={1.5}
+          strokeOpacity={0.7}
+          strokeLinejoin="round"
+        />
+        {/* Vertex dots for entity */}
+        {drepScores.map((score, i) => {
+          const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+          const r = maxR * (score / 100);
+          return (
+            <circle
+              key={`e-${i}`}
+              cx={cx + r * Math.cos(angle)}
+              cy={cy + r * Math.sin(angle)}
+              r={1.5}
+              fill={entityColor.hex}
+              opacity={0.7}
+            />
+          );
+        })}
+      </g>
 
       {/* User shape (foreground) — with gradient fill */}
-      <polygon
-        points={userPoints}
-        fill={`url(#${uid}-user)`}
-        stroke={userColor.hex}
-        strokeWidth={1.5}
-        strokeOpacity={0.8}
-        strokeLinejoin="round"
-      />
-
-      {/* Vertex dots for entity */}
-      {drepScores.map((score, i) => {
-        const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
-        const r = maxR * (score / 100);
-        return (
-          <circle
-            key={`e-${i}`}
-            cx={cx + r * Math.cos(angle)}
-            cy={cy + r * Math.sin(angle)}
-            r={1.5}
-            fill={entityColor.hex}
-            opacity={0.7}
+      <g>
+        {animate && (
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            from={`${-offset} 0`}
+            to="0 0"
+            dur={animDuration}
+            fill="freeze"
+            calcMode="spline"
+            keySplines="0.16 1 0.3 1"
           />
-        );
-      })}
+        )}
+        <polygon
+          points={userPoints}
+          fill={`url(#${uid}-user)`}
+          stroke={userColor.hex}
+          strokeWidth={1.5}
+          strokeOpacity={0.8}
+          strokeLinejoin="round"
+        />
+        {/* Vertex dots for user */}
+        {userScores.map((score, i) => {
+          const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+          const r = maxR * (score / 100);
+          return (
+            <circle
+              key={`u-${i}`}
+              cx={cx + r * Math.cos(angle)}
+              cy={cy + r * Math.sin(angle)}
+              r={1.5}
+              fill={userColor.hex}
+              opacity={0.8}
+            />
+          );
+        })}
+      </g>
 
-      {/* Vertex dots for user */}
-      {userScores.map((score, i) => {
-        const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
-        const r = maxR * (score / 100);
-        return (
-          <circle
-            key={`u-${i}`}
-            cx={cx + r * Math.cos(angle)}
-            cy={cy + r * Math.sin(angle)}
-            r={1.5}
+      {/* Legend — which shape is you vs your match */}
+      {animate && showLabels && (
+        <g opacity={0}>
+          <animate attributeName="opacity" from="0" to="1" begin="0.8s" dur="0.5s" fill="freeze" />
+          <circle cx={PADDING} cy={size - 10} r={3} fill={userColor.hex} opacity={0.8} />
+          <text
+            x={PADDING + 7}
+            y={size - 10}
+            dominantBaseline="central"
+            fontSize={7}
             fill={userColor.hex}
             opacity={0.8}
-          />
-        );
-      })}
+          >
+            You
+          </text>
+          <circle cx={PADDING + 34} cy={size - 10} r={3} fill={entityColor.hex} opacity={0.7} />
+          <text
+            x={PADDING + 41}
+            y={size - 10}
+            dominantBaseline="central"
+            fontSize={7}
+            fill={entityColor.hex}
+            opacity={0.7}
+          >
+            Match
+          </text>
+        </g>
+      )}
 
       {/* Dimension labels — only on larger sizes */}
       {showLabels &&

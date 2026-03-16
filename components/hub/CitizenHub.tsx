@@ -26,6 +26,7 @@ import {
   Sparkles,
   Share2,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { briefingContainer, briefingItem, spring } from '@/lib/animations';
@@ -507,6 +508,8 @@ function PoolAndCoverage({
   const poolName = (pool?.poolName as string) || (pool?.ticker as string) || null;
   const ticker = (pool?.ticker as string) ?? '';
   const govScore = Math.round((pool?.governanceScore as number) ?? 0);
+  const poolStatus = (pool?.poolStatus as string) ?? 'registered';
+  const isPoolRetiring = poolStatus === 'retiring';
   const poolParticipation = Math.round((pool?.participationRate as number) ?? 0);
   const poolVoteCount = (pool?.voteCount as number) ?? 0;
   const poolIsGovActive = poolVoteCount > 0;
@@ -563,6 +566,21 @@ function PoolAndCoverage({
           style={{ width: `${coveragePct}%` }}
         />
       </div>
+
+      {/* Pool retiring alert */}
+      {isPoolRetiring && delegatedPool && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-amber-400">
+              Your stake pool is scheduled to retire
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              You may want to choose a new pool to maintain your governance coverage.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Pool info */}
       {delegatedPool && poolName && (

@@ -218,7 +218,7 @@ export function SPOCockpit() {
             </div>
             <div className="rounded-xl bg-muted/50 p-3 text-center">
               <p className="text-xl font-bold tabular-nums text-foreground">
-                {liveStakeAda > 0 ? `₳${formatAdaCompact(liveStakeAda)}` : '—'}
+                {liveStakeAda > 0 ? `₳${formatAdaCompact(liveStakeAda)}` : 'Syncing...'}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">Voting Power</p>
             </div>

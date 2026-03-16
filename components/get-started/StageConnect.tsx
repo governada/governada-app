@@ -162,12 +162,18 @@ export function StageConnect({ passport, onComplete, onGoBack }: StageConnectPro
       {/* Trust messaging */}
       <motion.div
         variants={fadeInUp}
-        className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-950/20 px-4 py-3 max-w-md"
+        className="rounded-lg border border-blue-500/20 bg-blue-950/20 px-4 py-3 max-w-md space-y-2"
       >
-        <Shield className="h-4 w-4 mt-0.5 shrink-0 text-blue-400" />
-        <p className="text-xs text-blue-300">
-          Read-only connection. We never request transactions or access to your funds.
-        </p>
+        <div className="flex items-start gap-2">
+          <Shield className="h-4 w-4 mt-0.5 shrink-0 text-blue-400" />
+          <p className="text-xs text-blue-300 font-medium">Your funds are completely safe</p>
+        </div>
+        <ul className="text-xs text-blue-300/80 space-y-1 pl-6">
+          <li>Read-only connection — we never request transactions</li>
+          <li>Your ADA stays in your wallet at all times</li>
+          <li>Delegation doesn&apos;t move or lock your funds</li>
+          <li>You can disconnect or change delegation anytime</li>
+        </ul>
       </motion.div>
 
       {/* Wallet list */}

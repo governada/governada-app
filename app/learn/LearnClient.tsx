@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import {
   BookOpen,
@@ -9,15 +8,10 @@ import {
   Vote,
   Shield,
   Scale,
-  Search,
-  X,
   Rocket,
   ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
-import { GOV_TERMS, type GovTermDef } from '@/lib/microcopy';
-import { useSegment } from '@/components/providers/SegmentProvider';
 
 const GETTING_STARTED = [
   {
@@ -58,27 +52,7 @@ const GETTING_STARTED = [
   },
 ];
 
-function getWhyItMatters(term: GovTermDef, segment: string): string {
-  if (segment in term.whyItMatters) {
-    return (term.whyItMatters as Record<string, string>)[segment];
-  }
-  return term.whyItMatters.default;
-}
-
 export function LearnClient() {
-  const [search, setSearch] = useState('');
-  const { segment } = useSegment();
-
-  const termEntries = Object.entries(GOV_TERMS);
-  const filteredTerms = search.trim()
-    ? termEntries.filter(
-        ([key, term]) =>
-          term.label.toLowerCase().includes(search.toLowerCase()) ||
-          term.definition.toLowerCase().includes(search.toLowerCase()) ||
-          key.toLowerCase().includes(search.toLowerCase()),
-      )
-    : termEntries;
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -145,47 +119,24 @@ export function LearnClient() {
         </div>
       </section>
 
-      {/* Governance Glossary */}
+      {/* Governance Glossary — link to dedicated page */}
       <section data-discovery="help-methodology">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Governance Glossary</h2>
-          <span className="text-xs text-muted-foreground">{filteredTerms.length} terms</span>
-        </div>
-
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search terms…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-border divide-y divide-border/50 overflow-hidden">
-          {filteredTerms.map(([key, term]) => (
-            <div key={key} className="px-5 py-4 space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">{term.label}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{term.definition}</p>
-              <p className="text-xs text-primary/80 leading-relaxed">
-                {getWhyItMatters(term, segment)}
-              </p>
-            </div>
-          ))}
-          {filteredTerms.length === 0 && (
-            <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-              No terms match your search.
-            </div>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold mb-4">Governance Glossary</h2>
+        <Link
+          href="/help/glossary"
+          className="group flex items-center gap-4 rounded-xl border border-border/50 bg-card/70 backdrop-blur-md hover:bg-accent/50 transition-colors p-5"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+            <BookOpen className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Browse the full glossary</p>
+            <p className="text-xs text-muted-foreground">
+              100+ governance terms explained in plain language, organized by category.
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
       </section>
     </div>
   );

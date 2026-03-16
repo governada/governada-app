@@ -19,7 +19,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   const { data: pool } = await supabase
     .from('pools')
     .select(
-      'pool_id, ticker, pool_name, governance_score, vote_count, participation_pct, consistency_pct, reliability_pct, deliberation_pct, governance_identity_pct, confidence, delegator_count, live_stake_lovelace, claimed_by, score_momentum, current_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+      'pool_id, ticker, pool_name, governance_score, vote_count, participation_pct, consistency_pct, reliability_pct, deliberation_pct, governance_identity_pct, confidence, delegator_count, live_stake_lovelace, claimed_by, score_momentum, current_tier, pool_status, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
     )
     .eq('pool_id', poolId)
     .single();
@@ -68,6 +68,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
         : 0,
       scoreDelta,
       momentum: pool.score_momentum ?? null,
+      poolStatus: pool.pool_status ?? 'registered',
       alignment: {
         treasuryConservative: pool.alignment_treasury_conservative,
         treasuryGrowth: pool.alignment_treasury_growth,

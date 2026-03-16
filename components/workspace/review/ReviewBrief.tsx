@@ -11,6 +11,12 @@ import { SealedBanner } from './SealedBanner';
 import { IntelligenceBlocks } from './IntelligenceBlocks';
 import { CompetingComparison } from './CompetingComparison';
 import { SourceMaterial } from './SourceMaterial';
+import { TreasuryImpactWidget } from './TreasuryImpactWidget';
+import { ProposalHealthScore } from './ProposalHealthScore';
+import { ProposerTrackRecord } from './ProposerTrackRecord';
+import { EngagementAnalytics } from './EngagementAnalytics';
+import { CommunityTemperature } from './CommunityTemperature';
+import { PublicFeedbackSummary } from './PublicFeedbackSummary';
 import { FeatureGate } from '@/components/FeatureGate';
 
 interface ReviewBriefProps {
@@ -80,18 +86,21 @@ export function ReviewBrief({ item, allItems = [] }: ReviewBriefProps) {
               {(item.withdrawalAmount / 1_000_000).toLocaleString()} ADA
             </span>
           )}
+          <ProposalHealthScore item={item} />
         </div>
       </div>
 
       {/* Sealed Banner */}
       {isSealed && <SealedBanner sealedUntil={item.sealedUntil!} />}
 
-      {/* Proposal Content — front and center */}
+      {/* Proposal Content — front and center, with inline annotations support */}
       <ProposalContent
         abstract={item.abstract}
         motivation={item.motivation}
         rationale={item.rationale}
         references={item.references}
+        proposalTxHash={item.txHash}
+        proposalIndex={item.proposalIndex}
       />
 
       {/* Intelligence & Analysis — collapsible */}
@@ -156,13 +165,34 @@ export function ReviewBrief({ item, allItems = [] }: ReviewBriefProps) {
               </div>
             )}
 
-            {/* Citizen Sentiment — hidden when sealed */}
-            {!isSealed && item.citizenSentiment != null && (
-              <div className="space-y-1.5">
-                <h3 className="text-sm font-semibold text-muted-foreground">Citizen Sentiment</h3>
-                <SentimentBar sentiment={item.citizenSentiment} />
-              </div>
-            )}
+            {/* Community Temperature — enhanced sentiment with signal strength */}
+            {!isSealed && <CommunityTemperature sentiment={item.citizenSentiment} />}
+
+            {/* Treasury Impact — only for TreasuryWithdrawals */}
+            <TreasuryImpactWidget
+              withdrawalAmount={item.withdrawalAmount ?? 0}
+              proposalType={item.proposalType}
+            />
+
+            {/* Proposer Track Record */}
+            <ProposerTrackRecord proposalTxHash={item.txHash} proposalIndex={item.proposalIndex} />
+
+            {/* Engagement Analytics — only visible to proposal author */}
+            <FeatureGate flag="review_engagement_analytics">
+              <EngagementAnalytics
+                txHash={item.txHash}
+                proposalIndex={item.proposalIndex}
+                isAuthor={false}
+              />
+            </FeatureGate>
+
+            {/* Public Feedback Summary */}
+            <FeatureGate flag="proposal_public_feedback">
+              <PublicFeedbackSummary
+                proposalTxHash={item.txHash}
+                proposalIndex={item.proposalIndex}
+              />
+            </FeatureGate>
           </div>
         )}
       </div>
@@ -195,28 +225,6 @@ function VoteTallyRow({
         <span className="text-rose-600 dark:text-rose-400">No: {tally.no}</span>
         <span className="text-muted-foreground">Abstain: {tally.abstain}</span>
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SentimentBar — visual bar for citizen sentiment
-// ---------------------------------------------------------------------------
-
-function SentimentBar({
-  sentiment,
-}: {
-  sentiment: { support: number; oppose: number; abstain: number; total: number };
-}) {
-  const supportPct =
-    sentiment.total > 0 ? Math.round((sentiment.support / sentiment.total) * 100) : 0;
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${supportPct}%` }} />
-      </div>
-      <span className="text-sm text-muted-foreground">{supportPct}% support</span>
     </div>
   );
 }

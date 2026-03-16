@@ -1,25 +1,97 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, FileText, ExternalLink } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/shared/MarkdownRenderer';
+import { AnnotatableText } from './AnnotatableText';
+import { FeatureGate } from '@/components/FeatureGate';
+import {
+  useAnnotations,
+  useCreateAnnotation,
+  useUpdateAnnotation,
+  useDeleteAnnotation,
+} from '@/hooks/useAnnotations';
+import { trackSectionRead } from '@/lib/workspace/engagement';
+import type { AnnotationField, ProposalAnnotation, AnnotationType } from '@/lib/workspace/types';
 
 interface ProposalContentProps {
   abstract: string | null;
   motivation: string | null;
   rationale: string | null;
   references: Array<{ type: string; label: string; uri: string }> | null;
+  /** Required for annotations — proposal tx hash */
+  proposalTxHash?: string;
+  /** Required for annotations — proposal index */
+  proposalIndex?: number;
+  /** Current user ID for annotation ownership */
+  currentUserId?: string;
+  /** User segment for engagement tracking */
+  userSegment?: string;
 }
 
 interface CollapsibleSectionProps {
   title: string;
   content: string | null;
   defaultExpanded?: boolean;
+  /** When provided, renders AnnotatableText instead of MarkdownRenderer */
+  field?: AnnotationField;
+  proposalTxHash?: string;
+  proposalIndex?: number;
+  annotations?: ProposalAnnotation[];
+  currentUserId?: string;
+  onCreateAnnotation?: (annotation: {
+    proposalTxHash: string;
+    proposalIndex: number;
+    anchorStart: number;
+    anchorEnd: number;
+    anchorField: AnnotationField;
+    annotationText: string;
+    annotationType: AnnotationType;
+    isPublic?: boolean;
+  }) => void;
+  onUpdateAnnotation?: (
+    id: string,
+    updates: Partial<Pick<ProposalAnnotation, 'annotationText' | 'isPublic' | 'color'>>,
+  ) => void;
+  onDeleteAnnotation?: (id: string) => void;
+  onSectionExpanded?: (field: string) => void;
 }
 
-function CollapsibleSection({ title, content, defaultExpanded = false }: CollapsibleSectionProps) {
+function CollapsibleSection({
+  title,
+  content,
+  defaultExpanded = false,
+  field,
+  proposalTxHash,
+  proposalIndex,
+  annotations,
+  currentUserId,
+  onCreateAnnotation,
+  onUpdateAnnotation,
+  onDeleteAnnotation,
+  onSectionExpanded,
+}: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const expandedAtRef = useRef<number | null>(null);
   const charCount = content?.length ?? 0;
+
+  const handleToggle = useCallback(() => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && field) {
+      onSectionExpanded?.(field);
+      expandedAtRef.current = Date.now();
+    } else if (!next && expandedAtRef.current) {
+      expandedAtRef.current = null;
+    }
+  }, [expanded, field, onSectionExpanded]);
+
+  // Track section read on initial expand for defaultExpanded sections
+  useEffect(() => {
+    if (defaultExpanded && field) {
+      expandedAtRef.current = Date.now();
+    }
+  }, [defaultExpanded, field]);
 
   if (!content) {
     return (
@@ -32,10 +104,18 @@ function CollapsibleSection({ title, content, defaultExpanded = false }: Collaps
     );
   }
 
+  const canAnnotate =
+    field &&
+    proposalTxHash &&
+    proposalIndex != null &&
+    onCreateAnnotation &&
+    onUpdateAnnotation &&
+    onDeleteAnnotation;
+
   return (
     <div className="border-b border-border/40 last:border-b-0 py-3 first:pt-0">
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={handleToggle}
         className="flex items-center justify-between w-full text-left group"
         aria-expanded={expanded}
         aria-label={`${expanded ? 'Collapse' : 'Expand'} ${title}`}
@@ -56,7 +136,26 @@ function CollapsibleSection({ title, content, defaultExpanded = false }: Collaps
       </button>
       {expanded && (
         <div className="mt-2">
-          <MarkdownRenderer content={content} compact />
+          {canAnnotate ? (
+            <FeatureGate
+              flag="review_inline_annotations"
+              fallback={<MarkdownRenderer content={content} compact />}
+            >
+              <AnnotatableText
+                text={content}
+                field={field}
+                proposalTxHash={proposalTxHash}
+                proposalIndex={proposalIndex!}
+                annotations={annotations?.filter((a) => a.anchorField === field) ?? []}
+                currentUserId={currentUserId}
+                onCreateAnnotation={onCreateAnnotation}
+                onUpdateAnnotation={onUpdateAnnotation}
+                onDeleteAnnotation={onDeleteAnnotation}
+              />
+            </FeatureGate>
+          ) : (
+            <MarkdownRenderer content={content} compact />
+          )}
         </div>
       )}
     </div>
@@ -64,7 +163,10 @@ function CollapsibleSection({ title, content, defaultExpanded = false }: Collaps
 }
 
 /**
- * ProposalContent — renders full proposal document using MarkdownRenderer.
+ * ProposalContent — renders full proposal document.
+ *
+ * When proposalTxHash/proposalIndex are provided, sections use AnnotatableText
+ * (behind the review_inline_annotations feature flag) instead of plain MarkdownRenderer.
  * Sections: Abstract (always expanded), Motivation, Rationale, References.
  */
 export function ProposalContent({
@@ -72,8 +174,74 @@ export function ProposalContent({
   motivation,
   rationale,
   references,
+  proposalTxHash,
+  proposalIndex,
+  currentUserId,
+  userSegment,
 }: ProposalContentProps) {
   const hasContent = abstract || motivation || rationale || (references && references.length > 0);
+
+  // Fetch annotations when proposal identity is available
+  const annotationsEnabled = !!proposalTxHash && proposalIndex != null;
+  const { data: annotations } = useAnnotations(
+    annotationsEnabled ? proposalTxHash : null,
+    annotationsEnabled ? proposalIndex : null,
+  );
+
+  const createMutation = useCreateAnnotation();
+  const updateMutation = useUpdateAnnotation();
+  const deleteMutation = useDeleteAnnotation();
+
+  const handleCreate = useCallback(
+    (annotation: {
+      proposalTxHash: string;
+      proposalIndex: number;
+      anchorStart: number;
+      anchorEnd: number;
+      anchorField: AnnotationField;
+      annotationText: string;
+      annotationType: AnnotationType;
+      isPublic?: boolean;
+    }) => {
+      createMutation.mutate(annotation);
+    },
+    [createMutation],
+  );
+
+  const handleUpdate = useCallback(
+    (
+      id: string,
+      updates: Partial<Pick<ProposalAnnotation, 'annotationText' | 'isPublic' | 'color'>>,
+    ) => {
+      if (!proposalTxHash || proposalIndex == null) return;
+      updateMutation.mutate({
+        id,
+        proposalTxHash,
+        proposalIndex,
+        annotationText: updates.annotationText ?? undefined,
+        isPublic: updates.isPublic ?? undefined,
+        color: updates.color ?? undefined,
+      });
+    },
+    [updateMutation, proposalTxHash, proposalIndex],
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      if (!proposalTxHash || proposalIndex == null) return;
+      deleteMutation.mutate({ id, proposalTxHash, proposalIndex });
+    },
+    [deleteMutation, proposalTxHash, proposalIndex],
+  );
+
+  const handleSectionExpanded = useCallback(
+    (field: string) => {
+      if (proposalTxHash && proposalIndex != null) {
+        trackSectionRead(proposalTxHash, proposalIndex, field, 0, userSegment);
+      }
+    },
+    [proposalTxHash, proposalIndex, userSegment],
+  );
 
   if (!hasContent) {
     return (
@@ -96,18 +264,49 @@ export function ProposalContent({
       </div>
 
       <div className="px-4">
-        <CollapsibleSection title="Abstract" content={abstract} defaultExpanded />
+        <CollapsibleSection
+          title="Abstract"
+          content={abstract}
+          defaultExpanded
+          field="abstract"
+          proposalTxHash={proposalTxHash}
+          proposalIndex={proposalIndex}
+          annotations={annotations ?? []}
+          currentUserId={currentUserId}
+          onCreateAnnotation={handleCreate}
+          onUpdateAnnotation={handleUpdate}
+          onDeleteAnnotation={handleDelete}
+          onSectionExpanded={handleSectionExpanded}
+        />
 
         <CollapsibleSection
           title="Motivation"
           content={motivation}
           defaultExpanded={!motivation || motivation.length < 500}
+          field="motivation"
+          proposalTxHash={proposalTxHash}
+          proposalIndex={proposalIndex}
+          annotations={annotations ?? []}
+          currentUserId={currentUserId}
+          onCreateAnnotation={handleCreate}
+          onUpdateAnnotation={handleUpdate}
+          onDeleteAnnotation={handleDelete}
+          onSectionExpanded={handleSectionExpanded}
         />
 
         <CollapsibleSection
           title="Rationale"
           content={rationale}
           defaultExpanded={!rationale || rationale.length < 500}
+          field="rationale"
+          proposalTxHash={proposalTxHash}
+          proposalIndex={proposalIndex}
+          annotations={annotations ?? []}
+          currentUserId={currentUserId}
+          onCreateAnnotation={handleCreate}
+          onUpdateAnnotation={handleUpdate}
+          onDeleteAnnotation={handleDelete}
+          onSectionExpanded={handleSectionExpanded}
         />
 
         {/* References */}

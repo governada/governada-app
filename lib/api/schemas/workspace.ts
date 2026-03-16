@@ -223,3 +223,39 @@ export const UpdateMemberRoleSchema = z.object({
 export const RemoveMemberSchema = z.object({
   memberId: z.string().uuid(),
 });
+
+// ---------------------------------------------------------------------------
+// Proposal annotation schemas (inline text annotations)
+// ---------------------------------------------------------------------------
+
+export const CreateAnnotationSchema = z.object({
+  proposalTxHash: z.string().min(1),
+  proposalIndex: z.coerce.number().int().min(0),
+  anchorStart: z.number().int().min(0),
+  anchorEnd: z.number().int().min(0),
+  anchorField: z.enum(['abstract', 'motivation', 'rationale']),
+  annotationText: z.string().min(1).max(2000),
+  annotationType: z.enum(['note', 'highlight', 'citation', 'concern']),
+  color: z.string().max(20).optional(),
+  isPublic: z.boolean().optional(),
+});
+
+export const UpdateAnnotationSchema = z.object({
+  id: z.string().uuid(),
+  annotationText: z.string().min(1).max(2000).optional(),
+  isPublic: z.boolean().optional(),
+  color: z.string().max(20).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Engagement tracking schemas
+// ---------------------------------------------------------------------------
+
+export const TrackEngagementSchema = z.object({
+  proposalTxHash: z.string().min(1),
+  proposalIndex: z.coerce.number().int().min(0),
+  eventType: z.enum(['view', 'section_read', 'annotation_created']),
+  section: z.string().max(50).optional(),
+  durationSeconds: z.number().int().min(0).max(3600).optional(),
+  userSegment: z.string().max(50).optional(),
+});

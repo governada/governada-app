@@ -19,6 +19,34 @@ import type {
 
 export const dynamic = 'force-dynamic';
 
+/** Extract a text field from CIP-108 meta_json (handles both nested and flat formats) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractMetaField(metaJson: any, field: string): string | null {
+  if (!metaJson) return null;
+  const body = metaJson.body ?? metaJson;
+  const value = body?.[field];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** Extract references array from CIP-108 meta_json */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function extractMetaReferences(
+  metaJson: any,
+): Array<{ type: string; label: string; uri: string }> | null {
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  if (!metaJson) return null;
+  const body = metaJson.body ?? metaJson;
+  const refs = body?.references;
+  if (!Array.isArray(refs) || refs.length === 0) return null;
+  return refs
+    .filter((r: Record<string, unknown>) => r?.uri || r?.label)
+    .map((r: Record<string, unknown>) => ({
+      type: String(r['@type'] ?? 'Other'),
+      label: String(r.label ?? ''),
+      uri: String(r.uri ?? ''),
+    }));
+}
+
 export const GET = withRouteHandler(async (request) => {
   const voterId = request.nextUrl.searchParams.get('voterId');
   const voterRole = request.nextUrl.searchParams.get('voterRole') || 'drep';
@@ -162,11 +190,18 @@ export const GET = withRouteHandler(async (request) => {
       sealedUntil: p.block_time
         ? new Date(p.block_time * 1000 + 5 * 24 * 60 * 60 * 1000).toISOString()
         : null,
+      // Full proposal metadata from CIP-108 meta_json
+      motivation: extractMetaField(p.meta_json, 'motivation'),
+      rationale: extractMetaField(p.meta_json, 'rationale'),
+      references: extractMetaReferences(p.meta_json),
     };
   });
 
-  // Sort by urgency: fewer epochs remaining first, then by proposal type
+  // Sort: unvoted proposals first, then by urgency (fewer epochs remaining first)
   items.sort((a, b) => {
+    const aVoted = a.existingVote ? 1 : 0;
+    const bVoted = b.existingVote ? 1 : 0;
+    if (aVoted !== bVoted) return aVoted - bVoted;
     const aRemaining = a.epochsRemaining ?? 999;
     const bRemaining = b.epochsRemaining ?? 999;
     if (aRemaining !== bRemaining) return aRemaining - bRemaining;

@@ -85,6 +85,92 @@ export interface ReviewQueueItem {
   existingVote: string | null;
   /** When the independent assessment period ends (sealed positions). */
   sealedUntil: string | null;
+  /** Full proposal metadata from CIP-108 meta_json */
+  motivation: string | null;
+  rationale: string | null;
+  references: Array<{ type: string; label: string; uri: string }> | null;
+}
+
+/** Reference link from proposal metadata */
+export interface ProposalReference {
+  type: string;
+  label: string;
+  uri: string;
+}
+
+/** Annotation types */
+export type AnnotationType = 'note' | 'highlight' | 'citation' | 'concern';
+export type AnnotationField = 'abstract' | 'motivation' | 'rationale';
+
+/** Engagement event types */
+export type EngagementEventType = 'view' | 'section_read' | 'annotation_created';
+
+/** Annotation on proposal text */
+export interface ProposalAnnotation {
+  id: string;
+  userId: string;
+  proposalTxHash: string;
+  proposalIndex: number;
+  anchorStart: number;
+  anchorEnd: number;
+  anchorField: AnnotationField;
+  annotationText: string;
+  annotationType: AnnotationType;
+  color: string | null;
+  isPublic: boolean;
+  upvoteCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Engagement event */
+export interface ProposalEngagementEvent {
+  id: number;
+  proposalTxHash: string;
+  proposalIndex: number;
+  eventType: EngagementEventType;
+  section: string | null;
+  durationSeconds: number | null;
+  userSegment: string | null;
+  userId: string | null;
+  createdAt: string;
+}
+
+/** Review framework template checklist item */
+export interface ReviewChecklistItem {
+  question: string;
+  category: string;
+  weight: number;
+}
+
+/** Review framework template */
+export interface ReviewFrameworkTemplate {
+  id: string;
+  proposalType: string;
+  name: string;
+  description: string | null;
+  checklist: ReviewChecklistItem[];
+  isDefault: boolean;
+}
+
+/** Treasury impact context for treasury withdrawal proposals */
+export interface TreasuryImpact {
+  currentBalanceAda: number;
+  withdrawalAda: number;
+  withdrawalPercent: number;
+  nclUtilizationCurrent: number;
+  nclUtilizationIfApproved: number;
+  pendingWithdrawalsAda: number;
+  runwayMonthsCurrent: number;
+  runwayMonthsIfApproved: number;
+}
+
+/** Review time budget */
+export interface TimeBudgetEstimate {
+  totalProposals: number;
+  estimatedMinutes: number;
+  avgMinutesPerProposal: number;
+  highPriorityCount: number;
 }
 
 /** Full response from the review-queue API. */
@@ -413,4 +499,64 @@ export interface TeamInvite {
   useCount: number;
   createdBy: string;
   createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Proposal Health Score
+// ---------------------------------------------------------------------------
+
+export interface ProposalHealthCheck {
+  label: string;
+  passed: boolean;
+  weight: number;
+}
+
+export interface ProposalHealthResult {
+  score: number;
+  checks: ProposalHealthCheck[];
+}
+
+// ---------------------------------------------------------------------------
+// Proposer Track Record
+// ---------------------------------------------------------------------------
+
+export interface ProposerTrackRecord {
+  totalProposals: number;
+  ratifiedCount: number;
+  expiredCount: number;
+  droppedCount: number;
+  deliveredCount: number;
+  partialCount: number;
+  notDeliveredCount: number;
+  avgCommunityScore: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// Proposal Engagement Analytics
+// ---------------------------------------------------------------------------
+
+export interface ProposalEngagementAnalytics {
+  totalViews: number;
+  uniqueViewers: number;
+  avgTimeSpentSec: number;
+  sectionDistribution: {
+    section: string;
+    viewCount: number;
+  }[];
+  viewerSegments: {
+    segment: string;
+    count: number;
+  }[];
+}
+
+// ---------------------------------------------------------------------------
+// Score Impact Preview
+// ---------------------------------------------------------------------------
+
+export interface ScoreImpactEstimate {
+  currentParticipationRate: number;
+  projectedParticipationRate: number;
+  participationDelta: number;
+  rationaleBoost: number;
+  estimatedScoreGain: number;
 }

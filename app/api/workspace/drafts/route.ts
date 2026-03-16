@@ -11,14 +11,39 @@ import type { ProposalDraft } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
 
-/** GET /api/workspace/drafts?stakeAddress=... — list drafts for a user */
+/**
+ * GET /api/workspace/drafts?stakeAddress=... — list drafts for a user
+ * GET /api/workspace/drafts?status=community_review,final_comment — list community-reviewable drafts
+ */
 export const GET = withRouteHandler(async (request: NextRequest) => {
   const stakeAddress = request.nextUrl.searchParams.get('stakeAddress');
-  if (!stakeAddress) {
-    return NextResponse.json({ error: 'Missing stakeAddress' }, { status: 400 });
-  }
+  const statusFilter = request.nextUrl.searchParams.get('status');
 
   const admin = getSupabaseAdmin();
+
+  // Community-reviewable drafts mode: fetch by status (no owner filter)
+  if (statusFilter) {
+    const statuses = statusFilter.split(',').map((s) => s.trim());
+    const { data, error } = await admin
+      .from('proposal_drafts')
+      .select('*')
+      .in('status', statuses)
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
+    }
+
+    const drafts: ProposalDraft[] = (data ?? []).map(mapDraftRow);
+    return NextResponse.json({ drafts });
+  }
+
+  // Owner-specific drafts mode
+  if (!stakeAddress) {
+    return NextResponse.json({ error: 'Missing stakeAddress or status' }, { status: 400 });
+  }
+
   const { data, error } = await admin
     .from('proposal_drafts')
     .select('*')

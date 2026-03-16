@@ -36,6 +36,8 @@ interface IntelligenceBlocksProps {
   title: string;
   abstract: string | null;
   proposalType: string;
+  /** When true, hides PerspectiveDiversity during sealed period */
+  isSealed?: boolean;
 }
 
 interface ConstitutionalFlag {
@@ -56,6 +58,7 @@ interface SimilarProposal {
   proposalType: string;
   status: string;
   comparison: string;
+  insight?: string;
 }
 
 interface ResearchPrecedentOutput {
@@ -234,6 +237,74 @@ function ConstitutionalSummaryBlock({
 // 2. Similar Proposals Block
 // ---------------------------------------------------------------------------
 
+function OutcomeBadge({ status }: { status: string }) {
+  const normalized = status.toLowerCase();
+  if (normalized.includes('ratif') || normalized.includes('enacted')) {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[9px] px-1.5 py-0 text-emerald-600 border-emerald-500/30 bg-emerald-500/10"
+      >
+        Ratified
+      </Badge>
+    );
+  }
+  if (normalized.includes('expired')) {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[9px] px-1.5 py-0 text-amber-600 border-amber-500/30 bg-amber-500/10"
+      >
+        Expired
+      </Badge>
+    );
+  }
+  if (normalized.includes('drop')) {
+    return (
+      <Badge
+        variant="outline"
+        className="text-[9px] px-1.5 py-0 text-rose-600 border-rose-500/30 bg-rose-500/10"
+      >
+        Dropped
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+      {status}
+    </Badge>
+  );
+}
+
+function SimilarProposalItem({ proposal }: { proposal: SimilarProposal }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <li className="rounded-md border border-border/40 bg-muted/10 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-left px-3 py-2 hover:bg-muted/20 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-foreground/90 line-clamp-1 flex-1">
+            {proposal.title}
+          </p>
+          <OutcomeBadge status={proposal.status} />
+        </div>
+        {proposal.insight && (
+          <p className="text-[10px] text-primary/70 mt-0.5 line-clamp-1">{proposal.insight}</p>
+        )}
+      </button>
+      {expanded && (
+        <div className="px-3 pb-2 space-y-1 border-t border-border/30 pt-1.5">
+          <p className="text-xs text-muted-foreground leading-relaxed">{proposal.comparison}</p>
+          {proposal.insight && <p className="text-xs text-primary/80 italic">{proposal.insight}</p>}
+        </div>
+      )}
+    </li>
+  );
+}
+
 function SimilarProposalsBlock({
   title,
   abstract,
@@ -313,18 +384,16 @@ function SimilarProposalsBlock({
           )}
         </div>
 
+        <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+          Understanding precedent helps you evaluate whether this approach has worked before.
+        </p>
+
         {topProposals.length === 0 ? (
           <p className="text-xs text-muted-foreground">No similar past proposals found.</p>
         ) : (
           <ul className="space-y-2">
             {topProposals.map((p, i) => (
-              <li
-                key={p.txHash || i}
-                className="rounded-md border border-border/40 bg-muted/10 px-3 py-2 space-y-0.5"
-              >
-                <p className="text-xs font-medium text-foreground/90 line-clamp-1">{p.title}</p>
-                <p className="text-xs text-muted-foreground line-clamp-2">{p.comparison}</p>
-              </li>
+              <SimilarProposalItem key={p.txHash || i} proposal={p} />
             ))}
           </ul>
         )}
@@ -369,7 +438,7 @@ export function IntelligenceBlocks(props: IntelligenceBlocksProps) {
     <div className="space-y-3">
       <ConstitutionalSummaryBlock {...props} />
       <SimilarProposalsBlock {...props} />
-      <PerspectiveDiversityBlock />
+      {!props.isSealed && <PerspectiveDiversityBlock />}
     </div>
   );
 }

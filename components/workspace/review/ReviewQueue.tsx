@@ -4,6 +4,11 @@ import { CheckCircle2, Clock, AlertTriangle, Minus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ReviewQueueItem, QueueItemStatus } from '@/lib/workspace/types';
+import { GovernanceCalendar } from './GovernanceCalendar';
+import { NotificationPreferences } from './NotificationPreferences';
+import { ProposalAlertBadge } from './ProposalAlertBadge';
+import { TimeBudget } from './TimeBudget';
+import type { ProposalDimensions, UserInterestProfile } from '@/lib/notifications/proposalAlerts';
 
 interface ReviewQueueProps {
   items: ReviewQueueItem[];
@@ -11,6 +16,12 @@ interface ReviewQueueProps {
   onSelect: (index: number) => void;
   getStatus: (txHash: string, proposalIndex: number) => QueueItemStatus;
   progress: { reviewed: number; total: number };
+  /** Optional: proposal classification dimensions keyed by "txHash-index". */
+  classifications?: Map<string, ProposalDimensions>;
+  /** Optional: user interest profile for alert matching. */
+  userProfile?: UserInterestProfile | null;
+  /** Whether interest-based alerts are enabled (from notification preferences). */
+  alertsEnabled?: boolean;
 }
 
 function StatusIndicator({
@@ -38,6 +49,7 @@ function StatusIndicator({
 /**
  * ReviewQueue — left rail (desktop) or horizontal scroll (mobile).
  * Shows all proposals in the queue with visual status indicators.
+ * Includes GovernanceCalendar and NotificationPreferences in the header area.
  */
 export function ReviewQueue({
   items,
@@ -45,9 +57,19 @@ export function ReviewQueue({
   onSelect,
   getStatus,
   progress,
+  classifications,
+  userProfile,
+  alertsEnabled = true,
 }: ReviewQueueProps) {
   return (
     <div className="flex flex-col h-full">
+      {/* Governance Calendar + Notification Preferences */}
+      <div className="px-2 pt-2 space-y-1.5 shrink-0">
+        <GovernanceCalendar />
+        <TimeBudget items={items} />
+        <NotificationPreferences />
+      </div>
+
       {/* Progress bar */}
       <div className="px-3 py-2.5 border-b border-border space-y-1.5 shrink-0">
         <div className="flex items-center justify-between text-xs">
@@ -76,10 +98,12 @@ export function ReviewQueue({
             const isSelected = idx === selectedIndex;
             const isSnoozed = status === 'snoozed';
             const isVoted = status === 'voted' || !!item.existingVote;
+            const classificationKey = `${item.txHash}-${item.proposalIndex}`;
+            const dims = classifications?.get(classificationKey) ?? null;
 
             return (
               <button
-                key={`${item.txHash}-${item.proposalIndex}`}
+                key={classificationKey}
                 onClick={() => onSelect(idx)}
                 className={cn(
                   'w-full text-left px-3 py-2.5 transition-colors border-l-2',
@@ -91,14 +115,21 @@ export function ReviewQueue({
               >
                 <div className="flex items-start gap-2">
                   <div className="flex-1 min-w-0 space-y-1">
-                    <p
-                      className={cn(
-                        'text-sm truncate',
-                        isVoted ? 'text-muted-foreground' : 'font-medium text-foreground',
-                      )}
-                    >
-                      {item.title}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p
+                        className={cn(
+                          'text-sm truncate',
+                          isVoted ? 'text-muted-foreground' : 'font-medium text-foreground',
+                        )}
+                      >
+                        {item.title}
+                      </p>
+                      <ProposalAlertBadge
+                        proposalDimensions={dims}
+                        userProfile={userProfile ?? null}
+                        enabled={alertsEnabled}
+                      />
+                    </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
                         {item.proposalType}

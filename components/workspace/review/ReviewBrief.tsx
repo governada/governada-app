@@ -1,14 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Brain, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { ReviewQueueItem } from '@/lib/workspace/types';
+import { PROPOSAL_TYPE_LABELS, type ProposalType } from '@/lib/workspace/types';
+import { ProposalContent } from './ProposalContent';
 import { SealedBanner } from './SealedBanner';
 import { IntelligenceBlocks } from './IntelligenceBlocks';
+import { CompetingComparison } from './CompetingComparison';
 import { SourceMaterial } from './SourceMaterial';
 import { FeatureGate } from '@/components/FeatureGate';
 
 interface ReviewBriefProps {
   item: ReviewQueueItem;
+  /** All items in the review queue — used for competing proposal comparison */
+  allItems?: ReviewQueueItem[];
 }
 
 function checkSealed(sealedUntil: string | null): boolean {
@@ -16,65 +24,157 @@ function checkSealed(sealedUntil: string | null): boolean {
   return new Date(sealedUntil).getTime() > Date.now();
 }
 
-export function ReviewBrief({ item }: ReviewBriefProps) {
+/**
+ * ReviewBrief — the main content area for a proposal under review.
+ *
+ * Layout priority:
+ * 1. Header (title, type badge, urgency, epochs remaining)
+ * 2. ProposalContent (dominant — full proposal text with markdown)
+ * 3. Intelligence & Analysis (collapsible accordion with all intelligence blocks)
+ * 4. Source Material (compact: type, CardanoScan link, anchor URL)
+ */
+export function ReviewBrief({ item, allItems = [] }: ReviewBriefProps) {
   const [isSealed, setIsSealed] = useState(false);
+  const [intelligenceExpanded, setIntelligenceExpanded] = useState(false);
 
   useEffect(() => {
     setIsSealed(checkSealed(item.sealedUntil));
   }, [item.sealedUntil]);
 
+  const typeLabel = PROPOSAL_TYPE_LABELS[item.proposalType as ProposalType] || item.proposalType;
+
   return (
     <div className="space-y-4">
-      {/* Sealed Banner -- replaces tallies when active */}
+      {/* Header */}
+      <div className="space-y-2">
+        <h2 className="text-lg font-bold text-foreground leading-snug">
+          {item.title || 'Untitled Proposal'}
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="text-xs">
+            {typeLabel}
+          </Badge>
+          {item.isUrgent && (
+            <Badge
+              variant="outline"
+              className="text-xs text-rose-600 border-rose-500/30 bg-rose-500/10"
+            >
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Urgent
+            </Badge>
+          )}
+          {item.epochsRemaining != null && (
+            <span
+              className={cn(
+                'text-xs',
+                item.epochsRemaining <= 1 ? 'text-rose-500 font-medium' : 'text-muted-foreground',
+              )}
+            >
+              {item.epochsRemaining === 0
+                ? 'Expires this epoch'
+                : `${item.epochsRemaining} epoch${item.epochsRemaining !== 1 ? 's' : ''} remaining`}
+            </span>
+          )}
+          {item.withdrawalAmount != null && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {(item.withdrawalAmount / 1_000_000).toLocaleString()} ADA
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Sealed Banner */}
       {isSealed && <SealedBanner sealedUntil={item.sealedUntil!} />}
 
-      {/* AI Summary -- always shown */}
-      {item.aiSummary && (
-        <div className="space-y-1.5">
-          <h3 className="text-sm font-semibold text-muted-foreground">AI Summary</h3>
-          <p className="text-sm leading-relaxed">{item.aiSummary}</p>
-        </div>
-      )}
+      {/* Proposal Content — front and center */}
+      <ProposalContent
+        abstract={item.abstract}
+        motivation={item.motivation}
+        rationale={item.rationale}
+        references={item.references}
+      />
 
-      {/* Inter-Body Vote Tallies -- hidden when sealed */}
-      {!isSealed && item.interBodyVotes && (
-        <div className="space-y-1.5">
-          <h3 className="text-sm font-semibold text-muted-foreground">Inter-Body Vote Tally</h3>
-          <div className="space-y-2">
-            <VoteTallyRow label="DRep" tally={item.interBodyVotes.drep} />
-            <VoteTallyRow label="SPO" tally={item.interBodyVotes.spo} />
-            <VoteTallyRow label="CC" tally={item.interBodyVotes.cc} />
+      {/* Intelligence & Analysis — collapsible */}
+      <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
+        <button
+          onClick={() => setIntelligenceExpanded(!intelligenceExpanded)}
+          className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-muted/20 transition-colors"
+          aria-expanded={intelligenceExpanded}
+          aria-label={
+            intelligenceExpanded ? 'Collapse intelligence panel' : 'Expand intelligence panel'
+          }
+        >
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-violet-400" />
+            <span className="text-sm font-semibold text-foreground">
+              Intelligence &amp; Analysis
+            </span>
           </div>
-        </div>
-      )}
+          {intelligenceExpanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
 
-      {/* Citizen Sentiment -- hidden when sealed */}
-      {!isSealed && item.citizenSentiment != null && (
-        <div className="space-y-1.5">
-          <h3 className="text-sm font-semibold text-muted-foreground">Citizen Sentiment</h3>
-          <SentimentBar sentiment={item.citizenSentiment} />
-        </div>
-      )}
+        {intelligenceExpanded && (
+          <div className="px-4 pb-4 space-y-4 border-t border-border/40 pt-3">
+            {/* AI Summary */}
+            {item.aiSummary && (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-semibold text-muted-foreground">AI Summary</h3>
+                <p className="text-sm leading-relaxed">{item.aiSummary}</p>
+              </div>
+            )}
 
-      {/* Intelligence Blocks (AI-generated analysis) */}
-      <FeatureGate flag="review_intelligence">
-        <IntelligenceBlocks
-          txHash={item.txHash}
-          index={item.proposalIndex}
-          title={item.title}
-          abstract={item.abstract}
-          proposalType={item.proposalType}
-        />
-      </FeatureGate>
+            {/* Constitutional Check + Similar Proposals + Perspective Diversity */}
+            <FeatureGate flag="review_intelligence">
+              <IntelligenceBlocks
+                txHash={item.txHash}
+                index={item.proposalIndex}
+                title={item.title}
+                abstract={item.abstract}
+                proposalType={item.proposalType}
+                isSealed={isSealed}
+              />
+            </FeatureGate>
 
-      {/* Source Material -- always shown */}
+            {/* Competing Proposal Comparison */}
+            {allItems.length > 1 && <CompetingComparison currentItem={item} allItems={allItems} />}
+
+            {/* Inter-Body Vote Tallies — hidden when sealed */}
+            {!isSealed && item.interBodyVotes && (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Inter-Body Vote Tally
+                </h3>
+                <div className="space-y-2">
+                  <VoteTallyRow label="DRep" tally={item.interBodyVotes.drep} />
+                  <VoteTallyRow label="SPO" tally={item.interBodyVotes.spo} />
+                  <VoteTallyRow label="CC" tally={item.interBodyVotes.cc} />
+                </div>
+              </div>
+            )}
+
+            {/* Citizen Sentiment — hidden when sealed */}
+            {!isSealed && item.citizenSentiment != null && (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-semibold text-muted-foreground">Citizen Sentiment</h3>
+                <SentimentBar sentiment={item.citizenSentiment} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Source Material — compact, always visible */}
       <SourceMaterial item={item} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// VoteTallyRow -- inline tally for a single governance body
+// VoteTallyRow — inline tally for a single governance body
 // ---------------------------------------------------------------------------
 
 function VoteTallyRow({
@@ -100,7 +200,7 @@ function VoteTallyRow({
 }
 
 // ---------------------------------------------------------------------------
-// SentimentBar -- visual bar for citizen sentiment
+// SentimentBar — visual bar for citizen sentiment
 // ---------------------------------------------------------------------------
 
 function SentimentBar({

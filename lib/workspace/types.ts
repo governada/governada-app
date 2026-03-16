@@ -85,6 +85,112 @@ export interface ReviewQueueItem {
   existingVote: string | null;
   /** When the independent assessment period ends (sealed positions). */
   sealedUntil: string | null;
+  /** Full proposal metadata from CIP-108 meta_json */
+  motivation: string | null;
+  rationale: string | null;
+  references: Array<{ type: string; label: string; uri: string }> | null;
+}
+
+/** Reference link from proposal metadata */
+export interface ProposalReference {
+  type: string;
+  label: string;
+  uri: string;
+}
+
+/** Annotation on proposal text */
+export interface ProposalAnnotation {
+  id: string;
+  userId: string;
+  proposalTxHash: string;
+  proposalIndex: number;
+  anchorStart: number;
+  anchorEnd: number;
+  anchorField: string;
+  annotationText: string;
+  annotationType: 'note' | 'highlight' | 'citation' | 'concern';
+  color: string;
+  isPublic: boolean;
+  upvoteCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Review framework template checklist item */
+export interface ReviewChecklistItem {
+  question: string;
+  category: string;
+  weight: number;
+}
+
+/** Review framework template */
+export interface ReviewFrameworkTemplate {
+  id: string;
+  proposalType: string;
+  name: string;
+  description: string | null;
+  checklist: ReviewChecklistItem[];
+  isDefault: boolean;
+}
+
+/** Treasury impact context for treasury withdrawal proposals */
+export interface TreasuryImpact {
+  currentBalanceAda: number;
+  withdrawalAda: number;
+  withdrawalPercent: number;
+  nclUtilizationCurrent: number;
+  nclUtilizationIfApproved: number;
+  pendingWithdrawalsAda: number;
+  runwayMonthsCurrent: number;
+  runwayMonthsIfApproved: number;
+}
+
+/** Proposal health/completeness assessment */
+export interface ProposalHealthResult {
+  score: number;
+  checks: Array<{
+    label: string;
+    passed: boolean;
+    weight: number;
+  }>;
+}
+
+/** Proposer track record summary */
+export interface ProposerTrackRecord {
+  totalProposals: number;
+  ratified: number;
+  expired: number;
+  dropped: number;
+  deliveryOnTime: number;
+  deliveryLate: number;
+  avgReviewScore: number | null;
+}
+
+/** Score impact estimate */
+export interface ScoreImpactEstimate {
+  currentScore: number;
+  deltaIfVote: number;
+  deltaIfVoteWithRationale: number;
+  newScoreEstimate: number;
+}
+
+/** Review time budget */
+export interface TimeBudgetEstimate {
+  totalProposals: number;
+  estimatedMinutes: number;
+  avgMinutesPerProposal: number;
+  highPriorityCount: number;
+}
+
+/** Engagement analytics for a proposal (proposer view) */
+export interface ProposalEngagementAnalytics {
+  totalViews: number;
+  uniqueViewers: number;
+  avgTimeSpentSeconds: number;
+  sectionReadCounts: Record<string, number>;
+  annotationCount: number;
+  shareCount: number;
+  viewerSegments: Record<string, number>;
 }
 
 /** Full response from the review-queue API. */

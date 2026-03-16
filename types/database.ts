@@ -3681,6 +3681,57 @@ export type Database = {
           },
         ];
       };
+      proposal_annotations: {
+        Row: {
+          anchor_end: number;
+          anchor_field: string;
+          anchor_start: number;
+          annotation_text: string;
+          annotation_type: string;
+          color: string | null;
+          created_at: string;
+          id: string;
+          is_public: boolean;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          updated_at: string;
+          upvote_count: number;
+          user_id: string;
+        };
+        Insert: {
+          anchor_end: number;
+          anchor_field?: string;
+          anchor_start: number;
+          annotation_text: string;
+          annotation_type?: string;
+          color?: string | null;
+          created_at?: string;
+          id?: string;
+          is_public?: boolean;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          updated_at?: string;
+          upvote_count?: number;
+          user_id: string;
+        };
+        Update: {
+          anchor_end?: number;
+          anchor_field?: string;
+          anchor_start?: number;
+          annotation_text?: string;
+          annotation_type?: string;
+          color?: string | null;
+          created_at?: string;
+          id?: string;
+          is_public?: boolean;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          updated_at?: string;
+          upvote_count?: number;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       proposal_brief_feedback: {
         Row: {
           brief_id: string;
@@ -3919,6 +3970,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      proposal_engagement_events: {
+        Row: {
+          created_at: string;
+          duration_seconds: number | null;
+          event_type: string;
+          id: number;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          section: string | null;
+          user_id: string | null;
+          user_segment: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          duration_seconds?: number | null;
+          event_type: string;
+          id?: never;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          section?: string | null;
+          user_id?: string | null;
+          user_segment?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          duration_seconds?: number | null;
+          event_type?: string;
+          id?: never;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          section?: string | null;
+          user_id?: string | null;
+          user_segment?: string | null;
+        };
+        Relationships: [];
+      };
       proposal_notes: {
         Row: {
           created_at: string;
@@ -4046,6 +4133,117 @@ export type Database = {
           similarity_score?: number;
         };
         Relationships: [];
+      };
+      proposal_team_invites: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          expires_at: string;
+          id: string;
+          invite_code: string;
+          max_uses: number;
+          role: string;
+          team_id: string;
+          use_count: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          expires_at: string;
+          id?: string;
+          invite_code: string;
+          max_uses?: number;
+          role?: string;
+          team_id: string;
+          use_count?: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          expires_at?: string;
+          id?: string;
+          invite_code?: string;
+          max_uses?: number;
+          role?: string;
+          team_id?: string;
+          use_count?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_team_invites_team_id_fkey';
+            columns: ['team_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_teams';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      proposal_team_members: {
+        Row: {
+          id: string;
+          invited_at: string;
+          joined_at: string | null;
+          role: string;
+          stake_address: string;
+          team_id: string;
+          user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          invited_at?: string;
+          joined_at?: string | null;
+          role?: string;
+          stake_address: string;
+          team_id: string;
+          user_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          invited_at?: string;
+          joined_at?: string | null;
+          role?: string;
+          stake_address?: string;
+          team_id?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_team_members_team_id_fkey';
+            columns: ['team_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_teams';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      proposal_teams: {
+        Row: {
+          created_at: string;
+          draft_id: string;
+          id: string;
+          name: string;
+        };
+        Insert: {
+          created_at?: string;
+          draft_id: string;
+          id?: string;
+          name?: string;
+        };
+        Update: {
+          created_at?: string;
+          draft_id?: string;
+          id?: string;
+          name?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_teams_draft_id_fkey';
+            columns: ['draft_id'];
+            isOneToOne: true;
+            referencedRelation: 'proposal_drafts';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       proposal_vote_snapshots: {
         Row: {
@@ -4305,6 +4503,36 @@ export type Database = {
           proposal_tx_hash?: string;
           updated_at?: string;
           user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      review_framework_templates: {
+        Row: {
+          checklist: Json;
+          created_at: string;
+          description: string | null;
+          id: string;
+          is_default: boolean;
+          name: string;
+          proposal_type: string;
+        };
+        Insert: {
+          checklist?: Json;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_default?: boolean;
+          name: string;
+          proposal_type: string;
+        };
+        Update: {
+          checklist?: Json;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_default?: boolean;
+          name?: string;
+          proposal_type?: string;
         };
         Relationships: [];
       };

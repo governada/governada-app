@@ -64,6 +64,16 @@ export const TIER_BADGE_BG: Record<TierKey, string> = {
     'bg-violet-100 text-violet-700 border border-violet-300/60 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-700/50',
 };
 
+/** White-on-constellation tier colors for scorecard hero overlays. */
+export const TIER_HERO_COLORS: Record<TierKey, string> = {
+  Emerging: 'text-white/70',
+  Bronze: 'text-amber-300',
+  Silver: 'text-slate-300',
+  Gold: 'text-yellow-300',
+  Diamond: 'text-cyan-300',
+  Legendary: 'text-violet-300',
+};
+
 export function tierKey(tier: string | null | undefined): TierKey {
   const valid: TierKey[] = ['Emerging', 'Bronze', 'Silver', 'Gold', 'Diamond', 'Legendary'];
   return valid.includes(tier as TierKey) ? (tier as TierKey) : 'Emerging';

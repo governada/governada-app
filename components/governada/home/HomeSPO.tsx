@@ -23,36 +23,23 @@ const ConstellationScene = dynamic(
   { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
 );
 
-const TIER_COLORS: Record<string, string> = {
-  Emerging: 'text-muted-foreground',
-  Bronze: 'text-amber-700 dark:text-amber-600',
-  Silver: 'text-slate-500 dark:text-slate-400',
-  Gold: 'text-yellow-600 dark:text-yellow-500',
-  Diamond: 'text-cyan-600 dark:text-cyan-400',
-  Legendary: 'text-violet-600 dark:text-violet-400',
-};
+import {
+  TIER_SCORE_COLOR,
+  TIER_BG as TIER_BG_BASE,
+  TIER_BORDER,
+  TIER_HERO_COLORS as TIER_HERO_BASE,
+} from '@/components/governada/cards/tierStyles';
 
-const TIER_BG: Record<string, string> = {
-  Emerging: 'bg-card/70 border-border/50 backdrop-blur-md',
-  Bronze:
-    'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300/40 dark:border-amber-800/25 backdrop-blur-md',
-  Silver:
-    'bg-slate-50/70 dark:bg-slate-900/30 border-slate-300/40 dark:border-slate-700/25 backdrop-blur-md',
-  Gold: 'bg-yellow-50/70 dark:bg-yellow-950/20 border-yellow-300/50 dark:border-yellow-800/25 backdrop-blur-md',
-  Diamond:
-    'bg-cyan-50/70 dark:bg-cyan-950/20 border-cyan-300/50 dark:border-cyan-800/25 backdrop-blur-md',
-  Legendary:
-    'bg-violet-50/70 dark:bg-violet-950/20 border-violet-300/50 dark:border-violet-800/25 backdrop-blur-md',
-};
+const TIER_COLORS: Record<string, string> = TIER_SCORE_COLOR;
+const TIER_HERO_COLORS: Record<string, string> = TIER_HERO_BASE;
 
-const TIER_HERO_COLORS: Record<string, string> = {
-  Emerging: 'text-white/70',
-  Bronze: 'text-amber-300',
-  Silver: 'text-slate-300',
-  Gold: 'text-yellow-300',
-  Diamond: 'text-cyan-300',
-  Legendary: 'text-violet-300',
-};
+/* Scorecard backgrounds include backdrop-blur for constellation overlay */
+const TIER_BG: Record<string, string> = Object.fromEntries(
+  Object.entries(TIER_BG_BASE).map(([k, v]) => [
+    k,
+    `${v} ${TIER_BORDER[k as keyof typeof TIER_BORDER]} backdrop-blur-md`,
+  ]),
+);
 
 function SparkLine({ history }: { history: { governance_score: number }[] }) {
   if (!history || history.length < 2) return null;

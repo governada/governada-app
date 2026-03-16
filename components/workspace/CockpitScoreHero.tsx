@@ -5,22 +5,17 @@ import { TrendingUp, TrendingDown, Minus, Trophy, ChevronDown, ChevronUp, Zap } 
 import { cn } from '@/lib/utils';
 import type { CockpitData, ScoreStoryPillar } from '@/hooks/queries';
 
-const TIER_ACCENT: Record<string, string> = {
-  Emerging: 'text-zinc-400',
-  Bronze: 'text-amber-700 dark:text-amber-500',
-  Silver: 'text-zinc-400 dark:text-zinc-300',
-  Gold: 'text-yellow-500 dark:text-yellow-400',
-  Diamond: 'text-cyan-400 dark:text-cyan-300',
-  Legendary: 'text-purple-400 dark:text-purple-300',
-};
+import { TIER_SCORE_COLOR } from '@/components/governada/cards/tierStyles';
+
+const TIER_ACCENT: Record<string, string> = TIER_SCORE_COLOR;
 
 const TIER_BG: Record<string, string> = {
-  Emerging: 'bg-zinc-500/10',
+  Emerging: 'bg-muted/10',
   Bronze: 'bg-amber-500/10',
-  Silver: 'bg-zinc-400/10',
+  Silver: 'bg-slate-400/10',
   Gold: 'bg-yellow-500/10',
   Diamond: 'bg-cyan-400/10',
-  Legendary: 'bg-purple-400/10',
+  Legendary: 'bg-violet-400/10',
 };
 
 // ── Score Story Pillar Row ──────────────────────────────────────────

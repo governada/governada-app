@@ -30,7 +30,6 @@ import {
   getReliabilityHintFromStored,
 } from '@/utils/scoring';
 import { VoteRecord } from '@/types/drep';
-import { VotingHistoryWithPrefs } from '@/components/VotingHistoryWithPrefs';
 import { InlineDelegationCTA } from '@/components/InlineDelegationCTA';
 const ScoreHistoryChart = nextDynamic(
   () => import('@/components/ScoreHistoryChart').then((m) => m.ScoreHistoryChart),
@@ -45,7 +44,6 @@ import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Breadcrumb } from '@/components/shared/Breadcrumb';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DetailPageSkeleton } from '@/components/LoadingSkeleton';
 import { DRepDashboardWrapper } from '@/components/DRepDashboardWrapper';
 import { CopyableAddress } from '@/components/CopyableAddress';
 import { AboutSection } from '@/components/AboutSection';
@@ -62,6 +60,7 @@ import { GovernancePhilosophyEditor } from '@/components/GovernancePhilosophyEdi
 import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
+import { FeatureGate } from '@/components/FeatureGate';
 import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
 import { TrustCard } from '@/components/governada/profiles/TrustCard';
 const CitizenEndorsements = nextDynamic(
@@ -713,8 +712,10 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         </div>
       </SegmentGate>
 
-      {/* ── Citizen Endorsements — visible to all (social proof) ── */}
-      <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
+      {/* ── Citizen Endorsements — feature-flagged for launch review ── */}
+      <FeatureGate flag="citizen_endorsements">
+        <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
+      </FeatureGate>
 
       {/* About — visible to all (helps delegation decisions) */}
       <AboutSection
@@ -752,8 +753,10 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         {/* Governance Philosophy — deep content for governance participants */}
         <GovernancePhilosophyEditor drepId={drep.drepId} readOnly />
 
-        {/* Citizen Endorsements — interactive version for detailed analysis */}
-        <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
+        {/* Citizen Endorsements — feature-flagged for launch review */}
+        <FeatureGate flag="citizen_endorsements">
+          <CitizenEndorsements entityType="drep" entityId={drep.drepId} />
+        </FeatureGate>
 
         {/* ════════════════════════════════════════════
             VP2 — "The Record" (below fold, tabbed)
@@ -762,14 +765,7 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         <DRepProfileTabsV2
           drepId={drep.drepId}
           statementsContent={statementsContent}
-          votingRecordContent={
-            <div className="space-y-6">
-              <DRepOutcomeSummary drepId={drep.drepId} />
-              <Suspense fallback={<DetailPageSkeleton />}>
-                <VotingHistoryWithPrefs votes={drep.votes} />
-              </Suspense>
-            </div>
-          }
+          votingRecordContent={<DRepOutcomeSummary drepId={drep.drepId} />}
           scoreAnalysisContent={
             <ScoreAnalysisGate
               drepId={drep.drepId}

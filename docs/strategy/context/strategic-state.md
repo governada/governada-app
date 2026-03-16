@@ -21,6 +21,7 @@ Updated by: Strategy session (Phase 2+3 re-evaluation)
 3. **Restraint as craft** — Fewer, better surfaces. Zero-sum information budget. Bet: removing features can improve the product. Evidence: V3 UX philosophy pivot, page-level JTBD constraints.
 4. **DReps/SPOs as distribution channel** — Representatives share profiles to attract delegation, pulling their followers into the platform. Bet: supply-side activation markets the product for free. Phase 2d builds this.
 5. **"Governance team" framing** — DRep + Pool = governance team. Coverage as differentiated concept. Bet: novel framing creates conversation and conversion. Runs through match, delegation, and Hub briefing — not a standalone card.
+6. **Proposers as third distribution channel.** DReps review, SPOs validate, proposers CREATE. The authoring pipeline makes Governada the place where governance proposals are born. Teams who draft on Governada get structured feedback, constitutional pre-checks, and arrive in DRep workspaces with rich lifecycle context. Teams who don't arrive cold.
 
 ## Launch Strategy
 

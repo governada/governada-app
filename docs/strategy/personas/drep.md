@@ -101,6 +101,8 @@ The DRep's primary work surface. Everything they need to make an informed vote a
 
 **Why this matters:** Today, voting and rationale submission are separate, tedious processes across multiple tools. Making them a single 2-minute flow inside the analysis workspace fundamentally changes DRep behavior. DReps who use Governada will provide more rationales, score higher, and attract more delegation. The tool makes them better at governance.
 
+**Community review integration:** Proposals that arrive through Governada's authoring pipeline come with rich lifecycle context: iteration history, community review scores, team responsiveness metrics, and constitutional pre-check results. The DRep's review workspace surfaces this context alongside the proposal content, making evaluation dramatically more informed than reviewing a cold on-chain governance action.
+
 #### Reputation Dashboard
 
 The DRep's view of their own governance reputation -- how the ecosystem sees them:

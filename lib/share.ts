@@ -119,6 +119,44 @@ export function buildDRepOgUrl(drepId: string): string {
   return `${SITE_URL}/api/og/drep/${encodeURIComponent(drepId)}`;
 }
 
+// ---------------------------------------------------------------------------
+// Vote Share Card
+// ---------------------------------------------------------------------------
+
+export function buildVoteCardUrl(
+  drepId: string,
+  txHash: string,
+  index: number,
+  vote: string,
+  rationalePreview?: string,
+): string {
+  const params = new URLSearchParams({
+    drepId,
+    txHash,
+    index: String(index),
+    vote,
+  });
+  if (rationalePreview) {
+    params.set('rationale', rationalePreview.slice(0, 200));
+  }
+  return `${SITE_URL}/api/og/vote-card?${params.toString()}`;
+}
+
+export function buildVoteShareText(title: string, vote: string, rationale?: string): string {
+  const truncatedTitle = title.length > 60 ? title.slice(0, 57) + '...' : title;
+  let text = `I voted ${vote} on "${truncatedTitle}".`;
+  if (rationale) {
+    const excerpt = rationale.length > 100 ? rationale.slice(0, 97) + '...' : rationale;
+    text += ` ${excerpt}`;
+  }
+  text += '\n\nSee my full reasoning on @Governada';
+  return text;
+}
+
+export function buildVoteShareUrl(txHash: string, index: number): string {
+  return `${SITE_URL}/governance/proposal/${encodeURIComponent(txHash)}/${index}`;
+}
+
 export function trackShare(
   surface: string,
   platform: string,

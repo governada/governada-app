@@ -83,6 +83,8 @@ export interface ReviewQueueItem {
   citizenSentiment: CitizenSentiment | null;
   /** Whether the current voter has already voted on this proposal. */
   existingVote: string | null;
+  /** When the independent assessment period ends (sealed positions). */
+  sealedUntil: string | null;
 }
 
 /** Full response from the review-queue API. */
@@ -305,4 +307,21 @@ export interface BYOKKeyInfo {
   provider: string;
   keyPrefix: string;
   createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Version Diff types
+// ---------------------------------------------------------------------------
+
+export interface DiffResult {
+  type: 'unchanged' | 'added' | 'removed';
+  text: string;
+}
+
+export interface StructuredDiff {
+  title: DiffResult[];
+  abstract: DiffResult[];
+  motivation: DiffResult[];
+  rationale: DiffResult[];
+  fieldsChanged: string[];
 }

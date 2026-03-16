@@ -3831,6 +3831,10 @@ export type Database = {
           rationale: string;
           stage_entered_at: string | null;
           status: string;
+          submitted_anchor_hash: string | null;
+          submitted_anchor_url: string | null;
+          submitted_at: string | null;
+          submitted_tx_hash: string | null;
           title: string;
           type_specific: Json;
           updated_at: string;
@@ -3850,6 +3854,10 @@ export type Database = {
           rationale?: string;
           stage_entered_at?: string | null;
           status?: string;
+          submitted_anchor_hash?: string | null;
+          submitted_anchor_url?: string | null;
+          submitted_at?: string | null;
+          submitted_tx_hash?: string | null;
           title?: string;
           type_specific?: Json;
           updated_at?: string;
@@ -3869,6 +3877,10 @@ export type Database = {
           rationale?: string;
           stage_entered_at?: string | null;
           status?: string;
+          submitted_anchor_hash?: string | null;
+          submitted_anchor_url?: string | null;
+          submitted_at?: string | null;
+          submitted_tx_hash?: string | null;
           title?: string;
           type_specific?: Json;
           updated_at?: string;
@@ -4133,6 +4145,7 @@ export type Database = {
         Row: {
           abstract: string | null;
           ai_summary: string | null;
+          assessment_sealed_until: string | null;
           block_time: number | null;
           dropped_epoch: number | null;
           enacted_epoch: number | null;
@@ -4155,6 +4168,7 @@ export type Database = {
         Insert: {
           abstract?: string | null;
           ai_summary?: string | null;
+          assessment_sealed_until?: string | null;
           block_time?: number | null;
           dropped_epoch?: number | null;
           enacted_epoch?: number | null;
@@ -4177,6 +4191,7 @@ export type Database = {
         Update: {
           abstract?: string | null;
           ai_summary?: string | null;
+          assessment_sealed_until?: string | null;
           block_time?: number | null;
           dropped_epoch?: number | null;
           enacted_epoch?: number | null;

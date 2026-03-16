@@ -1,177 +1,104 @@
 'use client';
 
-import Link from 'next/link';
-import { AlertTriangle, Clock, Sparkles, ExternalLink, Wallet } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { SentimentBar } from '@/components/workspace/shared/SentimentBar';
-import { VoteTally } from '@/components/workspace/shared/VoteTally';
-import { IntelligenceBlocks } from '@/components/workspace/review/IntelligenceBlocks';
-import { SourceMaterial } from '@/components/workspace/review/SourceMaterial';
-import { MinorityReport } from '@/components/workspace/shared/MinorityReport';
-import { FeatureGate } from '@/components/FeatureGate';
+import { useState, useEffect } from 'react';
 import type { ReviewQueueItem } from '@/lib/workspace/types';
+import { SealedBanner } from './SealedBanner';
+
+interface InterBodyTally {
+  yes: number;
+  no: number;
+  abstain: number;
+}
 
 interface ReviewBriefProps {
   item: ReviewQueueItem;
-  position: number;
-  total: number;
+  aiSummary?: string | null;
+  treasuryContext?: string | null;
+  interBodyTally?: InterBodyTally | null;
+  citizenSentiment?: number | null;
 }
 
-function formatAda(lovelaces: number): string {
-  if (lovelaces >= 1_000_000) {
-    return `${(lovelaces / 1_000_000).toFixed(1)}M ADA`;
-  }
-  if (lovelaces >= 1_000) {
-    return `${(lovelaces / 1_000).toFixed(0)}K ADA`;
-  }
-  return `${lovelaces.toLocaleString()} ADA`;
+function checkSealed(sealedUntil: string | null): boolean {
+  if (sealedUntil == null) return false;
+  return new Date(sealedUntil).getTime() > Date.now();
 }
 
-/**
- * ReviewBrief — the main reading area showing proposal details and intelligence.
- */
-export function ReviewBrief({ item, position, total }: ReviewBriefProps) {
+export function ReviewBrief({
+  item,
+  aiSummary,
+  treasuryContext,
+  interBodyTally,
+  citizenSentiment,
+}: ReviewBriefProps) {
+  const [isSealed, setIsSealed] = useState(false);
+
+  useEffect(() => {
+    setIsSealed(checkSealed(item.sealedUntil));
+  }, [item.sealedUntil]);
+
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="space-y-2">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-semibold text-foreground leading-tight">{item.title}</h2>
+      {/* Sealed Banner — replaces tallies when active */}
+      {isSealed && <SealedBanner sealedUntil={item.sealedUntil!} />}
+
+      {/* AI Summary — always shown */}
+      {aiSummary && (
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-semibold text-muted-foreground">AI Summary</h3>
+          <p className="text-sm leading-relaxed">{aiSummary}</p>
+        </div>
+      )}
+
+      {/* Treasury Context — always shown */}
+      {treasuryContext && (
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-semibold text-muted-foreground">Treasury Context</h3>
+          <p className="text-sm leading-relaxed">{treasuryContext}</p>
+        </div>
+      )}
+
+      {/* Inter-Body Vote Tallies — hidden when sealed */}
+      {!isSealed && interBodyTally && (
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-semibold text-muted-foreground">Inter-Body Vote Tally</h3>
+          <div className="flex gap-4 text-sm">
+            <span className="text-green-400">Yes: {interBodyTally.yes}</span>
+            <span className="text-red-400">No: {interBodyTally.no}</span>
+            <span className="text-muted-foreground">Abstain: {interBodyTally.abstain}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="secondary">{item.proposalType}</Badge>
-          {item.epochsRemaining !== null && (
-            <Badge
-              variant={item.isUrgent ? 'destructive' : 'outline'}
-              className={cn('gap-1', !item.isUrgent && 'text-muted-foreground')}
-            >
-              {item.isUrgent ? (
-                <AlertTriangle className="h-3 w-3" />
-              ) : (
-                <Clock className="h-3 w-3" />
-              )}
-              {item.epochsRemaining === 0
-                ? 'Expires this epoch'
-                : `${item.epochsRemaining} epoch${item.epochsRemaining !== 1 ? 's' : ''} remaining`}
-            </Badge>
-          )}
-          {item.existingVote && (
-            <Badge
-              variant="outline"
-              className={cn(
-                'gap-1',
-                item.existingVote === 'Yes'
-                  ? 'text-emerald-600 border-emerald-500/30'
-                  : item.existingVote === 'No'
-                    ? 'text-rose-600 border-rose-500/30'
-                    : 'text-muted-foreground',
-              )}
-            >
-              Already voted: {item.existingVote}
-            </Badge>
-          )}
+      )}
+
+      {/* Citizen Sentiment — hidden when sealed */}
+      {!isSealed && citizenSentiment != null && (
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-semibold text-muted-foreground">Citizen Sentiment</h3>
+          <div className="flex items-center gap-2">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-green-500"
+                style={{ width: `${Math.round(citizenSentiment * 100)}%` }}
+              />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {Math.round(citizenSentiment * 100)}% positive
+            </span>
+          </div>
         </div>
-      </div>
-
-      {/* AI Summary or Abstract */}
-      {(item.aiSummary || item.abstract) && (
-        <Card>
-          <CardContent className="pt-4 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5" />
-              {item.aiSummary ? 'AI Summary' : 'Abstract'}
-            </div>
-            <p className="text-sm text-foreground/80 leading-relaxed">
-              {item.aiSummary || item.abstract}
-            </p>
-          </CardContent>
-        </Card>
       )}
 
-      {/* AI Intelligence Blocks */}
-      <FeatureGate flag="ai_skills_engine">
-        <IntelligenceBlocks
-          txHash={item.txHash}
-          index={item.proposalIndex}
-          title={item.title}
-          abstract={item.abstract}
-          proposalType={item.proposalType}
-        />
-      </FeatureGate>
-
-      {/* Treasury Context */}
-      {item.proposalType === 'TreasuryWithdrawals' && item.withdrawalAmount !== null && (
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full p-2 bg-amber-100 dark:bg-amber-900/30">
-                <Wallet className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  {formatAda(item.withdrawalAmount)}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Treasury withdrawal</span>
-                  {item.treasuryTier && (
-                    <Badge variant="outline" className="text-[10px]">
-                      {item.treasuryTier}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Citizen Sentiment */}
-      {item.citizenSentiment && item.citizenSentiment.total > 0 && (
-        <Card>
-          <CardContent className="pt-4">
-            <SentimentBar sentiment={item.citizenSentiment} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Inter-Body Votes */}
-      <Card>
-        <CardContent className="pt-4 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Inter-Body Vote Tallies</p>
-          <VoteTally
-            rows={[
-              { label: 'DRep', ...item.interBodyVotes.drep },
-              { label: 'SPO', ...item.interBodyVotes.spo },
-              { label: 'CC', ...item.interBodyVotes.cc },
-            ]}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Minority Report (always visible if data exists) */}
-      <FeatureGate flag="perspective_clustering">
-        <MinorityReport proposalTxHash={item.txHash} proposalIndex={item.proposalIndex} />
-      </FeatureGate>
-
-      {/* Source Material */}
-      <SourceMaterial item={item} />
-
-      {/* Footer: batch context + source link */}
-      <div className="flex items-center justify-between pt-2">
-        <span className="text-sm text-muted-foreground">
-          Proposal {position} of {total}
-        </span>
-        <Link
-          href={`/proposal/${item.txHash}/${item.proposalIndex}`}
-          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-        >
-          View full proposal
-          <ExternalLink className="h-3.5 w-3.5" />
-        </Link>
+      {/* Source Material — always shown */}
+      <div className="space-y-1.5">
+        <h3 className="text-sm font-semibold text-muted-foreground">Proposal Details</h3>
+        <div className="rounded-lg border border-border/60 bg-card p-3 text-sm">
+          <p className="font-medium">{item.title || 'Untitled Proposal'}</p>
+          {item.abstract && (
+            <p className="mt-1.5 text-muted-foreground line-clamp-3">{item.abstract}</p>
+          )}
+          <p className="mt-2 font-mono text-xs text-muted-foreground">
+            {item.proposalType} &middot; {item.txHash.slice(0, 16)}...#{item.index}
+          </p>
+        </div>
       </div>
     </div>
   );

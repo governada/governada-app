@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, Send, Loader2, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { FeatureGate } from '@/components/FeatureGate';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { useResearchConversation, useSendResearchMessage } from '@/hooks/useResearchAssistant';
@@ -29,7 +30,7 @@ function UserBubble({ message }: { message: ResearchMessage }) {
     <div className="flex justify-end">
       <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-primary-foreground">
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-        <time className="mt-1 block text-[10px] opacity-60">
+        <time className="mt-1 block text-xs opacity-60">
           {new Date(message.timestamp).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
@@ -60,7 +61,7 @@ function AssistantBubble({ message }: { message: ResearchMessage }) {
       <div className="max-w-[90%] space-y-2">
         <div className="rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5">
           <MarkdownContent content={displayContent} className="text-sm text-foreground" />
-          <time className="mt-1 block text-[10px] text-muted-foreground">
+          <time className="mt-1 block text-xs text-muted-foreground">
             {new Date(message.timestamp).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
@@ -73,6 +74,7 @@ function AssistantBubble({ message }: { message: ResearchMessage }) {
           <button
             onClick={() => setReasoningOpen(!reasoningOpen)}
             className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={reasoningOpen ? 'Hide reasoning' : 'Show reasoning'}
           >
             {reasoningOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             Reasoning
@@ -93,7 +95,7 @@ function AssistantBubble({ message }: { message: ResearchMessage }) {
             {message.sources.map((source, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 rounded-full bg-muted/80 px-2.5 py-0.5 text-[11px] text-muted-foreground"
+                className="inline-flex items-center gap-1 rounded-full bg-muted/80 px-2.5 py-0.5 text-xs text-muted-foreground"
               >
                 <BookOpen className="size-2.5" />[{source.type}] {source.reference}
               </span>
@@ -225,7 +227,7 @@ function ResearchAssistantInner({
           <Sparkles className="size-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Research Assistant</h3>
         </div>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           Conversations are saved and contribute to your review provenance
         </p>
       </div>
@@ -283,7 +285,7 @@ function ResearchAssistantInner({
       {/* Input area */}
       <div className="shrink-0 border-t border-border p-3">
         <div className="flex items-end gap-2">
-          <textarea
+          <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => {
@@ -295,13 +297,15 @@ function ResearchAssistantInner({
             rows={1}
             maxLength={2000}
             disabled={isSending}
-            className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none disabled:opacity-50"
+            className="flex-1 resize-none"
+            aria-label="Research question input"
           />
           <Button
             size="icon"
             onClick={handleSend}
             disabled={!input.trim() || isSending}
             className="size-9 shrink-0"
+            aria-label="Send message"
           >
             {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           </Button>

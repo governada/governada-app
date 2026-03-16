@@ -124,7 +124,7 @@ export function ReviewRubric({ draftId, reviewerStakeAddress, onSuccess }: Revie
   }, [submitReview, reviewerStakeAddress, scores, feedbackText, themes, onSuccess]);
 
   return (
-    <Card>
+    <Card data-review-rubric>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm">Submit Review</CardTitle>
       </CardHeader>

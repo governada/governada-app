@@ -167,6 +167,7 @@ export function DecisionJournal({ proposalTxHash, proposalIndex, userId }: Decis
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex items-center justify-between w-full text-left"
+          aria-label={expanded ? 'Collapse decision journal' : 'Expand decision journal'}
         >
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <BookOpen className="h-3.5 w-3.5" />
@@ -190,14 +191,15 @@ export function DecisionJournal({ proposalTxHash, proposalIndex, userId }: Decis
           <div className="space-y-3">
             {/* Position Selector */}
             <div className="space-y-1.5">
-              <p className="text-[10px] text-muted-foreground font-medium">Current Position</p>
+              <p className="text-xs text-muted-foreground font-medium">Current Position</p>
               <div className="flex flex-wrap gap-1">
                 {POSITION_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => handlePositionChange(opt.value)}
+                    aria-label={`Set position to ${opt.label}`}
                     className={cn(
-                      'px-2 py-1 text-[10px] rounded-md border transition-all',
+                      'px-3 py-1.5 text-xs rounded-md border transition-all',
                       position === opt.value
                         ? opt.color
                         : 'border-border text-muted-foreground hover:border-muted-foreground/40',
@@ -212,8 +214,8 @@ export function DecisionJournal({ proposalTxHash, proposalIndex, userId }: Decis
             {/* Confidence */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] text-muted-foreground font-medium">Confidence</p>
-                <span className="text-[10px] font-medium tabular-nums">{confidence}%</span>
+                <p className="text-xs text-muted-foreground font-medium">Confidence</p>
+                <span className="text-xs font-medium tabular-nums">{confidence}%</span>
               </div>
               <input
                 type="range"
@@ -227,7 +229,7 @@ export function DecisionJournal({ proposalTxHash, proposalIndex, userId }: Decis
 
             {/* What would change my mind */}
             <div className="space-y-1.5">
-              <p className="text-[10px] text-muted-foreground font-medium">
+              <p className="text-xs text-muted-foreground font-medium">
                 What would change my mind?
               </p>
               <Textarea
@@ -242,7 +244,7 @@ export function DecisionJournal({ proposalTxHash, proposalIndex, userId }: Decis
             {/* Position History */}
             {positionHistory.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-[10px] text-muted-foreground font-medium">Position History</p>
+                <p className="text-xs text-muted-foreground font-medium">Position History</p>
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                   {positionHistory
                     .slice()
@@ -250,7 +252,7 @@ export function DecisionJournal({ proposalTxHash, proposalIndex, userId }: Decis
                     .map((entry, i) => (
                       <div
                         key={i}
-                        className="flex items-center gap-2 text-[10px] text-muted-foreground"
+                        className="flex items-center gap-2 text-xs text-muted-foreground"
                       >
                         <Clock className="h-3 w-3 shrink-0" />
                         <span className="font-medium text-foreground/80">

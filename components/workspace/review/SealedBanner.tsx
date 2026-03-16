@@ -55,12 +55,16 @@ export function SealedBanner({ sealedUntil }: SealedBannerProps) {
     <div className="flex items-start gap-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-4">
       <Shield className="mt-0.5 size-5 shrink-0 text-indigo-400" />
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-indigo-300">Independent Assessment Period</p>
+        <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+          Independent Assessment Period
+        </p>
         <p className="text-sm text-muted-foreground">
           Positions are sealed until {sealedDateFormatted}. Form your own opinion before seeing how
           others voted.
         </p>
-        <p className="text-xs text-indigo-400/70">{formatTimeRemaining(remaining)}</p>
+        <p className="text-xs text-indigo-600/70 dark:text-indigo-400/70">
+          {formatTimeRemaining(remaining)}
+        </p>
       </div>
     </div>
   );

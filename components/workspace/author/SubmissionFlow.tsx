@@ -44,16 +44,16 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
               i < current
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40'
                 : i === current
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                  : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                  ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40'
+                  : 'bg-muted text-muted-foreground border border-border'
             }`}
           >
             {i < current ? <Check className="h-4 w-4" /> : i + 1}
           </div>
           {i < total - 1 && (
-            <div className={`h-px w-8 ${i < current ? 'bg-emerald-500/40' : 'bg-zinc-700'}`} />
+            <div className={`h-px w-8 ${i < current ? 'bg-emerald-500/40' : 'bg-border'}`} />
           )}
         </div>
       ))}
@@ -66,28 +66,28 @@ function ReviewStep({ draft, onNext }: { draft: ProposalDraft; onNext: () => voi
     <div className="space-y-4">
       <div className="space-y-3">
         <div>
-          <p className="text-sm text-zinc-400 mb-1">Title</p>
-          <p className="text-zinc-100">{draft.title || 'Untitled'}</p>
+          <p className="text-sm text-muted-foreground mb-1">Title</p>
+          <p className="text-foreground">{draft.title || 'Untitled'}</p>
         </div>
         <div>
-          <p className="text-sm text-zinc-400 mb-1">Type</p>
+          <p className="text-sm text-muted-foreground mb-1">Type</p>
           <Badge variant="outline">{draft.proposalType}</Badge>
         </div>
         <div>
-          <p className="text-sm text-zinc-400 mb-1">Abstract</p>
-          <p className="text-sm text-zinc-300 line-clamp-3">
+          <p className="text-sm text-muted-foreground mb-1">Abstract</p>
+          <p className="text-sm text-foreground line-clamp-3">
             {draft.abstract || 'No abstract provided'}
           </p>
         </div>
         <div>
-          <p className="text-sm text-zinc-400 mb-1">Motivation</p>
-          <p className="text-sm text-zinc-300 line-clamp-3">
+          <p className="text-sm text-muted-foreground mb-1">Motivation</p>
+          <p className="text-sm text-foreground line-clamp-3">
             {draft.motivation || 'No motivation provided'}
           </p>
         </div>
         <div>
-          <p className="text-sm text-zinc-400 mb-1">Rationale</p>
-          <p className="text-sm text-zinc-300 line-clamp-3">
+          <p className="text-sm text-muted-foreground mb-1">Rationale</p>
+          <p className="text-sm text-foreground line-clamp-3">
             {draft.rationale || 'No rationale provided'}
           </p>
         </div>
@@ -95,7 +95,7 @@ function ReviewStep({ draft, onNext }: { draft: ProposalDraft; onNext: () => voi
 
       <Alert className="border-blue-500/30 bg-blue-500/5">
         <Info className="h-4 w-4 text-blue-400" />
-        <AlertDescription className="text-blue-300 text-sm">
+        <AlertDescription className="text-blue-700 dark:text-blue-300 text-sm">
           This will generate a CIP-108 metadata document hosted at a permanent URL, then construct a
           governance action transaction for on-chain submission.
         </AlertDescription>
@@ -123,34 +123,37 @@ function DepositWarningStep({
     <div className="space-y-4">
       <Alert className="border-amber-500/30 bg-amber-500/5">
         <AlertTriangle className="h-4 w-4 text-amber-400" />
-        <AlertDescription className="text-amber-300">
+        <AlertDescription className="text-amber-800 dark:text-amber-300">
           <p className="font-semibold mb-2">Refundable Deposit Required</p>
           <p className="text-sm">
             Submitting a governance action requires locking{' '}
-            <span className="font-bold text-amber-200">100,000 ADA</span> as a refundable deposit.
-            The deposit is returned when the proposal expires (~6 epochs / ~30 days) or is ratified.
+            <span className="font-bold text-amber-900 dark:text-amber-200">100,000 ADA</span> as a
+            refundable deposit. The deposit is returned when the proposal expires (~6 epochs / ~30
+            days) or is ratified.
           </p>
         </AlertDescription>
       </Alert>
 
       {preflight && (
-        <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4 space-y-3">
+        <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
           <div className="flex justify-between">
-            <span className="text-sm text-zinc-400">Deposit</span>
-            <span className="text-sm font-mono text-amber-300">{preflight.estimatedDeposit}</span>
+            <span className="text-sm text-muted-foreground">Deposit</span>
+            <span className="text-sm font-mono text-amber-700 dark:text-amber-300">
+              {preflight.estimatedDeposit}
+            </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-zinc-400">Estimated Fee</span>
-            <span className="text-sm font-mono text-zinc-300">{preflight.estimatedFee}</span>
+            <span className="text-sm text-muted-foreground">Estimated Fee</span>
+            <span className="text-sm font-mono text-foreground">{preflight.estimatedFee}</span>
           </div>
-          <div className="border-t border-zinc-800 pt-2 flex justify-between">
-            <span className="text-sm text-zinc-400">Your Balance</span>
-            <span className="text-sm font-mono text-zinc-100">{preflight.currentBalance}</span>
+          <div className="border-t border-border pt-2 flex justify-between">
+            <span className="text-sm text-muted-foreground">Your Balance</span>
+            <span className="text-sm font-mono text-foreground">{preflight.currentBalance}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-zinc-400">Balance After</span>
+            <span className="text-sm text-muted-foreground">Balance After</span>
             <span
-              className={`text-sm font-mono ${preflight.canAfford ? 'text-zinc-100' : 'text-red-400'}`}
+              className={`text-sm font-mono ${preflight.canAfford ? 'text-foreground' : 'text-rose-600 dark:text-rose-400'}`}
             >
               {preflight.canAfford ? preflight.balanceAfter : 'Insufficient funds'}
             </span>
@@ -159,9 +162,9 @@ function DepositWarningStep({
       )}
 
       {preflight && !preflight.canAfford && (
-        <Alert className="border-red-500/30 bg-red-500/5">
-          <AlertTriangle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-300 text-sm">
+        <Alert className="border-rose-500/30 bg-rose-500/5">
+          <AlertTriangle className="h-4 w-4 text-rose-400" />
+          <AlertDescription className="text-rose-700 dark:text-rose-300 text-sm">
             Your wallet does not have sufficient funds for the 100,000 ADA deposit plus transaction
             fees. You need at least 100,000.2 ADA to proceed.
           </AlertDescription>
@@ -194,9 +197,9 @@ function ConfirmationStep({
 
   return (
     <div className="space-y-4">
-      <Alert className="border-red-500/30 bg-red-500/5">
-        <Shield className="h-4 w-4 text-red-400" />
-        <AlertDescription className="text-red-300">
+      <Alert className="border-rose-500/30 bg-rose-500/5">
+        <Shield className="h-4 w-4 text-rose-400" />
+        <AlertDescription className="text-rose-700 dark:text-rose-300">
           <p className="font-semibold mb-2">Final Confirmation</p>
           <p className="text-sm">
             You are about to submit a governance action on-chain. This will lock{' '}
@@ -207,8 +210,8 @@ function ConfirmationStep({
       </Alert>
 
       <div>
-        <label htmlFor="confirm-submit" className="text-sm text-zinc-400 mb-2 block">
-          Type <span className="font-mono font-bold text-zinc-200">SUBMIT</span> to confirm
+        <label htmlFor="confirm-submit" className="text-sm text-muted-foreground mb-2 block">
+          Type <span className="font-mono font-bold text-foreground">SUBMIT</span> to confirm
         </label>
         <Input
           id="confirm-submit"
@@ -228,7 +231,7 @@ function ConfirmationStep({
         <Button
           onClick={onConfirm}
           disabled={!isConfirmed || isProcessing}
-          className="flex-1 bg-red-600 hover:bg-red-700"
+          className="flex-1 bg-rose-600 hover:bg-rose-700"
         >
           {isProcessing ? (
             <>
@@ -260,9 +263,9 @@ function ProcessingStep({ phase }: { phase: GovernanceActionPhase }) {
   return (
     <div className="flex flex-col items-center justify-center py-8 space-y-4">
       <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
-      <p className="text-zinc-300">{message}</p>
+      <p className="text-foreground">{message}</p>
       {phase.status === 'signing' && (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           Check your wallet extension for the signature request
         </p>
       )}
@@ -294,33 +297,39 @@ function PublishedStep({
         <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mb-3">
           <Check className="h-6 w-6 text-blue-400" />
         </div>
-        <h3 className="text-lg font-semibold text-zinc-100">Metadata Published</h3>
-        <p className="text-sm text-zinc-400 text-center mt-1">
+        <h3 className="text-lg font-semibold text-foreground">Metadata Published</h3>
+        <p className="text-sm text-muted-foreground text-center mt-1">
           Your CIP-108 metadata document is live and ready for on-chain submission.
         </p>
       </div>
 
       <Alert className="border-blue-500/30 bg-blue-500/5">
         <Info className="h-4 w-4 text-blue-400" />
-        <AlertDescription className="text-blue-300 text-sm">
+        <AlertDescription className="text-blue-700 dark:text-blue-300 text-sm">
           On-chain transaction submission requires MeshJS governance action support which is still
           in development. You can submit using cardano-cli with the anchor URL below.
         </AlertDescription>
       </Alert>
 
-      <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4 space-y-3">
+      <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Anchor URL</p>
+          <p className="text-xs text-muted-foreground mb-1">Anchor URL</p>
           <div className="flex items-center gap-2">
-            <code className="text-xs text-zinc-300 break-all flex-1">{anchorUrl}</code>
-            <Button variant="ghost" size="sm" onClick={copyUrl} className="shrink-0">
+            <code className="text-xs text-foreground break-all flex-1">{anchorUrl}</code>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={copyUrl}
+              className="shrink-0"
+              aria-label="Copy anchor URL"
+            >
               {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
             </Button>
           </div>
         </div>
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Anchor Hash (Blake2b-256)</p>
-          <code className="text-xs text-zinc-300 break-all">{anchorHash}</code>
+          <p className="text-xs text-muted-foreground mb-1">Anchor Hash (Blake2b-256)</p>
+          <code className="text-xs text-foreground break-all">{anchorHash}</code>
         </div>
       </div>
 
@@ -350,33 +359,34 @@ function SuccessStep({
         <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
           <Check className="h-6 w-6 text-emerald-400" />
         </div>
-        <h3 className="text-lg font-semibold text-zinc-100">Governance Action Submitted</h3>
-        <p className="text-sm text-zinc-400 text-center mt-1">
+        <h3 className="text-lg font-semibold text-foreground">Governance Action Submitted</h3>
+        <p className="text-sm text-muted-foreground text-center mt-1">
           Your proposal is now live on-chain for approximately 6 epochs (~30 days).
         </p>
       </div>
 
-      <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4 space-y-3">
+      <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Transaction Hash</p>
+          <p className="text-xs text-muted-foreground mb-1">Transaction Hash</p>
           <div className="flex items-center gap-2">
-            <code className="text-xs text-zinc-300 break-all flex-1">{txHash}</code>
+            <code className="text-xs text-foreground break-all flex-1">{txHash}</code>
             <a
               href={cardanoscanUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 text-zinc-400 hover:text-zinc-200"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="View on CardanoScan"
             >
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
         </div>
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Anchor URL</p>
-          <code className="text-xs text-zinc-300 break-all">{anchorUrl}</code>
+          <p className="text-xs text-muted-foreground mb-1">Anchor URL</p>
+          <code className="text-xs text-foreground break-all">{anchorUrl}</code>
         </div>
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Status</p>
+          <p className="text-xs text-muted-foreground mb-1">Status</p>
           <Badge variant={confirmed ? 'default' : 'outline'}>
             {confirmed ? 'Confirmed on-chain' : 'Awaiting confirmation...'}
           </Badge>
@@ -405,12 +415,16 @@ function ErrorStep({
 }) {
   return (
     <div className="space-y-4">
-      <Alert className="border-red-500/30 bg-red-500/5">
-        <AlertTriangle className="h-4 w-4 text-red-400" />
-        <AlertDescription className="text-red-300">
+      <Alert className="border-rose-500/30 bg-rose-500/5">
+        <AlertTriangle className="h-4 w-4 text-rose-400" />
+        <AlertDescription className="text-rose-700 dark:text-rose-300">
           <p className="font-semibold mb-1">{message}</p>
           <p className="text-sm">{hint}</p>
-          {code !== 'unknown' && <p className="text-xs text-red-400/60 mt-2">Error code: {code}</p>}
+          {code !== 'unknown' && (
+            <p className="text-xs text-rose-600/60 dark:text-rose-400/60 mt-2">
+              Error code: {code}
+            </p>
+          )}
         </AlertDescription>
       </Alert>
 
@@ -569,7 +583,7 @@ function SubmissionFlowInner({ draft, onClose, onSubmitted }: SubmissionFlowProp
       : step;
 
   return (
-    <Card className="border-zinc-800 bg-zinc-950">
+    <Card className="border-border bg-background">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Shield className="h-5 w-5 text-amber-400" />
@@ -581,7 +595,7 @@ function SubmissionFlowInner({ draft, onClose, onSubmitted }: SubmissionFlowProp
           phase.status !== 'success' && (
             <>
               <StepIndicator current={currentStepIndex} total={3} />
-              <p className="text-sm text-zinc-400">{stepTitles[currentStepIndex]}</p>
+              <p className="text-sm text-muted-foreground">{stepTitles[currentStepIndex]}</p>
             </>
           )}
       </CardHeader>

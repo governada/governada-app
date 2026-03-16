@@ -174,7 +174,7 @@ function ConstitutionalSummaryBlock({
           <div className="flex items-center gap-2">
             <ScoreIcon className={cn('h-4 w-4', scoreColor)} />
             <span className="text-sm font-medium">Constitutional Check</span>
-            <Badge variant="outline" className={cn('text-[10px] capitalize', scoreBg, scoreColor)}>
+            <Badge variant="outline" className={cn('text-xs capitalize', scoreBg, scoreColor)}>
               {result.score}
             </Badge>
           </div>
@@ -323,7 +323,7 @@ function SimilarProposalsBlock({
                 className="rounded-md border border-border/40 bg-muted/10 px-3 py-2 space-y-0.5"
               >
                 <p className="text-xs font-medium text-foreground/90 line-clamp-1">{p.title}</p>
-                <p className="text-[11px] text-muted-foreground line-clamp-2">{p.comparison}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{p.comparison}</p>
               </li>
             ))}
           </ul>

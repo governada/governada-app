@@ -144,6 +144,24 @@ export function ReviewWorkspace() {
     );
   }
 
+  // No voter ID (not a DRep/SPO) -- must check before empty state
+  // because when voterId is null, the query is disabled and items will be empty
+  if (!voterId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-3">
+          <Vote className="mx-auto h-8 w-8 text-muted-foreground" />
+          <div>
+            <p className="text-base font-semibold text-foreground">Review Workspace</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Connect your wallet as a DRep or SPO to start reviewing proposals.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Empty state
   if (items.length === 0) {
     return (
@@ -156,23 +174,6 @@ export function ReviewWorkspace() {
             <p className="text-base font-semibold text-foreground">You&apos;re all caught up!</p>
             <p className="text-sm text-muted-foreground mt-1">
               No open proposals need your review right now.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // No voter ID (not a DRep/SPO)
-  if (!voterId) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center space-y-3">
-          <Vote className="mx-auto h-8 w-8 text-muted-foreground" />
-          <div>
-            <p className="text-base font-semibold text-foreground">Review Workspace</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Connect your wallet as a DRep or SPO to start reviewing proposals.
             </p>
           </div>
         </div>
@@ -251,6 +252,7 @@ export function ReviewWorkspace() {
               size="icon"
               className="h-12 w-12 rounded-full shadow-lg"
               onClick={() => setNotesSheetOpen(true)}
+              aria-label="Open notes and journal"
             >
               <BookOpen className="h-5 w-5" />
             </Button>

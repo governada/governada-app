@@ -36,7 +36,7 @@ export function SourceMaterial({ item }: SourceMaterialProps) {
         {/* Full Abstract */}
         {abstractText && (
           <div className="space-y-1.5">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Full Abstract
             </p>
             <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
@@ -46,6 +46,7 @@ export function SourceMaterial({ item }: SourceMaterialProps) {
               <button
                 onClick={() => setAbstractExpanded(!abstractExpanded)}
                 className="flex items-center gap-1 text-xs text-primary hover:underline"
+                aria-label={abstractExpanded ? 'Show less of abstract' : 'Read full abstract'}
               >
                 {abstractExpanded ? (
                   <>
@@ -63,7 +64,7 @@ export function SourceMaterial({ item }: SourceMaterialProps) {
 
         {/* Proposal Metadata */}
         <div className="space-y-1.5">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Metadata
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -97,7 +98,7 @@ export function SourceMaterial({ item }: SourceMaterialProps) {
                 <Badge
                   variant="outline"
                   className={cn(
-                    'text-[10px]',
+                    'text-xs',
                     item.existingVote === 'Yes'
                       ? 'text-emerald-600 border-emerald-500/30'
                       : item.existingVote === 'No'

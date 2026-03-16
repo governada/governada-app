@@ -4,8 +4,16 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useUpdateDraft } from '@/hooks/useDrafts';
 import { DeduplicationBanner } from './DeduplicationBanner';
+import { posthog } from '@/lib/posthog';
 import type { ProposalDraft } from '@/lib/workspace/types';
 
 interface DraftFormProps {
@@ -86,19 +94,46 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
   // Deduplication banner handler (community_review, non-owner)
   const showDeduplication = draft.status === 'community_review' && !readOnly;
 
+  const scrollToReviewSection = useCallback(() => {
+    // The ReviewRubric lives in the same parent (DraftEditor) above DraftForm
+    const rubric = document.querySelector('[data-review-rubric]');
+    if (rubric) {
+      rubric.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Focus the first textarea in the rubric
+      const textarea = rubric.querySelector('textarea');
+      if (textarea) setTimeout(() => textarea.focus(), 400);
+    }
+  }, []);
+
+  const handleEndorse = useCallback(
+    (themes: string[]) => {
+      try {
+        posthog?.capture('deduplication_themes_endorsed', {
+          draftId: draft.id,
+          themeCount: themes.length,
+        });
+      } catch {
+        // Non-critical
+      }
+      scrollToReviewSection();
+    },
+    [draft.id, scrollToReviewSection],
+  );
+
+  const handleAddNew = useCallback(() => {
+    try {
+      posthog?.capture('deduplication_add_new_clicked', { draftId: draft.id });
+    } catch {
+      // Non-critical
+    }
+    scrollToReviewSection();
+  }, [draft.id, scrollToReviewSection]);
+
   return (
     <div className="space-y-5">
       {/* Deduplication banner for non-owners during community review */}
       {showDeduplication && (
-        <DeduplicationBanner
-          draftId={draft.id}
-          onEndorse={() => {
-            /* themes auto-populated via ReviewRubric */
-          }}
-          onAddNew={() => {
-            /* scroll to review form */
-          }}
-        />
+        <DeduplicationBanner draftId={draft.id} onEndorse={handleEndorse} onAddNew={handleAddNew} />
       )}
 
       {/* Save status indicator */}
@@ -325,21 +360,25 @@ function ParameterChangeFields({
       <h3 className="text-sm font-semibold text-muted-foreground">Parameter Change Details</h3>
       <div className="space-y-1.5">
         <Label htmlFor="ts-param">Parameter Name</Label>
-        <select
-          id="ts-param"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+        <Select
           value={(typeSpecific.parameterName as string) ?? ''}
-          onChange={(e) => onChange({ ...typeSpecific, parameterName: e.target.value })}
-          onBlur={onBlur}
+          onValueChange={(value) => {
+            onChange({ ...typeSpecific, parameterName: value });
+            onBlur();
+          }}
           disabled={readOnly}
         >
-          <option value="">Select a parameter...</option>
-          {COMMON_PARAMETERS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id="ts-param" aria-label="Select protocol parameter">
+            <SelectValue placeholder="Select a parameter..." />
+          </SelectTrigger>
+          <SelectContent>
+            {COMMON_PARAMETERS.map((p) => (
+              <SelectItem key={p} value={p}>
+                {p}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="ts-value">Proposed Value</Label>

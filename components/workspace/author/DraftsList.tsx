@@ -33,6 +33,9 @@ const STATUS_COLORS: Record<string, string> = {
   ready: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
   submitted: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
   archived: 'bg-muted text-muted-foreground',
+  community_review: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  response_revision: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  final_comment: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
 };
 
 export function DraftsList({ drafts, isLoading }: DraftsListProps) {

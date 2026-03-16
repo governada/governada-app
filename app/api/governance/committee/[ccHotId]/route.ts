@@ -18,6 +18,14 @@ export const GET = withRouteHandler(async (request: Request) => {
 
   const supabase = createClient();
 
+  // Resolve cold ID for intelligence table lookups (which now key by cold ID)
+  const { data: memberLookup } = await supabase
+    .from('cc_members')
+    .select('cc_cold_id')
+    .eq('cc_hot_id', decodedId)
+    .maybeSingle();
+  const intelligenceId = memberLookup?.cc_cold_id ?? decodedId;
+
   // Parallel queries for member intelligence
   const [
     archetypeResult,
@@ -28,15 +36,15 @@ export const GET = withRouteHandler(async (request: Request) => {
     analysisResult,
     allMembersResult,
   ] = await Promise.all([
-    supabase.from('cc_member_archetypes').select('*').eq('cc_hot_id', decodedId).maybeSingle(),
+    supabase.from('cc_member_archetypes').select('*').eq('cc_hot_id', intelligenceId).maybeSingle(),
     supabase
       .from('cc_agreement_matrix')
       .select('*')
-      .or(`member_a.eq.${decodedId},member_b.eq.${decodedId}`),
+      .or(`member_a.eq.${intelligenceId},member_b.eq.${intelligenceId}`),
     supabase
       .from('cc_bloc_assignments')
       .select('*')
-      .eq('cc_hot_id', decodedId)
+      .eq('cc_hot_id', intelligenceId)
       .order('computed_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -64,9 +72,9 @@ export const GET = withRouteHandler(async (request: Request) => {
     if (m.author_name) memberNameMap.set(m.cc_hot_id as string, m.author_name as string);
   }
 
-  // Build pairwise alignment from agreement matrix
+  // Build pairwise alignment from agreement matrix (keyed by cold/canonical ID)
   const pairwise = (agreementResult.data ?? []).map((row) => {
-    const isA = row.member_a === decodedId;
+    const isA = row.member_a === intelligenceId;
     const peerId = (isA ? row.member_b : row.member_a) as string;
     return {
       memberId: peerId,

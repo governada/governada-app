@@ -90,8 +90,18 @@ export const syncSpoAndCcVotes = inngest.createFunction(
       try {
         const votes = await fetchAllCCVotesBulk();
 
+        // Build hot→cold mapping from committee_members for credential resolution
+        const { data: committeeMembers } = await supabase
+          .from('committee_members')
+          .select('cc_hot_id, cc_cold_id');
+        const hotToCold = new Map<string, string>();
+        for (const m of committeeMembers ?? []) {
+          if (m.cc_cold_id) hotToCold.set(m.cc_hot_id, m.cc_cold_id);
+        }
+
         const rows = votes.map((v) => ({
           cc_hot_id: v.cc_hot_id,
+          cc_cold_id: hotToCold.get(v.cc_hot_id) ?? null,
           proposal_tx_hash: v.proposal_tx_hash,
           proposal_index: v.proposal_index,
           vote: v.vote,

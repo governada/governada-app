@@ -2171,3 +2171,34 @@ export async function isDRepClaimed(drepId: string): Promise<boolean> {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Citizen sentiment aggregate (server-side, for editorial headline)
+// ---------------------------------------------------------------------------
+
+export async function getCitizenSentimentSummary(
+  txHash: string,
+  proposalIndex: number,
+): Promise<{ support: number; oppose: number; unsure: number; total: number } | null> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('citizen_sentiment')
+      .select('sentiment')
+      .eq('proposal_tx_hash', txHash)
+      .eq('proposal_index', proposalIndex);
+
+    if (error || !data || data.length === 0) return null;
+
+    const counts = { support: 0, oppose: 0, unsure: 0, total: data.length };
+    for (const row of data) {
+      const s = row.sentiment as string;
+      if (s === 'support') counts.support++;
+      else if (s === 'oppose') counts.oppose++;
+      else counts.unsure++;
+    }
+    return counts;
+  } catch {
+    return null;
+  }
+}

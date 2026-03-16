@@ -33,6 +33,33 @@ _(Patterns for first-time user experiences, value communication, progressive dis
 
 ### Dashboard & Status-at-a-Glance
 
+#### ESPN Score Bug — Live Event Status in One Glance
+
+- **Source**: ESPN live broadcasts + app game page — https://medium.com/@alainazemanick/take-me-out-to-the-ballgame-score-bugs-and-the-ux-of-americas-pastime-27b83ae175b1
+- **Discovered**: 2026-03-16 (explore-feature: proposal header)
+- **What they do**: A persistent horizontal strip showing teams, score, period, and time remaining. Morphs layout based on game state (pre-game, live, halftime, final). Color-coded team identities. The entire complex live event is distilled into one strip readable in <1 second.
+- **Why it's world-class**: Proves that even a complex, multi-variable live event can be a single horizontal component. The state-aware morphing means the same strip works for every phase of the event. Never removed, always readable.
+- **Applicable to**: Proposal verdict strip — Yes/No "teams," voting power "score," epochs remaining "clock," proposal status as "game state." One strip that tells the whole story.
+- **Adoption difficulty**: Easy — all data exists, need unified strip component
+
+#### Robinhood Color-as-Verdict — Emotional Read Before Textual Read
+
+- **Source**: Robinhood stock detail page — https://worldbusinessoutlook.com/how-the-robinhood-ui-balances-simplicity-and-strategy-on-mobile/
+- **Discovered**: 2026-03-16 (explore-feature: proposal header)
+- **What they do**: The ENTIRE page color shifts based on one fact: is this stock up or down? Green = up, Red = down. Price + change is the dominant element. Everything else is progressive disclosure. Card-based grouping for drill-down.
+- **Why it's world-class**: Color communicates the single most important fact before you read a single word. The page "feels" bullish or bearish instantly. One dominant element with everything else subordinate.
+- **Applicable to**: Proposal pages should "feel" passing (green tint) or failing (red tint) or contested (amber tint) before reading anything. Verdict as dominant element, not metadata.
+- **Adoption difficulty**: Easy — verdict data exists, need color theming based on projection outcome
+
+#### GitHub PR Status Bar — Multi-Signal Collapse into Actionable Strip
+
+- **Source**: GitHub pull request page — https://github.blog/2019-02-26-get-even-more-detail-in-pull-requests/
+- **Discovered**: 2026-03-16 (explore-feature: proposal header)
+- **What they do**: One horizontal status bar collapses CI status, reviewer status, merge conflicts, and permissions into a single "can I merge this?" verdict. The merge action button is RIGHT NEXT TO the status. Conversation and details are progressive disclosure below.
+- **Why it's world-class**: Collapses a complex multi-signal status into one actionable strip. Placing the action button adjacent to the status enables zero-scroll decision-making.
+- **Applicable to**: Proposal vote threshold status as a "merge readiness" bar. Action button (vote/signal) adjacent to status, not separated by other components.
+- **Adoption difficulty**: Easy — threshold data exists, need unified strip with embedded action
+
 #### Score as Narrative, Not Just Number
 
 - **Source**: Credit Karma — https://builtformars.com/case-studies/credit-karma

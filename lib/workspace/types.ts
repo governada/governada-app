@@ -130,6 +130,10 @@ export interface ProposalDraft {
   stageEnteredAt: string | null;
   communityReviewStartedAt: string | null;
   fcpStartedAt: string | null;
+  submittedTxHash: string | null;
+  submittedAnchorUrl: string | null;
+  submittedAnchorHash: string | null;
+  submittedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -344,4 +348,34 @@ export interface ResearchConversation {
   messages: ResearchMessage[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Governance Action Submission types
+// ---------------------------------------------------------------------------
+
+export interface GovernanceActionTarget {
+  type: ProposalType;
+  anchorUrl: string;
+  anchorHash: string;
+  /** For TreasuryWithdrawals: amount in lovelace */
+  withdrawalAmount?: number;
+  /** For TreasuryWithdrawals: receiving address */
+  receivingAddress?: string;
+}
+
+export interface GovernanceActionPreflight {
+  estimatedDeposit: string;
+  estimatedFee: string;
+  currentBalance: string;
+  balanceAfter: string;
+  canAfford: boolean;
+  /** Deposit in lovelace for programmatic use */
+  depositLovelace: string;
+}
+
+export interface GovernanceActionResult {
+  txHash: string;
+  anchorUrl: string;
+  anchorHash: string;
 }

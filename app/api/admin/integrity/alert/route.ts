@@ -174,8 +174,9 @@ export const GET = withRouteHandler(async (request) => {
     }
 
     if (row.last_success === false) {
-      const failureCount = row.failure_count ?? '?';
-      const totalCount = (row.success_count ?? 0) + (row.failure_count ?? 0);
+      const failureCount = row.failure_count ?? 0;
+      const successCount = row.success_count ?? 0;
+      const totalCount = successCount + (failureCount as number);
       const errorDetail = row.last_error
         ? row.last_error.length > 200
           ? row.last_error.slice(0, 200) + '…'
@@ -197,10 +198,18 @@ export const GET = withRouteHandler(async (request) => {
         action = `Check Railway/Inngest logs for ${config.label}. Retrigger via Inngest Cloud (event: ${config.event}).`;
       }
 
+      // Show success rate to give context — a single transient failure among hundreds
+      // of successes is very different from a pattern of repeated failures.
+      const successRate = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 0;
+      const failureContext =
+        successRate >= 95
+          ? `${failureCount} failures out of ${totalCount} runs (${successRate}% success rate)`
+          : `${failureCount}/${totalCount} runs failed`;
+
       alerts.push({
         level: 'critical',
         metric: `${config.label} — Last Run Failed`,
-        value: `${errorDetail}\n${failureCount}/${totalCount} runs failed · ${runAge}`,
+        value: `${errorDetail}\n${failureContext} · ${runAge}`,
         threshold: 'must succeed',
         action,
       });

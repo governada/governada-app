@@ -160,7 +160,72 @@ export const syncFreshnessGuard = inngest.createFunction(
       return stale;
     });
 
-    if (staleTypes.length === 0) {
+    // ── Epoch-gap detection for snapshot tables ──
+    // Catches cases where the daily GHI/treasury sync ran before an epoch boundary,
+    // leaving the new epoch without a snapshot until the next scheduled run.
+    const epochGaps = await step.run('check-epoch-gaps', async () => {
+      const supabase = getSupabaseAdmin();
+      const { data: stats } = await supabase
+        .from('governance_stats')
+        .select('current_epoch')
+        .eq('id', 1)
+        .single();
+      const currentEpoch = stats?.current_epoch ?? 0;
+      if (currentEpoch === 0) return [];
+
+      const gaps: { syncType: string; event: string; epoch: number }[] = [];
+
+      const snapshotChecks: { table: string; epochCol: string; syncType: string; event: string }[] =
+        [
+          {
+            table: 'ghi_snapshots',
+            epochCol: 'epoch_no',
+            syncType: 'ghi',
+            event: 'drepscore/sync.ghi',
+          },
+          {
+            table: 'treasury_snapshots',
+            epochCol: 'epoch_no',
+            syncType: 'treasury',
+            event: 'drepscore/sync.treasury',
+          },
+        ];
+
+      for (const check of snapshotChecks) {
+        const { count } = await supabase
+          .from(check.table)
+          .select('*', { count: 'exact', head: true })
+          .eq(check.epochCol, currentEpoch);
+
+        if ((count ?? 0) === 0) {
+          gaps.push({ syncType: check.syncType, event: check.event, epoch: currentEpoch });
+        }
+      }
+
+      return gaps;
+    });
+
+    for (const gap of epochGaps) {
+      await step.run(`recover-epoch-gap-${gap.syncType}`, async () => {
+        logger.info('[FreshnessGuard] Epoch gap detected — triggering sync', {
+          syncType: gap.syncType,
+          missingEpoch: gap.epoch,
+        });
+        await inngest.send({ name: gap.event });
+
+        emitPostHog(true, gap.syncType as SyncType, 0, {
+          event_override: 'sync_epoch_gap_healed',
+          missing_epoch: gap.epoch,
+        });
+        await alertDiscord(
+          `Epoch Gap Healed: ${gap.syncType}`,
+          `No epoch ${gap.epoch} snapshot found. Triggered sync via freshness guard.`,
+        );
+        recoveries.push(`${gap.syncType}: epoch ${gap.epoch} gap`);
+      });
+    }
+
+    if (staleTypes.length === 0 && epochGaps.length === 0) {
       return { recovered: 0, message: 'All syncs fresh' };
     }
 

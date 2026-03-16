@@ -7,6 +7,7 @@ import type { ReviewQueueItem, QueueItemStatus } from '@/lib/workspace/types';
 import { GovernanceCalendar } from './GovernanceCalendar';
 import { NotificationPreferences } from './NotificationPreferences';
 import { ProposalAlertBadge } from './ProposalAlertBadge';
+import { TimeBudget } from './TimeBudget';
 import type { ProposalDimensions, UserInterestProfile } from '@/lib/notifications/proposalAlerts';
 
 interface ReviewQueueProps {
@@ -65,6 +66,7 @@ export function ReviewQueue({
       {/* Governance Calendar + Notification Preferences */}
       <div className="px-2 pt-2 space-y-1.5 shrink-0">
         <GovernanceCalendar />
+        <TimeBudget items={items} />
         <NotificationPreferences />
       </div>
 

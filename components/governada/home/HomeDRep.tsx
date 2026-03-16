@@ -28,6 +28,7 @@ import {
   useTreasuryCurrent,
 } from '@/hooks/queries';
 import { useSegment } from '@/components/providers/SegmentProvider';
+import { DepthGate } from '@/components/providers/DepthGate';
 import dynamic from 'next/dynamic';
 
 const ConstellationScene = dynamic(
@@ -416,60 +417,64 @@ export function HomeDRep() {
           </Link>
         </Button>
 
-        {/* ── As a Citizen — governance briefing layer ───────────── */}
-        <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Newspaper className="h-4 w-4 text-muted-foreground shrink-0" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              As a Citizen
-            </p>
-          </div>
-
-          {/* Epoch headlines (condensed) */}
-          {briefingHeadlines.length > 0 ? (
-            <ul className="space-y-1.5">
-              {briefingHeadlines.map((h, i) => (
-                <li key={i} className="flex gap-2 items-start">
-                  <span className="text-primary font-bold text-sm leading-none mt-0.5">&bull;</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">{h.title}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{h.description}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No notable governance events this epoch.
-            </p>
-          )}
-
-          {/* Treasury one-liner */}
-          {treasury?.balance != null && treasury.balance > 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Coins className="h-3.5 w-3.5 shrink-0" />
-              <span>
-                Treasury:{' '}
-                <span className="font-semibold text-foreground tabular-nums">
-                  {formatAdaCompact(treasury.balance)} ADA
-                </span>
-                {treasury.trend === 'growing' && (
-                  <TrendingUp className="inline h-3 w-3 text-emerald-500 ml-1" />
-                )}
-                {treasury.trend === 'shrinking' && (
-                  <TrendingDown className="inline h-3 w-3 text-rose-500 ml-1" />
-                )}
-              </span>
+        {/* ── As a Citizen — governance briefing layer (informed+ depth only) ── */}
+        <DepthGate minDepth="informed">
+          <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Newspaper className="h-4 w-4 text-muted-foreground shrink-0" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                As a Citizen
+              </p>
             </div>
-          )}
 
-          <Link
-            href="/governance/health"
-            className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
-          >
-            View full briefing <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
+            {/* Epoch headlines (condensed) */}
+            {briefingHeadlines.length > 0 ? (
+              <ul className="space-y-1.5">
+                {briefingHeadlines.map((h, i) => (
+                  <li key={i} className="flex gap-2 items-start">
+                    <span className="text-primary font-bold text-sm leading-none mt-0.5">
+                      &bull;
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{h.title}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{h.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No notable governance events this epoch.
+              </p>
+            )}
+
+            {/* Treasury one-liner */}
+            {treasury?.balance != null && treasury.balance > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Coins className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Treasury:{' '}
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatAdaCompact(treasury.balance)} ADA
+                  </span>
+                  {treasury.trend === 'growing' && (
+                    <TrendingUp className="inline h-3 w-3 text-emerald-500 ml-1" />
+                  )}
+                  {treasury.trend === 'shrinking' && (
+                    <TrendingDown className="inline h-3 w-3 text-rose-500 ml-1" />
+                  )}
+                </span>
+              </div>
+            )}
+
+            <Link
+              href="/governance/health"
+              className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+            >
+              View full briefing <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </DepthGate>
       </div>
     </div>
   );

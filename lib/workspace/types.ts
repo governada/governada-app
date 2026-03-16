@@ -176,3 +176,124 @@ export interface Cip108Document {
   body: Cip108Body;
   authors?: Array<{ name?: string }>;
 }
+
+// ---------------------------------------------------------------------------
+// Proposal Notes (per-proposal private notes)
+// ---------------------------------------------------------------------------
+
+export interface ProposalNote {
+  id: string;
+  userId: string;
+  proposalTxHash: string;
+  proposalIndex: number;
+  noteText: string;
+  highlights: Array<{ start: number; end: number; color?: string; comment?: string }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Decision Journal
+// ---------------------------------------------------------------------------
+
+export type JournalPosition =
+  | 'undecided'
+  | 'lean_yes'
+  | 'lean_no'
+  | 'lean_abstain'
+  | 'yes'
+  | 'no'
+  | 'abstain';
+
+export interface DecisionJournalEntry {
+  id: string;
+  userId: string;
+  proposalTxHash: string;
+  proposalIndex: number;
+  position: JournalPosition;
+  confidence: number;
+  steelmanText: string;
+  keyAssumptions: string;
+  whatWouldChangeMind: string;
+  positionHistory: Array<{ position: JournalPosition; timestamp: string; reason?: string }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Draft Reviews (structured community feedback)
+// ---------------------------------------------------------------------------
+
+export interface DraftReview {
+  id: string;
+  draftId: string;
+  reviewerStakeAddress: string;
+  impactScore: number | null;
+  feasibilityScore: number | null;
+  constitutionalScore: number | null;
+  valueScore: number | null;
+  feedbackText: string;
+  feedbackThemes: string[];
+  createdAt: string;
+}
+
+export interface DraftReviewResponse {
+  id: string;
+  reviewId: string;
+  responseType: 'accept' | 'decline' | 'modify';
+  responseText: string;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Perspective Clusters
+// ---------------------------------------------------------------------------
+
+export interface PerspectiveCluster {
+  label: string;
+  summary: string;
+  size: number;
+  representativeQuotes: string[];
+  isMinority: boolean;
+}
+
+export interface PerspectiveClustersData {
+  proposalTxHash: string;
+  proposalIndex: number;
+  clusters: PerspectiveCluster[];
+  minorityPerspectives: PerspectiveCluster[];
+  bridgingPoints: string[];
+  rationaleCount: number;
+  generatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Skill Invocation (provenance)
+// ---------------------------------------------------------------------------
+
+export interface SkillInvocationLog {
+  id: string;
+  userId: string | null;
+  stakeAddress: string | null;
+  skillName: string;
+  proposalTxHash: string | null;
+  proposalIndex: number | null;
+  draftId: string | null;
+  modelUsed: string;
+  tokensUsed: number | null;
+  keySource: 'platform' | 'byok';
+  editDistance: number | null;
+  inputSummary: string | null;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// BYOK Key (for display, never includes the actual key)
+// ---------------------------------------------------------------------------
+
+export interface BYOKKeyInfo {
+  id: string;
+  provider: string;
+  keyPrefix: string;
+  createdAt: string;
+}

@@ -76,3 +76,112 @@ export const ReviewQueueParamsSchema = z.object({
   drepId: z.string().optional(),
   poolId: z.string().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Proposal notes schemas
+// ---------------------------------------------------------------------------
+
+export const SaveNoteSchema = z.object({
+  proposalTxHash: z.string().min(1),
+  proposalIndex: z.coerce.number().int().min(0),
+  noteText: z.string().max(50000),
+  highlights: z
+    .array(
+      z.object({
+        start: z.number(),
+        end: z.number(),
+        color: z.string().optional(),
+        comment: z.string().max(500).optional(),
+      }),
+    )
+    .optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Decision journal schemas
+// ---------------------------------------------------------------------------
+
+const JournalPositionEnum = z.enum([
+  'undecided',
+  'lean_yes',
+  'lean_no',
+  'lean_abstain',
+  'yes',
+  'no',
+  'abstain',
+]);
+
+export const SaveJournalSchema = z.object({
+  proposalTxHash: z.string().min(1),
+  proposalIndex: z.coerce.number().int().min(0),
+  position: JournalPositionEnum,
+  confidence: z.number().int().min(0).max(100),
+  steelmanText: z.string().max(5000).optional(),
+  keyAssumptions: z.string().max(5000).optional(),
+  whatWouldChangeMind: z.string().max(5000).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Draft review schemas (structured community feedback)
+// ---------------------------------------------------------------------------
+
+export const SubmitReviewSchema = z.object({
+  reviewerStakeAddress: z.string().min(1),
+  impactScore: z.number().int().min(1).max(5).optional(),
+  feasibilityScore: z.number().int().min(1).max(5).optional(),
+  constitutionalScore: z.number().int().min(1).max(5).optional(),
+  valueScore: z.number().int().min(1).max(5).optional(),
+  feedbackText: z.string().min(1).max(10000),
+  feedbackThemes: z.array(z.string().max(100)).max(10).optional(),
+});
+
+export const RespondToReviewSchema = z.object({
+  responseType: z.enum(['accept', 'decline', 'modify']),
+  responseText: z.string().min(1).max(5000),
+});
+
+// ---------------------------------------------------------------------------
+// Stage transition schema
+// ---------------------------------------------------------------------------
+
+export const StageTransitionSchema = z.object({
+  targetStage: z.enum([
+    'draft',
+    'community_review',
+    'response_revision',
+    'final_comment',
+    'submitted',
+    'archived',
+  ]),
+});
+
+// ---------------------------------------------------------------------------
+// Contribution uniqueness check schema
+// ---------------------------------------------------------------------------
+
+export const ContributionCheckSchema = z.object({
+  proposalTxHash: z.string().min(1),
+  proposalIndex: z.coerce.number().int().min(0),
+  text: z.string().min(10).max(10000),
+});
+
+// ---------------------------------------------------------------------------
+// BYOK API key schemas
+// ---------------------------------------------------------------------------
+
+export const AddApiKeySchema = z.object({
+  provider: z.enum(['anthropic', 'openai']),
+  apiKey: z.string().min(10, 'API key is too short').max(200),
+});
+
+// ---------------------------------------------------------------------------
+// Skill invocation schema
+// ---------------------------------------------------------------------------
+
+export const SkillInvocationSchema = z.object({
+  skill: z.string().min(1),
+  input: z.record(z.string(), z.unknown()),
+  proposalTxHash: z.string().optional(),
+  proposalIndex: z.number().optional(),
+  draftId: z.string().optional(),
+});

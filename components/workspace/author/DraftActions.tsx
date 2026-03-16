@@ -18,12 +18,17 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 import { SubmissionFlow } from './SubmissionFlow';
-import type { ProposalDraft, DraftVersion } from '@/lib/workspace/types';
+import { TeamManagement } from './TeamManagement';
+import type { ProposalDraft, DraftVersion, TeamRole } from '@/lib/workspace/types';
 
 interface DraftActionsProps {
   draft: ProposalDraft;
   versions?: DraftVersion[];
   onDraftUpdate?: (updates: Partial<ProposalDraft>) => void;
+  /** Current user's stake address for ownership / team checks */
+  viewerStakeAddress?: string | null;
+  /** User's role on the team (null = not a member, undefined = not loaded) */
+  userRole?: TeamRole | null;
 }
 
 /**
@@ -142,7 +147,14 @@ function SubmitOnChainButton({
 /**
  * DraftActions: context-appropriate action buttons for proposal drafts.
  */
-export function DraftActions({ draft, onDraftUpdate }: DraftActionsProps) {
+export function DraftActions({
+  draft,
+  onDraftUpdate,
+  viewerStakeAddress,
+  userRole,
+}: DraftActionsProps) {
+  const isOwner = !!viewerStakeAddress && viewerStakeAddress === draft.ownerStakeAddress;
+
   return (
     <div className="space-y-4">
       {/* Show submission details if already submitted */}
@@ -152,6 +164,15 @@ export function DraftActions({ draft, onDraftUpdate }: DraftActionsProps) {
       <FeatureGate flag="governance_action_submission">
         <SubmitOnChainButton draft={draft} onDraftUpdate={onDraftUpdate} />
       </FeatureGate>
+
+      {/* Team management — visible to owners and team members */}
+      {viewerStakeAddress && (isOwner || userRole) && (
+        <TeamManagement
+          draftId={draft.id}
+          isOwner={isOwner}
+          viewerStakeAddress={viewerStakeAddress}
+        />
+      )}
     </div>
   );
 }

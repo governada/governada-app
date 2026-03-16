@@ -194,3 +194,32 @@ export const SkillInvocationSchema = z.object({
   proposalIndex: z.number().optional(),
   draftId: z.string().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Proposal team schemas (multi-user collaboration)
+// ---------------------------------------------------------------------------
+
+export const CreateTeamSchema = z.object({
+  draftId: z.string().uuid(),
+  name: z.string().max(200).optional(),
+});
+
+export const InviteMemberSchema = z.object({
+  teamId: z.string().uuid(),
+  role: z.enum(['editor', 'viewer']),
+  expiresInHours: z.number().int().min(1).max(168).default(72), // max 1 week
+  maxUses: z.number().int().min(1).max(10).default(1),
+});
+
+export const JoinTeamSchema = z.object({
+  inviteCode: z.string().min(1),
+});
+
+export const UpdateMemberRoleSchema = z.object({
+  memberId: z.string().uuid(),
+  role: z.enum(['editor', 'viewer']),
+});
+
+export const RemoveMemberSchema = z.object({
+  memberId: z.string().uuid(),
+});

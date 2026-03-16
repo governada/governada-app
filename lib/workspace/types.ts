@@ -379,3 +379,38 @@ export interface GovernanceActionResult {
   anchorUrl: string;
   anchorHash: string;
 }
+
+// ---------------------------------------------------------------------------
+// Proposal Teams (multi-user collaboration)
+// ---------------------------------------------------------------------------
+
+export type TeamRole = 'lead' | 'editor' | 'viewer';
+
+export interface ProposalTeam {
+  id: string;
+  draftId: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface TeamMember {
+  id: string;
+  teamId: string;
+  userId: string | null;
+  stakeAddress: string;
+  role: TeamRole;
+  invitedAt: string;
+  joinedAt: string | null;
+}
+
+export interface TeamInvite {
+  id: string;
+  teamId: string;
+  inviteCode: string;
+  role: TeamRole;
+  expiresAt: string;
+  maxUses: number;
+  useCount: number;
+  createdBy: string;
+  createdAt: string;
+}

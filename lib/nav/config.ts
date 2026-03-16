@@ -127,6 +127,12 @@ export const HOME_SPO_ITEMS: NavItem[] = [
     sublabelKey: 'home.delegatedAda',
   },
   { href: '/workspace/position', label: 'Position', icon: Trophy },
+  { href: '/workspace/author', label: 'Author', icon: PenLine },
+];
+
+/** Home sub-items for citizen persona — minimal workspace with Author access */
+export const HOME_CITIZEN_ITEMS: NavItem[] = [
+  { href: '/workspace/author', label: 'Author', icon: PenLine, requiresAuth: true },
 ];
 
 // Legacy aliases for any code that still references the old names
@@ -313,8 +319,19 @@ export function getSidebarSections(
       href: '/',
       items: filteredItems,
     });
+  } else if (segment === 'citizen' || segment === 'cc') {
+    // Authenticated citizens and CC members get Home with Author workspace access
+    const filteredItems = filterByDepth(HOME_CITIZEN_ITEMS, depth);
+    sections.push({
+      id: 'home',
+      label: 'Home',
+      icon: Home,
+      href: '/',
+      items: filteredItems.length > 0 ? filteredItems : undefined,
+      requiresAuth: true,
+    });
   } else {
-    // Citizens, anonymous, CC — Home is a single link
+    // Anonymous — Home is a single link
     sections.push({
       id: 'home',
       label: 'Home',
@@ -450,6 +467,7 @@ export function getPillBarItems(
     }
     if (segment === 'drep') return filterByDepth(HOME_DREP_ITEMS, depth);
     if (segment === 'spo') return filterByDepth(HOME_SPO_ITEMS, depth);
+    if (segment === 'citizen' || segment === 'cc') return filterByDepth(HOME_CITIZEN_ITEMS, depth);
     return filterByDepth(HOME_DREP_ITEMS, depth);
   }
   if (pathname.startsWith('/you')) {

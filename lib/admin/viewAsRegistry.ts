@@ -149,6 +149,25 @@ export const SEGMENT_PRESETS: SegmentPreset[] = [
     pickerDescription: 'View the app as this committee member.',
   },
 
+  // -- Proposer (capability overlay — works with any segment) --
+  {
+    id: 'citizen-proposer',
+    label: 'Citizen + Active Proposer',
+    description: 'A citizen who has an active proposal draft',
+    segment: 'citizen',
+    overrides: { delegatedDrep: 'drep_always_abstain' },
+  },
+  {
+    id: 'drep-proposer',
+    label: 'DRep + Active Proposer',
+    description: 'A DRep who is also authoring a proposal',
+    segment: 'drep',
+    overrides: {},
+    requiresPicker: 'drep',
+    pickerTitle: 'Pick a DRep',
+    pickerDescription: 'View as a DRep who also has active proposal drafts.',
+  },
+
   // -- Anonymous --
   {
     id: 'anonymous',

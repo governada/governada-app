@@ -7,7 +7,7 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { UpdateDraftSchema } from '@/lib/api/schemas/workspace';
 import { captureServerEvent } from '@/lib/posthog-server';
-import type { ProposalDraft, DraftVersion } from '@/lib/workspace/types';
+import type { ProposalDraft, DraftVersion, TeamRole } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,33 +15,66 @@ interface RouteParams {
   params: Promise<{ draftId: string }>;
 }
 
-/** GET /api/workspace/drafts/[draftId] — fetch draft + versions */
-export const GET = withRouteHandler(async (request: NextRequest, _ctx) => {
-  const draftId = request.nextUrl.pathname.split('/').pop();
-  if (!draftId) {
-    return NextResponse.json({ error: 'Missing draftId' }, { status: 400 });
-  }
+/** GET /api/workspace/drafts/[draftId] — fetch draft + versions + user role */
+export const GET = withRouteHandler(
+  async (request: NextRequest, ctx) => {
+    const draftId = request.nextUrl.pathname.split('/').pop();
+    if (!draftId) {
+      return NextResponse.json({ error: 'Missing draftId' }, { status: 400 });
+    }
 
-  const admin = getSupabaseAdmin();
+    const admin = getSupabaseAdmin();
 
-  const [draftResult, versionsResult] = await Promise.all([
-    admin.from('proposal_drafts').select('*').eq('id', draftId).single(),
-    admin
-      .from('proposal_draft_versions')
-      .select('*')
-      .eq('draft_id', draftId)
-      .order('version_number', { ascending: false }),
-  ]);
+    const [draftResult, versionsResult] = await Promise.all([
+      admin.from('proposal_drafts').select('*').eq('id', draftId).single(),
+      admin
+        .from('proposal_draft_versions')
+        .select('*')
+        .eq('draft_id', draftId)
+        .order('version_number', { ascending: false }),
+    ]);
 
-  if (draftResult.error || !draftResult.data) {
-    return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
-  }
+    if (draftResult.error || !draftResult.data) {
+      return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
+    }
 
-  return NextResponse.json({
-    draft: mapDraftRow(draftResult.data),
-    versions: (versionsResult.data ?? []).map(mapVersionRow),
-  });
-});
+    // Check if the requesting user is a team member
+    let userRole: TeamRole | null = null;
+    if (ctx.wallet) {
+      // First check team membership
+      const { data: teamRow } = await admin
+        .from('proposal_teams')
+        .select('id')
+        .eq('draft_id', draftId)
+        .maybeSingle();
+
+      if (teamRow) {
+        const { data: memberRow } = await admin
+          .from('proposal_team_members')
+          .select('role')
+          .eq('team_id', teamRow.id)
+          .eq('stake_address', ctx.wallet)
+          .maybeSingle();
+
+        if (memberRow) {
+          userRole = memberRow.role as TeamRole;
+        }
+      }
+
+      // Owner always counts as lead
+      if (draftResult.data.owner_stake_address === ctx.wallet && !userRole) {
+        userRole = 'lead';
+      }
+    }
+
+    return NextResponse.json({
+      draft: mapDraftRow(draftResult.data),
+      versions: (versionsResult.data ?? []).map(mapVersionRow),
+      userRole,
+    });
+  },
+  { auth: 'optional' },
+);
 
 /** PATCH /api/workspace/drafts/[draftId] — update draft fields (auto-save) */
 export const PATCH = withRouteHandler(

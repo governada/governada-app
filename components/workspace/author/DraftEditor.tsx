@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useDraft } from '@/hooks/useDrafts';
+import { useTeam } from '@/hooks/useTeam';
 import { DraftForm } from './DraftForm';
 import { DraftActions } from './DraftActions';
 import { LifecycleStatus } from './LifecycleStatus';
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
+import type { TeamRole } from '@/lib/workspace/types';
 import Link from 'next/link';
 
 interface DraftEditorProps {
@@ -56,9 +58,23 @@ export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
   }
 
   const { draft, versions } = data;
+
+  // Fetch team data for this draft
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { data: teamData } = useTeam(draftId);
+  const userRole: TeamRole | null = (() => {
+    if (!viewerStakeAddress || !teamData?.members) return null;
+    const member = teamData.members.find((m) => m.stakeAddress === viewerStakeAddress);
+    return member?.role ?? null;
+  })();
+
   const isOwner = viewerStakeAddress === draft.ownerStakeAddress;
-  const isReadOnly = draft.status === 'final_comment' || draft.status === 'submitted';
-  const showReviewForm = draft.status === 'community_review' && !isOwner && !!viewerStakeAddress;
+  const isTeamMember = userRole !== null;
+  const canEdit = isOwner || userRole === 'lead' || userRole === 'editor';
+  const stageReadOnly = draft.status === 'final_comment' || draft.status === 'submitted';
+  const isReadOnly = stageReadOnly || (isTeamMember && !canEdit);
+  const showReviewForm =
+    draft.status === 'community_review' && !isOwner && !isTeamMember && !!viewerStakeAddress;
   const showReviews =
     draft.status === 'community_review' ||
     draft.status === 'response_revision' ||
@@ -102,14 +118,21 @@ export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
             />
           )}
 
-          {/* Show draft form (read-only in later stages) */}
-          {(!showReviewForm || isOwner) && <DraftForm draft={draft} readOnly={isReadOnly} />}
+          {/* Show draft form (read-only in later stages or for viewers) */}
+          {(!showReviewForm || isOwner || isTeamMember) && (
+            <DraftForm draft={draft} readOnly={isReadOnly} />
+          )}
 
           {/* Reviews section */}
           {showReviews && draftId && <ReviewsList draftId={draftId} isOwner={isOwner} />}
         </div>
         <div className="w-full lg:w-80 shrink-0">
-          <DraftActions draft={draft} versions={versions} />
+          <DraftActions
+            draft={draft}
+            versions={versions}
+            viewerStakeAddress={viewerStakeAddress}
+            userRole={userRole}
+          />
         </div>
       </div>
     </div>

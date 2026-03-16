@@ -97,6 +97,8 @@ The same analysis environment as DReps, with SPO-relevant context:
 - Constitutional alignment analysis
 - Vote + rationale submission integrated at the bottom
 
+**Community review integration:** Proposals that arrive through Governada's authoring pipeline come with rich lifecycle context, making governance participation more efficient — an SPO can evaluate a proposal in minutes rather than hours when structured community feedback and constitutional analysis are already available.
+
 ### Pool Identity (The Rich Profile)
 
 This is where Governada goes beyond governance into the broader SPO identity. The pool profile on Governada should be the richest SPO presence on the internet -- the page SPOs share everywhere as their home page.

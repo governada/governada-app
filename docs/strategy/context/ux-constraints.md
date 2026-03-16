@@ -198,6 +198,28 @@ World-class products (Linear, Stripe, Robinhood, Apple Health) share one trait: 
 | **Supporting elements** | Searchable glossary                                                                           |
 | **NOT on this page**    | Exhaustive governance education. Keep it to essentials. Link to external resources for depth. |
 
+### `/workspace/review` — Proposal Review
+
+| Attribute               | Constraint                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Core JTBD**           | Review proposals, decide, vote, share — efficiently                                                                |
+| **5-second answer**     | "You have N proposals to review. Here's the first one."                                                            |
+| **Dominant element**    | The full proposal content (motivation, rationale, references) rendered as markdown                                 |
+| **Supporting elements** | Intelligence accordion (constitutional check, similar proposals, treasury impact), vote action zone, notes sidebar |
+| **NOT on this page**    | Full voter lists, detailed analytics, citizen engagement mechanisms. Those live on the proposal detail page.       |
+| **Mobile**              | Proposal content scrolls, action zone as sticky footer. Queue as horizontal scroll. Notes via sheet drawer.        |
+
+### `/workspace/author` — Proposal Authoring
+
+| Attribute               | Constraint                                                                         |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| **Core JTBD**           | Draft a governance action from idea to on-chain submission                         |
+| **5-second answer**     | "Write your proposal, get feedback, submit."                                       |
+| **Dominant element**    | Structured form: title, abstract, motivation, rationale with auto-save             |
+| **Supporting elements** | Lifecycle status bar, version history, constitutional check, team management       |
+| **NOT on this page**    | Proposal browsing, voting, analytics. Those are /workspace/review and /governance. |
+| **Mobile**              | Form fields stack vertically, action sidebar becomes bottom sheet.                 |
+
 ---
 
 ## Complexity Gating by User State

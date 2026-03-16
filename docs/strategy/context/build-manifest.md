@@ -161,6 +161,37 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 - [x] AnonymousNudge conversion CTAs on proposals, representatives, and health pages — dismissible, localStorage-persisted
 - [x] Shareable match results — `/match/result?profile=<base64>` page, OG image generation with radar chart, share button with `navigator.share()` + clipboard fallback
 
+### Phase 1b: Proposal Workspace ✅ SHIPPED (2026-03-16)
+
+#### Review Workspace (`/workspace/review`)
+
+- [x] Proposal queue with urgency sorting + unvoted-first ordering
+- [x] Full CIP-108 metadata display with markdown rendering
+- [x] On-chain voting with useVote hook + CIP-100 rationale
+- [x] Intelligence blocks: constitutional check, similar proposals, treasury impact, health score, proposer track record
+- [x] Sealed assessment period (5-day independent review)
+- [x] Decision journal with position tracking + confidence calibration
+- [x] Inline text annotations (highlight, note, concern, citation)
+- [x] Review framework templates per proposal type
+- [x] Governance calendar + smart notifications
+- [x] Post-vote share cards
+
+#### Authoring Pipeline (`/workspace/author`)
+
+- [x] Draft creation with CIP-108 templates
+- [x] Lifecycle stages: Draft → Community Review → Response → FCP → Submitted
+- [x] Structured review rubrics + point-by-point response system
+- [x] Team collaboration (Lead/Editor/Viewer, wallet-based invites)
+- [x] Constitutional AI pre-check + CIP-108 preview
+- [x] Version diff engine + on-chain submission flow (feature-flagged)
+
+#### Supporting Infrastructure
+
+- [x] AI provider abstraction with BYOK support
+- [x] Skills engine (constitutional-check, research-precedent)
+- [x] Diversity mechanisms (steelman, uniqueness scoring, perspective clustering)
+- [x] Engagement tracking + provenance logging
+
 ### Remaining
 
 - [ ] `/you/inbox` notifications — page exists but notification pipeline not wired to real events

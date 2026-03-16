@@ -30,6 +30,7 @@ Build failures or production bugs if violated:
 - **Supabase MCP for migrations**, never the CLI.
 - **`.env.local` is PRODUCTION.** No sync/backfill/write ops without user approval.
 - **Feature-flag risky features** via `getFeatureFlag()` / `<FeatureGate>`.
+- **Feature flags for proposal workspace.** All proposal features gated behind `proposal_workspace` and sub-flags (`review_inline_annotations`, `review_treasury_impact`, etc.). See `lib/featureFlags.ts`.
 
 ## Tech Stack
 
@@ -46,19 +47,23 @@ Build failures or production bugs if violated:
 
 ## Key Files
 
-| Purpose                   | Location                                            |
-| ------------------------- | --------------------------------------------------- |
-| Product strategy & vision | `docs/strategy/ultimate-vision.md`                  |
-| Data reads                | `lib/data.ts`                                       |
-| Supabase client           | `lib/supabase.ts`                                   |
-| Koios helpers (sync only) | `utils/koios.ts`                                    |
-| Scoring V3                | `lib/scoring/`                                      |
-| Sync logic                | `lib/sync/`                                         |
-| Alignment (PCA)           | `lib/alignment/`                                    |
-| Matching engine           | `lib/matching/`                                     |
-| GHI v2                    | `lib/ghi/`                                          |
-| Feature flags             | `lib/featureFlags.ts`, `components/FeatureGate.tsx` |
-| Base URL                  | `lib/constants.ts` (`BASE_URL`)                     |
+| Purpose                   | Location                                                  |
+| ------------------------- | --------------------------------------------------------- |
+| Product strategy & vision | `docs/strategy/ultimate-vision.md`                        |
+| Data reads                | `lib/data.ts`                                             |
+| Supabase client           | `lib/supabase.ts`                                         |
+| Koios helpers (sync only) | `utils/koios.ts`                                          |
+| Scoring V3                | `lib/scoring/`                                            |
+| Sync logic                | `lib/sync/`                                               |
+| Alignment (PCA)           | `lib/alignment/`                                          |
+| Matching engine           | `lib/matching/`                                           |
+| GHI v2                    | `lib/ghi/`                                                |
+| Feature flags             | `lib/featureFlags.ts`, `components/FeatureGate.tsx`       |
+| Base URL                  | `lib/constants.ts` (`BASE_URL`)                           |
+| Proposal authoring        | `components/workspace/author/`, `lib/workspace/`          |
+| Proposal review           | `components/workspace/review/`, `hooks/useReviewQueue.ts` |
+| AI skills engine          | `lib/ai/skills/`, `app/api/ai/skill/route.ts`             |
+| Team collaboration        | `app/api/workspace/teams/`, `hooks/useTeam.ts`            |
 
 ## Worktrees
 

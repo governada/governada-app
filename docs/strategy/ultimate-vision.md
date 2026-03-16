@@ -68,6 +68,9 @@ Governada serves seven distinct personas. Each sees a product tailored to their 
 | **Treasury Team**        | Builders seeking governance funding.                          | Proposer reputation, pre-proposal validation, milestone tracking, citizen impact reports. Accountability as competitive advantage.           | Verified Project ($10-25/project).               |
 | **Researcher**           | Governance scholars, analysts, data journalists.              | API-first data platform: historical datasets, methodology docs, bulk exports, versioned data.                                                | Research API ($50-200/mo).                       |
 | **Integration Partner**  | Wallets, exchanges, pool tools (B2B).                         | Governance intelligence via API + embeddable widgets. Every integration extends reach.                                                       | API tiers ($50-200/mo).                          |
+| **Proposer**             | Anyone submitting governance actions                          | Authoring workspace: draft, iterate, community review, constitutional check, team collaboration, CIP-108 generation, on-chain submission     | Free core. Proposer Pro ($15-25/mo).             |
+
+**Note:** Proposer is a capability, not a segment — any authenticated user can create a proposal. It's additive to their governance persona (citizen, DRep, SPO, CC).
 
 ### Citizen-Centric Architecture
 
@@ -117,9 +120,9 @@ See `docs/strategy/context/navigation-architecture.md` for the complete spec inc
 
 ---
 
-## Five Flywheels
+## Six Flywheels
 
-The product strategy is organized around five self-reinforcing flywheels. Each creates compounding value over time. The build sequence is designed to activate them in order of lowest activation energy to highest.
+The product strategy is organized around six self-reinforcing flywheels. Each creates compounding value over time. The build sequence is designed to activate them in order of lowest activation energy to highest.
 
 ### Flywheel 1: Accountability
 
@@ -195,6 +198,22 @@ Governada builds governance intelligence
 **Moat:** Network effects of integration. Each wallet showing Governada scores validates the system and drives traffic.
 
 **Activation energy:** HIGH. Needs stable product + API v2 + business development. Premature until flywheels 1-4 are running. Post-launch phase.
+
+### Flywheel 6: Proposal Quality
+
+```
+Proposer drafts on Governada with AI tools
+  -> Community review with structured rubrics
+    -> Point-by-point response + iteration
+      -> Higher quality proposals reach on-chain vote
+        -> DReps make better decisions with richer context
+          -> Treasury outcomes improve
+            -> More proposers use the pipeline (trust signal)
+```
+
+**Moat:** Off-chain proposal lifecycle data — drafts, feedback, amendments, constitutional checks, team composition. No competitor has this because it's created by the process, not scraped from the chain.
+
+**Activation energy:** MEDIUM. Pipeline shipped. Needs proposer adoption. DReps in the review workspace create pull for proposers.
 
 ### How Flywheels Compound
 
@@ -452,7 +471,7 @@ flowchart TB
   Coverage --> Hub & DelegationPage & Alerts
 ```
 
-**Every new data source multiplies the value of every existing surface.** The five flywheels are the strategic lens; the data flywheel is the technical engine that powers all of them.
+**Every new data source multiplies the value of every existing surface.** The six flywheels are the strategic lens; the data flywheel is the technical engine that powers all of them.
 
 ---
 

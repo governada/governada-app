@@ -72,6 +72,17 @@ SPO sub-pages:
 
 DRep+SPO: Both sets of sub-pages appear in the sidebar, grouped by role with clear headers ("DRep" / "Pool"). Action Queue remains the default landing.
 
+#### Author (All authenticated users)
+
+| Route | Label |
+| `/workspace/author` | Author — Draft governance proposals |
+| `/workspace/author/[draftId]` | Draft Editor — Edit a specific draft |
+
+#### Review (DRep/SPO/Citizen)
+
+| Route | Label |
+| `/workspace/review` | Review — Review active and pre-submission proposals |
+
 ### Governance
 
 | Attribute        | Value                                                            |

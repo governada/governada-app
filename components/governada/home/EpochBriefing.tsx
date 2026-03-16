@@ -1075,7 +1075,6 @@ function EpochBriefingContent({
             <>
               {narrativeSection}
               {headlinesSection}
-              {engagementPromptSection}
             </>
           );
         case 'drep':
@@ -1122,6 +1121,9 @@ function EpochBriefingContent({
         </div>
 
         <DotIndicators count={sections.length} activeIndex={activeSection} />
+
+        {/* Engagement prompt outside carousel — visible on all tabs */}
+        {engagementPromptSection}
 
         {bottomNudge}
         {civicIdentityStrip}

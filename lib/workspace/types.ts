@@ -520,3 +520,63 @@ export interface TeamInvite {
   createdBy: string;
   createdAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Proposal Health Score
+// ---------------------------------------------------------------------------
+
+export interface ProposalHealthCheck {
+  label: string;
+  passed: boolean;
+  weight: number;
+}
+
+export interface ProposalHealthResult {
+  score: number;
+  checks: ProposalHealthCheck[];
+}
+
+// ---------------------------------------------------------------------------
+// Proposer Track Record
+// ---------------------------------------------------------------------------
+
+export interface ProposerTrackRecord {
+  totalProposals: number;
+  ratifiedCount: number;
+  expiredCount: number;
+  droppedCount: number;
+  deliveredCount: number;
+  partialCount: number;
+  notDeliveredCount: number;
+  avgCommunityScore: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// Proposal Engagement Analytics
+// ---------------------------------------------------------------------------
+
+export interface ProposalEngagementAnalytics {
+  totalViews: number;
+  uniqueViewers: number;
+  avgTimeSpentSec: number;
+  sectionDistribution: {
+    section: string;
+    viewCount: number;
+  }[];
+  viewerSegments: {
+    segment: string;
+    count: number;
+  }[];
+}
+
+// ---------------------------------------------------------------------------
+// Score Impact Preview
+// ---------------------------------------------------------------------------
+
+export interface ScoreImpactEstimate {
+  currentParticipationRate: number;
+  projectedParticipationRate: number;
+  participationDelta: number;
+  rationaleBoost: number;
+  estimatedScoreGain: number;
+}

@@ -41,6 +41,7 @@ import {
   Shield,
   Rocket,
   Link2,
+  PenLine,
 } from 'lucide-react';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
 import { type GovernanceDepth, getTunerLevel } from '@/lib/governanceTuner';
@@ -98,6 +99,7 @@ export interface BottomBarConfig {
 /** Home sub-items for DRep persona (workspace tools shown under Home) */
 export const HOME_DREP_ITEMS: NavItem[] = [
   { href: '/workspace', label: 'Home', icon: Vote, sublabelKey: 'home.pendingVotes' },
+  { href: '/workspace/review', label: 'Review', icon: FileText, sublabelKey: 'home.pendingReview' },
   {
     href: '/workspace/votes',
     label: 'Voting Record',
@@ -110,11 +112,13 @@ export const HOME_DREP_ITEMS: NavItem[] = [
     icon: Users,
     sublabelKey: 'home.delegatedAda',
   },
+  { href: '/workspace/author', label: 'Author', icon: PenLine },
 ];
 
 /** Home sub-items for SPO persona (workspace tools shown under Home) */
 export const HOME_SPO_ITEMS: NavItem[] = [
   { href: '/workspace', label: 'Gov Score', icon: BarChart3, sublabelKey: 'home.govScore' },
+  { href: '/workspace/review', label: 'Review', icon: FileText, sublabelKey: 'home.pendingReview' },
   { href: '/workspace/pool-profile', label: 'Pool Profile', icon: Building },
   {
     href: '/workspace/delegators',

@@ -1101,6 +1101,7 @@ export type Database = {
       cc_votes: {
         Row: {
           block_time: number;
+          cc_cold_id: string | null;
           cc_hot_id: string;
           epoch: number;
           meta_hash: string | null;
@@ -1112,6 +1113,7 @@ export type Database = {
         };
         Insert: {
           block_time: number;
+          cc_cold_id?: string | null;
           cc_hot_id: string;
           epoch: number;
           meta_hash?: string | null;
@@ -1123,6 +1125,7 @@ export type Database = {
         };
         Update: {
           block_time?: number;
+          cc_cold_id?: string | null;
           cc_hot_id?: string;
           epoch?: number;
           meta_hash?: string | null;
@@ -3522,6 +3525,98 @@ export type Database = {
           dim_treasury_growth?: number | null;
           proposal_index?: number;
           proposal_tx_hash?: string;
+        };
+        Relationships: [];
+      };
+      proposal_draft_versions: {
+        Row: {
+          constitutional_check: Json | null;
+          content: Json;
+          created_at: string;
+          draft_id: string;
+          edit_summary: string;
+          id: string;
+          version_name: string;
+          version_number: number;
+        };
+        Insert: {
+          constitutional_check?: Json | null;
+          content: Json;
+          created_at?: string;
+          draft_id: string;
+          edit_summary?: string;
+          id?: string;
+          version_name?: string;
+          version_number: number;
+        };
+        Update: {
+          constitutional_check?: Json | null;
+          content?: Json;
+          created_at?: string;
+          draft_id?: string;
+          edit_summary?: string;
+          id?: string;
+          version_name?: string;
+          version_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_draft_versions_draft_id_fkey';
+            columns: ['draft_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_drafts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      proposal_drafts: {
+        Row: {
+          abstract: string;
+          created_at: string;
+          current_version: number;
+          id: string;
+          last_constitutional_check: Json | null;
+          last_constitutional_check_at: string | null;
+          motivation: string;
+          owner_stake_address: string;
+          proposal_type: string;
+          rationale: string;
+          status: string;
+          title: string;
+          type_specific: Json;
+          updated_at: string;
+        };
+        Insert: {
+          abstract?: string;
+          created_at?: string;
+          current_version?: number;
+          id?: string;
+          last_constitutional_check?: Json | null;
+          last_constitutional_check_at?: string | null;
+          motivation?: string;
+          owner_stake_address: string;
+          proposal_type?: string;
+          rationale?: string;
+          status?: string;
+          title?: string;
+          type_specific?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          abstract?: string;
+          created_at?: string;
+          current_version?: number;
+          id?: string;
+          last_constitutional_check?: Json | null;
+          last_constitutional_check_at?: string | null;
+          motivation?: string;
+          owner_stake_address?: string;
+          proposal_type?: string;
+          rationale?: string;
+          status?: string;
+          title?: string;
+          type_specific?: Json;
+          updated_at?: string;
         };
         Relationships: [];
       };

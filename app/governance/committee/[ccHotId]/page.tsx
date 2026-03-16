@@ -39,6 +39,14 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
   const decodedId = decodeURIComponent(ccHotId);
   const supabase = createClient();
 
+  // Resolve cold ID for this member to aggregate votes across hot key rotations
+  const { data: memberLookup } = await supabase
+    .from('cc_members')
+    .select('cc_hot_id, cc_cold_id')
+    .eq('cc_hot_id', decodedId)
+    .maybeSingle();
+  const coldId = memberLookup?.cc_cold_id ?? null;
+
   const [
     { data: member },
     { data: votes },
@@ -50,11 +58,18 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     { data: proposals },
   ] = await Promise.all([
     supabase.from('cc_members').select('*').eq('cc_hot_id', decodedId).maybeSingle(),
-    supabase
-      .from('cc_votes')
-      .select('proposal_tx_hash, proposal_index, vote, block_time, epoch, meta_url')
-      .eq('cc_hot_id', decodedId)
-      .order('block_time', { ascending: false }),
+    // Use cold ID for vote aggregation when available (handles hot key rotations)
+    coldId
+      ? supabase
+          .from('cc_votes')
+          .select('proposal_tx_hash, proposal_index, vote, block_time, epoch, meta_url')
+          .eq('cc_cold_id', coldId)
+          .order('block_time', { ascending: false })
+      : supabase
+          .from('cc_votes')
+          .select('proposal_tx_hash, proposal_index, vote, block_time, epoch, meta_url')
+          .eq('cc_hot_id', decodedId)
+          .order('block_time', { ascending: false }),
     supabase
       .from('cc_rationales')
       .select(

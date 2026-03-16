@@ -401,18 +401,18 @@ export const computeCcRelations = inngest.createFunction(
       const now = new Date().toISOString();
       let classified = 0;
 
-      for (const [ccHotId, mvotes] of memberVotes) {
+      for (const [memberId, mvotes] of memberVotes) {
         const totalVotes = mvotes.length;
         const yesVotes = mvotes.filter((v) => v.vote === 'Yes').length;
         const approvalRate = totalVotes > 0 ? Math.round((yesVotes / totalVotes) * 10000) / 100 : 0;
 
-        const memberInfo = memberInfoMap.get(ccHotId);
-        const articleStats = memberArticleStats.get(ccHotId);
-        const blocLabel = blocMap.get(ccHotId) ?? 'Independent';
-        const dissenterInfo = soleDissenterMap.get(ccHotId) ?? { count: 0, proposals: [] };
+        const memberInfo = memberInfoMap.get(memberId);
+        const articleStats = memberArticleStats.get(memberId);
+        const blocLabel = blocMap.get(memberId) ?? 'Independent';
+        const dissenterInfo = soleDissenterMap.get(memberId) ?? { count: 0, proposals: [] };
 
         const archetype = classifyArchetype({
-          ccHotId,
+          ccHotId: memberId,
           approvalRate,
           rationaleProvisionRate: memberInfo?.rationaleProvisionRate ?? 0,
           uniqueArticlesCited: articleStats?.uniqueArticles.size ?? 0,
@@ -425,7 +425,7 @@ export const computeCcRelations = inngest.createFunction(
         });
 
         // Find most-aligned and most-divergent peers
-        const peers = peerSimilarity.get(ccHotId);
+        const peers = peerSimilarity.get(memberId);
         let mostAlignedMember: string | null = null;
         let mostAlignedPct: number | null = null;
         let mostDivergentMember: string | null = null;
@@ -456,7 +456,7 @@ export const computeCcRelations = inngest.createFunction(
 
         const { error } = await supabase.from('cc_member_archetypes').upsert(
           {
-            cc_hot_id: ccHotId,
+            cc_hot_id: memberId,
             archetype_label: archetype.label,
             archetype_description: archetype.description,
             strictness_score: archetype.strictnessScore,
@@ -477,7 +477,7 @@ export const computeCcRelations = inngest.createFunction(
         if (error) {
           logger.error('[cc-relations] Archetype upsert failed', {
             error: error.message,
-            ccHotId,
+            memberId,
           });
         } else {
           classified++;

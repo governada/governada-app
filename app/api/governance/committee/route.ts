@@ -25,10 +25,12 @@ export const GET = withRouteHandler(async () => {
     supabase
       .from('cc_members')
       .select(
-        'cc_hot_id, author_name, fidelity_grade, fidelity_score, status, rationale_provision_rate',
+        'cc_hot_id, cc_cold_id, author_name, fidelity_grade, fidelity_score, status, rationale_provision_rate',
       )
       .eq('status', 'authorized'),
-    supabase.from('cc_votes').select('cc_hot_id, vote, proposal_tx_hash, proposal_index'),
+    supabase
+      .from('cc_votes')
+      .select('cc_hot_id, cc_cold_id, vote, proposal_tx_hash, proposal_index'),
     supabase.from('cc_rationales').select('cc_hot_id, author_name').not('author_name', 'is', null),
     getCCHealthSummary(),
     getCCMemberVerdicts(),
@@ -61,14 +63,16 @@ export const GET = withRouteHandler(async () => {
     }
   }
 
-  // Build vote counts per member
+  // Build vote counts per member using cold ID as canonical identity
+  // This ensures votes are properly aggregated across hot key rotations
   const voteMap = new Map<string, { yes: number; no: number; abstain: number }>();
   for (const v of votes ?? []) {
-    const existing = voteMap.get(v.cc_hot_id) || { yes: 0, no: 0, abstain: 0 };
+    const memberId = v.cc_cold_id ?? v.cc_hot_id;
+    const existing = voteMap.get(memberId) || { yes: 0, no: 0, abstain: 0 };
     if (v.vote === 'Yes') existing.yes++;
     else if (v.vote === 'No') existing.no++;
     else existing.abstain++;
-    voteMap.set(v.cc_hot_id, existing);
+    voteMap.set(memberId, existing);
   }
 
   // Compute aggregate stats
@@ -93,11 +97,12 @@ export const GET = withRouteHandler(async () => {
   // Start from active members (not from votes) — ensures all 7 active CC members appear
   const members = (activeMembers ?? [])
     .map((m) => {
-      const counts = voteMap.get(m.cc_hot_id) || { yes: 0, no: 0, abstain: 0 };
+      const counts = voteMap.get(m.cc_cold_id ?? m.cc_hot_id) || { yes: 0, no: 0, abstain: 0 };
       const total = counts.yes + counts.no + counts.abstain;
       const verdict = verdictMap.get(m.cc_hot_id);
       return {
         ccHotId: m.cc_hot_id,
+        ccColdId: m.cc_cold_id ?? null,
         name: m.author_name ?? rationaleNameMap.get(m.cc_hot_id) ?? null,
         fidelityGrade: m.fidelity_grade ?? null,
         fidelityScore: m.fidelity_score ?? null,
@@ -120,10 +125,11 @@ export const GET = withRouteHandler(async () => {
 
   const stats = { totalProposalsReviewed, avgRationaleRate, totalCCVotes };
 
-  // Build member name lookup for bloc resolution
+  // Build member name lookup for bloc resolution (index by both hot and cold ID)
   const memberNameMap = new Map<string, string | null>();
   for (const m of members) {
     memberNameMap.set(m.ccHotId, m.name);
+    if (m.ccColdId) memberNameMap.set(m.ccColdId, m.name);
   }
 
   // Agreement matrix (camelCase)

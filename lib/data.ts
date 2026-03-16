@@ -1042,6 +1042,7 @@ export interface SpoVoteDetail {
 
 export interface CcVoteDetail {
   ccHotId: string;
+  ccColdId: string | null;
   vote: 'Yes' | 'No' | 'Abstain';
   blockTime: number;
 }
@@ -1078,7 +1079,7 @@ export async function getCcVotesByProposal(
     const supabase = createClient();
     const { data, error } = await supabase
       .from('cc_votes')
-      .select('cc_hot_id, vote, block_time')
+      .select('cc_hot_id, cc_cold_id, vote, block_time')
       .eq('proposal_tx_hash', txHash)
       .eq('proposal_index', proposalIndex)
       .order('block_time', { ascending: false });
@@ -1086,6 +1087,7 @@ export async function getCcVotesByProposal(
     if (error || !data) return [];
     return data.map((v) => ({
       ccHotId: v.cc_hot_id,
+      ccColdId: v.cc_cold_id ?? null,
       vote: v.vote as 'Yes' | 'No' | 'Abstain',
       blockTime: v.block_time,
     }));
@@ -1140,6 +1142,7 @@ export const getCCTransparencyHistory = getCCFidelityHistory;
 
 export interface CCMemberFidelity {
   ccHotId: string;
+  ccColdId: string | null;
   authorName: string | null;
   status: string | null;
   expirationEpoch: number | null;
@@ -1165,13 +1168,14 @@ export async function getCCMembersFidelity(): Promise<CCMemberFidelity[]> {
     const { data, error } = await supabase
       .from('cc_members')
       .select(
-        'cc_hot_id, author_name, status, expiration_epoch, authorization_epoch, fidelity_score, fidelity_grade, participation_score, rationale_quality_score, constitutional_grounding_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, votes_cast, eligible_proposals',
+        'cc_hot_id, cc_cold_id, author_name, status, expiration_epoch, authorization_epoch, fidelity_score, fidelity_grade, participation_score, rationale_quality_score, constitutional_grounding_score, rationale_provision_rate, avg_article_coverage, avg_reasoning_quality, votes_cast, eligible_proposals',
       )
       .order('fidelity_score', { ascending: false, nullsFirst: false });
 
     if (error || !data) return [];
     return data.map((m) => ({
       ccHotId: m.cc_hot_id,
+      ccColdId: m.cc_cold_id ?? null,
       authorName: m.author_name,
       status: m.status,
       expirationEpoch: m.expiration_epoch,
@@ -1280,7 +1284,9 @@ export async function getCCHealthSummary(): Promise<CCHealthSummary> {
       supabase
         .from('inter_body_alignment')
         .select('proposal_tx_hash, proposal_index, drep_yes_pct, drep_no_pct'),
-      supabase.from('cc_votes').select('cc_hot_id, proposal_tx_hash, proposal_index, vote'),
+      supabase
+        .from('cc_votes')
+        .select('cc_hot_id, cc_cold_id, proposal_tx_hash, proposal_index, vote'),
       supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
     ]);
 
@@ -1314,7 +1320,7 @@ export async function getCCHealthSummary(): Promise<CCHealthSummary> {
     for (const v of safeVotes) {
       const key = `${v.proposal_tx_hash}-${v.proposal_index}`;
       const voteMap = proposalVotes.get(key) ?? new Map<string, string>();
-      voteMap.set(v.cc_hot_id, v.vote);
+      voteMap.set(v.cc_cold_id ?? v.cc_hot_id, v.vote);
       proposalVotes.set(key, voteMap);
     }
 

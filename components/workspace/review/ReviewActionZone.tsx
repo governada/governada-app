@@ -19,6 +19,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useWallet } from '@/utils/wallet';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useVote } from '@/hooks/useVote';
+import { useSaveJournalEntry } from '@/hooks/useDecisionJournal';
+import { DiversityFields } from './DiversityFields';
+import { ContributionOverlapBanner } from './ContributionOverlapBanner';
 import type { VoteChoice, VoterRole } from '@/lib/voting';
 
 interface ReviewActionZoneProps {
@@ -94,6 +97,12 @@ export function ReviewActionZone({
   const [showRationale, setShowRationale] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Diversity fields state
+  const [steelmanText, setSteelmanText] = useState('');
+  const [confidence, setConfidence] = useState(50);
+  const [keyAssumptions, setKeyAssumptions] = useState('');
+  const { mutate: saveJournal } = useSaveJournalEntry();
+
   const voterRole: VoterRole = segment === 'spo' ? 'spo' : 'drep';
   const voterId = segment === 'spo' ? poolId : ownDRepId || (isViewingAs ? overrideDrepId : null);
   const previewMode = isViewingAs && !connected;
@@ -104,6 +113,9 @@ export function ReviewActionZone({
     setRationaleText('');
     setShowRationale(false);
     setIsSubmitting(false);
+    setSteelmanText('');
+    setConfidence(50);
+    setKeyAssumptions('');
     reset();
   }, [txHash, proposalIndex, reset]);
 
@@ -121,8 +133,27 @@ export function ReviewActionZone({
             voter_role: voterRole,
             had_rationale: rationaleText.trim().length > 0,
           });
+          if (steelmanText.trim()) {
+            posthog.capture('review_steelman_provided', {
+              gov_action_tx_hash: txHash,
+              gov_action_index: proposalIndex,
+              vote: selectedVote,
+            });
+          }
         })
         .catch(() => {});
+
+      // Save journal entry with diversity data alongside the vote
+      const votePosition =
+        selectedVote === 'Yes' ? 'yes' : selectedVote === 'No' ? 'no' : 'abstain';
+      saveJournal({
+        proposalTxHash: txHash,
+        proposalIndex,
+        position: votePosition as 'yes' | 'no' | 'abstain',
+        confidence,
+        steelmanText: steelmanText.trim() || undefined,
+        keyAssumptions: keyAssumptions.trim() || undefined,
+      });
 
       onVoteSuccess(selectedVote);
     }
@@ -391,6 +422,25 @@ export function ReviewActionZone({
                     {rationaleText.length.toLocaleString()} / 10,000
                   </p>
                 </div>
+
+                {/* Contribution Overlap Banner */}
+                <ContributionOverlapBanner
+                  proposalTxHash={txHash}
+                  proposalIndex={proposalIndex}
+                  text={rationaleText}
+                />
+
+                {/* Diversity Fields */}
+                <DiversityFields
+                  steelmanText={steelmanText}
+                  onSteelmanChange={setSteelmanText}
+                  confidence={confidence}
+                  onConfidenceChange={setConfidence}
+                  keyAssumptions={keyAssumptions}
+                  onAssumptionsChange={setKeyAssumptions}
+                  selectedVote={selectedVote}
+                />
+
                 <div className="flex gap-2">
                   <Button
                     onClick={() => handleSubmitVote(true)}

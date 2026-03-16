@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { CheckCircle2, Vote } from 'lucide-react';
+import { CheckCircle2, Vote, BookOpen } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
 import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
@@ -10,13 +10,24 @@ import { ReviewQueue } from './ReviewQueue';
 import { ReviewBrief } from './ReviewBrief';
 import { ReviewActionZone } from './ReviewActionZone';
 import { PostVoteShare } from './PostVoteShare';
+import { ProposalNotes } from './ProposalNotes';
+import { DecisionJournal } from './DecisionJournal';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import type { VoteChoice } from '@/lib/voting';
 import { posthog } from '@/lib/posthog';
 
 /**
  * ReviewWorkspace — the top-level client component for /workspace/review.
- * Two-column layout on desktop (queue rail + main content), stacked on mobile.
+ * Three-column layout on desktop (queue rail + main content + notes sidebar),
+ * stacked on mobile with a floating button for the notes sheet.
  */
 export function ReviewWorkspace() {
   const { segment, drepId, poolId } = useSegment();
@@ -31,6 +42,7 @@ export function ReviewWorkspace() {
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [voteTxHash, setVoteTxHash] = useState<string | null>(null);
+  const [notesSheetOpen, setNotesSheetOpen] = useState(false);
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const selectedItem = items[selectedIndex] ?? null;
@@ -105,6 +117,13 @@ export function ReviewWorkspace() {
           <Skeleton className="h-24 w-full rounded-xl" />
           <Skeleton className="h-36 w-full rounded-xl" />
         </div>
+        <div className="hidden lg:block w-80 border-l border-border shrink-0">
+          <div className="p-3 space-y-3">
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-32 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -157,6 +176,9 @@ export function ReviewWorkspace() {
     );
   }
 
+  // Use a stable userId for notes/journal (voterId is the DRep/SPO id)
+  const userId = voterId;
+
   return (
     <div className="flex flex-col md:flex-row h-full min-h-0">
       {/* Queue rail */}
@@ -199,6 +221,63 @@ export function ReviewWorkspace() {
           </div>
         )}
       </div>
+
+      {/* Desktop: Notes & Journal sidebar */}
+      {selectedItem && (
+        <div className="hidden lg:block w-80 shrink-0 border-l border-border overflow-y-auto">
+          <div className="p-3 space-y-3">
+            <ProposalNotes
+              proposalTxHash={selectedItem.txHash}
+              proposalIndex={selectedItem.proposalIndex}
+              userId={userId}
+            />
+            <DecisionJournal
+              proposalTxHash={selectedItem.txHash}
+              proposalIndex={selectedItem.proposalIndex}
+              userId={userId}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile: Floating button + Sheet for notes/journal */}
+      {selectedItem && (
+        <>
+          <div className="lg:hidden fixed bottom-20 right-4 z-40">
+            <Button
+              variant="default"
+              size="icon"
+              className="h-12 w-12 rounded-full shadow-lg"
+              onClick={() => setNotesSheetOpen(true)}
+            >
+              <BookOpen className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
+            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Notes & Journal</SheetTitle>
+                <SheetDescription>
+                  Private notes and deliberation journal for this proposal
+                </SheetDescription>
+              </SheetHeader>
+              <div className="space-y-3 px-4 pb-4">
+                <ProposalNotes
+                  proposalTxHash={selectedItem.txHash}
+                  proposalIndex={selectedItem.proposalIndex}
+                  userId={userId}
+                />
+                <DecisionJournal
+                  proposalTxHash={selectedItem.txHash}
+                  proposalIndex={selectedItem.proposalIndex}
+                  userId={userId}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </>
+      )}
     </div>
   );
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import Link from 'next/link';
-import { AlertTriangle, Clock, Sparkles, ExternalLink, Wallet } from 'lucide-react';
+import { AlertTriangle, Clock, Sparkles, Wallet } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { SentimentBar } from '@/components/workspace/shared/SentimentBar';
 import { VoteTally } from '@/components/workspace/shared/VoteTally';
+import { SourceMaterial } from './SourceMaterial';
 import type { ReviewQueueItem } from '@/lib/workspace/types';
 
 interface ReviewBriefProps {
@@ -137,18 +137,14 @@ export function ReviewBrief({ item, position, total }: ReviewBriefProps) {
         </CardContent>
       </Card>
 
-      {/* Footer: batch context + source link */}
-      <div className="flex items-center justify-between pt-2">
+      {/* Source Material */}
+      <SourceMaterial item={item} />
+
+      {/* Footer: batch context */}
+      <div className="flex items-center justify-center pt-2">
         <span className="text-sm text-muted-foreground">
           Proposal {position} of {total}
         </span>
-        <Link
-          href={`/proposal/${item.txHash}/${item.proposalIndex}`}
-          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-        >
-          View full proposal
-          <ExternalLink className="h-3.5 w-3.5" />
-        </Link>
       </div>
     </div>
   );

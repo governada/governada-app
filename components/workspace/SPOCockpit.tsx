@@ -2,7 +2,16 @@
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { TrendingUp, TrendingDown, Minus, Newspaper, ArrowRight } from 'lucide-react';
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Newspaper,
+  ArrowRight,
+  BarChart3,
+  Medal,
+  Activity,
+} from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { DepthGate } from '@/components/providers/DepthGate';
@@ -10,6 +19,22 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DepthUpgradeNudge } from '@/components/shared/DepthUpgradeNudge';
 import { GovernanceDelegationProof } from './GovernanceDelegationProof';
+
+// Types for competitive endpoint data
+interface NeighborPool {
+  poolId: string;
+  ticker: string | null;
+  poolName: string | null;
+  score: number | null;
+  rank: number;
+  isTarget: boolean;
+  tier: string;
+}
+
+interface ScoreSnapshot {
+  epoch_no: number;
+  governance_score: number | null;
+}
 
 // Lightweight type for the briefing data we consume
 interface SPOBriefingData {
@@ -36,7 +61,7 @@ function formatAdaCompact(ada: number): string {
  * - Hands-Off: Delegation hero + governance score (status widget)
  * - Informed:  + delegator count + vote/participation stats (operational summary)
  * - Engaged:   Current full cockpit (default for SPOs)
- * - Deep:      + pool comparison analytics placeholder
+ * - Deep:      + pool comparison analytics (rank, peers, score trend)
  *
  * SPO default depth = engaged, so existing users see no change.
  */
@@ -72,6 +97,10 @@ export function SPOCockpit() {
   const liveStakeAda = (summary?.liveStakeAda as number) ?? 0;
   const scoreDelta = (summary?.scoreDelta as number) ?? null;
   const momentum = (summary?.momentum as string) ?? (competitive?.momentum as string) ?? null;
+
+  // Deep analytics data from competitive endpoint
+  const neighbors = (competitive?.neighbors as NeighborPool[]) ?? [];
+  const scoreHistory = (competitive?.scoreHistory as ScoreSnapshot[]) ?? [];
 
   // Determine delegation growth framing
   const isGrowing = momentum === 'rising' || (scoreDelta != null && scoreDelta > 0);
@@ -219,14 +248,17 @@ export function SPOCockpit() {
         </div>
       </DepthGate>
 
-      {/* Deep: placeholder for pool comparison analytics */}
+      {/* Deep: Pool comparison analytics */}
       <DepthGate minDepth="deep">
-        <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">Pool Comparison Analytics</p>
-          <p className="text-xs text-muted-foreground/70">
-            Compare your governance activity against similar pools — coming soon.
-          </p>
-        </div>
+        <PoolComparisonAnalytics
+          score={score}
+          rank={rank}
+          totalPools={totalPools}
+          percentile={percentile}
+          participationRate={participationRate}
+          neighbors={neighbors}
+          scoreHistory={scoreHistory}
+        />
       </DepthGate>
 
       {/* Governance This Epoch — informed+ (citizen governance intelligence for SPOs) */}
@@ -236,6 +268,178 @@ export function SPOCockpit() {
 
       {/* Depth upgrade nudge — shows when user could see more at a higher depth */}
       <DepthUpgradeNudge feature="governance analytics" requiredDepth="engaged" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pool Comparison Analytics — deep-depth competitive intelligence
+// ---------------------------------------------------------------------------
+
+interface PoolComparisonAnalyticsProps {
+  score: number;
+  rank: number;
+  totalPools: number;
+  percentile: number;
+  participationRate: number;
+  neighbors: NeighborPool[];
+  scoreHistory: ScoreSnapshot[];
+}
+
+function PoolComparisonAnalytics({
+  score,
+  rank,
+  totalPools,
+  percentile,
+  participationRate,
+  neighbors,
+  scoreHistory,
+}: PoolComparisonAnalyticsProps) {
+  // Compute median score of neighboring pools (excluding the target pool)
+  const peerScores = neighbors
+    .filter((n) => !n.isTarget && n.score != null)
+    .map((n) => n.score as number);
+  const medianPeerScore =
+    peerScores.length > 0
+      ? Math.round(peerScores.sort((a, b) => a - b)[Math.floor(peerScores.length / 2)])
+      : null;
+
+  // Score trend from recent history
+  const recentHistory = scoreHistory.slice(0, 5);
+  const oldestScore =
+    recentHistory.length >= 2
+      ? (recentHistory[recentHistory.length - 1].governance_score ?? 0)
+      : null;
+  const latestScore = recentHistory.length >= 2 ? (recentHistory[0].governance_score ?? 0) : null;
+  const scoreTrend =
+    oldestScore != null && latestScore != null ? Math.round(latestScore - oldestScore) : null;
+  const epochSpan =
+    recentHistory.length >= 2
+      ? recentHistory[0].epoch_no - recentHistory[recentHistory.length - 1].epoch_no
+      : 0;
+
+  // Participation percentile (rough: top X% based on rank position)
+  const participationPercentile =
+    totalPools > 0 ? Math.max(1, Math.round((1 - rank / totalPools) * 100)) : 0;
+
+  return (
+    <div
+      className="rounded-2xl border border-border bg-card p-5 space-y-4"
+      data-discovery="ws-spo-pool-analytics"
+    >
+      <div className="flex items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-lg font-semibold text-foreground">Pool Analytics</h2>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Governance Rank */}
+        <div className="rounded-xl bg-muted/50 p-3 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <Medal className="h-3.5 w-3.5 text-primary" />
+            <p className="text-xs font-medium text-muted-foreground">Governance Rank</p>
+          </div>
+          <p className="text-lg font-bold tabular-nums text-foreground">
+            #{rank}{' '}
+            <span className="text-sm font-normal text-muted-foreground">of {totalPools}</span>
+          </p>
+          <p className="text-xs text-muted-foreground">Top {percentile}% of voting pools</p>
+        </div>
+
+        {/* Participation Standing */}
+        <div className="rounded-xl bg-muted/50 p-3 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <Activity className="h-3.5 w-3.5 text-primary" />
+            <p className="text-xs font-medium text-muted-foreground">Participation</p>
+          </div>
+          <p className="text-lg font-bold tabular-nums text-foreground">{participationRate}%</p>
+          <p className="text-xs text-muted-foreground">Top {participationPercentile}% of pools</p>
+        </div>
+      </div>
+
+      {/* Score trend over recent epochs */}
+      {scoreTrend != null && epochSpan > 0 && (
+        <div className="rounded-xl bg-muted/50 p-3 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              Score Trend ({epochSpan} epoch{epochSpan !== 1 ? 's' : ''})
+            </p>
+            <p className="text-sm text-foreground">
+              {oldestScore} &rarr; {latestScore}
+            </p>
+          </div>
+          <span
+            className={`text-sm font-bold tabular-nums ${
+              scoreTrend > 0
+                ? 'text-emerald-400'
+                : scoreTrend < 0
+                  ? 'text-amber-400'
+                  : 'text-muted-foreground'
+            }`}
+          >
+            {scoreTrend > 0 ? '+' : ''}
+            {scoreTrend}
+          </span>
+        </div>
+      )}
+
+      {/* Score vs Peers */}
+      {medianPeerScore != null && (
+        <div className="rounded-xl bg-muted/50 p-3 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-muted-foreground">Score vs Nearby Peers</p>
+            <p className="text-sm text-foreground">
+              Your score: {score} &middot; Peer median: {medianPeerScore}
+            </p>
+          </div>
+          <span
+            className={`text-sm font-bold tabular-nums ${
+              score > medianPeerScore
+                ? 'text-emerald-400'
+                : score < medianPeerScore
+                  ? 'text-amber-400'
+                  : 'text-muted-foreground'
+            }`}
+          >
+            {score > medianPeerScore ? '+' : ''}
+            {score - medianPeerScore}
+          </span>
+        </div>
+      )}
+
+      {/* Nearby competitor leaderboard */}
+      {neighbors.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Nearby Competitors
+          </p>
+          <div className="space-y-1">
+            {neighbors.map((n) => (
+              <div
+                key={n.poolId}
+                className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${
+                  n.isTarget ? 'bg-primary/10 border border-primary/30' : 'bg-muted/30'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs text-muted-foreground tabular-nums w-6 shrink-0">
+                    #{n.rank}
+                  </span>
+                  <span
+                    className={`truncate ${n.isTarget ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                  >
+                    {n.ticker ?? n.poolName ?? n.poolId.slice(0, 8)}
+                    {n.isTarget && ' (you)'}
+                  </span>
+                </div>
+                <span className="text-xs font-medium tabular-nums text-foreground shrink-0 ml-2">
+                  {Math.round(n.score ?? 0)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

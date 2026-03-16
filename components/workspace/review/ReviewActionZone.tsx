@@ -20,7 +20,7 @@ export function ReviewActionZone({ item, drepId, onVote, onNextProposal }: Revie
   const [submittedVote, setSubmittedVote] = useState<string | null>(null);
 
   // Determine initial phase: has question been submitted?
-  const questionAlreadyDone = hasSubmittedQuestion(drepId, item.txHash, item.index);
+  const questionAlreadyDone = hasSubmittedQuestion(drepId, item.txHash, item.proposalIndex);
   const [phase, setPhase] = useState<Phase>(() => {
     if (item.existingVote) return 'vote'; // Already voted — skip gate
     return questionAlreadyDone ? 'vote' : 'question';
@@ -29,10 +29,10 @@ export function ReviewActionZone({ item, drepId, onVote, onNextProposal }: Revie
   const handleVote = useCallback(
     (vote: string) => {
       setSubmittedVote(vote);
-      onVote?.(item.txHash, item.index, vote);
+      onVote?.(item.txHash, item.proposalIndex, vote);
       setPhase('share');
     },
-    [item.txHash, item.index, onVote],
+    [item.txHash, item.proposalIndex, onVote],
   );
 
   // Phase: Question Gate
@@ -40,7 +40,7 @@ export function ReviewActionZone({ item, drepId, onVote, onNextProposal }: Revie
     return (
       <QuestionGate
         txHash={item.txHash}
-        index={item.index}
+        index={item.proposalIndex}
         voterId={drepId}
         onQuestionSubmitted={() => setPhase('vote')}
         onSkip={() => setPhase('vote')}
@@ -54,7 +54,7 @@ export function ReviewActionZone({ item, drepId, onVote, onNextProposal }: Revie
       <PostVoteShare
         drepId={drepId}
         txHash={item.txHash}
-        index={item.index}
+        index={item.proposalIndex}
         vote={submittedVote}
         proposalTitle={item.title || 'Governance Proposal'}
         onNextProposal={onNextProposal}

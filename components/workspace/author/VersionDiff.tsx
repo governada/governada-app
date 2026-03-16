@@ -5,8 +5,8 @@ import { computeStructuredDiff } from '@/lib/workspace/diff';
 import type { DiffResult, DraftContent } from '@/lib/workspace/types';
 
 interface VersionDiffProps {
-  oldVersion: { name: string; createdAt: string; content: DraftContent };
-  newVersion: { name: string; createdAt: string; content: DraftContent };
+  oldVersion: { versionName: string; createdAt: string; content: DraftContent };
+  newVersion: { versionName: string; createdAt: string; content: DraftContent };
 }
 
 function DiffLine({ result }: { result: DiffResult }) {
@@ -77,7 +77,7 @@ export function VersionDiff({ oldVersion, newVersion }: VersionDiffProps) {
       <div className="flex items-center justify-between gap-4 text-sm">
         <div className="flex items-center gap-2">
           <span className="rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
-            {oldVersion.name}
+            {oldVersion.versionName}
           </span>
           <span className="text-xs text-muted-foreground">
             {new Date(oldVersion.createdAt).toLocaleDateString()}
@@ -86,7 +86,7 @@ export function VersionDiff({ oldVersion, newVersion }: VersionDiffProps) {
         <span className="text-muted-foreground">vs</span>
         <div className="flex items-center gap-2">
           <span className="rounded bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400">
-            {newVersion.name}
+            {newVersion.versionName}
           </span>
           <span className="text-xs text-muted-foreground">
             {new Date(newVersion.createdAt).toLocaleDateString()}

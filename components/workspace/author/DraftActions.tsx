@@ -18,10 +18,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 import { SubmissionFlow } from './SubmissionFlow';
-import type { ProposalDraft } from '@/lib/workspace/types';
+import type { ProposalDraft, DraftVersion } from '@/lib/workspace/types';
 
 interface DraftActionsProps {
   draft: ProposalDraft;
+  versions?: DraftVersion[];
   onDraftUpdate?: (updates: Partial<ProposalDraft>) => void;
 }
 

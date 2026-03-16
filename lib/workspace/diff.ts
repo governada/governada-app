@@ -30,7 +30,12 @@ export function computeStructuredDiff(
   oldContent: DraftContent,
   newContent: DraftContent,
 ): StructuredDiff {
-  const fields: (keyof DraftContent)[] = ['title', 'abstract', 'motivation', 'rationale'];
+  const fields: ('title' | 'abstract' | 'motivation' | 'rationale')[] = [
+    'title',
+    'abstract',
+    'motivation',
+    'rationale',
+  ];
   const fieldsChanged: string[] = [];
 
   const result: Record<string, DiffResult[]> = {};

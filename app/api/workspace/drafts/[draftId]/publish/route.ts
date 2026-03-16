@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { buildAndHashCip108 } from '@/lib/workspace/cip108';
+import { buildCip108Document, hashCip108 } from '@/lib/workspace/cip108';
 import { BASE_URL } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { captureServerEvent } from '@/lib/posthog-server';
@@ -63,12 +63,13 @@ export const POST = withRouteHandler(
     }
 
     // Build CIP-108 document
-    const { document, contentHash } = buildAndHashCip108({
+    const document = buildCip108Document({
       title: draft.title,
       abstract: draft.abstract,
       motivation: draft.motivation,
       rationale: draft.rationale,
     });
+    const contentHash = hashCip108(document);
 
     const anchorUrl = `${BASE_URL}/api/workspace/cip108/${contentHash}`;
 

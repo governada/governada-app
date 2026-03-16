@@ -74,7 +74,7 @@ export function VersionCompareDialog({ versions }: VersionCompareDialogProps) {
               <SelectContent>
                 {versions.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.name}
+                    {v.versionName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -90,7 +90,7 @@ export function VersionCompareDialog({ versions }: VersionCompareDialogProps) {
               <SelectContent>
                 {versions.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.name}
+                    {v.versionName}
                   </SelectItem>
                 ))}
               </SelectContent>

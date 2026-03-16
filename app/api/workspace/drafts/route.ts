@@ -108,6 +108,10 @@ function mapDraftRow(row: any): ProposalDraft {
     stageEnteredAt: row.stage_entered_at ?? null,
     communityReviewStartedAt: row.community_review_started_at ?? null,
     fcpStartedAt: row.fcp_started_at ?? null,
+    submittedTxHash: row.submitted_tx_hash ?? null,
+    submittedAnchorUrl: row.submitted_anchor_url ?? null,
+    submittedAnchorHash: row.submitted_anchor_hash ?? null,
+    submittedAt: row.submitted_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

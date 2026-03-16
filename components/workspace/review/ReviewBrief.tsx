@@ -96,7 +96,7 @@ export function ReviewBrief({
             <p className="mt-1.5 text-muted-foreground line-clamp-3">{item.abstract}</p>
           )}
           <p className="mt-2 font-mono text-xs text-muted-foreground">
-            {item.proposalType} &middot; {item.txHash.slice(0, 16)}...#{item.index}
+            {item.proposalType} &middot; {item.txHash.slice(0, 16)}...#{item.proposalIndex}
           </p>
         </div>
       </div>

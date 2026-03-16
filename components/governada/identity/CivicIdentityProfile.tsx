@@ -42,13 +42,15 @@ import type { GovernanceFootprint } from '@/lib/governanceFootprint';
 
 /* ── Data hooks (TanStack Query) ───────────────────────────────── */
 
-function useCivicFootprint(stakeAddress: string | null) {
+function useCivicFootprint(stakeAddress: string | null, delegatedDrepOverride?: string | null) {
   return useQuery<GovernanceFootprint>({
-    queryKey: ['civic-identity-footprint', stakeAddress],
+    queryKey: ['civic-identity-footprint', stakeAddress, delegatedDrepOverride],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/governance/footprint${stakeAddress ? `?stakeAddress=${encodeURIComponent(stakeAddress)}` : ''}`,
-      );
+      const params = new URLSearchParams();
+      if (stakeAddress) params.set('stakeAddress', stakeAddress);
+      if (delegatedDrepOverride) params.set('delegatedDrepOverride', delegatedDrepOverride);
+      const qs = params.toString();
+      const res = await fetch(`/api/governance/footprint${qs ? `?${qs}` : ''}`);
       if (!res.ok) throw new Error(`${res.status}`);
       return res.json();
     },
@@ -263,12 +265,18 @@ function ProfileSkeleton() {
 /* ── Main component ────────────────────────────────────────────── */
 
 export function CivicIdentityProfile() {
-  const { segment, stakeAddress, delegatedDrep, isLoading: segmentLoading } = useSegment();
+  const {
+    segment,
+    stakeAddress,
+    delegatedDrep,
+    isViewingAs,
+    isLoading: segmentLoading,
+  } = useSegment();
   const {
     data: footprint,
     isLoading: footprintLoading,
     isError: footprintError,
-  } = useCivicFootprint(stakeAddress);
+  } = useCivicFootprint(stakeAddress, isViewingAs ? delegatedDrep : null);
   const {
     data: milestonesData,
     isLoading: milestonesLoading,

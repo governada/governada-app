@@ -335,7 +335,14 @@ export function QuickMatchFlow() {
       )}
 
       {/* Content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
+      <div
+        className={cn(
+          'flex-1 flex px-4 py-8',
+          typeof step === 'number'
+            ? 'items-start justify-center pt-12'
+            : 'items-center justify-center',
+        )}
+      >
         {step === 'intro' && (
           <IntroScreen
             onStart={() => {
@@ -738,11 +745,14 @@ function ResultsScreen({
 
       {/* Team explanation + tab toggle */}
       <div className="space-y-3">
-        <div className="text-center max-w-md mx-auto">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Your governance team has two roles: <strong className="text-foreground">a DRep</strong>{' '}
-            who votes on proposals for you, and <strong className="text-foreground">an SPO</strong>{' '}
-            who secures the network. Pick one of each.
+        <div className="mx-auto max-w-md rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-center">
+          <p className="text-sm font-medium text-foreground">
+            Pick one of each to complete your team
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            <strong className="text-foreground">A DRep</strong> votes on governance proposals for
+            you, and <strong className="text-foreground">an SPO</strong> secures the network and
+            stakes your ADA.
           </p>
         </div>
         <div className="flex justify-center">

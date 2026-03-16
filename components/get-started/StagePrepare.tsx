@@ -12,6 +12,7 @@ import {
   Monitor,
   Check,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -222,6 +223,17 @@ function ExchangeGuide({ onDone, onBack }: { onDone: () => void; onBack: () => v
           To participate in governance, your ADA needs to be in your own wallet &mdash; not on an
           exchange. This usually takes 5-10 minutes.
         </p>
+        <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 mt-2">
+          <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-emerald-400">This is the safe and recommended path</p>
+            <p>
+              Moving ADA to your own wallet means <em>you</em> control it &mdash; no exchange can
+              freeze, restrict, or lose access to your funds. Your wallet is protected by your
+              private keys, and no one else can touch your ADA.
+            </p>
+          </div>
+        </div>
       </motion.div>
 
       {/* Step 1: Get a wallet */}

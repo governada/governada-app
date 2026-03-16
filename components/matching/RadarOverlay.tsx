@@ -102,9 +102,9 @@ export function RadarOverlay({
   const rings = [0.25, 0.5, 0.75, 1];
   const showLabels = size >= 140;
 
-  // Animation offset — shapes start displaced and merge together
-  const offset = size * 0.15;
-  const animDuration = '1.2s';
+  // Animation offset — shapes start displaced (top corners) and merge to center
+  const offset = size * 0.25;
+  const animDuration = '1.4s';
 
   return (
     <svg
@@ -169,13 +169,13 @@ export function RadarOverlay({
         );
       })}
 
-      {/* Entity shape (background) — with gradient fill and glow */}
+      {/* Entity shape (background) — starts top-right, merges to center */}
       <g>
         {animate && (
           <animateTransform
             attributeName="transform"
             type="translate"
-            from={`${offset} 0`}
+            from={`${offset} ${-offset}`}
             to="0 0"
             dur={animDuration}
             fill="freeze"
@@ -217,13 +217,13 @@ export function RadarOverlay({
         })}
       </g>
 
-      {/* User shape (foreground) — with gradient fill */}
+      {/* User shape (foreground) — starts top-left, merges to center */}
       <g>
         {animate && (
           <animateTransform
             attributeName="transform"
             type="translate"
-            from={`${-offset} 0`}
+            from={`${-offset} ${-offset}`}
             to="0 0"
             dur={animDuration}
             fill="freeze"
@@ -258,31 +258,75 @@ export function RadarOverlay({
 
       {/* Legend — which shape is you vs your match */}
       {animate && showLabels && (
-        <g opacity={0}>
-          <animate attributeName="opacity" from="0" to="1" begin="0.8s" dur="0.5s" fill="freeze" />
-          <circle cx={PADDING} cy={size - 10} r={3} fill={userColor.hex} opacity={0.8} />
-          <text
-            x={PADDING + 7}
-            y={size - 10}
-            dominantBaseline="central"
-            fontSize={7}
-            fill={userColor.hex}
-            opacity={0.8}
-          >
-            You
-          </text>
-          <circle cx={PADDING + 34} cy={size - 10} r={3} fill={entityColor.hex} opacity={0.7} />
-          <text
-            x={PADDING + 41}
-            y={size - 10}
-            dominantBaseline="central"
-            fontSize={7}
-            fill={entityColor.hex}
-            opacity={0.7}
-          >
-            Match
-          </text>
-        </g>
+        <>
+          {/* Starting labels: "You" top-left, "Match" top-right — fade out as shapes merge */}
+          <g>
+            <animate
+              attributeName="opacity"
+              from="1"
+              to="0"
+              begin="0.6s"
+              dur="0.4s"
+              fill="freeze"
+            />
+            <text
+              x={PADDING}
+              y={12}
+              dominantBaseline="central"
+              fontSize={7}
+              fill={userColor.hex}
+              fontWeight={600}
+              opacity={0.9}
+            >
+              You
+            </text>
+            <text
+              x={size - PADDING}
+              y={12}
+              textAnchor="end"
+              dominantBaseline="central"
+              fontSize={7}
+              fill={entityColor.hex}
+              fontWeight={600}
+              opacity={0.9}
+            >
+              Match
+            </text>
+          </g>
+          {/* Post-merge legend at bottom */}
+          <g opacity={0}>
+            <animate
+              attributeName="opacity"
+              from="0"
+              to="1"
+              begin="1.2s"
+              dur="0.5s"
+              fill="freeze"
+            />
+            <circle cx={PADDING} cy={size - 10} r={3} fill={userColor.hex} opacity={0.8} />
+            <text
+              x={PADDING + 7}
+              y={size - 10}
+              dominantBaseline="central"
+              fontSize={7}
+              fill={userColor.hex}
+              opacity={0.8}
+            >
+              You
+            </text>
+            <circle cx={PADDING + 34} cy={size - 10} r={3} fill={entityColor.hex} opacity={0.7} />
+            <text
+              x={PADDING + 41}
+              y={size - 10}
+              dominantBaseline="central"
+              fontSize={7}
+              fill={entityColor.hex}
+              opacity={0.7}
+            >
+              Match
+            </text>
+          </g>
+        </>
       )}
 
       {/* Dimension labels — only on larger sizes */}

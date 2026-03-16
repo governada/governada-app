@@ -12,6 +12,7 @@ import {
   Medal,
   Activity,
   Shield,
+  FileText,
 } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
@@ -225,6 +226,23 @@ export function SPOCockpit() {
           </div>
         </DepthGate>
       </div>
+
+      {/* Review Proposals — primary action CTA */}
+      <Link
+        href="/governance/proposals"
+        className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 hover:bg-primary/10 transition-colors group"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+          <FileText className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Review Proposals</p>
+          <p className="text-xs text-muted-foreground">
+            Review active governance proposals and cast your vote
+          </p>
+        </div>
+        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+      </Link>
 
       {/* Score overview — all depths (governance score as supporting context) */}
       <div

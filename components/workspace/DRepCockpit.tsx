@@ -18,6 +18,7 @@ import {
   TrendingDown,
   Minus,
   ArrowRight,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DepthUpgradeNudge } from '@/components/shared/DepthUpgradeNudge';
@@ -161,6 +162,25 @@ export function DRepCockpit() {
       <DepthGate minDepth="informed">
         <CockpitScoreHero score={data.score} scoreStory={data.scoreStory} />
       </DepthGate>
+
+      {/* Review Proposals — primary action CTA */}
+      <Link
+        href="/governance/proposals"
+        className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 hover:bg-primary/10 transition-colors group"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+          <FileText className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Review Proposals</p>
+          <p className="text-xs text-muted-foreground">
+            {data.actionFeed.pendingCount > 0
+              ? `${data.actionFeed.pendingCount} proposal${data.actionFeed.pendingCount === 1 ? '' : 's'} awaiting your vote`
+              : 'Review active governance proposals'}
+          </p>
+        </div>
+        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+      </Link>
 
       {/* Governance Readiness (pending votes) — all depths */}
       <div data-discovery="drep-voting-queue">

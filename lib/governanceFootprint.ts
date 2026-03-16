@@ -59,6 +59,7 @@ function computeParticipationTier(
 export async function buildGovernanceFootprint(
   userId: string,
   stakeAddress: string | null,
+  overrides?: { delegatedDrepOverride?: string | null },
 ): Promise<GovernanceFootprint> {
   const supabase = createClient();
 
@@ -84,7 +85,7 @@ export async function buildGovernanceFootprint(
 
   const balanceAda = accountInfo ? lovelaceToAda(accountInfo.total_balance) : 0;
   const delegatedPool = accountInfo?.delegated_pool || null;
-  const delegatedDRep = accountInfo?.vote_delegation || null;
+  const delegatedDRep = overrides?.delegatedDrepOverride || accountInfo?.vote_delegation || null;
 
   const polls = pollsResult.data || [];
   const events = eventsResult.data || [];

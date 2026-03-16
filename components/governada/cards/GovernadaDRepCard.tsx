@@ -177,6 +177,16 @@ export function GovernadaDRepCard({
         {/* ── Footer stats + CTA ──────────────────────────────────── */}
         <div className="mt-auto flex items-center justify-between pt-2 border-t border-border/30">
           <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
+            {drep.votingPower > 0 && (
+              <span className="tabular-nums">
+                ₳
+                {drep.votingPower >= 1_000_000
+                  ? `${(drep.votingPower / 1_000_000).toFixed(1)}M`
+                  : drep.votingPower >= 1_000
+                    ? `${(drep.votingPower / 1_000).toFixed(0)}K`
+                    : drep.votingPower.toLocaleString()}
+              </span>
+            )}
             {drep.delegatorCount > 0 && (
               <span className="tabular-nums">
                 {drep.delegatorCount.toLocaleString()} delegators

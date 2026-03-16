@@ -9,28 +9,54 @@
 // Review Workspace types
 // ---------------------------------------------------------------------------
 
-export type QueueStatus = 'unreviewed' | 'reviewing' | 'voted' | 'snoozed';
+/** Status of a proposal in the user's local review queue. */
+export type QueueItemStatus = 'unreviewed' | 'voted' | 'snoozed';
 
+/** Vote tally for a single governance body. */
+export interface BodyTally {
+  yes: number;
+  no: number;
+  abstain: number;
+}
+
+/** Citizen sentiment summary for a proposal. */
+export interface CitizenSentiment {
+  support: number;
+  oppose: number;
+  abstain: number;
+  total: number;
+}
+
+/** Inter-body vote tallies (DRep, SPO, CC). */
+export interface InterBodyVotes {
+  drep: BodyTally;
+  spo: BodyTally;
+  cc: BodyTally;
+}
+
+/** A single item in the review queue. */
 export interface ReviewQueueItem {
   txHash: string;
-  index: number;
+  proposalIndex: number;
   title: string;
-  proposalType: string;
-  epochsRemaining: number | null;
-  isUrgent: boolean;
-  aiSummary: string | null;
   abstract: string | null;
-  status: QueueStatus;
-  /** Existing DRep/SPO vote on this proposal (null if not yet voted) */
-  existingVote: 'Yes' | 'No' | 'Abstain' | null;
-  // Intelligence overlays
-  drepVoteTally: { yes: number; no: number; abstain: number };
-  spoVoteTally: { yes: number; no: number; abstain: number };
-  ccVoteTally: { yes: number; no: number; abstain: number };
-  citizenSentiment: { support: number; oppose: number; total: number } | null;
-  constitutionalFlags: number;
+  aiSummary: string | null;
+  proposalType: string;
   withdrawalAmount: number | null;
   treasuryTier: string | null;
+  epochsRemaining: number | null;
+  isUrgent: boolean;
+  interBodyVotes: InterBodyVotes;
+  citizenSentiment: CitizenSentiment | null;
+  /** Whether the current voter has already voted on this proposal. */
+  existingVote: string | null;
+}
+
+/** Full response from the review-queue API. */
+export interface ReviewQueueResponse {
+  items: ReviewQueueItem[];
+  currentEpoch: number;
+  totalOpen: number;
 }
 
 // ---------------------------------------------------------------------------

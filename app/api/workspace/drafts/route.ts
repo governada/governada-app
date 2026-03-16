@@ -105,6 +105,9 @@ function mapDraftRow(row: any): ProposalDraft {
     typeSpecific: row.type_specific ?? null,
     status: row.status,
     currentVersion: row.current_version ?? 1,
+    stageEnteredAt: row.stage_entered_at ?? null,
+    communityReviewStartedAt: row.community_review_started_at ?? null,
+    fcpStartedAt: row.fcp_started_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

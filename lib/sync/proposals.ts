@@ -55,6 +55,15 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
           );
         }
 
+        // Build a map of raw meta_json by proposal key for enrichment
+        const rawMetaMap = new Map<string, unknown>();
+        for (const raw of validProposals) {
+          const r = raw as unknown as ProposalListResponse[number];
+          if (r.meta_json) {
+            rawMetaMap.set(`${r.proposal_tx_hash}-${r.proposal_index}`, r.meta_json);
+          }
+        }
+
         const classified = classifyProposals(validProposals as unknown as ProposalListResponse);
 
         const proposalRows = [
@@ -68,6 +77,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
                 proposal_type: p.type,
                 title: p.title,
                 abstract: p.abstract,
+                meta_json: rawMetaMap.get(`${p.txHash}-${p.index}`) ?? null,
                 withdrawal_amount: p.withdrawalAmountAda,
                 treasury_tier: p.treasuryTier,
                 param_changes: p.paramChanges,

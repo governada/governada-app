@@ -35,7 +35,16 @@ export const UpdateDraftSchema = z.object({
   rationale: z.string().max(10000).optional(),
   proposalType: ProposalTypeEnum.optional(),
   typeSpecific: z.record(z.string(), z.unknown()).optional(),
-  status: z.enum(['draft', 'review', 'ready', 'submitted', 'archived']).optional(),
+  status: z
+    .enum([
+      'draft',
+      'community_review',
+      'response_revision',
+      'final_comment',
+      'submitted',
+      'archived',
+    ])
+    .optional(),
 });
 
 export const SaveVersionSchema = z.object({

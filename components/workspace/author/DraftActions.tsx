@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,17 +12,44 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, ShieldCheck, FileCode, History } from 'lucide-react';
+import {
+  Save,
+  ShieldCheck,
+  FileCode,
+  History,
+  ArrowRight,
+  Archive,
+  AlertCircle,
+  CheckCircle,
+  AlertTriangle,
+} from 'lucide-react';
 import { useSaveVersion, useConstitutionalCheck, useCip108Preview } from '@/hooks/useDrafts';
-import { ConstitutionalCheckPanel } from './ConstitutionalCheckPanel';
-import { CIP108PreviewModal } from './CIP108PreviewModal';
+import { StageTransitionDialog } from './StageTransitionDialog';
 import type {
   ProposalDraft,
   DraftVersion,
+  DraftStatus,
   ConstitutionalCheckResult,
   Cip108Document,
 } from '@/lib/workspace/types';
+import { useQueryClient } from '@tanstack/react-query';
+
+// ---------------------------------------------------------------------------
+// Stage transition config
+// ---------------------------------------------------------------------------
+
+const NEXT_STAGE: Partial<Record<DraftStatus, { target: DraftStatus; label: string }>> = {
+  draft: { target: 'community_review', label: 'Move to Community Review' },
+  community_review: { target: 'response_revision', label: 'Move to Response' },
+  response_revision: { target: 'final_comment', label: 'Start FCP' },
+  final_comment: { target: 'submitted', label: 'Mark as Submitted' },
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 interface DraftActionsProps {
   draft: ProposalDraft;
@@ -30,6 +57,7 @@ interface DraftActionsProps {
 }
 
 export function DraftActions({ draft, versions }: DraftActionsProps) {
+  const queryClient = useQueryClient();
   const saveVersion = useSaveVersion(draft.id);
   const constitutionalCheck = useConstitutionalCheck();
   const cip108Preview = useCip108Preview();
@@ -48,6 +76,10 @@ export function DraftActions({ draft, versions }: DraftActionsProps) {
     document: Cip108Document;
     contentHash: string;
   } | null>(null);
+
+  // Stage transition dialog
+  const [stageDialogOpen, setStageDialogOpen] = useState(false);
+  const [stageTarget, setStageTarget] = useState<DraftStatus | null>(null);
 
   const handleSaveVersion = async () => {
     if (!versionName.trim()) return;
@@ -83,8 +115,55 @@ export function DraftActions({ draft, versions }: DraftActionsProps) {
     setCip108Open(true);
   };
 
+  const handleStageTransition = useCallback((target: DraftStatus) => {
+    setStageTarget(target);
+    setStageDialogOpen(true);
+  }, []);
+
+  const handleStageSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['author-draft', draft.id] });
+    queryClient.invalidateQueries({ queryKey: ['author-drafts'] });
+  }, [queryClient, draft.id]);
+
+  const nextStage = NEXT_STAGE[draft.status];
+  const canArchive = draft.status !== 'archived';
+  const isSubmitted = draft.status === 'submitted';
+
   return (
     <div className="space-y-4">
+      {/* Stage Transition */}
+      {(nextStage || canArchive) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Lifecycle</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {nextStage && (
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => handleStageTransition(nextStage.target)}
+              >
+                <ArrowRight className="mr-2 h-4 w-4" />
+                {nextStage.label}
+              </Button>
+            )}
+            {canArchive && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-muted-foreground"
+                onClick={() => handleStageTransition('archived')}
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
       <Card>
         <CardHeader className="pb-3">
@@ -96,6 +175,7 @@ export function DraftActions({ draft, versions }: DraftActionsProps) {
             size="sm"
             className="w-full justify-start"
             onClick={() => setVersionDialogOpen(true)}
+            disabled={isSubmitted}
           >
             <Save className="mr-2 h-4 w-4" />
             Save Version
@@ -105,7 +185,7 @@ export function DraftActions({ draft, versions }: DraftActionsProps) {
             size="sm"
             className="w-full justify-start"
             onClick={handleConstitutionalCheck}
-            disabled={constitutionalCheck.isPending || !draft.title}
+            disabled={constitutionalCheck.isPending || !draft.title || isSubmitted}
           >
             <ShieldCheck className="mr-2 h-4 w-4" />
             {constitutionalCheck.isPending ? 'Checking...' : 'Constitutional Check'}
@@ -212,7 +292,147 @@ export function DraftActions({ draft, versions }: DraftActionsProps) {
       </Dialog>
 
       {/* CIP-108 Preview Modal */}
-      <CIP108PreviewModal open={cip108Open} onOpenChange={setCip108Open} data={cip108Data} />
+      {cip108Data && (
+        <CIP108PreviewModal open={cip108Open} onOpenChange={setCip108Open} data={cip108Data} />
+      )}
+
+      {/* Stage Transition Dialog */}
+      {stageTarget && (
+        <StageTransitionDialog
+          open={stageDialogOpen}
+          onOpenChange={setStageDialogOpen}
+          draftId={draft.id}
+          currentStage={draft.status}
+          targetStage={stageTarget}
+          onSuccess={handleStageSuccess}
+        />
+      )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline ConstitutionalCheckPanel (simplified from original)
+// ---------------------------------------------------------------------------
+
+function ConstitutionalCheckPanel({
+  result,
+  onRerun,
+  isRunning,
+}: {
+  result: ConstitutionalCheckResult;
+  onRerun: () => void;
+  isRunning: boolean;
+}) {
+  const icon =
+    result.score === 'pass' ? (
+      <CheckCircle className="h-4 w-4 text-emerald-500" />
+    ) : result.score === 'warning' ? (
+      <AlertTriangle className="h-4 w-4 text-amber-500" />
+    ) : (
+      <AlertCircle className="h-4 w-4 text-destructive" />
+    );
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          {icon}
+          Constitutional Check
+          <Badge
+            variant="outline"
+            className={`text-xs ml-auto ${
+              result.score === 'pass'
+                ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                : result.score === 'warning'
+                  ? 'border-amber-500/30 text-amber-600 dark:text-amber-400'
+                  : 'border-destructive/30 text-destructive'
+            }`}
+          >
+            {result.score}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {result.flags.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No constitutional concerns found.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {result.flags.map((flag, i) => (
+              <div key={i} className="text-xs space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] ${
+                      flag.severity === 'critical'
+                        ? 'border-destructive/30 text-destructive'
+                        : flag.severity === 'warning'
+                          ? 'border-amber-500/30 text-amber-600 dark:text-amber-400'
+                          : 'border-primary/30 text-primary'
+                    }`}
+                  >
+                    {flag.severity}
+                  </Badge>
+                  <span className="font-medium">
+                    Art. {flag.article}
+                    {flag.section ? `, ${flag.section}` : ''}
+                  </span>
+                </div>
+                <p className="text-muted-foreground pl-4">{flag.concern}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[10px] text-muted-foreground">
+            Checked {new Date(result.checkedAt).toLocaleString()}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs"
+            onClick={onRerun}
+            disabled={isRunning}
+          >
+            Re-run
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline CIP108PreviewModal (simplified from original)
+// ---------------------------------------------------------------------------
+
+function CIP108PreviewModal({
+  open,
+  onOpenChange,
+  data,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  data: { document: Cip108Document; contentHash: string } | null;
+}) {
+  if (!data) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>CIP-108 Preview</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">Content Hash</Label>
+            <p className="text-xs font-mono break-all">{data.contentHash}</p>
+          </div>
+          <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
+            {JSON.stringify(data.document, null, 2)}
+          </pre>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

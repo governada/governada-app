@@ -4,6 +4,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useDraft } from '@/hooks/useDrafts';
 import { DraftForm } from './DraftForm';
 import { DraftActions } from './DraftActions';
+import { LifecycleStatus } from './LifecycleStatus';
+import { ReviewsList } from './ReviewsList';
+import { ReviewRubric } from './ReviewRubric';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +14,12 @@ import { ArrowLeft } from 'lucide-react';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import Link from 'next/link';
 
-export function DraftEditor() {
+interface DraftEditorProps {
+  /** The stake address of the current viewer (for owner checks). */
+  viewerStakeAddress?: string | null;
+}
+
+export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
   const params = useParams();
   const router = useRouter();
   const draftId = typeof params.draftId === 'string' ? params.draftId : null;
@@ -24,6 +32,7 @@ export function DraftEditor() {
           <Skeleton className="h-8 w-8 rounded" />
           <Skeleton className="h-7 w-64" />
         </div>
+        <Skeleton className="h-12 w-full rounded-lg" />
         <div className="flex gap-6">
           <Skeleton className="h-[600px] flex-1 rounded-xl" />
           <Skeleton className="h-[400px] w-80 rounded-xl" />
@@ -47,6 +56,14 @@ export function DraftEditor() {
   }
 
   const { draft, versions } = data;
+  const isOwner = viewerStakeAddress === draft.ownerStakeAddress;
+  const isReadOnly = draft.status === 'final_comment' || draft.status === 'submitted';
+  const showReviewForm = draft.status === 'community_review' && !isOwner && !!viewerStakeAddress;
+  const showReviews =
+    draft.status === 'community_review' ||
+    draft.status === 'response_revision' ||
+    draft.status === 'final_comment' ||
+    draft.status === 'submitted';
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
@@ -65,10 +82,31 @@ export function DraftEditor() {
         </div>
       </div>
 
+      {/* Lifecycle status bar */}
+      <LifecycleStatus
+        status={draft.status}
+        stageEnteredAt={draft.stageEnteredAt}
+        communityReviewStartedAt={draft.communityReviewStartedAt}
+        fcpStartedAt={draft.fcpStartedAt}
+      />
+
       {/* Two-column layout on desktop, stacked on mobile */}
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 min-w-0">
-          <DraftForm draft={draft} />
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Show review form for non-owners during community review */}
+          {showReviewForm && draftId && viewerStakeAddress && (
+            <ReviewRubric
+              draftId={draftId}
+              reviewerStakeAddress={viewerStakeAddress}
+              onSuccess={() => {}}
+            />
+          )}
+
+          {/* Show draft form (read-only in later stages) */}
+          {(!showReviewForm || isOwner) && <DraftForm draft={draft} readOnly={isReadOnly} />}
+
+          {/* Reviews section */}
+          {showReviews && draftId && <ReviewsList draftId={draftId} isOwner={isOwner} />}
         </div>
         <div className="w-full lg:w-80 shrink-0">
           <DraftActions draft={draft} versions={versions} />

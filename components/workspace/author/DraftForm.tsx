@@ -5,15 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useUpdateDraft } from '@/hooks/useDrafts';
+import { DeduplicationBanner } from './DeduplicationBanner';
 import type { ProposalDraft } from '@/lib/workspace/types';
 
 interface DraftFormProps {
   draft: ProposalDraft;
+  readOnly?: boolean;
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
-export function DraftForm({ draft }: DraftFormProps) {
+export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
   const updateDraft = useUpdateDraft(draft.id);
 
   // Local form state
@@ -57,7 +59,7 @@ export function DraftForm({ draft }: DraftFormProps) {
 
   const handleSave = useCallback(
     async (fields: Record<string, unknown>) => {
-      if (!dirtyRef.current) return;
+      if (!dirtyRef.current || readOnly) return;
       setSaveStatus('saving');
       try {
         await updateDraft.mutateAsync(fields);
@@ -67,11 +69,11 @@ export function DraftForm({ draft }: DraftFormProps) {
         setSaveStatus('unsaved');
       }
     },
-    [updateDraft],
+    [updateDraft, readOnly],
   );
 
   const handleFieldBlur = useCallback(() => {
-    if (!dirtyRef.current) return;
+    if (!dirtyRef.current || readOnly) return;
     handleSave({
       title,
       abstract,
@@ -79,26 +81,50 @@ export function DraftForm({ draft }: DraftFormProps) {
       rationale,
       typeSpecific: Object.keys(typeSpecific).length > 0 ? typeSpecific : undefined,
     });
-  }, [title, abstract, motivation, rationale, typeSpecific, handleSave]);
+  }, [title, abstract, motivation, rationale, typeSpecific, handleSave, readOnly]);
+
+  // Deduplication banner handler (community_review, non-owner)
+  const showDeduplication = draft.status === 'community_review' && !readOnly;
 
   return (
     <div className="space-y-5">
+      {/* Deduplication banner for non-owners during community review */}
+      {showDeduplication && (
+        <DeduplicationBanner
+          draftId={draft.id}
+          onEndorse={() => {
+            /* themes auto-populated via ReviewRubric */
+          }}
+          onAddNew={() => {
+            /* scroll to review form */
+          }}
+        />
+      )}
+
       {/* Save status indicator */}
-      <div className="flex justify-end">
-        <span
-          className={`text-xs font-medium ${
-            saveStatus === 'saved'
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : saveStatus === 'saving'
-                ? 'text-muted-foreground'
-                : 'text-amber-600 dark:text-amber-400'
-          }`}
-        >
-          {saveStatus === 'saved' && 'Saved'}
-          {saveStatus === 'saving' && 'Saving...'}
-          {saveStatus === 'unsaved' && 'Unsaved changes'}
-        </span>
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <span
+            className={`text-xs font-medium ${
+              saveStatus === 'saved'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : saveStatus === 'saving'
+                  ? 'text-muted-foreground'
+                  : 'text-amber-600 dark:text-amber-400'
+            }`}
+          >
+            {saveStatus === 'saved' && 'Saved'}
+            {saveStatus === 'saving' && 'Saving...'}
+            {saveStatus === 'unsaved' && 'Unsaved changes'}
+          </span>
+        </div>
+      )}
+
+      {readOnly && (
+        <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+          This draft is read-only in its current stage.
+        </div>
+      )}
 
       {/* Title */}
       <div className="space-y-1.5">
@@ -113,6 +139,7 @@ export function DraftForm({ draft }: DraftFormProps) {
           onBlur={handleFieldBlur}
           maxLength={200}
           placeholder="Proposal title"
+          disabled={readOnly}
         />
         <CharCount current={title.length} max={200} />
       </div>
@@ -131,6 +158,7 @@ export function DraftForm({ draft }: DraftFormProps) {
           maxLength={2000}
           rows={4}
           placeholder="Brief summary of what this proposal does"
+          disabled={readOnly}
         />
         <CharCount current={abstract.length} max={2000} />
       </div>
@@ -149,6 +177,7 @@ export function DraftForm({ draft }: DraftFormProps) {
           maxLength={10000}
           rows={8}
           placeholder="Why is this proposal needed? What problem does it solve?"
+          disabled={readOnly}
         />
         <CharCount current={motivation.length} max={10000} />
       </div>
@@ -167,6 +196,7 @@ export function DraftForm({ draft }: DraftFormProps) {
           maxLength={10000}
           rows={8}
           placeholder="Why is this the right approach? Why should DReps vote Yes?"
+          disabled={readOnly}
         />
         <CharCount current={rationale.length} max={10000} />
       </div>
@@ -180,6 +210,7 @@ export function DraftForm({ draft }: DraftFormProps) {
             markDirty();
           }}
           onBlur={handleFieldBlur}
+          readOnly={readOnly}
         />
       )}
       {draft.proposalType === 'ParameterChange' && (
@@ -190,6 +221,7 @@ export function DraftForm({ draft }: DraftFormProps) {
             markDirty();
           }}
           onBlur={handleFieldBlur}
+          readOnly={readOnly}
         />
       )}
     </div>
@@ -218,9 +250,10 @@ interface TypeSpecificFieldsProps {
   typeSpecific: Record<string, unknown>;
   onChange: (ts: Record<string, unknown>) => void;
   onBlur: () => void;
+  readOnly?: boolean;
 }
 
-function TreasuryFields({ typeSpecific, onChange, onBlur }: TypeSpecificFieldsProps) {
+function TreasuryFields({ typeSpecific, onChange, onBlur, readOnly }: TypeSpecificFieldsProps) {
   return (
     <div className="space-y-4 border-t pt-4">
       <h3 className="text-sm font-semibold text-muted-foreground">Treasury Details</h3>
@@ -239,6 +272,7 @@ function TreasuryFields({ typeSpecific, onChange, onBlur }: TypeSpecificFieldsPr
           }
           onBlur={onBlur}
           placeholder="e.g. 100000"
+          disabled={readOnly}
         />
       </div>
       <div className="space-y-1.5">
@@ -249,6 +283,7 @@ function TreasuryFields({ typeSpecific, onChange, onBlur }: TypeSpecificFieldsPr
           onChange={(e) => onChange({ ...typeSpecific, receivingAddress: e.target.value })}
           onBlur={onBlur}
           placeholder="addr1..."
+          disabled={readOnly}
         />
       </div>
     </div>
@@ -279,7 +314,12 @@ const COMMON_PARAMETERS = [
   'committeeMaxTermLength',
 ];
 
-function ParameterChangeFields({ typeSpecific, onChange, onBlur }: TypeSpecificFieldsProps) {
+function ParameterChangeFields({
+  typeSpecific,
+  onChange,
+  onBlur,
+  readOnly,
+}: TypeSpecificFieldsProps) {
   return (
     <div className="space-y-4 border-t pt-4">
       <h3 className="text-sm font-semibold text-muted-foreground">Parameter Change Details</h3>
@@ -287,10 +327,11 @@ function ParameterChangeFields({ typeSpecific, onChange, onBlur }: TypeSpecificF
         <Label htmlFor="ts-param">Parameter Name</Label>
         <select
           id="ts-param"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
           value={(typeSpecific.parameterName as string) ?? ''}
           onChange={(e) => onChange({ ...typeSpecific, parameterName: e.target.value })}
           onBlur={onBlur}
+          disabled={readOnly}
         >
           <option value="">Select a parameter...</option>
           {COMMON_PARAMETERS.map((p) => (
@@ -308,6 +349,7 @@ function ParameterChangeFields({ typeSpecific, onChange, onBlur }: TypeSpecificF
           onChange={(e) => onChange({ ...typeSpecific, proposedValue: e.target.value })}
           onBlur={onBlur}
           placeholder="New value for the parameter"
+          disabled={readOnly}
         />
       </div>
     </div>

@@ -96,7 +96,13 @@ export interface ReviewQueueResponse {
 // Authoring Pipeline types
 // ---------------------------------------------------------------------------
 
-export type DraftStatus = 'draft' | 'review' | 'ready' | 'submitted' | 'archived';
+export type DraftStatus =
+  | 'draft'
+  | 'community_review'
+  | 'response_revision'
+  | 'final_comment'
+  | 'submitted'
+  | 'archived';
 
 export interface DraftContent {
   title: string;
@@ -119,6 +125,9 @@ export interface ProposalDraft {
   typeSpecific: Record<string, unknown> | null;
   status: DraftStatus;
   currentVersion: number;
+  stageEnteredAt: string | null;
+  communityReviewStartedAt: string | null;
+  fcpStartedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

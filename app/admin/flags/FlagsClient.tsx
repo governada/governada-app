@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable react-hooks/set-state-in-effect -- async fetch then setState is standard pattern */
 
 import { useEffect, useState } from 'react';
 import { useWallet } from '@/utils/wallet';

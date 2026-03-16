@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import Fuse from 'fuse.js';
 import { Input } from '@/components/ui/input';

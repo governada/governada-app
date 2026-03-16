@@ -4,15 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Shield,
-  ChevronDown,
-  ChevronUp,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Landmark,
-} from 'lucide-react';
+import { Shield, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { spring } from '@/lib/animations';

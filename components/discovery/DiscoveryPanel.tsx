@@ -9,7 +9,6 @@
 
 import { useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   CheckCircle2,
   Circle,
@@ -43,7 +42,6 @@ interface DiscoveryPanelProps {
 }
 
 export function DiscoveryPanel({ onStartTour, onClose }: DiscoveryPanelProps) {
-  const router = useRouter();
   const { state, featuresByCategory, tours, explorationProgress, markFeatureExplored } =
     useDiscovery();
 

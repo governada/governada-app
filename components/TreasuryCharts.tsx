@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useState, useMemo, useCallback, type MouseEvent } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { area as d3area, line as d3line, curveMonotoneX } from 'd3-shape';

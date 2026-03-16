@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Vote, BarChart3, TrendingUp, TrendingDown, Share2, Check } from 'lucide-react';

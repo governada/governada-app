@@ -278,8 +278,6 @@ export function computeVoteProjection(input: VoteProjectionInput): VoteProjectio
   // Determine outcome
   // progressRatio gates historical signals — base rate alone can't override massive gaps
   const trajectoryAbove = projectedFinalYesPct != null && projectedFinalYesPct >= thresholdPct;
-  const trajectoryClose =
-    projectedFinalYesPct != null && Math.abs(projectedFinalYesPct - thresholdPct) < 10;
   const baseRateFavorable = historicalPassRate != null && historicalPassRate >= 0.6;
   const baseRateUnfavorable = historicalPassRate != null && historicalPassRate < 0.4;
   const currentlyClose = Math.abs(currentYesPct - thresholdPct) < 10;

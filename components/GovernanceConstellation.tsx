@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 /* eslint-disable react-hooks/purity -- Three.js useRef initializers with Vector3/random are intentional one-time setup */
 import {
   useEffect,

@@ -24,12 +24,6 @@ export interface PoolMatchEnhancementProps {
 // Governance action types SPOs vote on
 // ---------------------------------------------------------------------------
 
-const SPO_GOVERNANCE_AREAS = [
-  'hard forks',
-  'protocol parameter changes',
-  'network security',
-] as const;
-
 function getGovernanceCoverage(match: MatchResult): string {
   // Derive governance focus from alignment dimensions
   const areas: string[] = [];

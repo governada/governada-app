@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useEffect, useState } from 'react';
 import { VoteRecord, UserPrefKey } from '@/types/drep';
 import { getUserPrefs } from '@/utils/userPrefs';

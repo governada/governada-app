@@ -88,7 +88,6 @@ export function OnboardingChecklist() {
   const [expanded, setExpanded] = useState(true);
   const [visible, setVisible] = useState(false);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- async localStorage read in useEffect is standard React pattern for hydration-safe state */
   useEffect(() => {
     const onboardingState = getOnboardingState();
     const sessionCount = incrementSessionCount();

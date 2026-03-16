@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';

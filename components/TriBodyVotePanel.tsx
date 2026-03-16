@@ -5,19 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TriBodyVoteBar } from '@/components/TriBodyVoteBar';
 import { ThresholdMeter } from '@/components/ThresholdMeter';
-import { Users, Server, ShieldCheck, TrendingUp, TrendingDown, Equal } from 'lucide-react';
-import {
-  getVotingBodies,
-  getIneligibilityNote,
-  type GovernanceBody,
-} from '@/lib/governance/votingBodies';
+import { TrendingUp, TrendingDown, Equal } from 'lucide-react';
+import { getVotingBodies, getIneligibilityNote } from '@/lib/governance/votingBodies';
 import type { TriBodyVotes } from '@/lib/data';
-
-const BODY_CONFIG: Record<GovernanceBody, { label: string; icon: typeof Users; color: string }> = {
-  drep: { label: 'DReps', icon: Users, color: 'text-primary' },
-  spo: { label: 'SPOs', icon: Server, color: 'text-cyan-500' },
-  cc: { label: 'CC', icon: ShieldCheck, color: 'text-amber-500' },
-};
 
 interface TriBodyVotePanelProps {
   triBody: TriBodyVotes;
@@ -37,62 +27,6 @@ interface AlignmentData {
   drep: { yes: number; no: number; abstain: number; total: number; yesPct: number };
   spo: { yes: number; no: number; abstain: number; total: number; yesPct: number };
   cc: { yes: number; no: number; abstain: number; total: number; yesPct: number };
-}
-
-function BodyColumn({
-  label,
-  icon: Icon,
-  color,
-  votes,
-  isOpen,
-}: {
-  label: string;
-  icon: typeof Users;
-  color: string;
-  votes: { yes: number; no: number; abstain: number };
-  isOpen?: boolean;
-}) {
-  const total = votes.yes + votes.no + votes.abstain;
-  if (total === 0) {
-    return (
-      <div className="flex-1 text-center p-4 rounded-lg bg-muted/30">
-        <div className="flex items-center justify-center gap-1.5 mb-2">
-          <Icon className={`h-4 w-4 ${color}`} />
-          <span className="text-sm font-medium">{label}</span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {isOpen ? 'No votes yet' : `No ${label} participated`}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 text-center p-4 rounded-lg bg-muted/30">
-      <div className="flex items-center justify-center gap-1.5 mb-3">
-        <Icon className={`h-4 w-4 ${color}`} />
-        <span className="text-sm font-medium">{label}</span>
-      </div>
-      <div className="space-y-1.5 text-xs">
-        <div className="flex justify-between">
-          <span className="text-green-600 dark:text-green-400">Yes</span>
-          <span className="tabular-nums font-medium">{votes.yes}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-red-600 dark:text-red-400">No</span>
-          <span className="tabular-nums font-medium">{votes.no}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Abstain</span>
-          <span className="tabular-nums font-medium">{votes.abstain}</span>
-        </div>
-        <div className="border-t pt-1.5 flex justify-between font-medium">
-          <span>Total</span>
-          <span className="tabular-nums">{total}</span>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function TriBodyVotePanel({
@@ -145,13 +79,6 @@ export function TriBodyVotePanel({
       alignmentCallout = `DReps and SPOs diverged \u2014 DReps voted ${drepMajority} while SPOs voted ${spoMajority}.`;
     }
   }
-
-  const gridCols =
-    eligibleBodies.length === 1
-      ? 'grid-cols-1'
-      : eligibleBodies.length === 2
-        ? 'grid-cols-2'
-        : 'grid-cols-3';
 
   const showThreshold =
     yesCount != null &&

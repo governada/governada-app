@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useState, useEffect, useRef } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -12,7 +12,7 @@ if (configs[0]) {
     ...configs[0].rules,
     'react/no-unescaped-entities': 'warn',
     'react-hooks/error-boundaries': 'warn',
-    'react-hooks/set-state-in-effect': 'warn',
+    'react-hooks/set-state-in-effect': 'off',
     'react-hooks/purity': 'warn',
     'react-hooks/immutability': 'warn',
     'prefer-const': 'warn',
@@ -36,7 +36,7 @@ if (configs[1]) {
   };
 }
 
-export default [
+const config = [
   ...configs,
   {
     ignores: [
@@ -48,8 +48,11 @@ export default [
       '__tests__/**',
       'tests/**',
       'analytics/**',
+      'coverage/**',
       '.claude/worktrees/**',
       '*.cjs',
     ],
   },
 ];
+
+export default config;

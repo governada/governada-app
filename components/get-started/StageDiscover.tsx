@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Check, RotateCcw } from 'lucide-react';
+import { Sparkles, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { fadeInUp, spring, staggerContainer } from '@/lib/animations';
+import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { loadMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
 import type { GovernancePassport } from '@/lib/passport';
 import dynamic from 'next/dynamic';

@@ -11,7 +11,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Compass, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { spring } from '@/lib/animations';
 import { useSpotlight } from './SpotlightProvider';
 import { useSectionDiscovery } from '@/hooks/useDiscovery';

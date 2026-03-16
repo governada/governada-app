@@ -299,7 +299,6 @@ function ExchangeGuide({ onDone, onBack }: { onDone: () => void; onBack: () => v
 }
 
 function NoAdaGuide({
-  passport,
   onDone,
   onBack,
 }: {

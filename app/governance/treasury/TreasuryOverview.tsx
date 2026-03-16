@@ -94,7 +94,6 @@ export function TreasuryOverview() {
   const epoch = treasury?.epoch ?? 0;
   const trend = treasury?.trend ?? 'stable';
   const pendingCount = treasury?.pendingCount ?? 0;
-  const pendingTotalAda = treasury?.pendingTotalAda ?? 0;
   const effectivenessRate = rawEffectiveness?.effectivenessRate ?? null;
 
   const nclImpact = ncl

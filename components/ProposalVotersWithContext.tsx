@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable react-hooks/set-state-in-effect -- async/external state sync in useEffect is standard React pattern */
 import { useState, useEffect } from 'react';
 import { ProposalVoteDetail } from '@/lib/data';
 import { ProposalVotersClient } from '@/components/ProposalVotersClient';

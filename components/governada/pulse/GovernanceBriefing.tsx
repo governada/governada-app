@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { formatAda } from '@/lib/treasury';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGovernancePulse, useTreasuryCurrent, useGovernanceHealthIndex } from '@/hooks/queries';
-import { useSegment } from '@/components/providers/SegmentProvider';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,7 +130,6 @@ function BriefingSkeleton() {
 // ---------------------------------------------------------------------------
 
 export function GovernanceBriefing({ compact = false }: { compact?: boolean }) {
-  const segment = useSegment();
   const { data: pulseRaw, isLoading: pulseLoading, isError: pulseError } = useGovernancePulse();
   const {
     data: treasuryRaw,

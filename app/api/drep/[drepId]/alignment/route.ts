@@ -16,7 +16,7 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { cached } from '@/lib/redis';
 import { getDRepById, getVotesByDRepId, getDRepDelegationTrend } from '@/lib/data';
-import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
+import type { AlignmentScores } from '@/lib/drepIdentity';
 import {
   computeProposalAlignment,
   type VoteWithClassification,

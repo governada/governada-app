@@ -30,7 +30,6 @@ import { useBatchEndorsementCounts } from '@/hooks/useEngagement';
 import { useDReps } from '@/hooks/queries';
 import type { EnrichedDRep } from '@/lib/koios';
 import { AnonymousNudge } from '@/components/governada/shared/AnonymousNudge';
-import { useDepthConfig } from '@/hooks/useDepthConfig';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { useWallet } from '@/utils/wallet-context';
@@ -363,7 +362,6 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
   const { data: rawData, isLoading } = useDReps();
   const drepsData = rawData as { allDReps?: EnrichedDRep[] } | undefined;
   const dreps: EnrichedDRep[] = useMemo(() => drepsData?.allDReps ?? [], [drepsData]);
-  const depthConfig = useDepthConfig('governance');
   const { isAtLeast } = useGovernanceDepth();
 
   const searchParams = useSearchParams();

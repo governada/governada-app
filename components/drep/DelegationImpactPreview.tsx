@@ -24,11 +24,8 @@ interface DelegationImpactPreviewProps {
  * full 3-column grid.
  */
 export function DelegationImpactPreview({
-  drepName,
   participationRate,
-  totalVotes,
   rationaleRate,
-  votingPowerAda,
   delegatorCount,
   compact,
 }: DelegationImpactPreviewProps) {

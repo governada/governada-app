@@ -41,7 +41,6 @@ export function DRepCard({
     { label: 'Reliability', value: drep.reliabilityScore },
   ];
 
-  /* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */
   return (
     <div
       role="listitem"
@@ -193,5 +192,4 @@ export function DRepCard({
       </div>
     </div>
   );
-  /* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */
 }

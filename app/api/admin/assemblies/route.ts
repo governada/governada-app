@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 // List all assemblies for admin review
 export const GET = withRouteHandler(
-  async (_request: NextRequest, { userId, wallet }: RouteContext) => {
+  async (_request: NextRequest, { wallet }: RouteContext) => {
     const supabase = getSupabaseAdmin();
 
     // Verify admin via ADMIN_WALLETS env var
@@ -35,7 +35,7 @@ export const GET = withRouteHandler(
 
 // Update assembly status (activate / cancel)
 export const PATCH = withRouteHandler(
-  async (request: NextRequest, { userId, wallet }: RouteContext) => {
+  async (request: NextRequest, { wallet }: RouteContext) => {
     const supabase = getSupabaseAdmin();
 
     // Verify admin via ADMIN_WALLETS env var

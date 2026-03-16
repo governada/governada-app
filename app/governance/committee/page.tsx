@@ -16,7 +16,6 @@ import { CCBlocBadges } from '@/components/cc/CCBlocBadges';
 import { CCPredictions } from '@/components/cc/CCPredictions';
 import { CCPersonaInsightBanner } from '@/components/cc/CCPersonaInsightBanner';
 import { PageViewTracker } from '@/components/PageViewTracker';
-import { useSegment } from '@/components/providers/SegmentProvider';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
 
 // ---------------------------------------------------------------------------
@@ -300,14 +299,12 @@ function CommitteePageSkeleton() {
 
 export default function CommitteePage() {
   const { data, isLoading } = useCommitteeMembers();
-  const { segment } = useSegment();
-
   const members = useMemo(() => data?.members ?? [], [data]);
   const health = data?.health;
   const stats = data?.stats;
   const agreementMatrix = data?.agreementMatrix ?? [];
   const blocs = data?.blocs ?? [];
-  const archetypes = data?.archetypes ?? [];
+  const archetypes = useMemo(() => data?.archetypes ?? [], [data]);
   const briefing = data?.briefing ?? null;
 
   // Build archetype lookup by ccHotId

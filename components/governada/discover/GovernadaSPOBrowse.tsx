@@ -9,8 +9,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Users,
-  Coins,
   Search as SearchIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,7 +25,6 @@ import {
   TIER_LEFT_ACCENT,
   tierKey,
 } from '@/components/governada/cards/tierStyles';
-import { TierBadge } from '@/components/governada/cards/TierBadge';
 import { useQuery } from '@tanstack/react-query';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';

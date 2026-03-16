@@ -4,10 +4,6 @@ import { createClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-interface RouteParams {
-  params: Promise<{ ccHotId: string }>;
-}
-
 export const GET = withRouteHandler(async (request: Request) => {
   // Extract ccHotId from the URL path
   const url = new URL(request.url);

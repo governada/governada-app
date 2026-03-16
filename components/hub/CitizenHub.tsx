@@ -68,12 +68,6 @@ function formatAda(ada: number): string {
   return ada.toLocaleString();
 }
 
-function formatPowerFraction(fraction: number): string {
-  if (fraction >= 0.01) return `${(fraction * 100).toFixed(1)}%`;
-  if (fraction >= 0.001) return `${(fraction * 100).toFixed(2)}%`;
-  return `${(fraction * 100).toFixed(3)}%`;
-}
-
 /** Convert epoch number to a human-readable date range like "Mar 8 – 13" */
 function epochDateRange(epoch: number): string {
   const SHELLEY_GENESIS = 1596491091;

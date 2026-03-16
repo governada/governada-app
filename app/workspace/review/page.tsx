@@ -10,12 +10,17 @@ export const metadata: Metadata = {
   description: 'Review active governance proposals, vote, and write rationales.',
 };
 
-export default function ReviewPage() {
+interface ReviewPageProps {
+  searchParams: Promise<{ proposal?: string }>;
+}
+
+export default async function ReviewPage({ searchParams }: ReviewPageProps) {
+  const params = await searchParams;
   return (
     <>
       <PageViewTracker event="review_workspace_viewed" />
       <FeatureGate flag="proposal_workspace">
-        <ReviewWorkspace />
+        <ReviewWorkspace initialProposalKey={params.proposal} />
       </FeatureGate>
     </>
   );

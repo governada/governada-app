@@ -31,6 +31,7 @@ import {
 } from '@/utils/scoring';
 import { VoteRecord } from '@/types/drep';
 import { InlineDelegationCTA } from '@/components/InlineDelegationCTA';
+import { DelegationBridgeButton } from '@/components/governada/profiles/DelegationBridgeButton';
 const ScoreHistoryChart = nextDynamic(
   () => import('@/components/ScoreHistoryChart').then((m) => m.ScoreHistoryChart),
   { loading: () => <div className="h-32 animate-pulse bg-muted rounded-lg" /> },
@@ -61,6 +62,7 @@ import { DRepTreasuryStance } from '@/components/DRepTreasuryStance';
 import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
 import { FeatureGate } from '@/components/FeatureGate';
+import { getFeatureFlag } from '@/lib/featureFlags';
 import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
 import { TrustCard } from '@/components/governada/profiles/TrustCard';
 const CitizenEndorsements = nextDynamic(
@@ -419,6 +421,8 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
     withTimeout(getDRepTreasuryTrackRecord(drep.drepId), null, 'treasuryRecord'),
   ]);
 
+  const discoveryActionSplit = await getFeatureFlag('discovery_action_split', false);
+
   const pendingProposalCount = openProposals.length;
 
   // Treasury stewardship signals — summary-level only
@@ -590,7 +594,11 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         narrativeAccentColor={getIdentityColor(getDominantDimension(alignments)).hex}
       >
         <SegmentGate hide={['drep']}>
-          <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
+          {discoveryActionSplit ? (
+            <DelegationBridgeButton drepId={drep.drepId} drepName={drepName} />
+          ) : (
+            <InlineDelegationCTA drepId={drep.drepId} drepName={drepName} />
+          )}
         </SegmentGate>
         <CompareButton currentDrepId={drep.drepId} currentDrepName={drepName} />
         <WatchEntityButton entityType="drep" entityId={drep.drepId} />

@@ -30,6 +30,7 @@ import { EntityPageConnections } from '@/components/shared/EntityPageConnections
 import { IntelligenceBriefing } from '@/components/governada/proposals/IntelligenceBriefing';
 import { DebateSection } from '@/components/governada/proposals/DebateSection';
 import { ProposalActionZone } from '@/components/governada/proposals/ProposalActionZone';
+import { ProposalBridge } from '@/components/governada/proposals/ProposalBridge';
 import { ProposalDepthGate } from '@/components/governada/proposals/ProposalDepthGate';
 import { ProposalDepthSection } from '@/components/governada/proposals/ProposalDepthSection';
 import { getFeatureFlag } from '@/lib/featureFlags';
@@ -94,6 +95,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
   // Living Brief feature flag
   const livingBriefEnabled = await getFeatureFlag('living_brief', false);
+  const discoveryActionSplit = await getFeatureFlag('discovery_action_split', false);
 
   // Fetch brief data + historical context if enabled (non-blocking, defaults to null)
   const brief = livingBriefEnabled
@@ -371,6 +373,17 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         treasuryBalanceAda={treasury?.balanceAda ?? null}
       />
 
+      {/* Action bridge — routes to review workspace or citizen sentiment */}
+      {discoveryActionSplit && (
+        <ProposalBridge
+          txHash={txHash}
+          proposalIndex={proposalIndex}
+          title={title}
+          isOpen={isOpen}
+          proposalType={proposal.proposalType}
+        />
+      )}
+
       {/* Zone 2: Living Brief */}
       <ProposalDepthSection section="intelligenceBriefing">
         <LivingBrief
@@ -519,15 +532,25 @@ export default async function ProposalDetailPage({ params }: PageProps) {
 
       {/* Zone 2: Primary Action — persona-branching (DRep/SPO vote flow vs citizen engagement) */}
       <ProposalDepthSection section="actionZone">
-        <ProposalActionZone
-          txHash={txHash}
-          proposalIndex={proposalIndex}
-          title={title}
-          isOpen={isOpen}
-          proposalAbstract={proposal.abstract}
-          proposalType={proposal.proposalType}
-          aiSummary={proposal.aiSummary}
-        />
+        {discoveryActionSplit ? (
+          <ProposalBridge
+            txHash={txHash}
+            proposalIndex={proposalIndex}
+            title={title}
+            isOpen={isOpen}
+            proposalType={proposal.proposalType}
+          />
+        ) : (
+          <ProposalActionZone
+            txHash={txHash}
+            proposalIndex={proposalIndex}
+            title={title}
+            isOpen={isOpen}
+            proposalAbstract={proposal.abstract}
+            proposalType={proposal.proposalType}
+            aiSummary={proposal.aiSummary}
+          />
+        )}
       </ProposalDepthSection>
 
       {/* Zone 3: Intelligence Briefing — AI summary + constitutional + params */}

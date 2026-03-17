@@ -94,7 +94,7 @@ function BackgroundGlobe({
   return (
     <div
       className={cn(
-        'fixed inset-0 pointer-events-none z-0 transition-[left] duration-200',
+        'force-dark fixed inset-0 pointer-events-none z-0 transition-[left] duration-200',
         sidebarCollapsed ? 'lg:left-16' : 'lg:left-60',
       )}
       aria-hidden="true"

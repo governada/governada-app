@@ -45,7 +45,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
   return (
     <div className="relative flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Constellation hero */}
-      <section className="relative flex-1 min-h-[50vh] sm:-mt-14 overflow-hidden flex items-center justify-center">
+      <section className="force-dark relative flex-1 min-h-[50vh] sm:-mt-14 overflow-hidden flex items-center justify-center">
         <div className="absolute inset-0">
           <ConstellationScene className="w-full h-full" interactive={false} />
         </div>

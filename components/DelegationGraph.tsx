@@ -268,7 +268,7 @@ export function DelegationGraph() {
                 cy={pos.y}
                 r={r}
                 fill={color}
-                stroke={isHovered ? identityColor.hex : 'rgba(255,255,255,0.15)'}
+                stroke={isHovered ? identityColor.hex : 'hsl(var(--border))'}
                 strokeWidth={isHovered ? 2 : 1}
                 opacity={isHovered ? 1 : 0.9}
                 cursor="pointer"

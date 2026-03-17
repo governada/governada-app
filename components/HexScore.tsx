@@ -167,7 +167,7 @@ export function HexScore({
           <polygon
             points={polygonPoints}
             fill="none"
-            stroke="white"
+            stroke="currentColor"
             strokeWidth={1.5}
             strokeLinejoin="round"
             strokeDasharray={`${Math.round(perimeterLength * 0.06)} ${Math.round(perimeterLength * 0.94)}`}
@@ -188,7 +188,7 @@ export function HexScore({
               y={size === 'card' ? svgSize / 2 : svgSize / 2 - 2}
               textAnchor="middle"
               dominantBaseline="central"
-              fill="white"
+              fill="currentColor"
               fontSize={fontSize}
               fontWeight={700}
               letterSpacing="0.04em"
@@ -205,7 +205,7 @@ export function HexScore({
                 y={svgSize / 2 + fontSize * 0.55}
                 textAnchor="middle"
                 dominantBaseline="hanging"
-                fill="white"
+                fill="currentColor"
                 fontSize={11}
                 fontFamily="var(--font-geist-mono)"
                 opacity={0.35}

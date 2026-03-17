@@ -18,7 +18,6 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { assembleGovernanceContext } from '@/lib/workspace/agent/context';
 import { buildSystemPrompt } from '@/lib/workspace/agent/system-prompt';
 import { getToolDefinitions, executeTool } from '@/lib/workspace/agent/tools';
@@ -110,15 +109,6 @@ export async function POST(request: NextRequest): Promise<Response> {
       });
     }
     const { userId, wallet } = authResult;
-
-    // --- Feature flag check ---
-    const enabled = await getFeatureFlag('governance_workspace_v2', false);
-    if (!enabled) {
-      return new Response(JSON.stringify({ error: 'Governance workspace v2 is not enabled' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
 
     // --- Rate limit ---
     evictStaleEntries();

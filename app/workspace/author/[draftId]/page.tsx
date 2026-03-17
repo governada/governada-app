@@ -1,21 +1,14 @@
-import type { Metadata } from 'next';
-import { PageViewTracker } from '@/components/PageViewTracker';
-import { DraftEditor } from '@/components/workspace/author/DraftEditor';
-import { WorkspaceV2Redirect } from './WorkspaceV2Redirect';
+'use client';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Edit Draft — Governada',
-  description: 'Edit your governance proposal draft.',
-};
+/**
+ * Draft Editor Page — now renders the Tiptap workspace directly.
+ * The old form-based DraftEditor has been replaced.
+ */
+
+import WorkspaceEditorRoute from '@/app/workspace/editor/[draftId]/page';
 
 export default function DraftEditorPage() {
-  return (
-    <>
-      <PageViewTracker event="author_draft_viewed" />
-      <WorkspaceV2Redirect />
-      <DraftEditor />
-    </>
-  );
+  return <WorkspaceEditorRoute />;
 }

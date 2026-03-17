@@ -3,9 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 /**
- * Workspace Editor V2 -- Tiptap-based proposal workspace.
- *
- * Feature-flagged behind `governance_workspace_v2`.
+ * Workspace Editor — Tiptap-based proposal workspace.
  *
  * Phase 2 integration:
  * - AgentChatPanel wired to useAgent hook
@@ -24,7 +22,6 @@ import { useAgent } from '@/hooks/useAgent';
 import { useRevisionState } from '@/hooks/useRevision';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useFeedbackThemes } from '@/hooks/useFeedbackThemes';
-import { FeatureGate } from '@/components/FeatureGate';
 import { posthog } from '@/lib/posthog';
 import { WorkspaceLayout } from '@/components/workspace/layout/WorkspaceLayout';
 import { WorkspaceToolbar } from '@/components/workspace/layout/WorkspaceToolbar';
@@ -612,22 +609,5 @@ function WorkspaceEditorPage() {
 }
 
 export default function WorkspaceEditorRoute() {
-  return (
-    <FeatureGate flag="governance_workspace_v2" fallback={<FlagDisabledFallback />}>
-      <WorkspaceEditorPage />
-    </FeatureGate>
-  );
-}
-
-function FlagDisabledFallback() {
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="text-center space-y-3">
-        <h1 className="text-lg font-semibold">Workspace V2</h1>
-        <p className="text-sm text-muted-foreground">
-          This feature is not yet enabled. Check back soon.
-        </p>
-      </div>
-    </div>
-  );
+  return <WorkspaceEditorPage />;
 }

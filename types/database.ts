@@ -46,6 +46,36 @@ export type Database = {
           },
         ];
       };
+      agent_conversations: {
+        Row: {
+          context_hash: string | null;
+          created_at: string;
+          id: string;
+          messages: Json;
+          proposal_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          context_hash?: string | null;
+          created_at?: string;
+          id?: string;
+          messages?: Json;
+          proposal_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          context_hash?: string | null;
+          created_at?: string;
+          id?: string;
+          messages?: Json;
+          proposal_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       ai_activity_log: {
         Row: {
           created_at: string;
@@ -3859,6 +3889,7 @@ export type Database = {
       };
       proposal_draft_versions: {
         Row: {
+          change_justifications: Json | null;
           constitutional_check: Json | null;
           content: Json;
           created_at: string;
@@ -3869,6 +3900,7 @@ export type Database = {
           version_number: number;
         };
         Insert: {
+          change_justifications?: Json | null;
           constitutional_check?: Json | null;
           content: Json;
           created_at?: string;
@@ -3879,6 +3911,7 @@ export type Database = {
           version_number: number;
         };
         Update: {
+          change_justifications?: Json | null;
           constitutional_check?: Json | null;
           content?: Json;
           created_at?: string;
@@ -4006,6 +4039,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      proposal_feedback_themes: {
+        Row: {
+          addressed_reason: string | null;
+          addressed_status: string;
+          created_at: string;
+          endorsement_count: number;
+          id: string;
+          key_voices: Json;
+          linked_annotation_ids: string[];
+          novel_contributions: Json;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          theme_category: string;
+          theme_summary: string;
+          updated_at: string;
+        };
+        Insert: {
+          addressed_reason?: string | null;
+          addressed_status?: string;
+          created_at?: string;
+          endorsement_count?: number;
+          id?: string;
+          key_voices?: Json;
+          linked_annotation_ids?: string[];
+          novel_contributions?: Json;
+          proposal_index: number;
+          proposal_tx_hash: string;
+          theme_category: string;
+          theme_summary: string;
+          updated_at?: string;
+        };
+        Update: {
+          addressed_reason?: string | null;
+          addressed_status?: string;
+          created_at?: string;
+          endorsement_count?: number;
+          id?: string;
+          key_voices?: Json;
+          linked_annotation_ids?: string[];
+          novel_contributions?: Json;
+          proposal_index?: number;
+          proposal_tx_hash?: string;
+          theme_category?: string;
+          theme_summary?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       proposal_notes: {
         Row: {
           created_at: string;
@@ -4106,6 +4187,48 @@ export type Database = {
             referencedColumns: ['tx_hash', 'proposal_index'];
           },
         ];
+      };
+      proposal_revision_notifications: {
+        Row: {
+          created_at: string;
+          draft_id: string | null;
+          id: string;
+          proposal_index: number | null;
+          proposal_tx_hash: string | null;
+          read_at: string | null;
+          recipient_type: string;
+          recipient_user_id: string;
+          sections_changed: string[];
+          themes_addressed: string[];
+          version_number: number;
+        };
+        Insert: {
+          created_at?: string;
+          draft_id?: string | null;
+          id?: string;
+          proposal_index?: number | null;
+          proposal_tx_hash?: string | null;
+          read_at?: string | null;
+          recipient_type: string;
+          recipient_user_id: string;
+          sections_changed?: string[];
+          themes_addressed?: string[];
+          version_number: number;
+        };
+        Update: {
+          created_at?: string;
+          draft_id?: string | null;
+          id?: string;
+          proposal_index?: number | null;
+          proposal_tx_hash?: string | null;
+          read_at?: string | null;
+          recipient_type?: string;
+          recipient_user_id?: string;
+          sections_changed?: string[];
+          themes_addressed?: string[];
+          version_number?: number;
+        };
+        Relationships: [];
       };
       proposal_similarity_cache: {
         Row: {
@@ -4241,6 +4364,41 @@ export type Database = {
             columns: ['draft_id'];
             isOneToOne: true;
             referencedRelation: 'proposal_drafts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      proposal_theme_endorsements: {
+        Row: {
+          additional_context: string | null;
+          created_at: string;
+          id: string;
+          is_novel: boolean;
+          reviewer_user_id: string;
+          theme_id: string;
+        };
+        Insert: {
+          additional_context?: string | null;
+          created_at?: string;
+          id?: string;
+          is_novel?: boolean;
+          reviewer_user_id: string;
+          theme_id: string;
+        };
+        Update: {
+          additional_context?: string | null;
+          created_at?: string;
+          id?: string;
+          is_novel?: boolean;
+          reviewer_user_id?: string;
+          theme_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_theme_endorsements_theme_id_fkey';
+            columns: ['theme_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_feedback_themes';
             referencedColumns: ['id'];
           },
         ];

@@ -101,6 +101,7 @@ export function ReviewBrief({ item, allItems = [] }: ReviewBriefProps) {
         references={item.references}
         proposalTxHash={item.txHash}
         proposalIndex={item.proposalIndex}
+        proposalType={item.proposalType}
       />
 
       {/* Intelligence & Analysis — collapsible */}

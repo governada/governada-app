@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useAISkill } from '@/hooks/useAISkill';
+import { useFeatureFlag } from '@/components/FeatureGate';
 import {
   MessageSquare,
   Highlighter,
   AlertTriangle,
   BookOpen,
+  Brain,
   X,
   Trash2,
   Globe,
@@ -90,6 +93,8 @@ interface AnnotatableTextProps {
   ) => void;
   onDeleteAnnotation: (id: string) => void;
   readOnly?: boolean;
+  /** Proposal type for AI explain action */
+  proposalType?: string;
 }
 
 interface TextSegment {
@@ -152,9 +157,10 @@ interface SelectionToolbarProps {
   position: { top: number; left: number };
   onSelect: (type: AnnotationType) => void;
   onClose: () => void;
+  onExplain?: () => void;
 }
 
-function SelectionToolbar({ position, onSelect, onClose }: SelectionToolbarProps) {
+function SelectionToolbar({ position, onSelect, onClose, onExplain }: SelectionToolbarProps) {
   const types: AnnotationType[] = ['note', 'highlight', 'concern', 'citation'];
 
   return (
@@ -181,6 +187,19 @@ function SelectionToolbar({ position, onSelect, onClose }: SelectionToolbarProps
           </button>
         );
       })}
+      {onExplain && (
+        <>
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <button
+            onClick={onExplain}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:bg-accent transition-colors"
+            title="Explain this passage"
+          >
+            <Brain className="h-3.5 w-3.5" />
+            Explain
+          </button>
+        </>
+      )}
       <button
         onClick={onClose}
         className="ml-0.5 rounded-md p-1.5 text-muted-foreground hover:bg-accent"
@@ -400,8 +419,19 @@ export function AnnotatableText({
   onUpdateAnnotation,
   onDeleteAnnotation,
   readOnly = false,
+  proposalType,
 }: AnnotatableTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Feature flag for explain action
+  const explainEnabled = useFeatureFlag('review_section_intelligence');
+
+  // Explain state (AI explain popover)
+  const [explainState, setExplainState] = useState<{
+    selectedText: string;
+    surroundingContext: string;
+    position: { top: number; left: number };
+  } | null>(null);
 
   // Selection state
   const [selection, setSelection] = useState<{
@@ -512,6 +542,25 @@ export function AnnotatableText({
   );
 
   // ---------------------------------------------------------------------------
+  // Explain action — AI explains selected text
+  // ---------------------------------------------------------------------------
+
+  const handleExplain = useCallback(() => {
+    if (!selection) return;
+    const selectedText = text.slice(selection.start, selection.end);
+    const contextStart = Math.max(0, selection.start - 300);
+    const contextEnd = Math.min(text.length, selection.end + 300);
+    const surroundingContext = text.slice(contextStart, contextEnd);
+    setExplainState({
+      selectedText,
+      surroundingContext,
+      position: selection.position,
+    });
+    setToolbarVisible(false);
+    window.getSelection()?.removeAllRanges();
+  }, [selection, text]);
+
+  // ---------------------------------------------------------------------------
   // Create dialog submit
   // ---------------------------------------------------------------------------
 
@@ -619,6 +668,7 @@ export function AnnotatableText({
             setToolbarVisible(false);
             window.getSelection()?.removeAllRanges();
           }}
+          onExplain={proposalType && explainEnabled ? handleExplain : undefined}
         />
       )}
 
@@ -653,6 +703,107 @@ export function AnnotatableText({
           }}
           readOnly={readOnly}
         />
+      )}
+
+      {/* Explain Popover */}
+      {explainState && proposalType && (
+        <ExplainPopover
+          selectedText={explainState.selectedText}
+          surroundingContext={explainState.surroundingContext}
+          proposalType={proposalType}
+          position={explainState.position}
+          proposalTxHash={proposalTxHash}
+          proposalIndex={proposalIndex}
+          onClose={() => setExplainState(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Explain Popover — shows AI explanation of selected text
+// ---------------------------------------------------------------------------
+
+function ExplainPopover({
+  selectedText,
+  surroundingContext,
+  proposalType,
+  position,
+  proposalTxHash,
+  proposalIndex,
+  onClose,
+}: {
+  selectedText: string;
+  surroundingContext: string;
+  proposalType: string;
+  position: { top: number; left: number };
+  proposalTxHash: string;
+  proposalIndex: number;
+  onClose: () => void;
+}) {
+  const skill = useAISkill<{ improvedText: string; explanation: string }>();
+  const invokedRef = useRef(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (invokedRef.current) return;
+    invokedRef.current = true;
+    skill.mutate({
+      skill: 'text-improve',
+      input: {
+        selectedText,
+        surroundingContext,
+        proposalType,
+        instruction: 'Explain this passage in plain governance terms, personalized to the reader.',
+      },
+      proposalTxHash,
+      proposalIndex,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose();
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={popoverRef}
+      className="fixed z-50 w-[380px] max-h-[280px] overflow-y-auto rounded-xl border bg-popover p-4 shadow-lg"
+      style={{ top: position.top + 28, left: position.left }}
+    >
+      {skill.isPending && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="h-4 w-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          Explaining...
+        </div>
+      )}
+      {skill.isError && <p className="text-sm text-destructive">Explanation unavailable.</p>}
+      {skill.data && (
+        <div className="space-y-2">
+          <blockquote className="border-l-2 border-border pl-3 text-xs text-muted-foreground italic">
+            {selectedText.length > 150 ? selectedText.slice(0, 150) + '...' : selectedText}
+          </blockquote>
+          <p className="text-sm leading-relaxed">{skill.data.output.improvedText}</p>
+          <button
+            onClick={onClose}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Close
+          </button>
+        </div>
       )}
     </div>
   );

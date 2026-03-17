@@ -13,18 +13,60 @@ import {
 } from '@/components/ui/select';
 import { useUpdateDraft } from '@/hooks/useDrafts';
 import { DeduplicationBanner } from './DeduplicationBanner';
+import { ProvenanceBadge } from '@/components/workspace/shared/ProvenanceBadge';
+import { SectionHealthBadge } from '@/components/workspace/shared/SectionHealthBadge';
+import { InlineImprovePopover } from './InlineImprovePopover';
+import { AIProvenanceDiff } from './AIProvenanceDiff';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { Keyboard } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
+import { getDraftAIMeta } from '@/lib/workspace/types';
 import type { ProposalDraft } from '@/lib/workspace/types';
+import type { SectionAnalysisOutput } from '@/lib/ai/skills/section-analysis';
 
 interface DraftFormProps {
   draft: ProposalDraft;
   readOnly?: boolean;
+  sectionResults?: Record<string, SectionAnalysisOutput | null>;
+  sectionLoading?: Record<string, boolean>;
+  onFieldAnalyze?: (field: 'abstract' | 'motivation' | 'rationale') => void;
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
-export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
+/** Simple character-level edit distance as a percentage (0 = identical, 100 = completely different). */
+function computeEditDistance(original: string, current: string): number {
+  if (!original && !current) return 0;
+  if (original === current) return 0;
+  const maxLen = Math.max(original.length, current.length);
+  if (maxLen === 0) return 0;
+  let changes = 0;
+  const minLen = Math.min(original.length, current.length);
+  for (let i = 0; i < minLen; i++) {
+    if (original[i] !== current[i]) changes++;
+  }
+  changes += Math.abs(original.length - current.length);
+  return Math.round((changes / maxLen) * 100);
+}
+
+export function DraftForm({
+  draft,
+  readOnly = false,
+  sectionResults,
+  sectionLoading,
+  onFieldAnalyze,
+}: DraftFormProps) {
   const updateDraft = useUpdateDraft(draft.id);
+  const aiMeta = getDraftAIMeta(draft.typeSpecific);
+
+  // AI provenance diff dialog
+  const [showProvenanceDiff, setShowProvenanceDiff] = useState(false);
+
+  // Ctrl+I keyboard hint (shown once per session)
+  const [showCtrlIHint, setShowCtrlIHint] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !sessionStorage.getItem('ctrlIHintDismissed');
+  });
 
   // Local form state
   const [title, setTitle] = useState(draft.title);
@@ -35,6 +77,17 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
     draft.typeSpecific ?? {},
   );
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+
+  // Inline improve (Ctrl+I)
+  const inlineIntelEnabled = useFeatureFlag('author_inline_intelligence');
+  const [improveState, setImproveState] = useState<{
+    selectedText: string;
+    surroundingContext: string;
+    position: { top: number; left: number };
+    field: 'abstract' | 'motivation' | 'rationale';
+    selectionStart: number;
+    selectionEnd: number;
+  } | null>(null);
 
   // Track if any field was changed since last save
   const dirtyRef = useRef(false);
@@ -80,16 +133,73 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
     [updateDraft, readOnly],
   );
 
-  const handleFieldBlur = useCallback(() => {
-    if (!dirtyRef.current || readOnly) return;
-    handleSave({
-      title,
-      abstract,
-      motivation,
-      rationale,
-      typeSpecific: Object.keys(typeSpecific).length > 0 ? typeSpecific : undefined,
-    });
-  }, [title, abstract, motivation, rationale, typeSpecific, handleSave, readOnly]);
+  const handleFieldBlur = useCallback(
+    (field?: 'abstract' | 'motivation' | 'rationale') => {
+      if (!dirtyRef.current || readOnly) return;
+      handleSave({
+        title,
+        abstract,
+        motivation,
+        rationale,
+        typeSpecific: Object.keys(typeSpecific).length > 0 ? typeSpecific : undefined,
+      });
+      if (field && onFieldAnalyze) onFieldAnalyze(field);
+    },
+    [title, abstract, motivation, rationale, typeSpecific, handleSave, readOnly, onFieldAnalyze],
+  );
+
+  const handleCtrlI = useCallback(
+    (
+      e: React.KeyboardEvent<HTMLTextAreaElement>,
+      field: 'abstract' | 'motivation' | 'rationale',
+    ) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== 'i' || !inlineIntelEnabled) return;
+      e.preventDefault();
+      // Dismiss keyboard hint permanently
+      if (showCtrlIHint) {
+        setShowCtrlIHint(false);
+        try {
+          sessionStorage.setItem('ctrlIHintDismissed', '1');
+        } catch {
+          // SSR or storage unavailable
+        }
+      }
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      if (start === end) return; // no selection
+
+      const text = textarea.value;
+      const selectedText = text.slice(start, end);
+      const contextStart = Math.max(0, start - 300);
+      const contextEnd = Math.min(text.length, end + 300);
+      const surroundingContext = text.slice(contextStart, contextEnd);
+
+      const rect = textarea.getBoundingClientRect();
+      setImproveState({
+        selectedText,
+        surroundingContext,
+        position: { top: rect.bottom + 8, left: rect.left },
+        field,
+        selectionStart: start,
+        selectionEnd: end,
+      });
+    },
+    [inlineIntelEnabled, setImproveState, showCtrlIHint, setShowCtrlIHint],
+  );
+
+  const handleAcceptImprove = useCallback(
+    (improvedText: string) => {
+      if (!improveState) return;
+      const { field, selectionStart, selectionEnd } = improveState;
+      const setter =
+        field === 'abstract' ? setAbstract : field === 'motivation' ? setMotivation : setRationale;
+      setter((prev) => prev.slice(0, selectionStart) + improvedText + prev.slice(selectionEnd));
+      markDirty();
+      setImproveState(null);
+    },
+    [improveState, markDirty, setAbstract, setMotivation, setRationale, setImproveState],
+  );
 
   // Deduplication banner handler (community_review, non-owner)
   const showDeduplication = draft.status === 'community_review' && !readOnly;
@@ -163,7 +273,24 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
 
       {/* Title */}
       <div className="space-y-1.5">
-        <Label htmlFor="draft-title">Title</Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="draft-title">Title</Label>
+          {aiMeta?.fieldsGenerated.includes('title') && (
+            <button
+              type="button"
+              onClick={() => setShowProvenanceDiff(true)}
+              className="cursor-pointer"
+              title="View AI draft changes"
+            >
+              <ProvenanceBadge
+                model={aiMeta.model}
+                keySource={aiMeta.keySource}
+                skillName={aiMeta.skillName}
+                editDistance={computeEditDistance(aiMeta.originalText.title, title)}
+              />
+            </button>
+          )}
+        </div>
         <Input
           id="draft-title"
           value={title}
@@ -171,7 +298,7 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
             setTitle(e.target.value);
             markDirty();
           }}
-          onBlur={handleFieldBlur}
+          onBlur={() => handleFieldBlur()}
           maxLength={200}
           placeholder="Proposal title"
           disabled={readOnly}
@@ -181,7 +308,23 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
 
       {/* Abstract */}
       <div className="space-y-1.5">
-        <Label htmlFor="draft-abstract">Abstract</Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="draft-abstract">Abstract</Label>
+          {aiMeta?.fieldsGenerated.includes('abstract') && (
+            <ProvenanceBadge
+              model={aiMeta.model}
+              keySource={aiMeta.keySource}
+              skillName={aiMeta.skillName}
+              editDistance={computeEditDistance(aiMeta.originalText.abstract, abstract)}
+            />
+          )}
+          <SectionHealthBadge
+            quality={sectionResults?.abstract?.overallQuality ?? null}
+            loading={sectionLoading?.abstract ?? false}
+            flagCount={sectionResults?.abstract?.constitutionalFlags?.length}
+            gapCount={sectionResults?.abstract?.completenessGaps?.length}
+          />
+        </div>
         <Textarea
           id="draft-abstract"
           value={abstract}
@@ -189,18 +332,45 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
             setAbstract(e.target.value);
             markDirty();
           }}
-          onBlur={handleFieldBlur}
+          onBlur={() => handleFieldBlur('abstract')}
+          onKeyDown={(e) => handleCtrlI(e, 'abstract')}
           maxLength={2000}
           rows={4}
           placeholder="Brief summary of what this proposal does"
           disabled={readOnly}
         />
         <CharCount current={abstract.length} max={2000} />
+        {showCtrlIHint && inlineIntelEnabled && !readOnly && (
+          <p className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+            <Keyboard className="h-3 w-3" />
+            Select text +{' '}
+            <kbd className="rounded border border-border/50 px-1 py-0.5 font-mono text-[9px]">
+              Ctrl+I
+            </kbd>{' '}
+            to improve with AI
+          </p>
+        )}
       </div>
 
       {/* Motivation */}
       <div className="space-y-1.5">
-        <Label htmlFor="draft-motivation">Motivation</Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="draft-motivation">Motivation</Label>
+          {aiMeta?.fieldsGenerated.includes('motivation') && (
+            <ProvenanceBadge
+              model={aiMeta.model}
+              keySource={aiMeta.keySource}
+              skillName={aiMeta.skillName}
+              editDistance={computeEditDistance(aiMeta.originalText.motivation, motivation)}
+            />
+          )}
+          <SectionHealthBadge
+            quality={sectionResults?.motivation?.overallQuality ?? null}
+            loading={sectionLoading?.motivation ?? false}
+            flagCount={sectionResults?.motivation?.constitutionalFlags?.length}
+            gapCount={sectionResults?.motivation?.completenessGaps?.length}
+          />
+        </div>
         <Textarea
           id="draft-motivation"
           value={motivation}
@@ -208,7 +378,8 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
             setMotivation(e.target.value);
             markDirty();
           }}
-          onBlur={handleFieldBlur}
+          onBlur={() => handleFieldBlur('motivation')}
+          onKeyDown={(e) => handleCtrlI(e, 'motivation')}
           maxLength={10000}
           rows={8}
           placeholder="Why is this proposal needed? What problem does it solve?"
@@ -219,7 +390,23 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
 
       {/* Rationale */}
       <div className="space-y-1.5">
-        <Label htmlFor="draft-rationale">Rationale</Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="draft-rationale">Rationale</Label>
+          {aiMeta?.fieldsGenerated.includes('rationale') && (
+            <ProvenanceBadge
+              model={aiMeta.model}
+              keySource={aiMeta.keySource}
+              skillName={aiMeta.skillName}
+              editDistance={computeEditDistance(aiMeta.originalText.rationale, rationale)}
+            />
+          )}
+          <SectionHealthBadge
+            quality={sectionResults?.rationale?.overallQuality ?? null}
+            loading={sectionLoading?.rationale ?? false}
+            flagCount={sectionResults?.rationale?.constitutionalFlags?.length}
+            gapCount={sectionResults?.rationale?.completenessGaps?.length}
+          />
+        </div>
         <Textarea
           id="draft-rationale"
           value={rationale}
@@ -227,7 +414,8 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
             setRationale(e.target.value);
             markDirty();
           }}
-          onBlur={handleFieldBlur}
+          onBlur={() => handleFieldBlur('rationale')}
+          onKeyDown={(e) => handleCtrlI(e, 'rationale')}
           maxLength={10000}
           rows={8}
           placeholder="Why is this the right approach? Why should DReps vote Yes?"
@@ -244,7 +432,7 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
             setTypeSpecific(ts);
             markDirty();
           }}
-          onBlur={handleFieldBlur}
+          onBlur={() => handleFieldBlur()}
           readOnly={readOnly}
         />
       )}
@@ -255,8 +443,31 @@ export function DraftForm({ draft, readOnly = false }: DraftFormProps) {
             setTypeSpecific(ts);
             markDirty();
           }}
-          onBlur={handleFieldBlur}
+          onBlur={() => handleFieldBlur()}
           readOnly={readOnly}
+        />
+      )}
+
+      {/* Inline improve popover (Ctrl+I) */}
+      {improveState && (
+        <InlineImprovePopover
+          selectedText={improveState.selectedText}
+          surroundingContext={improveState.surroundingContext}
+          proposalType={draft.proposalType}
+          position={improveState.position}
+          draftId={draft.id}
+          onAccept={handleAcceptImprove}
+          onDismiss={() => setImproveState(null)}
+        />
+      )}
+
+      {/* AI provenance diff dialog */}
+      {aiMeta && (
+        <AIProvenanceDiff
+          open={showProvenanceDiff}
+          onOpenChange={setShowProvenanceDiff}
+          aiMeta={aiMeta}
+          currentText={{ title, abstract, motivation, rationale }}
         />
       )}
     </div>

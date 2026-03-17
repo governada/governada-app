@@ -1,9 +1,15 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDraft } from '@/hooks/useDrafts';
+import { useDraft, useUpdateDraft } from '@/hooks/useDrafts';
 import { useTeam } from '@/hooks/useTeam';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { FeatureGate } from '@/components/FeatureGate';
+import { useSectionAnalysis } from '@/hooks/useSectionAnalysis';
 import { DraftForm } from './DraftForm';
+import { ScaffoldForm } from './ScaffoldForm';
+import { AuthorIntelligencePanel } from './AuthorIntelligencePanel';
 import { DraftActions } from './DraftActions';
 import { LifecycleStatus } from './LifecycleStatus';
 import { ReviewsList } from './ReviewsList';
@@ -26,6 +32,13 @@ export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
   const router = useRouter();
   const draftId = typeof params.draftId === 'string' ? params.draftId : null;
   const { data, isLoading, error } = useDraft(draftId);
+
+  // Section analysis hook — must be called before early returns
+  const {
+    results: sectionResults,
+    loading: sectionLoading,
+    analyzeSection,
+  } = useSectionAnalysis(data?.draft ?? null);
 
   if (isLoading) {
     return (
@@ -81,6 +94,34 @@ export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
     draft.status === 'final_comment' ||
     draft.status === 'submitted';
 
+  // Apply fix from intelligence panel — saves via mutation, DraftForm syncs from server
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const updateDraft = useUpdateDraft(draft.id);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const handleApplyFix = useCallback(
+    (field: string, search: string, replace: string) => {
+      const current = draft[field as keyof typeof draft] as string | undefined;
+      if (!current) return;
+      const updated = current.replace(search, replace);
+      if (updated === current) return; // search text not found
+      updateDraft.mutate({ [field]: updated });
+    },
+    [draft, updateDraft],
+  );
+
+  // AI scaffold: show when draft is empty, flag is on, and user hasn't dismissed
+  const isDraftEmpty = !draft.title && !draft.abstract && !draft.motivation && !draft.rationale;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const aiDraftEnabled = useFeatureFlag('author_ai_draft');
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [scaffoldDismissed, setScaffoldDismissed] = useState(false);
+  const showScaffold =
+    isDraftEmpty &&
+    aiDraftEnabled === true &&
+    !scaffoldDismissed &&
+    draft.status === 'draft' &&
+    canEdit;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
       {/* Header */}
@@ -118,15 +159,31 @@ export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
             />
           )}
 
-          {/* Show draft form (read-only in later stages or for viewers) */}
-          {(!showReviewForm || isOwner || isTeamMember) && (
-            <DraftForm draft={draft} readOnly={isReadOnly} />
-          )}
+          {/* Show scaffold form for empty drafts with AI enabled, or normal form */}
+          {(!showReviewForm || isOwner || isTeamMember) &&
+            (showScaffold ? (
+              <ScaffoldForm draft={draft} onComplete={() => setScaffoldDismissed(true)} />
+            ) : (
+              <DraftForm
+                draft={draft}
+                readOnly={isReadOnly}
+                sectionResults={sectionResults}
+                sectionLoading={sectionLoading}
+                onFieldAnalyze={analyzeSection}
+              />
+            ))}
 
           {/* Reviews section */}
           {showReviews && draftId && <ReviewsList draftId={draftId} isOwner={isOwner} />}
         </div>
-        <div className="w-full lg:w-80 shrink-0">
+        <div className="w-full lg:w-80 shrink-0 space-y-4">
+          <FeatureGate flag="author_inline_intelligence">
+            <AuthorIntelligencePanel
+              results={sectionResults}
+              loading={sectionLoading}
+              onApplyFix={handleApplyFix}
+            />
+          </FeatureGate>
           <DraftActions
             draft={draft}
             versions={versions}

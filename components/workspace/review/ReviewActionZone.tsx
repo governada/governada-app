@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useAISkill } from '@/hooks/useAISkill';
+import { FeatureGate } from '@/components/FeatureGate';
 import {
   CheckCircle2,
   XCircle,
@@ -690,6 +692,10 @@ export function ReviewActionZone({
               </div>
             )}
 
+            <FeatureGate flag="rationale_ai_enhance">
+              <RationaleSectionSummary item={item} />
+            </FeatureGate>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label
@@ -903,5 +909,48 @@ export function ReviewActionZone({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RationaleSectionSummary — compact AI summary above the rationale editor
+// ---------------------------------------------------------------------------
+
+function RationaleSectionSummary({ item }: { item: ReviewQueueItem }) {
+  const skill = useAISkill<{ summary: string }>();
+  const [summary, setSummary] = useState<string | null>(null);
+  const invokedRef = useRef(false);
+
+  const invoke = useCallback(() => {
+    if (invokedRef.current || !item.abstract) return;
+    invokedRef.current = true;
+    skill.mutate(
+      {
+        skill: 'section-analysis',
+        input: {
+          field: 'abstract',
+          content: item.abstract,
+          proposalType: item.proposalType,
+        },
+        proposalTxHash: item.txHash,
+        proposalIndex: item.proposalIndex,
+      },
+      { onSuccess: (data) => setSummary(data.output.summary) },
+    );
+  }, [item, skill]);
+
+  useEffect(() => {
+    invoke();
+  }, [invoke]);
+
+  if (!summary) return null;
+
+  return (
+    <div className="rounded-lg bg-muted/20 px-3 py-2 space-y-1">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+        AI Section Summary
+      </p>
+      <p className="text-xs text-foreground/80">{summary}</p>
+    </div>
   );
 }

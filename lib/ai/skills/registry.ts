@@ -43,4 +43,7 @@ export function listSkills(): Array<{ name: string; description: string; categor
 export async function loadBuiltinSkills(): Promise<void> {
   await import('./constitutional-check');
   await import('./research-precedent');
+  await import('./proposal-draft-generator');
+  await import('./section-analysis');
+  await import('./text-improve');
 }

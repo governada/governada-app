@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { CheckCircle2, Vote, BookOpen, MessageSquare, StickyNote, NotebookPen } from 'lucide-react';
+import {
+  CheckCircle2,
+  Vote,
+  BookOpen,
+  MessageSquare,
+  StickyNote,
+  NotebookPen,
+  GitCompareArrows,
+} from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
 import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
@@ -16,6 +24,7 @@ import { ProposalNotes } from './ProposalNotes';
 import { DecisionJournal } from './DecisionJournal';
 import { ReviewFramework } from './ReviewFramework';
 import { AnnotationSidebar } from './AnnotationSidebar';
+import { ReviewChangesTab } from './ReviewChangesTab';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -32,7 +41,7 @@ import type { ReviewQueueItem } from '@/lib/workspace/types';
 import { PROPOSAL_TYPE_LABELS, type ProposalType } from '@/lib/workspace/types';
 import { posthog } from '@/lib/posthog';
 
-type SidebarTab = 'notes' | 'annotations' | 'journal';
+type SidebarTab = 'notes' | 'annotations' | 'journal' | 'changes';
 
 interface ReviewWorkspaceProps {
   initialProposalKey?: string;
@@ -452,6 +461,9 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
               { key: 'notes' as SidebarTab, label: 'Notes', icon: StickyNote },
               { key: 'annotations' as SidebarTab, label: 'Annotations', icon: MessageSquare },
               { key: 'journal' as SidebarTab, label: 'Journal', icon: NotebookPen },
+              ...(activeTab === 'drafts'
+                ? [{ key: 'changes' as SidebarTab, label: 'Changes', icon: GitCompareArrows }]
+                : []),
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -510,6 +522,9 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
                 proposalIndex={currentItem.proposalIndex}
                 userId={userId}
               />
+            )}
+            {sidebarTab === 'changes' && activeTab === 'drafts' && (
+              <ReviewChangesTab draftId={currentItem.txHash} />
             )}
           </div>
         </div>

@@ -9,6 +9,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { posthog } from '@/lib/posthog';
 import type { FeedbackTheme } from '@/lib/workspace/feedback/types';
 
 // ---------------------------------------------------------------------------
@@ -134,7 +135,12 @@ export function useEndorseTheme(
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      posthog.capture('workspace_feedback_endorsed', {
+        theme_id: variables.themeId,
+        has_context: !!variables.additionalContext,
+        proposal_tx_hash: txHash,
+      });
       queryClient.invalidateQueries({ queryKey: feedbackKey(txHash, index) });
     },
   });
@@ -168,7 +174,12 @@ export function useAddressTheme(
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      posthog.capture('workspace_feedback_addressed', {
+        theme_id: variables.themeId,
+        action: variables.action,
+        proposal_tx_hash: txHash,
+      });
       queryClient.invalidateQueries({ queryKey: feedbackKey(txHash, index) });
     },
   });

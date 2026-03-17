@@ -25,6 +25,7 @@ import { useRevisionState } from '@/hooks/useRevision';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useFeedbackThemes } from '@/hooks/useFeedbackThemes';
 import { FeatureGate } from '@/components/FeatureGate';
+import { posthog } from '@/lib/posthog';
 import { WorkspaceLayout } from '@/components/workspace/layout/WorkspaceLayout';
 import { WorkspaceToolbar } from '@/components/workspace/layout/WorkspaceToolbar';
 import { StatusBar } from '@/components/workspace/layout/StatusBar';
@@ -33,9 +34,11 @@ import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { RevisionDiffView } from '@/components/workspace/editor/RevisionDiffView';
 import { RevisionJustificationFlow } from '@/components/workspace/editor/RevisionJustificationFlow';
 import { FeedbackStream } from '@/components/workspace/feedback/FeedbackStream';
+import { EndorsementPrompt } from '@/components/workspace/feedback/EndorsementPrompt';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import type { DraftContent } from '@/lib/workspace/types';
+import type { FeedbackTheme } from '@/lib/workspace/feedback/types';
 import type {
   EditorMode,
   EditorContext,
@@ -62,6 +65,34 @@ const SLASH_COMMAND_PROMPTS: Record<SlashCommandType, (section: string) => strin
   draft: (section) =>
     `Draft content for the ${section} section based on the other sections and the proposal type.`,
 };
+
+// ---------------------------------------------------------------------------
+// Simple overlap check (client-side, no AI)
+// ---------------------------------------------------------------------------
+
+function findOverlappingTheme(commentText: string, themes: FeedbackTheme[]): FeedbackTheme | null {
+  if (!commentText || themes.length === 0) return null;
+  const words = commentText
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+  if (words.length === 0) return null;
+
+  let bestTheme: FeedbackTheme | null = null;
+  let bestScore = 0;
+
+  for (const theme of themes) {
+    const summary = theme.summary.toLowerCase();
+    const matches = words.filter((w) => summary.includes(w)).length;
+    const score = matches / words.length;
+    if (score > bestScore && score >= 0.3) {
+      bestScore = score;
+      bestTheme = theme;
+    }
+  }
+
+  return bestTheme;
+}
 
 // ---------------------------------------------------------------------------
 // EditorContext builder
@@ -157,7 +188,16 @@ function WorkspaceEditorPage() {
   const draftId = typeof params.draftId === 'string' ? params.draftId : null;
   const { data, isLoading, error } = useDraft(draftId);
 
-  const [mode, setMode] = useState<EditorMode>('edit');
+  const [mode, setModeRaw] = useState<EditorMode>('edit');
+  const setMode = useCallback(
+    (next: EditorMode) => {
+      if (next === 'diff') {
+        posthog.capture('workspace_revision_diff_opened', { draft_id: draftId });
+      }
+      setModeRaw(next);
+    },
+    [draftId],
+  );
   const editorRef = useRef<Editor | null>(null);
   const [showJustificationFlow, setShowJustificationFlow] = useState(false);
 
@@ -199,8 +239,14 @@ function WorkspaceEditorPage() {
   const versions = data?.versions ?? null;
   const submittedTxHash = draft?.submittedTxHash ?? null;
 
-  // --- Feedback themes (for proposer tab) ---
+  // --- Feedback themes (for proposer tab + endorsement prompt) ---
   const { themes: feedbackThemes } = useFeedbackThemes(submittedTxHash, submittedTxHash ? 0 : null);
+
+  // --- Endorsement prompt state ---
+  const [endorsementPrompt, setEndorsementPrompt] = useState<{
+    theme: FeedbackTheme;
+    annotationText: string;
+  } | null>(null);
 
   // --- Content change handler (auto-save) ---
   const handleContentChange = useCallback(
@@ -250,21 +296,38 @@ function WorkspaceEditorPage() {
     agentClearLastEdit();
   }, [agentLastEdit, agentClearLastEdit]);
 
-  // --- Agent lastComment -> apply inline comment ---
+  // --- Agent lastComment -> apply inline comment + check for endorsement overlap ---
   useEffect(() => {
     if (!agentLastComment || !editorRef.current) return;
     injectInlineComment(editorRef.current, agentLastComment);
+
+    // Check if this comment overlaps an existing feedback theme (reviewer only)
+    if (!isOwner && feedbackThemes.length > 0) {
+      const overlapping = findOverlappingTheme(agentLastComment.commentText, feedbackThemes);
+      if (overlapping) {
+        setEndorsementPrompt({
+          theme: overlapping,
+          annotationText: agentLastComment.commentText,
+        });
+      }
+    }
+
     agentClearLastComment();
-  }, [agentLastComment, agentClearLastComment]);
+  }, [agentLastComment, agentClearLastComment, isOwner, feedbackThemes]);
 
   // --- Chat panel: send message with editor context ---
   const handleChatSendMessage = useCallback(
     async (message: string) => {
       if (!draft) return;
       const ctx = buildEditorContext(editorRef.current, draft, mode);
+      posthog.capture('workspace_agent_message_sent', {
+        draft_id: draftId,
+        mode,
+        has_selection: !!ctx.selectedText,
+      });
       await agentSendMessage(message, ctx);
     },
-    [agentSendMessage, draft, mode],
+    [agentSendMessage, draft, mode, draftId],
   );
 
   // --- Apply proposed edit from chat panel ---
@@ -402,14 +465,18 @@ function WorkspaceEditorPage() {
         onSlashCommand={handleSlashCommand}
         onCommand={handleCommand}
         onDiffAccept={(editId) => {
-          // Edit accepted -- agent can track this for learning
-          void editId;
+          posthog.capture('workspace_inline_edit_accepted', {
+            draft_id: draftId,
+            edit_id: editId,
+          });
         }}
         onDiffReject={(editId) => {
-          // Edit rejected
-          void editId;
+          posthog.capture('workspace_inline_edit_rejected', {
+            draft_id: draftId,
+            edit_id: editId,
+          });
         }}
-        currentUserId="current-user" // TODO: wire to real user ID
+        currentUserId={stakeAddress ?? 'anonymous'}
         onEditorReady={handleEditorReady}
       />
     );
@@ -490,6 +557,21 @@ function WorkspaceEditorPage() {
           onSkip={() => setShowJustificationFlow(false)}
           onCancel={() => setShowJustificationFlow(false)}
         />
+      )}
+
+      {/* Endorsement prompt — shown when a reviewer's comment overlaps an existing theme */}
+      {endorsementPrompt && submittedTxHash && (
+        <div className="fixed inset-x-0 bottom-20 z-50 mx-auto max-w-lg px-4">
+          <EndorsementPrompt
+            theme={endorsementPrompt.theme}
+            annotationText={endorsementPrompt.annotationText}
+            proposalTxHash={submittedTxHash}
+            proposalIndex={0}
+            onEndorse={() => setEndorsementPrompt(null)}
+            onAddNew={() => setEndorsementPrompt(null)}
+            onCancel={() => setEndorsementPrompt(null)}
+          />
+        </div>
       )}
 
       <WorkspaceLayout

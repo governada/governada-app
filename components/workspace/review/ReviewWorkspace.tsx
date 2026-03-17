@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
+  Bell,
   CheckCircle2,
   Vote,
   BookOpen,
@@ -16,6 +17,10 @@ import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
 import { useReviewableDrafts } from '@/hooks/useReviewableDrafts';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useAnnotations, useUpdateAnnotation, useDeleteAnnotation } from '@/hooks/useAnnotations';
+import {
+  useRevisionNotifications,
+  useMarkNotificationRead,
+} from '@/hooks/useRevisionNotifications';
 import { trackProposalView } from '@/lib/workspace/engagement';
 import { ReviewQueue } from './ReviewQueue';
 import { ReviewBrief } from './ReviewBrief';
@@ -161,6 +166,13 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
   );
   const updateAnnotation = useUpdateAnnotation();
   const deleteAnnotation = useDeleteAnnotation();
+
+  // Revision notifications
+  const { data: notificationsData } = useRevisionNotifications(!!voterId);
+  const markRead = useMarkNotificationRead();
+  const unreadCount = notificationsData?.unreadCount ?? 0;
+  const notifications = notificationsData?.notifications ?? [];
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleUpdateAnnotation = useCallback(
     (
@@ -369,6 +381,51 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     <div className="flex flex-col md:flex-row h-full min-h-0">
       {/* Queue rail */}
       <div className="md:w-72 md:shrink-0 md:border-r border-b md:border-b-0 border-border">
+        {/* Revision notifications badge */}
+        {unreadCount > 0 && (
+          <div className="relative px-3 pt-2">
+            <button
+              onClick={() => setShowNotifications((prev) => !prev)}
+              className="flex w-full items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-foreground hover:bg-amber-500/10 transition-colors"
+            >
+              <Bell className="h-3.5 w-3.5 text-amber-500" />
+              <span>
+                {unreadCount} revised proposal{unreadCount !== 1 ? 's' : ''}
+              </span>
+              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                {unreadCount}
+              </span>
+            </button>
+            {showNotifications && notifications.length > 0 && (
+              <div className="mt-1 rounded-md border border-border bg-background shadow-lg divide-y divide-border max-h-48 overflow-y-auto">
+                {notifications.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      markRead.mutate(n.id);
+                      // Navigate to the revised proposal in the queue if found
+                      const matchIdx = items.findIndex((item) => item.txHash === n.proposalId);
+                      if (matchIdx >= 0) {
+                        setSelectedIndex(matchIdx);
+                        setSidebarTab('changes');
+                      }
+                      setShowNotifications(false);
+                    }}
+                    className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+                  >
+                    <span className="text-xs font-medium truncate">
+                      Proposal v{n.versionNumber}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {n.sectionsChanged.length} section{n.sectionsChanged.length !== 1 ? 's' : ''}{' '}
+                      revised &mdash; tap to review
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <FeatureGate
           flag="review_unified_tabs"
           fallback={

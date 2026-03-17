@@ -235,6 +235,32 @@ export interface DraftVersion {
 }
 
 // ---------------------------------------------------------------------------
+// AI Draft Provenance (stored in typeSpecific._aiMeta)
+// ---------------------------------------------------------------------------
+
+/** Metadata about AI-generated draft content, stored in typeSpecific._aiMeta. */
+export interface DraftAIMeta {
+  generatedAt: string;
+  model: string;
+  keySource: 'platform' | 'byok';
+  skillName: string;
+  fieldsGenerated: string[];
+  scaffoldAnswers: Record<string, string>;
+  originalText: {
+    title: string;
+    abstract: string;
+    motivation: string;
+    rationale: string;
+  };
+}
+
+/** Extract AI provenance metadata from a draft's typeSpecific field. */
+export function getDraftAIMeta(typeSpecific: Record<string, unknown> | null): DraftAIMeta | null {
+  if (!typeSpecific?._aiMeta) return null;
+  return typeSpecific._aiMeta as DraftAIMeta;
+}
+
+// ---------------------------------------------------------------------------
 // Constitutional Pre-Check types
 // ---------------------------------------------------------------------------
 

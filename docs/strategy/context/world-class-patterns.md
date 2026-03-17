@@ -190,6 +190,51 @@ _(Patterns for first-time user experiences, value communication, progressive dis
 - **Applicable to**: Inline watchlist buttons on proposals, DReps, pools. "Track this proposal" → get updates when votes happen. "Watch this DRep" → get alerts on score changes.
 - **Adoption difficulty**: Easy — needs watchlist table + notification trigger + inline button component
 
+#### Three-Mode Document Collaboration (Edit / Suggest / View)
+
+- **Source**: Google Docs Suggestion Mode — https://support.google.com/docs/answer/6033474
+- **Discovered**: 2026-03-16 (explore-feature: inline proposal editing)
+- **What they do**: A single dropdown toggles the entire interaction model between Editing (direct changes), Suggesting (proposed changes shown as green inline diffs with margin cards), and Viewing (read-only). Suggestions have accept/reject buttons. Discussions can be attached to specific suggestions. Permissions map to roles (Editor/Commenter/Viewer).
+- **Why it's world-class**: Three modes cover the entire collaboration spectrum with the simplest possible mental model. No separate "review tool" — the document itself IS the review surface. The paradigm has trained billions of users.
+- **Applicable to**: Proposal workspace — authors in Edit mode, community reviewers in Suggest mode, anonymous visitors in View mode. Suggested edits shown inline as diffs with accept/reject.
+- **Adoption difficulty**: Medium — needs diff rendering engine, suggestion state management, mode toggle UI
+
+#### Reviewer Suggestion as Executable Diff
+
+- **Source**: GitHub Pull Request Suggested Changes — https://github.com/features/code-review
+- **Discovered**: 2026-03-16 (explore-feature: inline proposal editing)
+- **What they do**: Reviewers propose specific text changes in a `suggestion` block that shows exactly what the reviewer recommends. Authors apply suggestions with one click. Multiple suggestions can be batched into a single commit. Comments grouped into a review with an overall verdict (Approve / Request Changes / Comment).
+- **Why it's world-class**: The reviewer's suggestion IS the implementation — not "you should change this" but "here's exactly what I'd write." One-click application eliminates the translation step between feedback and action. Batch application reduces friction further.
+- **Applicable to**: Proposal suggested edits — reviewers propose exact text changes for specific passages, authors accept/reject with one click. Amendment history shows what was proposed and accepted.
+- **Adoption difficulty**: Easy-Medium — simpler than code diffs since proposal text is prose, not structured syntax
+
+#### Collaborative Amendment as Democratic Primitive
+
+- **Source**: Decidim Collaborative Proposal Drafting — https://decidim.org/features/
+- **Discovered**: 2026-03-16 (explore-feature: inline proposal editing)
+- **What they do**: Multiple authors co-create proposals through structured draft-amendment cycles. Amendment process: propose → discuss → accept/reject → new version. Mirrors legislative committee markup sessions. Used by 40+ cities and governments for participatory budgeting and collaborative legislation.
+- **Why it's world-class**: Recognizes that in governance, a proposal isn't finished when it's written — it's finished when the community has shaped it. The amendment process IS the governance process, not a precursor to it.
+- **Applicable to**: Proposal community review stage — structured amendment cycle where reviewers propose changes, discussion happens, and the proposal evolves publicly. The amendment history becomes a trust artifact.
+- **Adoption difficulty**: Medium — needs amendment proposal UI, discussion threads, version tracking per amendment
+
+#### AI as Inline Co-Author (Cursor Pattern)
+
+- **Source**: Cursor AI Editor — https://cursor.com/ + Grammarly — https://www.grammarly.com/
+- **Discovered**: 2026-03-16 (explore-feature: inline proposal editing)
+- **What they do**: Cursor embeds AI directly in the editing flow — select text, describe changes, get inline diffs. Grammarly provides real-time per-sentence suggestions for clarity, tone, engagement. Both operate at the point of writing, not in a separate panel. The user stays in flow state.
+- **Why it's world-class**: The best AI assistance is invisible — it appears where you're working, not where you have to go. Reduces the cognitive cost of quality writing to near-zero. Tab-to-accept is the simplest possible interaction for AI suggestions.
+- **Applicable to**: Proposal authoring — inline constitutional risk indicators per paragraph, AI-suggested improvements on selection, scaffold-to-draft generation for new proposals, AI-assisted rationale writing for voters.
+- **Adoption difficulty**: Medium — needs section-level AI analysis, inline diff rendering, selection-triggered skill invocations
+
+#### Opinion Clustering for Structured Disagreement
+
+- **Source**: Pol.is — https://compdemocracy.org/polis/
+- **Discovered**: 2026-03-16 (explore-feature: inline proposal editing)
+- **What they do**: Collects short statements (<140 chars), distributes for agree/disagree/pass voting, algorithmically clusters opinion groups, identifies "bridging statements" agreed on across group boundaries. Participants cannot reply to each other — prevents flame wars. Used by vTaiwan for national policy, Singapore, Finland, and 20+ countries.
+- **Why it's world-class**: The goal isn't agreement — it's mapping the structure of disagreement. Showing WHERE people agree/disagree matters more than counting votes. The no-reply rule forces constructive articulation. Bridging statements are the consensus primitive.
+- **Applicable to**: Proposal section-level deliberation — community statements clustered by opinion group, bridging statements elevated as "consensus points" for authors to address. Section health indicators from cluster sentiment.
+- **Adoption difficulty**: Hard — needs NLP clustering, statement voting infrastructure, consensus computation
+
 ### Search & Discovery
 
 _(Patterns for finding, filtering, matching, recommendation)_
@@ -944,6 +989,46 @@ _(Patterns for AI that's a tool, not a chatbot — workflow-embedded intelligenc
 - **Why it's world-class**: In high-stakes professional contexts, both types of audit matter. AI provenance is moving from voluntary to regulated. The provenance IS the trust signal — it can't be faked retroactively.
 - **Applicable to**: Every AI-assisted governance action carries provenance metadata: which skills were used, what inputs, what outputs, how much was human-edited. Displayed on proposals ("Team used 6 skills over 18 days") and vote records ("DRep deliberated 2 days, 58% rationale edited from draft"). Process provenance is the unfakeable differentiator between thoughtful governance and rubber-stamping.
 - **Adoption difficulty**: Easy-Medium — activity logging + display components + metadata on proposals/votes
+
+### Design System Architecture
+
+_(Patterns for component systems, density modes, domain-specific primitives, workspace layouts)_
+
+#### Bloomberg Launchpad — Dockable Panel Composition + Context Groups
+
+- **Source**: Bloomberg Terminal Launchpad — https://www.bloomberg.com/company/stories/innovating-a-modern-icon-how-bloomberg-keeps-the-terminal-cutting-edge/
+- **Discovered**: 2026-03-16 (explore-feature: design system)
+- **What they do**: Panels dock magnetically to each other. "Security groups" link panels so changing the entity in one cascades to all linked panels. Users compose their own multi-panel workspace from hundreds of available component types. Eliminated the traditional 4-panel limit — now arbitrary panel counts with tabbed organization.
+- **Why it's world-class**: Professional information workers don't want fixed layouts — they want composable workspaces that adapt to their workflow. Context groups (change one entity, all linked panels update) prevents the "same entity in 5 places" problem.
+- **Applicable to**: Governance workbench — proposal review as composable panels (queue + brief + intelligence + vote action). Select a proposal in the queue → all panels update. DRep cockpit as customizable panel arrangement.
+- **Adoption difficulty**: Hard — needs panel layout engine, persistence, context cascade. Consider react-resizable-panels as starting point.
+
+#### Linear Keyboard Chord Navigation System
+
+- **Source**: Linear — https://linear.app/now/how-we-redesigned-the-linear-ui
+- **Discovered**: 2026-03-16 (explore-feature: design system)
+- **What they do**: Two-key chord shortcuts for navigation: G+I = go to inbox, G+V = go to cycle, G+B = go to backlog. O+F = open favorites. Direct single-key actions: C = create, X = select, Esc = back. Cmd+K command palette for everything. Philosophy: "Your keyboard is the fastest method." Same action accessible via button, shortcut, context menu, or command palette.
+- **Why it's world-class**: Chord shortcuts give you 26×26 = 676 possible shortcuts without modifier keys. Every action has 4 access paths (keyboard, click, context menu, command palette). Muscle memory builds fast because patterns are systematic (G+_ = go, O+_ = open).
+- **Applicable to**: Governance keyboard system — G+W = workspace, G+H = hub, G+P = proposals. V+Y/N/A = vote yes/no/abstain. J/K = navigate queue. Cmd+K = universal search + actions.
+- **Adoption difficulty**: Medium — needs ShortcutProvider with chord support, help overlay (?), context awareness (disable in textareas)
+
+#### Cloudscape/SAP Fiori Density Modes — Comfortable vs. Compact
+
+- **Source**: AWS Cloudscape — https://cloudscape.design/foundation/visual-foundation/content-density/ + SAP Fiori — https://www.sap.com/design-system/fiori-design-web/
+- **Discovered**: 2026-03-16 (explore-feature: design system)
+- **What they do**: Two density modes: Comfortable (default, spacious, readable, cross-device) and Compact (data-dense, reduced spacing, optimized for power users processing large datasets). Users select their preference. Mode cascades via CSS variables — same components, different spacing/sizing/typography. Pattern-level guidance: "data tables and long forms benefit from compact mode."
+- **Why it's world-class**: Acknowledges that power users and casual users have fundamentally different density needs. Instead of one compromise, let users choose. CSS variable cascade means NO component duplication — pure presentation layer switch.
+- **Applicable to**: Governance modes — Browse (citizen-friendly, spacious) vs. Work (DRep-friendly, compact) vs. Analyze (maximum density for data exploration). Auto-selected by route, overridable by user preference.
+- **Adoption difficulty**: Easy-Medium — CSS variable layer + ModeProvider component + user preference storage
+
+#### Notion Block Architecture — Uniform Composable Content Units
+
+- **Source**: Notion — https://www.notion.com/blog/data-model-behind-notion
+- **Discovered**: 2026-03-16 (explore-feature: design system)
+- **What they do**: Everything is a "block" — heading, paragraph, database row, embed, to-do, page. Uniform storage model. Blocks nest recursively (pages contain blocks that can contain pages). Any block can transform into another type without data loss. Structural indentation reflects meaning, not just presentation.
+- **Why it's world-class**: The uniform model means new block types are trivial to add. Composition is the only pattern — no special cases. The transform capability means users never feel locked into a choice.
+- **Applicable to**: Governance primitive layer — proposal sections, score displays, AI analyses, vote actions as composable "governance blocks" with uniform composition. A ScoreDisplay block can appear inside a ReviewCard, a ProposalBrief, or a DRepProfile with identical behavior.
+- **Adoption difficulty**: Medium — requires defining governance block vocabulary + composition protocol. Don't need Notion's full storage model — just the composition pattern.
 
 ### Performance & Perceived Speed
 

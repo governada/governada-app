@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, FileText, ExternalLink } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/shared/MarkdownRenderer';
 import { AnnotatableText } from './AnnotatableText';
+import { SectionIntelligenceStrip } from './SectionIntelligenceStrip';
 import { FeatureGate } from '@/components/FeatureGate';
 import {
   useAnnotations,
@@ -27,6 +28,8 @@ interface ProposalContentProps {
   currentUserId?: string;
   /** User segment for engagement tracking */
   userSegment?: string;
+  /** Proposal type for section intelligence */
+  proposalType?: string;
 }
 
 interface CollapsibleSectionProps {
@@ -55,6 +58,7 @@ interface CollapsibleSectionProps {
   ) => void;
   onDeleteAnnotation?: (id: string) => void;
   onSectionExpanded?: (field: string) => void;
+  proposalType?: string;
 }
 
 function CollapsibleSection({
@@ -70,6 +74,7 @@ function CollapsibleSection({
   onUpdateAnnotation,
   onDeleteAnnotation,
   onSectionExpanded,
+  proposalType,
 }: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const expandedAtRef = useRef<number | null>(null);
@@ -136,6 +141,17 @@ function CollapsibleSection({
       </button>
       {expanded && (
         <div className="mt-2">
+          {field && content && proposalTxHash && proposalIndex != null && proposalType && (
+            <FeatureGate flag="review_section_intelligence">
+              <SectionIntelligenceStrip
+                field={field}
+                content={content}
+                proposalType={proposalType}
+                proposalTxHash={proposalTxHash}
+                proposalIndex={proposalIndex}
+              />
+            </FeatureGate>
+          )}
           {canAnnotate ? (
             <FeatureGate
               flag="review_inline_annotations"
@@ -151,6 +167,7 @@ function CollapsibleSection({
                 onCreateAnnotation={onCreateAnnotation}
                 onUpdateAnnotation={onUpdateAnnotation}
                 onDeleteAnnotation={onDeleteAnnotation}
+                proposalType={proposalType}
               />
             </FeatureGate>
           ) : (
@@ -178,6 +195,7 @@ export function ProposalContent({
   proposalIndex,
   currentUserId,
   userSegment,
+  proposalType,
 }: ProposalContentProps) {
   const hasContent = abstract || motivation || rationale || (references && references.length > 0);
 
@@ -277,6 +295,7 @@ export function ProposalContent({
           onUpdateAnnotation={handleUpdate}
           onDeleteAnnotation={handleDelete}
           onSectionExpanded={handleSectionExpanded}
+          proposalType={proposalType}
         />
 
         <CollapsibleSection
@@ -292,6 +311,7 @@ export function ProposalContent({
           onUpdateAnnotation={handleUpdate}
           onDeleteAnnotation={handleDelete}
           onSectionExpanded={handleSectionExpanded}
+          proposalType={proposalType}
         />
 
         <CollapsibleSection
@@ -307,6 +327,7 @@ export function ProposalContent({
           onUpdateAnnotation={handleUpdate}
           onDeleteAnnotation={handleDelete}
           onSectionExpanded={handleSectionExpanded}
+          proposalType={proposalType}
         />
 
         {/* References */}

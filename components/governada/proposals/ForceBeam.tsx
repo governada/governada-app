@@ -93,7 +93,7 @@ export function ForceBeam({ yesPct, noPct, compact = false, className }: ForceBe
 
       {/* Clash point */}
       {progress > 0.8 && (
-        <circle cx={clashX} cy={beamY + beamHeight / 2} r={3} fill="white" opacity={0.5} />
+        <circle cx={clashX} cy={beamY + beamHeight / 2} r={3} fill="currentColor" opacity={0.5} />
       )}
     </svg>
   );

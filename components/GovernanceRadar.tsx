@@ -357,7 +357,7 @@ export function GovernanceRadar({
               y={cy - 4}
               textAnchor="middle"
               dominantBaseline="auto"
-              fill="white"
+              fill="currentColor"
               fontSize={28}
               fontWeight={800}
               fontFamily="var(--font-geist-mono)"
@@ -370,7 +370,7 @@ export function GovernanceRadar({
               y={cy + 12}
               textAnchor="middle"
               dominantBaseline="hanging"
-              fill="white"
+              fill="currentColor"
               fontSize={9}
               fontWeight={500}
               fontFamily="var(--font-geist-sans)"
@@ -422,7 +422,7 @@ export function GovernanceRadar({
                   y={ly + 7}
                   textAnchor={textAnchor}
                   dominantBaseline="hanging"
-                  fill="white"
+                  fill="currentColor"
                   fontSize={12}
                   fontWeight={700}
                   fontFamily="var(--font-geist-mono)"

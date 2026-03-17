@@ -57,7 +57,7 @@ export function GlowBar({
         }}
       >
         {/* Glass highlight */}
-        <div className="absolute inset-x-0 top-0 h-[40%] rounded-t-full bg-white/[0.12]" />
+        <div className="absolute inset-x-0 top-0 h-[40%] rounded-t-full bg-foreground/[0.12]" />
       </div>
     </div>
   );

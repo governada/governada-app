@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-governada-body);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-governada-display);
   --font-body: var(--font-governada-body);
@@ -50,118 +50,259 @@
 }
 
 /* ============================================================
-   GOVERNANCE OBSERVATORY — Design System Tokens
-   The constellation hero's aesthetic extended to every surface.
-   Deep space. Glowing data. Living governance.
+   THE COMPASS — Governada Design Language
+   A precision instrument for navigating governance.
+   Warm in your hand, precise in its reading.
    ============================================================ */
 
 :root {
   --radius: 0.625rem;
 
-  /* Light mode — functional, clean */
-  --background: oklch(0.98 0.005 260);
-  --foreground: oklch(0.1 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.1 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.1 0.02 260);
+  /* ── Light Mode: Warm Paper ── */
+  --background: oklch(0.97 0.005 90);
+  --foreground: oklch(0.15 0.02 260);
+  --card: oklch(0.99 0.003 90);
+  --card-foreground: oklch(0.15 0.02 260);
+  --popover: oklch(0.99 0.003 90);
+  --popover-foreground: oklch(0.15 0.02 260);
 
-  --primary: oklch(0.5 0.18 200);
+  /* Primary: Compass Teal — deep, institutional */
+  --primary: oklch(0.5 0.12 192);
   --primary-foreground: oklch(0.98 0 0);
 
-  --secondary: oklch(0.55 0.15 290);
-  --secondary-foreground: oklch(0.98 0 0);
+  /* Secondary: Wayfinder Amber — brass warmth */
+  --secondary: oklch(0.68 0.14 75);
+  --secondary-foreground: oklch(0.15 0.02 260);
 
-  --muted: oklch(0.94 0.005 260);
+  --muted: oklch(0.94 0.005 90);
   --muted-foreground: oklch(0.45 0.02 260);
 
-  --accent: oklch(0.95 0.01 260);
-  --accent-foreground: oklch(0.1 0.02 260);
+  --accent: oklch(0.95 0.01 90);
+  --accent-foreground: oklch(0.15 0.02 260);
 
-  --destructive: oklch(0.55 0.22 25);
-  --border: oklch(0.88 0.005 260);
-  --input: oklch(0.88 0.005 260);
-  --ring: oklch(0.5 0.18 200);
+  --destructive: oklch(0.58 0.2 25);
+  --border: oklch(0.9 0.01 90);
+  --input: oklch(0.9 0.01 90);
+  --ring: oklch(0.5 0.12 192);
 
-  /* Identity accent system — overridden by AccentProvider per page/section */
-  --identity: oklch(0.72 0.14 200);
-  --identity-rgb: 6 182 212;
+  /* Identity accent — Compass Teal default */
+  --identity: oklch(0.5 0.12 192);
+  --identity-rgb: 0 128 128;
 
   /* Primary RGB for glow effects */
-  --primary-rgb: 6 182 212;
+  --primary-rgb: 0 128 128;
+
+  /* Compass Palette — named governance colors */
+  --compass-teal: oklch(0.5 0.12 192);
+  --wayfinder-amber: oklch(0.68 0.14 75);
+  --meridian-violet: oklch(0.55 0.15 295);
+
+  /* Vote colors — morally neutral */
+  --vote-affirm: oklch(0.62 0.12 245);
+  --vote-oppose: oklch(0.62 0.1 50);
+  --vote-reserve: oklch(0.55 0.02 260);
 
   /* Chart palette */
-  --chart-1: oklch(0.5 0.18 200);
-  --chart-2: oklch(0.5 0.16 160);
-  --chart-3: oklch(0.5 0.15 290);
-  --chart-4: oklch(0.55 0.16 80);
-  --chart-5: oklch(0.5 0.2 25);
+  --chart-1: oklch(0.5 0.12 192);
+  --chart-2: oklch(0.68 0.14 75);
+  --chart-3: oklch(0.55 0.15 295);
+  --chart-4: oklch(0.68 0.16 162);
+  --chart-5: oklch(0.58 0.2 25);
 
-  --sidebar: oklch(0.97 0.005 260);
-  --sidebar-foreground: oklch(0.1 0.02 260);
-  --sidebar-primary: oklch(0.5 0.18 200);
+  --sidebar: oklch(0.97 0.005 90);
+  --sidebar-foreground: oklch(0.15 0.02 260);
+  --sidebar-primary: oklch(0.5 0.12 192);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.94 0.005 260);
-  --sidebar-accent-foreground: oklch(0.1 0.02 260);
-  --sidebar-border: oklch(0.88 0.005 260);
-  --sidebar-ring: oklch(0.5 0.18 200);
+  --sidebar-accent: oklch(0.94 0.005 90);
+  --sidebar-accent-foreground: oklch(0.15 0.02 260);
+  --sidebar-border: oklch(0.9 0.01 90);
+  --sidebar-ring: oklch(0.5 0.12 192);
+
+  /* ── Mode spacing defaults (Browse) ── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-section: 64px;
+  --space-card-padding: 1.5rem;
+  --space-card-gap: 1rem;
+  --radius-card: 0.75rem;
+  --text-body-size: 1rem;
+  --text-body-leading: 1.6;
+  --min-tap-target: 44px;
 }
 
 .dark {
-  /* ── Governance Observatory Dark Mode ──
-     Background matches the constellation hero (#0a0b14).
-     Surfaces are subtle elevations, not white cards.
-     Borders glow rather than divide. */
+  /* ── Dark Mode: Deep Space ──
+     Compass Teal glows brighter against dark.
+     Surfaces are subtle elevations. */
 
-  --background: oklch(0.07 0.015 260);
-  --foreground: oklch(0.96 0.005 260);
+  --background: oklch(0.12 0.015 260);
+  --foreground: oklch(0.95 0.005 260);
 
-  --card: oklch(0.1 0.015 260);
-  --card-foreground: oklch(0.96 0.005 260);
+  --card: oklch(0.16 0.012 260);
+  --card-foreground: oklch(0.95 0.005 260);
 
-  --popover: oklch(0.11 0.015 260);
-  --popover-foreground: oklch(0.96 0.005 260);
+  --popover: oklch(0.16 0.012 260);
+  --popover-foreground: oklch(0.95 0.005 260);
 
-  /* Primary: Electric Cyan — the Governada brand accent */
-  --primary: oklch(0.72 0.14 200);
-  --primary-foreground: oklch(0.07 0.015 260);
+  /* Primary: Compass Teal — brighter for dark */
+  --primary: oklch(0.72 0.12 192);
+  --primary-foreground: oklch(0.12 0.015 260);
 
-  /* Secondary: Vivid Purple */
-  --secondary: oklch(0.55 0.18 290);
-  --secondary-foreground: oklch(0.96 0.005 260);
+  /* Secondary: Wayfinder Amber — softer glow */
+  --secondary: oklch(0.78 0.12 75);
+  --secondary-foreground: oklch(0.95 0.005 260);
 
-  --muted: oklch(0.15 0.015 260);
-  --muted-foreground: oklch(0.65 0.025 260);
+  --muted: oklch(0.18 0.015 260);
+  --muted-foreground: oklch(0.6 0.01 260);
 
-  --accent: oklch(0.13 0.02 260);
-  --accent-foreground: oklch(0.96 0.005 260);
+  --accent: oklch(0.2 0.012 260);
+  --accent-foreground: oklch(0.95 0.005 260);
 
-  --destructive: oklch(0.55 0.2 25);
+  --destructive: oklch(0.58 0.2 25);
 
-  --border: oklch(0.17 0.015 260);
-  --input: oklch(0.13 0.015 260);
-  --ring: oklch(0.72 0.14 200);
+  --border: oklch(0.25 0.01 260);
+  --input: oklch(0.2 0.012 260);
+  --ring: oklch(0.72 0.12 192);
 
-  /* Identity accent — contextual per DRep/page, default: Electric Cyan */
-  --identity: oklch(0.72 0.14 200);
-  --identity-rgb: 6 182 212;
-  --primary-rgb: 6 182 212;
+  /* Identity accent — Compass Teal bright */
+  --identity: oklch(0.72 0.12 192);
+  --identity-rgb: 56 190 190;
+  --primary-rgb: 56 190 190;
+
+  /* Compass Palette — dark variants */
+  --compass-teal: oklch(0.72 0.12 192);
+  --wayfinder-amber: oklch(0.78 0.12 75);
+  --meridian-violet: oklch(0.7 0.14 295);
+
+  /* Vote colors stay consistent */
+  --vote-affirm: oklch(0.65 0.12 245);
+  --vote-oppose: oklch(0.65 0.1 50);
+  --vote-reserve: oklch(0.55 0.02 260);
 
   /* Chart palette — vivid against deep dark */
-  --chart-1: oklch(0.72 0.14 200);
-  --chart-2: oklch(0.68 0.16 160);
-  --chart-3: oklch(0.6 0.18 290);
-  --chart-4: oklch(0.75 0.14 80);
-  --chart-5: oklch(0.6 0.2 25);
+  --chart-1: oklch(0.72 0.12 192);
+  --chart-2: oklch(0.78 0.12 75);
+  --chart-3: oklch(0.7 0.14 295);
+  --chart-4: oklch(0.72 0.16 162);
+  --chart-5: oklch(0.65 0.2 25);
 
-  --sidebar: oklch(0.08 0.015 260);
-  --sidebar-foreground: oklch(0.96 0.005 260);
-  --sidebar-primary: oklch(0.72 0.14 200);
-  --sidebar-primary-foreground: oklch(0.07 0.015 260);
-  --sidebar-accent: oklch(0.13 0.02 260);
-  --sidebar-accent-foreground: oklch(0.96 0.005 260);
-  --sidebar-border: oklch(0.17 0.015 260);
-  --sidebar-ring: oklch(0.72 0.14 200);
+  --sidebar: oklch(0.12 0.015 260);
+  --sidebar-foreground: oklch(0.95 0.005 260);
+  --sidebar-primary: oklch(0.72 0.12 192);
+  --sidebar-primary-foreground: oklch(0.12 0.015 260);
+  --sidebar-accent: oklch(0.2 0.012 260);
+  --sidebar-accent-foreground: oklch(0.95 0.005 260);
+  --sidebar-border: oklch(0.25 0.01 260);
+  --sidebar-ring: oklch(0.72 0.12 192);
+}
+
+/* ============================================================
+   Mode: Work — compact density for professional workflows
+   ============================================================ */
+
+[data-mode='work'] {
+  --space-xs: 2px;
+  --space-sm: 4px;
+  --space-md: 8px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-section: 40px;
+  --space-card-padding: 0.75rem;
+  --space-card-gap: 0.5rem;
+  --radius-card: 0.5rem;
+  --text-body-size: 0.875rem;
+  --text-body-leading: 1.5;
+  --min-tap-target: 32px;
+}
+
+/* ============================================================
+   Mode: Analyze — maximum density for data exploration
+   ============================================================ */
+
+[data-mode='analyze'] {
+  --space-xs: 2px;
+  --space-sm: 3px;
+  --space-md: 6px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --space-2xl: 24px;
+  --space-section: 32px;
+  --space-card-padding: 0.5rem;
+  --space-card-gap: 0.375rem;
+  --radius-card: 0.25rem;
+  --text-body-size: 0.8125rem;
+  --text-body-leading: 1.4;
+  --min-tap-target: 28px;
+}
+
+/* ============================================================
+   Browse mode forces light theme on dark-mode pages
+   ============================================================ */
+
+[data-mode='browse'] {
+  --background: oklch(0.97 0.005 90);
+  --foreground: oklch(0.15 0.02 260);
+  --card: oklch(0.99 0.003 90);
+  --card-foreground: oklch(0.15 0.02 260);
+  --popover: oklch(0.99 0.003 90);
+  --popover-foreground: oklch(0.15 0.02 260);
+  --primary: oklch(0.5 0.12 192);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.68 0.14 75);
+  --secondary-foreground: oklch(0.15 0.02 260);
+  --muted: oklch(0.94 0.005 90);
+  --muted-foreground: oklch(0.45 0.02 260);
+  --accent: oklch(0.95 0.01 90);
+  --accent-foreground: oklch(0.15 0.02 260);
+  --border: oklch(0.9 0.01 90);
+  --input: oklch(0.9 0.01 90);
+  --ring: oklch(0.5 0.12 192);
+  --identity: oklch(0.5 0.12 192);
+  --identity-rgb: 0 128 128;
+  --primary-rgb: 0 128 128;
+  --sidebar: oklch(0.97 0.005 90);
+  --sidebar-foreground: oklch(0.15 0.02 260);
+  --sidebar-primary: oklch(0.5 0.12 192);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.94 0.005 90);
+  --sidebar-accent-foreground: oklch(0.15 0.02 260);
+  --sidebar-border: oklch(0.9 0.01 90);
+  --sidebar-ring: oklch(0.5 0.12 192);
+  color-scheme: light;
+}
+
+/* ============================================================
+   Force-Dark — wraps elements that must stay dark regardless of mode
+   Used for: constellation canvas overlays, branded loader, WebGL scenes.
+   ============================================================ */
+
+.force-dark {
+  --background: oklch(0.12 0.015 260);
+  --foreground: oklch(0.95 0.005 260);
+  --card: oklch(0.16 0.012 260);
+  --card-foreground: oklch(0.95 0.005 260);
+  --popover: oklch(0.16 0.012 260);
+  --popover-foreground: oklch(0.95 0.005 260);
+  --primary: oklch(0.72 0.12 192);
+  --primary-foreground: oklch(0.12 0.015 260);
+  --secondary: oklch(0.78 0.12 75);
+  --secondary-foreground: oklch(0.95 0.005 260);
+  --muted: oklch(0.18 0.015 260);
+  --muted-foreground: oklch(0.6 0.01 260);
+  --accent: oklch(0.2 0.012 260);
+  --accent-foreground: oklch(0.95 0.005 260);
+  --border: oklch(0.25 0.01 260);
+  --input: oklch(0.2 0.012 260);
+  --ring: oklch(0.72 0.12 192);
+  --identity: oklch(0.72 0.12 192);
+  --identity-rgb: 56 190 190;
+  --primary-rgb: 56 190 190;
+  color-scheme: dark;
 }
 
 /* ============================================================
@@ -239,14 +380,10 @@
    ============================================================ */
 
 :root {
-  --font-governada-display: var(--font-geist-sans);
-  --font-governada-body: var(--font-geist-sans);
-}
-
-/* Governance font — feature-flagged via data-font attribute on body.
-   Toggle via /admin/flags → governance_font or FF_GOVERNANCE_FONT env var. */
-body[data-font='governance'] {
-  --font-governada-display: var(--font-space-grotesk), var(--font-geist-sans);
+  /* Display: Fraunces serif for scores, titles, hero numbers */
+  --font-governada-display: var(--font-fraunces), var(--font-geist-sans);
+  /* Body: Space Grotesk geometric for readability */
+  --font-governada-body: var(--font-space-grotesk), var(--font-geist-sans);
 }
 
 /* ============================================================
@@ -262,8 +399,9 @@ body[data-font='governance'] {
   }
 }
 
-/* Subtle noise texture overlay — adds organic depth to dark surfaces */
-.dark body::before {
+/* Subtle noise texture overlay — adds organic depth to dark surfaces.
+   Hidden in Browse mode (light theme). */
+.dark body:not([data-mode='browse'])::before {
   content: '';
   position: fixed;
   inset: 0;

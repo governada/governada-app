@@ -5,6 +5,7 @@ import { DepthGate } from '@/components/providers/DepthGate';
 import { HubCardRenderer } from './HubCardRenderer';
 import { AnonymousLanding } from './AnonymousLanding';
 import { CitizenHub } from './CitizenHub';
+import { HubHero } from './HubHero';
 import { HubCardSkeleton } from './cards/HubCard';
 import { OnboardingChecklist } from '@/components/funnel/OnboardingChecklist';
 import { DRepCockpit } from '@/components/workspace/DRepCockpit';
@@ -27,9 +28,11 @@ interface HubHomePageProps {
 /**
  * HubHomePage — The home page dispatcher.
  *
- * Anonymous: Clean conversion landing page with social proof.
- * Citizen: Onboarding checklist + consequence story Hub.
- * Other personas: Hub cards over constellation globe.
+ * All authenticated personas get the Governance Rings hero.
+ * Anonymous: Clean conversion landing page with hero + social proof.
+ * Citizen: Hero + onboarding checklist + consequence story Hub.
+ * DRep/SPO: Hero + cockpit dashboards.
+ * CC: Hero + hub cards.
  */
 export function HubHomePage({ pulseData }: HubHomePageProps) {
   const { segment, isLoading, drepId, poolId } = useSegment();
@@ -37,7 +40,7 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
   // While detecting segment, show skeleton cards to prevent CLS flash
   if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-2xl space-y-3 px-4 py-6">
+      <div className="mx-auto w-full max-w-2xl space-y-3 px-[var(--space-md)] py-[var(--space-lg)]">
         <HubCardSkeleton />
         <HubCardSkeleton />
         <HubCardSkeleton />
@@ -50,11 +53,12 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
     return <AnonymousLanding pulseData={pulseData} />;
   }
 
-  // Citizens get the onboarding checklist + consequence story Hub
+  // Citizens get the full Browse mode experience
   if (segment === 'citizen') {
     return (
       <>
-        <div className="mx-auto w-full max-w-2xl px-4 pt-6">
+        <HubHero pulseData={pulseData} />
+        <div className="mx-auto w-full max-w-2xl px-[var(--space-md)] space-y-[var(--space-card-gap)]">
           <ActionQueueCard />
         </div>
         <OnboardingChecklist />
@@ -66,41 +70,67 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
   // DReps get the Governance Cockpit as their homepage
   if (segment === 'drep') {
     return (
-      <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
-        <ActionQueueCard />
-        <h1 className="text-xl font-bold text-foreground">Governance Cockpit</h1>
-        <DRepCockpit />
-        {/* Competitive context — engaged only (competitive intelligence) */}
-        <DepthGate minDepth="engaged">
-          <CompetitiveContext />
-        </DepthGate>
-        {/* Profile sharing — engaged+ (workspace integration) */}
-        <DepthGate minDepth="engaged">
-          {drepId && (
-            <ProfileShareToolkit entityType="drep" entityId={drepId} entityName="My DRep Profile" />
-          )}
-        </DepthGate>
-      </div>
+      <>
+        <HubHero pulseData={pulseData} />
+        <div className="mx-auto w-full max-w-2xl px-[var(--space-md)] py-[var(--space-lg)] space-y-[var(--space-lg)]">
+          <ActionQueueCard />
+          <h2
+            className="text-xl font-semibold text-foreground"
+            style={{ fontFamily: 'var(--font-governada-display)' }}
+          >
+            Governance Cockpit
+          </h2>
+          <DRepCockpit />
+          <DepthGate minDepth="engaged">
+            <CompetitiveContext />
+          </DepthGate>
+          <DepthGate minDepth="engaged">
+            {drepId && (
+              <ProfileShareToolkit
+                entityType="drep"
+                entityId={drepId}
+                entityName="My DRep Profile"
+              />
+            )}
+          </DepthGate>
+        </div>
+      </>
     );
   }
 
   // SPOs get their Governance Overview cockpit as homepage
   if (segment === 'spo') {
     return (
-      <div className="mx-auto w-full max-w-2xl px-4 py-6 space-y-6">
-        <ActionQueueCard />
-        <h1 className="text-xl font-bold text-foreground">Governance Overview</h1>
-        <SPOCockpit />
-        {/* Profile sharing — engaged+ (workspace integration) */}
-        <DepthGate minDepth="engaged">
-          {poolId && (
-            <ProfileShareToolkit entityType="spo" entityId={poolId} entityName="My Pool Profile" />
-          )}
-        </DepthGate>
-      </div>
+      <>
+        <HubHero pulseData={pulseData} />
+        <div className="mx-auto w-full max-w-2xl px-[var(--space-md)] py-[var(--space-lg)] space-y-[var(--space-lg)]">
+          <ActionQueueCard />
+          <h2
+            className="text-xl font-semibold text-foreground"
+            style={{ fontFamily: 'var(--font-governada-display)' }}
+          >
+            Governance Overview
+          </h2>
+          <SPOCockpit />
+          <DepthGate minDepth="engaged">
+            {poolId && (
+              <ProfileShareToolkit
+                entityType="spo"
+                entityId={poolId}
+                entityName="My Pool Profile"
+              />
+            )}
+          </DepthGate>
+        </div>
+      </>
     );
   }
 
-  // CC and other authenticated personas — hub cards
-  return <HubCardRenderer persona={segment} />;
+  // CC and other authenticated personas — hero + hub cards
+  return (
+    <>
+      <HubHero pulseData={pulseData} />
+      <HubCardRenderer persona={segment} />
+    </>
+  );
 }

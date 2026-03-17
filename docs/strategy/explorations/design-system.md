@@ -568,7 +568,33 @@ Layer 0: Design Tokens (OKLCH colors, motion, tiers, density)
 
 ## Phase 6: Recommendation
 
-### The Hybrid: Modes + Primitives (Phased)
+### Decision: Full Design Language Rebuild
+
+After founder review, the decision is to invest in a complete design language rebuild rather than incremental phasing. Effort is not the constraint — identity is. The goal is a design system that is irreplaceable, not improvable.
+
+**See:** `docs/strategy/design-language.md` for the full specification.
+
+**Key decisions:**
+
+- **Metaphor**: The Compass (navigation, alignment, finding direction)
+- **Signature**: Governance Rings (three-ring participation/deliberation/impact display, Apple Health-inspired)
+- **Typography**: Fraunces (serif display for verdicts) + Space Grotesk (geometric body) + Geist Mono (data)
+- **Color**: Compass Teal (primary), Wayfinder Amber (secondary), Meridian Violet (tertiary). Morally neutral vote colors.
+- **Modes**: Browse (warm/light) / Work (cool/dark) / Analyze (neutral/user-choice) — designed into every component from day one
+- **Motion**: Fluid precision — spring-based with four categories (Enter/Feedback/Transition/Celebration)
+- **Foundation**: Built on Radix directly, not shadcn. Governance-native primitives.
+- **Theme**: Context-adaptive (Browse=light, Work=dark)
+- **Proof of concept**: Hub page in Browse mode
+
+### Previous Recommendation (Superseded)
+
+The original recommendation was a phased hybrid (Modes first, then Primitives, then Workbench). This has been superseded by the full rebuild decision, but the phasing insight remains valid for execution order: prove Browse mode on Hub → prove Work mode on Workspace → build remaining primitives → add Analyze mode.
+
+---
+
+### Original Phased Approach (for reference)
+
+#### The Hybrid: Modes + Primitives (Phased)
 
 **Why this wins:** The concepts aren't competing — they're layers.
 

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google';
+import { Geist, Geist_Mono, Space_Grotesk, Fraunces } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
@@ -13,6 +13,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { GovernadaShell } from '@/components/governada/GovernadaShell';
 import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
 import { LocaleProvider } from '@/components/providers/LocaleProvider';
+import { ModeProvider } from '@/components/providers/ModeProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -28,6 +29,12 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
+});
+
+const fraunces = Fraunces({
+  variable: '--font-fraunces',
+  subsets: ['latin'],
+  axes: ['SOFT', 'WONK', 'opsz'],
 });
 
 export const metadata: Metadata = {
@@ -76,7 +83,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${fraunces.variable} antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider
@@ -96,7 +103,9 @@ export default function RootLayout({
                   Skip to main content
                 </a>
                 <GovernanceFontProvider />
-                <GovernadaShell>{children}</GovernadaShell>
+                <ModeProvider>
+                  <GovernadaShell>{children}</GovernadaShell>
+                </ModeProvider>
                 <CommandPalette />
                 <KeyboardShortcuts />
                 <ShortcutsHelpOverlay />

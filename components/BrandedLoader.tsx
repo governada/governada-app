@@ -33,7 +33,7 @@ export function BrandedLoader() {
 
   return (
     <div
-      className={`fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-[#0a0b14] transition-opacity duration-500 ${
+      className={`force-dark fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-[#0a0b14] transition-opacity duration-500 ${
         fading ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       aria-hidden

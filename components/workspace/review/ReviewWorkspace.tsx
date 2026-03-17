@@ -1,95 +1,30 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import {
-  Bell,
-  CheckCircle2,
-  Vote,
-  BookOpen,
-  MessageSquare,
-  StickyNote,
-  NotebookPen,
-  GitCompareArrows,
-} from 'lucide-react';
+import { Bell, CheckCircle2, Vote } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
 import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
 import { useReviewableDrafts } from '@/hooks/useReviewableDrafts';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useAnnotations, useUpdateAnnotation, useDeleteAnnotation } from '@/hooks/useAnnotations';
 import {
   useRevisionNotifications,
   useMarkNotificationRead,
 } from '@/hooks/useRevisionNotifications';
 import { trackProposalView } from '@/lib/workspace/engagement';
 import { ReviewQueue } from './ReviewQueue';
-import { ReviewBrief } from './ReviewBrief';
 import { ReviewActionZone } from './ReviewActionZone';
-import { ProposalNotes } from './ProposalNotes';
-import { DecisionJournal } from './DecisionJournal';
-import { ReviewFramework } from './ReviewFramework';
-import { AnnotationSidebar } from './AnnotationSidebar';
-import { ReviewChangesTab } from './ReviewChangesTab';
+import { WorkspaceEmbed } from '@/components/workspace/editor/WorkspaceEmbed';
+import { StatusBar } from '@/components/workspace/layout/StatusBar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
 import { FeatureGate } from '@/components/FeatureGate';
 import type { VoteChoice } from '@/lib/voting';
 import type { ReviewQueueItem } from '@/lib/workspace/types';
-import { PROPOSAL_TYPE_LABELS, type ProposalType } from '@/lib/workspace/types';
 import { posthog } from '@/lib/posthog';
-
-type SidebarTab = 'notes' | 'annotations' | 'journal' | 'changes';
 
 interface ReviewWorkspaceProps {
   initialProposalKey?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Draft Brief — adapted ReviewBrief for pre-submission drafts
-// ---------------------------------------------------------------------------
-
-function DraftBrief({ draft }: { draft: ReviewQueueItem }) {
-  const typeLabel = PROPOSAL_TYPE_LABELS[draft.proposalType as ProposalType] || draft.proposalType;
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded px-1.5 py-0.5">
-            Pre-submission Draft
-          </span>
-        </div>
-        <h2 className="text-lg font-bold text-foreground leading-snug">
-          {draft.title || 'Untitled Draft'}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs border rounded px-2 py-0.5 text-muted-foreground border-border">
-            {typeLabel}
-          </span>
-        </div>
-      </div>
-      {draft.abstract && (
-        <div className="space-y-1.5">
-          <h3 className="text-sm font-semibold text-muted-foreground">Abstract</h3>
-          <p className="text-sm leading-relaxed">{draft.abstract}</p>
-        </div>
-      )}
-      {draft.aiSummary && (
-        <div className="space-y-1.5">
-          <h3 className="text-sm font-semibold text-muted-foreground">Summary</h3>
-          <p className="text-sm leading-relaxed">{draft.aiSummary}</p>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -124,8 +59,8 @@ function draftToQueueItem(draft: import('@/lib/workspace/types').ProposalDraft):
 
 /**
  * ReviewWorkspace — the top-level client component for /workspace/review.
- * Three-column layout on desktop (queue rail + main content + notes sidebar),
- * stacked on mobile with a floating button for the notes sheet.
+ * Two-column layout: queue rail (left) + Tiptap workspace (right) with
+ * agent chat panel replacing the old Notes/Annotations/Journal sidebar.
  *
  * Accepts an optional `initialProposalKey` (format: "txHash:index") to
  * auto-select a proposal on load (used by deep-links from discovery pages).
@@ -145,8 +80,6 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
   const [activeTab, setActiveTab] = useState('active');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [draftSelectedIndex, setDraftSelectedIndex] = useState(0);
-  const [notesSheetOpen, setNotesSheetOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('notes');
   const lastTrackedRef = useRef<string | null>(null);
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
@@ -159,14 +92,6 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
   }, [draftsData?.drafts]);
   const selectedDraft = draftItems[draftSelectedIndex] ?? null;
 
-  // Annotation hooks for sidebar
-  const { data: annotationsData } = useAnnotations(
-    selectedItem?.txHash,
-    selectedItem?.proposalIndex,
-  );
-  const updateAnnotation = useUpdateAnnotation();
-  const deleteAnnotation = useDeleteAnnotation();
-
   // Revision notifications
   const { data: notificationsData } = useRevisionNotifications(!!voterId);
   const markRead = useMarkNotificationRead();
@@ -174,47 +99,12 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
   const notifications = notificationsData?.notifications ?? [];
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const handleUpdateAnnotation = useCallback(
-    (
-      id: string,
-      updates: Partial<
-        Pick<
-          import('@/lib/workspace/types').ProposalAnnotation,
-          'annotationText' | 'isPublic' | 'color'
-        >
-      >,
-    ) => {
-      if (!selectedItem) return;
-      updateAnnotation.mutate({
-        id,
-        proposalTxHash: selectedItem.txHash,
-        proposalIndex: selectedItem.proposalIndex,
-        annotationText: updates.annotationText ?? undefined,
-        isPublic: updates.isPublic ?? undefined,
-        color: updates.color ?? undefined,
-      });
-    },
-    [updateAnnotation, selectedItem],
-  );
-
-  const handleDeleteAnnotation = useCallback(
-    (id: string) => {
-      if (!selectedItem) return;
-      deleteAnnotation.mutate({
-        id,
-        proposalTxHash: selectedItem.txHash,
-        proposalIndex: selectedItem.proposalIndex,
-      });
-    },
-    [deleteAnnotation, selectedItem],
-  );
-
   // Track page view
   useEffect(() => {
     posthog.capture('review_workspace_viewed', { voter_role: voterRole });
   }, [voterRole]);
 
-  // Track proposal view when selection changes (Item 12)
+  // Track proposal view when selection changes
   useEffect(() => {
     if (!selectedItem) return;
     const key = `${selectedItem.txHash}:${selectedItem.proposalIndex}`;
@@ -246,7 +136,6 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
   // Progress computation
   const progress = useMemo(() => {
     const reviewed = reviewedCount(items);
-    // Count items that already have existingVote from the API
     const alreadyVoted = items.filter(
       (item) => item.existingVote && getStatus(item.txHash, item.proposalIndex) !== 'voted',
     ).length;
@@ -287,11 +176,14 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     [selectedItem, setStatus],
   );
 
-  // Keyboard shortcuts (vote buttons handled by ReviewActionZone, but nav here)
+  // Keyboard shortcuts
   useKeyboardShortcuts({
     onNext: goNext,
     onPrev: goPrev,
   });
+
+  // Derive the agent userRole from segment
+  const agentUserRole = segment === 'cc' ? ('cc_member' as const) : ('reviewer' as const);
 
   // Loading state
   if (isLoading) {
@@ -311,13 +203,6 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
           <Skeleton className="h-24 w-full rounded-xl" />
           <Skeleton className="h-36 w-full rounded-xl" />
         </div>
-        <div className="hidden lg:block w-80 border-l border-border shrink-0">
-          <div className="p-3 space-y-3">
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-32 w-full rounded-lg" />
-            <Skeleton className="h-24 w-full rounded-lg" />
-          </div>
-        </div>
       </div>
     );
   }
@@ -334,8 +219,7 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     );
   }
 
-  // No voter ID (not a DRep/SPO) -- must check before empty state
-  // because when voterId is null, the query is disabled and items will be empty
+  // No voter ID (not a DRep/SPO)
   if (!voterId) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -371,9 +255,6 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     );
   }
 
-  // Use a stable userId for notes/journal (voterId is the DRep/SPO id)
-  const userId = voterId;
-
   // The current active item depends on which tab is active
   const currentItem = activeTab === 'drafts' ? selectedDraft : selectedItem;
 
@@ -403,11 +284,9 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
                     key={n.id}
                     onClick={() => {
                       markRead.mutate(n.id);
-                      // Navigate to the revised proposal in the queue if found
                       const matchIdx = items.findIndex((item) => item.txHash === n.proposalId);
                       if (matchIdx >= 0) {
                         setSelectedIndex(matchIdx);
-                        setSidebarTab('changes');
                       }
                       setShowNotifications(false);
                     }}
@@ -487,197 +366,67 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
         </FeatureGate>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Main content: Tiptap workspace replaces old ReviewBrief + sidebar */}
+      <div className="flex-1 min-h-0 min-w-0">
         {activeTab === 'active' && selectedItem && (
-          <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 space-y-4">
-            <ReviewBrief item={selectedItem} allItems={items} />
-
-            <ReviewActionZone
-              item={selectedItem}
-              drepId={voterId}
-              onVote={(_txHash, _index, vote) => handleVoteSuccess(vote as VoteChoice)}
-              onNextProposal={goNext}
-              totalProposals={progress.total}
-              votedCount={progress.reviewed}
-            />
-          </div>
+          <WorkspaceEmbed
+            key={`${selectedItem.txHash}:${selectedItem.proposalIndex}`}
+            proposalId={selectedItem.txHash}
+            content={{
+              title: selectedItem.title || '',
+              abstract: selectedItem.abstract || '',
+              motivation: selectedItem.motivation || '',
+              rationale: selectedItem.rationale || '',
+            }}
+            proposalType={selectedItem.proposalType}
+            userRole={agentUserRole}
+            readOnly={true}
+            layoutClassName="h-full"
+            belowEditor={
+              <div className="max-w-3xl mx-auto px-6 pb-6">
+                <ReviewActionZone
+                  item={selectedItem}
+                  drepId={voterId}
+                  onVote={(_txHash, _index, vote) => handleVoteSuccess(vote as VoteChoice)}
+                  onNextProposal={goNext}
+                  totalProposals={progress.total}
+                  votedCount={progress.reviewed}
+                />
+              </div>
+            }
+            statusBar={
+              <StatusBar
+                completeness={{ done: progress.reviewed, total: progress.total }}
+                userStatus={`Reviewing ${progress.reviewed}/${progress.total}`}
+              />
+            }
+            showModeSwitch={false}
+          />
         )}
         {activeTab === 'drafts' && selectedDraft && (
-          <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 space-y-4">
-            <DraftBrief draft={selectedDraft} />
+          <WorkspaceEmbed
+            key={`draft:${selectedDraft.txHash}`}
+            proposalId={selectedDraft.txHash}
+            content={{
+              title: selectedDraft.title || '',
+              abstract: selectedDraft.abstract || '',
+              motivation: selectedDraft.motivation || '',
+              rationale: selectedDraft.rationale || '',
+            }}
+            proposalType={selectedDraft.proposalType}
+            userRole={agentUserRole}
+            readOnly={true}
+            layoutClassName="h-full"
+            statusBar={<StatusBar userStatus="Pre-submission review" />}
+            showModeSwitch={false}
+          />
+        )}
+        {!currentItem && (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-muted-foreground">Select a proposal from the queue</p>
           </div>
         )}
       </div>
-
-      {/* Desktop: Tabbed sidebar — Notes | Annotations | Journal */}
-      {currentItem && (
-        <div className="hidden lg:block w-80 shrink-0 border-l border-border overflow-y-auto">
-          <div className="flex border-b border-border">
-            {[
-              { key: 'notes' as SidebarTab, label: 'Notes', icon: StickyNote },
-              { key: 'annotations' as SidebarTab, label: 'Annotations', icon: MessageSquare },
-              { key: 'journal' as SidebarTab, label: 'Journal', icon: NotebookPen },
-              ...(activeTab === 'drafts'
-                ? [{ key: 'changes' as SidebarTab, label: 'Changes', icon: GitCompareArrows }]
-                : []),
-            ].map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setSidebarTab(key)}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-[11px] font-medium transition-colors border-b-2 ${
-                  sidebarTab === key
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="p-3 space-y-3">
-            {sidebarTab === 'notes' && (
-              <>
-                <ProposalNotes
-                  proposalTxHash={currentItem.txHash}
-                  proposalIndex={currentItem.proposalIndex}
-                  userId={userId}
-                />
-                <FeatureGate flag="review_framework_templates">
-                  <ReviewFramework
-                    proposalTxHash={currentItem.txHash}
-                    proposalIndex={currentItem.proposalIndex}
-                    proposalType={currentItem.proposalType}
-                  />
-                </FeatureGate>
-              </>
-            )}
-            {sidebarTab === 'annotations' && (
-              <FeatureGate
-                flag="review_inline_annotations"
-                fallback={
-                  <p className="text-xs text-muted-foreground py-4 text-center">
-                    Inline annotations are not yet enabled.
-                  </p>
-                }
-              >
-                <AnnotationSidebar
-                  proposalTxHash={currentItem.txHash}
-                  proposalIndex={currentItem.proposalIndex}
-                  annotations={annotationsData ?? []}
-                  currentUserId={userId}
-                  onUpdateAnnotation={handleUpdateAnnotation}
-                  onDeleteAnnotation={handleDeleteAnnotation}
-                  onScrollToAnnotation={() => {}}
-                />
-              </FeatureGate>
-            )}
-            {sidebarTab === 'journal' && (
-              <DecisionJournal
-                proposalTxHash={currentItem.txHash}
-                proposalIndex={currentItem.proposalIndex}
-                userId={userId}
-              />
-            )}
-            {sidebarTab === 'changes' && activeTab === 'drafts' && (
-              <ReviewChangesTab draftId={currentItem.txHash} />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Mobile: Floating button + Sheet for notes/journal/framework */}
-      {currentItem && (
-        <>
-          <div className="lg:hidden fixed bottom-20 right-4 z-40">
-            <Button
-              variant="default"
-              size="icon"
-              className="h-12 w-12 rounded-full shadow-lg"
-              onClick={() => setNotesSheetOpen(true)}
-              aria-label="Open notes and journal"
-            >
-              <BookOpen className="h-5 w-5" />
-            </Button>
-          </div>
-
-          <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
-            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Notes & Journal</SheetTitle>
-                <SheetDescription>
-                  Private notes, annotations, and deliberation journal
-                </SheetDescription>
-              </SheetHeader>
-              <div className="flex border-b border-border mb-3">
-                {[
-                  { key: 'notes' as SidebarTab, label: 'Notes' },
-                  { key: 'annotations' as SidebarTab, label: 'Annotations' },
-                  { key: 'journal' as SidebarTab, label: 'Journal' },
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setSidebarTab(key)}
-                    className={`flex-1 px-2 py-2 text-xs font-medium border-b-2 ${
-                      sidebarTab === key
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-3 px-4 pb-4">
-                {sidebarTab === 'notes' && (
-                  <>
-                    <ProposalNotes
-                      proposalTxHash={currentItem.txHash}
-                      proposalIndex={currentItem.proposalIndex}
-                      userId={userId}
-                    />
-                    <FeatureGate flag="review_framework_templates">
-                      <ReviewFramework
-                        proposalTxHash={currentItem.txHash}
-                        proposalIndex={currentItem.proposalIndex}
-                        proposalType={currentItem.proposalType}
-                      />
-                    </FeatureGate>
-                  </>
-                )}
-                {sidebarTab === 'annotations' && (
-                  <FeatureGate
-                    flag="review_inline_annotations"
-                    fallback={
-                      <p className="text-xs text-muted-foreground py-4 text-center">
-                        Inline annotations are not yet enabled.
-                      </p>
-                    }
-                  >
-                    <AnnotationSidebar
-                      proposalTxHash={currentItem.txHash}
-                      proposalIndex={currentItem.proposalIndex}
-                      annotations={annotationsData ?? []}
-                      currentUserId={userId}
-                      onUpdateAnnotation={handleUpdateAnnotation}
-                      onDeleteAnnotation={handleDeleteAnnotation}
-                      onScrollToAnnotation={() => {}}
-                    />
-                  </FeatureGate>
-                )}
-                {sidebarTab === 'journal' && (
-                  <DecisionJournal
-                    proposalTxHash={currentItem.txHash}
-                    proposalIndex={currentItem.proposalIndex}
-                    userId={userId}
-                  />
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </>
-      )}
     </div>
   );
 }

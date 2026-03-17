@@ -14,13 +14,21 @@ interface WorkspaceLayoutProps {
   editor: ReactNode;
   chat: ReactNode;
   statusBar: ReactNode;
+  /** Override the root container class (default: "h-screen"). Use "h-full" when embedded. */
+  className?: string;
 }
 
 const MIN_EDITOR_WIDTH = 400;
 const MIN_CHAT_WIDTH = 280;
 const DEFAULT_CHAT_WIDTH = 380;
 
-export function WorkspaceLayout({ toolbar, editor, chat, statusBar }: WorkspaceLayoutProps) {
+export function WorkspaceLayout({
+  toolbar,
+  editor,
+  chat,
+  statusBar,
+  className,
+}: WorkspaceLayoutProps) {
   const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const isDragging = useRef(false);
@@ -57,7 +65,7 @@ export function WorkspaceLayout({ toolbar, editor, chat, statusBar }: WorkspaceL
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className={`flex flex-col bg-background ${className ?? 'h-screen'}`}>
       {/* Toolbar */}
       <div className="shrink-0 border-b border-border">{toolbar}</div>
 

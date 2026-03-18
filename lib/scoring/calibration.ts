@@ -599,6 +599,30 @@ export const DRIFT_THRESHOLDS = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Embedding-Enhanced Deliberation Weights
+// ---------------------------------------------------------------------------
+
+/**
+ * Enhanced GHI deliberation quality weights when `embedding_ghi_deliberation` flag is ON.
+ * Adds semantic diversity and reasoning coherence sub-signals.
+ * Must sum to 1.0.
+ *
+ * Compared to base weights (rationale 0.5, debate 0.3, independence 0.2):
+ * - Rationale quality reduced from 0.5 → 0.35 (still dominant)
+ * - Debate diversity reduced from 0.3 → 0.2
+ * - Voting independence reduced from 0.2 → 0.15
+ * - Semantic diversity added at 0.2 (embedding-based argument spread)
+ * - Reasoning coherence added at 0.1 (rationale-proposal relevance)
+ */
+export const EMBEDDING_DELIBERATION_WEIGHTS = {
+  rationaleQuality: 0.35,
+  debateDiversity: 0.2,
+  votingIndependence: 0.15,
+  semanticDiversity: 0.2,
+  reasoningCoherence: 0.1,
+} as const;
+
+// ---------------------------------------------------------------------------
 // Piecewise Linear Calibration Function
 // ---------------------------------------------------------------------------
 

@@ -10,8 +10,12 @@
  */
 
 import { createClient } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { calculateTreasuryHealthScore } from '@/lib/treasury';
 import { computeEDI, type EDIResult } from './ediMetrics';
+import { getFeatureFlag } from '@/lib/featureFlags';
+import { computePairwiseDiversity } from '@/lib/embeddings/quality';
+import { cosineSimilarity } from '@/lib/embeddings/query';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -270,7 +274,95 @@ export async function computeDeliberationQuality({
     }
   }
 
-  const raw = rationaleScore * 0.5 + debateDiversityScore * 0.3 + independenceScore * 0.2;
+  // --- Check if embedding-enhanced deliberation is enabled ---
+  const embeddingEnabled = await getFeatureFlag('embedding_ghi_deliberation', false);
+
+  let semanticDiversityScore = 0;
+  let reasoningCoherenceScore = 0;
+
+  if (embeddingEnabled) {
+    // --- Sub-signal 4: Semantic Argument Diversity (embedding-based) ---
+    // Get all rationale embeddings for recent proposals and compute pairwise diversity
+    const adminSupabase = getSupabaseAdmin();
+    const { data: rationaleEmbeddings } = await adminSupabase
+      .from('embeddings')
+      .select('entity_id, secondary_id, embedding')
+      .eq('entity_type', 'rationale')
+      .limit(500);
+
+    if (rationaleEmbeddings?.length && rationaleEmbeddings.length >= 2) {
+      // Group by proposal (entity_id contains tx_hash:index)
+      const proposalGroups = new Map<string, number[][]>();
+      for (const re of rationaleEmbeddings) {
+        // Extract proposal key from entity_id (format: "tx_hash:index")
+        const proposalKey = re.entity_id;
+        const group = proposalGroups.get(proposalKey) ?? [];
+        group.push(re.embedding as unknown as number[]);
+        proposalGroups.set(proposalKey, group);
+      }
+
+      // Compute diversity per proposal, then average
+      let totalDiversity = 0;
+      let proposalCount = 0;
+      for (const embeddings of proposalGroups.values()) {
+        if (embeddings.length >= 2) {
+          totalDiversity += computePairwiseDiversity(embeddings);
+          proposalCount++;
+        }
+      }
+
+      if (proposalCount > 0) {
+        // Pairwise diversity returns 0-1 (1 = maximally diverse). Scale to 0-100.
+        semanticDiversityScore = Math.round((totalDiversity / proposalCount) * 100);
+      }
+    }
+
+    // --- Sub-signal 5: Reasoning Coherence (rationale-proposal relevance) ---
+    // For each rationale, compute similarity to its proposal's embedding
+    const { data: proposalEmbeddings } = await adminSupabase
+      .from('embeddings')
+      .select('entity_id, embedding')
+      .eq('entity_type', 'proposal')
+      .limit(500);
+
+    if (rationaleEmbeddings?.length && proposalEmbeddings?.length) {
+      const proposalEmbeddingMap = new Map<string, number[]>(
+        proposalEmbeddings.map((pe) => [pe.entity_id, pe.embedding as unknown as number[]]),
+      );
+
+      let totalCoherence = 0;
+      let coherenceCount = 0;
+
+      for (const re of rationaleEmbeddings) {
+        const proposalEmb = proposalEmbeddingMap.get(re.entity_id);
+        if (proposalEmb) {
+          const similarity = cosineSimilarity(re.embedding as unknown as number[], proposalEmb);
+          // Cosine similarity ranges -1 to 1; map to 0-100
+          totalCoherence += Math.max(0, similarity) * 100;
+          coherenceCount++;
+        }
+      }
+
+      if (coherenceCount > 0) {
+        reasoningCoherenceScore = Math.round(totalCoherence / coherenceCount);
+      }
+    }
+  }
+
+  // --- Compose final score ---
+  let raw: number;
+  if (embeddingEnabled) {
+    // Enhanced composition with semantic signals
+    raw =
+      rationaleScore * 0.35 +
+      debateDiversityScore * 0.2 +
+      independenceScore * 0.15 +
+      semanticDiversityScore * 0.2 +
+      reasoningCoherenceScore * 0.1;
+  } else {
+    // Original 3-signal composition
+    raw = rationaleScore * 0.5 + debateDiversityScore * 0.3 + independenceScore * 0.2;
+  }
 
   return {
     raw: Math.min(100, Math.max(0, Math.round(raw))),
@@ -278,6 +370,10 @@ export async function computeDeliberationQuality({
       rationaleQuality: Math.round(rationaleScore),
       debateDiversity: Math.round(debateDiversityScore),
       votingIndependence: Math.round(independenceScore),
+      ...(embeddingEnabled && {
+        semanticDiversity: semanticDiversityScore,
+        reasoningCoherence: reasoningCoherenceScore,
+      }),
     },
   };
 }

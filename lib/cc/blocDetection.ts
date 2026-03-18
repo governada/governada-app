@@ -5,9 +5,19 @@
  * (Jaccard overlap of cited articles). Vote agreement is near-uniform (~99.8%)
  * so reasoning similarity is the primary clustering metric.
  *
- * Algorithm: members are connected if reasoning_similarity_pct >= threshold.
+ * Enhanced (when `embedding_cc_blocs` flag is ON):
+ * - Uses embedding cosine similarity between CC member rationale centroids
+ *   instead of Jaccard article-overlap as the similarity metric.
+ * - Union-Find algorithm is preserved unchanged.
+ *
+ * Algorithm: members are connected if similarity >= threshold.
  * Connected components with >= 2 members form a bloc; singletons = "Independent".
  */
+
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { getFeatureFlag } from '@/lib/featureFlags';
+import { computeCentroid } from '@/lib/embeddings/quality';
+import { cosineSimilarity } from '@/lib/embeddings/query';
 
 export interface AgreementEntry {
   memberA: string;
@@ -153,4 +163,85 @@ export function detectBlocs(
   }
 
   return results;
+}
+
+/**
+ * Enhanced bloc detection using embedding cosine similarity when available.
+ *
+ * When `embedding_cc_blocs` flag is ON:
+ * - Fetches CC member rationale embeddings
+ * - Computes per-member rationale centroids
+ * - Replaces Jaccard `reasoningSimilarityPct` with embedding cosine similarity (scaled to 0-100)
+ * - Falls back to original Jaccard metric for members without embeddings
+ *
+ * When flag is OFF: delegates directly to `detectBlocs()` with original data.
+ */
+export async function detectBlocsWithEmbeddings(
+  agreements: AgreementEntry[],
+  threshold: number = DEFAULT_THRESHOLD,
+): Promise<BlocAssignment[]> {
+  const embeddingEnabled = await getFeatureFlag('embedding_cc_blocs', false);
+
+  if (!embeddingEnabled) {
+    return detectBlocs(agreements, threshold);
+  }
+
+  // Collect all CC member IDs
+  const memberSet = new Set<string>();
+  for (const a of agreements) {
+    memberSet.add(a.memberA);
+    memberSet.add(a.memberB);
+  }
+  const memberIds = Array.from(memberSet);
+
+  if (memberIds.length === 0) return [];
+
+  // Fetch rationale embeddings for CC members
+  const supabase = getSupabaseAdmin();
+  const { data: embeddings } = await supabase
+    .from('embeddings')
+    .select('secondary_id, embedding')
+    .eq('entity_type', 'rationale')
+    .in('secondary_id', memberIds)
+    .limit(2000);
+
+  if (!embeddings?.length) {
+    // No embedding data — fall back to Jaccard
+    return detectBlocs(agreements, threshold);
+  }
+
+  // Compute per-member rationale centroids
+  const memberEmbeddings = new Map<string, number[][]>();
+  for (const e of embeddings) {
+    if (e.secondary_id) {
+      const group = memberEmbeddings.get(e.secondary_id) ?? [];
+      group.push(e.embedding as unknown as number[]);
+      memberEmbeddings.set(e.secondary_id, group);
+    }
+  }
+
+  const memberCentroids = new Map<string, number[]>();
+  for (const [memberId, embs] of memberEmbeddings) {
+    if (embs.length >= 1) {
+      memberCentroids.set(memberId, computeCentroid(embs));
+    }
+  }
+
+  // Override reasoningSimilarityPct with embedding cosine similarity where available
+  const enhancedAgreements: AgreementEntry[] = agreements.map((a) => {
+    const centroidA = memberCentroids.get(a.memberA);
+    const centroidB = memberCentroids.get(a.memberB);
+
+    if (centroidA && centroidB) {
+      const sim = cosineSimilarity(centroidA, centroidB);
+      // Scale cosine similarity (typically 0-1 for related content) to 0-100 percentage
+      const similarityPct = Math.round(Math.max(0, sim) * 100 * 100) / 100;
+      return { ...a, reasoningSimilarityPct: similarityPct };
+    }
+
+    // No embedding data for one or both — keep original Jaccard metric
+    return a;
+  });
+
+  return detectBlocs(enhancedAgreements, threshold);
 }

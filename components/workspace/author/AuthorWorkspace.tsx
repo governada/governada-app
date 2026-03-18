@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
-import { useDrafts, useCreateDraft } from '@/hooks/useDrafts';
+import { useDrafts, useCreateDraft, useTeamDrafts } from '@/hooks/useDrafts';
 import { useRegisterDraftListCommands } from '@/hooks/useRegisterDraftListCommands';
 import { PortfolioView } from './PortfolioView';
 import { PortfolioSearch } from './PortfolioSearch';
+import { TeamProposalsSection } from './TeamProposalsSection';
 import { TypeSelectorDialog } from './TypeSelectorDialog';
 import { AmendmentEntryDialog } from './AmendmentEntryDialog';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,9 @@ import type { ProposalType } from '@/lib/workspace/types';
 function AuthorWorkspaceInner() {
   const router = useRouter();
   const { stakeAddress } = useSegment();
-  const { data, isLoading } = useDrafts(stakeAddress);
+  const [showArchived, setShowArchived] = useState(false);
+  const { data, isLoading } = useDrafts(stakeAddress, { includeArchived: showArchived });
+  const { data: teamData, isLoading: teamLoading } = useTeamDrafts(stakeAddress);
   const createDraft = useCreateDraft();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -25,7 +28,6 @@ function AuthorWorkspaceInner() {
   const [pendingAmendmentType, setPendingAmendmentType] = useState<'direct' | 'intent' | null>(
     null,
   );
-  const [showArchived, setShowArchived] = useState(false);
 
   const constitutionEditorFlag = useFeatureFlag('author_constitution_editor');
 
@@ -107,6 +109,8 @@ function AuthorWorkspaceInner() {
         isLoading={isLoading}
         showArchived={showArchived}
       />
+
+      <TeamProposalsSection drafts={teamData?.drafts ?? []} isLoading={teamLoading} />
 
       <TypeSelectorDialog
         open={selectorOpen}

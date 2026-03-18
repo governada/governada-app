@@ -32,6 +32,7 @@ import {
   useDeleteDraft,
   useExportDraft,
 } from '@/hooks/useDraftActions';
+import { TransferDialog } from './TransferDialog';
 import type { ProposalDraft, DraftStatus } from '@/lib/workspace/types';
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ function canTransfer(status: DraftStatus): boolean {
 export function DraftQuickActions({ draft, router }: DraftQuickActionsProps) {
   const [open, setOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const archiveMutation = useArchiveDraft(draft.ownerStakeAddress);
@@ -144,116 +146,126 @@ export function DraftQuickActions({ draft, router }: DraftQuickActionsProps) {
   );
 
   const handleTransfer = useCallback(() => {
-    // TODO: Transfer ownership — open dialog when API endpoint is ready
     setOpen(false);
+    setTransferOpen(true);
   }, []);
 
   const isSubmitted = draft.status === 'submitted';
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-          aria-label="Draft actions"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        {/* Edit */}
-        {canEdit(draft.status) && (
-          <DropdownMenuItem onSelect={handleEdit}>
-            <Pencil className="h-4 w-4" />
-            Edit
-            <DropdownMenuShortcut>Enter</DropdownMenuShortcut>
-          </DropdownMenuItem>
-        )}
+    <>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            aria-label="Draft actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {/* Edit */}
+          {canEdit(draft.status) && (
+            <DropdownMenuItem onSelect={handleEdit}>
+              <Pencil className="h-4 w-4" />
+              Edit
+              <DropdownMenuShortcut>Enter</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
 
-        {/* Duplicate / Fork & Revise */}
-        <DropdownMenuItem onSelect={handleDuplicate}>
-          {isSubmitted ? (
+          {/* Duplicate / Fork & Revise */}
+          <DropdownMenuItem onSelect={handleDuplicate}>
+            {isSubmitted ? (
+              <>
+                <GitFork className="h-4 w-4" />
+                Fork &amp; Revise
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                Duplicate
+              </>
+            )}
+            <DropdownMenuShortcut>d</DropdownMenuShortcut>
+          </DropdownMenuItem>
+
+          {/* Archive */}
+          {canArchive(draft.status) && (
+            <DropdownMenuItem onSelect={handleArchive}>
+              <Archive className="h-4 w-4" />
+              Archive
+              <DropdownMenuShortcut>a</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
+
+          {/* Unarchive */}
+          {canUnarchive(draft.status) && (
+            <DropdownMenuItem onSelect={handleUnarchive}>
+              <ArchiveRestore className="h-4 w-4" />
+              Unarchive
+            </DropdownMenuItem>
+          )}
+
+          {/* Export sub-menu */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Download className="h-4 w-4" />
+              Export
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onSelect={() => handleExport('markdown')}>
+                Markdown
+                <DropdownMenuShortcut>e</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleExport('cip108')}>
+                CIP-108 JSON
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          {/* Transfer */}
+          {canTransfer(draft.status) && (
             <>
-              <GitFork className="h-4 w-4" />
-              Fork &amp; Revise
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4" />
-              Duplicate
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleTransfer}>
+                <ArrowRightLeft className="h-4 w-4" />
+                Transfer Ownership
+              </DropdownMenuItem>
             </>
           )}
-          <DropdownMenuShortcut>d</DropdownMenuShortcut>
-        </DropdownMenuItem>
 
-        {/* Archive */}
-        {canArchive(draft.status) && (
-          <DropdownMenuItem onSelect={handleArchive}>
-            <Archive className="h-4 w-4" />
-            Archive
-            <DropdownMenuShortcut>a</DropdownMenuShortcut>
-          </DropdownMenuItem>
-        )}
+          {/* Delete (draft status only) */}
+          {canDelete(draft.status) && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(e) => {
+                  // Prevent menu from closing on first click
+                  if (!deleteConfirm) {
+                    e.preventDefault();
+                  }
+                  handleDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                {deleteConfirm ? 'Click again to delete' : 'Delete'}
+                {!deleteConfirm && <DropdownMenuShortcut>x</DropdownMenuShortcut>}
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        {/* Unarchive */}
-        {canUnarchive(draft.status) && (
-          <DropdownMenuItem onSelect={handleUnarchive}>
-            <ArchiveRestore className="h-4 w-4" />
-            Unarchive
-          </DropdownMenuItem>
-        )}
-
-        {/* Export sub-menu */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Download className="h-4 w-4" />
-            Export
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem onSelect={() => handleExport('markdown')}>
-              Markdown
-              <DropdownMenuShortcut>e</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => handleExport('cip108')}>
-              CIP-108 JSON
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-
-        {/* Transfer */}
-        {canTransfer(draft.status) && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleTransfer}>
-              <ArrowRightLeft className="h-4 w-4" />
-              Transfer Ownership
-            </DropdownMenuItem>
-          </>
-        )}
-
-        {/* Delete (draft status only) */}
-        {canDelete(draft.status) && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={(e) => {
-                // Prevent menu from closing on first click
-                if (!deleteConfirm) {
-                  e.preventDefault();
-                }
-                handleDelete();
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-              {deleteConfirm ? 'Click again to delete' : 'Delete'}
-              {!deleteConfirm && <DropdownMenuShortcut>x</DropdownMenuShortcut>}
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <TransferDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        draftId={draft.id}
+        draftTitle={draft.title}
+        ownerStakeAddress={draft.ownerStakeAddress}
+      />
+    </>
   );
 }

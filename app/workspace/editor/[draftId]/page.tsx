@@ -17,6 +17,7 @@ import { useSaveStatus } from '@/lib/workspace/save-status';
 import { useParams, useRouter } from 'next/navigation';
 import { useSyncEntityToURL } from '@/hooks/useSyncEntityToURL';
 import { useDraft, useUpdateDraft } from '@/hooks/useDrafts';
+import { useQuery } from '@tanstack/react-query';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useAgent } from '@/hooks/useAgent';
 import { useFeedbackThemes } from '@/hooks/useFeedbackThemes';
@@ -46,6 +47,64 @@ import type {
   SlashCommandType,
 } from '@/lib/workspace/editor/types';
 import type { Editor } from '@tiptap/core';
+
+// ---------------------------------------------------------------------------
+// LineageBanner — shows "Based on: [title]" if this draft supersedes another
+// ---------------------------------------------------------------------------
+
+function LineageBanner({ supersedesId }: { supersedesId: string }) {
+  const { data, isLoading } = useQuery<{ draft: { title: string; status: string } }>({
+    queryKey: ['author-draft-lineage', supersedesId],
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+      try {
+        const { getStoredSession } = await import('@/lib/supabaseAuth');
+        const token = getStoredSession();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      } catch {
+        // No session
+      }
+      const res = await fetch(`/api/workspace/drafts/${encodeURIComponent(supersedesId)}`, {
+        headers,
+      });
+      if (!res.ok) throw new Error('Source draft not found');
+      return res.json();
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  if (isLoading) return null;
+
+  const sourceTitle = data?.draft?.title;
+  const sourceStatus = data?.draft?.status;
+
+  return (
+    <div className="border-l-2 border-teal-500/60 pl-3 py-1.5 mb-4">
+      <p className="text-xs text-muted-foreground">
+        <span className="mr-1">{'\u21A9'}</span>
+        Based on:{' '}
+        {sourceTitle ? (
+          <>
+            <a
+              href={`/workspace/author/${supersedesId}`}
+              className="text-teal-400 hover:text-teal-300 underline underline-offset-2"
+            >
+              {sourceTitle}
+            </a>
+            {sourceStatus && (
+              <span className="ml-1.5 text-muted-foreground/70">
+                ({sourceStatus.replace(/_/g, ' ')})
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="italic">a previous draft</span>
+        )}
+      </p>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // AuthorPanelWrapper — thin wrapper that connects StudioPanel to StudioProvider
@@ -392,6 +451,7 @@ function WorkspaceEditorPage() {
           }
           main={
             <div className="max-w-3xl mx-auto px-6 py-6">
+              {draft.supersedesId && <LineageBanner supersedesId={draft.supersedesId} />}
               <ProposalEditor
                 content={content}
                 mode={mode}

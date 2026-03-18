@@ -152,20 +152,27 @@ export const SectionBlock = Node.create<SectionBlockOptions>({
 // Markdown-to-ProseMirror helpers (for read-only rendering)
 // ---------------------------------------------------------------------------
 
-/** Parse **bold** and *italic* inline markers into Tiptap mark objects. */
+/** Parse **bold**, *italic*, and [links](url) inline markers into Tiptap mark objects. */
 function parseInlineMarks(text: string): object[] {
   const result: object[] = [];
-  // Match **bold**, *italic*, or plain text segments
-  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|([^*]+))/g;
+  // Match [link](url), **bold**, *italic*, or plain text segments
+  const regex = /(\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|([^[*]+))/g;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
-    if (match[2]) {
-      result.push({ type: 'text', text: match[2], marks: [{ type: 'bold' }] });
-    } else if (match[3]) {
-      result.push({ type: 'text', text: match[3], marks: [{ type: 'italic' }] });
+    if (match[2] && match[3]) {
+      // Link: [text](url)
+      result.push({
+        type: 'text',
+        text: match[2],
+        marks: [{ type: 'link', attrs: { href: match[3], target: '_blank' } }],
+      });
     } else if (match[4]) {
-      result.push({ type: 'text', text: match[4] });
+      result.push({ type: 'text', text: match[4], marks: [{ type: 'bold' }] });
+    } else if (match[5]) {
+      result.push({ type: 'text', text: match[5], marks: [{ type: 'italic' }] });
+    } else if (match[6]) {
+      result.push({ type: 'text', text: match[6] });
     }
   }
 
@@ -179,7 +186,9 @@ function markdownToContent(text: string): object[] {
   const blocks: object[] = [];
   const lines = text.split('\n');
   let currentParagraph: string[] = [];
-  let pendingListItems: object[] = [];
+  let pendingBulletItems: object[] = [];
+  let pendingOrderedItems: object[] = [];
+  let pendingBlockquoteLines: string[] = [];
 
   const flushParagraph = () => {
     if (currentParagraph.length > 0) {
@@ -194,11 +203,41 @@ function markdownToContent(text: string): object[] {
     }
   };
 
-  const flushList = () => {
-    if (pendingListItems.length > 0) {
-      blocks.push({ type: 'bulletList', content: pendingListItems });
-      pendingListItems = [];
+  const flushBulletList = () => {
+    if (pendingBulletItems.length > 0) {
+      blocks.push({ type: 'bulletList', content: pendingBulletItems });
+      pendingBulletItems = [];
     }
+  };
+
+  const flushOrderedList = () => {
+    if (pendingOrderedItems.length > 0) {
+      blocks.push({ type: 'orderedList', content: pendingOrderedItems });
+      pendingOrderedItems = [];
+    }
+  };
+
+  const flushBlockquote = () => {
+    if (pendingBlockquoteLines.length > 0) {
+      const quoteText = pendingBlockquoteLines.join(' ');
+      blocks.push({
+        type: 'blockquote',
+        content: [
+          {
+            type: 'paragraph',
+            content: parseInlineMarks(quoteText.trim()),
+          },
+        ],
+      });
+      pendingBlockquoteLines = [];
+    }
+  };
+
+  const flushAll = () => {
+    flushParagraph();
+    flushBulletList();
+    flushOrderedList();
+    flushBlockquote();
   };
 
   for (const line of lines) {
@@ -206,15 +245,62 @@ function markdownToContent(text: string): object[] {
 
     // Empty line = paragraph break
     if (!trimmed) {
+      flushAll();
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      flushAll();
+      blocks.push({ type: 'horizontalRule' });
+      continue;
+    }
+
+    // Headings (# through ######)
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      flushAll();
+      blocks.push({
+        type: 'heading',
+        attrs: { level: headingMatch[1].length },
+        content: parseInlineMarks(headingMatch[2]),
+      });
+      continue;
+    }
+
+    // Blockquote lines (> text)
+    if (trimmed.startsWith('> ') || trimmed === '>') {
       flushParagraph();
-      flushList();
+      flushBulletList();
+      flushOrderedList();
+      pendingBlockquoteLines.push(trimmed.replace(/^>\s?/, ''));
+      continue;
+    }
+
+    // If we had blockquote lines but this line doesn't start with >, flush them
+    flushBlockquote();
+
+    // Ordered list items (1. text, 2. text, etc.)
+    if (/^\d+\.\s/.test(trimmed)) {
+      flushParagraph();
+      flushBulletList();
+      pendingOrderedItems.push({
+        type: 'listItem',
+        content: [
+          {
+            type: 'paragraph',
+            content: parseInlineMarks(trimmed.replace(/^\d+\.\s/, '')),
+          },
+        ],
+      });
       continue;
     }
 
     // Bullet list items
     if (/^[-*]\s/.test(trimmed)) {
       flushParagraph();
-      pendingListItems.push({
+      flushOrderedList();
+      pendingBulletItems.push({
         type: 'listItem',
         content: [
           {
@@ -227,11 +313,11 @@ function markdownToContent(text: string): object[] {
     }
 
     // Regular text — if we had pending list items, flush them first
-    flushList();
+    flushBulletList();
+    flushOrderedList();
     currentParagraph.push(trimmed);
   }
-  flushParagraph();
-  flushList();
+  flushAll();
 
   return blocks.length > 0 ? blocks : [{ type: 'paragraph', content: [] }];
 }
@@ -245,8 +331,9 @@ function markdownToContent(text: string): object[] {
  * Each field becomes a sectionBlock node with paragraph children.
  *
  * When `parseMarkdown` is true (typically in read-only/review mode),
- * markdown formatting (bold, italic, bullet lists) is converted into
- * proper ProseMirror nodes so the editor renders them visually.
+ * markdown formatting (bold, italic, bullet lists, headings, blockquotes,
+ * links, ordered lists, horizontal rules) is converted into proper
+ * ProseMirror nodes so the editor renders them visually.
  */
 export function buildSectionDocument(
   content: {

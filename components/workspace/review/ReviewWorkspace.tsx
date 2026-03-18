@@ -189,6 +189,7 @@ interface StudioPanelWrapperProps {
   citizenSentiment?: { support: number; oppose: number; abstain: number; total: number } | null;
   voterId: string | null;
   voteContent?: React.ReactNode;
+  existingVote?: string | null;
   votingPowerSummary?: {
     yesPower: number;
     noPower: number;
@@ -211,6 +212,7 @@ function StudioPanelWrapper({
   citizenSentiment,
   voterId,
   voteContent,
+  existingVote,
   votingPowerSummary,
 }: StudioPanelWrapperProps) {
   const { panelOpen, activePanel, panelWidth, closePanel, togglePanel, setPanelWidth } =
@@ -305,7 +307,16 @@ function StudioPanelWrapper({
         />
       }
       notesContent={
-        <NotesPanel proposalTxHash={proposalId} proposalIndex={proposalIndex} voterId={voterId} />
+        <NotesPanel
+          proposalTxHash={proposalId}
+          proposalIndex={proposalIndex}
+          voterId={voterId}
+          priorVotes={
+            existingVote
+              ? [{ vote: existingVote, epochNo: 0, blockTime: new Date().toISOString() }]
+              : undefined
+          }
+        />
       }
       voteContent={voteContent}
     />
@@ -591,6 +602,7 @@ function StudioReviewInner({
             citizenSentiment={selectedItem.citizenSentiment}
             voterId={voterId ?? null}
             voteContent={voteContent}
+            existingVote={selectedItem.existingVote}
             votingPowerSummary={estimatedVotingPower}
           />
         )}

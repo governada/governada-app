@@ -21,6 +21,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
+import Link from '@tiptap/extension-link';
 import Document from '@tiptap/extension-document';
 
 import { SectionBlock, buildSectionDocument, extractSectionContent } from './SectionBlock';
@@ -215,7 +216,7 @@ export function ProposalEditor({
   const extensions = useMemo(
     () => [
       StarterKit.configure({
-        heading: false,
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
         document: false,
       }),
       ProposalDocument,
@@ -255,6 +256,14 @@ export function ProposalEditor({
       }),
       MarginDecorations.configure({
         indicators: marginIndicators,
+      }),
+      Link.configure({
+        openOnClick: true,
+        HTMLAttributes: {
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          class: 'text-primary underline hover:opacity-80',
+        },
       }),
     ],
     // Only re-create extensions when currentUserId changes (rare)

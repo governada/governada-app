@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAISkill } from '@/hooks/useAISkill';
 import { useProposerTrackRecord } from '@/hooks/useProposerTrackRecord';
+import { getVotingBodies, getIneligibilityNote } from '@/lib/governance/votingBodies';
 
 // --- Skill output types (mirror lib/ai/skills definitions) ---
 
@@ -88,12 +89,14 @@ function IntelCard({
   children,
   defaultOpen = false,
   onExpand,
+  headerExtra,
 }: {
   title: string;
   icon: typeof Shield;
   children: React.ReactNode;
   defaultOpen?: boolean;
   onExpand?: () => void;
+  headerExtra?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -111,6 +114,7 @@ function IntelCard({
       >
         <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="flex-1 text-left">{title}</span>
+        {headerExtra}
         <ChevronDown
           className={cn(
             'h-3.5 w-3.5 text-muted-foreground transition-transform',
@@ -211,7 +215,25 @@ function ConstitutionalCheckCard({
     ) : null;
 
   return (
-    <IntelCard title="Constitutional Check" icon={Shield} onExpand={handleExpand}>
+    <IntelCard
+      title="Constitutional Check"
+      icon={Shield}
+      onExpand={handleExpand}
+      headerExtra={
+        scoreIcon && (
+          <span className="flex items-center gap-1">
+            {scoreIcon}
+            {skill.data?.output?.flags && skill.data.output.flags.length > 0 && (
+              <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                {skill.data.output.flags.filter((f) => f.severity === 'critical').length > 0
+                  ? `${skill.data.output.flags.filter((f) => f.severity === 'critical').length} critical`
+                  : `${skill.data.output.flags.length} flag${skill.data.output.flags.length !== 1 ? 's' : ''}`}
+              </span>
+            )}
+          </span>
+        )
+      }
+    >
       {skill.isPending && (
         <div className="flex items-center gap-2 py-2">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -284,13 +306,49 @@ function CommunitySentimentCard({
   interBodyVotes,
   citizenSentiment,
   votingPowerSummary,
+  proposalType,
 }: {
   interBodyVotes?: IntelPanelProps['interBodyVotes'];
   citizenSentiment?: IntelPanelProps['citizenSentiment'];
   votingPowerSummary?: VotingPowerSummary;
+  proposalType: string;
 }) {
+  const eligibleBodies = getVotingBodies(proposalType);
+  const ineligibilityNote = getIneligibilityNote(proposalType);
+
+  // Compute projected outcome pill
+  const projectedOutcomePill = (() => {
+    if (!votingPowerSummary) return null;
+    const { yesPower, noPower, totalActivePower, threshold } = votingPowerSummary;
+    if (totalActivePower === 0) return null;
+    const yesPct = (yesPower / totalActivePower) * 100;
+    if (threshold == null) return { label: 'Advisory', color: 'text-muted-foreground bg-muted/50' };
+    const thresholdPct = threshold * 100;
+    if (yesPct >= thresholdPct)
+      return { label: 'Passing', color: 'text-emerald-400 bg-emerald-500/10' };
+    if (noPower > yesPower) return { label: 'No leads', color: 'text-red-400 bg-red-500/10' };
+    if (yesPct >= thresholdPct * 0.7)
+      return { label: 'Close', color: 'text-amber-400 bg-amber-500/10' };
+    return { label: 'Behind', color: 'text-red-400 bg-red-500/10' };
+  })();
   return (
-    <IntelCard title="Community Sentiment" icon={Users} defaultOpen={true}>
+    <IntelCard
+      title="Community Sentiment"
+      icon={Users}
+      defaultOpen={true}
+      headerExtra={
+        projectedOutcomePill && (
+          <span
+            className={cn(
+              'text-[10px] font-medium rounded-full px-1.5 py-0.5',
+              projectedOutcomePill.color,
+            )}
+          >
+            {projectedOutcomePill.label}
+          </span>
+        )
+      }
+    >
       <div className="space-y-3">
         {/* Voting power threshold progress bar */}
         {votingPowerSummary && votingPowerSummary.threshold != null && (
@@ -353,9 +411,16 @@ function CommunitySentimentCard({
 
         {interBodyVotes ? (
           <>
-            <VoteBar label="DRep" {...interBodyVotes.drep} />
-            <VoteBar label="SPO" {...interBodyVotes.spo} />
-            <VoteBar label="CC" {...interBodyVotes.cc} />
+            {eligibleBodies.includes('drep') && <VoteBar label="DRep" {...interBodyVotes.drep} />}
+            {eligibleBodies.includes('spo') ? (
+              <VoteBar label="SPO" {...interBodyVotes.spo} />
+            ) : null}
+            {eligibleBodies.includes('cc') ? <VoteBar label="CC" {...interBodyVotes.cc} /> : null}
+            {ineligibilityNote && (
+              <p className="text-[10px] text-muted-foreground/50 italic mt-1">
+                {ineligibilityNote}
+              </p>
+            )}
           </>
         ) : (
           <p className="text-muted-foreground/60">No vote data available</p>
@@ -401,7 +466,19 @@ function SimilarProposalsCard({
   }, [skill, proposalContent, proposalType]);
 
   return (
-    <IntelCard title="Similar Proposals" icon={Search} onExpand={handleExpand}>
+    <IntelCard
+      title="Similar Proposals"
+      icon={Search}
+      onExpand={handleExpand}
+      headerExtra={
+        skill.data?.output?.similarProposals &&
+        skill.data.output.similarProposals.length > 0 && (
+          <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+            {skill.data.output.similarProposals.length} found
+          </span>
+        )
+      }
+    >
       {skill.isPending && (
         <div className="flex items-center gap-2 py-2">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -484,7 +561,17 @@ function ProposerTrackRecordCard({
   const { data, isLoading, isError, error } = useProposerTrackRecord(proposalId, proposalIndex);
 
   return (
-    <IntelCard title="Proposer Track Record" icon={UserCheck}>
+    <IntelCard
+      title="Proposer Track Record"
+      icon={UserCheck}
+      headerExtra={
+        data && (
+          <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+            {data.ratifiedCount}/{data.totalProposals} ratified
+          </span>
+        )
+      }
+    >
       {isLoading && (
         <div className="flex items-center gap-2 py-2">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -563,6 +650,7 @@ export function IntelPanel({
         interBodyVotes={interBodyVotes}
         citizenSentiment={citizenSentiment}
         votingPowerSummary={votingPowerSummary}
+        proposalType={proposalType}
       />
       <ConstitutionalCheckCard proposalContent={proposalContent} proposalType={proposalType} />
       <SimilarProposalsCard proposalContent={proposalContent} proposalType={proposalType} />

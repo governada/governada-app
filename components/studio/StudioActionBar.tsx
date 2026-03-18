@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import Link from 'next/link';
 import {
   MessageSquare,
   BarChart3,
@@ -9,7 +8,6 @@ import {
   CheckCircle2,
   XCircle,
   MinusCircle,
-  Compass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -143,15 +141,6 @@ export function StudioActionBar({
               ))}
             </>
           )}
-
-          {/* Governada Explorer */}
-          <Link
-            href="/"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ml-2"
-            title="Explore Governada"
-          >
-            <Compass className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     );

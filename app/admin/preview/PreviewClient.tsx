@@ -31,7 +31,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Copy, Plus, Trash2, ChevronDown, ChevronRight, Users, Eye } from 'lucide-react';
+import {
+  Copy,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Users,
+  Eye,
+  MessageSquare,
+} from 'lucide-react';
 
 // ---- Types ----
 
@@ -66,6 +75,16 @@ interface Session {
   created_at: string;
 }
 
+interface Feedback {
+  id: string;
+  sessionId: string;
+  page: string;
+  personaPresetId: string;
+  text: string;
+  createdAt: string;
+  cohortId: string | null;
+}
+
 // ---- API helpers ----
 
 function authHeaders(): Record<string, string> {
@@ -97,6 +116,16 @@ async function fetchSessions(cohortId?: string): Promise<Session[]> {
   if (!res.ok) throw new Error('Failed to fetch sessions');
   const data = await res.json();
   return data.sessions ?? [];
+}
+
+async function fetchFeedback(cohortId?: string): Promise<Feedback[]> {
+  const url = cohortId
+    ? `/api/admin/preview/feedback?cohort_id=${cohortId}`
+    : '/api/admin/preview/feedback';
+  const res = await fetch(url, { headers: authHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch feedback');
+  const data = await res.json();
+  return data.feedback ?? [];
 }
 
 // ---- Components ----
@@ -391,6 +420,61 @@ function CohortSessions({ cohortId }: { cohortId: string }) {
   );
 }
 
+function CohortFeedback({ cohortId }: { cohortId: string }) {
+  const { data: feedback, isLoading } = useQuery({
+    queryKey: ['admin-preview-feedback', cohortId],
+    queryFn: () => fetchFeedback(cohortId),
+    staleTime: 10_000,
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading feedback...</p>;
+
+  if (!feedback || feedback.length === 0) {
+    return <p className="text-xs text-muted-foreground">No feedback yet.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+        <MessageSquare className="h-3.5 w-3.5" />
+        Feedback ({feedback.length})
+      </h4>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Page</TableHead>
+            <TableHead>Persona</TableHead>
+            <TableHead className="w-[40%]">Feedback</TableHead>
+            <TableHead>Date</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {feedback.map((entry) => (
+            <TableRow key={entry.id}>
+              <TableCell className="text-xs font-mono max-w-[150px] truncate">
+                {entry.page}
+              </TableCell>
+              <TableCell className="text-xs">{entry.personaPresetId}</TableCell>
+              <TableCell className="text-xs max-w-[300px]">
+                <span className="line-clamp-2" title={entry.text}>
+                  {entry.text}
+                </span>
+              </TableCell>
+              <TableCell className="text-xs whitespace-nowrap">
+                {new Date(entry.createdAt).toLocaleDateString()}{' '}
+                {new Date(entry.createdAt).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 export function PreviewClient() {
   const queryClient = useQueryClient();
   const [expandedCohort, setExpandedCohort] = useState<string | null>(null);
@@ -500,6 +584,7 @@ export function PreviewClient() {
               <CardContent className="space-y-6 border-t border-border/40 pt-4">
                 <CohortInvites cohortId={cohort.id} />
                 <CohortSessions cohortId={cohort.id} />
+                <CohortFeedback cohortId={cohort.id} />
               </CardContent>
             )}
           </Card>

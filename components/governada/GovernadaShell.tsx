@@ -12,6 +12,7 @@ import { GovernadaSidebar } from './GovernadaSidebar';
 import { EpochContextBar } from './EpochContextBar';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
 import { PreviewBanner } from '@/components/preview/PreviewBanner';
+import { FeedbackWidget } from '@/components/preview/FeedbackWidget';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSentryContext } from '@/hooks/useSentryContext';
 import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
@@ -196,6 +197,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           </footer>
         )}
         {!isStudioMode && <GovernadaBottomNav />}
+        <FeedbackWidget />
       </TierThemeProvider>
     </SegmentProvider>
   );

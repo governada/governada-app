@@ -7,7 +7,7 @@
  * Lazy-loaded in GovernadaShell for zero impact on initial page load.
  */
 
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useDiscovery } from '@/hooks/useDiscovery';
@@ -16,7 +16,13 @@ import { DiscoveryFab } from './DiscoveryFab';
 import { DiscoveryHubContext } from './DiscoveryHubContext';
 import { DiscoveryPanel } from './DiscoveryPanel';
 
-export function DiscoveryHub({ hideFab = false }: { hideFab?: boolean }) {
+export function DiscoveryHub({
+  hideFab = false,
+  children,
+}: {
+  hideFab?: boolean;
+  children?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const [openedAt, setOpenedAt] = useState<number | null>(null);
   const router = useRouter();
@@ -55,6 +61,8 @@ export function DiscoveryHub({ hideFab = false }: { hideFab?: boolean }) {
   return (
     <DiscoveryHubContext.Provider value={{ openHub: handleOpen }}>
       {!hideFab && <DiscoveryFab onClick={handleOpen} progress={explorationProgress.percent} />}
+
+      {children}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" showCloseButton className="w-[340px] sm:w-[380px] p-0">

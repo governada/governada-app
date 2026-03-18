@@ -119,7 +119,7 @@ export function WorkspacePanels({
 
         {/* Main content panel */}
         <Panel id="main" minSize="40%">
-          <div className="h-full overflow-y-auto">{main}</div>
+          <div className="workspace-main-content h-full overflow-y-auto">{main}</div>
         </Panel>
 
         {/* Context panel (optional) */}

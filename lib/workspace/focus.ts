@@ -6,6 +6,8 @@ import { create } from 'zustand';
 // Types
 // ---------------------------------------------------------------------------
 
+type InputMethod = 'keyboard' | 'pointer';
+
 interface FocusState {
   /** Stack of CSS selectors for push/pop focus restoration */
   focusStack: string[];
@@ -16,6 +18,9 @@ interface FocusState {
   activeListLength: number;
   /** Currently focused index within the active list */
   activeIndex: number;
+
+  /** How focus was last changed — keyboard (J/K) or pointer (mouse click) */
+  inputMethod: InputMethod;
 }
 
 interface FocusActions {
@@ -56,8 +61,15 @@ interface FocusActions {
    * Move focus down (increment index, clamped to length-1).
    */
   moveDown: () => void;
+
+  /**
+   * Record how focus was last changed (keyboard navigation vs pointer/mouse).
+   * Used to conditionally show focus rings only for keyboard users.
+   */
+  setInputMethod: (method: InputMethod) => void;
 }
 
+export type { InputMethod };
 export type FocusStore = FocusState & FocusActions;
 
 // ---------------------------------------------------------------------------
@@ -109,6 +121,7 @@ export const useFocusStore = create<FocusStore>()((set, get) => ({
   activeListId: null,
   activeListLength: 0,
   activeIndex: 0,
+  inputMethod: 'keyboard',
 
   // --- Actions ---
   pushFocus: () => {
@@ -168,14 +181,16 @@ export const useFocusStore = create<FocusStore>()((set, get) => ({
   moveUp: () => {
     const { activeIndex } = get();
     if (activeIndex > 0) {
-      set({ activeIndex: activeIndex - 1 });
+      set({ activeIndex: activeIndex - 1, inputMethod: 'keyboard' });
     }
   },
 
   moveDown: () => {
     const { activeIndex, activeListLength } = get();
     if (activeIndex < activeListLength - 1) {
-      set({ activeIndex: activeIndex + 1 });
+      set({ activeIndex: activeIndex + 1, inputMethod: 'keyboard' });
     }
   },
+
+  setInputMethod: (method) => set({ inputMethod: method }),
 }));

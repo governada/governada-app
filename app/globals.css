@@ -997,20 +997,51 @@ button:not(:disabled):active,
 
 /* ============================================================
    Focus indicators for keyboard list navigation
-   Applied via data-focus-active="true" from useFocusableList.
+   Applied via data-focus-active="true" + data-focus-method from
+   useFocusableList. Only show the visible ring for keyboard
+   navigation — mouse clicks should not trigger an outline.
    ============================================================ */
 
-[data-focus-active='true'] {
+/* Keyboard focus: visible teal ring */
+[data-focus-active='true'][data-focus-method='keyboard'] {
+  position: relative;
   outline: 2px solid var(--compass-teal);
   outline-offset: -2px;
   border-radius: var(--radius);
 }
 
+/* Pointer/mouse focus: no ring */
+[data-focus-active='true'][data-focus-method='pointer'] {
+  outline: none;
+}
+
 /* Tighter focus ring in work/analyze modes */
-[data-mode='work'] [data-focus-active='true'],
-[data-mode='analyze'] [data-focus-active='true'] {
+[data-mode='work'] [data-focus-active='true'][data-focus-method='keyboard'],
+[data-mode='analyze'] [data-focus-active='true'][data-focus-method='keyboard'] {
   outline-width: 1px;
   outline-offset: -1px;
+}
+
+/* Enter affordance on keyboard-focused cards */
+[data-focus-active='true'][data-focus-method='keyboard']::after {
+  content: '\21B5'; /* ↵ */
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  font-size: 11px;
+  color: var(--compass-teal);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ============================================================
+   View Transitions — GPU-accelerated route morphing
+   Elements with matching viewTransitionName animate
+   position/size/opacity automatically on route changes.
+   ============================================================ */
+
+.workspace-main-content {
+  view-transition-name: workspace-content;
 }
 
 /* ============================================================

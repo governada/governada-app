@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  experimental: {
+    // Enable browser-native View Transitions API for smooth route navigation.
+    // GPU-accelerated, zero JavaScript cost. Graceful degradation in unsupported browsers.
+    viewTransition: true,
+  },
   serverExternalPackages: [
     'libsodium-wrappers-sumo',
     '@emurgo/cardano-serialization-lib-browser',

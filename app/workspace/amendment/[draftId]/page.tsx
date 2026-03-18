@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { useSaveStatus } from '@/lib/workspace/save-status';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSyncEntityToURL } from '@/hooks/useSyncEntityToURL';
 import { cn } from '@/lib/utils';
@@ -179,7 +180,12 @@ function AmendmentEditorPage() {
 
   const { stakeAddress, segment } = useSegment();
   const updateDraft = useUpdateDraft(draftId ?? '');
+  const { setSaving } = useSaveStatus();
   const recordGenealogy = useRecordGenealogy();
+
+  // --- Debounced auto-save for changes ---
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   // --- Derive user role from ownership + segment ---
   const draft = data?.draft ?? null;
@@ -235,17 +241,23 @@ function AmendmentEditorPage() {
     return content;
   }, []);
 
-  // --- Changes update handler (auto-save to draft type_specific) ---
+  // --- Changes update handler (auto-save to draft type_specific, debounced) ---
   const handleChangesUpdate = useCallback(
     (newChanges: AmendmentChange[]) => {
       setChanges(newChanges);
-      const typeSpecific = serializeAmendmentChanges(
-        (draft?.typeSpecific as Record<string, unknown>) ?? null,
-        newChanges,
-      );
-      updateDraft.mutate({ typeSpecific });
+      // Show "Saving..." immediately for responsiveness
+      setSaving();
+      // Debounce the actual mutation to avoid flooding during rapid edits
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        const typeSpecific = serializeAmendmentChanges(
+          (draft?.typeSpecific as Record<string, unknown>) ?? null,
+          newChanges,
+        );
+        updateDraft.mutate({ typeSpecific });
+      }, 500);
     },
-    [draft?.typeSpecific, updateDraft],
+    [draft?.typeSpecific, updateDraft, setSaving],
   );
 
   // --- Editor ready handler ---

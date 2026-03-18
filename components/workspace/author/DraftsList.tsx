@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { motion, useReducedMotion } from 'framer-motion';
 import { FileText } from 'lucide-react';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import { useFocusableList } from '@/hooks/useFocusableList';
@@ -45,7 +46,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function DraftsList({ drafts, isLoading }: DraftsListProps) {
   const router = useRouter();
-  const { activeIndex, getItemProps } = useFocusableList('drafts-list', drafts.length);
+  const { activeIndex, getListProps, getItemProps } = useFocusableList(
+    'drafts-list',
+    drafts.length,
+  );
+  const setInputMethod = useFocusStore((s) => s.setInputMethod);
+  const prefersReducedMotion = useReducedMotion();
   const draftsRef = useRef(drafts);
   useEffect(() => {
     draftsRef.current = drafts;
@@ -107,41 +113,64 @@ export function DraftsList({ drafts, isLoading }: DraftsListProps) {
   }
 
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 'var(--workspace-gap)' }}>
+    <div
+      className="grid sm:grid-cols-2 lg:grid-cols-3"
+      style={{ gap: 'var(--workspace-gap)' }}
+      {...getListProps()}
+    >
       {drafts.map((draft, index) => (
-        <Link key={draft.id} href={`/workspace/author/${draft.id}`}>
-          <Card
-            className="h-full hover:bg-accent/50 transition-colors cursor-pointer"
-            {...getItemProps(index)}
-          >
-            <CardContent className="space-y-3" style={{ padding: 'var(--workspace-card-padding)' }}>
-              <div className="flex items-start justify-between gap-2">
-                <h3
-                  className="font-medium line-clamp-2 leading-snug"
-                  style={{ fontSize: 'var(--workspace-font-size)' }}
-                >
-                  {draft.title || 'Untitled Draft'}
-                </h3>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  v{draft.currentVersion}
-                </span>
-              </div>
+        <motion.div
+          key={draft.id}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            delay: Math.min(index, 10) * 0.05,
+            duration: 0.15,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          <Link href={`/workspace/author/${draft.id}`} onClick={() => setInputMethod('pointer')}>
+            <Card
+              className="h-full hover:bg-accent/50 transition-colors cursor-pointer"
+              {...getItemProps(index)}
+            >
+              <CardContent
+                className="space-y-3"
+                style={{ padding: 'var(--workspace-card-padding)' }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3
+                    className="font-medium line-clamp-2"
+                    style={{
+                      fontSize: 'var(--workspace-font-size)',
+                      lineHeight: 'var(--workspace-line-height)',
+                    }}
+                  >
+                    {draft.title || 'Untitled Draft'}
+                  </h3>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    v{draft.currentVersion}
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-xs">
-                  {PROPOSAL_TYPE_LABELS[draft.proposalType] ?? draft.proposalType}
-                </Badge>
-                <Badge className={`text-xs ${STATUS_COLORS[draft.status] ?? STATUS_COLORS.draft}`}>
-                  {draft.status}
-                </Badge>
-              </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-xs">
+                    {PROPOSAL_TYPE_LABELS[draft.proposalType] ?? draft.proposalType}
+                  </Badge>
+                  <Badge
+                    className={`text-xs ${STATUS_COLORS[draft.status] ?? STATUS_COLORS.draft}`}
+                  >
+                    {draft.status}
+                  </Badge>
+                </div>
 
-              <p className="text-xs text-muted-foreground">
-                Updated {formatRelativeTime(draft.updatedAt)}
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+                <p className="text-xs text-muted-foreground">
+                  Updated {formatRelativeTime(draft.updatedAt)}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
       ))}
     </div>
   );

@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { useSaveStatus } from '@/lib/workspace/save-status';
 import { useParams, useRouter } from 'next/navigation';
 import { useSyncEntityToURL } from '@/hooks/useSyncEntityToURL';
 import { useDraft, useUpdateDraft } from '@/hooks/useDrafts';
@@ -110,6 +111,11 @@ function WorkspaceEditorPage() {
   const { stakeAddress, segment } = useSegment();
 
   const updateDraft = useUpdateDraft(draftId ?? '');
+  const { setSaving } = useSaveStatus();
+
+  // --- Debounced auto-save: show "Saving..." immediately but delay the mutation ---
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   // --- Mode change with analytics ---
   const setMode = useCallback(
@@ -168,12 +174,18 @@ function WorkspaceEditorPage() {
     [draft?.title, draft?.abstract, draft?.motivation, draft?.rationale],
   );
 
-  // --- Content change handler (auto-save) ---
+  // --- Content change handler (auto-save with debounce) ---
   const handleContentChange = useCallback(
     (field: ProposalField, value: string) => {
-      updateDraft.mutate({ [field]: value });
+      // Show "Saving..." immediately for responsiveness
+      setSaving();
+      // Debounce the actual mutation to avoid flooding during fast typing
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        updateDraft.mutate({ [field]: value });
+      }, 500);
     },
-    [updateDraft],
+    [updateDraft, setSaving],
   );
 
   // --- Capture editor instance ---

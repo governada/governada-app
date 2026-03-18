@@ -188,14 +188,12 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
         )}
         {!isStudioMode && <GovernadaBottomNav />}
 
-        {/* Discovery Layer — lazy-loaded, hidden in studio mode */}
-        {!isStudioMode && (
-          <SpotlightProvider>
-            <DiscoveryHub />
-            <EngagementNudge />
-            <MilestoneTrigger />
-          </SpotlightProvider>
-        )}
+        {/* Discovery Layer � always rendered for context, FAB hidden in studio */}
+        <SpotlightProvider>
+          <DiscoveryHub hideFab={isStudioMode} />
+          {!isStudioMode && <EngagementNudge />}
+          {!isStudioMode && <MilestoneTrigger />}
+        </SpotlightProvider>
       </TierThemeProvider>
     </SegmentProvider>
   );

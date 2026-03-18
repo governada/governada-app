@@ -26,6 +26,7 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
+import Image from '@tiptap/extension-image';
 import Document from '@tiptap/extension-document';
 
 import { SectionBlock, buildSectionDocument, extractSectionContent } from './SectionBlock';
@@ -284,6 +285,13 @@ export function ProposalEditor({
       TableHeader.configure({
         HTMLAttributes: {
           class: 'border border-border px-3 py-2 font-semibold bg-muted/50 text-left',
+        },
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          class: 'rounded-lg max-w-full my-3',
         },
       }),
     ],

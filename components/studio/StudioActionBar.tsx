@@ -10,8 +10,8 @@ import {
   MinusCircle,
   Compass,
 } from 'lucide-react';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useDiscoveryHub } from '@/components/discovery/DiscoveryHubContext';
 
 type PanelId = 'agent' | 'intel' | 'notes' | 'vote';
 
@@ -89,6 +89,19 @@ function VoteButton({
   );
 }
 
+function ExplorerButton() {
+  const discovery = useDiscoveryHub();
+  return (
+    <button
+      onClick={() => discovery?.openHub()}
+      className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ml-1 cursor-pointer"
+      title="Explore Governada"
+    >
+      <Compass className="h-4 w-4" />
+    </button>
+  );
+}
+
 export function StudioActionBar({
   mode = 'author',
   currentVote,
@@ -145,13 +158,7 @@ export function StudioActionBar({
           )}
 
           {/* Governada Explorer */}
-          <Link
-            href="/governance"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ml-1"
-            title="Explore Governada"
-          >
-            <Compass className="h-4 w-4" />
-          </Link>
+          <ExplorerButton />
         </div>
       </div>
     );

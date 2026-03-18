@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, ExternalLink, Vote } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
 import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
@@ -131,7 +132,6 @@ function ProposalMetaStrip({ item }: { item: ReviewQueueItem }) {
 // ---------------------------------------------------------------------------
 
 const PROPOSAL_SECTIONS = [
-  { id: 'title', label: 'Title' },
   { id: 'abstract', label: 'Abstract' },
   { id: 'motivation', label: 'Motivation' },
   { id: 'rationale', label: 'Rationale' },
@@ -146,7 +146,7 @@ function SectionTOC() {
   };
 
   return (
-    <nav className="hidden xl:block fixed left-4 top-1/3 space-y-1 z-10">
+    <nav className="hidden xl:block sticky top-16 self-start shrink-0 w-28 space-y-1 pr-2 pt-6">
       <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider mb-2">
         Sections
       </p>
@@ -356,7 +356,7 @@ function StudioReviewInner({
   progress,
   goNext,
   goPrev,
-  handleVoteSuccess,
+  handleVoteSuccess: _handleVoteSuccess,
   handleEditorReady,
   handleQueueJump,
   editorRef,
@@ -555,7 +555,7 @@ function StudioReviewInner({
 
         {/* Editor area (scrollable) */}
         <div className="flex-1 min-w-0 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-6 py-6">
+          <div className={cn('mx-auto px-6 py-6', isFullWidth ? 'max-w-6xl' : 'max-w-4xl')}>
             {/* Proposal metadata strip */}
             <ProposalMetaStrip item={selectedItem} />
 

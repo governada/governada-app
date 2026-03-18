@@ -233,7 +233,17 @@ export const CreateAnnotationSchema = z.object({
   proposalIndex: z.coerce.number().int().min(0),
   anchorStart: z.number().int().min(0),
   anchorEnd: z.number().int().min(0),
-  anchorField: z.enum(['abstract', 'motivation', 'rationale']),
+  anchorField: z
+    .string()
+    .refine(
+      (v) =>
+        ['abstract', 'motivation', 'rationale'].includes(v) ||
+        v.startsWith('article-') ||
+        v.startsWith('appendix-') ||
+        v === 'preamble' ||
+        v === 'defined-terms',
+      'Invalid anchor field',
+    ),
   annotationText: z.string().min(1).max(2000),
   annotationType: z.enum(['note', 'highlight', 'citation', 'concern']),
   color: z.string().max(20).optional(),
@@ -245,6 +255,42 @@ export const UpdateAnnotationSchema = z.object({
   annotationText: z.string().min(1).max(2000).optional(),
   isPublic: z.boolean().optional(),
   color: z.string().max(20).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Amendment section sentiment schemas
+// ---------------------------------------------------------------------------
+
+const SentimentEnum = z.enum(['support', 'oppose', 'neutral']);
+
+export const SubmitSentimentSchema = z.object({
+  draftId: z.string().uuid(),
+  sectionId: z.string().min(1).max(200),
+  sentiment: SentimentEnum,
+  comment: z.string().max(2000).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Amendment genealogy schemas
+// ---------------------------------------------------------------------------
+
+const GenealogyActionEnum = z.enum(['created', 'accepted', 'rejected', 'modified', 'merged']);
+const SourceTypeEnum = z.enum(['author', 'reviewer', 'ai']);
+
+export const RecordGenealogySchema = z.object({
+  draftId: z.string().uuid(),
+  changeId: z.string().min(1),
+  action: GenealogyActionEnum,
+  actionReason: z.string().max(2000).optional(),
+  sourceType: SourceTypeEnum.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Amendment bridge schema
+// ---------------------------------------------------------------------------
+
+export const AmendmentBridgeSchema = z.object({
+  draftId: z.string().uuid(),
 });
 
 // ---------------------------------------------------------------------------

@@ -82,6 +82,12 @@ export interface InlineCommentData {
   text: string;
 }
 
+/** Constitution article/section field identifier (free-form string for amendment editor) */
+export type ConstitutionField = string;
+
+/** Amendment editor mode */
+export type AmendmentEditorMode = 'suggest' | 'review';
+
 /** Constitutional risk level for margin decorations */
 export type ConstitutionalRisk = 'green' | 'amber' | 'red';
 

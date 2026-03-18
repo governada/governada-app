@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { FeatureGate } from '@/components/FeatureGate';
+import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 import { useDrafts, useCreateDraft } from '@/hooks/useDrafts';
 import { DraftsList } from './DraftsList';
 import { TypeSelectorDialog } from './TypeSelectorDialog';
+import { AmendmentEntryDialog } from './AmendmentEntryDialog';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import type { ProposalType } from '@/lib/workspace/types';
@@ -18,9 +19,43 @@ function AuthorWorkspaceInner() {
   const createDraft = useCreateDraft();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [amendmentDialogOpen, setAmendmentDialogOpen] = useState(false);
+  const [pendingAmendmentType, setPendingAmendmentType] = useState<'direct' | 'intent' | null>(
+    null,
+  );
+
+  const constitutionEditorFlag = useFeatureFlag('author_constitution_editor');
+
+  const createAmendmentDraft = async (mode: 'direct' | 'intent') => {
+    if (!stakeAddress) return;
+    setCreateError(null);
+    setPendingAmendmentType(mode);
+    try {
+      const result = await createDraft.mutateAsync({
+        stakeAddress,
+        proposalType: 'NewConstitution',
+      });
+      setAmendmentDialogOpen(false);
+      setSelectorOpen(false);
+      setPendingAmendmentType(null);
+      const suffix = mode === 'intent' ? '?mode=intent' : '';
+      router.push(`/workspace/amendment/${result.draft.id}${suffix}`);
+    } catch {
+      setCreateError('Failed to create draft. Please try again.');
+      setPendingAmendmentType(null);
+    }
+  };
 
   const handleCreateDraft = async (proposalType: ProposalType) => {
     if (!stakeAddress) return;
+
+    // Intercept NewConstitution when the amendment editor flag is enabled
+    if (proposalType === 'NewConstitution' && constitutionEditorFlag) {
+      setSelectorOpen(false);
+      setAmendmentDialogOpen(true);
+      return;
+    }
+
     setCreateError(null);
     try {
       const result = await createDraft.mutateAsync({ stakeAddress, proposalType });
@@ -64,6 +99,14 @@ function AuthorWorkspaceInner() {
         onOpenChange={setSelectorOpen}
         onSelect={handleCreateDraft}
         isPending={createDraft.isPending}
+      />
+
+      <AmendmentEntryDialog
+        open={amendmentDialogOpen}
+        onOpenChange={setAmendmentDialogOpen}
+        onStartDirect={() => createAmendmentDraft('direct')}
+        onStartIntent={() => createAmendmentDraft('intent')}
+        isPending={pendingAmendmentType !== null}
       />
     </div>
   );

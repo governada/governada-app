@@ -19,12 +19,17 @@ import { buildEditorContext, injectInlineComment } from '@/components/studio/stu
 import { SearchPopover } from '@/components/studio/SearchPopover';
 import { VotePanel } from '@/components/studio/VotePanel';
 import { ProposalEditor, injectProposedEdit } from '@/components/workspace/editor/ProposalEditor';
+import {
+  AmendmentReviewWrapper,
+  AmendmentIntelContent,
+} from '@/components/workspace/review/AmendmentReviewWrapper';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { IntelPanel } from '@/components/studio/IntelPanel';
 import { NotesPanel } from '@/components/studio/NotesPanel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
-import type { ProposalType, ReviewQueueItem } from '@/lib/workspace/types';
+import { extractAmendmentChanges } from '@/lib/constitution/utils';
+import type { ProposalDraft, ProposalType, ReviewQueueItem } from '@/lib/workspace/types';
 import type { VoteChoice } from '@/lib/voting';
 import type { ProposedEdit, ProposedComment } from '@/lib/workspace/editor/types';
 import type { Editor } from '@tiptap/core';
@@ -197,6 +202,8 @@ interface StudioPanelWrapperProps {
     threshold: number | null;
     thresholdLabel: string | null;
   };
+  /** If this is a NewConstitution draft, provide it for amendment intel content. */
+  amendmentDraft?: ProposalDraft;
 }
 
 function StudioPanelWrapper({
@@ -213,6 +220,7 @@ function StudioPanelWrapper({
   voteContent,
   existingVote,
   votingPowerSummary,
+  amendmentDraft,
 }: StudioPanelWrapperProps) {
   const { panelOpen, activePanel, panelWidth, closePanel, togglePanel, setPanelWidth } =
     useStudio();
@@ -296,14 +304,21 @@ function StudioPanelWrapper({
         />
       }
       intelContent={
-        <IntelPanel
-          proposalId={proposalId}
-          proposalType={proposalType}
-          proposalContent={content}
-          interBodyVotes={interBodyVotes}
-          citizenSentiment={citizenSentiment}
-          votingPowerSummary={votingPowerSummary}
-        />
+        amendmentDraft?.proposalType === 'NewConstitution' ? (
+          <AmendmentIntelContent
+            draftId={amendmentDraft.id}
+            amendments={extractAmendmentChanges(amendmentDraft.typeSpecific)}
+          />
+        ) : (
+          <IntelPanel
+            proposalId={proposalId}
+            proposalType={proposalType}
+            proposalContent={content}
+            interBodyVotes={interBodyVotes}
+            citizenSentiment={citizenSentiment}
+            votingPowerSummary={votingPowerSummary}
+          />
+        )
       }
       notesContent={
         <NotesPanel
@@ -347,6 +362,8 @@ interface StudioReviewInnerProps {
   queueLabels: string[];
   segment: string;
   onSelectIndex: (index: number) => void;
+  /** If the selected item is a draft, provides the full draft object (for NewConstitution). */
+  currentDraft?: ProposalDraft;
 }
 
 function StudioReviewInner({
@@ -370,6 +387,7 @@ function StudioReviewInner({
   queueLabels,
   segment,
   onSelectIndex,
+  currentDraft,
 }: StudioReviewInnerProps) {
   const { panelOpen, activePanel, togglePanel, isFullWidth, toggleFullWidth } = useStudio();
 
@@ -563,14 +581,23 @@ function StudioReviewInner({
               key={`proposal-${selectedItem.txHash}-${selectedItem.proposalIndex}`}
               className="animate-in fade-in duration-150"
             >
-              <ProposalEditor
-                content={itemContent}
-                mode="review"
-                readOnly={true}
-                currentUserId={stakeAddress ?? 'anonymous'}
-                onEditorReady={handleEditorReady}
-                excludeFields={['title']}
-              />
+              {/* NewConstitution drafts use the amendment review wrapper */}
+              {currentDraft?.proposalType === 'NewConstitution' ? (
+                <AmendmentReviewWrapper
+                  draft={currentDraft}
+                  draftId={currentDraft.id}
+                  currentUserId={stakeAddress ?? undefined}
+                />
+              ) : (
+                <ProposalEditor
+                  content={itemContent}
+                  mode="review"
+                  readOnly={true}
+                  currentUserId={stakeAddress ?? 'anonymous'}
+                  onEditorReady={handleEditorReady}
+                  excludeFields={['title']}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -591,6 +618,7 @@ function StudioReviewInner({
             voteContent={voteContent}
             existingVote={selectedItem.existingVote}
             votingPowerSummary={estimatedVotingPower}
+            amendmentDraft={currentDraft}
           />
         )}
       </div>
@@ -710,6 +738,13 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
   }, [items, initialProposalKey, selectedIndex, getStatus]);
 
   const selectedItem = items[selectedIndex] ?? null;
+
+  // Lookup the full ProposalDraft if the selected item came from drafts (for NewConstitution)
+  const drafts = draftsData?.drafts;
+  const currentDraft = useMemo(() => {
+    if (!selectedItem || !drafts) return undefined;
+    return drafts.find((d) => d.id === selectedItem.txHash);
+  }, [selectedItem, drafts]);
 
   // Reset editor mode to 'review' when switching proposals
   useEffect(() => {}, [selectedIndex]);
@@ -987,6 +1022,7 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
         queueLabels={queueLabels}
         segment={segment}
         onSelectIndex={setSelectedIndex}
+        currentDraft={currentDraft}
       />
     </StudioProvider>
   );

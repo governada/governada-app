@@ -207,6 +207,91 @@ export type Database = {
         };
         Relationships: [];
       };
+      amendment_genealogy: {
+        Row: {
+          action: string;
+          action_by: string | null;
+          action_reason: string | null;
+          change_id: string;
+          created_at: string | null;
+          draft_id: string;
+          id: string;
+          parent_change_id: string | null;
+          source_type: string | null;
+        };
+        Insert: {
+          action: string;
+          action_by?: string | null;
+          action_reason?: string | null;
+          change_id: string;
+          created_at?: string | null;
+          draft_id: string;
+          id?: string;
+          parent_change_id?: string | null;
+          source_type?: string | null;
+        };
+        Update: {
+          action?: string;
+          action_by?: string | null;
+          action_reason?: string | null;
+          change_id?: string;
+          created_at?: string | null;
+          draft_id?: string;
+          id?: string;
+          parent_change_id?: string | null;
+          source_type?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'amendment_genealogy_draft_id_fkey';
+            columns: ['draft_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_drafts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      amendment_section_sentiment: {
+        Row: {
+          comment: string | null;
+          created_at: string | null;
+          draft_id: string;
+          id: string;
+          section_id: string;
+          sentiment: string;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          comment?: string | null;
+          created_at?: string | null;
+          draft_id: string;
+          id?: string;
+          section_id: string;
+          sentiment: string;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          comment?: string | null;
+          created_at?: string | null;
+          draft_id?: string;
+          id?: string;
+          section_id?: string;
+          sentiment?: string;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'amendment_section_sentiment_draft_id_fkey';
+            columns: ['draft_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_drafts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       api_keys: {
         Row: {
           created_at: string;

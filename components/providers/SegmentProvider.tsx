@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useWallet } from '@/utils/wallet-context';
 import type { DimensionOverrides } from '@/lib/admin/viewAsRegistry';
 import { isPreviewAddress } from '@/lib/preview';
+import { SANDBOX_STORAGE_KEY } from '@/lib/admin/sandbox';
 import type { EngagementLevel } from '@/lib/citizen/engagementLevel';
 import type { CredibilityTier } from '@/lib/citizenCredibility';
 import type { GovernanceLevel } from '@/lib/governanceLevels';
@@ -47,6 +48,12 @@ export interface SegmentState {
   previewSessionId: string | null;
   /** Preview cohort ID (data namespace for shared preview data) */
   previewCohortId: string | null;
+  /** Active sandbox cohort ID (admin-only, writes scoped here) */
+  sandboxCohortId: string | null;
+  /** Enter sandbox mode with a cohort */
+  enterSandbox: (cohortId: string) => void;
+  /** Exit sandbox mode */
+  exitSandbox: () => void;
 }
 
 const STORAGE_KEY = 'governada_segment';
@@ -75,6 +82,9 @@ const DEFAULT_STATE: SegmentState = {
   isPreviewMode: false,
   previewSessionId: null,
   previewCohortId: null,
+  sandboxCohortId: null,
+  enterSandbox: noop,
+  exitSandbox: noop,
 };
 
 const SegmentContext = createContext<SegmentState>(DEFAULT_STATE);
@@ -129,6 +139,9 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       | 'isPreviewMode'
       | 'previewSessionId'
       | 'previewCohortId'
+      | 'sandboxCohortId'
+      | 'enterSandbox'
+      | 'exitSandbox'
     >
   >({
     isLoading: false,
@@ -144,6 +157,35 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
   const [dimensionOverrides, setDimensionOverrides] = useState<DimensionOverrides>({});
   const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
   const [previewCohortId, setPreviewCohortId] = useState<string | null>(null);
+  const [sandboxCohortId, setSandboxCohortId] = useState<string | null>(null);
+
+  // Restore sandbox state from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(SANDBOX_STORAGE_KEY);
+      if (stored) setSandboxCohortId(stored);
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, []);
+
+  const enterSandbox = useCallback((cohortId: string) => {
+    setSandboxCohortId(cohortId);
+    try {
+      sessionStorage.setItem(SANDBOX_STORAGE_KEY, cohortId);
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, []);
+
+  const exitSandbox = useCallback(() => {
+    setSandboxCohortId(null);
+    try {
+      sessionStorage.removeItem(SANDBOX_STORAGE_KEY);
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, []);
 
   const detect = useCallback(async (stakeAddress: string) => {
     const cached = loadCached(stakeAddress);
@@ -277,6 +319,9 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     isPreviewMode: isPreviewAddress(effectiveAddress),
     previewSessionId,
     previewCohortId,
+    sandboxCohortId,
+    enterSandbox,
+    exitSandbox,
   };
 
   return <SegmentContext.Provider value={value}>{children}</SegmentContext.Provider>;

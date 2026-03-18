@@ -9,6 +9,7 @@ import { CreateDraftSchema } from '@/lib/api/schemas/workspace';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
 import { isPreviewAddress } from '@/lib/preview';
+import { SANDBOX_DESCRIPTION_PREFIX } from '@/lib/admin/sandbox';
 import type { ProposalDraft } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,9 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   const statusFilter = request.nextUrl.searchParams.get('status');
 
   const admin = getSupabaseAdmin();
+
+  // Sandbox support: if sandbox header present, scope reads to that cohort
+  const sandboxCohortId = request.headers.get('x-sandbox-cohort') || null;
 
   // Community-reviewable drafts mode: fetch by status (no owner filter)
   if (statusFilter) {
@@ -56,7 +60,10 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
 
     let query = admin.from('proposal_drafts').select('*').in('status', statuses);
 
-    if (previewCohortId) {
+    if (sandboxCohortId) {
+      // Sandbox mode: see sandbox cohort's drafts + real drafts
+      query = query.or(`preview_cohort_id.eq.${sandboxCohortId},preview_cohort_id.is.null`);
+    } else if (previewCohortId) {
       // Preview user: see their cohort's drafts + real drafts
       query = query.or(`preview_cohort_id.eq.${previewCohortId},preview_cohort_id.is.null`);
     } else {
@@ -101,9 +108,25 @@ export const POST = withRouteHandler(
     const body = CreateDraftSchema.parse(await request.json());
     const admin = getSupabaseAdmin();
 
-    // Tag preview drafts with the user's cohort so cohort members can see them
+    // Sandbox support: scope writes to preview cohort if sandbox header present
+    const sandboxCohortId = request.headers.get('x-sandbox-cohort') || null;
+
+    // Determine preview cohort: sandbox header takes precedence, then preview address
     let previewCohortId: string | null = null;
-    if (isPreviewAddress(body.stakeAddress)) {
+
+    if (sandboxCohortId) {
+      // Verify the cohort exists and is an admin sandbox
+      const { data: sandboxCohort } = await admin
+        .from('preview_cohorts')
+        .select('id, description')
+        .eq('id', sandboxCohortId)
+        .maybeSingle();
+
+      if (sandboxCohort?.description?.startsWith(SANDBOX_DESCRIPTION_PREFIX)) {
+        previewCohortId = sandboxCohortId;
+      }
+    } else if (isPreviewAddress(body.stakeAddress)) {
+      // Tag preview drafts with the user's cohort so cohort members can see them
       const { data: previewUser } = await admin
         .from('users')
         .select('id')

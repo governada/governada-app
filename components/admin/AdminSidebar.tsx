@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Shield,
   TrendingUp,
+  UserSearch,
   Vote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,11 @@ const NAV_ITEMS = [
     icon: Database,
   },
   { type: 'divider' as const },
+  {
+    label: 'Users',
+    href: '/admin/users',
+    icon: UserSearch,
+  },
   {
     label: 'Integrity',
     href: '/admin/integrity',

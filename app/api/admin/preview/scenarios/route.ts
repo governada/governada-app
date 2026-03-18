@@ -45,13 +45,16 @@ export const POST = withRouteHandler(
       return NextResponse.json({ error: 'Cohort not found' }, { status: 404 });
     }
 
+    const edgeCases = body.edgeCases === true;
+
     logger.info('[admin/preview/scenarios] Starting scenario generation', {
       cohortId,
       cohortName: cohort.name,
+      edgeCases,
       requestedBy: context.wallet,
     });
 
-    const result = await generateScenario(cohortId);
+    const result = await generateScenario(cohortId, { edgeCases });
 
     const statusCode = result.errors.length > 0 ? 207 : 200;
 

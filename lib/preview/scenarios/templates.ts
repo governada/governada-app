@@ -234,3 +234,43 @@ export const VERSION_NAMES: string[] = [
   'Scope clarification',
   'Governance alignment update',
 ];
+
+// ---------------------------------------------------------------------------
+// Edge case content templates for stress testing
+// ---------------------------------------------------------------------------
+
+/** Edge case titles — pathological inputs for UI resilience testing */
+export const EDGE_CASE_TITLES: string[] = [
+  '', // Empty title
+  'A', // Minimal single character
+  'Treasury Withdrawal Proposal \u2014 ' + 'Extended '.repeat(50) + 'Title', // Very long title (~500 chars)
+  '\u63D0\u6848: \u30AC\u30D0\u30CA\u30F3\u30B9\u6539\u5584 \uD83D\uDDF3\uFE0F Governance Am\u00E9lioration', // Unicode + emoji + CJK + diacritics
+  'Proposal with <script>alert("xss")</script> in title', // XSS attempt
+  '   Leading and trailing whitespace   ', // Whitespace
+];
+
+/** Edge case abstracts — boundary-length and special content */
+export const EDGE_CASE_ABSTRACTS: string[] = [
+  '', // Empty abstract
+  'Minimal.', // Very short
+  'Lorem ipsum '.repeat(400), // Very long (~5000 chars)
+  'Line 1\n\nLine 2\n\nLine 3\n\n# Heading\n\n- bullet\n- **bold**\n\n```code```', // Markdown content
+];
+
+/** Edge case motivations — realistic but pathological */
+export const EDGE_CASE_MOTIVATIONS: string[] = [
+  '', // Empty motivation
+  'Because.', // Single word
+  'The governance ecosystem requires ' + 'significant '.repeat(200) + 'improvement.', // Very long
+  'Motivation with special chars: <>&"\' and unicode \u2019\u2018\u201C\u201D\u2014\u2013\u2026', // Special chars and HTML entities
+];
+
+/** Edge case reviews — stress tests for review rendering */
+export const EDGE_CASE_REVIEWS: string[] = [
+  '', // Empty feedback
+  '\uD83D\uDC4D', // Just an emoji
+  'This is an extremely detailed review. '.repeat(100), // Very long review
+  '<img src=x onerror=alert(1)> Review with HTML injection attempt', // HTML injection
+  'Review with\n\n\n\nmultiple\n\n\n\nblank\n\n\n\nlines', // Excessive newlines
+  '| Column 1 | Column 2 |\n|----------|----------|\n| data     | data     |', // Markdown table in review
+];

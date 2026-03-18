@@ -18,6 +18,10 @@ import {
   SCORE_RANGES,
   VERSION_EDIT_SUMMARIES,
   VERSION_NAMES,
+  EDGE_CASE_TITLES,
+  EDGE_CASE_ABSTRACTS,
+  EDGE_CASE_MOTIVATIONS,
+  EDGE_CASE_REVIEWS,
   type ReviewCategory,
   type ReviewerPersona,
 } from './templates';
@@ -96,7 +100,10 @@ function recentTimestamp(maxDaysAgo: number): string {
 // Core generator
 // ---------------------------------------------------------------------------
 
-export async function generateScenario(cohortId: string): Promise<ScenarioResult> {
+export async function generateScenario(
+  cohortId: string,
+  options?: { edgeCases?: boolean },
+): Promise<ScenarioResult> {
   const result: ScenarioResult = {
     proposalsCreated: 0,
     reviewsCreated: 0,
@@ -209,9 +216,15 @@ export async function generateScenario(cohortId: string): Promise<ScenarioResult
     }
   }
 
+  // 7. Append edge case drafts if requested
+  if (options?.edgeCases) {
+    await generateEdgeCaseDrafts(supabase, cohortId, proposalIndex, result);
+  }
+
   logger.info('[scenario-generator] Scenario generation complete', {
     cohortId,
     cohortName: cohort.name,
+    edgeCases: options?.edgeCases ?? false,
     ...result,
   });
 
@@ -470,6 +483,205 @@ function pickReviewCategory(): ReviewCategory {
   if (roll < 0.55) return 'constructive';
   if (roll < 0.8) return 'critical';
   return 'technical';
+}
+
+// ---------------------------------------------------------------------------
+// Edge case generation
+// ---------------------------------------------------------------------------
+
+/** Distribution of edge case drafts across statuses */
+const EDGE_CASE_STAGES: { status: DraftStatus; count: number }[] = [
+  { status: 'draft', count: 2 },
+  { status: 'community_review', count: 2 },
+  { status: 'draft', count: 1 },
+  { status: 'community_review', count: 1 },
+];
+
+async function generateEdgeCaseDrafts(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  cohortId: string,
+  startIndex: number,
+  result: ScenarioResult,
+): Promise<void> {
+  const edgeDraftIds: { id: string; status: DraftStatus; index: number }[] = [];
+
+  let ecIndex = 0;
+  for (const stage of EDGE_CASE_STAGES) {
+    for (let i = 0; i < stage.count; i++) {
+      const draftId = await createEdgeCaseDraft(
+        supabase,
+        stage.status,
+        cohortId,
+        startIndex + ecIndex,
+        ecIndex,
+      );
+
+      if (draftId) {
+        edgeDraftIds.push({ id: draftId, status: stage.status, index: ecIndex });
+        result.proposalsCreated++;
+
+        // Create initial version with edge case content
+        const versionCreated = await createEdgeCaseVersion(supabase, draftId, ecIndex);
+        if (versionCreated) result.versionsCreated++;
+      } else {
+        result.errors.push(
+          `Failed to create edge case draft #${ecIndex} at stage "${stage.status}"`,
+        );
+      }
+
+      ecIndex++;
+    }
+  }
+
+  // Generate edge case reviews on community_review drafts
+  const reviewableDrafts = edgeDraftIds.filter((d) => d.status === 'community_review');
+
+  for (const draft of reviewableDrafts) {
+    // Use 2-3 reviewers with edge case feedback
+    const reviewerCount = randInt(2, 3);
+    const reviewers = pickRandomN(REVIEWER_PERSONAS, reviewerCount);
+
+    for (let r = 0; r < reviewers.length; r++) {
+      const created = await createEdgeCaseReview(supabase, draft.id, reviewers[r], r);
+      if (created) result.reviewsCreated++;
+    }
+  }
+
+  logger.info('[scenario-generator] Edge case drafts generated', {
+    cohortId,
+    edgeDraftsCreated: edgeDraftIds.length,
+  });
+}
+
+async function createEdgeCaseDraft(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  status: DraftStatus,
+  cohortId: string,
+  globalIndex: number,
+  edgeCaseIndex: number,
+): Promise<string | null> {
+  const now = new Date();
+  const createdAt = recentTimestamp(30);
+  const stageEnteredAt = recentTimestamp(14);
+
+  const title = EDGE_CASE_TITLES[edgeCaseIndex % EDGE_CASE_TITLES.length];
+  const abstract = EDGE_CASE_ABSTRACTS[edgeCaseIndex % EDGE_CASE_ABSTRACTS.length];
+  const motivation = EDGE_CASE_MOTIVATIONS[edgeCaseIndex % EDGE_CASE_MOTIVATIONS.length];
+
+  const typeSpecific: { [key: string]: Json | undefined } = {
+    _scenarioSource: {
+      generatedAt: now.toISOString(),
+      edgeCase: true,
+      edgeCaseIndex,
+    },
+  };
+
+  const insertData: Database['public']['Tables']['proposal_drafts']['Insert'] = {
+    owner_stake_address: syntheticOwner(globalIndex),
+    title: title || 'Untitled Proposal',
+    abstract: abstract || '',
+    motivation: motivation || 'Motivation not provided.',
+    rationale: 'Edge case rationale for stress testing.',
+    proposal_type: 'InfoAction',
+    type_specific: typeSpecific,
+    status,
+    current_version: 1,
+    preview_cohort_id: cohortId,
+    created_at: createdAt,
+    stage_entered_at: stageEnteredAt,
+    community_review_started_at: status !== 'draft' ? recentTimestamp(21) : null,
+    fcp_started_at: null,
+    submitted_tx_hash: null,
+    submitted_at: null,
+  };
+
+  const { data, error } = await supabase
+    .from('proposal_drafts')
+    .insert(insertData)
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    logger.error('[scenario-generator] Failed to insert edge case draft', {
+      error: error?.message,
+      edgeCaseIndex,
+      status,
+    });
+    return null;
+  }
+
+  return data.id;
+}
+
+async function createEdgeCaseVersion(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  draftId: string,
+  edgeCaseIndex: number,
+): Promise<boolean> {
+  const title = EDGE_CASE_TITLES[edgeCaseIndex % EDGE_CASE_TITLES.length];
+  const abstract = EDGE_CASE_ABSTRACTS[edgeCaseIndex % EDGE_CASE_ABSTRACTS.length];
+  const motivation = EDGE_CASE_MOTIVATIONS[edgeCaseIndex % EDGE_CASE_MOTIVATIONS.length];
+
+  const content = {
+    title: title || 'Untitled Proposal',
+    abstract: abstract || '',
+    motivation: motivation || 'Motivation not provided.',
+    rationale: 'Edge case rationale for stress testing.',
+    proposalType: 'InfoAction' as const,
+    typeSpecific: {},
+  };
+
+  const { error } = await supabase.from('proposal_draft_versions').insert({
+    draft_id: draftId,
+    version_number: 1,
+    version_name: 'Edge case initial draft',
+    edit_summary: `Edge case draft #${edgeCaseIndex + 1} for stress testing.`,
+    content,
+  });
+
+  if (error) {
+    logger.error('[scenario-generator] Failed to insert edge case version', {
+      error: error.message,
+      draftId,
+    });
+    return false;
+  }
+
+  return true;
+}
+
+async function createEdgeCaseReview(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  draftId: string,
+  reviewer: ReviewerPersona,
+  reviewIndex: number,
+): Promise<boolean> {
+  const feedbackText = EDGE_CASE_REVIEWS[reviewIndex % EDGE_CASE_REVIEWS.length];
+
+  const insertData: Database['public']['Tables']['draft_reviews']['Insert'] = {
+    draft_id: draftId,
+    reviewer_stake_address: reviewer.stakeAddress,
+    feedback_text: feedbackText,
+    feedback_themes: ['edge-case', 'stress-test'],
+    impact_score: randInt(1, 5),
+    feasibility_score: randInt(1, 5),
+    constitutional_score: randInt(1, 5),
+    value_score: randInt(1, 5),
+    created_at: recentTimestamp(14),
+  };
+
+  const { error } = await supabase.from('draft_reviews').insert(insertData);
+
+  if (error) {
+    logger.error('[scenario-generator] Failed to insert edge case review', {
+      error: error.message,
+      draftId,
+      reviewer: reviewer.name,
+    });
+    return false;
+  }
+
+  return true;
 }
 
 // ---------------------------------------------------------------------------

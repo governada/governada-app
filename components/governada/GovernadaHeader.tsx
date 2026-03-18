@@ -341,7 +341,7 @@ export function GovernadaHeader() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ cohortId: sandboxCohortId }),
+        body: JSON.stringify({ cohortId: sandboxCohortId, edgeCases: true }),
       });
       if (!res.ok) {
         setSandboxActionStatus('Failed to generate scenarios');

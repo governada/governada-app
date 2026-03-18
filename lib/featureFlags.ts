@@ -7,8 +7,10 @@
  * Flags are cached for 60s in memory to avoid per-request DB hits.
  * Toggle instantly via the admin UI at /admin/flags — no redeploy needed.
  *
- * Targeting (future): the `targeting` JSONB column supports per-wallet overrides:
+ * Targeting: the `targeting` JSONB column supports per-wallet overrides:
  *   { "wallets": { "stake1...": true } }  — enable for specific wallet even if globally off
+ * Use getFeatureFlag(key, default, walletAddress) to check per-user targeting.
+ * Use setUserFlagOverride(key, wallet, enabled|null) to manage overrides.
  *
  * ---------------------------------------------------------------------------
  * ACTIVE FLAGS (in feature_flags table, toggleable via /admin/flags)
@@ -89,10 +91,35 @@ async function loadFlags(): Promise<Map<string, boolean>> {
 // Server-side API
 // ---------------------------------------------------------------------------
 
-export async function getFeatureFlag(key: string, defaultValue = true): Promise<boolean> {
+export async function getFeatureFlag(
+  key: string,
+  defaultValue = true,
+  walletAddress?: string,
+): Promise<boolean> {
   const envOverride = process.env[`FF_${key.toUpperCase()}`];
   if (envOverride !== undefined) {
     return envOverride === 'true' || envOverride === '1';
+  }
+
+  // Check per-user targeting before returning global value
+  if (walletAddress) {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('feature_flags')
+        .select('targeting')
+        .eq('key', key)
+        .single();
+
+      if (data?.targeting) {
+        const targeting = data.targeting as { wallets?: Record<string, boolean> };
+        if (targeting.wallets && walletAddress in targeting.wallets) {
+          return targeting.wallets[walletAddress];
+        }
+      }
+    } catch {
+      // Fall through to global value on error
+    }
   }
 
   const flags = await loadFlags();
@@ -141,6 +168,59 @@ export async function setFeatureFlag(key: string, enabled: boolean): Promise<boo
     return true;
   } catch (err) {
     logger.error('[featureFlags] Unexpected error updating flag', { error: err });
+    return false;
+  }
+}
+
+/**
+ * Set or remove a per-user feature flag override.
+ * Pass `enabled: null` to remove the override for this wallet.
+ */
+export async function setUserFlagOverride(
+  key: string,
+  walletAddress: string,
+  enabled: boolean | null,
+): Promise<boolean> {
+  try {
+    const { getSupabaseAdmin } = await import('./supabase');
+    const supabase = getSupabaseAdmin();
+
+    // Read current targeting
+    const { data, error: readError } = await supabase
+      .from('feature_flags')
+      .select('targeting')
+      .eq('key', key)
+      .single();
+
+    if (readError || !data) {
+      logger.error('[featureFlags] Flag not found for targeting update', { key });
+      return false;
+    }
+
+    const targeting = (data.targeting as { wallets?: Record<string, boolean> }) ?? {};
+    const wallets = { ...(targeting.wallets ?? {}) };
+
+    if (enabled === null) {
+      delete wallets[walletAddress];
+    } else {
+      wallets[walletAddress] = enabled;
+    }
+
+    const updatedTargeting = { ...targeting, wallets };
+
+    const { error: writeError } = await supabase
+      .from('feature_flags')
+      .update({ targeting: updatedTargeting, updated_at: new Date().toISOString() })
+      .eq('key', key);
+
+    if (writeError) {
+      logger.error('[featureFlags] Failed to update targeting', { error: writeError.message });
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    logger.error('[featureFlags] Unexpected error updating targeting', { error: err });
     return false;
   }
 }

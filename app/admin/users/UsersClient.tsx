@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import {
   useSegment,
@@ -22,11 +22,13 @@ import {
   MessageSquare,
   Copy,
   Check,
+  CheckCheck,
   Loader2,
   AlertCircle,
   Wallet,
   UserCog,
   FlaskConical,
+  Clock,
 } from 'lucide-react';
 
 interface InspectResult {
@@ -159,6 +161,39 @@ function StatCard({
   );
 }
 
+interface ActivityEvent {
+  type: 'poll_vote' | 'draft_created' | 'draft_updated' | 'review_submitted' | 'drep_vote';
+  timestamp: string;
+  details: Record<string, unknown>;
+}
+
+const activityIcons: Record<ActivityEvent['type'], typeof Vote> = {
+  poll_vote: Vote,
+  draft_created: FileText,
+  draft_updated: FileText,
+  review_submitted: MessageSquare,
+  drep_vote: CheckCheck,
+};
+
+function activityDescription(event: ActivityEvent): string {
+  switch (event.type) {
+    case 'poll_vote':
+      return `Voted in poll: ${String(event.details.proposalTitle ?? 'Unknown')}`;
+    case 'draft_created':
+      return `Created proposal draft: ${String(event.details.title ?? 'Untitled')}`;
+    case 'draft_updated':
+      return `Updated proposal draft: ${String(event.details.title ?? 'Untitled')}`;
+    case 'review_submitted':
+      return `Submitted review on: ${String(event.details.draftTitle ?? 'Unknown')}`;
+    case 'drep_vote': {
+      const vote = String(event.details.vote ?? 'unknown').toLowerCase();
+      return `Voted ${vote} on: ${String(event.details.proposalTitle ?? 'Unknown')}`;
+    }
+    default:
+      return 'Unknown activity';
+  }
+}
+
 export function UsersClient() {
   const router = useRouter();
   const { setOverride, enterSandbox } = useSegment();
@@ -209,6 +244,27 @@ export function UsersClient() {
       }),
     );
   }, []);
+
+  const stakeAddress = data?.segment?.stakeAddress ?? null;
+
+  const activityQuery = useQuery({
+    queryKey: ['admin-user-activity', stakeAddress],
+    queryFn: async (): Promise<{ events: ActivityEvent[] }> => {
+      const token = getStoredSession();
+      const res = await fetch(
+        `/api/admin/users/activity?address=${encodeURIComponent(stakeAddress!)}`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      return res.json();
+    },
+    enabled: !!stakeAddress,
+  });
 
   const handleImpersonate = useCallback(() => {
     if (!data?.user) return;
@@ -557,6 +613,56 @@ export function UsersClient() {
                   icon={MessageSquare}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card className="bg-card/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activityQuery.isLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground py-4 justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading activity...</span>
+                </div>
+              )}
+              {activityQuery.isError && (
+                <div className="flex items-center gap-2 text-destructive py-4">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span className="text-sm">Failed to load activity</span>
+                </div>
+              )}
+              {activityQuery.isSuccess && activityQuery.data.events.length === 0 && (
+                <p className="text-sm text-muted-foreground py-4 text-center">No recent activity</p>
+              )}
+              {activityQuery.isSuccess && activityQuery.data.events.length > 0 && (
+                <div className="space-y-1">
+                  {activityQuery.data.events.map((event, i) => {
+                    const Icon = activityIcons[event.type];
+                    return (
+                      <div
+                        key={`${event.type}-${event.timestamp}-${i}`}
+                        className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/30 transition-colors"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm leading-snug truncate">
+                            {activityDescription(event)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimeAgo(event.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

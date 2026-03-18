@@ -189,6 +189,8 @@ function markdownToContent(text: string): object[] {
   let pendingBulletItems: object[] = [];
   let pendingOrderedItems: object[] = [];
   let pendingBlockquoteLines: string[] = [];
+  let pendingTableRows: object[] | null = null;
+  let pendingTableIsHeader = false;
 
   const flushParagraph = () => {
     if (currentParagraph.length > 0) {
@@ -312,11 +314,62 @@ function markdownToContent(text: string): object[] {
       continue;
     }
 
+    // Table rows (| col | col |)
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      const isSeparator = /^\|[\s:]*-+[\s:]*(?:\|[\s:]*-+[\s:]*)*\|$/.test(trimmed);
+      if (!isSeparator) {
+        flushParagraph();
+        flushBulletList();
+        flushOrderedList();
+        const cells = trimmed
+          .slice(1, -1)
+          .split('|')
+          .map((c) => c.trim());
+
+        if (!pendingTableRows) {
+          pendingTableRows = [];
+          pendingTableIsHeader = true;
+        }
+
+        const isHeader = pendingTableIsHeader && pendingTableRows.length === 0;
+        const cellType = isHeader ? 'tableHeader' : 'tableCell';
+
+        pendingTableRows.push({
+          type: 'tableRow',
+          content: cells.map((cell) => ({
+            type: cellType,
+            content: [
+              {
+                type: 'paragraph',
+                content: cell ? parseInlineMarks(cell) : [],
+              },
+            ],
+          })),
+        });
+      } else {
+        pendingTableIsHeader = false;
+      }
+      continue;
+    }
+
+    // Flush pending table if this line is not a table row
+    if (pendingTableRows && pendingTableRows.length > 0) {
+      blocks.push({ type: 'table', content: pendingTableRows });
+      pendingTableRows = null;
+      pendingTableIsHeader = false;
+    }
+
     // Regular text — if we had pending list items, flush them first
     flushBulletList();
     flushOrderedList();
     currentParagraph.push(trimmed);
   }
+  // Flush any remaining table
+  if (pendingTableRows && pendingTableRows.length > 0) {
+    blocks.push({ type: 'table', content: pendingTableRows });
+    pendingTableRows = null;
+  }
+
   flushAll();
 
   return blocks.length > 0 ? blocks : [{ type: 'paragraph', content: [] }];

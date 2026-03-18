@@ -461,6 +461,16 @@ function StudioReviewInner({
     [togglePanel],
   );
 
+  // Register vote keyboard shortcuts (y/n/a) — these need handleVoteSelect which lives here
+  const voteYes = useCallback(() => handleVoteSelect('Yes'), [handleVoteSelect]);
+  const voteNo = useCallback(() => handleVoteSelect('No'), [handleVoteSelect]);
+  const voteAbstain = useCallback(() => handleVoteSelect('Abstain'), [handleVoteSelect]);
+  useRegisterReviewCommands({
+    onYes: voteYes,
+    onNo: voteNo,
+    onAbstain: voteAbstain,
+  });
+
   // Estimated voting power (based on vote counts as proxy)
   const estimatedVotingPower = useMemo(() => {
     if (!selectedItem.interBodyVotes) return undefined;
@@ -818,8 +828,8 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     [selectedItem, setStatus, items, getStatus],
   );
 
-  // Register review keyboard shortcuts via command registry
-  // (j/k navigation + arrow keys are handled by the registered commands)
+  // Register review navigation shortcuts via command registry (j/k + arrows)
+  // Vote shortcuts (y/n/a) are registered in StudioReviewInner where handleVoteSelect is available
   useRegisterReviewCommands({
     onNext: goNext,
     onPrev: goPrev,

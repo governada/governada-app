@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useSyncEntityToURL } from '@/hooks/useSyncEntityToURL';
 import { cn } from '@/lib/utils';
 import { useDraft, useUpdateDraft } from '@/hooks/useDrafts';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -159,6 +160,9 @@ function AmendmentEditorPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const draftId = typeof params.draftId === 'string' ? params.draftId : null;
+
+  // Sync draftId to workspace store for cross-component access
+  useSyncEntityToURL();
   const { data, isLoading, error } = useDraft(draftId);
 
   const [mode, setMode] = useState<AmendmentEditorMode>('suggest');

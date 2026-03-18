@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSyncEntityToURL } from '@/hooks/useSyncEntityToURL';
 import { useDraft, useUpdateDraft } from '@/hooks/useDrafts';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useAgent } from '@/hooks/useAgent';
@@ -97,6 +98,9 @@ function WorkspaceEditorPage() {
   const params = useParams();
   const router = useRouter();
   const draftId = typeof params.draftId === 'string' ? params.draftId : null;
+
+  // Sync draftId to workspace store for cross-component access
+  useSyncEntityToURL();
   const { data, isLoading, error } = useDraft(draftId);
 
   const [showJustificationFlow, setShowJustificationFlow] = useState(false);

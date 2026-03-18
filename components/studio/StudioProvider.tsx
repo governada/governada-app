@@ -7,6 +7,7 @@ interface StudioState {
   activePanel: 'agent' | 'intel' | 'notes';
   panelWidth: number;
   focusLevel: 0 | 1 | 2; // 0=normal, 1=panel hidden, 2=zen
+  isFullWidth: boolean;
 }
 
 interface StudioContextValue extends StudioState {
@@ -14,6 +15,7 @@ interface StudioContextValue extends StudioState {
   closePanel: () => void;
   setPanelWidth: (width: number) => void;
   setFocusLevel: (level: 0 | 1 | 2) => void;
+  toggleFullWidth: () => void;
 }
 
 const StudioContext = createContext<StudioContextValue | null>(null);
@@ -35,6 +37,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     activePanel: 'agent',
     panelWidth: 380,
     focusLevel: 0,
+    isFullWidth: false,
   });
 
   const togglePanel = useCallback((panel: 'agent' | 'intel' | 'notes') => {
@@ -62,9 +65,24 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const toggleFullWidth = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      isFullWidth: !prev.isFullWidth,
+      panelOpen: prev.isFullWidth ? prev.panelOpen : false,
+    }));
+  }, []);
+
   return (
     <StudioContext.Provider
-      value={{ ...state, togglePanel, closePanel, setPanelWidth, setFocusLevel }}
+      value={{
+        ...state,
+        togglePanel,
+        closePanel,
+        setPanelWidth,
+        setFocusLevel,
+        toggleFullWidth,
+      }}
     >
       {children}
     </StudioContext.Provider>

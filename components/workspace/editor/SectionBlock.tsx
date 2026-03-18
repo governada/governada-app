@@ -152,13 +152,18 @@ export const SectionBlock = Node.create<SectionBlockOptions>({
  * Build initial editor document content with section blocks.
  * Each field becomes a sectionBlock node with paragraph children.
  */
-export function buildSectionDocument(content: {
-  title: string;
-  abstract: string;
-  motivation: string;
-  rationale: string;
-}) {
-  const fields: ProposalField[] = ['title', 'abstract', 'motivation', 'rationale'];
+export function buildSectionDocument(
+  content: {
+    title: string;
+    abstract: string;
+    motivation: string;
+    rationale: string;
+  },
+  options?: { excludeFields?: ProposalField[] },
+) {
+  const fields: ProposalField[] = (
+    ['title', 'abstract', 'motivation', 'rationale'] as const
+  ).filter((f) => !options?.excludeFields?.includes(f));
 
   return {
     type: 'doc',

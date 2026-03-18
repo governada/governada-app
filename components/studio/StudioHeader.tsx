@@ -1,8 +1,19 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bell, ChevronLeft, ChevronRight, Command } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  Command,
+  MessageSquare,
+  BarChart3,
+  StickyNote,
+  PanelRight,
+  Maximize2,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StudioQueueProgress } from './StudioQueueProgress';
 
@@ -27,6 +38,11 @@ interface StudioHeaderProps {
   onCommandPalette?: () => void;
   /** User segment badge label */
   segmentBadge?: { label: string; color: string };
+  panelOpen?: boolean;
+  activePanel?: 'agent' | 'intel' | 'notes' | null;
+  onPanelToggle?: (panel: 'agent' | 'intel' | 'notes') => void;
+  isFullWidth?: boolean;
+  onFullWidthToggle?: () => void;
 }
 
 const MODE_LABELS: Record<string, string> = {
@@ -53,7 +69,31 @@ export function StudioHeader({
   notificationCount = 0,
   onCommandPalette,
   segmentBadge,
+  panelOpen,
+  activePanel,
+  onPanelToggle,
+  isFullWidth,
+  onFullWidthToggle,
 }: StudioHeaderProps) {
+  useEffect(() => {
+    if (!onPanelToggle) return;
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey) return;
+      const key = e.key.toLowerCase();
+      if (key === 'c') {
+        e.preventDefault();
+        onPanelToggle('agent');
+      } else if (key === 'i') {
+        e.preventDefault();
+        onPanelToggle('intel');
+      } else if (key === 'n') {
+        e.preventDefault();
+        onPanelToggle('notes');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onPanelToggle]);
   const backContent = (
     <span className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
       <ArrowLeft className="h-4 w-4 shrink-0" />
@@ -164,6 +204,66 @@ export function StudioHeader({
 
       {/* Extra toolbar actions */}
       {actions}
+
+      {/* Panel toggle buttons */}
+      {onPanelToggle && (
+        <div className="hidden sm:flex items-center gap-0.5 border-l border-border pl-2 ml-1">
+          {(
+            [
+              {
+                id: 'agent' as const,
+                Icon: MessageSquare,
+                label: 'Agent',
+                shortcut: 'Ctrl+Shift+C',
+              },
+              {
+                id: 'intel' as const,
+                Icon: BarChart3,
+                label: 'Intel',
+                shortcut: 'Ctrl+Shift+I',
+              },
+              {
+                id: 'notes' as const,
+                Icon: StickyNote,
+                label: 'Notes',
+                shortcut: 'Ctrl+Shift+N',
+              },
+            ] as const
+          ).map(({ id, Icon, label, shortcut }) => (
+            <button
+              key={id}
+              onClick={() => onPanelToggle(id)}
+              className={cn(
+                'p-1.5 rounded-md transition-colors cursor-pointer',
+                panelOpen && activePanel === id
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              )}
+              title={`${label} (${shortcut})`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </button>
+          ))}
+          {onFullWidthToggle && (
+            <button
+              onClick={onFullWidthToggle}
+              className={cn(
+                'p-1.5 rounded-md transition-colors cursor-pointer ml-0.5',
+                isFullWidth
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              )}
+              title={isFullWidth ? 'Show panel' : 'Full width'}
+            >
+              {isFullWidth ? (
+                <PanelRight className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Right side controls */}
       <div className="flex items-center gap-1 shrink-0">

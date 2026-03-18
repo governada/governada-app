@@ -120,6 +120,9 @@ export interface ProposalEditorProps {
 
   /** Called once the editor instance is ready (for parent-level integration) */
   onEditorReady?: (editor: Editor) => void;
+
+  /** Fields to exclude from the editor document */
+  excludeFields?: ProposalField[];
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +170,7 @@ export function ProposalEditor({
   currentUserId,
   marginIndicators,
   onEditorReady,
+  excludeFields,
 }: ProposalEditorProps) {
   const isReadOnly = readOnly || mode === 'review';
 
@@ -262,7 +266,10 @@ export function ProposalEditor({
   // Editor instance
   // -------------------------------------------------------------------------
 
-  const initialContent = useMemo(() => buildSectionDocument(content), [content]);
+  const initialContent = useMemo(
+    () => buildSectionDocument(content, excludeFields ? { excludeFields } : undefined),
+    [content, excludeFields],
+  );
 
   const editor = useEditor({
     extensions,

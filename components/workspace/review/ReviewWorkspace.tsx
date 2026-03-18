@@ -298,46 +298,217 @@ function StudioPanelWrapper({
 }
 
 // ---------------------------------------------------------------------------
-// StudioActionBarWrapper — connects action bar to studio context
+// StudioReviewInner — renders inside StudioProvider, has access to useStudio()
 // ---------------------------------------------------------------------------
 
-interface StudioActionBarWrapperProps {
+interface StudioReviewInnerProps {
+  selectedItem: ReviewQueueItem;
+  selectedIndex: number;
+  items: ReviewQueueItem[];
   progress: { reviewed: number; total: number };
-  currentVoted?: boolean;
-  currentUrgent?: boolean;
+  goNext: () => void;
+  goPrev: () => void;
+  handleVoteSuccess: (vote: VoteChoice) => void;
+  handleEditorReady: (editor: Editor) => void;
+  handleQueueJump: (index: number) => void;
+  editorRef: React.RefObject<Editor | null>;
+  agentUserRole: 'proposer' | 'reviewer' | 'cc_member';
+  stakeAddress: string | null;
+  voterId: string | null;
+  segmentBadge: { label: string; color: string } | undefined;
+  unreadCount: number;
+  voteToast: { vote: string; visible: boolean } | null;
+  getStatus: (txHash: string, proposalIndex: number) => string | undefined;
+  queueLabels: string[];
+  editorMode: 'edit' | 'review' | 'diff';
+  setEditorMode: (mode: 'edit' | 'review' | 'diff') => void;
 }
 
-function StudioActionBarWrapper({
+function StudioReviewInner({
+  selectedItem,
+  selectedIndex,
+  items,
   progress,
-  currentVoted,
-  currentUrgent,
-}: StudioActionBarWrapperProps) {
-  const { panelOpen, activePanel, togglePanel } = useStudio();
+  goNext,
+  goPrev,
+  handleVoteSuccess,
+  handleEditorReady,
+  handleQueueJump,
+  editorRef,
+  agentUserRole,
+  stakeAddress,
+  voterId,
+  segmentBadge,
+  unreadCount,
+  voteToast,
+  getStatus,
+  queueLabels,
+  editorMode,
+  setEditorMode,
+}: StudioReviewInnerProps) {
+  const { panelOpen, activePanel, togglePanel, isFullWidth, toggleFullWidth } = useStudio();
+  const actionZoneRef = useRef<HTMLDivElement>(null);
+
+  const typeLabel = selectedItem
+    ? (PROPOSAL_TYPE_LABELS[selectedItem.proposalType as ProposalType] ?? selectedItem.proposalType)
+    : '';
+
+  const itemContent = {
+    title: selectedItem.title || '',
+    abstract: selectedItem.abstract || '',
+    motivation: selectedItem.motivation || '',
+    rationale: selectedItem.rationale || '',
+  };
+
+  const currentVoted =
+    !!selectedItem.existingVote ||
+    getStatus(selectedItem.txHash, selectedItem.proposalIndex) === 'voted';
+
+  // Determine the current vote choice for display
+  const currentVoteChoice = useMemo(() => {
+    if (selectedItem.existingVote) {
+      // Normalize existing vote to our display format
+      const v = String(selectedItem.existingVote);
+      if (v.toLowerCase() === 'yes') return 'Yes' as const;
+      if (v.toLowerCase() === 'no') return 'No' as const;
+      if (v.toLowerCase() === 'abstain') return 'Abstain' as const;
+    }
+    return null;
+  }, [selectedItem.existingVote]);
+
+  const handleVoteSelect = useCallback((_vote: 'Yes' | 'No' | 'Abstain') => {
+    // Scroll to the ReviewActionZone for the full vote flow
+    if (actionZoneRef.current) {
+      actionZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   return (
-    <StudioActionBar
-      activePanel={panelOpen ? activePanel : null}
-      onPanelToggle={togglePanel}
-      statusInfo={
-        <span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
-          <span>
-            {progress.reviewed} of {progress.total} reviewed
+    <div className="flex flex-col h-screen">
+      {/* Studio Header */}
+      <StudioHeader
+        backLabel="governada"
+        backHref="/workspace"
+        title={selectedItem.title || 'Untitled'}
+        proposalType={typeLabel}
+        queueProgress={{ current: selectedIndex + 1, total: items.length }}
+        onQueueJump={handleQueueJump}
+        onPrev={selectedIndex > 0 ? goPrev : undefined}
+        onNext={selectedIndex < items.length - 1 ? goNext : undefined}
+        queueLabels={queueLabels}
+        segmentBadge={segmentBadge}
+        notificationCount={unreadCount}
+        showModeSwitch={true}
+        mode={editorMode}
+        onModeChange={setEditorMode}
+        panelOpen={panelOpen}
+        activePanel={activePanel}
+        onPanelToggle={togglePanel}
+        isFullWidth={isFullWidth}
+        onFullWidthToggle={toggleFullWidth}
+      />
+
+      {/* Main content area */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Section TOC (floating left on xl+) */}
+        <SectionTOC />
+
+        {/* Editor area (scrollable) */}
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-6 py-6">
+            {/* Proposal metadata strip */}
+            <ProposalMetaStrip item={selectedItem} />
+
+            <div
+              key={`proposal-${selectedItem.txHash}-${selectedItem.proposalIndex}`}
+              className="animate-in fade-in duration-150"
+            >
+              {editorMode === 'diff' ? (
+                <div className="rounded-lg border border-border bg-muted/10 p-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No previous version available for comparison.
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    Diff view is available when a proposal has multiple versions.
+                  </p>
+                </div>
+              ) : (
+                <ProposalEditor
+                  content={itemContent}
+                  mode="review"
+                  readOnly={true}
+                  currentUserId={stakeAddress ?? 'anonymous'}
+                  onEditorReady={handleEditorReady}
+                  excludeFields={['title']}
+                />
+              )}
+              {/* ReviewActionZone below editor */}
+              <div className="mt-6" ref={actionZoneRef}>
+                <ReviewActionZone
+                  item={selectedItem}
+                  drepId={voterId!}
+                  onVote={(_txHash, _index, vote) => handleVoteSuccess(vote as VoteChoice)}
+                  onNextProposal={goNext}
+                  totalProposals={progress.total}
+                  votedCount={progress.reviewed}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Studio Panel (on-demand right panel) — hidden when full-width */}
+        {!isFullWidth && (
+          <StudioPanelWrapper
+            proposalId={selectedItem.txHash}
+            proposalType={selectedItem.proposalType}
+            proposalIndex={selectedItem.proposalIndex}
+            userRole={agentUserRole}
+            content={itemContent}
+            editorRef={editorRef}
+            readOnly={true}
+            interBodyVotes={selectedItem.interBodyVotes}
+            citizenSentiment={selectedItem.citizenSentiment}
+            voterId={voterId ?? null}
+          />
+        )}
+      </div>
+
+      {/* Studio Action Bar */}
+      <StudioActionBar
+        mode="review"
+        currentVote={currentVoted ? currentVoteChoice : null}
+        onVoteSelect={handleVoteSelect}
+        voteDisabled={currentVoted}
+        statusInfo={
+          <span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
+            <span>
+              {progress.reviewed} of {progress.total} reviewed
+            </span>
+            {currentVoted && (
+              <span className="inline-flex items-center gap-1 text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" />
+                <span className="hidden sm:inline">Voted</span>
+              </span>
+            )}
+            {selectedItem.isUrgent && !currentVoted && (
+              <span className="inline-flex items-center gap-1 text-amber-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="hidden sm:inline">Urgent</span>
+              </span>
+            )}
           </span>
-          {currentVoted && (
-            <span className="inline-flex items-center gap-1 text-emerald-400">
-              <CheckCircle2 className="h-3 w-3" />
-              <span className="hidden sm:inline">Voted</span>
-            </span>
-          )}
-          {currentUrgent && !currentVoted && (
-            <span className="inline-flex items-center gap-1 text-amber-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="hidden sm:inline">Urgent</span>
-            </span>
-          )}
-        </span>
-      }
-    />
+        }
+      />
+
+      {/* Vote success toast */}
+      {voteToast?.visible && (
+        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/90 text-white text-sm font-medium shadow-lg animate-in slide-in-from-bottom-2 fade-in">
+          <CheckCircle2 className="h-4 w-4" />
+          Vote recorded — {voteToast.vote}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -528,11 +699,6 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     editorRef.current = editor;
   }, []);
 
-  // Type label
-  const typeLabel = selectedItem
-    ? (PROPOSAL_TYPE_LABELS[selectedItem.proposalType as ProposalType] ?? selectedItem.proposalType)
-    : '';
-
   // Queue labels for tooltip display
   const queueLabels = useMemo(() => items.map((item) => item.title || 'Untitled'), [items]);
 
@@ -666,122 +832,44 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
               </a>
             </div>
           </div>
-          <StudioActionBarWrapper progress={progress} />
+          <StudioActionBar
+            mode="review"
+            statusInfo={
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {progress.reviewed} of {progress.total} reviewed
+              </span>
+            }
+          />
         </div>
       </StudioProvider>
     );
   }
 
   // --- Main studio layout ---
-  const itemContent = {
-    title: selectedItem.title || '',
-    abstract: selectedItem.abstract || '',
-    motivation: selectedItem.motivation || '',
-    rationale: selectedItem.rationale || '',
-  };
-
   return (
     <StudioProvider>
-      <div className="flex flex-col h-screen">
-        {/* Studio Header */}
-        <StudioHeader
-          backLabel="governada"
-          backHref="/workspace"
-          title={selectedItem.title || 'Untitled'}
-          proposalType={typeLabel}
-          queueProgress={{ current: selectedIndex + 1, total: items.length }}
-          onQueueJump={handleQueueJump}
-          onPrev={selectedIndex > 0 ? goPrev : undefined}
-          onNext={selectedIndex < items.length - 1 ? goNext : undefined}
-          queueLabels={queueLabels}
-          segmentBadge={segmentBadge}
-          notificationCount={unreadCount}
-          showModeSwitch={true}
-          mode={editorMode}
-          onModeChange={setEditorMode}
-        />
-
-        {/* Main content area */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Section TOC (floating left on xl+) */}
-          <SectionTOC />
-
-          {/* Editor area (scrollable) */}
-          <div className="flex-1 min-w-0 overflow-y-auto">
-            <div className="max-w-3xl mx-auto px-6 py-6">
-              {/* Proposal metadata strip */}
-              <ProposalMetaStrip item={selectedItem} />
-
-              <div
-                key={`proposal-${selectedItem.txHash}-${selectedItem.proposalIndex}`}
-                className="animate-in fade-in duration-150"
-              >
-                {editorMode === 'diff' ? (
-                  <div className="rounded-lg border border-border bg-muted/10 p-8 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No previous version available for comparison.
-                    </p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">
-                      Diff view is available when a proposal has multiple versions.
-                    </p>
-                  </div>
-                ) : (
-                  <ProposalEditor
-                    content={itemContent}
-                    mode="review"
-                    readOnly={true}
-                    currentUserId={stakeAddress ?? 'anonymous'}
-                    onEditorReady={handleEditorReady}
-                  />
-                )}
-                {/* ReviewActionZone below editor */}
-                <div className="mt-6">
-                  <ReviewActionZone
-                    item={selectedItem}
-                    drepId={voterId}
-                    onVote={(_txHash, _index, vote) => handleVoteSuccess(vote as VoteChoice)}
-                    onNextProposal={goNext}
-                    totalProposals={progress.total}
-                    votedCount={progress.reviewed}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Studio Panel (on-demand right panel) */}
-          <StudioPanelWrapper
-            proposalId={selectedItem.txHash}
-            proposalType={selectedItem.proposalType}
-            proposalIndex={selectedItem.proposalIndex}
-            userRole={agentUserRole}
-            content={itemContent}
-            editorRef={editorRef}
-            readOnly={true}
-            interBodyVotes={selectedItem.interBodyVotes}
-            citizenSentiment={selectedItem.citizenSentiment}
-            voterId={voterId ?? null}
-          />
-        </div>
-
-        {/* Studio Action Bar */}
-        <StudioActionBarWrapper
-          progress={progress}
-          currentVoted={
-            !!selectedItem.existingVote ||
-            getStatus(selectedItem.txHash, selectedItem.proposalIndex) === 'voted'
-          }
-          currentUrgent={selectedItem.isUrgent}
-        />
-
-        {/* Vote success toast */}
-        {voteToast?.visible && (
-          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/90 text-white text-sm font-medium shadow-lg animate-in slide-in-from-bottom-2 fade-in">
-            <CheckCircle2 className="h-4 w-4" />
-            Vote recorded — {voteToast.vote}
-          </div>
-        )}
-      </div>
+      <StudioReviewInner
+        selectedItem={selectedItem}
+        selectedIndex={selectedIndex}
+        items={items}
+        progress={progress}
+        goNext={goNext}
+        goPrev={goPrev}
+        handleVoteSuccess={handleVoteSuccess}
+        handleEditorReady={handleEditorReady}
+        handleQueueJump={handleQueueJump}
+        editorRef={editorRef}
+        agentUserRole={agentUserRole}
+        stakeAddress={stakeAddress}
+        voterId={voterId}
+        segmentBadge={segmentBadge}
+        unreadCount={unreadCount}
+        voteToast={voteToast}
+        getStatus={getStatus}
+        queueLabels={queueLabels}
+        editorMode={editorMode}
+        setEditorMode={setEditorMode}
+      />
     </StudioProvider>
   );
 }

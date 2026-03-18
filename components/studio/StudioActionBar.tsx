@@ -1,15 +1,29 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { MessageSquare, BarChart3, StickyNote } from 'lucide-react';
+import {
+  MessageSquare,
+  BarChart3,
+  StickyNote,
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type PanelId = 'agent' | 'intel' | 'notes';
 
 interface StudioActionBarProps {
-  activePanel: PanelId | null;
-  onPanelToggle: (panel: PanelId) => void;
+  mode?: 'review' | 'author';
+  // Review mode
+  currentVote?: 'Yes' | 'No' | 'Abstain' | null;
+  onVoteSelect?: (vote: 'Yes' | 'No' | 'Abstain') => void;
+  voteDisabled?: boolean;
+  // Author mode (backward compat)
+  activePanel?: PanelId | null;
+  onPanelToggle?: (panel: PanelId) => void;
   contextActions?: ReactNode;
+  // Shared
   statusInfo?: ReactNode;
 }
 
@@ -37,14 +51,55 @@ const PANEL_BUTTONS: Array<{
   },
 ];
 
+function VoteButton({
+  vote,
+  onClick,
+  disabled,
+}: {
+  vote: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const styles: Record<string, string> = {
+    Yes: 'hover:border-teal-500/50 hover:bg-teal-500/5 hover:text-teal-400',
+    No: 'hover:border-amber-600/50 hover:bg-amber-600/5 hover:text-amber-500',
+    Abstain: 'hover:border-muted-foreground/50 hover:bg-muted/30',
+  };
+  const icons: Record<string, typeof CheckCircle2> = {
+    Yes: CheckCircle2,
+    No: XCircle,
+    Abstain: MinusCircle,
+  };
+  const Icon = icons[vote] || MinusCircle;
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium transition-all cursor-pointer',
+        styles[vote],
+        disabled && 'opacity-50 cursor-not-allowed',
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {vote}
+    </button>
+  );
+}
+
 export function StudioActionBar({
+  mode = 'author',
+  currentVote,
+  onVoteSelect,
+  voteDisabled,
   activePanel,
   onPanelToggle,
   contextActions,
   statusInfo,
 }: StudioActionBarProps) {
-  // Ctrl+Shift+C/I/N keyboard shortcuts for panel toggles
+  // Ctrl+Shift+C/I/N keyboard shortcuts for panel toggles (author mode only)
   useEffect(() => {
+    if (!onPanelToggle || mode !== 'author') return;
     const handler = (e: KeyboardEvent) => {
       if (!e.ctrlKey || !e.shiftKey) return;
       const key = e.key.toLowerCase();
@@ -56,8 +111,40 @@ export function StudioActionBar({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onPanelToggle]);
+  }, [onPanelToggle, mode]);
 
+  if (mode === 'review') {
+    return (
+      <div className="sticky bottom-0 z-40 min-h-12 border-t border-border bg-background/95 backdrop-blur-sm px-4 pb-[env(safe-area-inset-bottom)] flex items-center shrink-0">
+        {/* Left: status info / progress */}
+        {statusInfo && <div className="flex items-center min-w-0 px-3">{statusInfo}</div>}
+        {!statusInfo && <div className="flex-1" />}
+
+        <div className="flex-1" />
+
+        {/* Right: vote buttons */}
+        {currentVote ? (
+          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Voted: {currentVote}
+          </span>
+        ) : (
+          <div className="flex items-center gap-2">
+            {(['Yes', 'No', 'Abstain'] as const).map((vote) => (
+              <VoteButton
+                key={vote}
+                vote={vote}
+                onClick={() => onVoteSelect?.(vote)}
+                disabled={voteDisabled}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Author mode (default)
   return (
     <div className="sticky bottom-0 z-40 min-h-12 border-t border-border bg-background/95 backdrop-blur-sm px-4 pb-[env(safe-area-inset-bottom)] flex items-center shrink-0">
       {/* Left: panel toggle buttons */}
@@ -67,7 +154,7 @@ export function StudioActionBar({
           return (
             <button
               key={id}
-              onClick={() => onPanelToggle(id)}
+              onClick={() => onPanelToggle?.(id)}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors cursor-pointer',
                 isActive

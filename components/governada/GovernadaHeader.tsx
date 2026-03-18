@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -17,12 +17,18 @@ import {
   Layers,
   HelpCircle,
   CheckCheck,
+  FlaskConical,
+  RotateCcw,
+  Sparkles,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPickerDropdown } from './DepthPickerDropdown';
 import { DepthPromptModal } from './DepthPromptModal';
 import { LanguagePicker } from './LanguagePicker';
 import { cn } from '@/lib/utils';
+import { getStoredSession } from '@/lib/supabaseAuth';
 import { HELP_ITEMS } from '@/lib/nav/config';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useWallet } from '@/utils/wallet-context';
@@ -185,6 +191,9 @@ export function GovernadaHeader() {
     setOverride,
     dimensionOverrides,
     setDimensionOverrides,
+    sandboxCohortId,
+    enterSandbox,
+    exitSandbox,
   } = useSegment();
   const { data: adminData } = useAdminCheck(isAuthenticated);
   const isAdmin = adminData?.isAdmin === true;
@@ -199,6 +208,129 @@ export function GovernadaHeader() {
     preset: SegmentPreset;
     firstId: string;
   } | null>(null);
+
+  // Sandbox state
+  const [sandboxLoading, setSandboxLoading] = useState(false);
+  const [sandboxCohortName, setSandboxCohortName] = useState<string | null>(null);
+  const [sandboxActionStatus, setSandboxActionStatus] = useState<string | null>(null);
+
+  // Fetch sandbox cohort name when active
+  useEffect(() => {
+    if (!sandboxCohortId || !isAdmin) {
+      setSandboxCohortName(null);
+      return;
+    }
+    const fetchName = async () => {
+      try {
+        const token = getStoredSession();
+        const res = await fetch('/api/admin/sandbox', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const cohort = (data.cohorts ?? []).find(
+          (c: { id: string; name: string }) => c.id === sandboxCohortId,
+        );
+        if (cohort) setSandboxCohortName(cohort.name);
+      } catch {
+        // Ignore fetch errors
+      }
+    };
+    fetchName();
+  }, [sandboxCohortId, isAdmin]);
+
+  const handleEnterSandbox = useCallback(async () => {
+    setSandboxLoading(true);
+    setSandboxActionStatus(null);
+    try {
+      const token = getStoredSession();
+      const res = await fetch('/api/admin/sandbox', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'create' }),
+      });
+      if (!res.ok) {
+        setSandboxActionStatus('Failed to create sandbox');
+        return;
+      }
+      const data = await res.json();
+      if (data.cohort?.id) {
+        enterSandbox(data.cohort.id);
+        setSandboxCohortName(data.cohort.name ?? null);
+        setSandboxActionStatus(data.created ? 'Sandbox created' : 'Sandbox activated');
+      }
+    } catch {
+      setSandboxActionStatus('Failed to create sandbox');
+    } finally {
+      setSandboxLoading(false);
+    }
+  }, [enterSandbox]);
+
+  const handleResetSandbox = useCallback(async () => {
+    if (!sandboxCohortId) return;
+    setSandboxLoading(true);
+    setSandboxActionStatus(null);
+    try {
+      const token = getStoredSession();
+      const res = await fetch('/api/admin/sandbox', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'reset', cohortId: sandboxCohortId }),
+      });
+      if (!res.ok) {
+        setSandboxActionStatus('Failed to reset sandbox');
+        return;
+      }
+      const data = await res.json();
+      const d = data.deleted ?? {};
+      setSandboxActionStatus(`Reset: ${d.drafts ?? 0} drafts, ${d.reviews ?? 0} reviews removed`);
+    } catch {
+      setSandboxActionStatus('Failed to reset sandbox');
+    } finally {
+      setSandboxLoading(false);
+    }
+  }, [sandboxCohortId]);
+
+  const handleGenerateScenarios = useCallback(async () => {
+    if (!sandboxCohortId) return;
+    setSandboxLoading(true);
+    setSandboxActionStatus(null);
+    try {
+      const token = getStoredSession();
+      const res = await fetch('/api/admin/preview/scenarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ cohortId: sandboxCohortId }),
+      });
+      if (!res.ok) {
+        setSandboxActionStatus('Failed to generate scenarios');
+        return;
+      }
+      const data = await res.json();
+      setSandboxActionStatus(
+        `Generated: ${data.proposalsCreated ?? 0} proposals, ${data.reviewsCreated ?? 0} reviews`,
+      );
+    } catch {
+      setSandboxActionStatus('Failed to generate scenarios');
+    } finally {
+      setSandboxLoading(false);
+    }
+  }, [sandboxCohortId]);
+
+  const handleExitSandbox = useCallback(() => {
+    exitSandbox();
+    setSandboxCohortName(null);
+    setSandboxActionStatus(null);
+  }, [exitSandbox]);
 
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -287,13 +419,14 @@ export function GovernadaHeader() {
                   className={cn(
                     'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full transition-colors cursor-pointer',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                    hasOverride || hasDimensionOverrides
+                    hasOverride || hasDimensionOverrides || sandboxCohortId
                       ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25'
                       : 'text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground',
                   )}
                   aria-label="User menu"
                 >
                   {(() => {
+                    if (sandboxCohortId) return <FlaskConical className="h-3.5 w-3.5" />;
                     if (hasOverride || hasDimensionOverrides)
                       return <Eye className="h-3.5 w-3.5" />;
                     const SegmentIcon = SEGMENT_ICONS[segment];
@@ -427,6 +560,95 @@ export function GovernadaHeader() {
                                 <DropdownMenuItem onClick={() => setDimensionOverrides({})}>
                                   Reset all dimensions
                                 </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        {/* Sandbox mode controls */}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <FlaskConical className="h-4 w-4" />
+                            Sandbox{sandboxCohortId ? ' (active)' : ''}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="w-64">
+                            {!sandboxCohortId ? (
+                              <>
+                                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                  Test workflows without affecting production data
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  disabled={sandboxLoading}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleEnterSandbox();
+                                  }}
+                                >
+                                  {sandboxLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <FlaskConical className="h-4 w-4" />
+                                  )}
+                                  Enter Sandbox
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <>
+                                <DropdownMenuLabel className="text-xs">
+                                  <span className="text-amber-500">Sandbox active</span>
+                                  {sandboxCohortName && (
+                                    <span className="block text-muted-foreground font-normal mt-0.5 truncate">
+                                      {sandboxCohortName}
+                                    </span>
+                                  )}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  disabled={sandboxLoading}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleGenerateScenarios();
+                                  }}
+                                >
+                                  {sandboxLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-4 w-4" />
+                                  )}
+                                  Generate Scenarios
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={sandboxLoading}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleResetSandbox();
+                                  }}
+                                >
+                                  {sandboxLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RotateCcw className="h-4 w-4" />
+                                  )}
+                                  Reset Sandbox
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleExitSandbox();
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                  Exit Sandbox
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {sandboxActionStatus && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                  {sandboxActionStatus}
+                                </div>
                               </>
                             )}
                           </DropdownMenuSubContent>

@@ -76,6 +76,13 @@ export const SEGMENT_PRESETS: SegmentPreset[] = [
     segment: 'citizen',
     overrides: { delegatedDrep: 'drep_always_no_confidence' },
   },
+  {
+    id: 'citizen-delegated-preview',
+    label: 'Delegated (representative)',
+    description: 'Citizen delegated to a representative DRep — for preview cohorts',
+    segment: 'citizen',
+    overrides: { delegatedDrep: 'preview_representative_drep' },
+  },
 
   // -- DRep --
   {
@@ -94,6 +101,13 @@ export const SEGMENT_PRESETS: SegmentPreset[] = [
     requiresPicker: 'drep',
     pickerTitle: 'Claim a DRep profile',
     pickerDescription: 'View the app as this DRep.',
+  },
+  {
+    id: 'drep-claimed-preview',
+    label: 'Claimed (representative)',
+    description: 'A claimed DRep with a representative profile — for preview cohorts',
+    segment: 'drep',
+    overrides: { drepId: 'preview_representative_drep' },
   },
 
   // -- SPO --
@@ -114,6 +128,13 @@ export const SEGMENT_PRESETS: SegmentPreset[] = [
     pickerTitle: 'Claim an SPO profile',
     pickerDescription: 'View the app as this pool operator.',
   },
+  {
+    id: 'spo-claimed-preview',
+    label: 'Claimed (representative)',
+    description: 'A claimed SPO with a representative profile — for preview cohorts',
+    segment: 'spo',
+    overrides: { poolId: 'preview_representative_spo' },
+  },
 
   // -- DRep + SPO (dual role) --
   {
@@ -128,6 +149,16 @@ export const SEGMENT_PRESETS: SegmentPreset[] = [
     pickerDescription: 'Select the DRep identity for the dual-role simulation.',
     secondaryPickerTitle: 'Step 2: Pick a Stake Pool',
     secondaryPickerDescription: 'Select the SPO identity for the dual-role simulation.',
+  },
+  {
+    id: 'drep-spo-dual-preview',
+    label: 'DRep + SPO (dual role)',
+    description: 'Dual-role DRep and SPO with representative profiles — for preview cohorts',
+    segment: 'drep',
+    overrides: {
+      drepId: 'preview_representative_drep',
+      poolId: 'preview_representative_spo',
+    },
   },
 
   // -- CC Member --
@@ -148,24 +179,12 @@ export const SEGMENT_PRESETS: SegmentPreset[] = [
     pickerTitle: 'Claim a CC member profile',
     pickerDescription: 'View the app as this committee member.',
   },
-
-  // -- Proposer (capability overlay — works with any segment) --
   {
-    id: 'citizen-proposer',
-    label: 'Citizen + Active Proposer',
-    description: 'A citizen who has an active proposal draft',
-    segment: 'citizen',
-    overrides: { delegatedDrep: 'drep_always_abstain' },
-  },
-  {
-    id: 'drep-proposer',
-    label: 'DRep + Active Proposer',
-    description: 'A DRep who is also authoring a proposal',
-    segment: 'drep',
+    id: 'cc-claimed-preview',
+    label: 'Claimed (representative)',
+    description: 'A claimed CC member with a representative profile — for preview cohorts',
+    segment: 'cc',
     overrides: {},
-    requiresPicker: 'drep',
-    pickerTitle: 'Pick a DRep',
-    pickerDescription: 'View as a DRep who also has active proposal drafts.',
   },
 
   // -- Anonymous --

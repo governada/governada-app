@@ -21,7 +21,7 @@ export async function register() {
   }
 }
 
-/** Decode base64url to string � works in both Node.js and Edge runtimes. */
+/** Decode base64url to string -- works in both Node.js and Edge runtimes. */
 function decodeBase64Url(input: string): string {
   // Convert base64url to standard base64
   const base64 = input.replace(/-/g, '+').replace(/_/g, '/');

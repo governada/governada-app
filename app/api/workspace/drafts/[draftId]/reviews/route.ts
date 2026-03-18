@@ -7,6 +7,7 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { SubmitReviewSchema } from '@/lib/api/schemas/workspace';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { SANDBOX_DESCRIPTION_PREFIX } from '@/lib/admin/sandbox';
 import type { DraftReview } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
@@ -49,6 +50,26 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   }
 
   const admin = getSupabaseAdmin();
+  const sandboxCohortId = request.headers.get('x-sandbox-cohort') || null;
+
+  // If sandbox header present, verify the draft is visible to this sandbox
+  if (sandboxCohortId) {
+    const { data: draft } = await admin
+      .from('proposal_drafts')
+      .select('id, preview_cohort_id')
+      .eq('id', draftId)
+      .maybeSingle();
+
+    if (!draft) {
+      return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
+    }
+
+    // Sandbox users can see reviews on sandbox-scoped drafts or real drafts
+    if (draft.preview_cohort_id && draft.preview_cohort_id !== sandboxCohortId) {
+      return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
+    }
+  }
+
   const { data, error } = await admin
     .from('draft_reviews')
     .select('*')
@@ -146,14 +167,33 @@ export const POST = withRouteHandler(
     const body = SubmitReviewSchema.parse(await request.json());
     const admin = getSupabaseAdmin();
 
+    // Sandbox support: verify the cohort is a valid admin sandbox
+    const sandboxCohortId = request.headers.get('x-sandbox-cohort') || null;
+    if (sandboxCohortId) {
+      const { data: sandboxCohort } = await admin
+        .from('preview_cohorts')
+        .select('id, description')
+        .eq('id', sandboxCohortId)
+        .maybeSingle();
+
+      if (!sandboxCohort?.description?.startsWith(SANDBOX_DESCRIPTION_PREFIX)) {
+        return NextResponse.json({ error: 'Invalid sandbox cohort' }, { status: 403 });
+      }
+    }
+
     // Verify draft exists and is in community_review stage
     const { data: draft } = await admin
       .from('proposal_drafts')
-      .select('id, owner_stake_address, status')
+      .select('id, owner_stake_address, status, preview_cohort_id')
       .eq('id', draftId)
       .single();
 
     if (!draft) {
+      return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
+    }
+
+    // Sandbox scoping: sandbox users can review sandbox-scoped or real drafts
+    if (sandboxCohortId && draft.preview_cohort_id && draft.preview_cohort_id !== sandboxCohortId) {
       return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
     }
 

@@ -950,6 +950,60 @@ _(Patterns for structured proposal processes, stage gates, and deliberation pipe
 - **Applicable to**: Cardano governance proposals starting as informal Forum/community discussions, then importing into Governada's structured lifecycle. The link between discussion and formal proposal is preserved.
 - **Adoption difficulty**: Medium — import pipeline + discussion linking + stage management
 
+#### Configurable Staged Pipeline (Aragon StagedProposalProcessor)
+
+- **Source**: Aragon StagedProposalProcessor — https://docs.aragon.org/spp/1.x/index.html
+- **Discovered**: 2026-03-18 (explore-feature: proposal management lifecycle)
+- **What they do**: Configurable sequential stages where each stage can be: Normal (bodies approve before advancing), Optimistic (any body can veto), Time-Locked (pure delay, no bodies). Stages have configurable thresholds for required approvals/vetoes and timing constraints. Different governance pipelines composed by mixing stage types.
+- **Why it's world-class**: Maximum flexibility. Any governance pipeline can be configured by composing stage types. The separation of "stage type" from "stage configuration" means the same engine handles simple votes, multi-body approvals, and time-locked delays. The optimistic governance variant (pass by default unless vetoed) inverts the approval model entirely.
+- **Applicable to**: Proposal lifecycle stages configurable per governance action type. Treasury Withdrawals might require more review stages than Info Actions. The FCP stage could use the optimistic model (advances unless critical concern raised).
+- **Adoption difficulty**: Medium — needs stage configuration schema, per-type pipeline definitions, stage engine refactor
+
+#### Support Threshold Gating (CONSUL Democracy)
+
+- **Source**: CONSUL Democracy — https://consuldemocracy.org/
+- **Discovered**: 2026-03-18 (explore-feature: proposal management lifecycle)
+- **What they do**: Proposals must reach 1% citizen support before advancing to a formal vote. Below the threshold, proposals stay in "gathering support" indefinitely. After majority vote, the city council has 30 days to assess feasibility — if they reject, they MUST publish reasons or propose an alternative.
+- **Why it's world-class**: The threshold prevents waste-of-time proposals from consuming governance resources. The mandatory response to rejection creates accountability. Used by 350+ governments, 100M+ citizens. Won UN Public Service Award 2018.
+- **Applicable to**: Before a ~$100K deposit is committed, proposals should demonstrate community viability through a measurable threshold (minimum reviews, engagement metrics, or confidence score). Prevents premature submission of unsupported proposals.
+- **Adoption difficulty**: Easy — engagement data exists, need threshold computation + gate logic
+
+#### Transaction Simulation Before Signing (Rabby / Tenderly)
+
+- **Source**: Rabby Wallet — https://rabby.io/ + Tenderly Transaction Simulator — https://tenderly.co/transaction-simulator
+- **Discovered**: 2026-03-18 (explore-feature: proposal management lifecycle)
+- **What they do**: Before signing, show a full simulation of what the transaction WILL DO: asset changes (deposit locked), approval scopes, state changes, gas costs. Not "confirm this transaction" but "here is what will happen if you confirm." Tenderly runs the transaction against a fork of the live chain state.
+- **Why it's world-class**: Transforms blind trust into informed consent. Users see the effects before committing. In high-stakes crypto transactions, the difference between "are you sure?" and "here is exactly what happens" is the difference between anxiety and confidence.
+- **Applicable to**: Governance action submission should show a full simulation panel: deposit lock amount and return conditions, voting timeline (how many epochs), which governance bodies will vote and at what thresholds, what happens on ratification vs. expiry vs. drop. This is more valuable than any confirmation dialog.
+- **Adoption difficulty**: Medium — needs epoch_params data for thresholds, governance calendar computation, deposit return logic
+
+#### Multi-Friction Confirmation Scaling (Destructive Action UX Research)
+
+- **Source**: Smashing Magazine UX research — https://www.smashingmagazine.com/2024/09/how-manage-dangerous-actions-user-interfaces/
+- **Discovered**: 2026-03-18 (explore-feature: proposal management lifecycle)
+- **What they do**: Different friction levels for different severity: (1) Undo-over-confirm for reversible actions (e.g., archive), (2) Inline confirmation ("click again to confirm") for medium-stakes, (3) Type-to-confirm for high-stakes irreversible actions (e.g., GitHub repo deletion), (4) Cooldown timer + external verification for the highest stakes. Key finding: confirmation dialogs are "wrong in 90% of instances" because users habitually click through.
+- **Why it's world-class**: Acknowledges that not all destructive actions are equal. The severity gradient ensures friction is proportional to consequence. The insight that undo > confirm for reversible actions prevents "confirmation fatigue."
+- **Applicable to**: Proposal management needs scaled friction: archive draft = undo button (no dialog), delete private draft = inline confirm, withdraw from community review = type-to-confirm, submit on-chain ($100K) = cooldown timer + simulation panel + wallet signature. Never use a simple "Are you sure?" for irreversible actions.
+- **Adoption difficulty**: Easy — component patterns, no new data required
+
+#### Approval Chain Visibility at Signing (Ironclad Contextual Signature)
+
+- **Source**: Ironclad CLM — https://ironcladapp.com/ — Contextual Signature feature (2024)
+- **Discovered**: 2026-03-18 (explore-feature: proposal management lifecycle)
+- **What they do**: At signing time, show the full approval chain history: who reviewed the contract, what changed, when, and what was flagged. Executive summary of 12 key terms alongside the approval journey. The signer sees context, not just the final document.
+- **Why it's world-class**: When signing something with financial/legal consequences, context collapse is the enemy. Showing the approval chain creates confidence that due diligence happened. The journey to the signature matters as much as the signature itself.
+- **Applicable to**: When a proposer clicks "Submit On-Chain" (committing ~$100K), they should see a summary panel showing: version count, review summary (N reviews, average scores), constitutional check results, team approvals, time in review, key concerns raised and how they were addressed. The submission moment should surface the journey.
+- **Adoption difficulty**: Easy — all data exists (versions, reviews, checks, team), need summary panel component
+
+#### Stale Review Dismissal (GitHub PR Reviews)
+
+- **Source**: GitHub Required Reviews — https://docs.github.com/articles/approving-a-pull-request-with-required-reviews
+- **Discovered**: 2026-03-18 (explore-feature: proposal management lifecycle)
+- **What they do**: If you push new commits after a review approval, the approval is automatically dismissed and marked "stale." Re-review is required before merge. Configurable: admins choose whether stale reviews block merge or just show a warning.
+- **Why it's world-class**: Prevents the "approved an old version" problem. Ensures approvals are for the CURRENT state of the work. The automatic dismissal removes the burden from reviewers to track what changed.
+- **Applicable to**: Proposal community reviews should track which version they reviewed. If the proposal content changes significantly after review, reviews are marked stale and reviewers are notified to re-review. Prevents proposals from getting approved, then quietly revised before submission.
+- **Adoption difficulty**: Easy — need version_number column on draft_reviews + stale detection on content change
+
 ### Embedded AI & Intelligence Patterns
 
 _(Patterns for AI that's a tool, not a chatbot — workflow-embedded intelligence)_

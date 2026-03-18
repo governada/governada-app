@@ -102,6 +102,21 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Block preview users from admin routes
+  if (pathname.startsWith('/admin')) {
+    const session = request.cookies.get('drepscore_session');
+    if (session?.value) {
+      try {
+        const payload = JSON.parse(atob(session.value.split('.')[1]));
+        if (payload.walletAddress?.startsWith('preview_')) {
+          return withLocale(NextResponse.redirect(new URL('/', request.url)), request);
+        }
+      } catch {
+        /* pass through */
+      }
+    }
+  }
+
   // ── CORS for public API ───────────────────────────────────────────
   if (pathname.startsWith('/api/v1')) {
     if (request.method === 'OPTIONS') {

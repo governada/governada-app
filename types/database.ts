@@ -3727,6 +3727,173 @@ export type Database = {
         };
         Relationships: [];
       };
+      preview_cohorts: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          description: string | null;
+          id: string;
+          name: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          description?: string | null;
+          id?: string;
+          name: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          description?: string | null;
+          id?: string;
+          name?: string;
+        };
+        Relationships: [];
+      };
+      preview_feedback: {
+        Row: {
+          created_at: string;
+          id: string;
+          page: string;
+          persona_preset_id: string;
+          session_id: string;
+          text: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          page: string;
+          persona_preset_id: string;
+          session_id: string;
+          text: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          page?: string;
+          persona_preset_id?: string;
+          session_id?: string;
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'preview_feedback_session_id_fkey';
+            columns: ['session_id'];
+            isOneToOne: false;
+            referencedRelation: 'preview_sessions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      preview_invites: {
+        Row: {
+          code: string;
+          cohort_id: string;
+          created_at: string;
+          created_by: string;
+          expires_at: string;
+          id: string;
+          max_uses: number;
+          notes: string | null;
+          persona_preset_id: string;
+          revoked: boolean;
+          segment_overrides: Json;
+          use_count: number;
+        };
+        Insert: {
+          code: string;
+          cohort_id: string;
+          created_at?: string;
+          created_by: string;
+          expires_at: string;
+          id?: string;
+          max_uses?: number;
+          notes?: string | null;
+          persona_preset_id: string;
+          revoked?: boolean;
+          segment_overrides?: Json;
+          use_count?: number;
+        };
+        Update: {
+          code?: string;
+          cohort_id?: string;
+          created_at?: string;
+          created_by?: string;
+          expires_at?: string;
+          id?: string;
+          max_uses?: number;
+          notes?: string | null;
+          persona_preset_id?: string;
+          revoked?: boolean;
+          segment_overrides?: Json;
+          use_count?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'preview_invites_cohort_id_fkey';
+            columns: ['cohort_id'];
+            isOneToOne: false;
+            referencedRelation: 'preview_cohorts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      preview_sessions: {
+        Row: {
+          cohort_id: string;
+          created_at: string;
+          id: string;
+          invite_id: string;
+          last_active: string;
+          persona_snapshot: Json;
+          revoked: boolean;
+          user_id: string;
+        };
+        Insert: {
+          cohort_id: string;
+          created_at?: string;
+          id?: string;
+          invite_id: string;
+          last_active?: string;
+          persona_snapshot: Json;
+          revoked?: boolean;
+          user_id: string;
+        };
+        Update: {
+          cohort_id?: string;
+          created_at?: string;
+          id?: string;
+          invite_id?: string;
+          last_active?: string;
+          persona_snapshot?: Json;
+          revoked?: boolean;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'preview_sessions_cohort_id_fkey';
+            columns: ['cohort_id'];
+            isOneToOne: false;
+            referencedRelation: 'preview_cohorts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'preview_sessions_invite_id_fkey';
+            columns: ['invite_id'];
+            isOneToOne: false;
+            referencedRelation: 'preview_invites';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'preview_sessions_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profile_views: {
         Row: {
           drep_id: string;
@@ -3990,6 +4157,7 @@ export type Database = {
           last_constitutional_check_at: string | null;
           motivation: string;
           owner_stake_address: string;
+          preview_cohort_id: string | null;
           proposal_type: string;
           rationale: string;
           stage_entered_at: string | null;
@@ -4015,6 +4183,7 @@ export type Database = {
           last_constitutional_check_at?: string | null;
           motivation?: string;
           owner_stake_address: string;
+          preview_cohort_id?: string | null;
           proposal_type?: string;
           rationale?: string;
           stage_entered_at?: string | null;
@@ -4040,6 +4209,7 @@ export type Database = {
           last_constitutional_check_at?: string | null;
           motivation?: string;
           owner_stake_address?: string;
+          preview_cohort_id?: string | null;
           proposal_type?: string;
           rationale?: string;
           stage_entered_at?: string | null;
@@ -4052,7 +4222,15 @@ export type Database = {
           type_specific?: Json;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_drafts_preview_cohort_id_fkey';
+            columns: ['preview_cohort_id'];
+            isOneToOne: false;
+            referencedRelation: 'preview_cohorts';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       proposal_engagement_events: {
         Row: {

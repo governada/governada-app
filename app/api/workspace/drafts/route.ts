@@ -29,6 +29,7 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       .from('proposal_drafts')
       .select('*')
       .in('status', statuses)
+      .is('preview_cohort_id', null)
       .order('updated_at', { ascending: false })
       .limit(50);
 

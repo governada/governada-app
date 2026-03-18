@@ -50,6 +50,7 @@ import { clusterPerspectives } from '@/inngest/functions/cluster-perspectives';
 import { consolidateFeedbackFn } from '@/inngest/functions/consolidate-feedback';
 import { generateEmbeddings as generateEmbeddingsFn } from '@/inngest/functions/generate-embeddings';
 import { generateUserEmbedding } from '@/inngest/functions/generate-user-embedding';
+import { computeAiQuality } from '@/inngest/functions/compute-ai-quality';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
@@ -101,5 +102,6 @@ export const { GET, POST, PUT } = serve({
     consolidateFeedbackFn,
     generateEmbeddingsFn,
     generateUserEmbedding,
+    computeAiQuality,
   ],
 });

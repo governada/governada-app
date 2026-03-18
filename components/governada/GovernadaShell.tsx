@@ -11,6 +11,7 @@ import { GovernadaBottomNav } from './GovernadaBottomNav';
 import { GovernadaSidebar } from './GovernadaSidebar';
 import { EpochContextBar } from './EpochContextBar';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
+import { PreviewBanner } from '@/components/preview/PreviewBanner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSentryContext } from '@/hooks/useSentryContext';
 import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
@@ -150,6 +151,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           <DeepLinkHandler />
         </Suspense>
         <SyncFreshnessBanner />
+        <PreviewBanner />
         {!isStudioMode && <GovernadaHeader />}
         {!isStudioMode && (
           <GovernadaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />

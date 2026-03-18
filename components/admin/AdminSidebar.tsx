@@ -6,6 +6,7 @@ import {
   Activity,
   BarChart3,
   Database,
+  Eye,
   Flag,
   LayoutDashboard,
   Shield,
@@ -51,6 +52,11 @@ const NAV_ITEMS = [
     label: 'Assemblies',
     href: '/admin/assemblies',
     icon: Vote,
+  },
+  {
+    label: 'Preview',
+    href: '/admin/preview',
+    icon: Eye,
   },
 ] as const;
 

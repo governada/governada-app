@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import * as Sentry from '@sentry/nextjs';
+import { isPreviewAddress } from '@/lib/preview';
 
 /**
  * Syncs SegmentProvider state to Sentry user context and tags.
@@ -57,6 +58,12 @@ export function useSentryContext() {
       Sentry.setTag('segment', segment);
       Sentry.setTag('tier', tier ?? 'none');
       Sentry.setTag('isViewingAs', String(isViewingAs));
+      // Preview mode context
+      const isPreview = isPreviewAddress(stakeAddress);
+      if (isPreview) {
+        Sentry.setTag('isPreview', 'true');
+      }
+
       Sentry.setContext('governance', {
         segment,
         realSegment,
@@ -66,6 +73,7 @@ export function useSentryContext() {
         delegatedPool,
         tier,
         isViewingAs,
+        isPreview,
         engagementLevel: dimensionOverrides.engagementLevel ?? null,
         credibilityTier: dimensionOverrides.credibilityTier ?? null,
         governanceLevel: dimensionOverrides.governanceLevel ?? null,

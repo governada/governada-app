@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useWallet } from '@/utils/wallet-context';
 import type { DimensionOverrides } from '@/lib/admin/viewAsRegistry';
+import { isPreviewAddress } from '@/lib/preview';
 import type { EngagementLevel } from '@/lib/citizen/engagementLevel';
 import type { CredibilityTier } from '@/lib/citizenCredibility';
 import type { GovernanceLevel } from '@/lib/governanceLevels';
@@ -40,6 +41,12 @@ export interface SegmentState {
   getGovernanceDepthOverride: () => GovernanceDepth | null;
   /** True when admin "View As" override is active — components should show preview mode */
   isViewingAs: boolean;
+  /** True when user is in invite-code-based preview mode */
+  isPreviewMode: boolean;
+  /** Preview session ID (from preview_sessions table) */
+  previewSessionId: string | null;
+  /** Preview cohort ID (data namespace for shared preview data) */
+  previewCohortId: string | null;
 }
 
 const STORAGE_KEY = 'governada_segment';
@@ -65,6 +72,9 @@ const DEFAULT_STATE: SegmentState = {
   getGovernanceLevelOverride: () => null,
   getGovernanceDepthOverride: () => null,
   isViewingAs: false,
+  isPreviewMode: false,
+  previewSessionId: null,
+  previewCohortId: null,
 };
 
 const SegmentContext = createContext<SegmentState>(DEFAULT_STATE);
@@ -114,6 +124,9 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       | 'getGovernanceLevelOverride'
       | 'getGovernanceDepthOverride'
       | 'isViewingAs'
+      | 'isPreviewMode'
+      | 'previewSessionId'
+      | 'previewCohortId'
     >
   >({
     isLoading: false,
@@ -127,6 +140,8 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
   const [detectedSegment, setDetectedSegment] = useState<UserSegment>('anonymous');
   const [override, setOverride] = useState<SegmentOverride | null>(null);
   const [dimensionOverrides, setDimensionOverrides] = useState<DimensionOverrides>({});
+  const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
+  const [previewCohortId, setPreviewCohortId] = useState<string | null>(null);
 
   const detect = useCallback(async (stakeAddress: string) => {
     const cached = loadCached(stakeAddress);
@@ -171,6 +186,41 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Preview session: apply locked persona, skip on-chain detection
+    if (address && isPreviewAddress(address)) {
+      try {
+        const raw = sessionStorage.getItem('governada_preview');
+        if (raw) {
+          const meta = JSON.parse(raw);
+          const snap = meta.personaSnapshot ?? {};
+          setDetectedSegment(snap.segment ?? 'citizen');
+          setDetected({
+            isLoading: false,
+            stakeAddress: address,
+            drepId: snap.drepId ?? null,
+            poolId: snap.poolId ?? null,
+            delegatedDrep: snap.delegatedDrep ?? null,
+            delegatedPool: snap.delegatedPool ?? null,
+            tier: snap.tier ?? null,
+          });
+          if (snap.segment) {
+            setOverride({
+              segment: snap.segment,
+              ...(snap.drepId !== undefined ? { drepId: snap.drepId } : {}),
+              ...(snap.poolId !== undefined ? { poolId: snap.poolId } : {}),
+              ...(snap.delegatedDrep !== undefined ? { delegatedDrep: snap.delegatedDrep } : {}),
+              ...(snap.delegatedPool !== undefined ? { delegatedPool: snap.delegatedPool } : {}),
+            });
+          }
+          setPreviewSessionId(meta.previewSessionId ?? null);
+          setPreviewCohortId(meta.cohortId ?? null);
+        }
+      } catch {
+        /* ignore parse errors */
+      }
+      return;
+    }
+
     // Detect segment when wallet is connected (address available),
     // not just when fully authenticated (nonce signed)
     if ((!connected && !isAuthenticated) || !address) {
@@ -191,6 +241,15 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     detect(address);
   }, [connected, isAuthenticated, address, detect]);
 
+  // Lock overrides in preview mode — persona is set by the invite code
+  const wrappedSetOverride = useCallback(
+    (newOverride: SegmentOverride | null) => {
+      if (isPreviewAddress(detected.stakeAddress)) return;
+      setOverride(newOverride);
+    },
+    [detected.stakeAddress],
+  );
+
   const value: SegmentState = {
     ...detected,
     segment: override?.segment ?? detectedSegment,
@@ -205,7 +264,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       override && 'delegatedPool' in override
         ? (override.delegatedPool ?? null)
         : detected.delegatedPool,
-    setOverride,
+    setOverride: wrappedSetOverride,
     dimensionOverrides,
     setDimensionOverrides,
     getEngagementLevelOverride: () => dimensionOverrides.engagementLevel ?? null,
@@ -213,6 +272,9 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     getGovernanceLevelOverride: () => dimensionOverrides.governanceLevel ?? null,
     getGovernanceDepthOverride: () => dimensionOverrides.governanceDepth ?? null,
     isViewingAs: override !== null,
+    isPreviewMode: isPreviewAddress(detected.stakeAddress),
+    previewSessionId,
+    previewCohortId,
   };
 
   return <SegmentContext.Provider value={value}>{children}</SegmentContext.Provider>;

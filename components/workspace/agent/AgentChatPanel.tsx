@@ -308,7 +308,7 @@ export function AgentChatPanel({
   );
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full min-h-0', className)}>
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
         <Bot className="h-4 w-4 text-primary" />
@@ -316,8 +316,8 @@ export function AgentChatPanel({
         {isStreaming && <Loader2 className="h-3 w-3 animate-spin text-primary ml-auto" />}
       </div>
 
-      {/* Messages area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages area — scrolls independently, never pushes input off-screen */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
         {/* Conversation resumed indicator */}
         {isResumed && messages.length > 2 && (
           <div className="flex items-center justify-center gap-1.5 py-2">
@@ -380,13 +380,13 @@ export function AgentChatPanel({
 
       {/* Error banner */}
       {error && (
-        <div className="mx-4 mb-2 flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <div className="mx-4 mb-2 flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive shrink-0">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span className="flex-1 min-w-0">{error}</span>
         </div>
       )}
 
-      {/* Input area */}
+      {/* Input area — always pinned at bottom */}
       <div className="shrink-0 border-t border-border p-3">
         <div className="relative">
           <textarea

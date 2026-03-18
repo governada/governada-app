@@ -67,6 +67,12 @@ export interface WorkspaceEmbedProps {
   backUrl?: string;
   /** Override root layout class (e.g. "h-full" when embedded in another layout) */
   layoutClassName?: string;
+  /** Optional queue rail content (review workspace only) */
+  queueRail?: ReactNode;
+  /** Callback for back button (overrides backUrl Link with a button click) */
+  onBack?: () => void;
+  /** Label for the back button (e.g. "Back to queue") */
+  backLabel?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +192,9 @@ export function WorkspaceEmbed({
   showModeSwitch = true,
   backUrl: _backUrl,
   layoutClassName,
+  queueRail,
+  onBack,
+  backLabel,
 }: WorkspaceEmbedProps) {
   const [mode, setModeRaw] = useState<EditorMode>(readOnly ? 'review' : 'edit');
   const setMode = useCallback(
@@ -380,6 +389,9 @@ export function WorkspaceEmbed({
             proposalType={typeLabel}
             mode={mode}
             onModeChange={showModeSwitch ? setMode : () => {}}
+            onBack={onBack}
+            backLabel={backLabel}
+            backUrl={_backUrl}
           />
           {toolbarActions}
         </div>
@@ -387,6 +399,7 @@ export function WorkspaceEmbed({
       editor={renderEditor()}
       chat={renderChatPanel()}
       statusBar={statusBarOverride ?? defaultStatusBar}
+      queueRail={queueRail}
     />
   );
 }

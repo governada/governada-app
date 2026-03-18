@@ -185,6 +185,18 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
   // Derive the agent userRole from segment
   const agentUserRole = segment === 'cc' ? ('cc_member' as const) : ('reviewer' as const);
 
+  // The current active item depends on which tab is active
+  const currentItem = activeTab === 'drafts' ? selectedDraft : selectedItem;
+
+  // Deselect to return to queue-only view
+  const handleBackToQueue = useCallback(() => {
+    if (activeTab === 'drafts') {
+      setDraftSelectedIndex(-1);
+    } else {
+      setSelectedIndex(-1);
+    }
+  }, [activeTab]);
+
   // Loading state
   if (isLoading) {
     return (
@@ -255,59 +267,82 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     );
   }
 
-  // The current active item depends on which tab is active
-  const currentItem = activeTab === 'drafts' ? selectedDraft : selectedItem;
-
-  return (
-    <div className="flex flex-col md:flex-row h-full min-h-0">
-      {/* Queue rail */}
-      <div className="md:w-72 md:shrink-0 md:border-r border-b md:border-b-0 border-border">
-        {/* Revision notifications badge */}
-        {unreadCount > 0 && (
-          <div className="relative px-3 pt-2">
-            <button
-              onClick={() => setShowNotifications((prev) => !prev)}
-              className="flex w-full items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-foreground hover:bg-amber-500/10 transition-colors"
-            >
-              <Bell className="h-3.5 w-3.5 text-amber-500" />
-              <span>
-                {unreadCount} revised proposal{unreadCount !== 1 ? 's' : ''}
-              </span>
-              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-                {unreadCount}
-              </span>
-            </button>
-            {showNotifications && notifications.length > 0 && (
-              <div className="mt-1 rounded-md border border-border bg-background shadow-lg divide-y divide-border max-h-48 overflow-y-auto">
-                {notifications.map((n) => (
-                  <button
-                    key={n.id}
-                    onClick={() => {
-                      markRead.mutate(n.id);
-                      const matchIdx = items.findIndex((item) => item.txHash === n.proposalId);
-                      if (matchIdx >= 0) {
-                        setSelectedIndex(matchIdx);
-                      }
-                      setShowNotifications(false);
-                    }}
-                    className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
-                  >
-                    <span className="text-xs font-medium truncate">
-                      Proposal v{n.versionNumber}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {n.sectionsChanged.length} section{n.sectionsChanged.length !== 1 ? 's' : ''}{' '}
-                      revised &mdash; tap to review
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+  // Queue rail content — used inside the fullscreen WorkspaceLayout
+  const queueRailContent = (
+    <>
+      {/* Revision notifications badge */}
+      {unreadCount > 0 && (
+        <div className="relative px-3 pt-2">
+          <button
+            onClick={() => setShowNotifications((prev) => !prev)}
+            className="flex w-full items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-foreground hover:bg-amber-500/10 transition-colors"
+          >
+            <Bell className="h-3.5 w-3.5 text-amber-500" />
+            <span>
+              {unreadCount} revised proposal{unreadCount !== 1 ? 's' : ''}
+            </span>
+            <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+              {unreadCount}
+            </span>
+          </button>
+          {showNotifications && notifications.length > 0 && (
+            <div className="mt-1 rounded-md border border-border bg-background shadow-lg divide-y divide-border max-h-48 overflow-y-auto">
+              {notifications.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    markRead.mutate(n.id);
+                    const matchIdx = items.findIndex((item) => item.txHash === n.proposalId);
+                    if (matchIdx >= 0) {
+                      setSelectedIndex(matchIdx);
+                    }
+                    setShowNotifications(false);
+                  }}
+                  className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+                >
+                  <span className="text-xs font-medium truncate">Proposal v{n.versionNumber}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {n.sectionsChanged.length} section{n.sectionsChanged.length !== 1 ? 's' : ''}{' '}
+                    revised &mdash; tap to review
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <FeatureGate
+        flag="review_unified_tabs"
+        fallback={
+          <ReviewQueue
+            items={items}
+            selectedIndex={selectedIndex}
+            onSelect={handleSelect}
+            getStatus={getStatus}
+            progress={progress}
+          />
+        }
+      >
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+          <div className="px-2 pt-2 shrink-0">
+            <TabsList className="w-full">
+              <TabsTrigger value="active" className="flex-1 text-xs">
+                Active Proposals
+                {items.length > 0 && (
+                  <span className="ml-1 text-[10px] text-muted-foreground">({items.length})</span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="drafts" className="flex-1 text-xs">
+                Pre-submission
+                {draftItems.length > 0 && (
+                  <span className="ml-1 text-[10px] text-muted-foreground">
+                    ({draftItems.length})
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
           </div>
-        )}
-        <FeatureGate
-          flag="review_unified_tabs"
-          fallback={
+          <TabsContent value="active" className="flex-1 min-h-0 mt-0">
             <ReviewQueue
               items={items}
               selectedIndex={selectedIndex}
@@ -315,117 +350,85 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
               getStatus={getStatus}
               progress={progress}
             />
-          }
-        >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="px-2 pt-2 shrink-0">
-              <TabsList className="w-full">
-                <TabsTrigger value="active" className="flex-1 text-xs">
-                  Active Proposals
-                  {items.length > 0 && (
-                    <span className="ml-1 text-[10px] text-muted-foreground">({items.length})</span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="drafts" className="flex-1 text-xs">
-                  Pre-submission
-                  {draftItems.length > 0 && (
-                    <span className="ml-1 text-[10px] text-muted-foreground">
-                      ({draftItems.length})
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-            </div>
-            <TabsContent value="active" className="flex-1 min-h-0 mt-0">
-              <ReviewQueue
-                items={items}
-                selectedIndex={selectedIndex}
-                onSelect={handleSelect}
-                getStatus={getStatus}
-                progress={progress}
-              />
-            </TabsContent>
-            <TabsContent value="drafts" className="flex-1 min-h-0 mt-0">
-              {draftItems.length === 0 ? (
-                <div className="px-3 py-8 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    No pre-submission drafts awaiting review.
-                  </p>
-                </div>
-              ) : (
-                <ReviewQueue
-                  items={draftItems}
-                  selectedIndex={draftSelectedIndex}
-                  onSelect={handleDraftSelect}
-                  getStatus={() => 'unreviewed'}
-                  progress={{ reviewed: 0, total: draftItems.length }}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-        </FeatureGate>
-      </div>
-
-      {/* Main content: Tiptap workspace replaces old ReviewBrief + sidebar */}
-      <div className="flex-1 min-h-0 min-w-0">
-        {activeTab === 'active' && selectedItem && (
-          <WorkspaceEmbed
-            key={`${selectedItem.txHash}:${selectedItem.proposalIndex}`}
-            proposalId={selectedItem.txHash}
-            content={{
-              title: selectedItem.title || '',
-              abstract: selectedItem.abstract || '',
-              motivation: selectedItem.motivation || '',
-              rationale: selectedItem.rationale || '',
-            }}
-            proposalType={selectedItem.proposalType}
-            userRole={agentUserRole}
-            readOnly={true}
-            layoutClassName="h-full"
-            belowEditor={
-              <div className="max-w-3xl mx-auto px-6 pb-6">
-                <ReviewActionZone
-                  item={selectedItem}
-                  drepId={voterId}
-                  onVote={(_txHash, _index, vote) => handleVoteSuccess(vote as VoteChoice)}
-                  onNextProposal={goNext}
-                  totalProposals={progress.total}
-                  votedCount={progress.reviewed}
-                />
+          </TabsContent>
+          <TabsContent value="drafts" className="flex-1 min-h-0 mt-0">
+            {draftItems.length === 0 ? (
+              <div className="px-3 py-8 text-center">
+                <p className="text-xs text-muted-foreground">
+                  No pre-submission drafts awaiting review.
+                </p>
               </div>
-            }
-            statusBar={
-              <StatusBar
-                completeness={{ done: progress.reviewed, total: progress.total }}
-                userStatus={`Reviewing ${progress.reviewed}/${progress.total}`}
+            ) : (
+              <ReviewQueue
+                items={draftItems}
+                selectedIndex={draftSelectedIndex}
+                onSelect={handleDraftSelect}
+                getStatus={() => 'unreviewed'}
+                progress={{ reviewed: 0, total: draftItems.length }}
               />
-            }
-            showModeSwitch={false}
-          />
-        )}
-        {activeTab === 'drafts' && selectedDraft && (
-          <WorkspaceEmbed
-            key={`draft:${selectedDraft.txHash}`}
-            proposalId={selectedDraft.txHash}
-            content={{
-              title: selectedDraft.title || '',
-              abstract: selectedDraft.abstract || '',
-              motivation: selectedDraft.motivation || '',
-              rationale: selectedDraft.rationale || '',
-            }}
-            proposalType={selectedDraft.proposalType}
-            userRole={agentUserRole}
-            readOnly={true}
-            layoutClassName="h-full"
-            statusBar={<StatusBar userStatus="Pre-submission review" />}
-            showModeSwitch={false}
-          />
-        )}
-        {!currentItem && (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-muted-foreground">Select a proposal from the queue</p>
-          </div>
-        )}
+            )}
+          </TabsContent>
+        </Tabs>
+      </FeatureGate>
+    </>
+  );
+
+  // When a proposal is selected, render the fullscreen workspace overlay
+  if (currentItem) {
+    const isActiveDraft = activeTab === 'drafts';
+    const item = isActiveDraft ? selectedDraft! : selectedItem!;
+    const key = isActiveDraft ? `draft:${item.txHash}` : `${item.txHash}:${item.proposalIndex}`;
+
+    return (
+      <WorkspaceEmbed
+        key={key}
+        proposalId={item.txHash}
+        content={{
+          title: item.title || '',
+          abstract: item.abstract || '',
+          motivation: item.motivation || '',
+          rationale: item.rationale || '',
+        }}
+        proposalType={item.proposalType}
+        userRole={agentUserRole}
+        readOnly={true}
+        onBack={handleBackToQueue}
+        backLabel="Back to queue"
+        queueRail={queueRailContent}
+        belowEditor={
+          !isActiveDraft ? (
+            <div className="max-w-3xl mx-auto px-6 pb-6">
+              <ReviewActionZone
+                item={selectedItem!}
+                drepId={voterId}
+                onVote={(_txHash, _index, vote) => handleVoteSuccess(vote as VoteChoice)}
+                onNextProposal={goNext}
+                totalProposals={progress.total}
+                votedCount={progress.reviewed}
+              />
+            </div>
+          ) : undefined
+        }
+        statusBar={
+          isActiveDraft ? (
+            <StatusBar userStatus="Pre-submission review" />
+          ) : (
+            <StatusBar
+              completeness={{ done: progress.reviewed, total: progress.total }}
+              userStatus={`Reviewing ${progress.reviewed}/${progress.total}`}
+            />
+          )
+        }
+        showModeSwitch={false}
+      />
+    );
+  }
+
+  // No proposal selected — show the queue as a standalone list view
+  return (
+    <div className="flex flex-col h-full">
+      <div className="max-w-2xl mx-auto w-full flex-1 min-h-0 overflow-y-auto">
+        {queueRailContent}
       </div>
     </div>
   );

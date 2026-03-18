@@ -3,36 +3,62 @@
 /**
  * WorkspaceLayout — resizable two-panel layout for the governance workspace.
  *
- * Left panel: editor. Right panel: agent chat (collapsible).
+ * Full viewport takeover (fixed inset-0) by default — the site sidebar
+ * disappears and the editor gets maximum width. Pass `className="h-full"`
+ * to embed inside another layout instead.
+ *
+ * Left panel: optional queue rail (collapsible). Center: editor. Right: agent chat (collapsible).
  * Bottom: status bar.
  */
 
-import { useState, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
 
 interface WorkspaceLayoutProps {
   toolbar: ReactNode;
   editor: ReactNode;
   chat: ReactNode;
   statusBar: ReactNode;
-  /** Override the root container class (default: "h-screen"). Use "h-full" when embedded. */
+  /** Optional queue rail (review workspace only) */
+  queueRail?: ReactNode;
+  /** Override the root container class. Default renders as fullscreen overlay (fixed inset-0).
+   *  Pass "h-full" to embed inside another layout without viewport takeover. */
   className?: string;
 }
 
 const MIN_EDITOR_WIDTH = 400;
 const MIN_CHAT_WIDTH = 280;
 const DEFAULT_CHAT_WIDTH = 380;
+const QUEUE_COLLAPSED_WIDTH = 48;
+const QUEUE_EXPANDED_WIDTH = 288; // md:w-72
 
 export function WorkspaceLayout({
   toolbar,
   editor,
   chat,
   statusBar,
+  queueRail,
   className,
 }: WorkspaceLayoutProps) {
   const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
   const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [queueExpanded, setQueueExpanded] = useState(false);
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const isEmbedded = className?.includes('h-full');
+  const isFullscreen = !isEmbedded;
+
+  // Keyboard shortcut: Cmd+Shift+C to toggle chat
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        setChatCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -64,13 +90,83 @@ export function WorkspaceLayout({
     setChatCollapsed((prev) => !prev);
   }, []);
 
+  const toggleQueue = useCallback(() => {
+    setQueueExpanded((prev) => !prev);
+  }, []);
+
   return (
-    <div className={`flex flex-col bg-background ${className ?? 'h-screen'}`}>
+    <div
+      className={`flex flex-col bg-background ${
+        isFullscreen ? 'fixed inset-0 z-50 h-screen' : (className ?? 'h-full')
+      }`}
+    >
       {/* Toolbar */}
       <div className="shrink-0 border-b border-border">{toolbar}</div>
 
-      {/* Main content: editor + chat */}
+      {/* Main content: queue rail + editor + chat */}
       <div ref={containerRef} className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Queue rail (review workspace only) */}
+        {queueRail && (
+          <>
+            <div
+              className="shrink-0 border-r border-border overflow-hidden transition-[width] duration-200 ease-in-out"
+              style={{ width: queueExpanded ? QUEUE_EXPANDED_WIDTH : QUEUE_COLLAPSED_WIDTH }}
+            >
+              {queueExpanded ? (
+                <div className="h-full flex flex-col" style={{ width: QUEUE_EXPANDED_WIDTH }}>
+                  <div className="shrink-0 flex items-center justify-between px-2 py-1.5 border-b border-border">
+                    <span className="text-xs font-medium text-muted-foreground px-1">Queue</span>
+                    <button
+                      onClick={toggleQueue}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      title="Collapse queue"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m11 17-5-5 5-5" />
+                        <path d="m18 17-5-5 5-5" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto">{queueRail}</div>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center py-2 gap-2">
+                  <button
+                    onClick={toggleQueue}
+                    className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    title="Expand queue"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect width="18" height="18" x="3" y="3" rx="2" />
+                      <path d="M9 3v18" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         {/* Editor panel */}
         <div className="flex-1 min-w-0 overflow-y-auto">{editor}</div>
 
@@ -86,10 +182,7 @@ export function WorkspaceLayout({
 
         {/* Chat panel */}
         {!chatCollapsed && (
-          <div
-            className="shrink-0 overflow-y-auto border-l border-border"
-            style={{ width: chatWidth }}
-          >
+          <div className="shrink-0 border-l border-border" style={{ width: chatWidth }}>
             {chat}
           </div>
         )}

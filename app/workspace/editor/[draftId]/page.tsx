@@ -151,6 +151,7 @@ function WorkspaceEditorPage() {
         userRole={userRole}
         readOnly={!isOwner}
         onContentChange={handleContentChange}
+        backLabel="Back to drafts"
         toolbarActions={
           isOwner ? (
             <button

@@ -2,6 +2,10 @@
 
 /**
  * WorkspaceToolbar — top bar with mode switcher, version selector, and nav.
+ *
+ * Supports two back-nav modes:
+ * - `backUrl` (default: "/workspace/author") — renders a Next.js Link
+ * - `onBack` callback — renders a button (used by review workspace overlay)
  */
 
 import { ArrowLeft } from 'lucide-react';
@@ -18,6 +22,12 @@ interface WorkspaceToolbarProps {
   onVersionChange?: (version: number) => void;
   compareVersion?: number;
   onCompareVersionChange?: (version: number) => void;
+  /** If provided, renders a button that calls this instead of a Link. */
+  onBack?: () => void;
+  /** Label shown next to the back arrow (e.g. "Back to queue"). */
+  backLabel?: string;
+  /** URL for the back link (ignored when onBack is provided). Default: /workspace/author */
+  backUrl?: string;
 }
 
 const MODE_LABELS: Record<EditorMode, string> = {
@@ -36,15 +46,29 @@ export function WorkspaceToolbar({
   onVersionChange,
   compareVersion,
   onCompareVersionChange,
+  onBack,
+  backLabel,
+  backUrl = '/workspace/author',
 }: WorkspaceToolbarProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-2">
       {/* Back */}
-      <Link href="/workspace/author" className="shrink-0">
-        <button className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+      {onBack ? (
+        <button
+          onClick={onBack}
+          className="shrink-0 flex items-center gap-1.5 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
           <ArrowLeft className="h-4 w-4" />
+          {backLabel && <span className="text-xs font-medium">{backLabel}</span>}
         </button>
-      </Link>
+      ) : (
+        <Link href={backUrl} className="shrink-0">
+          <button className="flex items-center gap-1.5 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            {backLabel && <span className="text-xs font-medium">{backLabel}</span>}
+          </button>
+        </Link>
+      )}
 
       {/* Title + type */}
       <div className="flex items-center gap-2 min-w-0 flex-1">

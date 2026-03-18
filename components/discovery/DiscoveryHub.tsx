@@ -13,9 +13,10 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { posthog } from '@/lib/posthog';
 import { DiscoveryFab } from './DiscoveryFab';
+import { DiscoveryHubContext } from './DiscoveryHubContext';
 import { DiscoveryPanel } from './DiscoveryPanel';
 
-export function DiscoveryHub() {
+export function DiscoveryHub({ hideFab = false }: { hideFab?: boolean }) {
   const [open, setOpen] = useState(false);
   const [openedAt, setOpenedAt] = useState<number | null>(null);
   const router = useRouter();
@@ -52,14 +53,14 @@ export function DiscoveryHub() {
   );
 
   return (
-    <>
-      <DiscoveryFab onClick={handleOpen} progress={explorationProgress.percent} />
+    <DiscoveryHubContext.Provider value={{ openHub: handleOpen }}>
+      {!hideFab && <DiscoveryFab onClick={handleOpen} progress={explorationProgress.percent} />}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" showCloseButton className="w-[340px] sm:w-[380px] p-0">
           <DiscoveryPanel onStartTour={handleStartTour} onClose={handleClose} />
         </SheetContent>
       </Sheet>
-    </>
+    </DiscoveryHubContext.Provider>
   );
 }

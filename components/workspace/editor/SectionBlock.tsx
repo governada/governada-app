@@ -155,24 +155,28 @@ export const SectionBlock = Node.create<SectionBlockOptions>({
 /** Parse **bold**, *italic*, and [links](url) inline markers into Tiptap mark objects. */
 function parseInlineMarks(text: string): object[] {
   const result: object[] = [];
-  // Match [link](url), **bold**, *italic*, or plain text segments
-  const regex = /(\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|([^[*]+))/g;
+  // Match ![image](url), [link](url), **bold**, *italic*, or plain text
+  const regex =
+    /(!\[([^\]]*?)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|([^[!*]+))/g;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
-    if (match[2] && match[3]) {
+    if (match[1] && match[1].startsWith('!')) {
+      // Image: ![alt](url)
+      result.push({ type: 'image', attrs: { src: match[3], alt: match[2] || '' } });
+    } else if (match[4] && match[5]) {
       // Link: [text](url)
       result.push({
         type: 'text',
-        text: match[2],
-        marks: [{ type: 'link', attrs: { href: match[3], target: '_blank' } }],
+        text: match[4],
+        marks: [{ type: 'link', attrs: { href: match[5], target: '_blank' } }],
       });
-    } else if (match[4]) {
-      result.push({ type: 'text', text: match[4], marks: [{ type: 'bold' }] });
-    } else if (match[5]) {
-      result.push({ type: 'text', text: match[5], marks: [{ type: 'italic' }] });
     } else if (match[6]) {
-      result.push({ type: 'text', text: match[6] });
+      result.push({ type: 'text', text: match[6], marks: [{ type: 'bold' }] });
+    } else if (match[7]) {
+      result.push({ type: 'text', text: match[7], marks: [{ type: 'italic' }] });
+    } else if (match[8]) {
+      result.push({ type: 'text', text: match[8] });
     }
   }
 
@@ -194,12 +198,26 @@ function markdownToContent(text: string): object[] {
 
   const flushParagraph = () => {
     if (currentParagraph.length > 0) {
-      const joined = currentParagraph.join('\n');
-      if (joined.trim()) {
-        blocks.push({
-          type: 'paragraph',
-          content: parseInlineMarks(joined.trim()),
-        });
+      if (currentParagraph.length === 1) {
+        const text = currentParagraph[0].trim();
+        if (text) {
+          blocks.push({ type: 'paragraph', content: parseInlineMarks(text) });
+        }
+      } else {
+        // Multiple consecutive lines = soft breaks between them
+        const content: object[] = [];
+        for (let i = 0; i < currentParagraph.length; i++) {
+          const lineText = currentParagraph[i].trim();
+          if (lineText) {
+            content.push(...parseInlineMarks(lineText));
+          }
+          if (i < currentParagraph.length - 1) {
+            content.push({ type: 'hardBreak' });
+          }
+        }
+        if (content.length > 0) {
+          blocks.push({ type: 'paragraph', content });
+        }
       }
       currentParagraph = [];
     }
@@ -255,6 +273,14 @@ function markdownToContent(text: string): object[] {
     if (/^[-*_]{3,}$/.test(trimmed)) {
       flushAll();
       blocks.push({ type: 'horizontalRule' });
+      continue;
+    }
+
+    // Standalone image: ![alt](url)
+    const imageMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imageMatch) {
+      flushAll();
+      blocks.push({ type: 'image', attrs: { src: imageMatch[2], alt: imageMatch[1] || '' } });
       continue;
     }
 

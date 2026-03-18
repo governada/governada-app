@@ -39,6 +39,7 @@ export interface WalletContextType {
   balanceAda: number | null;
   error: WalletError | null;
   availableWallets: string[];
+  connectMethod: 'extension' | 'peer' | null;
   connect: (walletName: string) => Promise<void>;
   disconnect: () => void;
   signMessage: (message: string) => Promise<{ signature: string; key: string } | null>;

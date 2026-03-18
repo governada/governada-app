@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { subscribeToPush } from '@/lib/pushSubscription';
 import { getStoredSession } from '@/lib/supabaseAuth';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { PeerConnectPanel } from '@/components/wallet/PeerConnectPanel';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,7 @@ import {
   RefreshCw,
   ArrowLeft,
   ExternalLink,
+  QrCode,
 } from 'lucide-react';
 import Link from 'next/link';
 import { posthog } from '@/lib/posthog';
@@ -79,10 +82,29 @@ export function WalletConnectModal({
   } = useWallet();
 
   const isMobile = useIsMobile();
+  const peerConnectEnabled = useFeatureFlag('peer_connect');
   const [step, setStep] = useState<Step>('connect');
   const [authenticating, setAuthenticating] = useState(false);
   const [pushRequested, setPushRequested] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+  const [showPeerConnect, setShowPeerConnect] = useState(false);
+
+  const handlePeerConnected = useCallback(
+    async (walletName: string) => {
+      // CIP-45 has injected the wallet API into window.cardano[walletName]
+      // Use the same connect flow as browser extensions
+      posthog.capture('wallet_selected', { wallet_name: walletName, method: 'peer_connect' });
+      clearError();
+      setSelectedWallet(walletName);
+      setShowPeerConnect(false);
+      try {
+        await connect(walletName);
+      } catch {
+        // connect() sets error state internally
+      }
+    },
+    [connect, clearError],
+  );
 
   useEffect(() => {
     if (open) {
@@ -189,7 +211,10 @@ export function WalletConnectModal({
     if (step === 'sign' || step === 'connect') {
       disconnect();
     }
-    setTimeout(() => setStep('connect'), 300);
+    setTimeout(() => {
+      setStep('connect');
+      setShowPeerConnect(false);
+    }, 300);
   };
 
   // On mobile, auto-close after success to reduce friction
@@ -237,23 +262,49 @@ export function WalletConnectModal({
                 </div>
 
                 <div className="space-y-2 py-2">
-                  {availableWallets.length > 0 ? (
-                    sortWallets(availableWallets).map((walletName) => (
-                      <Button
-                        key={walletName}
-                        variant="outline"
-                        className="w-full justify-start gap-2 h-12"
-                        onClick={() => handleWalletSelect(walletName)}
-                        disabled={connecting}
-                      >
-                        {connecting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Wallet className="h-4 w-4" />
-                        )}
-                        <span className="capitalize">{walletName}</span>
-                      </Button>
-                    ))
+                  {showPeerConnect && peerConnectEnabled ? (
+                    <PeerConnectPanel
+                      onConnected={handlePeerConnected}
+                      onCancel={() => setShowPeerConnect(false)}
+                      isMobile={isMobile}
+                    />
+                  ) : availableWallets.length > 0 ? (
+                    <>
+                      {sortWallets(availableWallets).map((walletName) => (
+                        <Button
+                          key={walletName}
+                          variant="outline"
+                          className="w-full justify-start gap-2 h-12"
+                          onClick={() => handleWalletSelect(walletName)}
+                          disabled={connecting}
+                        >
+                          {connecting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wallet className="h-4 w-4" />
+                          )}
+                          <span className="capitalize">{walletName}</span>
+                        </Button>
+                      ))}
+                      {peerConnectEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+                          onClick={() => setShowPeerConnect(true)}
+                        >
+                          <QrCode className="h-3 w-3 inline mr-1" />
+                          Or scan QR code to connect mobile wallet
+                        </button>
+                      )}
+                    </>
+                  ) : peerConnectEnabled ? (
+                    <PeerConnectPanel
+                      onConnected={handlePeerConnected}
+                      onCancel={() => {
+                        onOpenChange(false);
+                      }}
+                      isMobile={isMobile}
+                    />
                   ) : (
                     <div className="text-center py-6 space-y-4">
                       <div className="text-muted-foreground">

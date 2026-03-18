@@ -17,6 +17,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { trackOnboarding, ONBOARDING_EVENTS } from '@/lib/funnel';
 import { useWallet } from '@/utils/wallet';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { PeerConnectPanel } from '@/components/wallet/PeerConnectPanel';
 import type { GovernancePassport } from '@/lib/passport';
 
 interface StageConnectProps {
@@ -40,6 +42,7 @@ export function StageConnect({ passport, onComplete, onGoBack }: StageConnectPro
 
   const [authenticating, setAuthenticating] = useState(false);
   const [authComplete, setAuthComplete] = useState(false);
+  const peerConnectEnabled = useFeatureFlag('peer_connect');
 
   const isActiveStage = passport.stage === 3;
 
@@ -98,6 +101,11 @@ export function StageConnect({ passport, onComplete, onGoBack }: StageConnectPro
     await connect(walletName);
   };
 
+  const handlePeerConnected = async (walletName: string) => {
+    clearError();
+    await connect(walletName);
+  };
+
   // No wallets detected
   if (availableWallets.length === 0) {
     return (
@@ -107,34 +115,50 @@ export function StageConnect({ passport, onComplete, onGoBack }: StageConnectPro
         variants={staggerContainer}
         className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 text-center"
       >
-        <motion.div variants={fadeInUp} className="space-y-3 max-w-md">
-          <div className="flex items-center justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10">
-              <AlertCircle className="h-8 w-8 text-amber-400" />
-            </div>
-          </div>
-          <h2 className="text-xl font-bold">No Wallet Detected</h2>
-          <p className="text-sm text-muted-foreground">
-            We couldn&apos;t find a Cardano wallet extension in your browser. Make sure you&apos;ve
-            installed and enabled it, then refresh the page.
-          </p>
-        </motion.div>
+        {peerConnectEnabled ? (
+          <motion.div variants={fadeInUp} className="w-full max-w-md space-y-4">
+            <h2 className="text-xl font-bold">Connect Your Wallet</h2>
+            <p className="text-sm text-muted-foreground">
+              Scan the QR code or tap your wallet to connect.
+            </p>
+            <PeerConnectPanel
+              onConnected={handlePeerConnected}
+              onCancel={onGoBack}
+              isMobile={typeof window !== 'undefined' && window.innerWidth < 640}
+            />
+          </motion.div>
+        ) : (
+          <>
+            <motion.div variants={fadeInUp} className="space-y-3 max-w-md">
+              <div className="flex items-center justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10">
+                  <AlertCircle className="h-8 w-8 text-amber-400" />
+                </div>
+              </div>
+              <h2 className="text-xl font-bold">No Wallet Detected</h2>
+              <p className="text-sm text-muted-foreground">
+                We couldn&apos;t find a Cardano wallet extension in your browser. Make sure
+                you&apos;ve installed and enabled it, then refresh the page.
+              </p>
+            </motion.div>
 
-        <motion.div variants={fadeInUp} className="flex flex-col gap-2">
-          <Button variant="outline" onClick={() => window.location.reload()} className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Refresh Page
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onGoBack}
-            className="gap-1 text-muted-foreground"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            Back to wallet setup
-          </Button>
-        </motion.div>
+            <motion.div variants={fadeInUp} className="flex flex-col gap-2">
+              <Button variant="outline" onClick={() => window.location.reload()} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Refresh Page
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onGoBack}
+                className="gap-1 text-muted-foreground"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                Back to wallet setup
+              </Button>
+            </motion.div>
+          </>
+        )}
       </motion.div>
     );
   }

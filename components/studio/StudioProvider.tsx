@@ -1,12 +1,23 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+/**
+ * StudioProvider — backwards-compatible adapter over the Zustand workspace store.
+ *
+ * Provides the same `StudioContextValue` interface via React Context so existing
+ * consumers using `useStudio()` / `useStudioSafe()` keep working without changes.
+ *
+ * TODO: Remove this adapter once all consumers migrate to useWorkspace()
+ */
+
+import { createContext, useContext, useCallback, type ReactNode } from 'react';
+import { useWorkspaceStore } from '@/lib/workspace/store';
+import type { PanelId } from '@/lib/workspace/store';
 
 interface StudioState {
   panelOpen: boolean;
   activePanel: 'agent' | 'intel' | 'notes' | 'vote';
   panelWidth: number;
-  focusLevel: 0 | 1 | 2; // 0=normal, 1=panel hidden, 2=zen
+  focusLevel: 0 | 1 | 2;
   isFullWidth: boolean;
   panelOpenBeforeFullWidth: boolean;
 }
@@ -33,69 +44,69 @@ export function useStudioSafe() {
 }
 
 export function StudioProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<StudioState>({
-    panelOpen: true,
-    activePanel: 'agent',
-    panelWidth: 380,
-    focusLevel: 0,
-    isFullWidth: false,
-    panelOpenBeforeFullWidth: true,
-  });
+  // Read from Zustand store
+  const contextPanel = useWorkspaceStore((s) => s.contextPanel);
+  const focusLevel = useWorkspaceStore((s) => s.focusLevel);
+  const storeTogglePanel = useWorkspaceStore((s) => s.togglePanel);
+  const storeClosePanel = useWorkspaceStore((s) => s.closePanel);
+  const storeSetFocusLevel = useWorkspaceStore((s) => s.setFocusLevel);
 
-  const togglePanel = useCallback((panel: 'agent' | 'intel' | 'notes' | 'vote') => {
-    setState((prev) => {
-      if (prev.panelOpen && prev.activePanel === panel) {
-        return { ...prev, panelOpen: false };
-      }
-      return { ...prev, panelOpen: true, activePanel: panel };
-    });
-  }, []);
+  // Map Zustand state to the legacy StudioState shape
+  const panelOpen = contextPanel !== null;
+  const activePanel: PanelId = contextPanel ?? 'agent';
+
+  // panelWidth is no longer stored in Zustand (react-resizable-panels handles its own persistence).
+  // Keep a static default for the legacy interface.
+  const panelWidth = 380;
+
+  // isFullWidth maps to focusLevel >= 1 in the new model
+  const isFullWidth = focusLevel >= 1;
+
+  // Legacy toggle: same panel toggles off; different panel switches to it
+  const togglePanel = useCallback(
+    (panel: 'agent' | 'intel' | 'notes' | 'vote') => {
+      storeTogglePanel(panel);
+    },
+    [storeTogglePanel],
+  );
 
   const closePanel = useCallback(() => {
-    setState((prev) => ({ ...prev, panelOpen: false }));
+    storeClosePanel();
+  }, [storeClosePanel]);
+
+  // setPanelWidth is a no-op — react-resizable-panels handles sizing now
+  const setPanelWidth = useCallback((_width: number) => {
+    // No-op: panel width managed by react-resizable-panels
   }, []);
 
-  const setPanelWidth = useCallback((width: number) => {
-    setState((prev) => ({ ...prev, panelWidth: Math.max(280, Math.min(width, 600)) }));
-  }, []);
-
-  const setFocusLevel = useCallback((level: 0 | 1 | 2) => {
-    setState((prev) => ({
-      ...prev,
-      focusLevel: level,
-      panelOpen: level === 0 ? prev.panelOpen : false,
-    }));
-  }, []);
+  const setFocusLevel = useCallback(
+    (level: 0 | 1 | 2) => {
+      storeSetFocusLevel(level);
+    },
+    [storeSetFocusLevel],
+  );
 
   const toggleFullWidth = useCallback(() => {
-    setState((prev) => {
-      if (!prev.isFullWidth) {
-        // Entering full-width: save current panel state, close panel
-        return {
-          ...prev,
-          isFullWidth: true,
-          panelOpenBeforeFullWidth: prev.panelOpen,
-          panelOpen: false,
-        };
-      } else {
-        // Exiting full-width: restore previous panel state
-        return { ...prev, isFullWidth: false, panelOpen: prev.panelOpenBeforeFullWidth };
-      }
-    });
-  }, []);
+    if (isFullWidth) {
+      storeSetFocusLevel(0);
+    } else {
+      storeSetFocusLevel(1);
+    }
+  }, [isFullWidth, storeSetFocusLevel]);
 
-  return (
-    <StudioContext.Provider
-      value={{
-        ...state,
-        togglePanel,
-        closePanel,
-        setPanelWidth,
-        setFocusLevel,
-        toggleFullWidth,
-      }}
-    >
-      {children}
-    </StudioContext.Provider>
-  );
+  const value: StudioContextValue = {
+    panelOpen,
+    activePanel,
+    panelWidth,
+    focusLevel,
+    isFullWidth,
+    panelOpenBeforeFullWidth: true, // Legacy field, no longer meaningful
+    togglePanel,
+    closePanel,
+    setPanelWidth,
+    setFocusLevel,
+    toggleFullWidth,
+  };
+
+  return <StudioContext.Provider value={value}>{children}</StudioContext.Provider>;
 }

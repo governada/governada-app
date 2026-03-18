@@ -30,6 +30,7 @@ import {
   buildConstitutionEditorContext,
   injectInlineComment,
 } from '@/components/studio/studioEditorHelpers';
+import { WorkspacePanels } from '@/components/workspace/layout/WorkspacePanels';
 import { ConstitutionEditor } from '@/components/workspace/editor/ConstitutionEditor';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { AmendmentMetaStrip } from '@/components/workspace/author/AmendmentMetaStrip';
@@ -484,41 +485,34 @@ function AmendmentEditorPage() {
       )}
 
       <StudioProvider>
-        <div className="flex flex-col h-screen">
-          {/* Studio Header — full controls like Review studio */}
-          <AmendmentHeaderWrapper
-            title={draft.title || 'Constitutional Amendment'}
-            mode={mode}
-            onModeChange={handleModeChange}
-            isOwner={isOwner}
-          />
-
-          {/* Main content area */}
-          <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Main editor area (scrollable) */}
-            <div className="flex-1 min-w-0 overflow-y-auto">
-              <ConstitutionEditor
-                constitutionNodes={CONSTITUTION_NODES}
-                existingChanges={existingChanges}
-                mode={mode}
-                readOnly={readOnly}
-                onChangesUpdate={readOnly ? undefined : handleChangesUpdate}
-                onEditorReady={handleConstitutionEditorReady}
-                onSlashCommand={handleSlashCommand}
-                onCommand={handleCommand}
-                onDiffAccept={handleDiffAccept}
-                onDiffReject={handleDiffReject}
-                currentUserId={stakeAddress ?? 'anonymous'}
-              />
-            </div>
-
-            {/* Studio Panel (on-demand right panel) */}
-            <AmendmentPanelWrapper agentContent={agentChatNode} intelContent={intelNode} />
-          </div>
-
-          {/* Studio Action Bar — panel toggles + status + explorer */}
-          <AmendmentActionBarWrapper statusInfo={statusInfo} />
-        </div>
+        <WorkspacePanels
+          layoutId="amendment"
+          toolbar={
+            <AmendmentHeaderWrapper
+              title={draft.title || 'Constitutional Amendment'}
+              mode={mode}
+              onModeChange={handleModeChange}
+              isOwner={isOwner}
+            />
+          }
+          main={
+            <ConstitutionEditor
+              constitutionNodes={CONSTITUTION_NODES}
+              existingChanges={existingChanges}
+              mode={mode}
+              readOnly={readOnly}
+              onChangesUpdate={readOnly ? undefined : handleChangesUpdate}
+              onEditorReady={handleConstitutionEditorReady}
+              onSlashCommand={handleSlashCommand}
+              onCommand={handleCommand}
+              onDiffAccept={handleDiffAccept}
+              onDiffReject={handleDiffReject}
+              currentUserId={stakeAddress ?? 'anonymous'}
+            />
+          }
+          context={<AmendmentPanelWrapper agentContent={agentChatNode} intelContent={intelNode} />}
+          statusBar={<AmendmentActionBarWrapper statusInfo={statusInfo} />}
+        />
       </StudioProvider>
     </>
   );

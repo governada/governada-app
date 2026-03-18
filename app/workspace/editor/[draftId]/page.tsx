@@ -28,6 +28,7 @@ import {
   buildEditorContext,
   injectInlineComment,
 } from '@/components/studio/studioEditorHelpers';
+import { WorkspacePanels } from '@/components/workspace/layout/WorkspacePanels';
 import { ProposalEditor, injectProposedEdit } from '@/components/workspace/editor/ProposalEditor';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { StatusBar } from '@/components/workspace/layout/StatusBar';
@@ -358,56 +359,49 @@ function WorkspaceEditorPage() {
       )}
 
       <StudioProvider>
-        <div className="flex flex-col h-screen">
-          {/* Studio Header */}
-          <StudioHeader
-            backLabel="Back to drafts"
-            backHref="/workspace/author"
-            title={draft.title || 'Untitled'}
-            proposalType={typeLabel}
-            showModeSwitch={isOwner}
-            mode={mode}
-            onModeChange={isOwner ? setMode : undefined}
-            actions={saveVersionButton}
-          />
-
-          {/* Main content area */}
-          <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Editor area (scrollable) */}
-            <div className="flex-1 min-w-0 overflow-y-auto">
-              <div className="max-w-3xl mx-auto px-6 py-6">
-                <ProposalEditor
-                  content={content}
-                  mode={mode}
-                  readOnly={readOnly || mode === 'review'}
-                  onContentChange={readOnly ? undefined : handleContentChange}
-                  onSlashCommand={handleSlashCommand}
-                  onCommand={handleCommand}
-                  onDiffAccept={(editId) => {
-                    posthog.capture('workspace_inline_edit_accepted', {
-                      proposal_id: draftId,
-                      edit_id: editId,
-                    });
-                  }}
-                  onDiffReject={(editId) => {
-                    posthog.capture('workspace_inline_edit_rejected', {
-                      proposal_id: draftId,
-                      edit_id: editId,
-                    });
-                  }}
-                  currentUserId={stakeAddress ?? 'anonymous'}
-                  onEditorReady={handleEditorReady}
-                />
-              </div>
+        <WorkspacePanels
+          layoutId="editor"
+          toolbar={
+            <StudioHeader
+              backLabel="Back to drafts"
+              backHref="/workspace/author"
+              title={draft.title || 'Untitled'}
+              proposalType={typeLabel}
+              showModeSwitch={isOwner}
+              mode={mode}
+              onModeChange={isOwner ? setMode : undefined}
+              actions={saveVersionButton}
+            />
+          }
+          main={
+            <div className="max-w-3xl mx-auto px-6 py-6">
+              <ProposalEditor
+                content={content}
+                mode={mode}
+                readOnly={readOnly || mode === 'review'}
+                onContentChange={readOnly ? undefined : handleContentChange}
+                onSlashCommand={handleSlashCommand}
+                onCommand={handleCommand}
+                onDiffAccept={(editId) => {
+                  posthog.capture('workspace_inline_edit_accepted', {
+                    proposal_id: draftId,
+                    edit_id: editId,
+                  });
+                }}
+                onDiffReject={(editId) => {
+                  posthog.capture('workspace_inline_edit_rejected', {
+                    proposal_id: draftId,
+                    edit_id: editId,
+                  });
+                }}
+                currentUserId={stakeAddress ?? 'anonymous'}
+                onEditorReady={handleEditorReady}
+              />
             </div>
-
-            {/* Studio Panel (on-demand right panel) */}
-            <AuthorPanelWrapper agentContent={agentChatNode} />
-          </div>
-
-          {/* Studio Action Bar */}
-          <AuthorActionBarWrapper statusInfo={statusBarNode} />
-        </div>
+          }
+          context={<AuthorPanelWrapper agentContent={agentChatNode} />}
+          statusBar={<AuthorActionBarWrapper statusInfo={statusBarNode} />}
+        />
       </StudioProvider>
     </>
   );

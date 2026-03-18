@@ -1,6 +1,10 @@
 'use client';
 
 /**
+ * @deprecated Use `WorkspacePanels` instead. This component uses custom drag-resize
+ * logic that is superseded by react-resizable-panels in WorkspacePanels.
+ * Kept for backwards compatibility during migration.
+ *
  * WorkspaceLayout — resizable two-panel layout for the governance workspace.
  *
  * Full viewport takeover (fixed inset-0) by default — the site sidebar

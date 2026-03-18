@@ -18,6 +18,7 @@ import { StudioPanel } from '@/components/studio/StudioPanel';
 import { buildEditorContext, injectInlineComment } from '@/components/studio/studioEditorHelpers';
 import { SearchPopover } from '@/components/studio/SearchPopover';
 import { VotePanel } from '@/components/studio/VotePanel';
+import { WorkspacePanels } from '@/components/workspace/layout/WorkspacePanels';
 import { ProposalEditor, injectProposedEdit } from '@/components/workspace/editor/ProposalEditor';
 import {
   AmendmentReviewWrapper,
@@ -510,143 +511,149 @@ function StudioReviewInner({
   );
 
   return (
-    <div className="flex flex-col h-screen">
-      {/* Studio Header */}
-      <StudioHeader
-        backLabel="governada"
-        backHref="/workspace"
-        title={selectedItem.title || 'Untitled'}
-        proposalType={typeLabel}
-        queueProgress={{ current: selectedIndex + 1, total: items.length }}
-        onQueueJump={handleQueueJump}
-        onPrev={selectedIndex > 0 ? goPrev : undefined}
-        onNext={selectedIndex < items.length - 1 ? goNext : undefined}
-        queueLabels={queueLabels}
-        segmentBadge={segmentBadge}
-        notificationCount={unreadCount}
-        actions={
-          <div className="flex items-center rounded-md border border-border bg-muted/30 p-0.5">
-            <button className="px-3 py-1 text-[11px] font-medium rounded-sm bg-background text-foreground shadow-sm cursor-default">
-              Review
-            </button>
-            <button
-              disabled
-              className="px-3 py-1 text-[11px] font-medium rounded-sm text-muted-foreground/40 cursor-not-allowed"
-              title="No previous revisions available for comparison"
-            >
-              Diff
-            </button>
-          </div>
+    <>
+      <WorkspacePanels
+        layoutId="review"
+        toolbar={
+          <>
+            <StudioHeader
+              backLabel="governada"
+              backHref="/workspace"
+              title={selectedItem.title || 'Untitled'}
+              proposalType={typeLabel}
+              queueProgress={{ current: selectedIndex + 1, total: items.length }}
+              onQueueJump={handleQueueJump}
+              onPrev={selectedIndex > 0 ? goPrev : undefined}
+              onNext={selectedIndex < items.length - 1 ? goNext : undefined}
+              queueLabels={queueLabels}
+              segmentBadge={segmentBadge}
+              notificationCount={unreadCount}
+              actions={
+                <div className="flex items-center rounded-md border border-border bg-muted/30 p-0.5">
+                  <button className="px-3 py-1 text-[11px] font-medium rounded-sm bg-background text-foreground shadow-sm cursor-default">
+                    Review
+                  </button>
+                  <button
+                    disabled
+                    className="px-3 py-1 text-[11px] font-medium rounded-sm text-muted-foreground/40 cursor-not-allowed"
+                    title="No previous revisions available for comparison"
+                  >
+                    Diff
+                  </button>
+                </div>
+              }
+              panelOpen={panelOpen}
+              activePanel={activePanel}
+              onPanelToggle={togglePanel}
+              isFullWidth={isFullWidth}
+              onFullWidthToggle={toggleFullWidth}
+              onSearchToggle={() => setSearchOpen(!searchOpen)}
+              searchOpen={searchOpen}
+            />
+
+            {/* Search popover */}
+            <SearchPopover
+              isOpen={searchOpen}
+              onClose={() => setSearchOpen(false)}
+              proposalContent={itemContent}
+              queueItems={items.map((item) => ({
+                txHash: item.txHash,
+                title: item.title,
+                abstract: item.abstract,
+              }))}
+              onSelectQueueItem={(txHash: string) => {
+                const idx = items.findIndex((item) => item.txHash === txHash);
+                if (idx >= 0) {
+                  onSelectIndex(idx);
+                  setSearchOpen(false);
+                }
+              }}
+            />
+          </>
         }
-        panelOpen={panelOpen}
-        activePanel={activePanel}
-        onPanelToggle={togglePanel}
-        isFullWidth={isFullWidth}
-        onFullWidthToggle={toggleFullWidth}
-        onSearchToggle={() => setSearchOpen(!searchOpen)}
-        searchOpen={searchOpen}
-      />
+        main={
+          <div className="flex h-full">
+            {/* Section TOC (floating left on xl+) */}
+            <SectionTOC />
 
-      {/* Search popover */}
-      <SearchPopover
-        isOpen={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        proposalContent={itemContent}
-        queueItems={items.map((item) => ({
-          txHash: item.txHash,
-          title: item.title,
-          abstract: item.abstract,
-        }))}
-        onSelectQueueItem={(txHash: string) => {
-          const idx = items.findIndex((item) => item.txHash === txHash);
-          if (idx >= 0) {
-            onSelectIndex(idx);
-            setSearchOpen(false);
-          }
-        }}
-      />
+            {/* Editor area */}
+            <div className="flex-1 min-w-0">
+              <div className={cn('mx-auto px-6 py-6', isFullWidth ? 'max-w-6xl' : 'max-w-4xl')}>
+                {/* Proposal metadata strip */}
+                <ProposalMetaStrip item={selectedItem} />
 
-      {/* Main content area */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Section TOC (floating left on xl+) */}
-        <SectionTOC />
-
-        {/* Editor area (scrollable) */}
-        <div className="flex-1 min-w-0 overflow-y-auto">
-          <div className={cn('mx-auto px-6 py-6', isFullWidth ? 'max-w-6xl' : 'max-w-4xl')}>
-            {/* Proposal metadata strip */}
-            <ProposalMetaStrip item={selectedItem} />
-
-            <div
-              key={`proposal-${selectedItem.txHash}-${selectedItem.proposalIndex}`}
-              className="animate-in fade-in duration-150"
-            >
-              {/* NewConstitution drafts use the amendment review wrapper */}
-              {currentDraft?.proposalType === 'NewConstitution' ? (
-                <AmendmentReviewWrapper
-                  draft={currentDraft}
-                  draftId={currentDraft.id}
-                  currentUserId={stakeAddress ?? undefined}
-                />
-              ) : (
-                <ProposalEditor
-                  content={itemContent}
-                  mode="review"
-                  readOnly={true}
-                  currentUserId={stakeAddress ?? 'anonymous'}
-                  onEditorReady={handleEditorReady}
-                  excludeFields={['title']}
-                />
-              )}
+                <div
+                  key={`proposal-${selectedItem.txHash}-${selectedItem.proposalIndex}`}
+                  className="animate-in fade-in duration-150"
+                >
+                  {/* NewConstitution drafts use the amendment review wrapper */}
+                  {currentDraft?.proposalType === 'NewConstitution' ? (
+                    <AmendmentReviewWrapper
+                      draft={currentDraft}
+                      draftId={currentDraft.id}
+                      currentUserId={stakeAddress ?? undefined}
+                    />
+                  ) : (
+                    <ProposalEditor
+                      content={itemContent}
+                      mode="review"
+                      readOnly={true}
+                      currentUserId={stakeAddress ?? 'anonymous'}
+                      onEditorReady={handleEditorReady}
+                      excludeFields={['title']}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Studio Panel (on-demand right panel) — hidden when full-width */}
-        {!isFullWidth && (
-          <StudioPanelWrapper
-            proposalId={selectedItem.txHash}
-            proposalType={selectedItem.proposalType}
-            proposalIndex={selectedItem.proposalIndex}
-            userRole={agentUserRole}
-            content={itemContent}
-            editorRef={editorRef}
-            readOnly={true}
-            interBodyVotes={selectedItem.interBodyVotes}
-            citizenSentiment={selectedItem.citizenSentiment}
-            voterId={voterId ?? null}
-            voteContent={voteContent}
-            existingVote={selectedItem.existingVote}
-            votingPowerSummary={estimatedVotingPower}
-            amendmentDraft={currentDraft}
+        }
+        context={
+          !isFullWidth ? (
+            <StudioPanelWrapper
+              proposalId={selectedItem.txHash}
+              proposalType={selectedItem.proposalType}
+              proposalIndex={selectedItem.proposalIndex}
+              userRole={agentUserRole}
+              content={itemContent}
+              editorRef={editorRef}
+              readOnly={true}
+              interBodyVotes={selectedItem.interBodyVotes}
+              citizenSentiment={selectedItem.citizenSentiment}
+              voterId={voterId ?? null}
+              voteContent={voteContent}
+              existingVote={selectedItem.existingVote}
+              votingPowerSummary={estimatedVotingPower}
+              amendmentDraft={currentDraft}
+            />
+          ) : undefined
+        }
+        statusBar={
+          <StudioActionBar
+            mode="review"
+            currentVote={currentVoted ? currentVoteChoice : null}
+            onVoteSelect={handleVoteSelect}
+            voteDisabled={currentVoted}
+            statusInfo={
+              <span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
+                <span>
+                  {progress.reviewed} of {progress.total} reviewed
+                </span>
+                {currentVoted && (
+                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span className="hidden sm:inline">Voted</span>
+                  </span>
+                )}
+                {selectedItem.isUrgent && !currentVoted && (
+                  <span className="inline-flex items-center gap-1 text-amber-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="hidden sm:inline">Urgent</span>
+                  </span>
+                )}
+              </span>
+            }
           />
-        )}
-      </div>
-
-      {/* Studio Action Bar */}
-      <StudioActionBar
-        mode="review"
-        currentVote={currentVoted ? currentVoteChoice : null}
-        onVoteSelect={handleVoteSelect}
-        voteDisabled={currentVoted}
-        statusInfo={
-          <span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
-            <span>
-              {progress.reviewed} of {progress.total} reviewed
-            </span>
-            {currentVoted && (
-              <span className="inline-flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" />
-                <span className="hidden sm:inline">Voted</span>
-              </span>
-            )}
-            {selectedItem.isUrgent && !currentVoted && (
-              <span className="inline-flex items-center gap-1 text-amber-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                <span className="hidden sm:inline">Urgent</span>
-              </span>
-            )}
-          </span>
         }
       />
 
@@ -657,7 +664,7 @@ function StudioReviewInner({
           Vote recorded — {voteToast.vote}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

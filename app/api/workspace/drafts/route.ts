@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { CreateDraftSchema } from '@/lib/api/schemas/workspace';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
+import { isPreviewAddress } from '@/lib/preview';
 import type { ProposalDraft } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
@@ -25,13 +26,45 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
   // Community-reviewable drafts mode: fetch by status (no owner filter)
   if (statusFilter) {
     const statuses = statusFilter.split(',').map((s) => s.trim());
-    const { data, error } = await admin
-      .from('proposal_drafts')
-      .select('*')
-      .in('status', statuses)
-      .is('preview_cohort_id', null)
-      .order('updated_at', { ascending: false })
-      .limit(50);
+
+    // Detect preview users: if the requester is a preview user, allow their
+    // cohort's drafts to appear alongside real (non-preview) drafts.
+    let previewCohortId: string | null = null;
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.slice(7);
+        const payloadStr = atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'));
+        const payload = JSON.parse(payloadStr);
+        if (payload.walletAddress && isPreviewAddress(payload.walletAddress)) {
+          const { data: session } = await admin
+            .from('preview_sessions')
+            .select('cohort_id')
+            .eq('user_id', payload.userId)
+            .eq('revoked', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (session) {
+            previewCohortId = session.cohort_id;
+          }
+        }
+      } catch {
+        /* ignore decode errors */
+      }
+    }
+
+    let query = admin.from('proposal_drafts').select('*').in('status', statuses);
+
+    if (previewCohortId) {
+      // Preview user: see their cohort's drafts + real drafts
+      query = query.or(`preview_cohort_id.eq.${previewCohortId},preview_cohort_id.is.null`);
+    } else {
+      // Real user: only see real drafts
+      query = query.is('preview_cohort_id', null);
+    }
+
+    const { data, error } = await query.order('updated_at', { ascending: false }).limit(50);
 
     if (error) {
       return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
@@ -68,6 +101,31 @@ export const POST = withRouteHandler(
     const body = CreateDraftSchema.parse(await request.json());
     const admin = getSupabaseAdmin();
 
+    // Tag preview drafts with the user's cohort so cohort members can see them
+    let previewCohortId: string | null = null;
+    if (isPreviewAddress(body.stakeAddress)) {
+      const { data: previewUser } = await admin
+        .from('users')
+        .select('id')
+        .eq('wallet_address', body.stakeAddress)
+        .maybeSingle();
+
+      if (previewUser) {
+        const { data: session } = await admin
+          .from('preview_sessions')
+          .select('cohort_id')
+          .eq('user_id', previewUser.id)
+          .eq('revoked', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (session) {
+          previewCohortId = session.cohort_id;
+        }
+      }
+    }
+
     // Insert the draft
     const { data: draft, error: draftError } = await admin
       .from('proposal_drafts')
@@ -81,6 +139,7 @@ export const POST = withRouteHandler(
         type_specific: body.typeSpecific ?? {},
         status: 'draft',
         current_version: 1,
+        ...(previewCohortId && { preview_cohort_id: previewCohortId }),
       })
       .select()
       .single();

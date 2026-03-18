@@ -61,11 +61,31 @@ async function patchJson<T>(url: string, body: unknown): Promise<T> {
 // ---------------------------------------------------------------------------
 
 /** List all drafts for a user */
-export function useDrafts(stakeAddress: string | null) {
+export function useDrafts(stakeAddress: string | null, options?: { includeArchived?: boolean }) {
+  const includeArchived = options?.includeArchived ?? false;
   return useQuery<{ drafts: ProposalDraft[] }>({
-    queryKey: ['author-drafts', stakeAddress],
-    queryFn: () =>
-      fetchJson(`/api/workspace/drafts?stakeAddress=${encodeURIComponent(stakeAddress!)}`),
+    queryKey: ['author-drafts', stakeAddress, { includeArchived }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set('stakeAddress', stakeAddress!);
+      if (includeArchived) params.set('includeArchived', 'true');
+      return fetchJson(`/api/workspace/drafts?${params.toString()}`);
+    },
+    enabled: !!stakeAddress,
+    staleTime: 30_000,
+  });
+}
+
+/** Response type for team drafts (includes memberRole) */
+interface ProposalDraftWithRole extends ProposalDraft {
+  memberRole?: string;
+}
+
+/** List drafts where user is a team member (not owner) */
+export function useTeamDrafts(stakeAddress: string | null) {
+  return useQuery<{ drafts: ProposalDraftWithRole[] }>({
+    queryKey: ['team-drafts', stakeAddress],
+    queryFn: () => fetchJson(`/api/workspace/drafts?memberOf=${encodeURIComponent(stakeAddress!)}`),
     enabled: !!stakeAddress,
     staleTime: 30_000,
   });
@@ -101,14 +121,19 @@ interface CreateDraftVars {
 export function useCreateDraft() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ draft: ProposalDraft }, Error, CreateDraftVars, { previous: unknown }>({
+  return useMutation<
+    { draft: ProposalDraft },
+    Error,
+    CreateDraftVars,
+    { snapshots: [readonly unknown[], unknown][] }
+  >({
     mutationFn: (body) => postJson<{ draft: ProposalDraft }>('/api/workspace/drafts', body),
 
     onMutate: async (vars) => {
-      const queryKey = ['author-drafts', vars.stakeAddress];
+      const queryFilter = { queryKey: ['author-drafts', vars.stakeAddress] };
 
-      await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData(queryKey);
+      await queryClient.cancelQueries(queryFilter);
+      const snapshots = queryClient.getQueriesData<{ drafts: ProposalDraft[] }>(queryFilter);
 
       const now = new Date().toISOString();
       const tempDraft: ProposalDraft = {
@@ -134,17 +159,17 @@ export function useCreateDraft() {
         updatedAt: now,
       };
 
-      queryClient.setQueryData(queryKey, (old: { drafts: ProposalDraft[] } | undefined) => ({
+      queryClient.setQueriesData<{ drafts: ProposalDraft[] }>(queryFilter, (old) => ({
         drafts: [tempDraft, ...(old?.drafts ?? [])],
       }));
 
-      return { previous };
+      return { snapshots };
     },
 
-    onError: (_err, vars, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(['author-drafts', vars.stakeAddress], context.previous);
-      }
+    onError: (_err, _vars, context) => {
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
       toastError('Failed to create draft');
     },
 

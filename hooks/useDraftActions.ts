@@ -82,33 +82,36 @@ async function fetchBlobWithAuth(url: string): Promise<Blob> {
 
 export function useArchiveDraft(stakeAddress: string | null) {
   const queryClient = useQueryClient();
+  const queryFilter = { queryKey: ['author-drafts', stakeAddress] };
 
-  return useMutation<{ draft: ProposalDraft }, Error, { draftId: string }, { previous: unknown }>({
+  return useMutation<
+    { draft: ProposalDraft },
+    Error,
+    { draftId: string },
+    { snapshots: [readonly unknown[], unknown][] }
+  >({
     mutationFn: ({ draftId }) =>
       patchJsonWithAuth(`/api/workspace/drafts/${encodeURIComponent(draftId)}/stage`, {
         targetStatus: 'archived',
       }),
 
     onMutate: async ({ draftId }) => {
-      const queryKey = ['author-drafts', stakeAddress];
-      await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData(queryKey);
+      await queryClient.cancelQueries(queryFilter);
+      const snapshots = queryClient.getQueriesData<{ drafts: ProposalDraft[] }>(queryFilter);
 
-      // Optimistically remove from the list (archived items are excluded by default)
-      queryClient.setQueryData(queryKey, (old: { drafts: ProposalDraft[] } | undefined) => {
+      // Optimistically remove from all matching draft lists
+      queryClient.setQueriesData<{ drafts: ProposalDraft[] }>(queryFilter, (old) => {
         if (!old) return old;
-        return {
-          drafts: old.drafts.filter((d) => d.id !== draftId),
-        };
+        return { drafts: old.drafts.filter((d) => d.id !== draftId) };
       });
 
-      return { previous };
+      return { snapshots };
     },
 
     onError: (_err, _vars, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(['author-drafts', stakeAddress], context.previous);
-      }
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
       toastError('Failed to archive draft');
     },
 
@@ -117,7 +120,7 @@ export function useArchiveDraft(stakeAddress: string | null) {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['author-drafts', stakeAddress] });
+      queryClient.invalidateQueries(queryFilter);
     },
   });
 }
@@ -128,20 +131,25 @@ export function useArchiveDraft(stakeAddress: string | null) {
 
 export function useUnarchiveDraft(stakeAddress: string | null) {
   const queryClient = useQueryClient();
+  const queryFilter = { queryKey: ['author-drafts', stakeAddress] };
 
-  return useMutation<{ draft: ProposalDraft }, Error, { draftId: string }, { previous: unknown }>({
+  return useMutation<
+    { draft: ProposalDraft },
+    Error,
+    { draftId: string },
+    { snapshots: [readonly unknown[], unknown][] }
+  >({
     mutationFn: ({ draftId }) =>
       patchJsonWithAuth(`/api/workspace/drafts/${encodeURIComponent(draftId)}/stage`, {
         targetStatus: 'draft',
       }),
 
     onMutate: async ({ draftId }) => {
-      const queryKey = ['author-drafts', stakeAddress];
-      await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData(queryKey);
+      await queryClient.cancelQueries(queryFilter);
+      const snapshots = queryClient.getQueriesData<{ drafts: ProposalDraft[] }>(queryFilter);
 
       // Optimistically set status to draft
-      queryClient.setQueryData(queryKey, (old: { drafts: ProposalDraft[] } | undefined) => {
+      queryClient.setQueriesData<{ drafts: ProposalDraft[] }>(queryFilter, (old) => {
         if (!old) return old;
         return {
           drafts: old.drafts.map((d) =>
@@ -150,13 +158,13 @@ export function useUnarchiveDraft(stakeAddress: string | null) {
         };
       });
 
-      return { previous };
+      return { snapshots };
     },
 
     onError: (_err, _vars, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(['author-drafts', stakeAddress], context.previous);
-      }
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
       toastError('Failed to unarchive draft');
     },
 
@@ -165,23 +173,26 @@ export function useUnarchiveDraft(stakeAddress: string | null) {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['author-drafts', stakeAddress] });
+      queryClient.invalidateQueries(queryFilter);
     },
   });
 }
 
 // ---------------------------------------------------------------------------
 // Duplicate
-// TODO: Backend endpoint POST /api/workspace/drafts/[draftId]/duplicate
-// is being built in parallel. This mutation calls the expected shape.
+// POST /api/workspace/drafts/[draftId]/duplicate
+// Body: { stakeAddress, titlePrefix? }
 // ---------------------------------------------------------------------------
 
 export function useDuplicateDraft(stakeAddress: string | null) {
   const queryClient = useQueryClient();
 
-  return useMutation<{ draft: ProposalDraft }, Error, { draftId: string }>({
-    mutationFn: ({ draftId }) =>
-      postJsonWithAuth(`/api/workspace/drafts/${encodeURIComponent(draftId)}/duplicate`, {}),
+  return useMutation<{ draft: ProposalDraft }, Error, { draftId: string; titlePrefix?: string }>({
+    mutationFn: ({ draftId, titlePrefix }) =>
+      postJsonWithAuth(`/api/workspace/drafts/${encodeURIComponent(draftId)}/duplicate`, {
+        stakeAddress,
+        ...(titlePrefix && { titlePrefix }),
+      }),
 
     onSuccess: () => {
       toastSuccess('Draft duplicated');
@@ -196,37 +207,42 @@ export function useDuplicateDraft(stakeAddress: string | null) {
 
 // ---------------------------------------------------------------------------
 // Delete
-// TODO: Backend endpoint DELETE /api/workspace/drafts/[draftId]
-// is being built in parallel. Only allowed when status === 'draft'.
+// DELETE /api/workspace/drafts/[draftId]?stakeAddress=...
+// Only allowed when status === 'draft'.
 // ---------------------------------------------------------------------------
 
 export function useDeleteDraft(stakeAddress: string | null) {
   const queryClient = useQueryClient();
+  const queryFilter = { queryKey: ['author-drafts', stakeAddress] };
 
-  return useMutation<{ success: boolean }, Error, { draftId: string }, { previous: unknown }>({
+  return useMutation<
+    { success: boolean },
+    Error,
+    { draftId: string },
+    { snapshots: [readonly unknown[], unknown][] }
+  >({
     mutationFn: ({ draftId }) =>
-      deleteJsonWithAuth(`/api/workspace/drafts/${encodeURIComponent(draftId)}`),
+      deleteJsonWithAuth(
+        `/api/workspace/drafts/${encodeURIComponent(draftId)}?stakeAddress=${encodeURIComponent(stakeAddress ?? '')}`,
+      ),
 
     onMutate: async ({ draftId }) => {
-      const queryKey = ['author-drafts', stakeAddress];
-      await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData(queryKey);
+      await queryClient.cancelQueries(queryFilter);
+      const snapshots = queryClient.getQueriesData<{ drafts: ProposalDraft[] }>(queryFilter);
 
-      // Optimistically remove from list
-      queryClient.setQueryData(queryKey, (old: { drafts: ProposalDraft[] } | undefined) => {
+      // Optimistically remove from all matching draft lists
+      queryClient.setQueriesData<{ drafts: ProposalDraft[] }>(queryFilter, (old) => {
         if (!old) return old;
-        return {
-          drafts: old.drafts.filter((d) => d.id !== draftId),
-        };
+        return { drafts: old.drafts.filter((d) => d.id !== draftId) };
       });
 
-      return { previous };
+      return { snapshots };
     },
 
     onError: (_err, _vars, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(['author-drafts', stakeAddress], context.previous);
-      }
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
       toastError('Failed to delete draft');
     },
 
@@ -235,15 +251,15 @@ export function useDeleteDraft(stakeAddress: string | null) {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['author-drafts', stakeAddress] });
+      queryClient.invalidateQueries(queryFilter);
     },
   });
 }
 
 // ---------------------------------------------------------------------------
 // Export
-// TODO: Backend endpoint GET /api/workspace/drafts/[draftId]/export?format=markdown|cip108
-// is being built in parallel. Downloads the file via blob URL.
+// GET /api/workspace/drafts/[draftId]/export?format=markdown|cip108
+// Downloads the file via blob URL.
 // ---------------------------------------------------------------------------
 
 export function useExportDraft() {
@@ -271,6 +287,37 @@ export function useExportDraft() {
 
     onError: () => {
       toastError('Failed to export draft');
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Transfer Ownership
+// PATCH /api/workspace/drafts/[draftId]/transfer
+// Body: { currentOwnerStakeAddress, newOwnerStakeAddress }
+// ---------------------------------------------------------------------------
+
+export function useTransferDraft(stakeAddress: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { draft: ProposalDraft },
+    Error,
+    { draftId: string; newOwnerStakeAddress: string }
+  >({
+    mutationFn: ({ draftId, newOwnerStakeAddress }) =>
+      patchJsonWithAuth(`/api/workspace/drafts/${encodeURIComponent(draftId)}/transfer`, {
+        currentOwnerStakeAddress: stakeAddress,
+        newOwnerStakeAddress,
+      }),
+
+    onSuccess: () => {
+      toastSuccess('Ownership transferred');
+      queryClient.invalidateQueries({ queryKey: ['author-drafts', stakeAddress] });
+    },
+
+    onError: () => {
+      toastError('Failed to transfer ownership');
     },
   });
 }

@@ -14,7 +14,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
-import { MessageSquarePlus, Send, X, Highlighter, Strikethrough, Flag } from 'lucide-react';
+import {
+  MessageSquarePlus,
+  Send,
+  X,
+  Highlighter,
+  Strikethrough,
+  Flag,
+  ShieldAlert,
+  Scale,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -30,6 +39,20 @@ const CATEGORY_COLORS: Record<CommentCategory, string> = {
   question: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
   suggestion: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
 };
+
+// ---------------------------------------------------------------------------
+// Constitutional references
+// ---------------------------------------------------------------------------
+
+const CONSTITUTION_REFS = [
+  { id: 'art1', article: 'Article I', summary: 'Tenets & Guardrails' },
+  { id: 'art2', article: 'Article II', summary: 'Community Governance Consent' },
+  { id: 'art3', article: 'Article III', summary: 'Governance Actions' },
+  { id: 'art4', article: 'Article IV', summary: 'Constitutional Committee' },
+  { id: 'art5', article: 'Article V', summary: 'Governance Principles' },
+  { id: 'art6', article: 'Article VI', summary: 'Hard Fork Process' },
+  { id: 'art7', article: 'Article VII', summary: 'Constitution Amendments' },
+];
 
 // ---------------------------------------------------------------------------
 // Props
@@ -57,7 +80,11 @@ export function SelectionToolbar({
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [commentCategory, setCommentCategory] = useState<CommentCategory>('note');
+  const [showRiskMenu, setShowRiskMenu] = useState(false);
+  const [showConstitutionMenu, setShowConstitutionMenu] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const riskMenuRef = useRef<HTMLDivElement>(null);
+  const constitutionMenuRef = useRef<HTMLDivElement>(null);
 
   // -------------------------------------------------------------------------
   // Selection detection — show/hide toolbar based on editor selection
@@ -161,7 +188,7 @@ export function SelectionToolbar({
   // -------------------------------------------------------------------------
 
   const handleQuickMark = useCallback(
-    (type: 'highlight' | 'redline' | 'flag') => {
+    (type: string, customText?: string) => {
       const { from, to } = editor.state.selection;
       if (from === to) return;
 
@@ -169,12 +196,23 @@ export function SelectionToolbar({
         highlight: 'note',
         redline: 'concern',
         flag: 'concern',
+        'risk-low': 'note',
+        'risk-medium': 'concern',
+        'risk-high': 'concern',
+        'risk-critical': 'concern',
+        constitution: 'note',
       };
       const textMap: Record<string, string> = {
         highlight: '[Highlighted for review]',
         redline: '[Suggested for deletion]',
         flag: '[Flagged as concerning]',
+        'risk-low': '[Low Risk]',
+        'risk-medium': '[Medium Risk]',
+        'risk-high': '[High Risk]',
+        'risk-critical': '[Critical Risk]',
       };
+
+      const text = customText || textMap[type] || `[${type}]`;
 
       const commentId = `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const wasEditable = editor.isEditable;
@@ -194,8 +232,8 @@ export function SelectionToolbar({
               author: currentUserName,
               authorId: currentUserId,
               timestamp: new Date().toISOString(),
-              category: categoryMap[type],
-              text: textMap[type],
+              category: categoryMap[type] || 'note',
+              text,
             }),
           );
           return true;
@@ -208,6 +246,13 @@ export function SelectionToolbar({
       onCommentCreated?.();
     },
     [editor, currentUserId, currentUserName, onCommentCreated],
+  );
+
+  const handleConstitutionRef = useCallback(
+    (ref: (typeof CONSTITUTION_REFS)[0]) => {
+      handleQuickMark('constitution', `[Ref: ${ref.article} — ${ref.summary}]`);
+    },
+    [handleQuickMark],
   );
 
   const handleCancel = useCallback(() => {
@@ -261,6 +306,79 @@ export function SelectionToolbar({
             >
               <Flag className="h-3.5 w-3.5" />
             </button>
+            <div className="w-px h-4 bg-border" />
+            {/* Risk severity */}
+            <div className="relative" ref={riskMenuRef}>
+              <button
+                onClick={() => {
+                  setShowRiskMenu(!showRiskMenu);
+                  setShowConstitutionMenu(false);
+                }}
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+                title="Tag risk severity"
+              >
+                <ShieldAlert className="h-3.5 w-3.5" />
+              </button>
+              {showRiskMenu && (
+                <div className="absolute bottom-full left-0 mb-1 rounded-lg border border-border bg-background shadow-lg p-1 min-w-[120px]">
+                  {(
+                    [
+                      { level: 'low', label: 'Low Risk', color: 'text-emerald-400' },
+                      { level: 'medium', label: 'Medium Risk', color: 'text-amber-400' },
+                      { level: 'high', label: 'High Risk', color: 'text-orange-400' },
+                      { level: 'critical', label: 'Critical Risk', color: 'text-rose-400' },
+                    ] as const
+                  ).map(({ level, label, color }) => (
+                    <button
+                      key={level}
+                      onClick={() => {
+                        handleQuickMark(`risk-${level}`);
+                        setShowRiskMenu(false);
+                      }}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-muted/50 cursor-pointer',
+                        color,
+                      )}
+                    >
+                      <ShieldAlert className="h-3 w-3" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Constitutional reference */}
+            <div className="relative" ref={constitutionMenuRef}>
+              <button
+                onClick={() => {
+                  setShowConstitutionMenu(!showConstitutionMenu);
+                  setShowRiskMenu(false);
+                }}
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+                title="Link to constitutional article"
+              >
+                <Scale className="h-3.5 w-3.5" />
+              </button>
+              {showConstitutionMenu && (
+                <div className="absolute bottom-full right-0 mb-1 rounded-lg border border-border bg-background shadow-lg p-1 min-w-[200px] max-h-[200px] overflow-y-auto">
+                  {CONSTITUTION_REFS.map((ref) => (
+                    <button
+                      key={ref.id}
+                      onClick={() => {
+                        handleConstitutionRef(ref);
+                        setShowConstitutionMenu(false);
+                      }}
+                      className="w-full flex flex-col gap-0.5 px-2 py-1.5 text-left rounded hover:bg-muted/50 cursor-pointer"
+                    >
+                      <span className="text-xs font-medium text-foreground">{ref.article}</span>
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {ref.summary}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="flex flex-col gap-2 p-2 min-w-[280px]">

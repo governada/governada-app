@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
+import Link from 'next/link';
 import {
   MessageSquare,
   BarChart3,
@@ -8,10 +9,11 @@ import {
   CheckCircle2,
   XCircle,
   MinusCircle,
+  Compass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type PanelId = 'agent' | 'intel' | 'notes';
+type PanelId = 'agent' | 'intel' | 'notes' | 'vote';
 
 interface StudioActionBarProps {
   mode?: 'review' | 'author';
@@ -122,24 +124,35 @@ export function StudioActionBar({
 
         <div className="flex-1" />
 
-        {/* Right: vote buttons */}
-        {currentVote ? (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Voted: {currentVote}
-          </span>
-        ) : (
-          <div className="flex items-center gap-2">
-            {(['Yes', 'No', 'Abstain'] as const).map((vote) => (
-              <VoteButton
-                key={vote}
-                vote={vote}
-                onClick={() => onVoteSelect?.(vote)}
-                disabled={voteDisabled}
-              />
-            ))}
-          </div>
-        )}
+        {/* Right: vote buttons + Explorer icon */}
+        <div className="flex items-center gap-2">
+          {currentVote ? (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Voted: {currentVote}
+            </span>
+          ) : (
+            <>
+              {(['Yes', 'No', 'Abstain'] as const).map((vote) => (
+                <VoteButton
+                  key={vote}
+                  vote={vote}
+                  onClick={() => onVoteSelect?.(vote)}
+                  disabled={voteDisabled}
+                />
+              ))}
+            </>
+          )}
+
+          {/* Governada Explorer */}
+          <Link
+            href="/"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ml-2"
+            title="Explore Governada"
+          >
+            <Compass className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     );
   }

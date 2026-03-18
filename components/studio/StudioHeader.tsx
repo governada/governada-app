@@ -13,6 +13,7 @@ import {
   StickyNote,
   PanelRight,
   Maximize2,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StudioQueueProgress } from './StudioQueueProgress';
@@ -39,10 +40,12 @@ interface StudioHeaderProps {
   /** User segment badge label */
   segmentBadge?: { label: string; color: string };
   panelOpen?: boolean;
-  activePanel?: 'agent' | 'intel' | 'notes' | null;
-  onPanelToggle?: (panel: 'agent' | 'intel' | 'notes') => void;
+  activePanel?: 'agent' | 'intel' | 'notes' | 'vote' | null;
+  onPanelToggle?: (panel: 'agent' | 'intel' | 'notes' | 'vote') => void;
   isFullWidth?: boolean;
   onFullWidthToggle?: () => void;
+  onSearchToggle?: () => void;
+  searchOpen?: boolean;
 }
 
 const MODE_LABELS: Record<string, string> = {
@@ -74,6 +77,8 @@ export function StudioHeader({
   onPanelToggle,
   isFullWidth,
   onFullWidthToggle,
+  onSearchToggle,
+  searchOpen,
 }: StudioHeaderProps) {
   useEffect(() => {
     if (!onPanelToggle) return;
@@ -266,7 +271,23 @@ export function StudioHeader({
       )}
 
       {/* Right side controls */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 relative">
+        {/* Search */}
+        {onSearchToggle && (
+          <button
+            onClick={onSearchToggle}
+            className={cn(
+              'p-1.5 rounded-md transition-colors cursor-pointer',
+              searchOpen
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            )}
+            title="Search (Ctrl+F)"
+          >
+            <Search className="h-3.5 w-3.5" />
+          </button>
+        )}
+
         {/* Cmd+K */}
         <button
           onClick={() => {

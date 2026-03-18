@@ -4,14 +4,15 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 
 interface StudioState {
   panelOpen: boolean;
-  activePanel: 'agent' | 'intel' | 'notes';
+  activePanel: 'agent' | 'intel' | 'notes' | 'vote';
   panelWidth: number;
   focusLevel: 0 | 1 | 2; // 0=normal, 1=panel hidden, 2=zen
   isFullWidth: boolean;
+  panelOpenBeforeFullWidth: boolean;
 }
 
 interface StudioContextValue extends StudioState {
-  togglePanel: (panel: 'agent' | 'intel' | 'notes') => void;
+  togglePanel: (panel: 'agent' | 'intel' | 'notes' | 'vote') => void;
   closePanel: () => void;
   setPanelWidth: (width: number) => void;
   setFocusLevel: (level: 0 | 1 | 2) => void;
@@ -38,9 +39,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     panelWidth: 380,
     focusLevel: 0,
     isFullWidth: false,
+    panelOpenBeforeFullWidth: true,
   });
 
-  const togglePanel = useCallback((panel: 'agent' | 'intel' | 'notes') => {
+  const togglePanel = useCallback((panel: 'agent' | 'intel' | 'notes' | 'vote') => {
     setState((prev) => {
       if (prev.panelOpen && prev.activePanel === panel) {
         return { ...prev, panelOpen: false };
@@ -66,11 +68,20 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleFullWidth = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      isFullWidth: !prev.isFullWidth,
-      panelOpen: prev.isFullWidth ? prev.panelOpen : false,
-    }));
+    setState((prev) => {
+      if (!prev.isFullWidth) {
+        // Entering full-width: save current panel state, close panel
+        return {
+          ...prev,
+          isFullWidth: true,
+          panelOpenBeforeFullWidth: prev.panelOpen,
+          panelOpen: false,
+        };
+      } else {
+        // Exiting full-width: restore previous panel state
+        return { ...prev, isFullWidth: false, panelOpen: prev.panelOpenBeforeFullWidth };
+      }
+    });
   }, []);
 
   return (

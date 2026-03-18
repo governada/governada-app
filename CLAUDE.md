@@ -22,6 +22,8 @@ Implementation is NOT complete until deployed and validated in production. Use `
 
 Build failures or production bugs if violated:
 
+- **Worktree isolation for feature work.** NEVER create feature branches in the main `governada-app` checkout. All feature work MUST happen in a worktree (`git worktree add ../governada-<name> -b feat/<name>` or `claude --worktree <name>`). The main checkout stays on `main` at all times. Enforced by `check-branch.sh` hook — edits on feature branches in the main checkout are blocked. Only hotfixes (with `ALLOW_MAIN_EDIT=1`) bypass this.
+
 - **`force-dynamic`** on any `page.tsx`/`route.ts` touching Supabase/env vars. Railway build has no env vars.
 - **Register Inngest functions** in `app/api/inngest/route.ts` -- same commit as the function file.
 - **Database-first reads** via `lib/data.ts`. No direct Koios calls from pages/components.

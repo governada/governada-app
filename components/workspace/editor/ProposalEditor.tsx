@@ -267,8 +267,12 @@ export function ProposalEditor({
   // -------------------------------------------------------------------------
 
   const initialContent = useMemo(
-    () => buildSectionDocument(content, excludeFields ? { excludeFields } : undefined),
-    [content, excludeFields],
+    () =>
+      buildSectionDocument(content, {
+        excludeFields: excludeFields || undefined,
+        parseMarkdown: isReadOnly,
+      }),
+    [content, excludeFields, isReadOnly],
   );
 
   const editor = useEditor({

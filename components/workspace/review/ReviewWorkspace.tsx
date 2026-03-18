@@ -16,6 +16,8 @@ import { StudioHeader } from '@/components/studio/StudioHeader';
 import { StudioActionBar } from '@/components/studio/StudioActionBar';
 import { StudioPanel } from '@/components/studio/StudioPanel';
 import { buildEditorContext, injectInlineComment } from '@/components/studio/studioEditorHelpers';
+import { SearchPopover } from '@/components/studio/SearchPopover';
+import { VotePanel } from '@/components/studio/VotePanel';
 import { ProposalEditor, injectProposedEdit } from '@/components/workspace/editor/ProposalEditor';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { IntelPanel } from '@/components/studio/IntelPanel';
@@ -186,6 +188,15 @@ interface StudioPanelWrapperProps {
   };
   citizenSentiment?: { support: number; oppose: number; abstain: number; total: number } | null;
   voterId: string | null;
+  voteContent?: React.ReactNode;
+  votingPowerSummary?: {
+    yesPower: number;
+    noPower: number;
+    abstainPower: number;
+    totalActivePower: number;
+    threshold: number | null;
+    thresholdLabel: string | null;
+  };
 }
 
 function StudioPanelWrapper({
@@ -199,6 +210,8 @@ function StudioPanelWrapper({
   interBodyVotes,
   citizenSentiment,
   voterId,
+  voteContent,
+  votingPowerSummary,
 }: StudioPanelWrapperProps) {
   const { panelOpen, activePanel, panelWidth, closePanel, togglePanel, setPanelWidth } =
     useStudio();
@@ -288,11 +301,13 @@ function StudioPanelWrapper({
           proposalContent={content}
           interBodyVotes={interBodyVotes}
           citizenSentiment={citizenSentiment}
+          votingPowerSummary={votingPowerSummary}
         />
       }
       notesContent={
         <NotesPanel proposalTxHash={proposalId} proposalIndex={proposalIndex} voterId={voterId} />
       }
+      voteContent={voteContent}
     />
   );
 }
@@ -320,6 +335,8 @@ interface StudioReviewInnerProps {
   voteToast: { vote: string; visible: boolean } | null;
   getStatus: (txHash: string, proposalIndex: number) => string | undefined;
   queueLabels: string[];
+  segment: string;
+  onSelectIndex: (index: number) => void;
 }
 
 function StudioReviewInner({
@@ -341,9 +358,19 @@ function StudioReviewInner({
   voteToast,
   getStatus,
   queueLabels,
+  segment,
+  onSelectIndex,
 }: StudioReviewInnerProps) {
   const { panelOpen, activePanel, togglePanel, isFullWidth, toggleFullWidth } = useStudio();
   const actionZoneRef = useRef<HTMLDivElement>(null);
+
+  // Vote state (for VotePanel in side panel)
+  const [selectedVote, setSelectedVote] = useState<'Yes' | 'No' | 'Abstain' | null>(null);
+  const [rationaleText, setRationaleText] = useState('');
+  const [isDraftingRationale, setIsDraftingRationale] = useState(false);
+
+  // Search state
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const typeLabel = selectedItem
     ? (PROPOSAL_TYPE_LABELS[selectedItem.proposalType as ProposalType] ?? selectedItem.proposalType)
@@ -372,12 +399,88 @@ function StudioReviewInner({
     return null;
   }, [selectedItem.existingVote]);
 
-  const handleVoteSelect = useCallback((_vote: 'Yes' | 'No' | 'Abstain') => {
-    // Scroll to the ReviewActionZone for the full vote flow
-    if (actionZoneRef.current) {
-      actionZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // AI rationale draft handler
+  const handleAIDraft = useCallback(async () => {
+    if (!voterId) return;
+    setIsDraftingRationale(true);
+    try {
+      const res = await fetch('/api/rationale/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          drepId: voterId,
+          voterRole: segment === 'spo' ? 'spo' : 'drep',
+          proposalTitle: selectedItem.title,
+          proposalAbstract: selectedItem.abstract || undefined,
+          proposalType: selectedItem.proposalType || undefined,
+          aiSummary: selectedItem.aiSummary || undefined,
+        }),
+      });
+      if (res.ok) {
+        const { draft } = await res.json();
+        if (draft) setRationaleText(draft);
+      }
+    } finally {
+      setIsDraftingRationale(false);
     }
-  }, []);
+  }, [voterId, segment, selectedItem]);
+
+  const handleVoteSelect = useCallback(
+    (vote: 'Yes' | 'No' | 'Abstain') => {
+      setSelectedVote(vote);
+      togglePanel('vote');
+    },
+    [togglePanel],
+  );
+
+  // Estimated voting power (based on vote counts as proxy)
+  const estimatedVotingPower = useMemo(() => {
+    if (!selectedItem.interBodyVotes) return undefined;
+    const drep = selectedItem.interBodyVotes.drep;
+    const total = drep.yes + drep.no + drep.abstain;
+    if (total === 0) return undefined;
+    const THRESHOLDS: Record<string, number> = {
+      'Treasury Withdrawal': 0.67,
+      'Parameter Change': 0.67,
+      'Hard Fork': 0.75,
+      'New Constitution': 0.75,
+      'No Confidence': 0.67,
+      'Update Committee': 0.67,
+      'Info Action': 0.51,
+    };
+    const threshold = THRESHOLDS[selectedItem.proposalType] ?? null;
+    return {
+      yesPower: drep.yes,
+      noPower: drep.no,
+      abstainPower: drep.abstain,
+      totalActivePower: total,
+      threshold,
+      thresholdLabel: threshold ? `${Math.round(threshold * 100)}% DRep approval needed` : null,
+    };
+  }, [selectedItem]);
+
+  // VotePanel content for the side panel
+  const voteContent = (
+    <VotePanel
+      selectedVote={selectedVote}
+      onVoteChange={setSelectedVote}
+      onSubmit={() => {
+        actionZoneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }}
+      onCancel={() => {
+        setSelectedVote(null);
+        setRationaleText('');
+      }}
+      isSubmitting={false}
+      rationale={rationaleText}
+      onRationaleChange={setRationaleText}
+      onAIDraft={handleAIDraft}
+      isDraftingRationale={isDraftingRationale}
+      proposalTitle={selectedItem.title || 'Untitled'}
+      drepId={voterId ?? ''}
+      voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+    />
+  );
 
   return (
     <div className="flex flex-col h-screen">
@@ -413,6 +516,27 @@ function StudioReviewInner({
         onPanelToggle={togglePanel}
         isFullWidth={isFullWidth}
         onFullWidthToggle={toggleFullWidth}
+        onSearchToggle={() => setSearchOpen(!searchOpen)}
+        searchOpen={searchOpen}
+      />
+
+      {/* Search popover */}
+      <SearchPopover
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        proposalContent={itemContent}
+        queueItems={items.map((item) => ({
+          txHash: item.txHash,
+          title: item.title,
+          abstract: item.abstract,
+        }))}
+        onSelectQueueItem={(txHash: string) => {
+          const idx = items.findIndex((item) => item.txHash === txHash);
+          if (idx >= 0) {
+            onSelectIndex(idx);
+            setSearchOpen(false);
+          }
+        }}
       />
 
       {/* Main content area */}
@@ -466,6 +590,8 @@ function StudioReviewInner({
             interBodyVotes={selectedItem.interBodyVotes}
             citizenSentiment={selectedItem.citizenSentiment}
             voterId={voterId ?? null}
+            voteContent={voteContent}
+            votingPowerSummary={estimatedVotingPower}
           />
         )}
       </div>
@@ -860,6 +986,8 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
         voteToast={voteToast}
         getStatus={getStatus}
         queueLabels={queueLabels}
+        segment={segment}
+        onSelectIndex={setSelectedIndex}
       />
     </StudioProvider>
   );

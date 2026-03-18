@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { X, MessageSquare, BarChart3, StickyNote } from 'lucide-react';
+import { X, MessageSquare, BarChart3, StickyNote, Vote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type TabId = 'agent' | 'intel' | 'notes';
+type TabId = 'agent' | 'intel' | 'notes' | 'vote';
 
 interface StudioPanelProps {
   isOpen: boolean;
@@ -16,12 +16,14 @@ interface StudioPanelProps {
   agentContent: ReactNode;
   intelContent?: ReactNode;
   notesContent?: ReactNode;
+  voteContent?: ReactNode;
 }
 
 const TABS: Array<{ id: TabId; label: string; Icon: typeof MessageSquare }> = [
   { id: 'agent', label: 'Agent', Icon: MessageSquare },
   { id: 'intel', label: 'Intel', Icon: BarChart3 },
   { id: 'notes', label: 'Notes', Icon: StickyNote },
+  { id: 'vote', label: 'Vote', Icon: Vote },
 ];
 
 const MIN_PANEL_WIDTH = 280;
@@ -36,6 +38,7 @@ export function StudioPanel({
   agentContent,
   intelContent,
   notesContent,
+  voteContent,
 }: StudioPanelProps) {
   const isDragging = useRef(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -103,6 +106,11 @@ export function StudioPanel({
     notes: notesContent ?? (
       <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
         Notes panel coming soon
+      </div>
+    ),
+    vote: voteContent ?? (
+      <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+        Vote panel coming soon
       </div>
     ),
   };

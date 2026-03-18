@@ -148,9 +148,105 @@ export const SectionBlock = Node.create<SectionBlockOptions>({
 // Helpers
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Markdown-to-ProseMirror helpers (for read-only rendering)
+// ---------------------------------------------------------------------------
+
+/** Parse **bold** and *italic* inline markers into Tiptap mark objects. */
+function parseInlineMarks(text: string): object[] {
+  const result: object[] = [];
+  // Match **bold**, *italic*, or plain text segments
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|([^*]+))/g;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match[2]) {
+      result.push({ type: 'text', text: match[2], marks: [{ type: 'bold' }] });
+    } else if (match[3]) {
+      result.push({ type: 'text', text: match[3], marks: [{ type: 'italic' }] });
+    } else if (match[4]) {
+      result.push({ type: 'text', text: match[4] });
+    }
+  }
+
+  return result.length > 0 ? result : [{ type: 'text', text }];
+}
+
+/** Convert a plain-text markdown string into ProseMirror-compatible block nodes. */
+function markdownToContent(text: string): object[] {
+  if (!text) return [{ type: 'paragraph', content: [] }];
+
+  const blocks: object[] = [];
+  const lines = text.split('\n');
+  let currentParagraph: string[] = [];
+  let pendingListItems: object[] = [];
+
+  const flushParagraph = () => {
+    if (currentParagraph.length > 0) {
+      const joined = currentParagraph.join('\n');
+      if (joined.trim()) {
+        blocks.push({
+          type: 'paragraph',
+          content: parseInlineMarks(joined.trim()),
+        });
+      }
+      currentParagraph = [];
+    }
+  };
+
+  const flushList = () => {
+    if (pendingListItems.length > 0) {
+      blocks.push({ type: 'bulletList', content: pendingListItems });
+      pendingListItems = [];
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Empty line = paragraph break
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    // Bullet list items
+    if (/^[-*]\s/.test(trimmed)) {
+      flushParagraph();
+      pendingListItems.push({
+        type: 'listItem',
+        content: [
+          {
+            type: 'paragraph',
+            content: parseInlineMarks(trimmed.replace(/^[-*]\s/, '')),
+          },
+        ],
+      });
+      continue;
+    }
+
+    // Regular text — if we had pending list items, flush them first
+    flushList();
+    currentParagraph.push(trimmed);
+  }
+  flushParagraph();
+  flushList();
+
+  return blocks.length > 0 ? blocks : [{ type: 'paragraph', content: [] }];
+}
+
+// ---------------------------------------------------------------------------
+// buildSectionDocument
+// ---------------------------------------------------------------------------
+
 /**
  * Build initial editor document content with section blocks.
  * Each field becomes a sectionBlock node with paragraph children.
+ *
+ * When `parseMarkdown` is true (typically in read-only/review mode),
+ * markdown formatting (bold, italic, bullet lists) is converted into
+ * proper ProseMirror nodes so the editor renders them visually.
  */
 export function buildSectionDocument(
   content: {
@@ -159,7 +255,7 @@ export function buildSectionDocument(
     motivation: string;
     rationale: string;
   },
-  options?: { excludeFields?: ProposalField[] },
+  options?: { excludeFields?: ProposalField[]; parseMarkdown?: boolean },
 ) {
   const fields: ProposalField[] = (
     ['title', 'abstract', 'motivation', 'rationale'] as const
@@ -170,12 +266,14 @@ export function buildSectionDocument(
     content: fields.map((field) => ({
       type: 'sectionBlock',
       attrs: { field },
-      content: [
-        {
-          type: 'paragraph',
-          content: content[field] ? [{ type: 'text', text: content[field] }] : [],
-        },
-      ],
+      content: options?.parseMarkdown
+        ? markdownToContent(content[field])
+        : [
+            {
+              type: 'paragraph',
+              content: content[field] ? [{ type: 'text', text: content[field] }] : [],
+            },
+          ],
     })),
   };
 }

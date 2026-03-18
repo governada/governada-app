@@ -48,6 +48,15 @@ interface ResearchPrecedentOutput {
 
 // --- Props ---
 
+interface VotingPowerSummary {
+  yesPower: number;
+  noPower: number;
+  abstainPower: number;
+  totalActivePower: number;
+  threshold: number | null; // e.g., 0.51 for 51%
+  thresholdLabel: string | null;
+}
+
 interface IntelPanelProps {
   proposalId: string;
   proposalType: string;
@@ -68,6 +77,7 @@ interface IntelPanelProps {
     abstain: number;
     total: number;
   } | null;
+  votingPowerSummary?: VotingPowerSummary;
 }
 
 // --- Collapsible IntelCard ---
@@ -273,13 +283,74 @@ function ConstitutionalCheckCard({
 function CommunitySentimentCard({
   interBodyVotes,
   citizenSentiment,
+  votingPowerSummary,
 }: {
   interBodyVotes?: IntelPanelProps['interBodyVotes'];
   citizenSentiment?: IntelPanelProps['citizenSentiment'];
+  votingPowerSummary?: VotingPowerSummary;
 }) {
   return (
     <IntelCard title="Community Sentiment" icon={Users} defaultOpen={true}>
       <div className="space-y-3">
+        {/* Voting power threshold progress bar */}
+        {votingPowerSummary && votingPowerSummary.threshold != null && (
+          <div className="space-y-1.5 mb-3">
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground">Voting Power Progress</span>
+              <span className="tabular-nums font-medium">
+                {votingPowerSummary.totalActivePower > 0
+                  ? Math.round(
+                      (votingPowerSummary.yesPower / votingPowerSummary.totalActivePower) * 100,
+                    )
+                  : 0}
+                % of {Math.round(votingPowerSummary.threshold * 100)}% needed
+              </span>
+            </div>
+            <div className="relative h-2 rounded-full bg-muted/50 overflow-hidden">
+              {/* Yes power fill */}
+              <div
+                className="absolute inset-y-0 left-0 bg-teal-500 rounded-full transition-all"
+                style={{
+                  width: `${
+                    votingPowerSummary.totalActivePower > 0
+                      ? Math.min(
+                          (votingPowerSummary.yesPower /
+                            votingPowerSummary.totalActivePower /
+                            votingPowerSummary.threshold) *
+                            100,
+                          100,
+                        )
+                      : 0
+                  }%`,
+                }}
+              />
+              {/* Threshold marker */}
+              <div
+                className="absolute top-0 bottom-0 w-0.5 bg-foreground/60"
+                style={{
+                  left: `${Math.min(votingPowerSummary.threshold * 100, 100)}%`,
+                }}
+                title={`Threshold: ${Math.round(votingPowerSummary.threshold * 100)}%`}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[9px] text-muted-foreground/60">
+              <span>0%</span>
+              <span>
+                {votingPowerSummary.thresholdLabel ||
+                  `${Math.round(votingPowerSummary.threshold * 100)}% threshold`}
+              </span>
+              <span>100%</span>
+            </div>
+          </div>
+        )}
+
+        {/* No threshold info for Info Actions */}
+        {votingPowerSummary && votingPowerSummary.threshold == null && (
+          <div className="text-[10px] text-muted-foreground/60 mb-2">
+            No voting threshold required for this action type
+          </div>
+        )}
+
         {interBodyVotes ? (
           <>
             <VoteBar label="DRep" {...interBodyVotes.drep} />
@@ -484,10 +555,15 @@ export function IntelPanel({
   proposalContent,
   interBodyVotes,
   citizenSentiment,
+  votingPowerSummary,
 }: IntelPanelProps) {
   return (
     <div className="p-3 space-y-2">
-      <CommunitySentimentCard interBodyVotes={interBodyVotes} citizenSentiment={citizenSentiment} />
+      <CommunitySentimentCard
+        interBodyVotes={interBodyVotes}
+        citizenSentiment={citizenSentiment}
+        votingPowerSummary={votingPowerSummary}
+      />
       <ConstitutionalCheckCard proposalContent={proposalContent} proposalType={proposalType} />
       <SimilarProposalsCard proposalContent={proposalContent} proposalType={proposalType} />
       <ProposerTrackRecordCard proposalId={proposalId} proposalIndex={0} />

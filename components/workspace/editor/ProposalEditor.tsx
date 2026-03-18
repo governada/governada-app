@@ -39,6 +39,7 @@ import { CommandBarExtension, CommandBarUI } from './CommandBar';
 import { InlineComment, CommentPopover } from './InlineComment';
 import { MarginDecorations, setMarginIndicators } from './MarginDecorations';
 import { SelectionToolbar } from './SelectionToolbar';
+import { FormattingToolbar } from './FormattingToolbar';
 import { VersionDiffView } from './VersionDiffView';
 
 import type {
@@ -479,9 +480,14 @@ export function ProposalEditor({
   }
 
   return (
-    <div className="proposal-editor-wrapper relative p-6">
+    <div className="proposal-editor-wrapper relative">
+      {/* Formatting toolbar — shown in edit mode only */}
+      {editor && !isReadOnly && <FormattingToolbar editor={editor} />}
+
       {/* Tiptap editor */}
-      <EditorContent editor={editor} />
+      <div className="p-6">
+        <EditorContent editor={editor} />
+      </div>
 
       {/* Selection toolbar — floating comment button on text selection */}
       {editor && <SelectionToolbar editor={editor} currentUserId={currentUserId ?? 'anonymous'} />}

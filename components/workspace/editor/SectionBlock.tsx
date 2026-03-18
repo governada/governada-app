@@ -94,7 +94,7 @@ function SectionBlockView({ node, editor }: SectionBlockViewProps) {
 
       {/* Editor content area */}
       <NodeViewContent
-        className={`prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[60px] px-4 py-3 prose-headings:font-bold prose-headings:text-foreground prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-base prose-h3:mt-5 prose-h3:mb-2 prose-h4:text-sm prose-h4:mt-4 prose-h4:mb-2 prose-p:mb-2.5 prose-p:leading-relaxed prose-blockquote:border-l-primary/30 prose-blockquote:text-muted-foreground prose-a:text-primary prose-a:underline ${
+        className={`governance-prose max-w-none focus:outline-none min-h-[60px] px-4 py-3 ${
           !isEditable ? 'cursor-default' : ''
         }`}
         as="div"

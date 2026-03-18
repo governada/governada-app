@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -12,8 +13,47 @@ interface MarkdownRendererProps {
 }
 
 /**
+ * Detect callout type from blockquote content.
+ * Looks for opening bold markers: **Note:**, **Warning:**, **Important:**
+ *
+ * react-markdown wraps blockquote children with whitespace text nodes,
+ * so we find the first actual element (a <p>) and inspect its first child.
+ */
+function detectCalloutType(children: React.ReactNode): string | null {
+  const childArray = React.Children.toArray(children);
+  if (childArray.length === 0) return null;
+
+  // Find the first React element child (skip whitespace text nodes)
+  const firstElement = childArray.find((child) => React.isValidElement(child));
+  if (!firstElement || !React.isValidElement(firstElement)) return null;
+
+  // Get the text content of the first paragraph
+  const pChildren = React.Children.toArray(
+    (firstElement.props as { children?: React.ReactNode }).children,
+  );
+  if (pChildren.length === 0) return null;
+
+  // Find the first strong element inside the paragraph
+  const firstStrong = pChildren.find(
+    (child) => React.isValidElement(child) && child.type === 'strong',
+  );
+  if (!firstStrong || !React.isValidElement(firstStrong)) return null;
+
+  const strongText = String(
+    React.Children.toArray((firstStrong.props as { children?: React.ReactNode }).children).join(''),
+  ).toLowerCase();
+
+  if (strongText.startsWith('note')) return 'note';
+  if (strongText.startsWith('warning')) return 'warning';
+  if (strongText.startsWith('important')) return 'important';
+
+  return null;
+}
+
+/**
  * Shared markdown renderer with GFM support (tables, checklists, strikethrough).
- * Uses custom components for consistent styling in light and dark modes.
+ * Uses the .governance-prose CSS class for consistent styling, with minimal
+ * React component overrides only where React behavior is needed.
  */
 export function MarkdownRenderer({ content, className, compact }: MarkdownRendererProps) {
   if (!content) return null;
@@ -21,7 +61,7 @@ export function MarkdownRenderer({ content, className, compact }: MarkdownRender
   return (
     <div
       className={cn(
-        'max-w-none',
+        'governance-prose max-w-none',
         compact ? 'text-sm' : 'text-base',
         '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
         className,
@@ -30,70 +70,27 @@ export function MarkdownRenderer({ content, className, compact }: MarkdownRender
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          // Links need target="_blank" for external navigation
           a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline hover:opacity-80"
-            >
+            <a href={href} target="_blank" rel="noopener noreferrer">
               {children}
             </a>
           ),
-          p: ({ children }) => (
-            <p className={cn('mb-3 last:mb-0 text-foreground/90', compact && 'mb-2')}>{children}</p>
-          ),
-          strong: ({ children }) => (
-            <strong className="font-semibold text-foreground">{children}</strong>
-          ),
-          em: ({ children }) => <em className="italic">{children}</em>,
-          ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
-          li: ({ children }) => <li className="text-foreground/90">{children}</li>,
-          h1: ({ children }) => (
-            <h1 className="text-lg font-bold text-foreground mb-3 mt-6 first:mt-0">{children}</h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-base font-bold text-foreground mb-2 mt-5 first:mt-0">{children}</h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-sm font-semibold text-foreground mb-2 mt-4 first:mt-0">
-              {children}
-            </h3>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-primary/30 pl-4 my-3 text-muted-foreground italic">
-              {children}
-            </blockquote>
-          ),
-          code: ({ children }) => (
-            <code className="bg-muted rounded px-1.5 py-0.5 text-sm font-mono">{children}</code>
-          ),
-          pre: ({ children }) => (
-            <pre className="bg-muted rounded-lg p-4 overflow-x-auto my-3 text-sm">{children}</pre>
-          ),
+          // Blockquotes need callout detection for data-callout attribute
+          blockquote: ({ children }) => {
+            const calloutType = detectCalloutType(children);
+            return <blockquote data-callout={calloutType || undefined}>{children}</blockquote>;
+          },
+          // Tables need overflow wrapper
           table: ({ children }) => (
-            <div className="overflow-x-auto my-3">
-              <table className="w-full border-collapse text-sm">{children}</table>
+            <div className="overflow-x-auto">
+              <table>{children}</table>
             </div>
           ),
-          th: ({ children }) => (
-            <th className="border border-border px-3 py-2 text-left font-semibold bg-muted/50">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => <td className="border border-border px-3 py-2">{children}</td>,
-          hr: () => <hr className="border-border my-4" />,
           // GFM checkbox support
           input: ({ type, checked, ...rest }) =>
             type === 'checkbox' ? (
-              <input
-                type="checkbox"
-                checked={checked}
-                readOnly
-                className="accent-primary mr-2 align-middle"
-                {...rest}
-              />
+              <input type="checkbox" checked={checked} readOnly {...rest} />
             ) : (
               <input type={type} {...rest} />
             ),

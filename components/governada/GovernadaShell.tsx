@@ -12,6 +12,8 @@ import { GovernadaSidebar } from './GovernadaSidebar';
 import { EpochContextBar } from './EpochContextBar';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useSentryContext } from '@/hooks/useSentryContext';
+import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -108,6 +110,13 @@ function BackgroundGlobe({
   );
 }
 
+/** Invisible component that syncs user segment and feature flags to Sentry. */
+function SentryContextSync() {
+  useSentryContext();
+  useSentryFeatureFlags();
+  return null;
+}
+
 /**
  * Governada layout shell — sidebar on desktop, bottom bar on mobile.
  * Sidebar is persona-adaptive via the nav config.
@@ -136,6 +145,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   return (
     <SegmentProvider>
       <TierThemeProvider score={null}>
+        <SentryContextSync />
         <Suspense fallback={null}>
           <DeepLinkHandler />
         </Suspense>

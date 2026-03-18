@@ -6,7 +6,8 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 import { useDrafts, useCreateDraft } from '@/hooks/useDrafts';
 import { useRegisterDraftListCommands } from '@/hooks/useRegisterDraftListCommands';
-import { DraftsList } from './DraftsList';
+import { PortfolioView } from './PortfolioView';
+import { PortfolioSearch } from './PortfolioSearch';
 import { TypeSelectorDialog } from './TypeSelectorDialog';
 import { AmendmentEntryDialog } from './AmendmentEntryDialog';
 import { Button } from '@/components/ui/button';
@@ -24,10 +25,11 @@ function AuthorWorkspaceInner() {
   const [pendingAmendmentType, setPendingAmendmentType] = useState<'direct' | 'intent' | null>(
     null,
   );
+  const [showArchived, setShowArchived] = useState(false);
 
   const constitutionEditorFlag = useFeatureFlag('author_constitution_editor');
 
-  // Register J/K keyboard navigation for the drafts list
+  // Register J/K keyboard navigation + quick action shortcuts for the drafts list
   useRegisterDraftListCommands();
 
   const createAmendmentDraft = async (mode: 'direct' | 'intent') => {
@@ -82,7 +84,7 @@ function AuthorWorkspaceInner() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Proposal Author</h1>
@@ -98,7 +100,13 @@ function AuthorWorkspaceInner() {
 
       {createError && <p className="text-sm text-destructive">{createError}</p>}
 
-      <DraftsList drafts={data?.drafts ?? []} isLoading={isLoading} />
+      <PortfolioSearch showArchived={showArchived} onShowArchivedChange={setShowArchived} />
+
+      <PortfolioView
+        drafts={data?.drafts ?? []}
+        isLoading={isLoading}
+        showArchived={showArchived}
+      />
 
       <TypeSelectorDialog
         open={selectorOpen}

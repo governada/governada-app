@@ -55,8 +55,17 @@ function validateTransition(
 ): ValidationResult {
   const errors: string[] = [];
 
-  // Archived is always allowed
+  // Archive: any pre-submitted status -> archived
   if (targetStage === 'archived') {
+    if (currentStage === 'submitted') {
+      errors.push('Cannot archive a submitted proposal — it is already on-chain');
+      return { valid: false, errors };
+    }
+    return { valid: true, errors: [] };
+  }
+
+  // Unarchive: archived -> draft (clean slate)
+  if (currentStage === 'archived' && targetStage === 'draft') {
     return { valid: true, errors: [] };
   }
 

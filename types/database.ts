@@ -4251,6 +4251,7 @@ export type Database = {
           submitted_anchor_url: string | null;
           submitted_at: string | null;
           submitted_tx_hash: string | null;
+          supersedes_id: string | null;
           title: string;
           type_specific: Json;
           updated_at: string;
@@ -4277,6 +4278,7 @@ export type Database = {
           submitted_anchor_url?: string | null;
           submitted_at?: string | null;
           submitted_tx_hash?: string | null;
+          supersedes_id?: string | null;
           title?: string;
           type_specific?: Json;
           updated_at?: string;
@@ -4303,6 +4305,7 @@ export type Database = {
           submitted_anchor_url?: string | null;
           submitted_at?: string | null;
           submitted_tx_hash?: string | null;
+          supersedes_id?: string | null;
           title?: string;
           type_specific?: Json;
           updated_at?: string;
@@ -4313,6 +4316,13 @@ export type Database = {
             columns: ['preview_cohort_id'];
             isOneToOne: false;
             referencedRelation: 'preview_cohorts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'proposal_drafts_supersedes_id_fkey';
+            columns: ['supersedes_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_drafts';
             referencedColumns: ['id'];
           },
         ];

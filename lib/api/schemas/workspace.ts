@@ -294,6 +294,22 @@ export const AmendmentBridgeSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Draft management schemas (duplicate, transfer, export)
+// ---------------------------------------------------------------------------
+
+export const DuplicateDraftSchema = z.object({
+  stakeAddress: z.string().min(1, 'stakeAddress is required'),
+  titlePrefix: z.string().max(100).optional(),
+});
+
+export const TransferDraftSchema = z.object({
+  currentOwnerStakeAddress: z.string().min(1, 'currentOwnerStakeAddress is required'),
+  newOwnerStakeAddress: z.string().min(1, 'newOwnerStakeAddress is required'),
+});
+
+export const ExportFormat = z.enum(['markdown', 'cip108']);
+
+// ---------------------------------------------------------------------------
 // Engagement tracking schemas
 // ---------------------------------------------------------------------------
 

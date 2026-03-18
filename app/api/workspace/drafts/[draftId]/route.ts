@@ -7,6 +7,7 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { UpdateDraftSchema } from '@/lib/api/schemas/workspace';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { logger } from '@/lib/logger';
 import type { ProposalDraft, DraftVersion, TeamRole } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
@@ -117,29 +118,115 @@ export const PATCH = withRouteHandler(
   { auth: 'none', rateLimit: { max: 60, window: 60 } },
 );
 
-/** DELETE /api/workspace/drafts/[draftId] — archive a draft */
-export const DELETE = withRouteHandler(async (request: NextRequest) => {
-  const segments = request.nextUrl.pathname.split('/');
-  const draftId = segments[segments.length - 1];
-  if (!draftId) {
-    return NextResponse.json({ error: 'Missing draftId' }, { status: 400 });
-  }
+/** DELETE /api/workspace/drafts/[draftId]?stakeAddress=... — permanently delete a draft */
+export const DELETE = withRouteHandler(
+  async (request: NextRequest) => {
+    const segments = request.nextUrl.pathname.split('/');
+    const draftId = segments[segments.length - 1];
+    if (!draftId) {
+      return NextResponse.json({ error: 'Missing draftId' }, { status: 400 });
+    }
 
-  const admin = getSupabaseAdmin();
+    const stakeAddress = request.nextUrl.searchParams.get('stakeAddress');
+    if (!stakeAddress) {
+      return NextResponse.json({ error: 'Missing stakeAddress' }, { status: 400 });
+    }
 
-  const { error } = await admin
-    .from('proposal_drafts')
-    .update({ status: 'archived', updated_at: new Date().toISOString() })
-    .eq('id', draftId);
+    const admin = getSupabaseAdmin();
 
-  if (error) {
-    return NextResponse.json({ error: 'Failed to archive draft' }, { status: 500 });
-  }
+    // Fetch draft and verify ownership
+    const { data: draft, error: fetchError } = await admin
+      .from('proposal_drafts')
+      .select('*')
+      .eq('id', draftId)
+      .single();
 
-  captureServerEvent('author_draft_archived', { draft_id: draftId });
+    if (fetchError || !draft) {
+      return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
+    }
 
-  return NextResponse.json({ success: true });
-});
+    if (draft.owner_stake_address !== stakeAddress) {
+      return NextResponse.json({ error: 'Only the owner can delete a draft' }, { status: 403 });
+    }
+
+    // Only allow deleting drafts in 'draft' status
+    if (draft.status !== 'draft') {
+      return NextResponse.json(
+        {
+          error: `Cannot delete a draft in '${draft.status}' status. Only drafts in 'draft' status can be permanently deleted. Use archive instead.`,
+        },
+        { status: 403 },
+      );
+    }
+
+    // Delete related records in order (respecting foreign key constraints)
+    // 1. Team members -> teams
+    const { data: teamRows } = await admin
+      .from('proposal_teams')
+      .select('id')
+      .eq('draft_id', draftId);
+
+    if (teamRows && teamRows.length > 0) {
+      const teamIds = teamRows.map((t) => t.id);
+      // Delete invite links
+      await admin.from('proposal_team_invites').delete().in('team_id', teamIds);
+      // Delete team members
+      await admin.from('proposal_team_members').delete().in('team_id', teamIds);
+      // Delete teams
+      await admin.from('proposal_teams').delete().eq('draft_id', draftId);
+    }
+
+    // 2. Draft review responses -> draft reviews
+    const { data: reviewRows } = await admin
+      .from('draft_reviews')
+      .select('id')
+      .eq('draft_id', draftId);
+
+    if (reviewRows && reviewRows.length > 0) {
+      const reviewIds = reviewRows.map((r) => r.id);
+      await admin.from('draft_review_responses').delete().in('review_id', reviewIds);
+      await admin.from('draft_reviews').delete().eq('draft_id', draftId);
+    }
+
+    // 3. Amendment genealogy
+    await admin.from('amendment_genealogy').delete().eq('draft_id', draftId);
+
+    // 4. Amendment section sentiment
+    await admin.from('amendment_section_sentiment').delete().eq('draft_id', draftId);
+
+    // 5. Versions
+    await admin.from('proposal_draft_versions').delete().eq('draft_id', draftId);
+
+    // 6. CIP-108 documents
+    await admin.from('cip108_documents').delete().eq('draft_id', draftId);
+
+    // 7. AI activity log entries
+    await admin.from('ai_activity_log').delete().eq('draft_id', draftId);
+
+    // 8. Finally delete the draft itself
+    const { error: deleteError } = await admin.from('proposal_drafts').delete().eq('id', draftId);
+
+    if (deleteError) {
+      logger.error('[drafts] Failed to delete draft', {
+        error: deleteError.message,
+        draftId,
+      });
+      return NextResponse.json({ error: 'Failed to delete draft' }, { status: 500 });
+    }
+
+    captureServerEvent(
+      'author_draft_deleted',
+      {
+        draft_id: draftId,
+        proposal_type: draft.proposal_type,
+      },
+      stakeAddress,
+    );
+
+    return NextResponse.json({ success: true });
+  },
+  { auth: 'none', rateLimit: { max: 10, window: 60 } },
+);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -158,6 +245,7 @@ function mapDraftRow(row: any): ProposalDraft {
     typeSpecific: row.type_specific ?? null,
     status: row.status,
     currentVersion: row.current_version ?? 1,
+    supersedesId: row.supersedes_id ?? null,
     stageEnteredAt: row.stage_entered_at ?? null,
     communityReviewStartedAt: row.community_review_started_at ?? null,
     fcpStartedAt: row.fcp_started_at ?? null,

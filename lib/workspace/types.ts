@@ -213,6 +213,7 @@ export interface ProposalDraft {
   typeSpecific: Record<string, unknown> | null;
   status: DraftStatus;
   currentVersion: number;
+  supersedesId: string | null;
   stageEnteredAt: string | null;
   communityReviewStartedAt: string | null;
   fcpStartedAt: string | null;

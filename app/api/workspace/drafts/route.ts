@@ -10,7 +10,7 @@ import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
 import { isPreviewAddress } from '@/lib/preview';
 import { SANDBOX_DESCRIPTION_PREFIX } from '@/lib/admin/sandbox';
-import type { ProposalDraft } from '@/lib/workspace/types';
+import type { ProposalDraft, TeamRole } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +18,91 @@ export const dynamic = 'force-dynamic';
  * GET /api/workspace/drafts?stakeAddress=... — list drafts for a user
  * GET /api/workspace/drafts?status=community_review,final_comment — list community-reviewable drafts
  */
+/** Response type for drafts where the user is a team member */
+interface ProposalDraftWithRole extends ProposalDraft {
+  memberRole?: TeamRole;
+}
+
 export const GET = withRouteHandler(async (request: NextRequest) => {
   const stakeAddress = request.nextUrl.searchParams.get('stakeAddress');
   const statusFilter = request.nextUrl.searchParams.get('status');
+  const includeArchived = request.nextUrl.searchParams.get('includeArchived') === 'true';
+  const memberOf = request.nextUrl.searchParams.get('memberOf');
 
   const admin = getSupabaseAdmin();
 
   // Sandbox support: if sandbox header present, scope reads to that cohort
   const sandboxCohortId = request.headers.get('x-sandbox-cohort') || null;
 
+  // ---------------------------------------------------------------------------
+  // Team membership mode: fetch drafts where user is a team member (not owner)
+  // ---------------------------------------------------------------------------
+  if (memberOf) {
+    // Step 1: Get team memberships for this user
+    const { data: memberships, error: memberError } = await admin
+      .from('proposal_team_members')
+      .select('team_id, role')
+      .eq('stake_address', memberOf);
+
+    if (memberError) {
+      return NextResponse.json({ error: 'Failed to fetch team memberships' }, { status: 500 });
+    }
+
+    if (!memberships || memberships.length === 0) {
+      return NextResponse.json({ drafts: [] });
+    }
+
+    // Step 2: Get draft IDs from those teams
+    const teamIds = memberships.map((m) => m.team_id);
+    const { data: teams, error: teamsError } = await admin
+      .from('proposal_teams')
+      .select('id, draft_id')
+      .in('id', teamIds);
+
+    if (teamsError || !teams || teams.length === 0) {
+      return NextResponse.json({ drafts: [] });
+    }
+
+    // Build team_id -> draft_id + role mapping
+    const teamToDraft = new Map(teams.map((t) => [t.id, t.draft_id]));
+    const draftRoles = new Map<string, TeamRole>();
+    for (const m of memberships) {
+      const draftId = teamToDraft.get(m.team_id);
+      if (draftId) {
+        draftRoles.set(draftId, m.role as TeamRole);
+      }
+    }
+
+    const draftIds = [...draftRoles.keys()];
+
+    // Step 3: Fetch those drafts (exclude ones owned by the requester)
+    let memberQuery = admin
+      .from('proposal_drafts')
+      .select('*')
+      .in('id', draftIds)
+      .neq('owner_stake_address', memberOf);
+
+    if (!includeArchived) {
+      memberQuery = memberQuery.neq('status', 'archived');
+    }
+
+    const { data, error } = await memberQuery.order('updated_at', { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to fetch team drafts' }, { status: 500 });
+    }
+
+    const drafts: ProposalDraftWithRole[] = (data ?? []).map((row) => ({
+      ...mapDraftRow(row),
+      memberRole: draftRoles.get(row.id) ?? undefined,
+    }));
+
+    return NextResponse.json({ drafts });
+  }
+
+  // ---------------------------------------------------------------------------
   // Community-reviewable drafts mode: fetch by status (no owner filter)
+  // ---------------------------------------------------------------------------
   if (statusFilter) {
     const statuses = statusFilter.split(',').map((s) => s.trim());
 
@@ -81,12 +156,18 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     return NextResponse.json({ drafts });
   }
 
+  // ---------------------------------------------------------------------------
   // Owner-specific drafts mode
+  // ---------------------------------------------------------------------------
   if (!stakeAddress) {
     return NextResponse.json({ error: 'Missing stakeAddress or status' }, { status: 400 });
   }
 
-  let ownerQuery = admin.from('proposal_drafts').select('*').neq('status', 'archived');
+  let ownerQuery = admin.from('proposal_drafts').select('*');
+
+  if (!includeArchived) {
+    ownerQuery = ownerQuery.neq('status', 'archived');
+  }
 
   if (sandboxCohortId) {
     // Sandbox mode: show drafts owned by this persona OR any draft in the sandbox cohort.
@@ -238,6 +319,7 @@ function mapDraftRow(row: any): ProposalDraft {
     typeSpecific: row.type_specific ?? null,
     status: row.status,
     currentVersion: row.current_version ?? 1,
+    supersedesId: row.supersedes_id ?? null,
     stageEnteredAt: row.stage_entered_at ?? null,
     communityReviewStartedAt: row.community_review_started_at ?? null,
     fcpStartedAt: row.fcp_started_at ?? null,

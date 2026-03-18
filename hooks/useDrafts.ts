@@ -122,6 +122,7 @@ export function useCreateDraft() {
         typeSpecific: null,
         status: 'draft',
         currentVersion: 1,
+        supersedesId: null,
         stageEnteredAt: null,
         communityReviewStartedAt: null,
         fcpStartedAt: null,

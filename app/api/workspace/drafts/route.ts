@@ -86,12 +86,20 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     return NextResponse.json({ error: 'Missing stakeAddress or status' }, { status: 400 });
   }
 
-  const { data, error } = await admin
-    .from('proposal_drafts')
-    .select('*')
-    .eq('owner_stake_address', stakeAddress)
-    .neq('status', 'archived')
-    .order('updated_at', { ascending: false });
+  let ownerQuery = admin.from('proposal_drafts').select('*').neq('status', 'archived');
+
+  if (sandboxCohortId) {
+    // Sandbox mode: show drafts owned by this persona OR any draft in the sandbox cohort.
+    // This allows cross-persona visibility — drafts created as "Citizen" are visible
+    // when the admin switches to "DRep" within the same sandbox.
+    ownerQuery = ownerQuery.or(
+      `owner_stake_address.eq.${stakeAddress},preview_cohort_id.eq.${sandboxCohortId}`,
+    );
+  } else {
+    ownerQuery = ownerQuery.eq('owner_stake_address', stakeAddress);
+  }
+
+  const { data, error } = await ownerQuery.order('updated_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });

@@ -22,6 +22,7 @@ import {
   Sparkles,
   X,
   Loader2,
+  UserCog,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPickerDropdown } from './DepthPickerDropdown';
@@ -179,6 +180,11 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
   );
 }
 
+function truncateImpersonateAddress(addr: string): string {
+  if (addr.length <= 20) return addr;
+  return `${addr.slice(0, 8)}...${addr.slice(-8)}`;
+}
+
 export function GovernadaHeader() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -208,6 +214,32 @@ export function GovernadaHeader() {
     preset: SegmentPreset;
     firstId: string;
   } | null>(null);
+
+  // Impersonation state (persisted in sessionStorage)
+  const [impersonation, setImpersonation] = useState<{
+    address: string;
+    segment: string;
+    displayName: string | null;
+  } | null>(null);
+
+  // Load impersonation from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('governada_impersonate');
+      if (stored) {
+        setImpersonation(JSON.parse(stored));
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []);
+
+  const handleExitImpersonation = useCallback(() => {
+    setOverride(null);
+    sessionStorage.removeItem('governada_impersonate');
+    setImpersonation(null);
+    router.push('/admin/users');
+  }, [setOverride, router]);
 
   // Sandbox state
   const [sandboxLoading, setSandboxLoading] = useState(false);
@@ -677,6 +709,8 @@ export function GovernadaHeader() {
                     logout();
                     disconnect();
                     sessionStorage.removeItem('governada_segment');
+                    sessionStorage.removeItem('governada_impersonate');
+                    setImpersonation(null);
                   }}
                 >
                   <LogOut className="h-4 w-4" />
@@ -699,6 +733,30 @@ export function GovernadaHeader() {
           )}
         </div>
       </div>
+      {/* Impersonation banner */}
+      {isAdmin && impersonation && (
+        <div className="mx-auto max-w-7xl flex items-center justify-between h-8 px-6 bg-violet-500/15 border-t border-violet-500/20">
+          <div className="flex items-center gap-2 text-xs text-violet-400">
+            <UserCog className="h-3.5 w-3.5" />
+            <span>
+              Impersonating:{' '}
+              <span className="font-medium">
+                {impersonation.displayName || truncateImpersonateAddress(impersonation.address)}
+              </span>
+              <span className="text-violet-400/60 ml-1.5">({impersonation.segment})</span>
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/20"
+            onClick={handleExitImpersonation}
+          >
+            <X className="h-3 w-3 mr-1" />
+            Exit
+          </Button>
+        </div>
+      )}
       {/* Primary picker (or first step of dual-role picker) */}
       {isAdmin && pickerPreset?.requiresPicker && !pendingDualOverride && (
         <AdminViewAsPicker

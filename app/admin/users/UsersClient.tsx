@@ -1,8 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { getStoredSession } from '@/lib/supabaseAuth';
+import {
+  useSegment,
+  type SegmentOverride,
+  type UserSegment,
+} from '@/components/providers/SegmentProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +26,7 @@ import {
   AlertCircle,
   Wallet,
   UserCog,
+  FlaskConical,
 } from 'lucide-react';
 
 interface InspectResult {
@@ -153,7 +160,10 @@ function StatCard({
 }
 
 export function UsersClient() {
+  const router = useRouter();
+  const { setOverride, enterSandbox } = useSegment();
   const [searchInput, setSearchInput] = useState('');
+  const [sandboxLoading, setSandboxLoading] = useState(false);
 
   const inspect = useMutation({
     mutationFn: async (address: string): Promise<InspectResult> => {
@@ -176,6 +186,68 @@ export function UsersClient() {
   };
 
   const data = inspect.data;
+
+  const buildOverrideFromData = useCallback(
+    (inspectData: InspectResult): SegmentOverride => ({
+      segment: inspectData.segment.detected as UserSegment,
+      drepId: inspectData.segment.drepId,
+      poolId: inspectData.segment.poolId,
+      delegatedDrep: inspectData.segment.delegatedDrep,
+      delegatedPool: inspectData.segment.delegatedPool,
+    }),
+    [],
+  );
+
+  const storeImpersonation = useCallback((inspectData: InspectResult) => {
+    if (!inspectData.user) return;
+    sessionStorage.setItem(
+      'governada_impersonate',
+      JSON.stringify({
+        address: inspectData.user.wallet_address,
+        segment: inspectData.segment.detected,
+        displayName: inspectData.user.display_name,
+      }),
+    );
+  }, []);
+
+  const handleImpersonate = useCallback(() => {
+    if (!data?.user) return;
+    const override = buildOverrideFromData(data);
+    setOverride(override);
+    storeImpersonation(data);
+    router.push('/');
+  }, [data, buildOverrideFromData, storeImpersonation, setOverride, router]);
+
+  const handleImpersonateInSandbox = useCallback(async () => {
+    if (!data?.user) return;
+    setSandboxLoading(true);
+    try {
+      const override = buildOverrideFromData(data);
+      setOverride(override);
+      storeImpersonation(data);
+
+      // Create or get a sandbox cohort
+      const token = getStoredSession();
+      const res = await fetch('/api/admin/sandbox', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'create' }),
+      });
+      if (res.ok) {
+        const sandboxData = await res.json();
+        if (sandboxData.cohort?.id) {
+          enterSandbox(sandboxData.cohort.id);
+        }
+      }
+
+      router.push('/');
+    } finally {
+      setSandboxLoading(false);
+    }
+  }, [data, buildOverrideFromData, storeImpersonation, setOverride, enterSandbox, router]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
@@ -492,11 +564,23 @@ export function UsersClient() {
           <Card className="bg-card/50">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="sm" disabled>
+                <Button variant="outline" size="sm" onClick={handleImpersonate}>
                   <UserCog className="h-4 w-4 mr-2" />
                   Impersonate
                 </Button>
-                <span className="text-xs text-muted-foreground">Coming soon</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImpersonateInSandbox}
+                  disabled={sandboxLoading}
+                >
+                  {sandboxLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FlaskConical className="h-4 w-4 mr-2" />
+                  )}
+                  Impersonate in Sandbox
+                </Button>
               </div>
             </CardContent>
           </Card>

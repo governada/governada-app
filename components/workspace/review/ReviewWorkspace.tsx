@@ -7,7 +7,7 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
 import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
 import { useReviewableDrafts } from '@/hooks/useReviewableDrafts';
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useRegisterReviewCommands } from '@/hooks/useRegisterReviewCommands';
 import { useRevisionNotifications } from '@/hooks/useRevisionNotifications';
 import { useAgent } from '@/hooks/useAgent';
 import { trackProposalView } from '@/lib/workspace/engagement';
@@ -818,38 +818,12 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     [selectedItem, setStatus, items, getStatus],
   );
 
-  // Keyboard shortcuts (arrow keys)
-  useKeyboardShortcuts({
+  // Register review keyboard shortcuts via command registry
+  // (j/k navigation + arrow keys are handled by the registered commands)
+  useRegisterReviewCommands({
     onNext: goNext,
     onPrev: goPrev,
   });
-
-  // J/K keyboard navigation (disabled in text inputs)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Don't intercept when user is typing
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
-      if (e.key === 'j' || e.key === 'J') {
-        e.preventDefault();
-        goNext();
-      } else if (e.key === 'k' || e.key === 'K') {
-        e.preventDefault();
-        goPrev();
-      }
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [goNext, goPrev]);
 
   // Derive the agent userRole from segment
   const agentUserRole = segment === 'cc' ? ('cc_member' as const) : ('reviewer' as const);

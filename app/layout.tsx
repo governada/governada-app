@@ -5,9 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
 import { BrandedLoader } from '@/components/BrandedLoader';
 import { NavDirectionProvider } from '@/components/NavDirectionProvider';
-import { CommandPalette } from '@/components/CommandPalette';
-import { KeyboardShortcuts } from '@/components/KeyboardShortcuts';
-import { ShortcutsHelpOverlay } from '@/components/ShortcutsHelpOverlay';
+import { CommandProvider } from '@/components/providers/CommandProvider';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { GovernadaShell } from '@/components/governada/GovernadaShell';
@@ -106,9 +104,7 @@ export default function RootLayout({
                 <ModeProvider>
                   <GovernadaShell>{children}</GovernadaShell>
                 </ModeProvider>
-                <CommandPalette />
-                <KeyboardShortcuts />
-                <ShortcutsHelpOverlay />
+                <CommandProvider />
                 <InstallPrompt />
                 <OfflineBanner />
               </NavDirectionProvider>

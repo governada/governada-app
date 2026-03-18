@@ -15,7 +15,7 @@
  * Bottom: status bar.
  */
 
-import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useRef, type ReactNode } from 'react';
 
 interface WorkspaceLayoutProps {
   toolbar: ReactNode;
@@ -52,17 +52,8 @@ export function WorkspaceLayout({
   const isEmbedded = className?.includes('h-full');
   const isFullscreen = !isEmbedded;
 
-  // Keyboard shortcut: Cmd+Shift+C to toggle chat
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'C') {
-        e.preventDefault();
-        setChatCollapsed((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  // Keyboard shortcut: Cmd+Shift+C to toggle chat — now handled by command registry
+  // (view.toggle-agent command in CommandProvider)
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();

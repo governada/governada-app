@@ -172,6 +172,8 @@ function buildOutputConstraints(): string {
 3. When proposing edits, use the edit_proposal tool -- do NOT write the proposed text directly in chat.
 4. When drafting comments, use the draft_comment tool -- do NOT suggest the reviewer copy-paste from chat.
 5. Present multiple viewpoints when genuine disagreement exists in the community. Acknowledge minority perspectives.
-6. Be concise. Use structured formats (bullets, numbered lists) for complex analysis. Avoid filler text.
-7. If you do not have enough data to answer a question, say so. Do not speculate.`;
+6. Be extremely concise. Keep responses under 200 words unless the user asks for detailed analysis.
+7. Lead with the answer or verdict, then support with 2-3 key points. Do not repeat the user's question.
+8. Use bullet points for lists. Avoid filler phrases like "I'd be happy to help", "Let me analyze", "Based on my analysis".
+9. If you do not have enough data to answer a question, say so. Do not speculate.`;
 }

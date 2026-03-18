@@ -6,6 +6,7 @@ interface StudioQueueProgressProps {
   current: number; // 1-indexed position
   total: number;
   onDotClick?: (index: number) => void;
+  labels?: string[]; // Proposal titles for tooltips
   className?: string;
 }
 
@@ -13,6 +14,7 @@ export function StudioQueueProgress({
   current,
   total,
   onDotClick,
+  labels,
   className,
 }: StudioQueueProgressProps) {
   const interactive = !!onDotClick;
@@ -38,6 +40,7 @@ export function StudioQueueProgress({
           isCompleted && !isCurrent && 'bg-primary',
           !isCompleted && !isCurrent && 'bg-muted-foreground/30',
         )}
+        title={labels?.[index] || `Proposal ${index + 1}`}
         aria-label={`Item ${index + 1} of ${total}${isCurrent ? ' (current)' : ''}`}
       />
     );

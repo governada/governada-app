@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { MarkdownRenderer } from '@/components/shared/MarkdownRenderer';
 import type { AgentMessage } from '@/lib/workspace/agent/types';
 import type { ProposedEdit, ProposedComment } from '@/lib/workspace/editor/types';
 
@@ -222,16 +223,20 @@ function MessageBubble({
       {/* Message content */}
       <div className={cn('flex-1 min-w-0 space-y-2', isUser ? 'text-right' : 'text-left')}>
         {/* Text content */}
-        {message.content && (
+        {(message.content || isLatest) && (
           <div
             className={cn(
-              'inline-block rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap',
+              'block max-w-full break-words rounded-lg px-3 py-2 text-sm leading-relaxed',
               isUser ? 'bg-primary/10 text-foreground' : 'bg-card text-foreground',
               // If streaming and empty, show a pulse
               !message.content && isLatest && 'animate-pulse',
             )}
           >
-            {message.content || (isLatest ? '...' : '')}
+            {message.content ? (
+              <MarkdownRenderer content={message.content} compact />
+            ) : isLatest ? (
+              '...'
+            ) : null}
           </div>
         )}
 

@@ -27,7 +27,7 @@ import { useWallet } from '@/utils/wallet';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useVote, type VotePhase } from '@/hooks/useVote';
 import type { VoteChoice, VoterRole } from '@/lib/voting';
-import { QuestionGate, hasSubmittedQuestion } from './QuestionGate';
+
 import { ContributionOverlapBanner } from './ContributionOverlapBanner';
 import { DiversityFields } from './DiversityFields';
 import { PostVoteShare } from './PostVoteShare';
@@ -254,12 +254,8 @@ export function ReviewActionZone({
   const roleLabel = voterRole === 'spo' ? 'SPO' : 'DRep';
   const previewMode = isViewingAs && !connected;
 
-  // Determine initial flow step
-  const questionAlreadyDone = hasSubmittedQuestion(drepId, item.txHash, item.proposalIndex);
-
   const [flowStep, setFlowStep] = useState<FlowStep>(() => {
-    if (item.existingVote) return 'select';
-    return questionAlreadyDone ? 'select' : 'question';
+    return 'select';
   });
   const [selectedVote, setSelectedVote] = useState<VoteChoice | null>(null);
   const [rationaleText, setRationaleText] = useState('');
@@ -326,8 +322,7 @@ export function ReviewActionZone({
     setShowContext(false);
     reset();
 
-    const done = hasSubmittedQuestion(drepId, item.txHash, item.proposalIndex);
-    setFlowStep(item.existingVote ? 'select' : done ? 'select' : 'question');
+    setFlowStep('select');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.txHash, item.proposalIndex]);
 
@@ -349,10 +344,6 @@ export function ReviewActionZone({
   if (!voterId) return null;
 
   // Handlers
-  const handleQuestionComplete = () => {
-    setFlowStep('select');
-  };
-
   const handleVoteSelect = (vote: VoteChoice) => {
     if (previewMode || isProcessing) return;
     setSelectedVote(vote);
@@ -534,19 +525,6 @@ export function ReviewActionZone({
               )}
             </div>
           </div>
-        )}
-
-        {/* ------------------------------------------------------------------ */}
-        {/* STEP 0: Question Gate                                              */}
-        {/* ------------------------------------------------------------------ */}
-        {flowStep === 'question' && (
-          <QuestionGate
-            txHash={item.txHash}
-            index={item.proposalIndex}
-            voterId={drepId}
-            onQuestionSubmitted={handleQuestionComplete}
-            onSkip={handleQuestionComplete}
-          />
         )}
 
         {/* ------------------------------------------------------------------ */}

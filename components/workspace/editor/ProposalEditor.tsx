@@ -30,6 +30,7 @@ import { SlashCommandMenu } from './SlashCommandMenu';
 import { CommandBarExtension, CommandBarUI } from './CommandBar';
 import { InlineComment, CommentPopover } from './InlineComment';
 import { MarginDecorations, setMarginIndicators } from './MarginDecorations';
+import { SelectionToolbar } from './SelectionToolbar';
 import { VersionDiffView } from './VersionDiffView';
 
 import type {
@@ -419,6 +420,9 @@ export function ProposalEditor({
     <div className="proposal-editor-wrapper relative p-6 max-w-3xl mx-auto">
       {/* Tiptap editor */}
       <EditorContent editor={editor} />
+
+      {/* Selection toolbar — floating comment button on text selection */}
+      {editor && <SelectionToolbar editor={editor} currentUserId={currentUserId ?? 'anonymous'} />}
 
       {/* Command Bar overlay (Cmd+K) */}
       <CommandBarUI

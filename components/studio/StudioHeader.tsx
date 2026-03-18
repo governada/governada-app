@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bell, Command } from 'lucide-react';
+import { ArrowLeft, Bell, ChevronLeft, ChevronRight, Command } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StudioQueueProgress } from './StudioQueueProgress';
 
@@ -14,6 +14,9 @@ interface StudioHeaderProps {
   proposalType?: string;
   queueProgress?: { current: number; total: number };
   onQueueJump?: (index: number) => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  queueLabels?: string[];
   showModeSwitch?: boolean;
   mode?: 'edit' | 'review' | 'diff';
   onModeChange?: (mode: 'edit' | 'review' | 'diff') => void;
@@ -40,6 +43,9 @@ export function StudioHeader({
   proposalType,
   queueProgress,
   onQueueJump,
+  onPrev,
+  onNext,
+  queueLabels,
   showModeSwitch,
   mode = 'edit',
   onModeChange,
@@ -90,14 +96,33 @@ export function StudioHeader({
       {!title && <div className="flex-1" />}
       {title && <div className="flex-1 lg:hidden" />}
 
-      {/* Queue progress */}
+      {/* Queue navigation */}
       {queueProgress && (
-        <div className="hidden lg:flex">
+        <div className="hidden lg:flex items-center gap-1">
+          {onPrev && (
+            <button
+              onClick={onPrev}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+              title="Previous proposal (K)"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+          )}
           <StudioQueueProgress
             current={queueProgress.current}
             total={queueProgress.total}
             onDotClick={onQueueJump}
+            labels={queueLabels}
           />
+          {onNext && (
+            <button
+              onClick={onNext}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+              title="Next proposal (J)"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       )}
       {/* Mobile: dots only, no text */}

@@ -31,7 +31,7 @@ export function useStudioSafe() {
 
 export function StudioProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<StudioState>({
-    panelOpen: false,
+    panelOpen: true,
     activePanel: 'agent',
     panelWidth: 380,
     focusLevel: 0,

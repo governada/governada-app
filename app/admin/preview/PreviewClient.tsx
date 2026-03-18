@@ -40,6 +40,12 @@ import {
   Users,
   Eye,
   MessageSquare,
+  Sparkles,
+  FileText,
+  Star,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 
 // ---- Types ----
@@ -420,6 +426,116 @@ function CohortSessions({ cohortId }: { cohortId: string }) {
   );
 }
 
+interface ScenarioResult {
+  proposalsCreated: number;
+  reviewsCreated: number;
+  versionsCreated: number;
+  errors: string[];
+}
+
+function CohortScenario({ cohortId }: { cohortId: string }) {
+  const [result, setResult] = useState<ScenarioResult | null>(null);
+
+  const generateScenario = useMutation({
+    mutationFn: async (): Promise<ScenarioResult> => {
+      const token = getStoredSession();
+      const res = await fetch('/api/admin/preview/scenarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ cohortId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? 'Failed to generate scenario');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setResult(data);
+    },
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5" />
+          Scenario Data
+        </h4>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => generateScenario.mutate()}
+          disabled={generateScenario.isPending}
+        >
+          {generateScenario.isPending ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-3.5 w-3.5" />
+              Generate Scenario
+            </>
+          )}
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Populates this cohort with realistic proposal drafts at various lifecycle stages, synthetic
+        community reviews, and version history. Existing scenario data will be replaced.
+      </p>
+
+      {result && (
+        <div className="rounded-md border border-border/50 bg-card/50 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            {result.errors.length === 0 ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-green-400" />
+                Scenario generated successfully
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                Scenario generated with warnings
+              </>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-xs">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <FileText className="h-3 w-3" />
+              <span>{result.proposalsCreated} proposals</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Star className="h-3 w-3" />
+              <span>{result.reviewsCreated} reviews</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <FileText className="h-3 w-3" />
+              <span>{result.versionsCreated} versions</span>
+            </div>
+          </div>
+          {result.errors.length > 0 && (
+            <div className="text-xs text-destructive space-y-1">
+              {result.errors.map((err, i) => (
+                <p key={i}>{err}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {generateScenario.isError && !result && (
+        <p className="text-sm text-destructive">{(generateScenario.error as Error).message}</p>
+      )}
+    </div>
+  );
+}
+
 function CohortFeedback({ cohortId }: { cohortId: string }) {
   const { data: feedback, isLoading } = useQuery({
     queryKey: ['admin-preview-feedback', cohortId],
@@ -582,6 +698,7 @@ export function PreviewClient() {
             </CardHeader>
             {isExpanded && (
               <CardContent className="space-y-6 border-t border-border/40 pt-4">
+                <CohortScenario cohortId={cohort.id} />
                 <CohortInvites cohortId={cohort.id} />
                 <CohortSessions cohortId={cohort.id} />
                 <CohortFeedback cohortId={cohort.id} />

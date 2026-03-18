@@ -10,7 +10,6 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useRevisionNotifications } from '@/hooks/useRevisionNotifications';
 import { useAgent } from '@/hooks/useAgent';
 import { trackProposalView } from '@/lib/workspace/engagement';
-import { ReviewActionZone } from './ReviewActionZone';
 import { StudioProvider, useStudio } from '@/components/studio/StudioProvider';
 import { StudioHeader } from '@/components/studio/StudioHeader';
 import { StudioActionBar } from '@/components/studio/StudioActionBar';
@@ -373,7 +372,6 @@ function StudioReviewInner({
   onSelectIndex,
 }: StudioReviewInnerProps) {
   const { panelOpen, activePanel, togglePanel, isFullWidth, toggleFullWidth } = useStudio();
-  const actionZoneRef = useRef<HTMLDivElement>(null);
 
   // Vote state (for VotePanel in side panel)
   const [selectedVote, setSelectedVote] = useState<'Yes' | 'No' | 'Abstain' | null>(null);
@@ -476,7 +474,7 @@ function StudioReviewInner({
       selectedVote={selectedVote}
       onVoteChange={setSelectedVote}
       onSubmit={() => {
-        actionZoneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Vote submitted via side panel
       }}
       onCancel={() => {
         setSelectedVote(null);
@@ -573,17 +571,6 @@ function StudioReviewInner({
                 onEditorReady={handleEditorReady}
                 excludeFields={['title']}
               />
-              {/* ReviewActionZone below editor */}
-              <div className="mt-6" ref={actionZoneRef}>
-                <ReviewActionZone
-                  item={selectedItem}
-                  drepId={voterId!}
-                  onVote={(_txHash, _index, vote) => handleVoteSuccess(vote as VoteChoice)}
-                  onNextProposal={goNext}
-                  totalProposals={progress.total}
-                  votedCount={progress.reviewed}
-                />
-              </div>
             </div>
           </div>
         </div>

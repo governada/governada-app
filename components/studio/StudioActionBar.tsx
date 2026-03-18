@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   XCircle,
   MinusCircle,
+  Compass,
 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 type PanelId = 'agent' | 'intel' | 'notes' | 'vote';
@@ -141,6 +143,15 @@ export function StudioActionBar({
               ))}
             </>
           )}
+
+          {/* Governada Explorer */}
+          <Link
+            href="/governance"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ml-1"
+            title="Explore Governada"
+          >
+            <Compass className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     );

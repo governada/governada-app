@@ -3,12 +3,19 @@
  *
  * Finds and analyzes similar past proposals, comparing outcomes and
  * highlighting patterns relevant to the user's governance perspective.
+ *
+ * When the `embedding_research_precedent` feature flag is ON, uses
+ * semantic embedding search for higher-quality precedent matching.
+ * Falls back to exact proposal_type matching when OFF or on error.
  */
 
 import { z } from 'zod';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { registerSkill } from './registry';
 import type { SkillContext } from './types';
+import { getFeatureFlag } from '@/lib/featureFlags';
+import { semanticSearch } from '@/lib/embeddings';
+import { logger } from '@/lib/logger';
 
 const inputSchema = z.object({
   proposalTitle: z.string().min(1),
@@ -100,25 +107,58 @@ given their governance priorities. Not generic questions.`,
   },
 });
 
+type SimilarProposalRow = {
+  tx_hash: string;
+  title: string;
+  proposal_type: string;
+  withdrawal_amount: number | null;
+  ratified_epoch: number | null;
+  expired_epoch: number | null;
+  dropped_epoch: number | null;
+};
+
 /**
  * Fetch similar proposals from the database for context injection.
  * Called by the skill API route before generating the prompt.
+ *
+ * When `embedding_research_precedent` flag is ON:
+ *   1. Generates embedding from title + abstract
+ *   2. Runs semantic search against stored proposal embeddings
+ *   3. Enriches results with outcome data
+ *   Falls back to type-based matching on error.
+ *
+ * When flag is OFF: existing behavior (exact match on proposal_type).
  */
 export async function fetchSimilarProposals(
   proposalType: string,
-  _title: string,
+  title: string,
   limit = 5,
-): Promise<
-  Array<{
-    tx_hash: string;
-    title: string;
-    proposal_type: string;
-    withdrawal_amount: number | null;
-    ratified_epoch: number | null;
-    expired_epoch: number | null;
-    dropped_epoch: number | null;
-  }>
-> {
+  proposalAbstract?: string,
+): Promise<SimilarProposalRow[]> {
+  const useEmbeddings = await getFeatureFlag('embedding_research_precedent', false);
+
+  if (useEmbeddings) {
+    try {
+      const results = await fetchSimilarByEmbedding(title, limit, proposalAbstract);
+      if (results.length > 0) return results;
+      // Fall through to type-based if semantic returned nothing
+    } catch (err) {
+      logger.warn('[research-precedent] Semantic search failed, falling back to type match', {
+        error: err,
+      });
+    }
+  }
+
+  return fetchSimilarByType(proposalType, limit);
+}
+
+/**
+ * Original type-based matching: proposals with the same proposal_type.
+ */
+async function fetchSimilarByType(
+  proposalType: string,
+  limit: number,
+): Promise<SimilarProposalRow[]> {
   const supabase = getSupabaseAdmin();
   const { data } = await supabase
     .from('proposals')
@@ -131,4 +171,50 @@ export async function fetchSimilarProposals(
     .limit(limit);
 
   return data ?? [];
+}
+
+/**
+ * Embedding-based semantic search: find proposals with similar meaning
+ * regardless of proposal_type. Enriches semantic results with outcome data.
+ */
+async function fetchSimilarByEmbedding(
+  title: string,
+  limit: number,
+  proposalAbstract?: string,
+): Promise<SimilarProposalRow[]> {
+  const queryText = proposalAbstract ? `${title}\n\n${proposalAbstract}` : title;
+
+  const semanticResults = await semanticSearch(queryText, 'proposal', {
+    threshold: 0.4,
+    limit,
+  });
+
+  if (semanticResults.length === 0) return [];
+
+  // Enrich with proposal details and outcome data
+  const supabase = getSupabaseAdmin();
+  const txHashes = semanticResults.map((r) => r.entity_id);
+
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select(
+      'tx_hash, title, proposal_type, withdrawal_amount, ratified_epoch, expired_epoch, dropped_epoch',
+    )
+    .in('tx_hash', txHashes)
+    .not('title', 'is', null);
+
+  if (!proposals || proposals.length === 0) return [];
+
+  // Preserve semantic ranking order
+  const proposalMap = new Map(proposals.map((p) => [p.tx_hash, p]));
+  const ordered: SimilarProposalRow[] = [];
+
+  for (const result of semanticResults) {
+    const proposal = proposalMap.get(result.entity_id);
+    if (proposal) {
+      ordered.push(proposal);
+    }
+  }
+
+  return ordered;
 }

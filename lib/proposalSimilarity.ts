@@ -1,10 +1,21 @@
 /**
  * Classification-Based Proposal Similarity
+ *
  * Uses cosine similarity on 6D classification vectors from proposal_classifications.
+ *
+ * When `embedding_proposal_similarity` flag is ON, computes a hybrid score:
+ *   0.4 * classificationSimilarity + 0.6 * embeddingSimilarity
+ * using precomputed embedding similarities from `semantic_similarity_cache`.
+ * Falls back to classification-only when embeddings are unavailable.
  */
 
 import { getSupabaseAdmin, createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { getFeatureFlag } from '@/lib/featureFlags';
+import {
+  getEntityEmbedding,
+  cosineSimilarity as embeddingCosineSimilarity,
+} from '@/lib/embeddings';
 
 export interface SimilarProposalResult {
   txHash: string;
@@ -59,6 +70,9 @@ export function computeProposalSimilarity(vecA: number[], vecB: number[]): numbe
 
 /**
  * Find top-N similar proposals to a given proposal by classification vector.
+ *
+ * When `embedding_proposal_similarity` flag is ON, computes hybrid scores
+ * using both classification and embedding similarity.
  */
 export async function findSimilarByClassification(
   txHash: string,
@@ -85,17 +99,49 @@ export async function findSimilarByClassification(
   if (!allClassifications) return [];
 
   const allRows = (allClassifications || []) as unknown as Array<Record<string, number | string>>;
-  const scored = allRows
+
+  // Compute classification similarity for all candidates
+  const classificationScored = allRows
     .filter((c) => !(c.proposal_tx_hash === txHash && c.proposal_index === index))
     .map((c) => {
       const vec = DIMENSIONS.map((d) => Number(c[d]) || 0);
       return {
         txHash: c.proposal_tx_hash as string,
         index: c.proposal_index as number,
-        score: computeProposalSimilarity(sourceVec, vec),
+        classificationScore: computeProposalSimilarity(sourceVec, vec),
       };
     })
-    .filter((s) => s.score > 0.1)
+    .filter((s) => s.classificationScore > 0.1);
+
+  if (classificationScored.length === 0) return [];
+
+  // Check if hybrid scoring is enabled
+  const useHybrid = await getFeatureFlag('embedding_proposal_similarity', false);
+  let embeddingScores: Map<string, number> | null = null;
+
+  if (useHybrid) {
+    embeddingScores = await getEmbeddingSimilarities(txHash, classificationScored);
+  }
+
+  // Compute final scores
+  const scored = classificationScored
+    .map((s) => {
+      const key = `${s.txHash}-${s.index}`;
+      const embScore = embeddingScores?.get(key);
+
+      // Hybrid: 0.4 classification + 0.6 embedding (when available)
+      // Falls back to classification-only if no embedding for this pair
+      const score =
+        embeddingScores && embScore !== undefined
+          ? CLASSIFICATION_WEIGHT * s.classificationScore + EMBEDDING_WEIGHT * embScore
+          : s.classificationScore;
+
+      return {
+        txHash: s.txHash,
+        index: s.index,
+        score,
+      };
+    })
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
@@ -125,9 +171,78 @@ export async function findSimilarByClassification(
   });
 }
 
+/** Hybrid scoring weights */
+const CLASSIFICATION_WEIGHT = 0.4;
+const EMBEDDING_WEIGHT = 0.6;
+
+/**
+ * Fetch embedding similarities for the source proposal vs candidates.
+ * Tries precomputed cache first, falls back to live computation.
+ */
+async function getEmbeddingSimilarities(
+  sourceTxHash: string,
+  candidates: Array<{ txHash: string; index: number }>,
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+
+  try {
+    const supabase = createClient();
+
+    // Try precomputed cache first
+    const { data: cached } = await supabase
+      .from('semantic_similarity_cache')
+      .select('target_entity_id, similarity')
+      .eq('source_entity_type', 'proposal')
+      .eq('source_entity_id', sourceTxHash)
+      .eq('target_entity_type', 'proposal')
+      .in(
+        'target_entity_id',
+        candidates.map((c) => c.txHash),
+      );
+
+    if (cached && cached.length > 0) {
+      for (const row of cached) {
+        // Map using first candidate with this txHash to get the index
+        const candidate = candidates.find((c) => c.txHash === row.target_entity_id);
+        if (candidate) {
+          result.set(`${row.target_entity_id}-${candidate.index}`, row.similarity);
+        }
+      }
+    }
+
+    // For candidates not in cache, try live embedding comparison
+    const uncachedCandidates = candidates.filter((c) => !result.has(`${c.txHash}-${c.index}`));
+
+    if (uncachedCandidates.length > 0) {
+      const sourceEmbedding = await getEntityEmbedding('proposal', sourceTxHash);
+      if (sourceEmbedding) {
+        for (const candidate of uncachedCandidates) {
+          const targetEmbedding = await getEntityEmbedding('proposal', candidate.txHash);
+          if (targetEmbedding) {
+            const similarity = embeddingCosineSimilarity(sourceEmbedding, targetEmbedding);
+            result.set(`${candidate.txHash}-${candidate.index}`, similarity);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn(
+      '[proposalSimilarity] Embedding similarity lookup failed, using classification only',
+      {
+        error: err,
+      },
+    );
+  }
+
+  return result;
+}
+
 /**
  * Precompute top-5 similar proposals for each classified proposal.
  * Stores results in proposal_similarity_cache.
+ *
+ * When `embedding_proposal_similarity` flag is ON, also precomputes
+ * semantic similarity pairs into `semantic_similarity_cache`.
  */
 export async function precomputeSimilarityCache(): Promise<number> {
   const supabase = getSupabaseAdmin();
@@ -195,6 +310,111 @@ export async function precomputeSimilarityCache(): Promise<number> {
     });
     if (!error) upserted += batch.length;
     else logger.error('[proposalSimilarity] Batch upsert error', { error: error.message });
+  }
+
+  // When embedding flag is ON, also precompute semantic similarity pairs
+  const useEmbeddings = await getFeatureFlag('embedding_proposal_similarity', false);
+  if (useEmbeddings) {
+    const embeddingPairs = await precomputeEmbeddingSimilarityCache(vectors, supabase);
+    logger.info('[proposalSimilarity] Embedding similarity cache updated', {
+      pairs: embeddingPairs,
+    });
+  }
+
+  return upserted;
+}
+
+/**
+ * Precompute embedding-based similarity pairs for proposals that have embeddings.
+ * Stores results in `semantic_similarity_cache` for fast lookup at query time.
+ */
+async function precomputeEmbeddingSimilarityCache(
+  vectors: ClassificationVector[],
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+): Promise<number> {
+  // Fetch all proposal embeddings
+  const txHashes = [...new Set(vectors.map((v) => v.txHash))];
+  const embeddingMap = new Map<string, number[]>();
+
+  // Fetch in batches to avoid query size limits
+  const FETCH_BATCH = 50;
+  for (let i = 0; i < txHashes.length; i += FETCH_BATCH) {
+    const batch = txHashes.slice(i, i + FETCH_BATCH);
+    const { data } = await supabase
+      .from('embeddings')
+      .select('entity_id, embedding')
+      .eq('entity_type', 'proposal')
+      .in('entity_id', batch);
+
+    if (data) {
+      for (const row of data) {
+        embeddingMap.set(row.entity_id, row.embedding as unknown as number[]);
+      }
+    }
+  }
+
+  if (embeddingMap.size < 2) return 0;
+
+  const embeddedHashes = [...embeddingMap.keys()];
+  const semanticRows: Array<{
+    source_entity_type: string;
+    source_entity_id: string;
+    target_entity_type: string;
+    target_entity_id: string;
+    similarity: number;
+    computed_at: string;
+  }> = [];
+
+  const now = new Date().toISOString();
+
+  for (let i = 0; i < embeddedHashes.length; i++) {
+    const sourceHash = embeddedHashes[i];
+    const sourceEmb = embeddingMap.get(sourceHash)!;
+
+    const similarities = embeddedHashes
+      .slice(i + 1) // Only compute each pair once (i < j)
+      .map((targetHash) => ({
+        targetHash,
+        score: embeddingCosineSimilarity(sourceEmb, embeddingMap.get(targetHash)!),
+      }))
+      .filter((s) => s.score > 0.3)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    for (const { targetHash, score } of similarities) {
+      const roundedScore = Math.round(score * 1000) / 1000;
+      // Store both directions for fast lookup
+      semanticRows.push({
+        source_entity_type: 'proposal',
+        source_entity_id: sourceHash,
+        target_entity_type: 'proposal',
+        target_entity_id: targetHash,
+        similarity: roundedScore,
+        computed_at: now,
+      });
+      semanticRows.push({
+        source_entity_type: 'proposal',
+        source_entity_id: targetHash,
+        target_entity_type: 'proposal',
+        target_entity_id: sourceHash,
+        similarity: roundedScore,
+        computed_at: now,
+      });
+    }
+  }
+
+  if (semanticRows.length === 0) return 0;
+
+  let upserted = 0;
+  const BATCH_SIZE = 200;
+
+  for (let i = 0; i < semanticRows.length; i += BATCH_SIZE) {
+    const batch = semanticRows.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('semantic_similarity_cache').upsert(batch, {
+      onConflict: 'source_entity_type,source_entity_id,target_entity_type,target_entity_id',
+    });
+    if (!error) upserted += batch.length;
+    else logger.error('[proposalSimilarity] Semantic cache upsert error', { error: error.message });
   }
 
   return upserted;

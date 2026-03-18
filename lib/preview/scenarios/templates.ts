@@ -239,6 +239,39 @@ export const VERSION_NAMES: string[] = [
 // Edge case content templates for stress testing
 // ---------------------------------------------------------------------------
 
+/** Temporal edge case configurations */
+export const TEMPORAL_EDGE_CASES: Array<{
+  label: string;
+  createdDaysAgo: number;
+  stageEnteredDaysAgo: number;
+  status: string;
+}> = [
+  {
+    label: 'Just created (seconds ago)',
+    createdDaysAgo: 0,
+    stageEnteredDaysAgo: 0,
+    status: 'draft',
+  },
+  {
+    label: 'Stale in review (90+ days)',
+    createdDaysAgo: 120,
+    stageEnteredDaysAgo: 95,
+    status: 'community_review',
+  },
+  {
+    label: 'FCP about to expire',
+    createdDaysAgo: 45,
+    stageEnteredDaysAgo: 6,
+    status: 'final_comment',
+  },
+  {
+    label: 'Ancient submitted',
+    createdDaysAgo: 180,
+    stageEnteredDaysAgo: 150,
+    status: 'submitted',
+  },
+];
+
 /** Edge case titles — pathological inputs for UI resilience testing */
 export const EDGE_CASE_TITLES: string[] = [
   '', // Empty title

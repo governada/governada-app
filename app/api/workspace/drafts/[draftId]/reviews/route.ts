@@ -169,6 +169,18 @@ export const POST = withRouteHandler(
 
     // Sandbox support: verify the cohort is a valid admin sandbox
     const sandboxCohortId = request.headers.get('x-sandbox-cohort') || null;
+
+    // Block writes during impersonation (unless sandbox is active)
+    const impersonateHeader = request.headers.get('x-impersonating');
+    if (impersonateHeader === 'true' && !sandboxCohortId) {
+      return NextResponse.json(
+        {
+          error:
+            'Writes are blocked during impersonation. Enter sandbox mode to test changes safely.',
+        },
+        { status: 403 },
+      );
+    }
     if (sandboxCohortId) {
       const { data: sandboxCohort } = await admin
         .from('preview_cohorts')

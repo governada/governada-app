@@ -119,6 +119,18 @@ export const POST = withRouteHandler(
     // Sandbox support: scope writes to preview cohort if sandbox header present
     const sandboxCohortId = request.headers.get('x-sandbox-cohort') || null;
 
+    // Block writes during impersonation (unless sandbox is active)
+    const impersonateHeader = request.headers.get('x-impersonating');
+    if (impersonateHeader === 'true' && !sandboxCohortId) {
+      return NextResponse.json(
+        {
+          error:
+            'Writes are blocked during impersonation. Enter sandbox mode to test changes safely.',
+        },
+        { status: 403 },
+      );
+    }
+
     // Determine preview cohort: sandbox header takes precedence, then preview address
     let previewCohortId: string | null = null;
 

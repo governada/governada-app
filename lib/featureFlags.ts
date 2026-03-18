@@ -229,9 +229,14 @@ export async function setUserFlagOverride(
 // Client-side API route
 // ---------------------------------------------------------------------------
 
-export async function fetchClientFlags(): Promise<Record<string, boolean>> {
+export async function fetchClientFlags(
+  walletAddress?: string | null,
+): Promise<Record<string, boolean>> {
   try {
-    const res = await fetch('/api/admin/feature-flags');
+    const url = walletAddress
+      ? `/api/admin/feature-flags?wallet=${encodeURIComponent(walletAddress)}`
+      : '/api/admin/feature-flags';
+    const res = await fetch(url);
     if (!res.ok) return {};
     const data = await res.json();
     return data.flags ?? {};

@@ -22,6 +22,7 @@ import {
   EDGE_CASE_ABSTRACTS,
   EDGE_CASE_MOTIVATIONS,
   EDGE_CASE_REVIEWS,
+  TEMPORAL_EDGE_CASES,
   type ReviewCategory,
   type ReviewerPersona,
 } from './templates';
@@ -93,6 +94,13 @@ function syntheticOwner(index: number): string {
 function recentTimestamp(maxDaysAgo: number): string {
   const now = Date.now();
   const offset = Math.random() * maxDaysAgo * 24 * 60 * 60 * 1000;
+  return new Date(now - offset).toISOString();
+}
+
+/** Create an ISO timestamp exactly N days ago */
+function daysAgoTimestamp(days: number): string {
+  const now = Date.now();
+  const offset = days * 24 * 60 * 60 * 1000;
   return new Date(now - offset).toISOString();
 }
 
@@ -547,9 +555,13 @@ async function generateEdgeCaseDrafts(
     }
   }
 
+  // Generate temporal edge case drafts
+  await generateTemporalEdgeCaseDrafts(supabase, cohortId, startIndex + ecIndex, result);
+
   logger.info('[scenario-generator] Edge case drafts generated', {
     cohortId,
     edgeDraftsCreated: edgeDraftIds.length,
+    temporalEdgeCases: TEMPORAL_EDGE_CASES.length,
   });
 }
 
@@ -682,6 +694,96 @@ async function createEdgeCaseReview(
   }
 
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Temporal edge case generation
+// ---------------------------------------------------------------------------
+
+async function generateTemporalEdgeCaseDrafts(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  cohortId: string,
+  startIndex: number,
+  result: ScenarioResult,
+): Promise<void> {
+  for (let i = 0; i < TEMPORAL_EDGE_CASES.length; i++) {
+    const tc = TEMPORAL_EDGE_CASES[i];
+    const now = new Date();
+    const createdAt = daysAgoTimestamp(tc.createdDaysAgo);
+    const stageEnteredAt = daysAgoTimestamp(tc.stageEnteredDaysAgo);
+    const status = tc.status as DraftStatus;
+
+    const typeSpecific: { [key: string]: Json | undefined } = {
+      _scenarioSource: {
+        generatedAt: now.toISOString(),
+        edgeCase: true,
+        temporalEdgeCase: true,
+        label: tc.label,
+      },
+    };
+
+    const insertData: Database['public']['Tables']['proposal_drafts']['Insert'] = {
+      owner_stake_address: syntheticOwner(startIndex + i),
+      title: `[Temporal] ${tc.label}`,
+      abstract: `Temporal edge case draft: ${tc.label}. Created ${tc.createdDaysAgo} days ago, stage entered ${tc.stageEnteredDaysAgo} days ago.`,
+      motivation: 'Temporal edge case for testing time-boundary conditions.',
+      rationale: 'Tests UI handling of time-sensitive governance stages.',
+      proposal_type: 'InfoAction',
+      type_specific: typeSpecific,
+      status,
+      current_version: 1,
+      preview_cohort_id: cohortId,
+      created_at: createdAt,
+      stage_entered_at: stageEnteredAt,
+      community_review_started_at: status !== 'draft' ? stageEnteredAt : null,
+      fcp_started_at: status === 'final_comment' || status === 'submitted' ? stageEnteredAt : null,
+      submitted_tx_hash: status === 'submitted' ? `tx_temporal_edge_${i}` : null,
+      submitted_at: status === 'submitted' ? stageEnteredAt : null,
+    };
+
+    const { data, error } = await supabase
+      .from('proposal_drafts')
+      .insert(insertData)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      logger.error('[scenario-generator] Failed to insert temporal edge case draft', {
+        error: error?.message,
+        label: tc.label,
+        status,
+      });
+      result.errors.push(`Failed to create temporal edge case draft: ${tc.label}`);
+      continue;
+    }
+
+    result.proposalsCreated++;
+
+    // Create initial version
+    const { error: versionError } = await supabase.from('proposal_draft_versions').insert({
+      draft_id: data.id,
+      version_number: 1,
+      version_name: 'Initial draft',
+      edit_summary: `Temporal edge case: ${tc.label}`,
+      content: {
+        title: `[Temporal] ${tc.label}`,
+        abstract: `Temporal edge case draft: ${tc.label}.`,
+        motivation: 'Temporal edge case for testing time-boundary conditions.',
+        rationale: 'Tests UI handling of time-sensitive governance stages.',
+        proposalType: 'InfoAction' as const,
+        typeSpecific: {},
+      },
+    });
+
+    if (versionError) {
+      logger.error('[scenario-generator] Failed to insert temporal edge case version', {
+        error: versionError.message,
+        draftId: data.id,
+      });
+    } else {
+      result.versionsCreated++;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

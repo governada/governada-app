@@ -54,6 +54,8 @@ export interface SegmentState {
   enterSandbox: (cohortId: string) => void;
   /** Exit sandbox mode */
   exitSandbox: () => void;
+  /** True when admin is impersonating a specific user */
+  isImpersonating: boolean;
 }
 
 const STORAGE_KEY = 'governada_segment';
@@ -85,6 +87,7 @@ const DEFAULT_STATE: SegmentState = {
   sandboxCohortId: null,
   enterSandbox: noop,
   exitSandbox: noop,
+  isImpersonating: false,
 };
 
 const SegmentContext = createContext<SegmentState>(DEFAULT_STATE);
@@ -142,6 +145,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       | 'sandboxCohortId'
       | 'enterSandbox'
       | 'exitSandbox'
+      | 'isImpersonating'
     >
   >({
     isLoading: false,
@@ -158,6 +162,17 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
   const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
   const [previewCohortId, setPreviewCohortId] = useState<string | null>(null);
   const [sandboxCohortId, setSandboxCohortId] = useState<string | null>(null);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
+  // Restore impersonation state from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('governada_impersonate');
+      setIsImpersonating(!!stored);
+    } catch {
+      /* sessionStorage unavailable */
+    }
+  }, []);
 
   // Restore sandbox state from sessionStorage on mount
   useEffect(() => {
@@ -322,6 +337,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     sandboxCohortId,
     enterSandbox,
     exitSandbox,
+    isImpersonating,
   };
 
   return <SegmentContext.Provider value={value}>{children}</SegmentContext.Provider>;

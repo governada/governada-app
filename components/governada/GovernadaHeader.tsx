@@ -358,6 +358,41 @@ export function GovernadaHeader() {
     }
   }, [sandboxCohortId]);
 
+  const handleVerifyParity = useCallback(async () => {
+    if (!sandboxCohortId) return;
+    setSandboxLoading(true);
+    setSandboxActionStatus(null);
+    try {
+      const token = getStoredSession();
+      const res = await fetch('/api/admin/sandbox/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        setSandboxActionStatus('Verify failed — request error');
+        return;
+      }
+      const data = await res.json();
+      const total = (data.checks ?? []).length;
+      const passed = (data.checks ?? []).filter((c: { passed: boolean }) => c.passed).length;
+      if (data.passed) {
+        setSandboxActionStatus(`All ${total} checks passed (${data.duration_ms}ms)`);
+      } else {
+        const failed = (data.checks ?? [])
+          .filter((c: { passed: boolean }) => !c.passed)
+          .map((c: { name: string }) => c.name);
+        setSandboxActionStatus(`${passed}/${total} passed — failed: ${failed.join(', ')}`);
+      }
+    } catch {
+      setSandboxActionStatus('Verify failed — network error');
+    } finally {
+      setSandboxLoading(false);
+    }
+  }, [sandboxCohortId]);
+
   const handleExitSandbox = useCallback(() => {
     exitSandbox();
     setSandboxCohortName(null);
@@ -663,6 +698,20 @@ export function GovernadaHeader() {
                                   )}
                                   Reset Sandbox
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={sandboxLoading}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleVerifyParity();
+                                  }}
+                                >
+                                  {sandboxLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <CheckCheck className="h-4 w-4" />
+                                  )}
+                                  Verify Parity
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={(e) => {
@@ -744,6 +793,7 @@ export function GovernadaHeader() {
                 {impersonation.displayName || truncateImpersonateAddress(impersonation.address)}
               </span>
               <span className="text-violet-400/60 ml-1.5">({impersonation.segment})</span>
+              {!sandboxCohortId && <span className="text-violet-400/40 ml-1.5">(read-only)</span>}
             </span>
           </div>
           <Button

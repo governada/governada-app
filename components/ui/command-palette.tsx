@@ -11,6 +11,7 @@ import { useCallback } from 'react';
 import { Command } from 'cmdk';
 import { Search } from 'lucide-react';
 import { useCommands } from '@/hooks/useCommands';
+import { useFocusRestore } from '@/hooks/useFocusRestore';
 import { commandRegistry, type CommandSection } from '@/lib/workspace/commands';
 import { formatShortcut } from '@/lib/workspace/shortcut-display';
 
@@ -30,6 +31,9 @@ const SECTION_ORDER: CommandSection[] = ['navigation', 'actions', 'view', 'ai'];
 
 export function WorkspaceCommandPalette({ open, onOpenChange }: WorkspaceCommandPaletteProps) {
   const commands = useCommands();
+
+  // Restore focus to the previously-focused element when the palette closes
+  useFocusRestore(open);
 
   const onSelect = useCallback(
     (commandId: string) => {

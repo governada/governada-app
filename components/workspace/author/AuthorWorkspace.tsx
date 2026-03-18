@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 import { useDrafts, useCreateDraft } from '@/hooks/useDrafts';
+import { useRegisterDraftListCommands } from '@/hooks/useRegisterDraftListCommands';
 import { DraftsList } from './DraftsList';
 import { TypeSelectorDialog } from './TypeSelectorDialog';
 import { AmendmentEntryDialog } from './AmendmentEntryDialog';
@@ -25,6 +26,9 @@ function AuthorWorkspaceInner() {
   );
 
   const constitutionEditorFlag = useFeatureFlag('author_constitution_editor');
+
+  // Register J/K keyboard navigation for the drafts list
+  useRegisterDraftListCommands();
 
   const createAmendmentDraft = async (mode: 'direct' | 'intent') => {
     if (!stakeAddress) return;

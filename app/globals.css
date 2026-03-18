@@ -994,3 +994,47 @@ button:not(:disabled):active,
     transition: none !important;
   }
 }
+
+/* ============================================================
+   Focus indicators for keyboard list navigation
+   Applied via data-focus-active="true" from useFocusableList.
+   ============================================================ */
+
+[data-focus-active='true'] {
+  outline: 2px solid var(--compass-teal);
+  outline-offset: -2px;
+  border-radius: var(--radius);
+}
+
+/* Tighter focus ring in work/analyze modes */
+[data-mode='work'] [data-focus-active='true'],
+[data-mode='analyze'] [data-focus-active='true'] {
+  outline-width: 1px;
+  outline-offset: -1px;
+}
+
+/* ============================================================
+   Workspace density tokens — consumed by workspace components.
+   Layered on top of the general mode spacing tokens.
+   ============================================================ */
+
+:root {
+  --workspace-gap: 8px;
+  --workspace-card-padding: 16px;
+  --workspace-font-size: 14px;
+  --workspace-line-height: 1.6;
+}
+
+[data-mode='work'] {
+  --workspace-gap: 4px;
+  --workspace-card-padding: 8px;
+  --workspace-font-size: 13px;
+  --workspace-line-height: 1.4;
+}
+
+[data-mode='analyze'] {
+  --workspace-gap: 2px;
+  --workspace-card-padding: 6px;
+  --workspace-font-size: 12px;
+  --workspace-line-height: 1.3;
+}

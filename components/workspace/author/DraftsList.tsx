@@ -1,11 +1,16 @@
 'use client';
 
+import { useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FileText } from 'lucide-react';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
+import { useFocusableList } from '@/hooks/useFocusableList';
+import { useFocusStore } from '@/lib/workspace/focus';
+import { commandRegistry } from '@/lib/workspace/commands';
 import type { ProposalDraft } from '@/lib/workspace/types';
 
 interface DraftsListProps {
@@ -39,9 +44,47 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function DraftsList({ drafts, isLoading }: DraftsListProps) {
+  const router = useRouter();
+  const { activeIndex, getItemProps } = useFocusableList('drafts-list', drafts.length);
+  const draftsRef = useRef(drafts);
+  useEffect(() => {
+    draftsRef.current = drafts;
+  }, [drafts]);
+
+  // Scroll the active card into view when navigating with J/K
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    const el = document.querySelector('[data-focus-active="true"]');
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [activeIndex]);
+
+  // Register Enter command to open the focused draft
+  const openFocusedDraft = useCallback(() => {
+    const { activeIndex: idx, activeListId } = useFocusStore.getState();
+    if (activeListId !== 'drafts-list') return;
+    const draft = draftsRef.current[idx];
+    if (draft) {
+      router.push(`/workspace/author/${draft.id}`);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const unregister = commandRegistry.register({
+      id: 'action.open-draft',
+      label: 'Open Draft',
+      shortcut: 'enter',
+      section: 'actions',
+      when: () => useFocusStore.getState().activeListId === 'drafts-list',
+      execute: openFocusedDraft,
+    });
+    return unregister;
+  }, [openFocusedDraft]);
+
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 'var(--workspace-gap)' }}>
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-36 w-full rounded-xl" />
         ))}
@@ -64,13 +107,19 @@ export function DraftsList({ drafts, isLoading }: DraftsListProps) {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {drafts.map((draft) => (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 'var(--workspace-gap)' }}>
+      {drafts.map((draft, index) => (
         <Link key={draft.id} href={`/workspace/author/${draft.id}`}>
-          <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
-            <CardContent className="p-4 space-y-3">
+          <Card
+            className="h-full hover:bg-accent/50 transition-colors cursor-pointer"
+            {...getItemProps(index)}
+          >
+            <CardContent className="space-y-3" style={{ padding: 'var(--workspace-card-padding)' }}>
               <div className="flex items-start justify-between gap-2">
-                <h3 className="font-medium text-sm line-clamp-2 leading-snug">
+                <h3
+                  className="font-medium line-clamp-2 leading-snug"
+                  style={{ fontSize: 'var(--workspace-font-size)' }}
+                >
                   {draft.title || 'Untitled Draft'}
                 </h3>
                 <span className="text-xs text-muted-foreground whitespace-nowrap">

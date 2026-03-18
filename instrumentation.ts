@@ -21,7 +21,14 @@ export async function register() {
   }
 }
 
-import { createHash } from 'crypto';
+/** Decode base64url to string � works in both Node.js and Edge runtimes. */
+function decodeBase64Url(input: string): string {
+  // Convert base64url to standard base64
+  const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+  // Pad if needed
+  const padded = base64 + '=='.slice(0, (4 - (base64.length % 4)) % 4);
+  return atob(padded);
+}
 
 function extractSessionPayload(
   cookieHeader: string | undefined,
@@ -32,15 +39,22 @@ function extractSessionPayload(
   try {
     const parts = match[1].split('.');
     if (parts.length < 2) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
+    const payload = JSON.parse(decodeBase64Url(parts[1]));
     return payload as { walletAddress?: string };
   } catch {
     return null;
   }
 }
 
-function hashAddressServer(address: string): string {
-  return createHash('sha256').update(address).digest('hex').slice(0, 16);
+async function hashAddressServer(address: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(address);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 16);
 }
 
 export async function onRequestError(
@@ -51,7 +65,9 @@ export async function onRequestError(
   const Sentry = await import('@sentry/nextjs');
 
   const payload = extractSessionPayload(request.headers.cookie ?? request.headers.Cookie);
-  const hashedAddress = payload?.walletAddress ? hashAddressServer(payload.walletAddress) : null;
+  const hashedAddress = payload?.walletAddress
+    ? await hashAddressServer(payload.walletAddress)
+    : null;
 
   Sentry.withScope((scope) => {
     if (hashedAddress) {

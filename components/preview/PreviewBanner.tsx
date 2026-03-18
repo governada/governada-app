@@ -37,6 +37,9 @@ export function PreviewBanner() {
           &middot; Viewing as <span className="font-medium text-amber-100">{personaLabel}</span>
         </span>
       )}
+      <a href="/preview" className="text-amber-300 hover:text-amber-100 underline text-xs ml-2">
+        Switch
+      </a>
     </div>
   );
 }

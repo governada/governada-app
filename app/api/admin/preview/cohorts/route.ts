@@ -73,6 +73,55 @@ export const GET = withRouteHandler(
 );
 
 /**
+ * DELETE /api/admin/preview/cohorts — revoke all invites and sessions in a cohort
+ */
+export const DELETE = withRouteHandler(
+  async (request: NextRequest, context) => {
+    if (!context.wallet || !isAdminWallet(context.wallet)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { cohortId } = await request.json();
+    if (!cohortId) {
+      return NextResponse.json({ error: 'Missing cohortId' }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    // Revoke all invites in the cohort
+    const { error: inviteError } = await supabase
+      .from('preview_invites')
+      .update({ revoked: true })
+      .eq('cohort_id', cohortId);
+
+    if (inviteError) {
+      logger.error('Failed to revoke cohort invites', {
+        context: 'admin/preview/cohorts',
+        cohortId,
+        error: inviteError.message,
+      });
+    }
+
+    // Revoke all sessions in the cohort
+    const { error: sessionError } = await supabase
+      .from('preview_sessions')
+      .update({ revoked: true })
+      .eq('cohort_id', cohortId);
+
+    if (sessionError) {
+      logger.error('Failed to revoke cohort sessions', {
+        context: 'admin/preview/cohorts',
+        cohortId,
+        error: sessionError.message,
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  },
+  { auth: 'required' },
+);
+
+/**
  * POST /api/admin/preview/cohorts — create a new cohort
  */
 export const POST = withRouteHandler(

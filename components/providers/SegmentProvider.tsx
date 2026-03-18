@@ -110,7 +110,9 @@ function saveCache(state: CachedSegment, stakeAddress: string) {
 }
 
 export function SegmentProvider({ children }: { children: ReactNode }) {
-  const { connected, isAuthenticated, address } = useWallet();
+  const { connected, isAuthenticated, address, sessionAddress } = useWallet();
+  // For preview users, address (from wallet) is null but sessionAddress (from JWT) has the preview_ address
+  const effectiveAddress = address || (isAuthenticated && sessionAddress ? sessionAddress : null);
   const [detected, setDetected] = useState<
     Omit<
       SegmentState,
@@ -187,7 +189,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Preview session: apply locked persona, skip on-chain detection
-    if (address && isPreviewAddress(address)) {
+    if (effectiveAddress && isPreviewAddress(effectiveAddress)) {
       try {
         const raw = sessionStorage.getItem('governada_preview');
         if (raw) {
@@ -196,7 +198,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
           setDetectedSegment(snap.segment ?? 'citizen');
           setDetected({
             isLoading: false,
-            stakeAddress: address,
+            stakeAddress: effectiveAddress,
             drepId: snap.drepId ?? null,
             poolId: snap.poolId ?? null,
             delegatedDrep: snap.delegatedDrep ?? null,
@@ -223,7 +225,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
 
     // Detect segment when wallet is connected (address available),
     // not just when fully authenticated (nonce signed)
-    if ((!connected && !isAuthenticated) || !address) {
+    if ((!connected && !isAuthenticated) || !effectiveAddress) {
       setDetected({
         isLoading: false,
         stakeAddress: null,
@@ -238,8 +240,8 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
       setDimensionOverrides({});
       return;
     }
-    detect(address);
-  }, [connected, isAuthenticated, address, detect]);
+    detect(effectiveAddress);
+  }, [connected, isAuthenticated, effectiveAddress, detect]);
 
   // Lock overrides in preview mode — persona is set by the invite code
   const wrappedSetOverride = useCallback(
@@ -272,7 +274,7 @@ export function SegmentProvider({ children }: { children: ReactNode }) {
     getGovernanceLevelOverride: () => dimensionOverrides.governanceLevel ?? null,
     getGovernanceDepthOverride: () => dimensionOverrides.governanceDepth ?? null,
     isViewingAs: override !== null,
-    isPreviewMode: isPreviewAddress(detected.stakeAddress),
+    isPreviewMode: isPreviewAddress(effectiveAddress),
     previewSessionId,
     previewCohortId,
   };

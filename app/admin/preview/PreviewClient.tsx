@@ -604,6 +604,30 @@ export function PreviewClient() {
     staleTime: 10_000,
   });
 
+  const revokeCohort = useMutation({
+    mutationFn: async (cohortId: string) => {
+      const token = getStoredSession();
+      const res = await fetch('/api/admin/preview/cohorts', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ cohortId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? 'Failed to revoke cohort');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-preview-cohorts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-preview-invites'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-preview-sessions'] });
+    },
+  });
+
   const createCohort = useMutation({
     mutationFn: async () => {
       const token = getStoredSession();
@@ -690,6 +714,22 @@ export function PreviewClient() {
                     {cohort.session_count} sessions
                   </span>
                   <span>{new Date(cohort.created_at).toLocaleDateString()}</span>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Revoke all invites and sessions in "${cohort.name}"?`)) {
+                        revokeCohort.mutate(cohort.id);
+                      }
+                    }}
+                    disabled={revokeCohort.isPending}
+                    title="Revoke all invites and sessions"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Revoke All
+                  </Button>
                 </div>
               </div>
               {cohort.description && (

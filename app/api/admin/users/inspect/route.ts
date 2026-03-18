@@ -25,7 +25,7 @@ export const GET = withRouteHandler(
       id: string;
       wallet_address: string;
       last_active: string | null;
-      created_at?: string;
+      created_at: string | null;
       claimed_drep_id: string | null;
       display_name: string | null;
       governance_depth: string;
@@ -34,7 +34,9 @@ export const GET = withRouteHandler(
     // Direct match on users.wallet_address
     const { data: directUser } = await supabase
       .from('users')
-      .select('id, wallet_address, last_active, claimed_drep_id, display_name, governance_depth')
+      .select(
+        'id, wallet_address, last_active, claimed_drep_id, display_name, governance_depth, created_at',
+      )
       .eq('wallet_address', address)
       .maybeSingle();
 
@@ -59,7 +61,7 @@ export const GET = withRouteHandler(
         const { data: linkedUser } = await supabase
           .from('users')
           .select(
-            'id, wallet_address, last_active, claimed_drep_id, display_name, governance_depth',
+            'id, wallet_address, last_active, claimed_drep_id, display_name, governance_depth, created_at',
           )
           .eq('id', userId)
           .single();
@@ -172,6 +174,33 @@ export const GET = withRouteHandler(
         : Promise.resolve({ count: 0 }),
     ]);
 
+    // --- 6. Feature flag overrides for this user ---
+    let flagOverrides: Array<{
+      key: string;
+      globalEnabled: boolean;
+      userOverride: boolean;
+    }> = [];
+
+    if (stakeAddress) {
+      const { data: allFlags } = await supabase
+        .from('feature_flags')
+        .select('key, enabled, targeting')
+        .not('targeting', 'is', null);
+
+      flagOverrides = (allFlags ?? [])
+        .filter((f) => {
+          const targeting = f.targeting as { wallets?: Record<string, boolean> } | null;
+          return targeting?.wallets && stakeAddress in targeting.wallets;
+        })
+        .map((f) => ({
+          key: f.key,
+          globalEnabled: f.enabled,
+          userOverride: (f.targeting as { wallets: Record<string, boolean> }).wallets[
+            stakeAddress!
+          ],
+        }));
+    }
+
     return NextResponse.json({
       user: userRow
         ? {
@@ -180,6 +209,7 @@ export const GET = withRouteHandler(
             display_name: userRow.display_name,
             last_active: userRow.last_active,
             governance_depth: userRow.governance_depth,
+            created_at: userRow.created_at,
           }
         : null,
       segment: {
@@ -219,6 +249,7 @@ export const GET = withRouteHandler(
         proposalDrafts: activityQueries[1].count ?? 0,
         draftReviews: activityQueries[2].count ?? 0,
       },
+      flagOverrides,
     });
   },
   { auth: 'required', rateLimit: { max: 30, window: 60 } },

@@ -29,6 +29,8 @@ import {
   UserCog,
   FlaskConical,
   Clock,
+  Flag,
+  ExternalLink,
 } from 'lucide-react';
 
 interface InspectResult {
@@ -38,6 +40,7 @@ interface InspectResult {
     display_name: string | null;
     last_active: string | null;
     governance_depth: string;
+    created_at: string | null;
   } | null;
   segment: {
     detected: string;
@@ -68,6 +71,11 @@ interface InspectResult {
     proposalDrafts: number;
     draftReviews: number;
   };
+  flagOverrides: Array<{
+    key: string;
+    globalEnabled: boolean;
+    userOverride: boolean;
+  }>;
 }
 
 function truncateAddress(addr: string, chars = 12): string {
@@ -139,6 +147,12 @@ function formatTimeAgo(dateStr: string | null): string {
   if (diffDays < 30) return `${diffDays}d ago`;
   const diffMonths = Math.floor(diffDays / 30);
   return `${diffMonths}mo ago`;
+}
+
+function formatMemberSince(dateStr: string | null): string {
+  if (!dateStr) return 'Unknown';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 function StatCard({
@@ -388,10 +402,14 @@ export function UsersClient() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Display Name</p>
                   <p className="text-sm">{data.user.display_name || '--'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Member Since</p>
+                  <p className="text-sm">{formatMemberSince(data.user.created_at)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Last Active</p>
@@ -663,6 +681,65 @@ export function UsersClient() {
                   })}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Feature Flags */}
+          <Card className="bg-card/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Flag className="h-4 w-4" />
+                Feature Flags
+                {data.flagOverrides.length > 0 && (
+                  <Badge variant="outline" className="ml-1 text-xs">
+                    {data.flagOverrides.length} override{data.flagOverrides.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.flagOverrides.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  No per-user flag overrides for this wallet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {data.flagOverrides.map((fo) => (
+                    <div
+                      key={fo.key}
+                      className="flex items-center justify-between rounded-md border border-border/40 bg-background/50 px-3 py-2"
+                    >
+                      <code className="text-sm font-mono">{fo.key}</code>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">
+                          Global: {fo.globalEnabled ? 'on' : 'off'}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            fo.userOverride
+                              ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                              : 'bg-red-500/20 text-red-400 border-red-500/30'
+                          }
+                        >
+                          User: {fo.userOverride ? 'on' : 'off'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => router.push('/admin/flags')}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Manage All Flags
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

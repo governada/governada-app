@@ -22,6 +22,24 @@ export function getSandboxHeaders(): Record<string, string> {
   }
 }
 
+/**
+ * Get combined admin headers (sandbox + impersonation) to include in fetch requests.
+ * Returns empty object if neither mode is active.
+ */
+export function getAdminHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  const headers: Record<string, string> = {};
+  try {
+    const cohortId = sessionStorage.getItem('governada_sandbox');
+    if (cohortId) headers['X-Sandbox-Cohort'] = cohortId;
+    const impersonating = sessionStorage.getItem('governada_impersonate');
+    if (impersonating) headers['X-Impersonating'] = 'true';
+  } catch {
+    /* sessionStorage unavailable */
+  }
+  return headers;
+}
+
 /** Storage key for sandbox cohort ID */
 export const SANDBOX_STORAGE_KEY = 'governada_sandbox';
 

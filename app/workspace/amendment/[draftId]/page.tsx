@@ -42,6 +42,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
 import { AmendmentGenealogyTimeline } from '@/components/workspace/review/AmendmentGenealogyTimeline';
 import { KeyboardShortcutsOverlay } from '@/components/workspace/editor/KeyboardShortcutsOverlay';
+import { DiffView } from '@/components/workspace/editor/DiffView';
+import { PresenceIndicator } from '@/components/workspace/author/PresenceIndicator';
+import { useDraftPresence } from '@/hooks/useDraftPresence';
+import { CompletionProvider } from '@/lib/workspace/editor/completionProvider';
 import { CONSTITUTION_NODES, CONSTITUTION_VERSION } from '@/lib/constitution/fullText';
 import { extractAmendmentChanges, serializeAmendmentChanges } from '@/lib/constitution/utils';
 import { proposeChange } from '@/components/workspace/editor/SuggestModePlugin';
@@ -89,7 +93,15 @@ function AmendmentPanelWrapper({
 // AmendmentHeaderWrapper — connects StudioHeader to StudioProvider
 // ---------------------------------------------------------------------------
 
-function AmendmentHeaderWrapper({ title }: { title: string }) {
+function AmendmentHeaderWrapper({
+  title,
+  presence,
+  onToggleDiff,
+}: {
+  title: string;
+  presence?: ReactNode;
+  onToggleDiff?: () => void;
+}) {
   const { panelOpen, activePanel, togglePanel, isFullWidth, toggleFullWidth } = useStudio();
 
   return (
@@ -103,6 +115,19 @@ function AmendmentHeaderWrapper({ title }: { title: string }) {
       onPanelToggle={togglePanel}
       isFullWidth={isFullWidth}
       onFullWidthToggle={toggleFullWidth}
+      actions={
+        <div className="flex items-center gap-2">
+          {presence}
+          {onToggleDiff && (
+            <button
+              onClick={onToggleDiff}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+            >
+              Diff
+            </button>
+          )}
+        </div>
+      }
     />
   );
 }
@@ -147,13 +172,21 @@ function AmendmentEditorPage() {
   const [changes, setChanges] = useState<AmendmentChange[]>([]);
   const [showIntentPanel, setShowIntentPanel] = useState(searchParams.get('mode') === 'intent');
   const [intentGenerating, setIntentGenerating] = useState(false);
+  const [showDiffView, setShowDiffView] = useState(false);
   const constitutionEditorRef = useRef<Editor | null>(null);
+  const completionProviderRef = useRef<CompletionProvider | null>(null);
 
   const { stakeAddress, segment } = useSegment();
   const updateDraft = useUpdateDraft(draftId ?? '');
   const { setSaving } = useSaveStatus();
   const recordGenealogy = useRecordGenealogy();
   const { data: genealogyData } = useAmendmentGenealogy(draftId);
+
+  // --- Presence tracking ---
+  const { viewers } = useDraftPresence(
+    draftId,
+    stakeAddress ? { stakeAddress, displayName: stakeAddress.slice(0, 12) } : null,
+  );
 
   // --- Debounced auto-save for changes ---
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -226,6 +259,22 @@ function AmendmentEditorPage() {
   // --- Editor ready handler ---
   const handleConstitutionEditorReady = useCallback((editor: Editor) => {
     constitutionEditorRef.current = editor;
+
+    // Attach AI completion provider (ghost text)
+    if (!completionProviderRef.current) {
+      completionProviderRef.current = new CompletionProvider({
+        debounceMs: 2000,
+        minChars: 30,
+      });
+    }
+    completionProviderRef.current.attach(editor);
+  }, []);
+
+  // Cleanup completion provider on unmount
+  useEffect(() => {
+    return () => {
+      completionProviderRef.current?.detach();
+    };
   }, []);
 
   // --- Agent lastComment -> inject into constitution editor ---
@@ -488,7 +537,13 @@ function AmendmentEditorPage() {
       <StudioProvider>
         <WorkspacePanels
           layoutId="amendment"
-          toolbar={<AmendmentHeaderWrapper title={draft.title || 'Constitutional Amendment'} />}
+          toolbar={
+            <AmendmentHeaderWrapper
+              title={draft.title || 'Constitutional Amendment'}
+              presence={viewers.length > 0 ? <PresenceIndicator viewers={viewers} /> : undefined}
+              onToggleDiff={changes.length > 0 ? () => setShowDiffView(true) : undefined}
+            />
+          }
           main={
             <ConstitutionEditor
               constitutionNodes={CONSTITUTION_NODES}
@@ -516,6 +571,9 @@ function AmendmentEditorPage() {
         />
         <KeyboardShortcutsOverlay />
       </StudioProvider>
+
+      {/* Diff view overlay */}
+      {showDiffView && <DiffView changes={changes} onClose={() => setShowDiffView(false)} />}
     </>
   );
 }

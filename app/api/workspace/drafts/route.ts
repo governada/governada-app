@@ -152,7 +152,43 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
     }
 
-    const drafts: ProposalDraft[] = (data ?? []).map(mapDraftRow);
+    // Check if a reviewer stake address was provided for "your review status"
+    const reviewerStakeAddress = request.nextUrl.searchParams.get('reviewerStakeAddress');
+
+    let drafts: ProposalDraft[] = (data ?? []).map(mapDraftRow);
+
+    // If reviewer address provided, enrich each draft with the reviewer's review status
+    if (reviewerStakeAddress && drafts.length > 0) {
+      const draftIds = drafts.map((d) => d.id);
+      const { data: reviewerReviews } = await admin
+        .from('draft_reviews')
+        .select('draft_id, reviewed_at_version')
+        .eq('reviewer_stake_address', reviewerStakeAddress)
+        .in('draft_id', draftIds);
+
+      // Build a map of draft_id -> reviewer's review
+      const reviewMap = new Map<string, { reviewedAtVersion: number | null }>();
+      for (const r of reviewerReviews ?? []) {
+        reviewMap.set(r.draft_id, {
+          reviewedAtVersion: (r.reviewed_at_version as number | null) ?? null,
+        });
+      }
+
+      drafts = drafts.map((draft) => {
+        const review = reviewMap.get(draft.id);
+        if (!review) {
+          return { ...draft, yourReviewStatus: 'none' as const };
+        }
+        // Stale if reviewed_at_version is known and less than current version
+        const isStale =
+          review.reviewedAtVersion !== null && review.reviewedAtVersion < draft.currentVersion;
+        return {
+          ...draft,
+          yourReviewStatus: isStale ? ('stale' as const) : ('reviewed' as const),
+        };
+      });
+    }
+
     return NextResponse.json({ drafts });
   }
 

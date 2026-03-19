@@ -7,6 +7,7 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { StageTransitionSchema } from '@/lib/api/schemas/workspace';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { MIN_REVIEWS_FOR_SUBMISSION } from '@/lib/workspace/constants';
 import type { DraftStatus } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,7 @@ function validateTransition(
   },
   reviewCount: number,
   unrespondedCount: number,
+  nonStaleReviewCount: number,
 ): ValidationResult {
   const errors: string[] = [];
 
@@ -110,6 +112,12 @@ function validateTransition(
         `Minimum ${FCP_MIN_HOURS}h at Final Comment Period not met (${remaining}h remaining)`,
       );
     }
+    // Enforce minimum non-stale review threshold
+    if (nonStaleReviewCount < MIN_REVIEWS_FOR_SUBMISSION) {
+      errors.push(
+        `Minimum ${MIN_REVIEWS_FOR_SUBMISSION} non-stale reviews required before submission. Currently has ${nonStaleReviewCount}.`,
+      );
+    }
     return { valid: errors.length === 0, errors };
   }
 
@@ -153,17 +161,31 @@ export const POST = withRouteHandler(
     const currentStage = draft.status as DraftStatus;
     const targetStage = body.targetStage as DraftStatus;
 
-    // Count reviews and unresponded reviews for validation
+    // Count reviews, unresponded reviews, and non-stale reviews for validation
     let reviewCount = 0;
     let unrespondedCount = 0;
+    let nonStaleReviewCount = 0;
+    const currentVersion: number = draft.current_version ?? 1;
 
-    if (currentStage === 'community_review' || currentStage === 'response_revision') {
+    const needsReviewCounts =
+      currentStage === 'community_review' ||
+      currentStage === 'response_revision' ||
+      currentStage === 'final_comment';
+
+    if (needsReviewCounts) {
       const { data: reviews } = await admin
         .from('draft_reviews')
-        .select('id')
+        .select('id, reviewed_at_version')
         .eq('draft_id', draftId);
 
       reviewCount = reviews?.length ?? 0;
+
+      // Count non-stale reviews: reviewed_at_version is null (pre-migration, benefit of doubt)
+      // or reviewed_at_version >= current_version
+      nonStaleReviewCount = (reviews ?? []).filter((r) => {
+        const version = r.reviewed_at_version as number | null;
+        return version === null || version >= currentVersion;
+      }).length;
 
       if (reviewCount > 0) {
         const reviewIds = (reviews ?? []).map((r) => r.id);
@@ -184,6 +206,7 @@ export const POST = withRouteHandler(
       draft,
       reviewCount,
       unrespondedCount,
+      nonStaleReviewCount,
     );
 
     if (!validation.valid) {

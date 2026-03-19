@@ -223,6 +223,8 @@ export interface ProposalDraft {
   submittedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Review status for the current user — only populated on community-reviewable draft lists. */
+  yourReviewStatus?: 'reviewed' | 'stale' | 'none';
 }
 
 export interface DraftVersion {
@@ -362,6 +364,8 @@ export interface DraftReview {
   valueScore: number | null;
   feedbackText: string;
   feedbackThemes: string[];
+  reviewedAtVersion: number | null;
+  isStale: boolean;
   createdAt: string;
 }
 

@@ -1,7 +1,7 @@
 # Navigation Architecture Spec
 
 > **Purpose:** Definitive reference for all navigation, routing, and information architecture decisions. Every page, section, and nav element must conform to this spec. Agents MUST read this before building any page, layout, or navigation component.
-> **Status:** Approved architecture. Implementation pending.
+> **Status:** Approved architecture. Four Worlds model implemented (Home, Workspace, Governance, You).
 > **Companion docs:** `ux-constraints.md` (page-level JTBD), `persona-quick-ref.md` (persona JTBDs)
 
 ---
@@ -44,44 +44,42 @@ See `ux-constraints.md` for per-persona Hub constraints.
 
 ### Workspace
 
-| Attribute        | Value                                    |
-| ---------------- | ---------------------------------------- |
-| **Route**        | `/workspace`                             |
-| **Purpose**      | Tools for doing your governance job      |
-| **Who sees it**  | DRep, SPO (not citizens, not anonymous)  |
-| **Nav position** | Second item in global nav (when visible) |
+| Attribute        | Value                                                          |
+| ---------------- | -------------------------------------------------------------- |
+| **Route**        | `/workspace`                                                   |
+| **Purpose**      | Tools for doing your governance job                            |
+| **Who sees it**  | DRep, SPO, delegated citizens (not undelegated, not anonymous) |
+| **Nav position** | Second item in global nav (when visible)                       |
 
-Workspace is where governance actors DO WORK — vote, write rationales, manage delegators, improve scores. It is action-oriented, not informational.
+Workspace is where governance actors DO WORK — author proposals, review and vote, write rationales, manage delegators, improve scores. It is action-oriented, not informational.
+
+**Author and Review are peer sub-sections** within Workspace. Both are full portfolio-management surfaces (portfolio → focused Studio mode). Author manages the proposal lifecycle (draft → community review → submission → monitoring). Review manages the voting queue (queue → deep-dive → vote → auto-advance).
 
 **Workspace adapts per persona:**
 
-DRep sub-pages:
+DRep sub-pages (Review-first — their primary JTBD):
 
-- `/workspace` — Action Queue (default: proposals needing votes, sorted by deadline)
+- `/workspace` — Dashboard / Action Queue (default: proposals needing votes, sorted by deadline)
+- `/workspace/review` — Review queue + deep-dive voting (Studio mode)
+- `/workspace/author` — Proposal portfolio + drafting (Studio mode)
 - `/workspace/votes` — Your voting record with rationales
-- `/workspace/rationales` — Your published rationales and their reception
 - `/workspace/delegators` — Who trusts you, delegator communication, growth trends
-- `/workspace/performance` — Your score breakdown, competitive position, improvement suggestions
 
 SPO sub-pages:
 
 - `/workspace` — Governance Score dashboard (default: score + trend + improvement tips)
+- `/workspace/review` — Review queue for SPO-relevant proposals
+- `/workspace/author` — Proposal portfolio + drafting
 - `/workspace/pool-profile` — Your pool's public governance identity (edit)
 - `/workspace/delegators` — Who stakes with you, delegator communication
 - `/workspace/position` — Competitive landscape, peer comparison, governance rankings
 
+Citizen (delegated) sub-pages:
+
+- `/workspace/author` — Proposal portfolio + drafting (default landing)
+- `/workspace/review` — Community draft review + feedback
+
 DRep+SPO: Both sets of sub-pages appear in the sidebar, grouped by role with clear headers ("DRep" / "Pool"). Action Queue remains the default landing.
-
-#### Author (All authenticated users)
-
-| Route | Label |
-| `/workspace/author` | Author — Draft governance proposals |
-| `/workspace/author/[draftId]` | Draft Editor — Edit a specific draft |
-
-#### Review (DRep/SPO/Citizen)
-
-| Route | Label |
-| `/workspace/review` | Review — Review active and pre-submission proposals |
 
 ### Governance
 
@@ -218,21 +216,21 @@ Entity pages are accessed via Hub cards, Governance sub-pages, search, or direct
 
 ## Mobile Bottom Bar (4 items, persona-adaptive)
 
-The bottom bar is the primary navigation surface on mobile. It adapts per persona to show the 4 most important sections.
+The bottom bar is the primary navigation surface on mobile. It adapts per persona to show the 3-4 most important sections.
 
 | Persona                   | Item 1 | Item 2     | Item 3     | Item 4 |
 | ------------------------- | ------ | ---------- | ---------- | ------ |
-| **Anonymous**             | Home   | Governance | Match      | Help   |
-| **Citizen (undelegated)** | Home   | Governance | Match      | You    |
-| **Citizen (delegated)**   | Home   | Governance | Delegation | You    |
+| **Anonymous**             | Home   | Governance | Match      |        |
+| **Citizen (undelegated)** | Home   | Governance | Match      |        |
+| **Citizen (delegated)**   | Home   | Workspace  | Governance | You    |
 | **DRep**                  | Home   | Workspace  | Governance | You    |
 | **SPO**                   | Home   | Workspace  | Governance | You    |
 | **DRep + SPO**            | Home   | Workspace  | Governance | You    |
-| **CC Member**             | Home   | Governance | Delegation | You    |
+| **CC Member**             | Home   | Governance | You        |        |
 
 **Bottom bar rules:**
 
-1. Always exactly 4 items
+1. 3-4 items depending on persona (operators get 4 with Workspace)
 2. Home is always first
 3. Items not in the bottom bar are accessible via the Hub, sidebar (desktop), or user menu
 4. Notification badge on You when unread inbox items exist
@@ -265,16 +263,16 @@ Example — entering Governance on mobile:
 On desktop (≥1024px), the left sidebar provides persistent navigation for all sections. It is collapsible to icons only.
 
 ```
-HOME                          ← Always visible
+HOME                          ← Always visible (single link, briefing surface)
 
-WORKSPACE                     ← DRep/SPO only
-├── Action Queue              ← DRep
+WORKSPACE                     ← DRep/SPO/delegated citizens
+├── Dashboard / Gov Score     ← DRep / SPO landing
+├── Review                    ← Review queue + deep-dive voting
+├── Author                    ← Proposal portfolio + drafting
 ├── Voting Record             ← DRep
-├── Rationales                ← DRep
-├── Gov Score                 ← SPO
-├── Pool Profile              ← SPO
 ├── Delegators                ← DRep, SPO (grouped if both)
-└── Performance / Position    ← DRep, SPO
+├── Pool Profile              ← SPO
+└── Position                  ← SPO
 
 GOVERNANCE                    ← Everyone
 ├── Proposals
@@ -285,16 +283,14 @@ GOVERNANCE                    ← Everyone
 └── Health
 
 ──────────────────
-DELEGATION                    ← Authenticated w/ delegation
 YOU                           ← Authenticated
-HELP                          ← Everyone
 ```
 
-**Sidebar rules:**
+**Sidebar / Rail rules:**
 
-1. Collapsible to icon-only mode (user preference, persisted)
-2. Sections without sub-pages (Home, Delegation) are single links, not expandable groups
-3. Workspace section only renders for DRep/SPO personas
+1. Collapsible to icon-only mode (user preference, persisted). Or 48px icon rail (feature-flagged).
+2. Home is always a single link (no sub-pages). The Hub is a briefing surface, not a workspace.
+3. Workspace section renders for DRep, SPO, and delegated citizen personas
 4. Sub-pages within each section are always visible (not collapsed by default) — the sidebar is the wayfinding surface, hiding items defeats its purpose
 5. Active page highlighted with distinct background + left border accent
 6. Width: 240px expanded, 64px collapsed
@@ -434,7 +430,7 @@ Agents MUST NOT:
 2. **Put entity directories in the top-level nav.** DReps, Pools, Proposals are sub-pages of Governance, not top-level sections. The nav reflects user intent (understand governance), not data type (browse DReps).
 3. **Show the same nav to all personas.** The bottom bar, sidebar items, and Hub content MUST adapt. If a citizen and a DRep see identical navigation, the implementation is wrong.
 4. **Hide depth behind the command palette.** ⌘K is a power-user shortcut, not a substitute for visible navigation. Every important page must be reachable via the sidebar or bottom bar within 2 taps.
-5. **Create new top-level sections without updating this spec.** The section inventory (Hub, Workspace, Governance, You, Match, Delegation, Help) is closed. New features go inside existing sections or this spec is updated first.
+5. **Create new top-level sections without updating this spec.** The section inventory (Hub, Workspace, Governance, You, Match, Help) is closed. New features go inside existing sections or this spec is updated first.
 6. **Use query params for persistent navigation state.** `?tab=dreps` is a smell. If it deserves a tab, it deserves a route.
 7. **Build engagement as a destination.** Engagement is a layer that surfaces through Hub cards and contextual prompts. There is no `/engage` section.
 

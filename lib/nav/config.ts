@@ -1,14 +1,19 @@
 /**
- * Navigation configuration — Three Worlds model.
+ * Navigation configuration — Four Worlds model.
  *
- * Three conceptual worlds:
- *   Home      = "What needs my attention?" (absorbs workspace for DRep/SPO)
+ * Four conceptual worlds:
+ *   Home      = "What needs my attention?" (briefing, alerts, status)
+ *   Workspace = "Do my governance work" (author, review, manage)
  *   Governance = "What's happening?" (universal exploration)
  *   You       = "Who am I in governance?" (identity, reflection, settings)
  *
+ * Home is a single briefing surface for all personas.
+ * Workspace is a separate section for governance operators (DRep, SPO,
+ * delegated citizens). Author and Review are peer sub-sections within it.
+ *
  * This is the single source of truth for all navigation surfaces:
- * - Desktop sidebar
- * - Mobile bottom bar (3 items, persona-adaptive)
+ * - Desktop sidebar / icon rail
+ * - Mobile bottom bar (3-4 items, persona-adaptive)
  * - Mobile pill bar (section sub-pages)
  * - Header help dropdown
  *
@@ -41,6 +46,7 @@ import {
   Rocket,
   Link2,
   PenLine,
+  Briefcase,
 } from 'lucide-react';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
 import { type GovernanceDepth, getTunerLevel } from '@/lib/governanceTuner';
@@ -79,7 +85,7 @@ export interface NavSection {
   href: string;
   /** Sub-pages within this section (shown in sidebar + pill bar) */
   items?: NavItem[];
-  /** Role-grouped items (used for dual-role Home sections) */
+  /** Role-grouped items (used for dual-role workspace) */
   groups?: NavItemGroup[];
   /** Only show for these segments (undefined = all) */
   segments?: UserSegment[];
@@ -92,51 +98,82 @@ export interface BottomBarConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Section definitions (sidebar + pill bar source)
+// Workspace section definitions — Author & Review as peer sub-sections
 // ---------------------------------------------------------------------------
 
-/** Home sub-items for DRep persona (workspace tools shown under Home) */
-export const HOME_DREP_ITEMS: NavItem[] = [
-  { href: '/workspace', label: 'Home', icon: Vote, sublabelKey: 'home.pendingVotes' },
-  { href: '/workspace/review', label: 'Review', icon: FileText, sublabelKey: 'home.pendingReview' },
+/**
+ * DRep workspace: Review-first (their #1 JTBD), then Author, then operational tools.
+ * The /workspace landing doubles as a DRep action queue / dashboard.
+ */
+export const WORKSPACE_DREP_ITEMS: NavItem[] = [
+  {
+    href: '/workspace',
+    label: 'Dashboard',
+    icon: Vote,
+    sublabelKey: 'workspace.pendingVotes',
+  },
+  {
+    href: '/workspace/review',
+    label: 'Review',
+    icon: FileText,
+    sublabelKey: 'workspace.pendingReview',
+  },
+  { href: '/workspace/author', label: 'Author', icon: PenLine },
   {
     href: '/workspace/votes',
     label: 'Voting Record',
     icon: ScrollText,
-    sublabelKey: 'home.totalVotes',
+    sublabelKey: 'workspace.totalVotes',
   },
   {
     href: '/workspace/delegators',
     label: 'Delegators',
     icon: Users,
-    sublabelKey: 'home.delegatedAda',
+    sublabelKey: 'workspace.delegatedAda',
   },
-  { href: '/workspace/author', label: 'Author', icon: PenLine },
 ];
 
-/** Home sub-items for SPO persona (workspace tools shown under Home) */
-export const HOME_SPO_ITEMS: NavItem[] = [
-  { href: '/workspace', label: 'Gov Score', icon: BarChart3, sublabelKey: 'home.govScore' },
-  { href: '/workspace/review', label: 'Review', icon: FileText, sublabelKey: 'home.pendingReview' },
+/**
+ * SPO workspace: Gov Score dashboard, then Review, Author, and pool management.
+ */
+export const WORKSPACE_SPO_ITEMS: NavItem[] = [
+  {
+    href: '/workspace',
+    label: 'Gov Score',
+    icon: BarChart3,
+    sublabelKey: 'workspace.govScore',
+  },
+  {
+    href: '/workspace/review',
+    label: 'Review',
+    icon: FileText,
+    sublabelKey: 'workspace.pendingReview',
+  },
+  { href: '/workspace/author', label: 'Author', icon: PenLine },
   { href: '/workspace/pool-profile', label: 'Pool Profile', icon: Building },
   {
     href: '/workspace/delegators',
     label: 'Delegators',
     icon: Users,
-    sublabelKey: 'home.delegatedAda',
+    sublabelKey: 'workspace.delegatedAda',
   },
   { href: '/workspace/position', label: 'Position', icon: Trophy },
+];
+
+/**
+ * Citizen workspace: Author-first (their primary workspace activity),
+ * then Review for community draft feedback.
+ */
+export const WORKSPACE_CITIZEN_ITEMS: NavItem[] = [
   { href: '/workspace/author', label: 'Author', icon: PenLine },
+  { href: '/workspace/review', label: 'Review', icon: FileText },
 ];
 
-/** Home sub-items for citizen persona — minimal workspace with Author access */
-export const HOME_CITIZEN_ITEMS: NavItem[] = [
-  { href: '/workspace/author', label: 'Author', icon: PenLine, requiresAuth: true },
-];
-
-// Legacy aliases for any code that still references the old names
-export const WORKSPACE_DREP_ITEMS = HOME_DREP_ITEMS;
-export const WORKSPACE_SPO_ITEMS = HOME_SPO_ITEMS;
+// Legacy aliases — kept for any code that still references the old names.
+// These now point at the workspace definitions (identical content, new ordering).
+export const HOME_DREP_ITEMS = WORKSPACE_DREP_ITEMS;
+export const HOME_SPO_ITEMS = WORKSPACE_SPO_ITEMS;
+export const HOME_CITIZEN_ITEMS = WORKSPACE_CITIZEN_ITEMS;
 
 export const GOVERNANCE_ITEMS: NavItem[] = [
   {
@@ -224,7 +261,7 @@ export const HELP_ITEMS: NavItem[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Sidebar sections — Three Worlds: Home, Governance, You
+// Sidebar sections — Four Worlds: Home, Workspace, Governance, You
 // ---------------------------------------------------------------------------
 
 /** Context for sidebar generation — supports dual-role detection */
@@ -239,6 +276,8 @@ export interface SidebarContext {
 /** Extended context that includes governance depth for filtering */
 export interface NavContext extends SidebarContext {
   depth?: GovernanceDepth;
+  /** True when citizen has an active delegation (DRep or pool) */
+  isDelegated?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -269,18 +308,28 @@ function filterGroupsByDepth(
 }
 
 /**
- * Build deduplicated dual-role Home groups.
+ * Build deduplicated dual-role Workspace groups.
  * Items that appear in both lists (matched by href) are shown only in the
  * DRep group to avoid visual clutter.
  */
-function buildDualRoleGroups(): NavItemGroup[] {
-  const drepHrefs = new Set(HOME_DREP_ITEMS.map((i) => i.href));
-  const dedupedSpoItems = HOME_SPO_ITEMS.filter((i) => !drepHrefs.has(i.href));
+function buildDualRoleWorkspaceGroups(): NavItemGroup[] {
+  const drepHrefs = new Set(WORKSPACE_DREP_ITEMS.map((i) => i.href));
+  const dedupedSpoItems = WORKSPACE_SPO_ITEMS.filter((i) => !drepHrefs.has(i.href));
 
   return [
-    { id: 'home-drep', label: 'DRep', items: HOME_DREP_ITEMS },
-    { id: 'home-pool', label: 'Pool', items: dedupedSpoItems },
+    { id: 'ws-drep', label: 'DRep', items: WORKSPACE_DREP_ITEMS },
+    { id: 'ws-pool', label: 'Pool', items: dedupedSpoItems },
   ];
+}
+
+/** Returns true when a persona should see the Workspace section. */
+function hasWorkspace(ctx: NavContext): boolean {
+  const { segment, drepId, poolId, isDelegated } = ctx;
+  if (segment === 'drep' || segment === 'spo') return true;
+  if (drepId || poolId) return true; // dual-role detection
+  // Delegated citizens get Workspace (Author + Review)
+  if (segment === 'citizen' && isDelegated) return true;
+  return false;
 }
 
 export function getSidebarSections(
@@ -295,50 +344,60 @@ export function getSidebarSections(
 
   const sections: NavSection[] = [];
 
-  // ── World 1: Home ─────────────────────────────────────────────────────
-  // For DRep/SPO, Home has workspace sub-items (the workspace IS their home).
-  // For citizens/anonymous, Home is a single link.
-  if (isDualRole) {
-    const filteredGroups = filterGroupsByDepth(buildDualRoleGroups(), depth);
-    sections.push({
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      href: '/',
-      groups: filteredGroups.length > 0 ? filteredGroups : undefined,
-    });
-  } else if (segment === 'drep' || segment === 'spo') {
-    const homeItems = segment === 'drep' ? HOME_DREP_ITEMS : HOME_SPO_ITEMS;
-    const filteredItems = filterByDepth(homeItems, depth);
-    sections.push({
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      href: '/',
-      items: filteredItems,
-    });
-  } else if (segment === 'citizen' || segment === 'cc') {
-    // Authenticated citizens and CC members get Home with Author workspace access
-    const filteredItems = filterByDepth(HOME_CITIZEN_ITEMS, depth);
-    sections.push({
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      href: '/',
-      items: filteredItems.length > 0 ? filteredItems : undefined,
-      requiresAuth: true,
-    });
-  } else {
-    // Anonymous — Home is a single link
-    sections.push({
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      href: '/',
-    });
+  // ── World 1: Home — briefing surface (always a single link) ───────────
+  sections.push({
+    id: 'home',
+    label: 'Home',
+    icon: Home,
+    href: '/',
+  });
+
+  // ── World 2: Workspace — governance work surface ──────────────────────
+  // Appears for DRep, SPO, and delegated citizens. Author & Review are
+  // peer sub-sections; persona determines default landing and item order.
+  if (hasWorkspace(ctx)) {
+    if (isDualRole) {
+      const filteredGroups = filterGroupsByDepth(buildDualRoleWorkspaceGroups(), depth);
+      sections.push({
+        id: 'workspace',
+        label: 'Workspace',
+        icon: Briefcase,
+        href: '/workspace',
+        groups: filteredGroups.length > 0 ? filteredGroups : undefined,
+        requiresAuth: true,
+      });
+    } else if (segment === 'drep' || (drepId && !poolId)) {
+      sections.push({
+        id: 'workspace',
+        label: 'Workspace',
+        icon: Briefcase,
+        href: '/workspace',
+        items: filterByDepth(WORKSPACE_DREP_ITEMS, depth),
+        requiresAuth: true,
+      });
+    } else if (segment === 'spo' || (!drepId && poolId)) {
+      sections.push({
+        id: 'workspace',
+        label: 'Workspace',
+        icon: Briefcase,
+        href: '/workspace',
+        items: filterByDepth(WORKSPACE_SPO_ITEMS, depth),
+        requiresAuth: true,
+      });
+    } else {
+      // Delegated citizen
+      sections.push({
+        id: 'workspace',
+        label: 'Workspace',
+        icon: Briefcase,
+        href: '/workspace/author',
+        items: filterByDepth(WORKSPACE_CITIZEN_ITEMS, depth),
+        requiresAuth: true,
+      });
+    }
   }
 
-  // ── World 2: Governance ───────────────────────────────────────────────
+  // ── World 3: Governance ───────────────────────────────────────────────
   sections.push({
     id: 'governance',
     label: 'Governance',
@@ -347,7 +406,7 @@ export function getSidebarSections(
     items: filterByDepth(GOVERNANCE_ITEMS, depth),
   });
 
-  // ── World 3: You ──────────────────────────────────────────────────────
+  // ── World 4: You ──────────────────────────────────────────────────────
   if (segment !== 'anonymous') {
     sections.push({
       id: 'you',
@@ -363,7 +422,7 @@ export function getSidebarSections(
 }
 
 // ---------------------------------------------------------------------------
-// Bottom bar — 3 items, Three Worlds model
+// Bottom bar — 3 or 4 items, persona-adaptive
 // ---------------------------------------------------------------------------
 
 /** Anonymous: Home | Governance | Match */
@@ -380,23 +439,26 @@ const BOTTOM_BAR_CITIZEN: NavItem[] = [
   { href: '/match', label: 'Match', icon: Compass },
 ];
 
-/** Citizen (delegated/hands-off): Home | Governance | You */
+/** Citizen (delegated): Home | Workspace | Governance | You */
 const BOTTOM_BAR_CITIZEN_DELEGATED: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/workspace/author', label: 'Workspace', icon: Briefcase },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
-/** DRep: Home | Governance | You (workspace absorbed into Home) */
+/** DRep: Home | Workspace | Governance | You */
 const BOTTOM_BAR_DREP: NavItem[] = [
-  { href: '/', label: 'Home', icon: Home, badge: 'actions' },
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/workspace', label: 'Workspace', icon: Briefcase, badge: 'actions' },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
-/** SPO: Home | Governance | You (workspace absorbed into Home) */
+/** SPO: Home | Workspace | Governance | You */
 const BOTTOM_BAR_SPO: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/workspace', label: 'Workspace', icon: Briefcase },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
@@ -419,7 +481,7 @@ export function getBottomBarItems(
     case 'anonymous':
       return BOTTOM_BAR_ANONYMOUS;
     case 'citizen':
-      // Undelegated citizens get Match; delegated/hands-off get You
+      // Delegated citizens (hands-off+ depth) get Workspace; undelegated get Match
       return isHandsOff ? BOTTOM_BAR_CITIZEN_DELEGATED : BOTTOM_BAR_CITIZEN;
     case 'drep':
       return BOTTOM_BAR_DREP;
@@ -446,21 +508,22 @@ export function getPillBarItems(
   if (pathname.startsWith('/governance')) {
     return filterByDepth(GOVERNANCE_ITEMS, depth);
   }
-  // Workspace routes are now part of the Home world
+  // Workspace routes show workspace sub-items in the pill bar
   if (pathname.startsWith('/workspace')) {
     const isDualRole = !!(context?.drepId && context?.poolId);
     if (isDualRole) {
-      const drepHrefs = new Set(HOME_DREP_ITEMS.map((i) => i.href));
+      const drepHrefs = new Set(WORKSPACE_DREP_ITEMS.map((i) => i.href));
       const combined = [
-        ...HOME_DREP_ITEMS,
-        ...HOME_SPO_ITEMS.filter((i) => !drepHrefs.has(i.href)),
+        ...WORKSPACE_DREP_ITEMS,
+        ...WORKSPACE_SPO_ITEMS.filter((i) => !drepHrefs.has(i.href)),
       ];
       return filterByDepth(combined, depth);
     }
-    if (segment === 'drep') return filterByDepth(HOME_DREP_ITEMS, depth);
-    if (segment === 'spo') return filterByDepth(HOME_SPO_ITEMS, depth);
-    if (segment === 'citizen' || segment === 'cc') return filterByDepth(HOME_CITIZEN_ITEMS, depth);
-    return filterByDepth(HOME_DREP_ITEMS, depth);
+    if (segment === 'drep') return filterByDepth(WORKSPACE_DREP_ITEMS, depth);
+    if (segment === 'spo') return filterByDepth(WORKSPACE_SPO_ITEMS, depth);
+    if (segment === 'citizen' || segment === 'cc')
+      return filterByDepth(WORKSPACE_CITIZEN_ITEMS, depth);
+    return filterByDepth(WORKSPACE_DREP_ITEMS, depth);
   }
   if (pathname.startsWith('/you')) {
     return filterByDepth(getYouItems(segment, context), depth);
@@ -478,8 +541,7 @@ export function getPillBarItems(
 
 export function getCurrentSection(pathname: string): string | null {
   if (pathname === '/') return 'home';
-  // Workspace routes belong to the Home world
-  if (pathname.startsWith('/workspace')) return 'home';
+  if (pathname.startsWith('/workspace')) return 'workspace';
   if (pathname.startsWith('/governance')) return 'governance';
   if (pathname.startsWith('/you')) return 'you';
   if (pathname.startsWith('/match')) return 'match';

@@ -7,6 +7,15 @@ import {
   PanelLeftOpen,
   Search,
   HelpCircle,
+  FileText,
+  Users,
+  Wallet,
+  Shield,
+  Activity,
+  User,
+  Wrench,
+  Settings,
+  PanelRight,
 } from 'lucide-react';
 import { commandRegistry } from './commands';
 
@@ -53,7 +62,7 @@ export function registerDefaultCommands(deps: {
     commandRegistry.register({
       id: 'navigate.review',
       label: 'Go to Review',
-      shortcut: 'g r',
+      shortcut: 'g v',
       icon: ClipboardCheck,
       section: 'navigation',
       execute: () => deps.push('/workspace/review'),
@@ -79,6 +88,105 @@ export function registerDefaultCommands(deps: {
       icon: Compass,
       section: 'navigation',
       execute: () => deps.push('/governance'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.proposals',
+      label: 'Go to Proposals',
+      shortcut: 'g p',
+      icon: FileText,
+      section: 'navigation',
+      execute: () => deps.push('/governance/proposals'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.representatives',
+      label: 'Go to Representatives',
+      shortcut: 'g r',
+      icon: Users,
+      section: 'navigation',
+      execute: () => deps.push('/governance/representatives'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.treasury',
+      label: 'Go to Treasury',
+      shortcut: 'g t',
+      icon: Wallet,
+      section: 'navigation',
+      execute: () => deps.push('/governance/treasury'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.committee',
+      label: 'Go to Committee',
+      shortcut: 'g c',
+      icon: Shield,
+      section: 'navigation',
+      execute: () => deps.push('/governance/committee'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.health',
+      label: 'Go to Governance Health',
+      shortcut: 'g e',
+      icon: Activity,
+      section: 'navigation',
+      execute: () => deps.push('/governance/health'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.you',
+      label: 'Go to You',
+      shortcut: 'g y',
+      icon: User,
+      section: 'navigation',
+      execute: () => deps.push('/you'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.match',
+      label: 'Go to Match',
+      shortcut: 'g m',
+      icon: Compass,
+      section: 'navigation',
+      execute: () => deps.push('/match'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.workspace',
+      label: 'Go to Workspace',
+      shortcut: 'g w',
+      icon: Wrench,
+      section: 'navigation',
+      execute: () => deps.push('/workspace'),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'navigate.settings',
+      label: 'Go to Settings',
+      shortcut: 'g s',
+      icon: Settings,
+      section: 'navigation',
+      execute: () => deps.push('/you/settings'),
     }),
   );
 
@@ -127,6 +235,17 @@ export function registerDefaultCommands(deps: {
       icon: HelpCircle,
       section: 'view',
       execute: () => deps.openKeyboardHelp(),
+    }),
+  );
+
+  unregisters.push(
+    commandRegistry.register({
+      id: 'view.toggle-intel-panel',
+      label: 'Toggle Intelligence Panel',
+      shortcut: ']',
+      icon: PanelRight,
+      section: 'view',
+      execute: () => window.dispatchEvent(new CustomEvent('toggleIntelPanel')),
     }),
   );
 

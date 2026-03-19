@@ -4625,6 +4625,42 @@ export type Database = {
           },
         ];
       };
+      proposal_team_approvals: {
+        Row: {
+          id: string;
+          draft_id: string;
+          team_member_id: string;
+          approved_at: string;
+        };
+        Insert: {
+          id?: string;
+          draft_id: string;
+          team_member_id: string;
+          approved_at?: string;
+        };
+        Update: {
+          id?: string;
+          draft_id?: string;
+          team_member_id?: string;
+          approved_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'proposal_team_approvals_draft_id_fkey';
+            columns: ['draft_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_drafts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'proposal_team_approvals_team_member_id_fkey';
+            columns: ['team_member_id'];
+            isOneToOne: false;
+            referencedRelation: 'proposal_team_members';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       proposal_team_members: {
         Row: {
           id: string;

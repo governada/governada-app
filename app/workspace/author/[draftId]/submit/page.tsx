@@ -26,6 +26,9 @@ import type { GovernanceActionTarget } from '@/lib/workspace/types';
 import { JourneySummary } from '@/components/workspace/author/submission/JourneySummary';
 import { FinancialSimulation } from '@/components/workspace/author/submission/FinancialSimulation';
 import { MetadataPreview } from '@/components/workspace/author/submission/MetadataPreview';
+import { TeamSignOff } from '@/components/workspace/author/submission/TeamSignOff';
+import { FinalConfirmation } from '@/components/workspace/author/submission/FinalConfirmation';
+import { SubmissionSuccess } from '@/components/workspace/author/submission/SubmissionSuccess';
 
 // ---------------------------------------------------------------------------
 // Step indicator
@@ -67,7 +70,7 @@ function SubmissionPageInner() {
   const { data: teamData } = useTeam(draftId);
 
   // Governance action hook
-  const { phase, startSubmission } = useGovernanceAction();
+  const { phase, startSubmission, confirmSubmission, isProcessing } = useGovernanceAction();
 
   // Step wizard state
   const [currentStep, setCurrentStep] = useState(0);
@@ -178,14 +181,16 @@ function SubmissionPageInner() {
   const hasTeam = teamMembers && teamMembers.length > 1;
 
   // Step configuration
-  // Steps: financial, metadata, (team if exists - not built yet), confirm (not built yet)
-  // For Session 1A we build steps 1 and 2 only
   const stepLabels = useMemo(() => {
     const labels = ['Financial Impact', 'Metadata Preview'];
     if (hasTeam) labels.push('Team Sign-Off');
     labels.push('Final Confirmation');
     return labels;
   }, [hasTeam]);
+
+  // Compute which step index is the team sign-off and final confirmation
+  const teamSignOffStep = hasTeam ? 2 : -1;
+  const finalConfirmStep = hasTeam ? 3 : 2;
 
   const totalSteps = stepLabels.length;
 
@@ -198,6 +203,34 @@ function SubmissionPageInner() {
     setCurrentStep((s) => Math.max(s - 1, 0));
   }, []);
 
+  // Handle confirm & sign from FinalConfirmation step
+  const handleConfirmSubmit = useCallback(async () => {
+    if (!draftId) return;
+
+    const publishFn = async () => {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      try {
+        const { getStoredSession } = await import('@/lib/supabaseAuth');
+        const token = getStoredSession();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      } catch {
+        // No session
+      }
+      const res = await fetch(`/api/workspace/drafts/${encodeURIComponent(draftId)}/publish`, {
+        method: 'POST',
+        headers,
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Failed to publish metadata: ${res.status} ${text}`);
+      }
+      const data = await res.json();
+      return { anchorUrl: data.anchorUrl as string, anchorHash: data.anchorHash as string };
+    };
+
+    await confirmSubmission(publishFn);
+  }, [draftId, confirmSubmission]);
+
   // Loading state
   if (draftLoading || !draft) {
     return (
@@ -207,9 +240,28 @@ function SubmissionPageInner() {
     );
   }
 
+  // Success state — show after successful submission
+  if (phase.status === 'success') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-xl mx-auto px-4 py-12">
+          <SubmissionSuccess
+            txHash={phase.txHash}
+            anchorUrl={phase.anchorUrl}
+            proposalTitle={draft.title || 'Untitled Proposal'}
+            proposalType={draft.proposalType}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Preflight data
   const preflight = phase.status === 'confirming' ? phase.preflight : null;
   const preflightLoading = phase.status === 'idle' || phase.status === 'preflight';
+
+  // Deposit amount for the final confirmation step
+  const depositAda = preflight ? Number(preflight.depositLovelace) / 1_000_000 : 100_000;
 
   return (
     <div className="min-h-screen bg-background">
@@ -263,23 +315,20 @@ function SubmissionPageInner() {
               <MetadataPreview draft={draft} onContinue={handleNext} onBack={handleBack} />
             )}
 
-            {/* Steps 2+ (Team Sign-Off, Final Confirmation) — built in Session 1B */}
-            {currentStep >= 2 && (
-              <div className="rounded-lg border border-border bg-card p-8 text-center space-y-4">
-                <Shield className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h2 className="text-lg font-display font-semibold text-foreground">
-                  {stepLabels[currentStep]}
-                </h2>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  This step will be available in the next update. Use the back button to return.
-                </p>
-                <button
-                  onClick={handleBack}
-                  className="text-sm text-[var(--compass-teal)] hover:underline"
-                >
-                  Go back
-                </button>
-              </div>
+            {/* Team Sign-Off (only if team exists) */}
+            {currentStep === teamSignOffStep && draftId && (
+              <TeamSignOff draftId={draftId} onContinue={handleNext} onBack={handleBack} />
+            )}
+
+            {/* Final Confirmation */}
+            {currentStep === finalConfirmStep && (
+              <FinalConfirmation
+                depositAda={depositAda}
+                onSubmit={handleConfirmSubmit}
+                onBack={handleBack}
+                isProcessing={isProcessing}
+                phase={phase}
+              />
             )}
           </div>
         </div>

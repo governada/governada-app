@@ -157,6 +157,11 @@ export function SubmissionSuccess({
         </ul>
       </div>
 
+      {/* Portfolio note */}
+      <p className="text-xs text-muted-foreground text-center">
+        Track voting progress and view the outcome debrief in your portfolio.
+      </p>
+
       {/* Action buttons */}
       <div className="flex gap-3">
         <Button variant="outline" onClick={handleCopyLink} className="flex-1">

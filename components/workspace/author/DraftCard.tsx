@@ -102,6 +102,12 @@ export function DraftCard({ draft, index, column, itemProps }: DraftCardProps) {
         ? `/workspace/amendment/${draft.id}`
         : `/workspace/author/${draft.id}`;
 
+  // On-chain submitted proposals link to the debrief page
+  const cardHref =
+    column === 'onChain' && draft.status === 'submitted'
+      ? `/workspace/author/${draft.id}/debrief`
+      : editorPath;
+
   return (
     <motion.div
       initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
@@ -117,7 +123,7 @@ export function DraftCard({ draft, index, column, itemProps }: DraftCardProps) {
         {...(itemProps ?? {})}
       >
         <Link
-          href={editorPath}
+          href={cardHref}
           onClick={() => setInputMethod('pointer')}
           className="block cursor-pointer"
         >

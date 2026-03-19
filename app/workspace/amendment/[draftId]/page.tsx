@@ -41,6 +41,7 @@ import { IntentInputPanel } from '@/components/workspace/author/IntentInputPanel
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
 import { AmendmentGenealogyTimeline } from '@/components/workspace/review/AmendmentGenealogyTimeline';
+import { KeyboardShortcutsOverlay } from '@/components/workspace/editor/KeyboardShortcutsOverlay';
 import { CONSTITUTION_NODES, CONSTITUTION_VERSION } from '@/lib/constitution/fullText';
 import { extractAmendmentChanges, serializeAmendmentChanges } from '@/lib/constitution/utils';
 import { proposeChange } from '@/components/workspace/editor/SuggestModePlugin';
@@ -513,6 +514,7 @@ function AmendmentEditorPage() {
           }
           statusBar={<AmendmentActionBarWrapper statusInfo={statusInfo} />}
         />
+        <KeyboardShortcutsOverlay />
       </StudioProvider>
     </>
   );

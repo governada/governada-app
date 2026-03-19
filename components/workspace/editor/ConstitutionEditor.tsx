@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -43,6 +44,7 @@ import { FormattingToolbar } from './FormattingToolbar';
 import { ConstitutionTOC } from './ConstitutionTOC';
 import { scanDiffMarks } from './SuggestModePlugin';
 import { createConstitutionSlashMenu } from './ConstitutionSlashMenuExtension';
+import { BlockHandleExtension } from './BlockHandleExtension';
 
 import type { ReactNode } from 'react';
 import type { ConstitutionNode } from '@/lib/constitution/fullText';
@@ -93,6 +95,8 @@ export interface ConstitutionEditorProps {
   sentimentSlots?: Record<string, ReactNode>;
   /** Current user's ID (for comment ownership styling) */
   currentUserId?: string;
+  /** Focus mode: dims non-active sections */
+  focusMode?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +138,7 @@ export function ConstitutionEditor({
   onDiffReject,
   marginIndicators,
   currentUserId,
+  focusMode = false,
 }: ConstitutionEditorProps) {
   const isReadOnly = readOnly || mode === 'review';
 
@@ -248,6 +253,7 @@ export function ConstitutionEditor({
         TableHeader,
         TaskList,
         TaskItem.configure({ nested: true }),
+        BlockHandleExtension.configure({}),
       ];
 
       return baseExtensions;
@@ -485,7 +491,9 @@ export function ConstitutionEditor({
   // -------------------------------------------------------------------------
 
   return (
-    <div className="constitution-editor-wrapper relative">
+    <div
+      className={cn('constitution-editor-wrapper relative', focusMode && 'constitution-focus-mode')}
+    >
       {/* Table of contents sidebar */}
       <ConstitutionTOC
         nodes={constitutionNodes}

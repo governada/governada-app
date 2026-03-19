@@ -355,6 +355,16 @@
    Base layer
    ============================================================ */
 
+/* Constitution editor focus mode — dims non-active sections */
+.constitution-focus-mode [data-section-field] {
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+}
+.constitution-focus-mode [data-section-field].active-section,
+.constitution-focus-mode [data-section-field]:hover {
+  opacity: 1;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

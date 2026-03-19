@@ -95,10 +95,12 @@ function AmendmentPanelWrapper({
 
 function AmendmentHeaderWrapper({
   title,
+  titleTransitionName,
   presence,
   onToggleDiff,
 }: {
   title: string;
+  titleTransitionName?: string;
   presence?: ReactNode;
   onToggleDiff?: () => void;
 }) {
@@ -109,6 +111,7 @@ function AmendmentHeaderWrapper({
       backLabel="governada"
       backHref="/workspace/author"
       title={title}
+      titleTransitionName={titleTransitionName}
       proposalType="Constitutional Amendment"
       panelOpen={panelOpen}
       activePanel={activePanel}
@@ -540,6 +543,7 @@ function AmendmentEditorPage() {
           toolbar={
             <AmendmentHeaderWrapper
               title={draft.title || 'Constitutional Amendment'}
+              titleTransitionName={draftId ? `draft-title-${draftId}` : undefined}
               presence={viewers.length > 0 ? <PresenceIndicator viewers={viewers} /> : undefined}
               onToggleDiff={changes.length > 0 ? () => setShowDiffView(true) : undefined}
             />

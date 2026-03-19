@@ -135,6 +135,7 @@ export function DraftCard({ draft, index, column, itemProps }: DraftCardProps) {
                 style={{
                   fontSize: 'var(--workspace-font-size)',
                   lineHeight: 'var(--workspace-line-height)',
+                  viewTransitionName: `draft-title-${draft.id}`,
                 }}
               >
                 {draft.title || 'Untitled proposal'}

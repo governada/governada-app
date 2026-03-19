@@ -28,6 +28,8 @@ interface StudioHeaderProps {
   onBack?: () => void;
   backLabel?: string;
   title?: string;
+  /** CSS view-transition-name for title morph animation */
+  titleTransitionName?: string;
   proposalType?: string;
   /** Compact readiness indicator in the header */
   readiness?: ReadinessBadgeData;
@@ -68,6 +70,7 @@ export function StudioHeader({
   onBack,
   backLabel = 'governada',
   title,
+  titleTransitionName,
   proposalType,
   queueProgress,
   onQueueJump,
@@ -139,7 +142,12 @@ export function StudioHeader({
       {/* Title + type badge */}
       {title && (
         <div className="hidden lg:flex items-center gap-2 min-w-0 flex-1">
-          <h1 className="text-sm font-semibold truncate min-w-0">{title}</h1>
+          <h1
+            className="text-sm font-semibold truncate min-w-0"
+            style={titleTransitionName ? { viewTransitionName: titleTransitionName } : undefined}
+          >
+            {title}
+          </h1>
           {proposalType && (
             <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5 shrink-0">
               {proposalType}

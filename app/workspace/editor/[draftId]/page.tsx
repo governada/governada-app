@@ -495,6 +495,7 @@ function WorkspaceEditorPage() {
               backLabel="Back to drafts"
               backHref="/workspace/author"
               title={draft.title || 'Untitled proposal'}
+              titleTransitionName={draftId ? `draft-title-${draftId}` : undefined}
               proposalType={typeLabel}
               showModeSwitch={isOwner}
               mode={mode}

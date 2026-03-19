@@ -23,7 +23,7 @@ import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { usePinnedItems, type PinnedEntityType } from '@/hooks/usePinnedItems';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { User, FileText, Building2, Shield } from 'lucide-react';
+import { User, FileText, Building2, Shield, BrainCircuit } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -66,7 +66,14 @@ const MAX_RAIL_PINS = 4;
 // Component
 // ---------------------------------------------------------------------------
 
-export function NavigationRail() {
+interface NavigationRailProps {
+  /** Callback to toggle the Co-Pilot panel (only present when governance_copilot flag is on) */
+  onToggleCopilot?: () => void;
+  /** Whether the Co-Pilot panel is currently open */
+  copilotOpen?: boolean;
+}
+
+export function NavigationRail({ onToggleCopilot, copilotOpen }: NavigationRailProps = {}) {
   const pathname = usePathname();
   const { t } = useTranslation();
   const { segment, stakeAddress, drepId, poolId } = useSegment();
@@ -158,6 +165,33 @@ export function NavigationRail() {
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Co-Pilot toggle */}
+        {onToggleCopilot && (
+          <div className="flex flex-col items-center pb-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onToggleCopilot}
+                  className={cn(
+                    'relative w-10 h-10 flex items-center justify-center rounded-lg transition-colors',
+                    'hover:bg-accent/50',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                    copilotOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground',
+                  )}
+                  aria-label={copilotOpen ? 'Close intelligence panel' : 'Open intelligence panel'}
+                  aria-pressed={copilotOpen}
+                >
+                  <BrainCircuit className="h-4.5 w-4.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                {t('Co-Pilot')} &middot; ]
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
 
         {/* Pinned entities */}
         {visiblePins.length > 0 && (

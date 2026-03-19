@@ -20,6 +20,15 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSentryContext } from '@/hooks/useSentryContext';
 import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
 import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
+import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+
+const IntelligencePanel = dynamic(
+  () =>
+    import('@/components/governada/IntelligencePanel').then((m) => ({
+      default: m.IntelligencePanel,
+    })),
+  { ssr: false },
+);
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -151,7 +160,11 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const navigationRailFlag = useFeatureFlag('navigation_rail');
   const navigationRail = navigationRailFlag === true;
   const temporalAdaptation = useFeatureFlag('temporal_adaptation') === true;
+  const governanceCopilotFlag = useFeatureFlag('governance_copilot');
+  const showCopilot = governanceCopilotFlag === true && !isStudioMode;
   const { tintColor } = useGovernanceTemperature();
+  const intelligencePanel = useIntelligencePanel();
+  const panelVisible = showCopilot && intelligencePanel.isOpen && intelligencePanel.canShowPanel;
 
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -179,7 +192,10 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           {!isStudioMode && <GovernadaHeader />}
           {!isStudioMode &&
             (navigationRail ? (
-              <NavigationRail />
+              <NavigationRail
+                onToggleCopilot={showCopilot ? intelligencePanel.toggle : undefined}
+                copilotOpen={panelVisible}
+              />
             ) : (
               <GovernadaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
             ))}
@@ -211,6 +227,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
                           sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
                         ),
                 )}
+                style={panelVisible ? { paddingRight: intelligencePanel.panelWidth } : undefined}
                 tabIndex={-1}
               >
                 {children}
@@ -219,6 +236,15 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               {!isStudioMode && <MilestoneTrigger />}
             </DiscoveryHub>
           </SpotlightProvider>
+          {/* Governance Co-Pilot Intelligence Panel */}
+          {showCopilot && intelligencePanel.canShowPanel && (
+            <IntelligencePanel
+              isOpen={intelligencePanel.isOpen}
+              onClose={intelligencePanel.close}
+              panelWidth={intelligencePanel.panelWidth}
+            />
+          )}
+
           {!isStudioMode && (
             <footer
               className={cn(

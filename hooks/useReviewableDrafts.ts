@@ -25,9 +25,10 @@ async function fetchReviewableDrafts(): Promise<ReviewableDraftsResponse> {
     // No session available
   }
 
-  const res = await fetch('/api/workspace/drafts?status=community_review,final_comment', {
-    headers,
-  });
+  const res = await fetch(
+    '/api/workspace/drafts?status=community_review,response_revision,final_comment',
+    { headers },
+  );
   if (!res.ok) {
     // Return empty if no reviewable drafts or API not updated yet
     return { drafts: [] };

@@ -23,6 +23,10 @@ export interface WorkspaceState {
   authorViewMode: 'kanban' | 'list';
   authorFilter: string;
 
+  // Reviewer portfolio preferences (persisted)
+  reviewViewMode: 'kanban' | 'list';
+  reviewFilter: string;
+
   // Review queue state (NOT persisted — derived from queue data)
   reviewQueueIndex: number;
 }
@@ -37,6 +41,8 @@ export interface WorkspaceActions {
   setFocusLevel: (level: 0 | 1 | 2) => void;
   setAuthorViewMode: (mode: 'kanban' | 'list') => void;
   setAuthorFilter: (filter: string) => void;
+  setReviewViewMode: (mode: 'kanban' | 'list') => void;
+  setReviewFilter: (filter: string) => void;
   setReviewQueueIndex: (index: number) => void;
 }
 
@@ -57,6 +63,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       focusLevel: 0,
       authorViewMode: 'kanban',
       authorFilter: '',
+      reviewViewMode: 'kanban',
+      reviewFilter: '',
       reviewQueueIndex: 0,
 
       // --- Actions ---
@@ -83,6 +91,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
       setAuthorViewMode: (mode) => set({ authorViewMode: mode }),
       setAuthorFilter: (filter) => set({ authorFilter: filter }),
+      setReviewViewMode: (mode) => set({ reviewViewMode: mode }),
+      setReviewFilter: (filter) => set({ reviewFilter: filter }),
       setReviewQueueIndex: (index) => set({ reviewQueueIndex: index }),
     }),
     {
@@ -93,6 +103,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         contextPanel: state.contextPanel,
         focusLevel: state.focusLevel,
         authorViewMode: state.authorViewMode,
+        reviewViewMode: state.reviewViewMode,
       }),
     },
   ),

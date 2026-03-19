@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { FeatureGate } from '@/components/FeatureGate';
-import { ReviewWorkspace } from '@/components/workspace/review/ReviewWorkspace';
+import { ReviewPageRouter } from '@/components/workspace/review/ReviewPageRouter';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
     <>
       <PageViewTracker event="review_workspace_viewed" />
       <FeatureGate flag="proposal_workspace">
-        <ReviewWorkspace initialProposalKey={params.proposal} />
+        <ReviewPageRouter initialProposalKey={params.proposal} />
       </FeatureGate>
     </>
   );

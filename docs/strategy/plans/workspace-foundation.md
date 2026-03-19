@@ -1,6 +1,6 @@
 # Workspace Foundation: Linear + Cursor Architectural Primitives
 
-> **Status:** Approved — Session 1a + 1b in progress
+> **Status:** Complete — all sessions shipped to production
 > **Created:** 2026-03-18
 > **Prerequisite for:** Proposal lifecycle management, Author portfolio view, Submission ceremony, Post-submission monitoring
 > **Estimated effort:** 4-6 sessions across Tier 0-2 + content authoring track

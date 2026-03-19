@@ -2091,7 +2091,6 @@ export type Database = {
           feedback_themes: string[];
           id: string;
           impact_score: number | null;
-          reviewed_at_version: number | null;
           reviewer_stake_address: string;
           reviewer_user_id: string | null;
           value_score: number | null;
@@ -2105,7 +2104,6 @@ export type Database = {
           feedback_themes?: string[];
           id?: string;
           impact_score?: number | null;
-          reviewed_at_version?: number | null;
           reviewer_stake_address: string;
           reviewer_user_id?: string | null;
           value_score?: number | null;
@@ -2119,7 +2117,6 @@ export type Database = {
           feedback_themes?: string[];
           id?: string;
           impact_score?: number | null;
-          reviewed_at_version?: number | null;
           reviewer_stake_address?: string;
           reviewer_user_id?: string | null;
           value_score?: number | null;

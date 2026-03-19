@@ -322,14 +322,15 @@ function buildDualRoleWorkspaceGroups(): NavItemGroup[] {
   ];
 }
 
-/** Returns true when a persona should see the Workspace section. */
+/** Returns true when a persona should see the Workspace section.
+ *  All authenticated users get Workspace — any citizen can author proposals. */
 function hasWorkspace(ctx: NavContext): boolean {
-  const { segment, drepId, poolId, isDelegated } = ctx;
+  const { segment, drepId, poolId } = ctx;
+  if (segment === 'anonymous') return false;
   if (segment === 'drep' || segment === 'spo') return true;
   if (drepId || poolId) return true; // dual-role detection
-  // Delegated citizens get Workspace (Author + Review)
-  if (segment === 'citizen' && isDelegated) return true;
-  return false;
+  // All authenticated users (citizen, cc) get Workspace for Author + Review
+  return true;
 }
 
 export function getSidebarSections(
@@ -353,8 +354,8 @@ export function getSidebarSections(
   });
 
   // ── World 2: Workspace — governance work surface ──────────────────────
-  // Appears for DRep, SPO, and delegated citizens. Author & Review are
-  // peer sub-sections; persona determines default landing and item order.
+  // Appears for all authenticated users. Author & Review are peer
+  // sub-sections; persona determines default landing and item order.
   if (hasWorkspace(ctx)) {
     if (isDualRole) {
       const filteredGroups = filterGroupsByDepth(buildDualRoleWorkspaceGroups(), depth);
@@ -385,7 +386,7 @@ export function getSidebarSections(
         requiresAuth: true,
       });
     } else {
-      // Delegated citizen
+      // Citizen / CC — Author-first workspace
       sections.push({
         id: 'workspace',
         label: 'Workspace',
@@ -432,9 +433,10 @@ const BOTTOM_BAR_ANONYMOUS: NavItem[] = [
   { href: '/match', label: 'Match', icon: Compass },
 ];
 
-/** Citizen (undelegated): Home | Governance | Match */
+/** Citizen (undelegated): Home | Workspace | Governance | Match */
 const BOTTOM_BAR_CITIZEN: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/workspace/author', label: 'Workspace', icon: Briefcase },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/match', label: 'Match', icon: Compass },
 ];
@@ -463,9 +465,10 @@ const BOTTOM_BAR_SPO: NavItem[] = [
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
-/** CC: Home | Governance | You */
+/** CC: Home | Workspace | Governance | You */
 const BOTTOM_BAR_CC: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/workspace/author', label: 'Workspace', icon: Briefcase },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
+import { motion, LayoutGroup, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import {
@@ -29,6 +30,7 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
   const { segment, stakeAddress, drepId, poolId } = useSegment();
   const { depth } = useGovernanceDepth();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
+  const prefersReducedMotion = useReducedMotion();
 
   const sections = getSidebarSections({ segment, drepId, poolId, depth });
   const sidebarMetrics = useSidebarMetrics();
@@ -68,9 +70,16 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
         aria-current={active ? 'page' : undefined}
         title={collapsed ? t(item.label) : undefined}
       >
-        {active && (
-          <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
-        )}
+        {active &&
+          (prefersReducedMotion ? (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
+          ) : (
+            <motion.span
+              layoutId="sidebar-active-indicator"
+              className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            />
+          ))}
         <span className="relative inline-flex shrink-0">
           <item.icon className="h-4 w-4" />
           {badge > 0 && (
@@ -138,57 +147,68 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
       )}
     >
       <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="Sidebar navigation">
-        {sections.map((section, sectionIdx) => (
-          <div key={section.id} className={cn(sectionIdx > 0 && 'mt-4')}>
-            {/* Section header / single link */}
-            {section.items || section.groups ? (
-              <>
-                {/* Section label — clickable for Home (navigates to /) */}
-                {!collapsed && (
-                  <Link
-                    href={section.href}
-                    className="block px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-                  >
-                    {t(section.label)}
-                  </Link>
-                )}
-                {collapsed && (
-                  <Link
-                    href={section.href}
-                    className="flex justify-center py-1.5"
-                    title={t(section.label)}
-                  >
-                    <section.icon className="h-4 w-4 text-muted-foreground/40 hover:text-muted-foreground transition-colors" />
-                  </Link>
-                )}
-                {/* Sub-items (flat or grouped) */}
-                {renderSectionItems(section)}
-              </>
-            ) : (
-              /* Single link section (Home, Delegation) */
-              <Link
-                href={section.href}
-                className={cn(
-                  'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  'hover:bg-accent hover:text-accent-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                  isSectionActive(section) ? 'bg-accent text-foreground' : 'text-muted-foreground',
-                  collapsed && 'justify-center px-0',
-                )}
-                aria-current={isSectionActive(section) ? 'page' : undefined}
-                title={collapsed ? t(section.label) : undefined}
-              >
-                {isSectionActive(section) && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
-                )}
-                <section.icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>{t(section.label)}</span>}
-              </Link>
-            )}
-          </div>
-        ))}
-        {/* Pinned entities */}
-        <SidebarPinnedItems collapsed={collapsed} />
+        <LayoutGroup id="sidebar-nav">
+          {sections.map((section, sectionIdx) => (
+            <div key={section.id} className={cn(sectionIdx > 0 && 'mt-4')}>
+              {/* Section header / single link */}
+              {section.items || section.groups ? (
+                <>
+                  {/* Section label — clickable for Home (navigates to /) */}
+                  {!collapsed && (
+                    <Link
+                      href={section.href}
+                      className="block px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                    >
+                      {t(section.label)}
+                    </Link>
+                  )}
+                  {collapsed && (
+                    <Link
+                      href={section.href}
+                      className="flex justify-center py-1.5"
+                      title={t(section.label)}
+                    >
+                      <section.icon className="h-4 w-4 text-muted-foreground/40 hover:text-muted-foreground transition-colors" />
+                    </Link>
+                  )}
+                  {/* Sub-items (flat or grouped) */}
+                  {renderSectionItems(section)}
+                </>
+              ) : (
+                /* Single link section (Home, Delegation) */
+                <Link
+                  href={section.href}
+                  className={cn(
+                    'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    'hover:bg-accent hover:text-accent-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                    isSectionActive(section)
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground',
+                    collapsed && 'justify-center px-0',
+                  )}
+                  aria-current={isSectionActive(section) ? 'page' : undefined}
+                  title={collapsed ? t(section.label) : undefined}
+                >
+                  {isSectionActive(section) &&
+                    (prefersReducedMotion ? (
+                      <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary" />
+                    ) : (
+                      <motion.span
+                        layoutId="sidebar-active-indicator"
+                        className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-primary"
+                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                      />
+                    ))}
+                  <section.icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>{t(section.label)}</span>}
+                </Link>
+              )}
+            </div>
+          ))}
+          {/* Pinned entities */}
+          <SidebarPinnedItems collapsed={collapsed} />
+        </LayoutGroup>
       </nav>
 
       {/* Collapse toggle */}

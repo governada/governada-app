@@ -23,10 +23,12 @@ import {
   ShieldCheck,
   FileCode,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 import { SubmissionFlow } from './SubmissionFlow';
 import { StageTransitionDialog } from './StageTransitionDialog';
@@ -35,7 +37,9 @@ import { CIP108PreviewModal } from './CIP108PreviewModal';
 import { VersionCompareDialog } from './VersionCompareDialog';
 import { TeamManagement } from './TeamManagement';
 import { useConstitutionalCheck, useCip108Preview } from '@/hooks/useDrafts';
+import { useDraftReviews } from '@/hooks/useDraftReviews';
 import { useQueryClient } from '@tanstack/react-query';
+import { MIN_REVIEWS_FOR_SUBMISSION } from '@/lib/workspace/constants';
 import type {
   ProposalDraft,
   DraftVersion,
@@ -150,6 +154,11 @@ function SubmitOnChainButton({
   const [showFlow, setShowFlow] = useState(false);
   const flagEnabled = useFeatureFlag('governance_action_submission');
 
+  // Fetch review data for threshold gate
+  const { data: reviewsData } = useDraftReviews(draft.status === 'final_comment' ? draft.id : null);
+  const nonStaleCount = reviewsData?.nonStaleReviewCount ?? 0;
+  const meetsThreshold = nonStaleCount >= MIN_REVIEWS_FOR_SUBMISSION;
+
   if (draft.status !== 'final_comment') return null;
   if (flagEnabled === null || !flagEnabled) return null;
 
@@ -168,6 +177,35 @@ function SubmitOnChainButton({
           });
         }}
       />
+    );
+  }
+
+  // Threshold gate: show warning and disable button when insufficient reviews
+  if (!meetsThreshold) {
+    const remaining = MIN_REVIEWS_FOR_SUBMISSION - nonStaleCount;
+    return (
+      <div className="space-y-2">
+        <Alert className="border-amber-500/30 bg-amber-500/5">
+          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          <AlertDescription className="text-amber-800 dark:text-amber-300">
+            <p className="font-semibold text-sm mb-1">Cannot submit yet</p>
+            <p className="text-xs">
+              {MIN_REVIEWS_FOR_SUBMISSION} non-stale reviews required. Currently has {nonStaleCount}
+              . Need {remaining} more community review{remaining !== 1 ? 's' : ''} before submitting
+              on-chain.
+            </p>
+          </AlertDescription>
+        </Alert>
+        <Button
+          disabled
+          className="w-full bg-amber-600/50 text-white/60 cursor-not-allowed"
+          size="lg"
+          title={`${remaining} more review${remaining !== 1 ? 's' : ''} needed`}
+        >
+          <Shield className="h-4 w-4 mr-2" />
+          Submit On-Chain
+        </Button>
+      </div>
     );
   }
 

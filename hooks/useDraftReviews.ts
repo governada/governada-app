@@ -60,6 +60,7 @@ export interface ReviewsResponse {
     }>
   >;
   total: number;
+  /** Count of non-stale reviews (used for submission threshold gate). */
   nonStaleReviewCount: number;
 }
 

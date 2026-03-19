@@ -10,6 +10,7 @@ import { useSectionAnalysis } from '@/hooks/useSectionAnalysis';
 import { DraftForm } from './DraftForm';
 import { ScaffoldForm } from './ScaffoldForm';
 import { AuthorIntelligencePanel } from './AuthorIntelligencePanel';
+import { SimilarProposalsPanel } from './SimilarProposalsPanel';
 import { DraftActions } from './DraftActions';
 import { LifecycleStatus } from './LifecycleStatus';
 import { ReviewsList } from './ReviewsList';
@@ -193,6 +194,7 @@ export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
               onApplyFix={handleApplyFix}
             />
           </FeatureGate>
+          {draftId && <SimilarProposalsPanel draftId={draftId} />}
           <DraftActions
             draft={draft}
             versions={versions}

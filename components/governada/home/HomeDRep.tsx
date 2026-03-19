@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { GovTerm } from '@/components/GovTerm';
 import { computeTier } from '@/lib/scoring/tiers';
 import {
@@ -238,14 +239,13 @@ export function HomeDRep() {
                     }}
                     aria-hidden="true"
                   />
-                  <span
+                  <AnimatedNumber
+                    value={score}
                     className={cn(
-                      'relative font-display text-6xl sm:text-7xl font-bold tabular-nums leading-none drop-shadow-lg hero-text-shadow',
+                      'relative font-display text-6xl sm:text-7xl font-bold leading-none drop-shadow-lg hero-text-shadow',
                       TIER_HERO_COLORS[tier] ?? 'text-white',
                     )}
-                  >
-                    {score}
-                  </span>
+                  />
                 </span>
                 <div className="pb-1.5 space-y-0.5 text-left">
                   <span
@@ -284,14 +284,13 @@ export function HomeDRep() {
                 <Skeleton className="h-16 w-28" />
               ) : (
                 <div className="flex items-end gap-3">
-                  <span
+                  <AnimatedNumber
+                    value={score}
                     className={cn(
-                      'font-display text-6xl font-bold tabular-nums leading-none',
+                      'font-display text-6xl font-bold leading-none',
                       TIER_COLORS[tier],
                     )}
-                  >
-                    {score}
-                  </span>
+                  />
                   <div className="pb-1 space-y-0.5">
                     <span
                       className={cn(
@@ -334,21 +333,12 @@ export function HomeDRep() {
         <div className="flex items-center gap-3 px-1">
           <Users className="h-4 w-4 text-muted-foreground shrink-0" />
           <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground tabular-nums">
-              {delegatorCount.toLocaleString()}
-            </span>{' '}
+            <AnimatedNumber
+              value={delegatorCount}
+              className="font-semibold text-foreground"
+              delta={delegatorDelta || undefined}
+            />{' '}
             delegators trust you with their <GovTerm term="votingPower">voting power</GovTerm>
-            {delegatorDelta !== 0 && (
-              <span
-                className={cn(
-                  'ml-1.5 text-xs font-medium',
-                  delegatorDelta > 0 ? 'text-emerald-500' : 'text-rose-500',
-                )}
-              >
-                ({delegatorDelta > 0 ? '+' : ''}
-                {delegatorDelta} this epoch)
-              </span>
-            )}
           </p>
         </div>
 

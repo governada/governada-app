@@ -13,6 +13,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
+import { StaggeredList } from '@/components/ui/StaggeredList';
 import { GovTerm } from '@/components/GovTerm';
 import { useSPOPoolCompetitive } from '@/hooks/queries';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -169,14 +171,13 @@ export function HomeSPO() {
                     }}
                     aria-hidden="true"
                   />
-                  <span
+                  <AnimatedNumber
+                    value={score}
                     className={cn(
-                      'relative font-display text-6xl sm:text-7xl font-bold tabular-nums leading-none drop-shadow-lg hero-text-shadow',
+                      'relative font-display text-6xl sm:text-7xl font-bold leading-none drop-shadow-lg hero-text-shadow',
                       TIER_HERO_COLORS[tier] ?? 'text-white',
                     )}
-                  >
-                    {score}
-                  </span>
+                  />
                 </span>
                 <div className="pb-1.5 space-y-0.5 text-left">
                   <span
@@ -236,14 +237,13 @@ export function HomeSPO() {
                 <Skeleton className="h-16 w-28" />
               ) : (
                 <div className="flex items-end gap-3">
-                  <span
+                  <AnimatedNumber
+                    value={score}
                     className={cn(
-                      'font-display text-6xl font-bold tabular-nums leading-none',
+                      'font-display text-6xl font-bold leading-none',
                       TIER_COLORS[tier],
                     )}
-                  >
-                    {score}
-                  </span>
+                  />
                   <div className="pb-1 space-y-0.5">
                     <span
                       className={cn(
@@ -283,7 +283,7 @@ export function HomeSPO() {
 
           {/* Score components */}
           {pool && (
-            <div className="grid grid-cols-3 gap-3 pt-1">
+            <StaggeredList className="grid grid-cols-3 gap-3 pt-1">
               {[
                 { label: 'Participation', value: pool.participation_pct as number | null },
                 { label: 'Consistency', value: pool.consistency_pct as number | null },
@@ -291,12 +291,12 @@ export function HomeSPO() {
               ].map(({ label, value }) => (
                 <div key={label} className="text-center space-y-0.5">
                   <p className="font-display text-xl font-bold tabular-nums text-foreground">
-                    {value != null ? `${Math.round(value)}%` : '—'}
+                    {value != null ? <AnimatedNumber value={Math.round(value)} suffix="%" /> : '—'}
                   </p>
                   <p className="text-[10px] text-muted-foreground">{label}</p>
                 </div>
               ))}
-            </div>
+            </StaggeredList>
           )}
         </div>
 

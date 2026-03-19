@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { briefingContainer, briefingItem, spring } from '@/lib/animations';
+import { StaggeredList } from '@/components/ui/StaggeredList';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import {
   useEpochConsequence,
@@ -938,7 +939,7 @@ function GovernanceFootprintSection() {
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
         Your participation
       </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <StaggeredList className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <FootprintStat icon={Vote} value={proposalsInfluenced} label="Decisions Made" />
         <FootprintStat
           icon={Coins}
@@ -955,7 +956,7 @@ function GovernanceFootprintSection() {
           value={impactScore?.computed ? Math.round(impactScore.score) : '--'}
           label="Participation"
         />
-      </div>
+      </StaggeredList>
     </Section>
   );
 }

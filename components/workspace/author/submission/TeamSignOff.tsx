@@ -3,15 +3,17 @@
 /**
  * TeamSignOff — Step 3 of the submission ceremony.
  *
- * INFORMATIONAL ONLY — displays team composition and roles but does not
- * block submission. The lead can always proceed. A blocking approval gate
- * will be added in Phase 4 when team collaboration is more mature.
+ * BLOCKING GATE — the "Continue" button is disabled until all editors
+ * have recorded their approval. The lead has implicit approval and can
+ * always proceed. Solo proposers (no team) skip through automatically.
  */
 
-import { Users, UserCircle, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Users, UserCircle, ArrowLeft, ArrowRight, Check, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTeam } from '@/hooks/useTeam';
+import { useTeamApprovals, useApproveSubmission } from '@/hooks/useTeamApprovals';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import type { TeamRole } from '@/lib/workspace/types';
 
 // ---------------------------------------------------------------------------
@@ -50,10 +52,46 @@ function truncateAddress(addr: string): string {
 // ---------------------------------------------------------------------------
 
 export function TeamSignOff({ draftId, onContinue, onBack }: TeamSignOffProps) {
-  const { data, isLoading } = useTeam(draftId);
+  const { stakeAddress } = useSegment();
+  const { data: teamData, isLoading: teamLoading } = useTeam(draftId);
+  const { data: approvalsData, isLoading: approvalsLoading } = useTeamApprovals(draftId);
+  const approveMutation = useApproveSubmission(draftId);
 
-  const team = data?.team ?? null;
-  const members = data?.members ?? [];
+  const team = teamData?.team ?? null;
+  const members = teamData?.members ?? [];
+
+  const isLoading = teamLoading || approvalsLoading;
+
+  // Determine if the current user is the lead
+  const currentMember = members.find((m) => m.stakeAddress === stakeAddress);
+  const isLead = currentMember?.role === 'lead';
+  const isEditor = currentMember?.role === 'editor';
+
+  // Approval state
+  const allApproved = approvalsData?.allApproved ?? true;
+  const pendingCount = approvalsData?.pendingCount ?? 0;
+  const approvals = approvalsData?.approvals ?? [];
+
+  // Build a lookup: memberId -> approvedAt
+  const approvalMap = new Map<string, string | null>();
+  for (const a of approvals) {
+    approvalMap.set(a.memberId, a.approvedAt);
+  }
+
+  // Can the current user approve?
+  const currentMemberApproval = isEditor
+    ? approvals.find((a) => a.stakeAddress === stakeAddress)
+    : null;
+  const hasApproved = currentMemberApproval?.approvedAt != null;
+  const canApprove = isEditor && !hasApproved;
+
+  // Continue is enabled if: solo proposer, all approved, or lead (implicit approval)
+  const canContinue = !team || allApproved || isLead;
+
+  const handleApprove = () => {
+    if (!stakeAddress) return;
+    approveMutation.mutate({ stakeAddress });
+  };
 
   // No team — solo proposer
   if (!isLoading && !team) {
@@ -95,7 +133,7 @@ export function TeamSignOff({ draftId, onContinue, onBack }: TeamSignOffProps) {
     );
   }
 
-  // Team exists — show members
+  // Team exists — show members with approval status
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -110,32 +148,97 @@ export function TeamSignOff({ draftId, onContinue, onBack }: TeamSignOffProps) {
         </p>
       </div>
 
-      {/* Member list */}
+      {/* Member list with approval status */}
       <div className="space-y-2">
-        {members.map((member) => (
-          <div
-            key={member.id}
-            className="flex items-center justify-between px-4 py-3 rounded-lg border border-border bg-card"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                <UserCircle className="h-4 w-4 text-muted-foreground" />
+        {members.map((member) => {
+          const memberApproved = approvalMap.get(member.id) != null;
+          const isLeadMember = member.role === 'lead';
+          const isViewerMember = member.role === 'viewer';
+
+          return (
+            <div
+              key={member.id}
+              className="flex items-center justify-between px-4 py-3 rounded-lg border border-border bg-card"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <UserCircle className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <span className="text-sm font-mono text-foreground truncate">
+                  {truncateAddress(member.stakeAddress)}
+                </span>
               </div>
-              <span className="text-sm font-mono text-foreground truncate">
-                {truncateAddress(member.stakeAddress)}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Approval status indicator */}
+                {isLeadMember && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-400">
+                    <Check className="h-3.5 w-3.5" />
+                    Implicit
+                  </span>
+                )}
+                {!isLeadMember &&
+                  !isViewerMember &&
+                  (memberApproved ? (
+                    <span className="flex items-center gap-1 text-xs text-emerald-400">
+                      <Check className="h-3.5 w-3.5" />
+                      Approved
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      Pending
+                    </span>
+                  ))}
+                <Badge variant="outline" className={ROLE_COLORS[member.role]}>
+                  {ROLE_LABELS[member.role]}
+                </Badge>
+              </div>
             </div>
-            <Badge variant="outline" className={ROLE_COLORS[member.role]}>
-              {ROLE_LABELS[member.role]}
-            </Badge>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Informational note */}
-      <p className="text-xs text-muted-foreground text-center px-4">
-        Team sign-off is informational. The lead can proceed with submission.
-      </p>
+      {/* Approve button for the current editor */}
+      {canApprove && (
+        <Button
+          onClick={handleApprove}
+          disabled={approveMutation.isPending}
+          className="w-full"
+          style={{ backgroundColor: 'var(--compass-teal)', color: 'var(--primary-foreground)' }}
+        >
+          {approveMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Recording approval...
+            </>
+          ) : (
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              Approve Submission
+            </>
+          )}
+        </Button>
+      )}
+
+      {/* Status note */}
+      {allApproved ? (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-center">
+          <p className="text-sm text-emerald-400 font-medium flex items-center justify-center gap-2">
+            <Check className="h-4 w-4" />
+            All team members have approved
+          </p>
+        </div>
+      ) : isLead ? (
+        <p className="text-xs text-muted-foreground text-center px-4">
+          {pendingCount} editor{pendingCount !== 1 ? 's' : ''} still pending. As lead, you may
+          proceed without waiting, but we recommend waiting for all approvals.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground text-center px-4">
+          Waiting for {pendingCount} editor{pendingCount !== 1 ? 's' : ''} to approve before
+          submission can proceed.
+        </p>
+      )}
 
       {/* Navigation */}
       <div className="flex gap-3">
@@ -143,7 +246,7 @@ export function TeamSignOff({ draftId, onContinue, onBack }: TeamSignOffProps) {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <Button onClick={onContinue} className="flex-1">
+        <Button onClick={onContinue} disabled={!canContinue} className="flex-1">
           Continue
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>

@@ -5,12 +5,15 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ExternalLink, CheckCircle2, ShieldCheck, XCircle } from 'lucide-react';
+import { ExternalLink, CheckCircle2, ShieldCheck, XCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import { useFocusStore } from '@/lib/workspace/focus';
+import { useProposalMonitor } from '@/hooks/useProposalMonitor';
+import { VotingProgress } from './monitor/VotingProgress';
 import { DraftQuickActions } from './DraftQuickActions';
 import type { ProposalDraft, DraftStatus } from '@/lib/workspace/types';
+import type { ProposalMonitorData } from '@/lib/workspace/monitor-types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,10 +94,13 @@ export function DraftCard({ draft, index, column, itemProps }: DraftCardProps) {
   const setInputMethod = useFocusStore((s) => s.setInputMethod);
   const prefersReducedMotion = useReducedMotion();
 
+  // Submitted drafts go to the monitoring dashboard; others to the editor
   const editorPath =
-    draft.proposalType === 'NewConstitution'
-      ? `/workspace/amendment/${draft.id}`
-      : `/workspace/author/${draft.id}`;
+    draft.status === 'submitted'
+      ? `/workspace/author/${draft.id}/monitor`
+      : draft.proposalType === 'NewConstitution'
+        ? `/workspace/amendment/${draft.id}`
+        : `/workspace/author/${draft.id}`;
 
   return (
     <motion.div
@@ -232,25 +238,68 @@ function InReviewColumnInfo({ draft }: { draft: ProposalDraft }) {
   );
 }
 
+const ON_CHAIN_STATUS_LABELS: Record<
+  ProposalMonitorData['status'],
+  { label: string; className: string }
+> = {
+  voting: { label: 'In Voting', className: 'bg-blue-500/15 text-blue-400' },
+  ratified: {
+    label: 'Ratified',
+    className: 'bg-[var(--compass-teal)]/15 text-[var(--compass-teal)]',
+  },
+  enacted: {
+    label: 'Enacted',
+    className: 'bg-[var(--compass-teal)]/15 text-[var(--compass-teal)]',
+  },
+  expired: { label: 'Expired', className: 'bg-muted text-muted-foreground' },
+  dropped: { label: 'Dropped', className: 'bg-destructive/15 text-destructive' },
+};
+
 function OnChainColumnInfo({ draft }: { draft: ProposalDraft }) {
+  const { data: monitor } = useProposalMonitor(draft.submittedTxHash, 0);
+
   return (
-    <div className="flex flex-col gap-1">
-      {draft.submittedAt && (
-        <span className="text-xs text-muted-foreground">
-          Submitted {formatRelativeTime(draft.submittedAt)}
-        </span>
-      )}
-      {draft.submittedTxHash && (
-        <a
-          href={`https://cardanoscan.io/transaction/${draft.submittedTxHash}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {truncateHash(draft.submittedTxHash)}
-          <ExternalLink className="h-3 w-3" />
-        </a>
+    <div className="flex flex-col gap-1.5">
+      {/* Monitor-enriched info when available */}
+      {monitor ? (
+        <>
+          {/* Status badge override */}
+          <div className="flex items-center gap-2">
+            <Badge className={cn('text-xs', ON_CHAIN_STATUS_LABELS[monitor.status].className)}>
+              {ON_CHAIN_STATUS_LABELS[monitor.status].label}
+            </Badge>
+            {monitor.epochsRemaining != null && monitor.status === 'voting' && (
+              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {monitor.epochsRemaining}e left
+              </span>
+            )}
+          </div>
+
+          {/* Compact voting progress */}
+          <VotingProgress voting={monitor.voting} compact />
+        </>
+      ) : (
+        <>
+          {/* Fallback: basic info while monitor data loads */}
+          {draft.submittedAt && (
+            <span className="text-xs text-muted-foreground">
+              Submitted {formatRelativeTime(draft.submittedAt)}
+            </span>
+          )}
+          {draft.submittedTxHash && (
+            <a
+              href={`https://cardanoscan.io/transaction/${draft.submittedTxHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {truncateHash(draft.submittedTxHash)}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </>
       )}
     </div>
   );

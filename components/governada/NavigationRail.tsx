@@ -3,7 +3,7 @@
 /**
  * NavigationRail — 48px fixed-width icon rail replacing the 240px sidebar.
  *
- * Three Worlds: Home, Governance, You
+ * Four Worlds: Home, Workspace, Governance, You
  * Feature-flagged behind `navigation_rail`.
  *
  * - Radix tooltips with keyboard shortcut hints
@@ -33,6 +33,7 @@ import type { LucideIcon } from 'lucide-react';
 /** Keyboard shortcut hints per section id */
 const SECTION_SHORTCUTS: Record<string, string> = {
   home: 'G H',
+  workspace: 'G W',
   governance: 'G G',
   you: 'G Y',
 };
@@ -69,13 +70,14 @@ const MAX_RAIL_PINS = 4;
 export function NavigationRail() {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const { segment, stakeAddress, drepId, poolId } = useSegment();
+  const { segment, stakeAddress, drepId, poolId, delegatedDrep, delegatedPool } = useSegment();
   const { depth } = useGovernanceDepth();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
   const prefersReducedMotion = useReducedMotion();
   const { pinnedItems } = usePinnedItems();
 
-  const sections = getSidebarSections({ segment, drepId, poolId, depth });
+  const isDelegated = !!(delegatedDrep || delegatedPool);
+  const sections = getSidebarSections({ segment, drepId, poolId, depth, isDelegated });
   const currentSection = getCurrentSection(pathname);
 
   const isDualRole = !!(drepId && poolId);
@@ -139,8 +141,8 @@ export function NavigationRail() {
                         <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" />
                       )}
 
-                      {/* Dual-role badge on Home */}
-                      {section.id === 'home' && isDualRole && (
+                      {/* Dual-role badge on Workspace */}
+                      {section.id === 'workspace' && isDualRole && (
                         <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-[9px] text-primary-foreground flex items-center justify-center font-bold">
                           2
                         </span>

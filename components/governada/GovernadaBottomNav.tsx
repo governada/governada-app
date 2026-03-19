@@ -22,6 +22,9 @@ export function GovernadaBottomNav() {
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
+    // All /workspace/* routes highlight the Workspace bottom bar item,
+    // regardless of whether the item's href is /workspace or /workspace/author.
+    if (href.startsWith('/workspace') && pathname.startsWith('/workspace')) return true;
     return pathname === href || pathname.startsWith(href + '/');
   };
 

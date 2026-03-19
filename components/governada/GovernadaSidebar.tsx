@@ -27,12 +27,13 @@ interface GovernadaSidebarProps {
 export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps) {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const { segment, stakeAddress, drepId, poolId } = useSegment();
+  const { segment, stakeAddress, drepId, poolId, delegatedDrep, delegatedPool } = useSegment();
   const { depth } = useGovernanceDepth();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
   const prefersReducedMotion = useReducedMotion();
 
-  const sections = getSidebarSections({ segment, drepId, poolId, depth });
+  const isDelegated = !!(delegatedDrep || delegatedPool);
+  const sections = getSidebarSections({ segment, drepId, poolId, depth, isDelegated });
   const sidebarMetrics = useSidebarMetrics();
 
   const isActive = (href: string) => {

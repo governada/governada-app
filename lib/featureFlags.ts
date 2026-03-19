@@ -29,6 +29,8 @@
  * governance_temperature         — Governance Temperature gauge (0-100 aggregate sentiment)
  * research_assistant             — Conversational AI research assistant for proposal analysis
  * navigation_rail                — 48px icon rail replacing 240px sidebar (Phase 2 nav renaissance)
+ * view_transitions               — View Transitions API for spatial navigation continuity (Phase 6)
+ * temporal_adaptation             — Governance temporal mode + ambient temperature tinting (Phase 6)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

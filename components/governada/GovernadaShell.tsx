@@ -17,6 +17,7 @@ import { FeedbackWidget } from '@/components/preview/FeedbackWidget';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSentryContext } from '@/hooks/useSentryContext';
 import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
+import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -90,10 +91,12 @@ function BackgroundGlobe({
   isHomepage,
   sidebarCollapsed,
   useRail,
+  governanceTint,
 }: {
   isHomepage: boolean;
   sidebarCollapsed: boolean;
   useRail?: boolean;
+  governanceTint?: string;
 }) {
   const { segment } = useSegment();
   // Hide the background globe on homepage for anonymous/not-yet-loaded users
@@ -101,16 +104,23 @@ function BackgroundGlobe({
   return (
     <div
       className={cn(
-        'force-dark fixed inset-0 pointer-events-none z-0',
+        'force-dark fixed inset-0 pointer-events-none z-0 constellation-globe-container',
         useRail
           ? 'lg:left-12'
           : cn('transition-[left] duration-200', sidebarCollapsed ? 'lg:left-16' : 'lg:left-60'),
       )}
       aria-hidden="true"
+      style={
+        governanceTint
+          ? ({ '--governance-tint': governanceTint } as React.CSSProperties)
+          : undefined
+      }
     >
       <div className="absolute inset-0 opacity-30">
         <ConstellationScene interactive={false} className="w-full h-full" />
       </div>
+      {/* Governance temperature ambient tint overlay */}
+      {governanceTint && <div className="governance-tint-overlay" />}
       {/* Gradient fade — globe is most visible at top, fades toward bottom */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-60% to-background" />
     </div>
@@ -138,6 +148,8 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigationRailFlag = useFeatureFlag('navigation_rail');
   const navigationRail = navigationRailFlag === true;
+  const temporalAdaptation = useFeatureFlag('temporal_adaptation') === true;
+  const { tintColor } = useGovernanceTemperature();
 
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -175,6 +187,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
             isHomepage={isHomepage}
             sidebarCollapsed={sidebarCollapsed}
             useRail={navigationRail}
+            governanceTint={temporalAdaptation ? tintColor : undefined}
           />
         )}
 

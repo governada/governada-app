@@ -26,6 +26,8 @@ import {
   tierKey,
 } from '@/components/governada/cards/tierStyles';
 import { useQuery } from '@tanstack/react-query';
+import { PeekTrigger } from '@/components/governada/peeks/PeekTrigger';
+import { usePeekTrigger } from '@/components/governada/peeks/PeekDrawerProvider';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 
@@ -112,7 +114,15 @@ function formatAda(ada: number): string {
   return String(ada);
 }
 
-function SPOTableRow({ pool, rank }: { pool: GovernadaSPOData; rank: number }) {
+function SPOTableRow({
+  pool,
+  rank,
+  onPeek,
+}: {
+  pool: GovernadaSPOData;
+  rank: number;
+  onPeek?: () => void;
+}) {
   const score = pool.governanceScore ?? 0;
   const tier = tierKey(computeTier(score));
   const momentum = pool.scoreMomentum ?? null;
@@ -208,6 +218,7 @@ function SPOTableRow({ pool, rank }: { pool: GovernadaSPOData; rank: number }) {
         )}
       </span>
 
+      {onPeek && <PeekTrigger onClick={onPeek} ariaLabel={`Preview ${displayName}`} />}
       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
     </Link>
   );
@@ -217,6 +228,7 @@ function SPOTableRow({ pool, rank }: { pool: GovernadaSPOData; rank: number }) {
 
 export function GovernadaSPOBrowse() {
   const contentRef = useRef<HTMLDivElement>(null);
+  const openPeek = usePeekTrigger();
   const { data: rawPools, isLoading } = usePools();
   const pools: GovernadaSPOData[] = useMemo(
     () => (rawPools as GovernadaSPOData[]) ?? [],
@@ -415,10 +427,17 @@ export function GovernadaSPOBrowse() {
           {pageItems.map((pool, i) => (
             <div
               key={pool.poolId}
-              className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
+              className="group/card relative animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
               style={{ animationDelay: `${Math.min(i, 11) * 30}ms` }}
             >
               <GovernadaSPOCard pool={pool} rank={page * pageSize + i + 1} />
+              {openPeek && (
+                <PeekTrigger
+                  onClick={() => openPeek({ type: 'pool', id: pool.poolId })}
+                  ariaLabel={`Preview ${pool.ticker || pool.poolName || pool.poolId.slice(0, 12)}`}
+                  className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100"
+                />
+              )}
             </div>
           ))}
         </div>
@@ -433,7 +452,12 @@ export function GovernadaSPOBrowse() {
             <span className="w-3.5 shrink-0" />
           </div>
           {pageItems.map((pool, i) => (
-            <SPOTableRow key={pool.poolId} pool={pool} rank={page * pageSize + i + 1} />
+            <SPOTableRow
+              key={pool.poolId}
+              pool={pool}
+              rank={page * pageSize + i + 1}
+              onPeek={openPeek ? () => openPeek({ type: 'pool', id: pool.poolId }) : undefined}
+            />
           ))}
         </div>
       )}

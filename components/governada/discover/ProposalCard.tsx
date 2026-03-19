@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { getProposalTheme, getVerdict } from '@/components/governada/proposals/proposal-theme';
 import { ProposalDeliveryBadge } from '@/components/governada/proposals/ProposalDeliveryBadge';
 import { NclImpactIndicator } from '@/components/shared/NclImpactIndicator';
+import { PeekTrigger } from '@/components/governada/peeks/PeekTrigger';
 import { useTreasuryNcl } from '@/hooks/queries';
 import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 
@@ -40,6 +41,8 @@ interface ProposalCardProps {
   delegatedDrepId?: string | null;
   hasDrepVotes: boolean;
   animationDelay: number;
+  /** Callback to open peek drawer for this proposal */
+  onPeek?: () => void;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -147,6 +150,7 @@ export function ProposalCard({
   delegatedDrepId,
   hasDrepVotes,
   animationDelay,
+  onPeek,
 }: ProposalCardProps) {
   const { data: nclData } = useTreasuryNcl();
   const status = p.status ?? 'Open';
@@ -213,6 +217,7 @@ export function ProposalCard({
         >
           {verdict.label}
         </span>
+        {onPeek && <PeekTrigger onClick={onPeek} ariaLabel={`Preview ${title}`} />}
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5 transition-all duration-200" />
       </Link>
     );
@@ -359,6 +364,7 @@ export function ProposalCard({
                   </span>
                 );
               })}
+            {onPeek && <PeekTrigger onClick={onPeek} ariaLabel={`Preview ${title}`} />}
             <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5 transition-all duration-200" />
           </div>
         </div>

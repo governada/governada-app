@@ -18,6 +18,7 @@ import { ProposalCard } from './ProposalCard';
 import type { BrowseProposal } from './ProposalCard';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
+import { usePeekTrigger } from '@/components/governada/peeks/PeekDrawerProvider';
 
 const STATUS_FILTERS = ['All', 'Open', 'Ratified', 'Enacted', 'Expired', 'Dropped'];
 const TYPE_FILTERS = [
@@ -155,6 +156,7 @@ function ProposalHeadlineCard({
 
 export function ProposalsBrowse() {
   const contentRef = useRef<HTMLDivElement>(null);
+  const openPeek = usePeekTrigger();
   const { data: rawData, isLoading } = useProposals(200);
   const data = rawData as { proposals?: BrowseProposal[]; currentEpoch?: number } | undefined;
   const proposals: BrowseProposal[] = useMemo(() => data?.proposals ?? [], [data]);
@@ -384,6 +386,11 @@ export function ProposalsBrowse() {
               delegatedDrepId={delegatedDrepId}
               hasDrepVotes={drepVoteMap.size > 0}
               animationDelay={Math.min(i, 14) * 30}
+              onPeek={
+                openPeek
+                  ? () => openPeek({ type: 'proposal', id: p.txHash, secondaryId: p.index })
+                  : undefined
+              }
             />
           ))}
         </div>

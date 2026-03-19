@@ -33,6 +33,8 @@ import { AnonymousNudge } from '@/components/governada/shared/AnonymousNudge';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { useWallet } from '@/utils/wallet-context';
+import { PeekTrigger } from '@/components/governada/peeks/PeekTrigger';
+import { usePeekTrigger } from '@/components/governada/peeks/PeekDrawerProvider';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 import {
@@ -158,7 +160,15 @@ const DEFAULT_FILTERS: FilterState = {
 type GovernadaDRepBrowseProps = Record<string, never>;
 
 /* ── Compact single-line row for inactive DReps ──────────────────── */
-function InactiveDRepRow({ drep, animationDelay }: { drep: EnrichedDRep; animationDelay: number }) {
+function InactiveDRepRow({
+  drep,
+  animationDelay,
+  onPeek,
+}: {
+  drep: EnrichedDRep;
+  animationDelay: number;
+  onPeek?: () => void;
+}) {
   const score = drep.drepScore ?? 0;
   const tier = tierKey(computeTier(score));
   const displayName =
@@ -183,13 +193,22 @@ function InactiveDRepRow({ drep, animationDelay }: { drep: EnrichedDRep; animati
         {displayName}
       </span>
       <span className="text-[10px] text-muted-foreground/50">Inactive</span>
+      {onPeek && <PeekTrigger onClick={onPeek} ariaLabel={`Preview ${displayName}`} />}
       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
     </Link>
   );
 }
 
 /* ── Enhanced table row ──────────────────────────────────────────── */
-function DRepTableRow({ drep, rank }: { drep: EnrichedDRep; rank: number }) {
+function DRepTableRow({
+  drep,
+  rank,
+  onPeek,
+}: {
+  drep: EnrichedDRep;
+  rank: number;
+  onPeek?: () => void;
+}) {
   const score = drep.drepScore ?? 0;
   const tier = tierKey(computeTier(score));
   const displayName =
@@ -284,6 +303,7 @@ function DRepTableRow({ drep, rank }: { drep: EnrichedDRep; rank: number }) {
         )}
       </span>
 
+      {onPeek && <PeekTrigger onClick={onPeek} ariaLabel={`Preview ${displayName}`} />}
       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 group-hover:text-primary transition-colors" />
     </Link>
   );
@@ -359,6 +379,7 @@ function YourDRepSummary({ dreps }: { dreps: EnrichedDRep[] }) {
 type SortMode = 'score' | 'match';
 
 export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
+  const openPeek = usePeekTrigger();
   const { data: rawData, isLoading } = useDReps();
   const drepsData = rawData as { allDReps?: EnrichedDRep[] } | undefined;
   const dreps: EnrichedDRep[] = useMemo(() => drepsData?.allDReps ?? [], [drepsData]);
@@ -706,7 +727,7 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
                 return (
                   <div
                     key={drep.drepId}
-                    className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
+                    className="group/card relative animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
                     style={{ animationDelay: `${Math.min(i, 11) * 30}ms` }}
                   >
                     <GovernadaDRepCard
@@ -715,6 +736,13 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
                       matchScore={ms}
                       endorsementCount={endorsementCounts[drep.drepId]}
                     />
+                    {openPeek && (
+                      <PeekTrigger
+                        onClick={() => openPeek({ type: 'drep', id: drep.drepId })}
+                        ariaLabel={`Preview ${drep.name || drep.ticker || drep.drepId.slice(0, 12)}`}
+                        className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100"
+                      />
+                    )}
                   </div>
                 );
               })}
@@ -733,6 +761,9 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
                     key={drep.drepId}
                     drep={drep}
                     animationDelay={Math.min(i, 14) * 30}
+                    onPeek={
+                      openPeek ? () => openPeek({ type: 'drep', id: drep.drepId }) : undefined
+                    }
                   />
                 ))}
                 {inactiveItems.length > 20 && (
@@ -755,7 +786,12 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
             <span className="w-3.5 shrink-0" />
           </div>
           {pageItems.map((drep, i) => (
-            <DRepTableRow key={drep.drepId} drep={drep} rank={page * pageSize + i + 1} />
+            <DRepTableRow
+              key={drep.drepId}
+              drep={drep}
+              rank={page * pageSize + i + 1}
+              onPeek={openPeek ? () => openPeek({ type: 'drep', id: drep.drepId }) : undefined}
+            />
           ))}
         </div>
       )}

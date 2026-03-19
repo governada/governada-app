@@ -29,7 +29,7 @@ export function SectionTabBar({ section: _section }: SectionTabBarProps) {
 
   const items = getPillBarItems(pathname, segment, { drepId, poolId, depth });
 
-  if (!items || items.length < 2) return null;
+  if (!items || items.length < 1) return null;
 
   const isActive = (href: string) => {
     if (href === pathname) return true;

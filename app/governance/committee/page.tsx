@@ -15,6 +15,8 @@ import { CCHeatmap } from '@/components/cc/CCHeatmap';
 import { CCBlocBadges } from '@/components/cc/CCBlocBadges';
 import { CCPredictions } from '@/components/cc/CCPredictions';
 import { CCPersonaInsightBanner } from '@/components/cc/CCPersonaInsightBanner';
+import { PeekTrigger } from '@/components/governada/peeks/PeekTrigger';
+import { usePeekTrigger } from '@/components/governada/peeks/PeekDrawerProvider';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
 
@@ -59,9 +61,11 @@ function ArchetypeChip({ archetype }: { archetype: CCArchetype | undefined }) {
 function MemberRow({
   member,
   archetype,
+  onPeek,
 }: {
   member: CommitteeMemberQuickView;
   archetype: CCArchetype | undefined;
+  onPeek?: () => void;
 }) {
   const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
   const gradeStyle = member.fidelityGrade ? (GRADE_COLORS[member.fidelityGrade] ?? '') : '';
@@ -124,6 +128,7 @@ function MemberRow({
       <span className="hidden md:block w-16 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
         {member.voteCount} votes
       </span>
+      {onPeek && <PeekTrigger onClick={onPeek} ariaLabel={`Preview ${displayName}`} />}
     </Link>
   );
 }
@@ -135,9 +140,11 @@ function MemberRow({
 function MemberCard({
   member,
   archetype,
+  onPeek,
 }: {
   member: CommitteeMemberQuickView;
   archetype: CCArchetype | undefined;
+  onPeek?: () => void;
 }) {
   const displayName = member.name || `${member.ccHotId.slice(0, 12)}…${member.ccHotId.slice(-6)}`;
   const gradeStyle = member.fidelityGrade ? (GRADE_COLORS[member.fidelityGrade] ?? '') : '';
@@ -197,6 +204,13 @@ function MemberCard({
               </p>
             )}
             <ArchetypeChip archetype={archetype} />
+            {onPeek && (
+              <PeekTrigger
+                onClick={onPeek}
+                ariaLabel={`Preview ${displayName}`}
+                className="ml-auto"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -298,6 +312,7 @@ function CommitteePageSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function CommitteePage() {
+  const openPeek = usePeekTrigger();
   const { data, isLoading } = useCommitteeMembers();
   const members = useMemo(() => data?.members ?? [], [data]);
   const health = data?.health;
@@ -407,6 +422,9 @@ export default function CommitteePage() {
                       key={member.ccHotId}
                       member={member}
                       archetype={archetypeMap.get(member.ccHotId)}
+                      onPeek={
+                        openPeek ? () => openPeek({ type: 'cc', id: member.ccHotId }) : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -417,6 +435,9 @@ export default function CommitteePage() {
                       key={member.ccHotId}
                       member={member}
                       archetype={archetypeMap.get(member.ccHotId)}
+                      onPeek={
+                        openPeek ? () => openPeek({ type: 'cc', id: member.ccHotId }) : undefined
+                      }
                     />
                   ))}
                 </div>

@@ -31,6 +31,7 @@
  * navigation_rail                — 48px icon rail replacing 240px sidebar (Phase 2 nav renaissance)
  * view_transitions               — View Transitions API for spatial navigation continuity (Phase 6)
  * temporal_adaptation             — Governance temporal mode + ambient temperature tinting (Phase 6)
+ * peek_drawer                    — Entity peek drawer on list pages (Phase 3 nav renaissance)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

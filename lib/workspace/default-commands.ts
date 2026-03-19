@@ -24,7 +24,7 @@ export function registerDefaultCommands(deps: {
   /** Next.js router.push */
   push: (url: string) => void;
   /** Toggle a panel by ID */
-  togglePanel: (panel: 'agent' | 'intel' | 'notes' | 'vote') => void;
+  togglePanel: (panel: 'agent' | 'intel' | 'notes' | 'vote' | 'readiness') => void;
   /** Toggle the sidebar */
   toggleSidebar: () => void;
   /** Open the command palette */

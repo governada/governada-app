@@ -42,7 +42,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 // Types
 // ---------------------------------------------------------------------------
 
-interface ReviewsResponse {
+export interface ReviewsResponse {
   reviews: DraftReview[];
   aggregateScores: {
     impact: number | null;
@@ -60,6 +60,7 @@ interface ReviewsResponse {
     }>
   >;
   total: number;
+  nonStaleReviewCount: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -40,8 +40,8 @@ interface StudioHeaderProps {
   /** User segment badge label */
   segmentBadge?: { label: string; color: string };
   panelOpen?: boolean;
-  activePanel?: 'agent' | 'intel' | 'notes' | 'vote' | null;
-  onPanelToggle?: (panel: 'agent' | 'intel' | 'notes' | 'vote') => void;
+  activePanel?: 'agent' | 'intel' | 'notes' | 'vote' | 'readiness' | null;
+  onPanelToggle?: (panel: 'agent' | 'intel' | 'notes' | 'vote' | 'readiness') => void;
   isFullWidth?: boolean;
   onFullWidthToggle?: () => void;
   onSearchToggle?: () => void;

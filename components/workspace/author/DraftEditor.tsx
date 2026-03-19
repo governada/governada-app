@@ -14,6 +14,7 @@ import { DraftActions } from './DraftActions';
 import { LifecycleStatus } from './LifecycleStatus';
 import { ReviewsList } from './ReviewsList';
 import { ReviewRubric } from './ReviewRubric';
+import { ReReviewBanner } from './ReReviewBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -150,6 +151,14 @@ export function DraftEditor({ viewerStakeAddress }: DraftEditorProps = {}) {
       {/* Two-column layout on desktop, stacked on mobile */}
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0 space-y-4">
+          {/* Re-review banner for reviewers with stale reviews */}
+          {!isOwner &&
+            !isTeamMember &&
+            viewerStakeAddress &&
+            draft.status === 'community_review' && (
+              <ReReviewBanner draft={draft} viewerStakeAddress={viewerStakeAddress} />
+            )}
+
           {/* Show review form for non-owners during community review */}
           {showReviewForm && draftId && viewerStakeAddress && (
             <ReviewRubric

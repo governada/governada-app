@@ -7,7 +7,7 @@ import { persist } from 'zustand/middleware';
 // Types
 // ---------------------------------------------------------------------------
 
-export type PanelId = 'agent' | 'intel' | 'notes' | 'vote';
+export type PanelId = 'agent' | 'intel' | 'notes' | 'vote' | 'readiness';
 
 export interface WorkspaceState {
   // Entity selection (NOT persisted — driven by URL)

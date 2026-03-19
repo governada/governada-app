@@ -221,6 +221,8 @@ export interface ProposalDraft {
   submittedAnchorUrl: string | null;
   submittedAnchorHash: string | null;
   submittedAt: string | null;
+  /** Last constitutional check result (stored as JSON in DB). */
+  lastConstitutionalCheck: ConstitutionalCheckResult | null;
   createdAt: string;
   updatedAt: string;
   /** Review status for the current user — only populated on community-reviewable draft lists. */

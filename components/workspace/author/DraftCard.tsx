@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, CheckCircle2, ShieldCheck, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import { useFocusStore } from '@/lib/workspace/focus';
 import { DraftQuickActions } from './DraftQuickActions';
@@ -193,9 +194,40 @@ function DraftColumnInfo({ draft }: { draft: ProposalDraft }) {
 
 function InReviewColumnInfo({ draft }: { draft: ProposalDraft }) {
   const days = daysAgo(draft.communityReviewStartedAt);
+  const { filled } = completenessCount(draft);
+  const fieldsOk = filled >= 4;
+  const constCheck = draft.lastConstitutionalCheck?.score ?? null;
+  const constOk = constCheck === 'pass';
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-1.5">
       {days !== null && <span className="text-xs text-muted-foreground">{days}d in review</span>}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span
+          className={cn(
+            'flex items-center gap-0.5 text-xs',
+            fieldsOk ? 'text-emerald-400' : 'text-muted-foreground',
+          )}
+        >
+          {fieldsOk ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+          {filled}/4
+        </span>
+        {constCheck && (
+          <span
+            className={cn(
+              'flex items-center gap-0.5 text-xs',
+              constOk
+                ? 'text-emerald-400'
+                : constCheck === 'warning'
+                  ? 'text-amber-400'
+                  : 'text-destructive',
+            )}
+          >
+            <ShieldCheck className="h-3 w-3" />
+            {constCheck === 'pass' ? 'Pass' : constCheck === 'warning' ? 'Warn' : 'Fail'}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

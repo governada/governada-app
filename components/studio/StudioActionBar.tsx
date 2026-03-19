@@ -13,7 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useDiscoveryHub } from '@/components/discovery/DiscoveryHubContext';
 
-type PanelId = 'agent' | 'intel' | 'notes' | 'vote';
+type PanelId = 'agent' | 'intel' | 'notes' | 'vote' | 'readiness';
 
 interface StudioActionBarProps {
   mode?: 'review' | 'author';

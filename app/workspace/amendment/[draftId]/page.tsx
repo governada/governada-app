@@ -40,6 +40,7 @@ import { AmendmentIntelPanel } from '@/components/workspace/author/AmendmentInte
 import { SaveStatusIndicator } from '@/components/workspace/layout/SaveStatusIndicator';
 import { IntentInputPanel } from '@/components/workspace/author/IntentInputPanel';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
 import { CONSTITUTION_NODES, CONSTITUTION_VERSION } from '@/lib/constitution/fullText';
 import { extractAmendmentChanges, serializeAmendmentChanges } from '@/lib/constitution/utils';
 import { proposeChange } from '@/components/workspace/editor/SuggestModePlugin';
@@ -56,9 +57,11 @@ import type { ConstitutionSlashCommandType } from '@/components/workspace/editor
 function AmendmentPanelWrapper({
   agentContent,
   intelContent,
+  readinessContent,
 }: {
   agentContent: ReactNode;
   intelContent: ReactNode;
+  readinessContent?: ReactNode;
 }) {
   const { panelOpen, activePanel, panelWidth, closePanel, togglePanel, setPanelWidth } =
     useStudio();
@@ -73,6 +76,7 @@ function AmendmentPanelWrapper({
       onWidthChange={setPanelWidth}
       agentContent={agentContent}
       intelContent={intelContent}
+      readinessContent={readinessContent}
     />
   );
 }
@@ -532,7 +536,13 @@ function AmendmentEditorPage() {
               currentUserId={stakeAddress ?? 'anonymous'}
             />
           }
-          context={<AmendmentPanelWrapper agentContent={agentChatNode} intelContent={intelNode} />}
+          context={
+            <AmendmentPanelWrapper
+              agentContent={agentChatNode}
+              intelContent={intelNode}
+              readinessContent={draftId ? <ReadinessPanel draftId={draftId} /> : undefined}
+            />
+          }
           statusBar={<AmendmentActionBarWrapper statusInfo={statusInfo} />}
         />
       </StudioProvider>

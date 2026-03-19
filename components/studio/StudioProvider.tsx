@@ -15,7 +15,7 @@ import type { PanelId } from '@/lib/workspace/store';
 
 interface StudioState {
   panelOpen: boolean;
-  activePanel: 'agent' | 'intel' | 'notes' | 'vote';
+  activePanel: PanelId;
   panelWidth: number;
   focusLevel: 0 | 1 | 2;
   isFullWidth: boolean;
@@ -23,7 +23,7 @@ interface StudioState {
 }
 
 interface StudioContextValue extends StudioState {
-  togglePanel: (panel: 'agent' | 'intel' | 'notes' | 'vote') => void;
+  togglePanel: (panel: PanelId) => void;
   closePanel: () => void;
   setPanelWidth: (width: number) => void;
   setFocusLevel: (level: 0 | 1 | 2) => void;
@@ -64,7 +64,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
 
   // Legacy toggle: same panel toggles off; different panel switches to it
   const togglePanel = useCallback(
-    (panel: 'agent' | 'intel' | 'notes' | 'vote') => {
+    (panel: PanelId) => {
       storeTogglePanel(panel);
     },
     [storeTogglePanel],

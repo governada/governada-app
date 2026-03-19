@@ -36,6 +36,7 @@ import { ProposalEditor, injectProposedEdit } from '@/components/workspace/edito
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { StatusBar } from '@/components/workspace/layout/StatusBar';
 import { RevisionJustificationFlow } from '@/components/workspace/editor/RevisionJustificationFlow';
+import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import type { ProposalType } from '@/lib/workspace/types';
@@ -110,7 +111,13 @@ function LineageBanner({ supersedesId }: { supersedesId: string }) {
 // AuthorPanelWrapper — thin wrapper that connects StudioPanel to StudioProvider
 // ---------------------------------------------------------------------------
 
-function AuthorPanelWrapper({ agentContent }: { agentContent: ReactNode }) {
+function AuthorPanelWrapper({
+  agentContent,
+  readinessContent,
+}: {
+  agentContent: ReactNode;
+  readinessContent?: ReactNode;
+}) {
   const { panelOpen, activePanel, panelWidth, closePanel, togglePanel, setPanelWidth } =
     useStudio();
 
@@ -123,6 +130,7 @@ function AuthorPanelWrapper({ agentContent }: { agentContent: ReactNode }) {
       width={panelWidth}
       onWidthChange={setPanelWidth}
       agentContent={agentContent}
+      readinessContent={readinessContent}
     />
   );
 }
@@ -476,7 +484,12 @@ function WorkspaceEditorPage() {
               />
             </div>
           }
-          context={<AuthorPanelWrapper agentContent={agentChatNode} />}
+          context={
+            <AuthorPanelWrapper
+              agentContent={agentChatNode}
+              readinessContent={draftId ? <ReadinessPanel draftId={draftId} /> : undefined}
+            />
+          }
           statusBar={<AuthorActionBarWrapper statusInfo={statusBarNode} />}
         />
       </StudioProvider>

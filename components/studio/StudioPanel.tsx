@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { X, MessageSquare, BarChart3, StickyNote, Vote } from 'lucide-react';
+import { X, MessageSquare, BarChart3, StickyNote, Vote, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type TabId = 'agent' | 'intel' | 'notes' | 'vote';
+type TabId = 'agent' | 'intel' | 'notes' | 'vote' | 'readiness';
 
 interface StudioPanelProps {
   isOpen: boolean;
@@ -17,9 +17,10 @@ interface StudioPanelProps {
   intelContent?: ReactNode;
   notesContent?: ReactNode;
   voteContent?: ReactNode;
+  readinessContent?: ReactNode;
 }
 
-const TABS: Array<{ id: TabId; label: string; Icon: typeof MessageSquare }> = [
+const BASE_TABS: Array<{ id: TabId; label: string; Icon: typeof MessageSquare }> = [
   { id: 'agent', label: 'Agent', Icon: MessageSquare },
   { id: 'intel', label: 'Intel', Icon: BarChart3 },
   { id: 'notes', label: 'Notes', Icon: StickyNote },
@@ -39,6 +40,7 @@ export function StudioPanel({
   intelContent,
   notesContent,
   voteContent,
+  readinessContent,
 }: StudioPanelProps) {
   const isDragging = useRef(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -96,6 +98,11 @@ export function StudioPanel({
     [onWidthChange],
   );
 
+  // Build tabs: include readiness tab only when readinessContent is provided
+  const TABS = readinessContent
+    ? [...BASE_TABS, { id: 'readiness' as TabId, label: 'Readiness', Icon: ShieldCheck }]
+    : BASE_TABS;
+
   const tabContent: Record<TabId, ReactNode> = {
     agent: agentContent,
     intel: intelContent ?? (
@@ -113,6 +120,7 @@ export function StudioPanel({
         Vote panel coming soon
       </div>
     ),
+    readiness: readinessContent ?? null,
   };
 
   // ---- Desktop panel (lg+) ----

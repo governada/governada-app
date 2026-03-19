@@ -1,9 +1,12 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MessageSquare, Star } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { MessageSquare, Star, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useDraftReviews } from '@/hooks/useDraftReviews';
 import { ResponseEditor } from './ResponseEditor';
 import type { DraftReview } from '@/lib/workspace/types';
@@ -34,6 +37,7 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
 
 function AggregateScores({
   scores,
+  hasStaleReviews,
 }: {
   scores: {
     impact: number | null;
@@ -41,6 +45,7 @@ function AggregateScores({
     constitutional: number | null;
     value: number | null;
   };
+  hasStaleReviews: boolean;
 }) {
   const items = [
     { label: 'Impact', score: scores.impact },
@@ -52,16 +57,21 @@ function AggregateScores({
   if (items.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg bg-muted/30">
-      {items.map((item) => (
-        <div key={item.label} className="text-center">
-          <div className="flex items-center justify-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-lg font-bold">{item.score}</span>
+    <div className="space-y-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg bg-muted/30">
+        {items.map((item) => (
+          <div key={item.label} className="text-center">
+            <div className="flex items-center justify-center gap-1">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              <span className="text-lg font-bold">{item.score}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{item.label}</p>
           </div>
-          <p className="text-xs text-muted-foreground">{item.label}</p>
-        </div>
-      ))}
+        ))}
+      </div>
+      {hasStaleReviews && (
+        <p className="text-xs text-muted-foreground italic">Averages exclude stale reviews</p>
+      )}
     </div>
   );
 }
@@ -91,7 +101,12 @@ function ReviewCard({
   const hasResponse = responses.length > 0;
 
   return (
-    <div className="space-y-3 border-b last:border-0 pb-4 last:pb-0">
+    <div
+      className={cn(
+        'space-y-3 border-b last:border-0 pb-4 last:pb-0',
+        review.isStale && 'opacity-50',
+      )}
+    >
       {/* Review header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -99,6 +114,25 @@ function ReviewCard({
           <span className="text-xs text-muted-foreground">
             {new Date(review.createdAt).toLocaleDateString()}
           </span>
+          {review.isStale && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-amber-500/30 text-amber-600 dark:text-amber-400 gap-1"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    Stale
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  This review was submitted for version {review.reviewedAtVersion ?? '?'}. The
+                  proposal has been updated since.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         {hasResponse && (
           <Badge
@@ -189,6 +223,22 @@ interface ReviewsListProps {
 
 export function ReviewsList({ draftId, isOwner }: ReviewsListProps) {
   const { data, isLoading } = useDraftReviews(draftId);
+  const [staleExpanded, setStaleExpanded] = useState(false);
+
+  // Separate current and stale reviews
+  const { currentReviews, staleReviews } = useMemo(() => {
+    if (!data) return { currentReviews: [], staleReviews: [] };
+    const current: DraftReview[] = [];
+    const stale: DraftReview[] = [];
+    for (const review of data.reviews) {
+      if (review.isStale) {
+        stale.push(review);
+      } else {
+        current.push(review);
+      }
+    }
+    return { currentReviews: current, staleReviews: stale };
+  }, [data]);
 
   if (isLoading) {
     return (
@@ -229,10 +279,11 @@ export function ReviewsList({ draftId, isOwner }: ReviewsListProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <AggregateScores scores={data.aggregateScores} />
+        <AggregateScores scores={data.aggregateScores} hasStaleReviews={staleReviews.length > 0} />
 
+        {/* Current reviews */}
         <div className="space-y-4">
-          {data.reviews.map((review) => (
+          {currentReviews.map((review) => (
             <ReviewCard
               key={review.id}
               review={review}
@@ -242,6 +293,37 @@ export function ReviewsList({ draftId, isOwner }: ReviewsListProps) {
             />
           ))}
         </div>
+
+        {/* Stale reviews — collapsible section */}
+        {staleReviews.length > 0 && (
+          <div className="border-t pt-3">
+            <button
+              onClick={() => setStaleExpanded(!staleExpanded)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full cursor-pointer"
+            >
+              {staleExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+              <AlertTriangle className="h-3 w-3 text-amber-400" />
+              Stale Reviews ({staleReviews.length})
+            </button>
+            {staleExpanded && (
+              <div className="space-y-4 mt-3">
+                {staleReviews.map((review) => (
+                  <ReviewCard
+                    key={review.id}
+                    review={review}
+                    responses={data.responsesByReview[review.id] ?? []}
+                    isOwner={isOwner}
+                    draftId={draftId}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

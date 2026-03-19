@@ -155,6 +155,7 @@ export function useCreateDraft() {
         submittedAnchorUrl: null,
         submittedAnchorHash: null,
         submittedAt: null,
+        lastConstitutionalCheck: null,
         createdAt: now,
         updatedAt: now,
       };

@@ -363,6 +363,7 @@ function mapDraftRow(row: any): ProposalDraft {
     submittedAnchorUrl: row.submitted_anchor_url ?? null,
     submittedAnchorHash: row.submitted_anchor_hash ?? null,
     submittedAt: row.submitted_at ?? null,
+    lastConstitutionalCheck: row.last_constitutional_check ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

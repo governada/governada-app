@@ -17,11 +17,10 @@ import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } fro
 import { useSaveStatus } from '@/lib/workspace/save-status';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSyncEntityToURL } from '@/hooks/useSyncEntityToURL';
-import { cn } from '@/lib/utils';
 import { useDraft, useUpdateDraft } from '@/hooks/useDrafts';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useAgent } from '@/hooks/useAgent';
-import { useRecordGenealogy } from '@/hooks/useAmendmentGenealogy';
+import { useRecordGenealogy, useAmendmentGenealogy } from '@/hooks/useAmendmentGenealogy';
 import { posthog } from '@/lib/posthog';
 import { StudioProvider, useStudio } from '@/components/studio/StudioProvider';
 import { StudioHeader } from '@/components/studio/StudioHeader';
@@ -41,6 +40,7 @@ import { SaveStatusIndicator } from '@/components/workspace/layout/SaveStatusInd
 import { IntentInputPanel } from '@/components/workspace/author/IntentInputPanel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
+import { AmendmentGenealogyTimeline } from '@/components/workspace/review/AmendmentGenealogyTimeline';
 import { CONSTITUTION_NODES, CONSTITUTION_VERSION } from '@/lib/constitution/fullText';
 import { extractAmendmentChanges, serializeAmendmentChanges } from '@/lib/constitution/utils';
 import { proposeChange } from '@/components/workspace/editor/SuggestModePlugin';
@@ -57,10 +57,12 @@ import type { ConstitutionSlashCommandType } from '@/components/workspace/editor
 function AmendmentPanelWrapper({
   agentContent,
   intelContent,
+  notesContent,
   readinessContent,
 }: {
   agentContent: ReactNode;
   intelContent: ReactNode;
+  notesContent?: ReactNode;
   readinessContent?: ReactNode;
 }) {
   const { panelOpen, activePanel, panelWidth, closePanel, togglePanel, setPanelWidth } =
@@ -76,6 +78,7 @@ function AmendmentPanelWrapper({
       onWidthChange={setPanelWidth}
       agentContent={agentContent}
       intelContent={intelContent}
+      notesContent={notesContent}
       readinessContent={readinessContent}
     />
   );
@@ -85,17 +88,7 @@ function AmendmentPanelWrapper({
 // AmendmentHeaderWrapper — connects StudioHeader to StudioProvider
 // ---------------------------------------------------------------------------
 
-function AmendmentHeaderWrapper({
-  title,
-  mode,
-  onModeChange,
-  isOwner,
-}: {
-  title: string;
-  mode: AmendmentEditorMode;
-  onModeChange: (mode: AmendmentEditorMode) => void;
-  isOwner: boolean;
-}) {
+function AmendmentHeaderWrapper({ title }: { title: string }) {
   const { panelOpen, activePanel, togglePanel, isFullWidth, toggleFullWidth } = useStudio();
 
   return (
@@ -109,34 +102,6 @@ function AmendmentHeaderWrapper({
       onPanelToggle={togglePanel}
       isFullWidth={isFullWidth}
       onFullWidthToggle={toggleFullWidth}
-      actions={
-        isOwner ? (
-          <div className="flex items-center rounded-md border border-border bg-muted/30 p-0.5">
-            <button
-              onClick={() => onModeChange('suggest')}
-              className={cn(
-                'px-3 py-1 text-[11px] font-medium rounded-sm transition-colors cursor-pointer',
-                mode === 'suggest'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => onModeChange('review')}
-              className={cn(
-                'px-3 py-1 text-[11px] font-medium rounded-sm transition-colors cursor-pointer',
-                mode === 'review'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Preview
-            </button>
-          </div>
-        ) : undefined
-      }
     />
   );
 }
@@ -176,7 +141,8 @@ function AmendmentEditorPage() {
   useSyncEntityToURL();
   const { data, isLoading, error } = useDraft(draftId);
 
-  const [mode, setMode] = useState<AmendmentEditorMode>('suggest');
+  // Always suggest mode — WYSIWYG editing, no Edit/Preview toggle
+  const mode: AmendmentEditorMode = 'suggest';
   const [changes, setChanges] = useState<AmendmentChange[]>([]);
   const [showIntentPanel, setShowIntentPanel] = useState(searchParams.get('mode') === 'intent');
   const [intentGenerating, setIntentGenerating] = useState(false);
@@ -186,6 +152,7 @@ function AmendmentEditorPage() {
   const updateDraft = useUpdateDraft(draftId ?? '');
   const { setSaving } = useSaveStatus();
   const recordGenealogy = useRecordGenealogy();
+  const { data: genealogyData } = useAmendmentGenealogy(draftId);
 
   // --- Debounced auto-save for changes ---
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -199,16 +166,7 @@ function AmendmentEditorPage() {
     : segment === 'cc'
       ? ('cc_member' as const)
       : ('reviewer' as const);
-  const readOnly = !isOwner || mode === 'review';
-
-  // --- Mode change with analytics ---
-  const handleModeChange = useCallback(
-    (next: AmendmentEditorMode) => {
-      posthog.capture('amendment_mode_changed', { proposal_id: draftId, mode: next });
-      setMode(next);
-    },
-    [draftId],
-  );
+  const readOnly = !isOwner;
 
   // --- Agent hook ---
   const {
@@ -448,11 +406,27 @@ function AmendmentEditorPage() {
       activeToolCall={agentActiveToolCall}
       error={agentError}
       onApplyComment={readOnly ? undefined : handleApplyComment}
+      starterPrompts={[
+        'Help me draft amendment language for this section',
+        'Check my changes for constitutional conflicts',
+        'Explain the governance impact of these amendments',
+        'What counterarguments should I anticipate?',
+      ]}
     />
   );
 
   // --- Intel panel ---
   const intelNode = draftId ? <AmendmentIntelPanel draftId={draftId} changes={changes} /> : null;
+
+  // --- Notes panel (edit history timeline) ---
+  const notesNode = (
+    <div className="p-4 space-y-3">
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        Edit History
+      </h3>
+      <AmendmentGenealogyTimeline entries={genealogyData?.entries ?? []} />
+    </div>
+  );
 
   // --- Loading state ---
   if (isLoading) {
@@ -513,14 +487,7 @@ function AmendmentEditorPage() {
       <StudioProvider>
         <WorkspacePanels
           layoutId="amendment"
-          toolbar={
-            <AmendmentHeaderWrapper
-              title={draft.title || 'Constitutional Amendment'}
-              mode={mode}
-              onModeChange={handleModeChange}
-              isOwner={isOwner}
-            />
-          }
+          toolbar={<AmendmentHeaderWrapper title={draft.title || 'Constitutional Amendment'} />}
           main={
             <ConstitutionEditor
               constitutionNodes={CONSTITUTION_NODES}
@@ -540,6 +507,7 @@ function AmendmentEditorPage() {
             <AmendmentPanelWrapper
               agentContent={agentChatNode}
               intelContent={intelNode}
+              notesContent={notesNode}
               readinessContent={draftId ? <ReadinessPanel draftId={draftId} /> : undefined}
             />
           }

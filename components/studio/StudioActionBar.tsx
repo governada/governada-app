@@ -198,8 +198,11 @@ export function StudioActionBar({
       {/* Spacer when no status */}
       {!statusInfo && <div className="flex-1" />}
 
-      {/* Right: context actions */}
-      {contextActions && <div className="flex items-center gap-2 shrink-0">{contextActions}</div>}
+      {/* Right: context actions + Explorer */}
+      <div className="flex items-center gap-2 shrink-0">
+        {contextActions}
+        <ExplorerButton />
+      </div>
     </div>
   );
 }

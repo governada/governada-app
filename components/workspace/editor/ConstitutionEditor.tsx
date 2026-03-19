@@ -19,6 +19,13 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import Document from '@tiptap/extension-document';
 
 import {
@@ -32,6 +39,7 @@ import { CommandBarExtension, CommandBarUI } from './CommandBar';
 import { InlineComment, CommentPopover } from './InlineComment';
 import { MarginDecorations, setMarginIndicators } from './MarginDecorations';
 import { SelectionToolbar } from './SelectionToolbar';
+import { FormattingToolbar } from './FormattingToolbar';
 import { ConstitutionTOC } from './ConstitutionTOC';
 import { scanDiffMarks } from './SuggestModePlugin';
 import { createConstitutionSlashMenu } from './ConstitutionSlashMenuExtension';
@@ -230,6 +238,16 @@ export function ConstitutionEditor({
             class: 'text-primary underline hover:opacity-80',
           },
         }),
+        Image.configure({
+          inline: false,
+          allowBase64: false,
+        }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableCell,
+        TableHeader,
+        TaskList,
+        TaskItem.configure({ nested: true }),
       ];
 
       return baseExtensions;
@@ -478,6 +496,9 @@ export function ConstitutionEditor({
 
       {/* Main editor area — offset for desktop TOC */}
       <div className="lg:ml-56 p-6 max-w-3xl mx-auto">
+        {/* Formatting toolbar (edit mode only) */}
+        {!isReadOnly && editor && <FormattingToolbar editor={editor} />}
+
         {/* Tiptap editor */}
         <EditorContent editor={editor} />
 

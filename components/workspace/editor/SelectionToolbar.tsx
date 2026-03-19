@@ -23,6 +23,9 @@ import {
   Flag,
   ShieldAlert,
   Scale,
+  Bold,
+  Italic,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -276,6 +279,56 @@ export function SelectionToolbar({
       <div className="flex items-center gap-1 rounded-lg border border-border bg-background shadow-lg p-1">
         {!showCommentInput ? (
           <>
+            {/* Inline formatting buttons (edit mode only) */}
+            {editor.isEditable && (
+              <>
+                <button
+                  onClick={() => editor.chain().focus().toggleBold().run()}
+                  className={cn(
+                    'p-1.5 rounded-md transition-colors cursor-pointer',
+                    editor.isActive('bold')
+                      ? 'text-foreground bg-muted'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
+                  title="Bold"
+                >
+                  <Bold className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  className={cn(
+                    'p-1.5 rounded-md transition-colors cursor-pointer',
+                    editor.isActive('italic')
+                      ? 'text-foreground bg-muted'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
+                  title="Italic"
+                >
+                  <Italic className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    const url = window.prompt('URL', editor.getAttributes('link').href ?? '');
+                    if (url === null) return;
+                    if (url === '') {
+                      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+                    } else {
+                      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+                    }
+                  }}
+                  className={cn(
+                    'p-1.5 rounded-md transition-colors cursor-pointer',
+                    editor.isActive('link')
+                      ? 'text-foreground bg-muted'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
+                  title="Link"
+                >
+                  <LinkIcon className="h-3.5 w-3.5" />
+                </button>
+                <div className="w-px h-4 bg-border" />
+              </>
+            )}
             <button
               onClick={() => setShowCommentInput(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/50 transition-colors cursor-pointer"

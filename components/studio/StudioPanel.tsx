@@ -24,7 +24,6 @@ const BASE_TABS: Array<{ id: TabId; label: string; Icon: typeof MessageSquare }>
   { id: 'agent', label: 'Agent', Icon: MessageSquare },
   { id: 'intel', label: 'Intel', Icon: BarChart3 },
   { id: 'notes', label: 'Notes', Icon: StickyNote },
-  { id: 'vote', label: 'Vote', Icon: Vote },
 ];
 
 const MIN_PANEL_WIDTH = 280;
@@ -98,10 +97,14 @@ export function StudioPanel({
     [onWidthChange],
   );
 
-  // Build tabs: include readiness tab only when readinessContent is provided
-  const TABS = readinessContent
-    ? [...BASE_TABS, { id: 'readiness' as TabId, label: 'Readiness', Icon: ShieldCheck }]
-    : BASE_TABS;
+  // Build tabs dynamically: include vote only when voteContent provided, readiness when provided
+  const TABS = [
+    ...BASE_TABS,
+    ...(voteContent ? [{ id: 'vote' as TabId, label: 'Vote', Icon: Vote }] : []),
+    ...(readinessContent
+      ? [{ id: 'readiness' as TabId, label: 'Readiness', Icon: ShieldCheck }]
+      : []),
+  ];
 
   const tabContent: Record<TabId, ReactNode> = {
     agent: agentContent,

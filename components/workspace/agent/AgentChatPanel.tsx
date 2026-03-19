@@ -60,6 +60,13 @@ function toolLabel(toolName: string): string {
 // Types
 // ---------------------------------------------------------------------------
 
+const DEFAULT_STARTER_PROMPTS = [
+  'What are the key risks of this proposal?',
+  'Summarize the main arguments for and against',
+  'Draft a rationale for voting Yes',
+  'What questions should I ask the proposer?',
+];
+
 interface AgentChatPanelProps {
   /** Send message function from useAgent */
   sendMessage: (message: string) => Promise<void>;
@@ -75,6 +82,8 @@ interface AgentChatPanelProps {
   onApplyEdit?: (edit: ProposedEdit) => void;
   /** Callback when user wants to add a proposed comment */
   onApplyComment?: (comment: ProposedComment) => void;
+  /** Context-specific starter prompts (defaults to review-oriented) */
+  starterPrompts?: string[];
   /** Additional class names */
   className?: string;
 }
@@ -278,8 +287,10 @@ export function AgentChatPanel({
   error,
   onApplyEdit,
   onApplyComment,
+  starterPrompts,
   className,
 }: AgentChatPanelProps) {
+  const prompts = starterPrompts ?? DEFAULT_STARTER_PROMPTS;
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -343,12 +354,7 @@ export function AgentChatPanel({
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5 justify-center max-w-[280px]">
-              {[
-                'What are the key risks of this proposal?',
-                'Summarize the main arguments for and against',
-                'Draft a rationale for voting Yes',
-                'What questions should I ask the proposer?',
-              ].map((suggestion) => (
+              {prompts.map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => sendMessage(suggestion)}

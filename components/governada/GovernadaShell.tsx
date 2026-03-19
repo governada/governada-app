@@ -128,7 +128,8 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const isHomepage = pathname === '/';
   const isStudioMode =
-    pathname === '/workspace/review' || /^\/workspace\/(author|editor)\/[^/]+/.test(pathname);
+    pathname === '/workspace/review' ||
+    /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {

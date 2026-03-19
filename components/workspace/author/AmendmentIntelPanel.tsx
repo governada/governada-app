@@ -194,11 +194,33 @@ export function AmendmentIntelPanel({ draftId, changes }: AmendmentIntelPanelPro
         </CardContent>
       </Card>
 
-      {/* Section 2: Conflict Check */}
+      {/* Milestone nudge — show when 3+ sections amended and check not yet run */}
+      {changes.length >= 3 && conflicts === null && !conflictLoading && (
+        <div className="flex items-start gap-2 rounded-md bg-primary/5 border border-primary/20 px-3 py-2.5">
+          <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-foreground">
+              You&apos;ve amended {byArticle.size} section{byArticle.size !== 1 ? 's' : ''}. Run a
+              constitutional check to catch conflicts early.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleConflictCheck}
+              className="h-6 text-[10px] px-2"
+            >
+              <Shield className="mr-1 h-3 w-3" />
+              Run Check
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Section 2: Constitutional Check */}
       <Card className="border-border/50">
         <CardHeader className="pb-2 pt-3 px-3">
           <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Conflict Check
+            Constitutional Check
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3 space-y-2">
@@ -218,7 +240,7 @@ export function AmendmentIntelPanel({ draftId, changes }: AmendmentIntelPanelPro
               ) : (
                 <>
                   <Shield className="mr-1.5 h-3 w-3" />
-                  Run Conflict Check
+                  Run Constitutional Check
                 </>
               )}
             </Button>

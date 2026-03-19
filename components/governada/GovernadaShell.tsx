@@ -10,6 +10,8 @@ import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
 import { GovernadaSidebar } from './GovernadaSidebar';
 import { NavigationRail } from './NavigationRail';
+import { ShortcutProvider } from './ShortcutProvider';
+import { ShortcutOverlay } from './ShortcutOverlay';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
 import { PreviewBanner } from '@/components/preview/PreviewBanner';
@@ -167,76 +169,79 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   return (
     <SegmentProvider>
       <TierThemeProvider score={null}>
-        <SentryContextSync />
-        <Suspense fallback={null}>
-          <DeepLinkHandler />
-        </Suspense>
-        <SyncFreshnessBanner />
-        <PreviewBanner />
-        {!isStudioMode && <GovernadaHeader />}
-        {!isStudioMode &&
-          (navigationRail ? (
-            <NavigationRail />
-          ) : (
-            <GovernadaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-          ))}
+        <ShortcutProvider>
+          <SentryContextSync />
+          <Suspense fallback={null}>
+            <DeepLinkHandler />
+          </Suspense>
+          <SyncFreshnessBanner />
+          <PreviewBanner />
+          {!isStudioMode && <GovernadaHeader />}
+          {!isStudioMode &&
+            (navigationRail ? (
+              <NavigationRail />
+            ) : (
+              <GovernadaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+            ))}
 
-        {/* Global constellation globe — subtle glassmorphic background */}
-        {!isStudioMode && (
-          <BackgroundGlobe
-            isHomepage={isHomepage}
-            sidebarCollapsed={sidebarCollapsed}
-            useRail={navigationRail}
-            governanceTint={temporalAdaptation ? tintColor : undefined}
-          />
-        )}
+          {/* Global constellation globe — subtle glassmorphic background */}
+          {!isStudioMode && (
+            <BackgroundGlobe
+              isHomepage={isHomepage}
+              sidebarCollapsed={sidebarCollapsed}
+              useRail={navigationRail}
+              governanceTint={temporalAdaptation ? tintColor : undefined}
+            />
+          )}
 
-        {/* Discovery context wraps main so studio can access it */}
-        <SpotlightProvider>
-          <DiscoveryHub hideFab={isStudioMode}>
-            <main
-              id="main-content"
+          {/* Discovery context wraps main so studio can access it */}
+          <SpotlightProvider>
+            <DiscoveryHub hideFab={isStudioMode}>
+              <main
+                id="main-content"
+                className={cn(
+                  'relative z-0 min-h-screen',
+                  isStudioMode ? '' : 'pb-16 lg:pb-0',
+                  isStudioMode
+                    ? ''
+                    : navigationRail
+                      ? 'lg:pl-12'
+                      : cn(
+                          'transition-[padding-left] duration-200',
+                          sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
+                        ),
+                )}
+                tabIndex={-1}
+              >
+                {children}
+              </main>
+              {!isStudioMode && <EngagementNudge />}
+              {!isStudioMode && <MilestoneTrigger />}
+            </DiscoveryHub>
+          </SpotlightProvider>
+          {!isStudioMode && (
+            <footer
               className={cn(
-                'relative z-0 min-h-screen',
-                isStudioMode ? '' : 'pb-16 lg:pb-0',
-                isStudioMode
-                  ? ''
-                  : navigationRail
-                    ? 'lg:pl-12'
-                    : cn(
-                        'transition-[padding-left] duration-200',
-                        sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
-                      ),
+                'relative z-0 border-t border-border/40 py-4 px-4 text-center',
+                navigationRail
+                  ? 'lg:pl-12'
+                  : cn(
+                      'transition-[padding-left] duration-200',
+                      sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
+                    ),
               )}
-              tabIndex={-1}
             >
-              {children}
-            </main>
-            {!isStudioMode && <EngagementNudge />}
-            {!isStudioMode && <MilestoneTrigger />}
-          </DiscoveryHub>
-        </SpotlightProvider>
-        {!isStudioMode && (
-          <footer
-            className={cn(
-              'relative z-0 border-t border-border/40 py-4 px-4 text-center',
-              navigationRail
-                ? 'lg:pl-12'
-                : cn(
-                    'transition-[padding-left] duration-200',
-                    sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
-                  ),
-            )}
-          >
-            <p className="text-xs text-muted-foreground/70">
-              {t(
-                'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',
-              )}
-            </p>
-          </footer>
-        )}
-        {!isStudioMode && <GovernadaBottomNav />}
-        <FeedbackWidget />
+              <p className="text-xs text-muted-foreground/70">
+                {t(
+                  'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',
+                )}
+              </p>
+            </footer>
+          )}
+          {!isStudioMode && <GovernadaBottomNav />}
+          <FeedbackWidget />
+          <ShortcutOverlay />
+        </ShortcutProvider>
       </TierThemeProvider>
     </SegmentProvider>
   );

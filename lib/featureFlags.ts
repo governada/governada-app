@@ -32,6 +32,7 @@
  * view_transitions               — View Transitions API for spatial navigation continuity (Phase 6)
  * temporal_adaptation             — Governance temporal mode + ambient temperature tinting (Phase 6)
  * peek_drawer                    — Entity peek drawer on list pages (Phase 3 nav renaissance)
+ * keyboard_shortcuts              — Global keyboard shortcut system with chords and help overlay (Phase 8)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

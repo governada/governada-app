@@ -229,9 +229,27 @@ export function ProposalEditor({
       }),
       ProposalDocument,
       Placeholder.configure({
-        placeholder: ({ node }) => {
+        placeholder: ({ node, pos, editor: e }) => {
           if (node.type.name === 'paragraph') {
-            return 'Start writing...';
+            // Section-specific governance placeholders
+            const $pos = e.state.doc.resolve(pos);
+            for (let depth = $pos.depth; depth >= 0; depth--) {
+              const parent = $pos.node(depth);
+              if (parent.type.name === 'sectionBlock') {
+                const field = parent.attrs.field as string;
+                const placeholders: Record<string, string> = {
+                  title: 'Give your proposal a clear, specific title',
+                  abstract:
+                    'Summarize your proposal in 2\u20133 sentences. What are you proposing and why?',
+                  motivation:
+                    'Why does Cardano need this? What problem are you solving, and who benefits?',
+                  rationale:
+                    'How will this be implemented? What makes this approach the right one?',
+                };
+                return placeholders[field] ?? 'Start writing\u2026';
+              }
+            }
+            return 'Start writing\u2026';
           }
           return '';
         },
@@ -369,16 +387,19 @@ export function ProposalEditor({
   useEffect(() => {
     if (!editor) return;
 
-    const interval = setInterval(() => {
+    const handleTransaction = () => {
       const storage = getCommandBarStorage(editor);
       if (storage?.isOpen && !commandBarOpen) {
         setCommandBarOpen(true);
         setCommandBarSelectedText(storage.selectedText || '');
         setCommandBarSection(storage.section || '');
       }
-    }, 100);
+    };
 
-    return () => clearInterval(interval);
+    editor.on('transaction', handleTransaction);
+    return () => {
+      editor.off('transaction', handleTransaction);
+    };
   }, [editor, commandBarOpen]);
 
   // -------------------------------------------------------------------------

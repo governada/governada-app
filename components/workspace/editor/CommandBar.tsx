@@ -222,9 +222,24 @@ export function CommandBarUI({
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-1.5 text-muted-foreground flex-shrink-0">
-            <kbd className="h-5 px-1.5 rounded bg-muted text-[10px] font-mono flex items-center">
+            <span className="h-5 px-1.5 rounded bg-primary/10 text-primary text-[10px] font-medium flex items-center gap-1">
+              <svg
+                className="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                <path d="M5 3v4" />
+                <path d="M19 17v4" />
+                <path d="M3 5h4" />
+                <path d="M17 19h4" />
+              </svg>
               AI
-            </kbd>
+            </span>
           </div>
           <input
             ref={inputRef}

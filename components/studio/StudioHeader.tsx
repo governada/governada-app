@@ -18,12 +18,21 @@ import {
 import { cn } from '@/lib/utils';
 import { StudioQueueProgress } from './StudioQueueProgress';
 
+interface ReadinessBadgeData {
+  level: 'low' | 'moderate' | 'high' | 'strong';
+  blockerCount: number;
+}
+
 interface StudioHeaderProps {
   backHref?: string;
   onBack?: () => void;
   backLabel?: string;
   title?: string;
   proposalType?: string;
+  /** Compact readiness indicator in the header */
+  readiness?: ReadinessBadgeData;
+  /** Called when readiness badge is clicked */
+  onReadinessClick?: () => void;
   queueProgress?: { current: number; total: number };
   onQueueJump?: (index: number) => void;
   onPrev?: () => void;
@@ -72,6 +81,8 @@ export function StudioHeader({
   notificationCount = 0,
   onCommandPalette,
   segmentBadge,
+  readiness,
+  onReadinessClick,
   panelOpen,
   activePanel,
   onPanelToggle,
@@ -185,6 +196,38 @@ export function StudioHeader({
             />
           ))}
         </div>
+      )}
+
+      {/* Readiness badge */}
+      {readiness && (
+        <button
+          onClick={onReadinessClick}
+          className={cn(
+            'hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer border',
+            readiness.level === 'strong' || readiness.level === 'high'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+              : readiness.blockerCount > 0
+                ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                : 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+          )}
+          title="Submission readiness"
+        >
+          <span
+            className={cn(
+              'h-1.5 w-1.5 rounded-full',
+              readiness.level === 'strong' || readiness.level === 'high'
+                ? 'bg-emerald-400'
+                : readiness.blockerCount > 0
+                  ? 'bg-destructive'
+                  : 'bg-amber-400',
+            )}
+          />
+          {readiness.blockerCount > 0
+            ? `${readiness.blockerCount} blocker${readiness.blockerCount !== 1 ? 's' : ''}`
+            : readiness.level === 'strong' || readiness.level === 'high'
+              ? 'Ready'
+              : 'Needs work'}
+        </button>
       )}
 
       {/* Mode switcher */}

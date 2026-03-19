@@ -7,6 +7,7 @@
  * completeness gaps, vagueness issues, and overall quality per section.
  */
 
+import { useMemo } from 'react';
 import { Brain, Shield, ListChecks, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -22,6 +23,8 @@ import type { SectionAnalysisOutput } from '@/lib/ai/skills/section-analysis';
 interface AuthorIntelligencePanelProps {
   results: Record<string, SectionAnalysisOutput | null>;
   loading: Record<string, boolean>;
+  /** Timestamps of when each section was last analyzed (ISO string) */
+  analyzedAt?: Record<string, string | null>;
   onApplyFix?: (field: string, search: string, replace: string) => void;
 }
 
@@ -37,13 +40,36 @@ const severityColors = {
   critical: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
 } as const;
 
+function formatTimeSince(iso: string): { label: string; isStale: boolean } {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  const isStale = mins > 10;
+  if (mins < 1) return { label: 'just now', isStale };
+  if (mins < 60) return { label: `${mins}m ago`, isStale };
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return { label: `${hours}h ago`, isStale };
+  return { label: `${Math.floor(hours / 24)}d ago`, isStale };
+}
+
 export function AuthorIntelligencePanel({
   results,
   loading,
+  analyzedAt,
   onApplyFix,
 }: AuthorIntelligencePanelProps) {
   const hasAnyResult = Object.values(results).some((r) => r !== null);
   const hasAnyLoading = Object.values(loading).some((l) => l);
+
+  // Compute staleness info outside of render to avoid impure Date.now() in JSX
+  const stalenessInfo = useMemo(() => {
+    if (!analyzedAt) return {};
+    const info: Record<string, { label: string; isStale: boolean }> = {};
+    for (const key of Object.keys(analyzedAt)) {
+      const ts = analyzedAt[key];
+      if (ts) info[key] = formatTimeSince(ts);
+    }
+    return info;
+  }, [analyzedAt]);
 
   return (
     <Card>
@@ -64,7 +90,6 @@ export function AuthorIntelligencePanel({
             {SECTIONS.map(({ field, label }) => {
               const result = results[field];
               const isLoading = loading[field] ?? false;
-
               return (
                 <AccordionItem key={field} value={field}>
                   <AccordionTrigger className="text-xs py-2 hover:no-underline">
@@ -79,6 +104,20 @@ export function AuthorIntelligencePanel({
                       {result && (
                         <span className="text-muted-foreground font-normal truncate max-w-[140px]">
                           {result.summary}
+                        </span>
+                      )}
+                      {stalenessInfo[field] && !isLoading && (
+                        <span
+                          className={`ml-auto text-[10px] shrink-0 ${
+                            stalenessInfo[field].isStale
+                              ? 'text-amber-400/70'
+                              : 'text-muted-foreground/50'
+                          }`}
+                          title={
+                            stalenessInfo[field].isStale ? 'Re-analyze on next edit' : undefined
+                          }
+                        >
+                          {stalenessInfo[field].label}
                         </span>
                       )}
                     </div>
@@ -165,7 +204,9 @@ export function AuthorIntelligencePanel({
                         {result.constitutionalFlags.length === 0 &&
                           result.completenessGaps.length === 0 &&
                           result.vaguenessIssues.length === 0 && (
-                            <p className="text-muted-foreground">No issues found. Looking good.</p>
+                            <p className="text-muted-foreground">
+                              This section is constitutionally sound and substantively complete.
+                            </p>
                           )}
                       </div>
                     )}

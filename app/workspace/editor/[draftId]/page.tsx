@@ -35,6 +35,7 @@ import { WorkspacePanels } from '@/components/workspace/layout/WorkspacePanels';
 import { ProposalEditor, injectProposedEdit } from '@/components/workspace/editor/ProposalEditor';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { StatusBar } from '@/components/workspace/layout/StatusBar';
+import { SaveErrorBanner } from '@/components/workspace/layout/SaveErrorBanner';
 import { RevisionJustificationFlow } from '@/components/workspace/editor/RevisionJustificationFlow';
 import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -136,6 +137,20 @@ function AuthorPanelWrapper({
 }
 
 // ---------------------------------------------------------------------------
+// AuthorHeaderWrapper — connects readiness badge click to panel toggle
+// ---------------------------------------------------------------------------
+
+function AuthorHeaderWrapper(
+  props: React.ComponentProps<typeof StudioHeader> & {
+    readiness?: { level: 'low' | 'moderate' | 'high' | 'strong'; blockerCount: number };
+  },
+) {
+  const { togglePanel } = useStudio();
+
+  return <StudioHeader {...props} onReadinessClick={() => togglePanel('readiness')} />;
+}
+
+// ---------------------------------------------------------------------------
 // AuthorActionBarWrapper — connects action bar to studio context
 // ---------------------------------------------------------------------------
 
@@ -223,6 +238,24 @@ function WorkspaceEditorPage() {
     error: agentError,
   } = useAgent({ proposalId: draftId ?? '', userRole });
 
+  // --- Readiness badge for header (lightweight, no extra queries) ---
+  const readinessBadge = useMemo(() => {
+    if (!draft || !isOwner) return undefined;
+    const fields = [draft.title, draft.abstract, draft.motivation, draft.rationale];
+    const filled = fields.filter((f) => f && f.trim().length > 0).length;
+    const constCheck = draft.lastConstitutionalCheck?.score ?? null;
+    let blockerCount = 0;
+    if (filled < 4) blockerCount++;
+    if (constCheck === 'fail') blockerCount++;
+    const level =
+      blockerCount > 0
+        ? ('low' as const)
+        : constCheck === 'pass' && filled >= 4
+          ? ('strong' as const)
+          : ('moderate' as const);
+    return { level, blockerCount };
+  }, [draft, isOwner]);
+
   // --- Derived version data ---
   const versions = data?.versions ?? null;
   const submittedTxHash = draft?.submittedTxHash ?? null;
@@ -254,6 +287,18 @@ function WorkspaceEditorPage() {
     },
     [updateDraft, setSaving],
   );
+
+  // --- Retry save: re-send current content to mutation ---
+  const handleSaveRetry = useCallback(() => {
+    if (!draft) return;
+    setSaving();
+    updateDraft.mutate({
+      title: draft.title,
+      abstract: draft.abstract,
+      motivation: draft.motivation,
+      rationale: draft.rationale,
+    });
+  }, [draft, updateDraft, setSaving]);
 
   // --- Capture editor instance ---
   const handleEditorReady = useCallback((editor: Editor) => {
@@ -446,20 +491,22 @@ function WorkspaceEditorPage() {
         <WorkspacePanels
           layoutId="editor"
           toolbar={
-            <StudioHeader
+            <AuthorHeaderWrapper
               backLabel="Back to drafts"
               backHref="/workspace/author"
-              title={draft.title || 'Untitled'}
+              title={draft.title || 'Untitled proposal'}
               proposalType={typeLabel}
               showModeSwitch={isOwner}
               mode={mode}
               onModeChange={isOwner ? setMode : undefined}
               actions={saveVersionButton}
+              readiness={readinessBadge}
             />
           }
           main={
-            <div className="max-w-3xl mx-auto px-6 py-6">
+            <div className="max-w-3xl mx-auto px-6 py-6 transition-opacity duration-150">
               {draft.supersedesId && <LineageBanner supersedesId={draft.supersedesId} />}
+              <SaveErrorBanner onRetry={handleSaveRetry} />
               <ProposalEditor
                 content={content}
                 mode={mode}

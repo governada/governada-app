@@ -45,17 +45,18 @@ const COLUMN_META: Record<
   drafts: {
     label: 'Drafts',
     emptyTitle: 'No drafts',
-    emptyDescription: 'Create your first proposal to get started.',
+    emptyDescription: 'Start a new proposal or use AI scaffolding to generate a draft.',
   },
   inReview: {
     label: 'In Review',
     emptyTitle: 'No proposals in review',
-    emptyDescription: 'Open a draft for community feedback.',
+    emptyDescription:
+      'When a draft is ready, open it for structured community feedback and constitutional review.',
   },
   onChain: {
     label: 'On-Chain',
     emptyTitle: 'No submitted proposals',
-    emptyDescription: 'Complete the review process to submit on-chain.',
+    emptyDescription: 'Proposals that pass community review can be submitted on-chain for voting.',
   },
   archived: {
     label: 'Archived',
@@ -176,7 +177,18 @@ export function PortfolioView({ drafts, isLoading, showArchived }: PortfolioView
     return (
       <div className="grid sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 'var(--workspace-gap)' }}>
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-36 w-full rounded-xl" />
+          <div key={i} className="rounded-xl border border-border p-4 space-y-3">
+            <div className="flex items-start justify-between">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-8" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-5 w-20 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
         ))}
       </div>
     );
@@ -188,9 +200,10 @@ export function PortfolioView({ drafts, isLoading, showArchived }: PortfolioView
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground font-medium">No drafts yet</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">
-            Create your first proposal to get started.
+          <p className="text-muted-foreground font-medium">No proposals yet</p>
+          <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">
+            Create your first governance proposal. Choose from Treasury Withdrawals, Info Actions,
+            Parameter Changes, or Constitutional Amendments.
           </p>
         </CardContent>
       </Card>

@@ -23,7 +23,6 @@ interface StudioPanelProps {
 const BASE_TABS: Array<{ id: TabId; label: string; Icon: typeof MessageSquare }> = [
   { id: 'agent', label: 'Agent', Icon: MessageSquare },
   { id: 'intel', label: 'Intel', Icon: BarChart3 },
-  { id: 'notes', label: 'Notes', Icon: StickyNote },
 ];
 
 const MIN_PANEL_WIDTH = 280;
@@ -97,9 +96,10 @@ export function StudioPanel({
     [onWidthChange],
   );
 
-  // Build tabs dynamically: include vote only when voteContent provided, readiness when provided
+  // Build tabs dynamically: include notes/vote/readiness only when content is provided
   const TABS = [
     ...BASE_TABS,
+    ...(notesContent ? [{ id: 'notes' as TabId, label: 'Notes', Icon: StickyNote }] : []),
     ...(voteContent ? [{ id: 'vote' as TabId, label: 'Vote', Icon: Vote }] : []),
     ...(readinessContent
       ? [{ id: 'readiness' as TabId, label: 'Readiness', Icon: ShieldCheck }]
@@ -132,7 +132,7 @@ export function StudioPanel({
       ref={panelRef}
       className={cn(
         'hidden lg:flex flex-col relative border-l border-border bg-background shrink-0 overflow-hidden',
-        'transition-[width,opacity] duration-200 ease-out',
+        'transition-[width,opacity] duration-200 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]',
       )}
       style={{ width: isOpen ? clampedWidth : 0 }}
     >

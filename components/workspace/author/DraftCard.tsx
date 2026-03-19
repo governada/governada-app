@@ -137,7 +137,7 @@ export function DraftCard({ draft, index, column, itemProps }: DraftCardProps) {
                   lineHeight: 'var(--workspace-line-height)',
                 }}
               >
-                {draft.title || 'Untitled Draft'}
+                {draft.title || 'Untitled proposal'}
               </h3>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 v{draft.currentVersion}
@@ -168,7 +168,7 @@ export function DraftCard({ draft, index, column, itemProps }: DraftCardProps) {
 
         {/* Quick actions button — positioned absolutely top-right over the card */}
         <div
-          className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity"
+          className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity duration-150"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >

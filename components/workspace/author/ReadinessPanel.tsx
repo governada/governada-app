@@ -12,11 +12,12 @@
  * 4. Hover tooltips explaining each check
  */
 
-import { useMemo } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Info, Shield, Users } from 'lucide-react';
+import { useMemo, useEffect, useRef } from 'react';
+import { CheckCircle2, XCircle, AlertTriangle, Info, Shield, Users, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDraft } from '@/hooks/useDrafts';
 import { useDraftReviews } from '@/hooks/useDraftReviews';
+import { useAISkill } from '@/hooks/useAISkill';
 import { MIN_REVIEWS_FOR_SUBMISSION } from '@/lib/workspace/constants';
 import {
   computeConfidence,
@@ -25,6 +26,7 @@ import {
   type ConfidenceInput,
 } from '@/lib/workspace/confidence';
 import type { ProposalDraft, ConstitutionalCheckResult } from '@/lib/workspace/types';
+import type { ReadinessNarrativeOutput } from '@/lib/ai/skills/readiness-narrative';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // ---------------------------------------------------------------------------
@@ -145,6 +147,78 @@ function contextMessage(level: string, blockerCount: number): string {
     return 'Your amendment looks ready for submission.';
   }
   return 'Address the recommendations below to strengthen your submission.';
+}
+
+// ---------------------------------------------------------------------------
+// AI Narrative — the "oh wow" moment
+// ---------------------------------------------------------------------------
+
+function ReadinessNarrative({
+  draft,
+  confidence,
+  blockers,
+  recommendations,
+  reviewCount,
+}: {
+  draft: ProposalDraft;
+  confidence: { score: number; level: string };
+  blockers: Array<{ label: string }>;
+  recommendations: Array<{ label: string }>;
+  reviewCount: number;
+}) {
+  const skill = useAISkill<ReadinessNarrativeOutput>();
+  const hasTriggered = useRef(false);
+
+  // Trigger once when confidence data is available and content exists
+  useEffect(() => {
+    if (hasTriggered.current) return;
+    if (!draft.title && !draft.abstract) return;
+
+    hasTriggered.current = true;
+    skill.mutate({
+      skill: 'readiness-narrative',
+      input: {
+        proposalType: draft.proposalType,
+        title: draft.title || '',
+        abstract: draft.abstract || '',
+        motivation: draft.motivation || '',
+        rationale: draft.rationale || '',
+        confidenceScore: confidence.score,
+        confidenceLevel: confidence.level,
+        blockerLabels: blockers.map((b) => b.label),
+        recommendationLabels: recommendations.map((r) => r.label),
+        constitutionalCheck: draft.lastConstitutionalCheck?.score ?? null,
+        reviewCount,
+      },
+      draftId: draft.id,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.id]);
+
+  if (skill.isPending) {
+    return (
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
+          <div className="h-3 w-3/4 rounded bg-primary/10 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!skill.data?.output?.narrative) return null;
+
+  const { narrative, actionItem } = skill.data.output;
+
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 space-y-1.5">
+      <div className="flex items-start gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+        <p className="text-xs text-foreground/80 leading-relaxed">{narrative}</p>
+      </div>
+      {actionItem && <p className="text-[11px] text-primary/70 pl-5 font-medium">{actionItem}</p>}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -325,12 +399,13 @@ export function ReadinessPanel({ draftId }: ReadinessPanelProps) {
           </span>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar — animates from 0 on mount */}
         <div className="h-2 rounded-full bg-muted overflow-hidden">
           <div
             className={cn(
-              'h-full rounded-full transition-all duration-500',
+              'h-full rounded-full transition-all duration-700 ease-out',
               confidenceLevelBg(confidence.level),
+              'animate-in fade-in',
             )}
             style={{ width: `${confidence.score}%` }}
           />
@@ -341,6 +416,17 @@ export function ReadinessPanel({ draftId }: ReadinessPanelProps) {
           {confidence.level}
         </p>
       </div>
+
+      {/* AI Readiness Narrative */}
+      {draftData?.draft && (
+        <ReadinessNarrative
+          draft={draftData.draft}
+          confidence={confidence}
+          blockers={blockers}
+          recommendations={recommendations}
+          reviewCount={reviewsData?.reviews?.length ?? 0}
+        />
+      )}
 
       {/* Blockers section */}
       {blockers.length > 0 && (

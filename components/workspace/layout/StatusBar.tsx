@@ -56,12 +56,14 @@ export function StatusBar({
         </button>
       )}
 
-      {/* Community */}
-      {community && (
+      {/* Community — hidden when both counts are zero to reduce noise */}
+      {community && (community.reviewerCount > 0 || community.themeCount > 0) && (
         <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
           <Users className="h-3 w-3" />
           <span>
-            {community.reviewerCount} reviewers, {community.themeCount} themes
+            {community.reviewerCount} reviewer{community.reviewerCount !== 1 ? 's' : ''}
+            {community.themeCount > 0 &&
+              `, ${community.themeCount} theme${community.themeCount !== 1 ? 's' : ''}`}
           </span>
         </button>
       )}

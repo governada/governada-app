@@ -49,4 +49,5 @@ export async function loadBuiltinSkills(): Promise<void> {
   await import('./amendment-translator');
   await import('./amendment-conflict-check');
   await import('./amendment-bridge');
+  await import('./readiness-narrative');
 }

@@ -19,6 +19,96 @@ import type { Editor } from '@tiptap/core';
 import type { SlashCommandType } from '@/lib/workspace/editor/types';
 
 // ---------------------------------------------------------------------------
+// SVG icon helper (Lucide-style inline SVGs for DOM rendering)
+// ---------------------------------------------------------------------------
+
+function createSvgIcon(paths: string[]): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '16');
+  svg.setAttribute('height', '16');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  for (const d of paths) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    svg.appendChild(p);
+  }
+  return svg;
+}
+
+// ---------------------------------------------------------------------------
+// Lucide icon paths
+// ---------------------------------------------------------------------------
+
+const ICON_HEADING: string[] = ['M4 12h8', 'M4 18V6', 'M12 18V6', 'M17 12l3-2v8'];
+const ICON_LIST: string[] = [
+  'M8 6h13',
+  'M8 12h13',
+  'M8 18h13',
+  'M3 6h.01',
+  'M3 12h.01',
+  'M3 18h.01',
+];
+const ICON_LIST_ORDERED: string[] = [
+  'M10 6h11',
+  'M10 12h11',
+  'M10 18h11',
+  'M4 6h1v4',
+  'M4 10h2',
+  'M6 18H4c0-1 2-2 2-3s-1-1.5-2-1',
+];
+const ICON_CHECK_SQUARE: string[] = [
+  'M9 11l3 3L22 4',
+  'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+];
+const ICON_QUOTE: string[] = [
+  'M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z',
+  'M17 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z',
+];
+const ICON_CODE: string[] = ['m18 16 4-4-4-4', 'M6 8l-4 4 4 4', 'M14.5 4l-5 16'];
+const ICON_TABLE: string[] = [
+  'M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18',
+];
+const ICON_MINUS: string[] = ['M5 12h14'];
+const ICON_LIGHTBULB: string[] = [
+  'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5',
+  'M9 18h6',
+  'M10 22h4',
+];
+const ICON_IMAGE: string[] = [
+  'M21 3.6v16.8a.6.6 0 0 1-.6.6H3.6a.6.6 0 0 1-.6-.6V3.6a.6.6 0 0 1 .6-.6h16.8a.6.6 0 0 1 .6.6z',
+  'M3 16l5-7 4.5 6 3.5-4 5 5',
+  'M16 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4z',
+];
+const ICON_SPARKLES: string[] = [
+  'm12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z',
+  'M5 3v4',
+  'M19 17v4',
+  'M3 5h4',
+  'M17 19h4',
+];
+const ICON_SCALE: string[] = [
+  'm16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z',
+  'M2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z',
+  'M7 21h10',
+  'M12 3v18',
+  'M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2',
+];
+const ICON_SEARCH: string[] = ['M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z', 'M21 21l-4.35-4.35'];
+const ICON_FILE_TEXT: string[] = [
+  'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z',
+  'M14 2v4a2 2 0 0 0 2 2h4',
+  'M10 9H8',
+  'M16 13H8',
+  'M16 17H8',
+];
+const ICON_PEN_LINE: string[] = ['M12 20h9', 'M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'];
+
+// ---------------------------------------------------------------------------
 // Command definitions
 // ---------------------------------------------------------------------------
 
@@ -29,7 +119,7 @@ type CommandDef =
       id: string;
       label: string;
       description: string;
-      icon: string;
+      icon: string[];
       aliases: string[];
       execute: (editor: Editor) => void;
     }
@@ -38,7 +128,7 @@ type CommandDef =
       id: SlashCommandType;
       label: string;
       description: string;
-      icon: string;
+      icon: string[];
       aliases: string[];
     };
 
@@ -50,7 +140,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'heading',
     label: 'Heading 1',
     description: 'Large section heading',
-    icon: '\uD83C\uDD77', // H boxed
+    icon: ICON_HEADING,
     aliases: ['heading', 'h1'],
     execute: (editor) => editor.chain().focus().toggleHeading({ level: 1 }).run(),
   },
@@ -59,7 +149,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'h2',
     label: 'Heading 2',
     description: 'Medium section heading',
-    icon: '\uD83C\uDD77', // H boxed
+    icon: ICON_HEADING,
     aliases: ['h2'],
     execute: (editor) => editor.chain().focus().toggleHeading({ level: 2 }).run(),
   },
@@ -68,7 +158,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'h3',
     label: 'Heading 3',
     description: 'Small section heading',
-    icon: '\uD83C\uDD77', // H boxed
+    icon: ICON_HEADING,
     aliases: ['h3'],
     execute: (editor) => editor.chain().focus().toggleHeading({ level: 3 }).run(),
   },
@@ -77,7 +167,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'bullet',
     label: 'Bullet List',
     description: 'Create a simple bulleted list',
-    icon: '\u2022', // bullet
+    icon: ICON_LIST,
     aliases: ['bullet', 'list', 'ul'],
     execute: (editor) => editor.chain().focus().toggleBulletList().run(),
   },
@@ -86,7 +176,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'numbered',
     label: 'Numbered List',
     description: 'Create a numbered list',
-    icon: '\uD83D\uDD22', // 1234
+    icon: ICON_LIST_ORDERED,
     aliases: ['numbered', 'ordered', 'ol'],
     execute: (editor) => editor.chain().focus().toggleOrderedList().run(),
   },
@@ -95,7 +185,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'todo',
     label: 'Task List',
     description: 'Checklist with toggleable items',
-    icon: '\u2611', // checkbox
+    icon: ICON_CHECK_SQUARE,
     aliases: ['todo', 'checklist', 'task'],
     execute: (editor) => editor.chain().focus().toggleTaskList().run(),
   },
@@ -104,7 +194,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'quote',
     label: 'Blockquote',
     description: 'Insert a quote block',
-    icon: '\u275D', // heavy quote
+    icon: ICON_QUOTE,
     aliases: ['quote', 'blockquote'],
     execute: (editor) => editor.chain().focus().toggleBlockquote().run(),
   },
@@ -113,7 +203,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'code',
     label: 'Code Block',
     description: 'Insert a code block',
-    icon: '\u2329\u232A', // angle brackets
+    icon: ICON_CODE,
     aliases: ['code', 'codeblock'],
     execute: (editor) => editor.chain().focus().toggleCodeBlock().run(),
   },
@@ -122,7 +212,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'table',
     label: 'Table',
     description: 'Insert a 3x3 table',
-    icon: '\u25A6', // grid
+    icon: ICON_TABLE,
     aliases: ['table'],
     execute: (editor) =>
       editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
@@ -132,7 +222,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'divider',
     label: 'Divider',
     description: 'Insert a horizontal rule',
-    icon: '\u2015', // horizontal bar
+    icon: ICON_MINUS,
     aliases: ['divider', 'hr', 'rule'],
     execute: (editor) => editor.chain().focus().setHorizontalRule().run(),
   },
@@ -141,7 +231,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'callout',
     label: 'Callout',
     description: 'Highlighted note or warning block',
-    icon: '\uD83D\uDCA1', // lightbulb
+    icon: ICON_LIGHTBULB,
     aliases: ['callout', 'note', 'warning'],
     execute: (editor) =>
       editor
@@ -161,7 +251,7 @@ const CONTENT_COMMANDS: CommandDef[] = [
     id: 'image',
     label: 'Image',
     description: 'Insert an image from URL',
-    icon: '\uD83D\uDDBC', // framed picture
+    icon: ICON_IMAGE,
     aliases: ['image', 'img', 'picture'],
     execute: (editor) => {
       const url = window.prompt('Enter image URL:');
@@ -180,7 +270,7 @@ const AI_COMMANDS: CommandDef[] = [
     id: 'improve',
     label: 'Improve',
     description: 'AI improves the selected text or current section',
-    icon: '\u2728', // sparkles
+    icon: ICON_SPARKLES,
     aliases: ['improve'],
   },
   {
@@ -188,7 +278,7 @@ const AI_COMMANDS: CommandDef[] = [
     id: 'check-constitution',
     label: 'Check Constitution',
     description: 'Analyze constitutional compliance of this section',
-    icon: '\u2696\uFE0F', // scales
+    icon: ICON_SCALE,
     aliases: ['check-constitution', 'constitution'],
   },
   {
@@ -196,7 +286,7 @@ const AI_COMMANDS: CommandDef[] = [
     id: 'similar-proposals',
     label: 'Similar Proposals',
     description: 'Find precedent from past governance proposals',
-    icon: '\uD83D\uDD0D', // magnifying glass
+    icon: ICON_SEARCH,
     aliases: ['similar-proposals', 'similar'],
   },
   {
@@ -204,7 +294,7 @@ const AI_COMMANDS: CommandDef[] = [
     id: 'complete',
     label: 'Complete',
     description: 'AI suggests what is missing from this section',
-    icon: '\uD83D\uDCDD', // memo
+    icon: ICON_FILE_TEXT,
     aliases: ['complete'],
   },
   {
@@ -212,7 +302,7 @@ const AI_COMMANDS: CommandDef[] = [
     id: 'draft',
     label: 'Draft',
     description: 'AI drafts content from your instructions',
-    icon: '\u270D\uFE0F', // writing hand
+    icon: ICON_PEN_LINE,
     aliases: ['draft'],
   },
 ];
@@ -307,8 +397,8 @@ function createCommandItem(
   item.dataset.index = String(index);
 
   const iconSpan = document.createElement('span');
-  iconSpan.className = 'text-base flex-shrink-0 w-5 text-center';
-  iconSpan.textContent = cmd.icon;
+  iconSpan.className = 'flex-shrink-0 w-5 flex items-center justify-center text-muted-foreground';
+  iconSpan.appendChild(createSvgIcon(cmd.icon));
 
   const textContainer = document.createElement('div');
   textContainer.className = 'flex flex-col min-w-0';

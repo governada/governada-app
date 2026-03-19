@@ -8,7 +8,7 @@
  *
  * This is the single source of truth for all navigation surfaces:
  * - Desktop sidebar
- * - Mobile bottom bar (4 items, persona-adaptive)
+ * - Mobile bottom bar (3 items, persona-adaptive)
  * - Mobile pill bar (section sub-pages)
  * - Header help dropdown
  *
@@ -363,55 +363,49 @@ export function getSidebarSections(
 }
 
 // ---------------------------------------------------------------------------
-// Bottom bar — 4 items, Three Worlds model
+// Bottom bar — 3 items, Three Worlds model
 // ---------------------------------------------------------------------------
 
-/** Anonymous: Home | Governance | Match | Help */
+/** Anonymous: Home | Governance | Match */
 const BOTTOM_BAR_ANONYMOUS: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/match', label: 'Match', icon: Compass },
-  { href: '/help', label: 'Help', icon: HelpCircle },
 ];
 
-/** Citizen (undelegated): Home | Governance | Match | You */
+/** Citizen (undelegated): Home | Governance | Match */
 const BOTTOM_BAR_CITIZEN: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/match', label: 'Match', icon: Compass },
-  { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
-/** Citizen (delegated/hands-off): Home | Governance | You | Help */
+/** Citizen (delegated/hands-off): Home | Governance | You */
 const BOTTOM_BAR_CITIZEN_DELEGATED: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
-  { href: '/help', label: 'Help', icon: HelpCircle },
 ];
 
-/** DRep: Home | Governance | You | Help (workspace absorbed into Home) */
+/** DRep: Home | Governance | You (workspace absorbed into Home) */
 const BOTTOM_BAR_DREP: NavItem[] = [
   { href: '/', label: 'Home', icon: Home, badge: 'actions' },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
-  { href: '/help', label: 'Help', icon: HelpCircle },
 ];
 
-/** SPO: Home | Governance | You | Help (workspace absorbed into Home) */
+/** SPO: Home | Governance | You (workspace absorbed into Home) */
 const BOTTOM_BAR_SPO: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
-  { href: '/help', label: 'Help', icon: HelpCircle },
 ];
 
-/** CC: Home | Governance | You | Help */
+/** CC: Home | Governance | You */
 const BOTTOM_BAR_CC: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/governance', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
-  { href: '/help', label: 'Help', icon: HelpCircle },
 ];
 
 export function getBottomBarItems(
@@ -425,7 +419,7 @@ export function getBottomBarItems(
     case 'anonymous':
       return BOTTOM_BAR_ANONYMOUS;
     case 'citizen':
-      // Undelegated citizens get Match; delegated/hands-off get Help
+      // Undelegated citizens get Match; delegated/hands-off get You
       return isHandsOff ? BOTTOM_BAR_CITIZEN_DELEGATED : BOTTOM_BAR_CITIZEN;
     case 'drep':
       return BOTTOM_BAR_DREP;

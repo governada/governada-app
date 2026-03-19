@@ -15,6 +15,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Shield,
   ExternalLink,
@@ -151,8 +152,10 @@ function SubmitOnChainButton({
   draft: ProposalDraft;
   onDraftUpdate?: (updates: Partial<ProposalDraft>) => void;
 }) {
+  const router = useRouter();
   const [showFlow, setShowFlow] = useState(false);
   const flagEnabled = useFeatureFlag('governance_action_submission');
+  const submissionCeremony = useFeatureFlag('submission_ceremony');
 
   // Fetch review data for threshold gate
   const { data: reviewsData } = useDraftReviews(draft.status === 'final_comment' ? draft.id : null);
@@ -162,7 +165,8 @@ function SubmitOnChainButton({
   if (draft.status !== 'final_comment') return null;
   if (flagEnabled === null || !flagEnabled) return null;
 
-  if (showFlow) {
+  // Old modal fallback — only used when submission_ceremony flag is off
+  if (showFlow && !submissionCeremony) {
     return (
       <SubmissionFlow
         draft={draft}
@@ -209,9 +213,19 @@ function SubmitOnChainButton({
     );
   }
 
+  const handleSubmitClick = () => {
+    if (submissionCeremony) {
+      // Navigate to the full-page submission ceremony
+      router.push(`/workspace/author/${draft.id}/submit`);
+    } else {
+      // Fallback: open the old modal flow
+      setShowFlow(true);
+    }
+  };
+
   return (
     <Button
-      onClick={() => setShowFlow(true)}
+      onClick={handleSubmitClick}
       className="w-full bg-amber-600 hover:bg-amber-700 text-white"
       size="lg"
     >

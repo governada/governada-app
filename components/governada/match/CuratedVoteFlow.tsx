@@ -433,7 +433,7 @@ export function CuratedVoteFlow() {
   return (
     <div className="min-h-[calc(100vh-3.5rem)] flex flex-col">
       {/* Top bar: progress + confidence */}
-      <div className="sticky top-14 z-10 bg-background/80 backdrop-blur-sm border-b border-border/30">
+      <div className="sticky top-10 z-10 bg-background/80 backdrop-blur-sm border-b border-border/30">
         <div className="mx-auto max-w-2xl px-4 py-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <Link

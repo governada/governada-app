@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Scale,
   Layers,
-  HelpCircle,
+  Globe,
   CheckCheck,
   FlaskConical,
   RotateCcw,
@@ -25,13 +25,15 @@ import {
   UserCog,
 } from 'lucide-react';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
-import { DepthPickerDropdown } from './DepthPickerDropdown';
 import { DepthPromptModal } from './DepthPromptModal';
-import { LanguagePicker } from './LanguagePicker';
+import { EpochStrip } from './EpochStrip';
+import { GovernancePulse } from './GovernancePulse';
+import { HeaderBreadcrumbs } from './HeaderBreadcrumbs';
 import { cn } from '@/lib/utils';
 import { getStoredSession } from '@/lib/supabaseAuth';
-import { HELP_ITEMS } from '@/lib/nav/config';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { SUPPORTED_LOCALES, LOCALE_NAMES, type SupportedLocale } from '@/lib/i18n/config';
 import { useWallet } from '@/utils/wallet-context';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 import { TIER_SCORE_COLOR, type TierKey } from '@/components/governada/cards/tierStyles';
@@ -201,6 +203,7 @@ export function GovernadaHeader() {
     enterSandbox,
     exitSandbox,
   } = useSegment();
+  const { locale, setLocale } = useLocale();
   const { data: adminData } = useAdminCheck(isAuthenticated);
   const isAdmin = adminData?.isAdmin === true;
   const hasOverride = segment !== realSegment;
@@ -401,7 +404,7 @@ export function GovernadaHeader() {
 
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 32);
+    const onScroll = () => setScrolled(window.scrollY > 16);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -418,66 +421,43 @@ export function GovernadaHeader() {
           : 'border-b border-border/20 bg-background/60 backdrop-blur-xl',
       )}
     >
-      <div className="mx-auto max-w-7xl flex items-center justify-between h-14 px-6">
-        {/* Logo — sidebar handles navigation on desktop */}
-        <Link
-          href="/"
-          className={cn(
-            'font-display text-lg font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
-            headerTransparent && 'nav-text-shadow',
-          )}
-        >
-          governada
-        </Link>
+      <div className="mx-auto max-w-7xl flex items-center justify-between h-10 px-4">
+        {/* Logo + breadcrumbs */}
+        <div className="flex items-center min-w-0">
+          <Link
+            href="/"
+            className={cn(
+              'font-display text-lg font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0',
+              headerTransparent && 'nav-text-shadow',
+            )}
+          >
+            governada
+          </Link>
+          <HeaderBreadcrumbs />
+        </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Epoch strip */}
+          <EpochStrip />
+
+          {/* Search / command palette */}
           <Button
             variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() =>
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
             }
-            aria-label="Open command palette"
+            aria-label={t('Search')}
           >
-            <Search className="h-4 w-4 mr-1.5" />
-            <kbd className="text-xs text-muted-foreground/80 bg-muted px-1.5 py-0.5 rounded">
-              ⌘K
-            </kbd>
+            <Search className="h-4 w-4" />
           </Button>
 
-          {/* Governance depth picker (desktop only) */}
-          {connected && isAuthenticated && <DepthPickerDropdown />}
+          {/* Governance pulse */}
+          <GovernancePulse />
 
           {/* Notification bell dropdown */}
           {connected && isAuthenticated && <NotificationBell unreadCount={unreadCount} />}
-
-          {/* Help dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                aria-label={t('Help')}
-              >
-                <HelpCircle className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              {HELP_ITEMS.map(({ href, label, icon: Icon }) => (
-                <DropdownMenuItem key={href} asChild>
-                  <Link href={href}>
-                    <Icon className="h-4 w-4" />
-                    {t(label)}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Language picker */}
-          <LanguagePicker />
 
           {connected && isAuthenticated ? (
             <DropdownMenu>
@@ -513,6 +493,24 @@ export function GovernadaHeader() {
                   <User className="h-4 w-4" />
                   {t('Profile & Settings')}
                 </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Globe className="h-4 w-4" />
+                    {t('Language')}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {SUPPORTED_LOCALES.map((loc: SupportedLocale) => (
+                      <DropdownMenuItem
+                        key={loc}
+                        onClick={() => setLocale(loc)}
+                        className="justify-between"
+                      >
+                        <span>{LOCALE_NAMES[loc]}</span>
+                        {locale === loc && <span className="text-primary">&#10003;</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
@@ -769,6 +767,31 @@ export function GovernadaHeader() {
             </DropdownMenu>
           ) : (
             <>
+              {/* Language picker for unauthenticated users */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    aria-label={t('Change language')}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  {SUPPORTED_LOCALES.map((loc: SupportedLocale) => (
+                    <DropdownMenuItem
+                      key={loc}
+                      onClick={() => setLocale(loc)}
+                      className="justify-between"
+                    >
+                      <span>{LOCALE_NAMES[loc]}</span>
+                      {locale === loc && <span className="text-primary">&#10003;</span>}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="outline"
                 size="sm"

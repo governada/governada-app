@@ -122,7 +122,7 @@ export function GovernadaDiscover({
         message="Browse and compare governance participants. Scores reflect actual voting behavior, not popularity."
       />
       {/* ── Tab bar ──────────────────────────────────────────── */}
-      <div className="border-b border-border/30 sticky top-14 z-30 bg-card/60 backdrop-blur-xl -mx-4 px-4 sm:-mx-6 sm:px-6">
+      <div className="border-b border-border/30 sticky top-10 z-30 bg-card/60 backdrop-blur-xl -mx-4 px-4 sm:-mx-6 sm:px-6">
         <div
           className="flex gap-0 overflow-x-auto scrollbar-none max-w-4xl"
           role="tablist"

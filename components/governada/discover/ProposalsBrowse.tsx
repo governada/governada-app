@@ -298,7 +298,7 @@ export function ProposalsBrowse() {
 
       {/* Filters — Engaged+ get search/filter bar */}
       <DepthGate minDepth="engaged">
-        <div className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-card/60 backdrop-blur-xl border-b border-border/30">
+        <div className="sticky top-10 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-card/60 backdrop-blur-xl border-b border-border/30">
           <DiscoverFilterBar
             search={search}
             onSearchChange={setFilter(setSearch)}

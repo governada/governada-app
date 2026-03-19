@@ -296,7 +296,7 @@ export function QuickMatchFlow() {
     <div className="min-h-[calc(100vh-3.5rem)] flex flex-col">
       {/* Progress bar */}
       {typeof step === 'number' && (
-        <div className="sticky top-14 z-10 bg-background border-b border-border/50">
+        <div className="sticky top-10 z-10 bg-background border-b border-border/50">
           <div className="mx-auto max-w-2xl px-4 py-3">
             <div className="flex items-center gap-3">
               <button

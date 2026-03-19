@@ -9,7 +9,6 @@ import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
 import { GovernadaSidebar } from './GovernadaSidebar';
-import { EpochContextBar } from './EpochContextBar';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
 import { PreviewBanner } from '@/components/preview/PreviewBanner';
 import { FeedbackWidget } from '@/components/preview/FeedbackWidget';
@@ -158,7 +157,6 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
         {!isStudioMode && (
           <GovernadaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
         )}
-        {!isStudioMode && <EpochContextBar sidebarCollapsed={sidebarCollapsed} />}
 
         {/* Global constellation globe — subtle glassmorphic background */}
         {!isStudioMode && (

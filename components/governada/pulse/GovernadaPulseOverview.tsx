@@ -428,7 +428,7 @@ export function GovernadaPulseOverview() {
       <AnonymousNudge variant="health" />
       {/* ── Tab bar ───────────── */}
       <div
-        className="sticky top-14 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 flex gap-1 border-b border-border/30 -mb-2 overflow-x-auto bg-card/60 backdrop-blur-xl"
+        className="sticky top-10 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 flex gap-1 border-b border-border/30 -mb-2 overflow-x-auto bg-card/60 backdrop-blur-xl"
         role="tablist"
         aria-label="Pulse view"
       >

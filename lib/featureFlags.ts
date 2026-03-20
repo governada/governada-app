@@ -36,6 +36,8 @@
  * governance_copilot               — Right-side intelligence panel with AI governance briefings (Phase 5)
  * conversational_nav               — Governance advisor in command palette (Phase 9 nav renaissance)
  * mobile_gestures                  — Mobile gesture navigation, long-press peek, pull-to-refresh (Phase 10)
+ * ai_composed_hub                  — AI-generated one-line insights on Hub cards with temporal ordering (Phase 7)
+ * ambient_annotations              — Ambient AI annotations on proposal, DRep, and score pages (Phase 7)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

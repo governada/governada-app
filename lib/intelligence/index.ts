@@ -18,3 +18,6 @@ export type {
 
 export { computePriority } from './priority';
 export type { PriorityProposal, PriorityResult } from './priority';
+
+export { generateHubInsights, orderCardsByMode } from './hub-insights';
+export type { HubInsight, InsightCitation, HubInsightsResult } from './hub-insights';

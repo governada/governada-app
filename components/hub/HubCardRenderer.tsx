@@ -1,7 +1,11 @@
 'use client';
 
+import { useRef, useEffect, useState } from 'react';
+import { motion, useReducedMotion, LayoutGroup } from 'framer-motion';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
 import { PERSONA_CARDS, sortCards, type CardId } from './HubCardConfig';
+import { useHubInsights } from '@/hooks/useHubInsights';
+import { HubInsightLine } from './HubInsightLine';
 
 // Card components
 import { RepresentationCard } from './cards/RepresentationCard';
@@ -46,22 +50,71 @@ interface HubCardRendererProps {
 /**
  * HubCardRenderer — Takes persona, returns sorted array of Hub cards.
  *
- * Card ordering: action > status > engagement > discovery.
- * Each card is independently useful — no card depends on another being present.
- * Conditional cards (alerts, engagement) self-hide when not relevant.
+ * Card ordering: action > status > engagement > discovery (default).
+ * When ai_composed_hub flag is enabled, ordering adapts to temporal
+ * governance mode (urgent/active/calm) with spring-animated reordering.
+ *
+ * Each card gains an AI-generated one-line insight with Perplexity-style
+ * source citations when available.
  */
 export function HubCardRenderer({ persona }: HubCardRendererProps) {
   const cardIds = PERSONA_CARDS[persona] ?? PERSONA_CARDS.anonymous;
-  const sorted = sortCards(cardIds);
+  const { insightMap, getCardOrder, isEnabled } = useHubInsights();
+  const prefersReducedMotion = useReducedMotion();
+
+  // Use temporal-mode ordering when AI hub is enabled, otherwise default sort
+  const sorted = isEnabled ? getCardOrder(sortCards(cardIds)) : sortCards(cardIds);
+
+  // Track previous order for animation — only animate after first render
+  const prevOrderRef = useRef<string[]>(sorted);
+  const [hasReordered, setHasReordered] = useState(false);
+
+  useEffect(() => {
+    const prev = prevOrderRef.current;
+    if (prev.join(',') !== sorted.join(',')) {
+      setHasReordered(true);
+    }
+    prevOrderRef.current = sorted;
+  }, [sorted]);
+
+  // Animated layout when cards reorder (spring transition, 300ms)
+  const shouldAnimate = isEnabled && hasReordered && !prefersReducedMotion;
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-3 px-4 py-6">
-      {sorted.map((id) => {
-        const Component = CARD_COMPONENTS[id];
-        if (!Component) return null;
-        return <Component key={id} />;
-      })}
-      <CommunityConsensus />
-    </div>
+    <LayoutGroup id="hub-cards">
+      <div className="mx-auto w-full max-w-2xl space-y-3 px-4 py-6">
+        {sorted.map((id) => {
+          const Component = CARD_COMPONENTS[id as CardId];
+          if (!Component) return null;
+          const insight = insightMap.get(id);
+
+          if (shouldAnimate) {
+            return (
+              <motion.div
+                key={id}
+                layout
+                transition={{
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 30,
+                  duration: 0.3,
+                }}
+              >
+                <Component />
+                {isEnabled && <HubInsightLine insight={insight} />}
+              </motion.div>
+            );
+          }
+
+          return (
+            <div key={id}>
+              <Component />
+              {isEnabled && <HubInsightLine insight={insight} />}
+            </div>
+          );
+        })}
+        <CommunityConsensus />
+      </div>
+    </LayoutGroup>
   );
 }

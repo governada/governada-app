@@ -17,63 +17,48 @@ export default function Icon() {
       }}
     >
       <svg viewBox="0 0 100 100" width="26" height="26">
-        <defs>
-          <linearGradient id="g" x1="30%" y1="0%" x2="70%" y2="100%">
-            <stop offset="0%" stopColor="#5CECC8" />
-            <stop offset="100%" stopColor="#3CC8A0" />
-          </linearGradient>
-        </defs>
         <path
-          d="M 68 19 A 35 35 0 1 0 68 58"
+          d="M 60 20 A 32 32 0 1 0 73 54"
           fill="none"
-          stroke="url(#g)"
-          strokeWidth="5.5"
+          stroke="#4EEAC6"
+          strokeWidth="6"
           strokeLinecap="round"
         />
         <line
-          x1="68"
-          y1="58"
-          x2="50"
-          y2="50"
-          stroke="url(#g)"
-          strokeWidth="4"
+          x1="73"
+          y1="54"
+          x2="52"
+          y2="48"
+          stroke="#4EEAC6"
+          strokeWidth="4.5"
           strokeLinecap="round"
         />
-        <circle cx="68" cy="19" r="5" fill="url(#g)" />
-        <circle cx="44" cy="7" r="4.5" fill="url(#g)" />
-        <circle cx="20" cy="17" r="4" fill="url(#g)" />
-        <circle cx="7" cy="38" r="5" fill="url(#g)" />
-        <circle cx="10" cy="60" r="4" fill="url(#g)" />
-        <circle cx="25" cy="76" r="4.5" fill="url(#g)" />
-        <circle cx="50" cy="80" r="4" fill="url(#g)" />
-        <circle cx="68" cy="58" r="5" fill="url(#g)" />
-        <circle cx="50" cy="50" r="4.5" fill="url(#g)" />
-        <circle cx="57" cy="33" r="3.5" fill="url(#g)" />
+        <circle cx="60" cy="20" r="5" fill="#4EEAC6" />
+        <circle cx="38" cy="14" r="5" fill="#4EEAC6" />
+        <circle cx="18" cy="25" r="5" fill="#4EEAC6" />
+        <circle cx="10" cy="46" r="5" fill="#4EEAC6" />
+        <circle cx="18" cy="67" r="5" fill="#4EEAC6" />
+        <circle cx="38" cy="78" r="5" fill="#4EEAC6" />
+        <circle cx="60" cy="73" r="5" fill="#4EEAC6" />
+        <circle cx="73" cy="54" r="5" fill="#4EEAC6" />
+        <circle cx="55" cy="34" r="4.5" fill="#4EEAC6" />
+        <circle cx="52" cy="48" r="5" fill="#4EEAC6" />
         <line
-          x1="44"
-          y1="7"
-          x2="57"
-          y2="33"
-          stroke="url(#g)"
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
-        <line
-          x1="57"
-          y1="33"
-          x2="68"
-          y2="58"
-          stroke="url(#g)"
-          strokeWidth="3"
+          x1="38"
+          y1="14"
+          x2="55"
+          y2="34"
+          stroke="#4EEAC6"
+          strokeWidth="3.5"
           strokeLinecap="round"
         />
         <line
-          x1="57"
-          y1="33"
-          x2="50"
-          y2="50"
-          stroke="url(#g)"
-          strokeWidth="3"
+          x1="55"
+          y1="34"
+          x2="52"
+          y2="48"
+          stroke="#4EEAC6"
+          strokeWidth="3.5"
           strokeLinecap="round"
         />
       </svg>

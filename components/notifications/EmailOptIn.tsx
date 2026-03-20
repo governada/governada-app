@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Mail, X, Loader2, Check, Shield } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Mail, X, Loader2, Check, Shield, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,13 @@ const FREQUENCY_OPTIONS: Array<{ value: DigestFrequency; label: string; desc: st
   { value: 'major_only', label: 'Major events', desc: 'Critical only' },
 ];
 
+const FREQUENCY_DISPLAY: Record<string, string> = {
+  epoch: 'Every epoch (~5 days)',
+  weekly: 'Weekly (Mondays)',
+  major_only: 'Major events only',
+  none: 'Paused',
+};
+
 const STORAGE_KEY = 'governada_email_optin_dismissed';
 
 interface EmailOptInProps {
@@ -25,15 +33,42 @@ interface EmailOptInProps {
   className?: string;
 }
 
+/** Fetch existing notification preferences */
+async function fetchNotificationPrefs(): Promise<{
+  email?: string;
+  digest_frequency?: string;
+} | null> {
+  const token = getStoredSession();
+  if (!token) return null;
+  const res = await fetch('/api/you/notification-preferences', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export function EmailOptIn({ variant = 'banner', onSuccess, className }: EmailOptInProps) {
   const [email, setEmail] = useState('');
   const [frequency, setFrequency] = useState<DigestFrequency>('epoch');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [editing, setEditing] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(STORAGE_KEY) === 'true';
   });
+
+  // B1: Fetch existing preferences to show subscribed state
+  const { data: existingPrefs } = useQuery({
+    queryKey: ['notification-preferences'],
+    queryFn: fetchNotificationPrefs,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isAlreadySubscribed =
+    existingPrefs?.email &&
+    existingPrefs?.digest_frequency &&
+    existingPrefs.digest_frequency !== 'none';
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);
@@ -71,6 +106,7 @@ export function EmailOptIn({ variant = 'banner', onSuccess, className }: EmailOp
         }
 
         setStatus('success');
+        setEditing(false);
         onSuccess?.();
 
         // Track opt-in
@@ -89,6 +125,44 @@ export function EmailOptIn({ variant = 'banner', onSuccess, className }: EmailOp
   );
 
   if (dismissed && variant === 'banner') return null;
+
+  // B1: Already subscribed — show compact status with edit option
+  if (isAlreadySubscribed && status !== 'success' && !editing) {
+    return (
+      <div
+        className={cn(
+          'rounded-xl border border-emerald-500/10 bg-emerald-500/5 p-4 flex items-center justify-between gap-3',
+          className,
+        )}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-1.5 rounded-lg bg-emerald-500/10">
+            <Mail className="h-4 w-4 text-emerald-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">
+              Briefings to {existingPrefs.email}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {FREQUENCY_DISPLAY[existingPrefs.digest_frequency!] ?? existingPrefs.digest_frequency}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            setEmail(existingPrefs.email ?? '');
+            setFrequency((existingPrefs.digest_frequency as DigestFrequency) ?? 'epoch');
+            setEditing(true);
+            setStatus('idle');
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 shrink-0"
+        >
+          <Pencil className="h-3 w-3" />
+          Edit
+        </button>
+      </div>
+    );
+  }
 
   if (status === 'success') {
     return (
@@ -134,9 +208,7 @@ export function EmailOptIn({ variant = 'banner', onSuccess, className }: EmailOp
           <Mail className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Get a governance briefing every epoch
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground">Epoch briefings, delivered</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Stay informed about your DRep&apos;s activity, proposals, and milestones.
           </p>
@@ -181,18 +253,22 @@ export function EmailOptIn({ variant = 'banner', onSuccess, className }: EmailOp
             <Shield className="h-3 w-3" />
             <span>We&apos;ll never share your email. Unsubscribe anytime.</span>
           </div>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={status === 'submitting' || !email.trim()}
-            className="shrink-0"
-          >
-            {status === 'submitting' ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              'Subscribe'
+          <div className="flex items-center gap-2 shrink-0">
+            {editing && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
             )}
-          </Button>
+            <Button type="submit" size="sm" disabled={status === 'submitting' || !email.trim()}>
+              {status === 'submitting' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : editing ? (
+                'Update'
+              ) : (
+                'Subscribe'
+              )}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

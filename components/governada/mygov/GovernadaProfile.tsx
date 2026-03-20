@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { User, Shield, Settings, LogOut } from 'lucide-react';
+import { User, LogOut, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -20,30 +21,6 @@ import { BYOKSettings } from '@/components/settings/BYOKSettings';
 import { FeatureGate } from '@/components/FeatureGate';
 
 // ---------------------------------------------------------------------------
-// Section wrapper
-// ---------------------------------------------------------------------------
-
-function Section({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: React.FC<{ className?: string }>;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-border/50">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold">{title}</h3>
-      </div>
-      <div className="px-5 py-4">{children}</div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -51,6 +28,7 @@ export function GovernadaProfile() {
   const { segment, stakeAddress, drepId, poolId, delegatedDrep } = useSegment();
   const { disconnect } = useWallet();
   const { data: rawUser, isLoading: userLoading } = useUser();
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   const user = rawUser as Record<string, unknown> | undefined;
   const displayName: string = (user?.display_name as string) ?? '';
@@ -73,17 +51,35 @@ export function GovernadaProfile() {
     ? `${stakeAddress.slice(0, 12)}…${stakeAddress.slice(-8)}`
     : '—';
 
+  // A8: Anonymous full-page state
+  if (segment === 'anonymous') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="font-display text-xl font-bold">Your Governance Experience</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Control how Governada serves you.</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card px-5 py-12 text-center space-y-3">
+          <Wallet className="h-10 w-10 text-muted-foreground mx-auto" />
+          <p className="text-base font-semibold">Connect your wallet to get started</p>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            Personalize your governance depth, get epoch briefings, and tailor your entire Governada
+            experience.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* A3: Identity-forward header */}
       <div>
-        <h2 className="font-display text-xl font-bold">Settings</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Choose how closely you follow governance.
-        </p>
+        <h2 className="font-display text-xl font-bold">Your Governance Experience</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Control how Governada serves you.</p>
       </div>
 
-      {/* Identity card */}
+      {/* Identity card — A6: Security folded in */}
       <div
         className={cn(
           'rounded-xl border p-5 space-y-4',
@@ -143,7 +139,7 @@ export function GovernadaProfile() {
           )}
         </div>
 
-        {/* Wallet info */}
+        {/* Wallet info — A6: includes auth status */}
         <div className="rounded-lg bg-muted/30 px-4 py-3 space-y-1.5 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Stake address</span>
@@ -198,72 +194,76 @@ export function GovernadaProfile() {
               </span>
             </div>
           )}
+          {/* A6: Auth status folded into wallet info */}
+          <div className="flex justify-between pt-1 border-t border-border/30">
+            <span className="text-muted-foreground">Authentication</span>
+            <span className="text-emerald-400 font-medium flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />
+              Wallet connected
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Governance Tuner — the dominant settings control */}
-      <GovernanceTuner />
+      {/* A13: Tighter identity→tuner gap */}
+      <div className="-mt-3">
+        <GovernanceTuner />
+      </div>
 
       {/* Email opt-in for governance briefings */}
       <EmailOptIn variant="inline" className="border border-border" />
 
-      {/* Display preferences */}
-      <Section icon={Settings} title="Display">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Theme</p>
-              <p className="text-xs text-muted-foreground">
-                Dark mode is the recommended experience for governance data.
-              </p>
-            </div>
-            <Link href="/my-gov" className="text-xs text-muted-foreground">
-              Use system toggle
-            </Link>
+      {/* A13: Advanced group label */}
+      <div className="space-y-4 pt-2">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          Advanced
+        </p>
+
+        {/* BYOK API Keys */}
+        <FeatureGate flag="byok_api_keys">
+          <BYOKSettings />
+        </FeatureGate>
+
+        {/* A12: Danger zone with confirmation */}
+        <div className="rounded-xl border border-rose-900/30 bg-rose-950/5 overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-rose-900/20">
+            <LogOut className="h-4 w-4 text-rose-400" />
+            <h3 className="text-sm font-semibold text-rose-300">End Session</h3>
           </div>
-        </div>
-      </Section>
-
-      {/* Security */}
-      <Section icon={Shield} title="Security">
-        <div className="space-y-3 text-sm">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Authentication</span>
-            <span className="text-emerald-400 font-medium">Wallet connected</span>
+          <div className="px-5 py-4 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              This removes all session data from this device. Your on-chain governance record is
+              permanent.
+            </p>
+            {!confirmDisconnect ? (
+              <button
+                onClick={() => setConfirmDisconnect(true)}
+                className="flex items-center gap-2 text-sm font-medium text-rose-400 hover:text-rose-300 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Disconnect wallet
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    disconnect();
+                    sessionStorage.removeItem('governada_segment');
+                    window.location.href = '/';
+                  }}
+                  className="text-sm font-medium text-rose-400 hover:text-rose-300 transition-colors"
+                >
+                  Yes, disconnect
+                </button>
+                <button
+                  onClick={() => setConfirmDisconnect(false)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Governada uses your Cardano wallet for authentication. No passwords or email required.
-          </p>
-        </div>
-      </Section>
-
-      {/* BYOK API Keys */}
-      <FeatureGate flag="byok_api_keys">
-        <BYOKSettings />
-      </FeatureGate>
-
-      {/* Danger zone */}
-      <div className="rounded-xl border border-rose-900/30 bg-rose-950/5 overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-rose-900/20">
-          <LogOut className="h-4 w-4 text-rose-400" />
-          <h3 className="text-sm font-semibold text-rose-300">Disconnect</h3>
-        </div>
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Disconnecting your wallet removes all session data from this device. Your on-chain
-            governance record is permanent.
-          </p>
-          <button
-            onClick={() => {
-              disconnect();
-              sessionStorage.removeItem('governada_segment');
-              window.location.href = '/';
-            }}
-            className="flex items-center gap-2 text-sm font-medium text-rose-400 hover:text-rose-300 transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            Disconnect wallet
-          </button>
         </div>
       </div>
     </div>

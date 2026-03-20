@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BellOff,
@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Loader2,
   CheckCircle,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,6 +45,15 @@ const CATEGORY_LABELS: Record<EventCategory, string> = {
   citizen: 'Citizen Engagement',
 };
 
+const CATEGORY_COLORS: Record<EventCategory, string> = {
+  drep: 'bg-blue-500/10 text-blue-300',
+  holder: 'bg-violet-500/10 text-violet-300',
+  ecosystem: 'bg-amber-500/10 text-amber-300',
+  digest: 'bg-emerald-500/10 text-emerald-300',
+  spo: 'bg-cyan-500/10 text-cyan-300',
+  citizen: 'bg-rose-500/10 text-rose-300',
+};
+
 const DIGEST_LABELS: Record<string, string> = {
   none: 'No digest emails',
   weekly: 'Weekly digest',
@@ -69,6 +79,34 @@ function getCategoriesForLevel(level: TunerLevel): { category: EventCategory; co
 
 function getFineTuneEvents() {
   return EVENT_REGISTRY.filter((e) => e.key !== 'profile-view' && e.key !== 'api-health-alert');
+}
+
+/** Get a segment-aware depth recommendation hint. */
+function getDepthHint(
+  segment: string,
+  currentDepth: GovernanceDepth,
+): { message: string; suggestedDepth: GovernanceDepth } | null {
+  if (segment === 'drep' && currentDepth !== 'engaged') {
+    return {
+      message: 'Most DReps use Engaged to stay on top of votes, deadlines, and delegator signals.',
+      suggestedDepth: 'engaged',
+    };
+  }
+  if (segment === 'spo' && currentDepth === 'hands_off') {
+    return {
+      message:
+        'Active pool operators typically use Informed or Engaged to track governance proposals.',
+      suggestedDepth: 'informed',
+    };
+  }
+  if (segment === 'citizen' && currentDepth === 'hands_off') {
+    return {
+      message:
+        'Informed keeps you updated on your DRep and critical proposals without overwhelming you.',
+      suggestedDepth: 'informed',
+    };
+  }
+  return null;
 }
 
 // ── Save function ────────────────────────────────────────────────────────────
@@ -99,17 +137,34 @@ export function GovernanceTuner() {
   const [selectedDepth, setSelectedDepth] = useState<GovernanceDepth | null>(null);
   const [fineTuneOpen, setFineTuneOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showCascade, setShowCascade] = useState(false);
+
+  // Track previous depth for crossfade
+  const [fading, setFading] = useState(false);
+  const prevDepthRef = useRef(currentDepth);
 
   // Effective depth: optimistic selection or persisted value
   const effectiveDepth = selectedDepth ?? currentDepth;
   const level = TUNER_LEVELS[effectiveDepth];
+
+  // Crossfade when depth changes
+  useEffect(() => {
+    if (prevDepthRef.current !== effectiveDepth) {
+      setFading(true);
+      const timer = setTimeout(() => setFading(false), 150);
+      prevDepthRef.current = effectiveDepth;
+      return () => clearTimeout(timer);
+    }
+  }, [effectiveDepth]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: saveGovernanceDepth,
     onSuccess: (_data, newDepth) => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       setSaved(true);
+      setShowCascade(true);
       setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setShowCascade(false), 3000);
       import('@/lib/posthog')
         .then(({ posthog }) => {
           posthog.capture('governance_depth_changed', {
@@ -138,6 +193,18 @@ export function GovernanceTuner() {
 
   const categories = useMemo(() => getCategoriesForLevel(level), [level]);
   const fineTuneEvents = useMemo(() => getFineTuneEvents(), []);
+
+  // Depth hint (C1: segment-aware recommendation)
+  const depthHint = useMemo(() => getDepthHint(segment, effectiveDepth), [segment, effectiveDepth]);
+
+  // Event count comparison (B2)
+  const eventComparison = useMemo(() => {
+    const currentCount = TUNER_LEVELS[effectiveDepth].eventTypes.length;
+    const engagedCount = TUNER_LEVELS.engaged.eventTypes.length;
+    if (effectiveDepth === 'engaged') return null;
+    const diff = engagedCount - currentCount;
+    return `${diff} more event types available at Engaged`;
+  }, [effectiveDepth]);
 
   if (segment === 'anonymous') {
     return (
@@ -181,10 +248,17 @@ export function GovernanceTuner() {
                 'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 isSelected
-                  ? 'border-primary bg-primary/15 shadow-sm'
+                  ? 'border-primary bg-primary/15 shadow-lg shadow-primary/20'
                   : 'border-border bg-card hover:border-primary/40 hover:bg-muted/50',
               )}
             >
+              {/* Top accent bar */}
+              <div
+                className={cn(
+                  'absolute top-0 left-0 right-0 h-0.5 rounded-t-xl transition-all duration-200',
+                  isSelected ? 'bg-primary' : 'bg-transparent',
+                )}
+              />
               <Icon
                 className={cn(
                   'h-5 w-5 transition-colors duration-200',
@@ -202,22 +276,26 @@ export function GovernanceTuner() {
               <span className="text-[11px] leading-tight text-muted-foreground">
                 {lvl.shortDescription}
               </span>
-
-              {/* Selection indicator dot */}
-              <div
-                className={cn(
-                  'absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-background transition-all duration-200',
-                  isSelected ? 'scale-100 bg-primary' : 'scale-0 bg-transparent',
-                )}
-              />
             </button>
           );
         })}
       </div>
 
+      {/* Cascade confirmation */}
+      {showCascade && (
+        <p className="text-xs text-emerald-400 animate-in fade-in slide-in-from-top-1 duration-200">
+          Experience updated across Hub, Briefing &amp; Notifications
+        </p>
+      )}
+
       {/* Preview card */}
       <Card className="overflow-hidden">
-        <CardContent className="space-y-4">
+        <CardContent
+          className={cn(
+            'space-y-4 transition-opacity duration-150',
+            fading ? 'opacity-0' : 'opacity-100',
+          )}
+        >
           {/* Level description */}
           <p className="text-sm text-muted-foreground leading-relaxed">{level.description}</p>
 
@@ -235,6 +313,11 @@ export function GovernanceTuner() {
             </div>
           </div>
 
+          {/* Event comparison (B2) */}
+          {eventComparison && (
+            <p className="text-xs text-muted-foreground/70 italic">{eventComparison}</p>
+          )}
+
           {/* Category breakdown */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -244,10 +327,13 @@ export function GovernanceTuner() {
               {categories.map(({ category, count }) => (
                 <span
                   key={category}
-                  className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground"
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium',
+                    CATEGORY_COLORS[category],
+                  )}
                 >
                   {CATEGORY_LABELS[category]}
-                  <span className="text-muted-foreground">({count})</span>
+                  <span className="opacity-60">({count})</span>
                 </span>
               ))}
             </div>
@@ -277,9 +363,10 @@ export function GovernanceTuner() {
 
             <div
               className={cn(
-                'grid transition-all duration-300 ease-in-out',
+                'grid transition-all duration-200',
                 fineTuneOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
               )}
+              style={{ transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}
             >
               <div className="overflow-hidden">
                 <FineTunePanel events={fineTuneEvents} enabledKeys={level.eventTypes} />
@@ -288,6 +375,22 @@ export function GovernanceTuner() {
           </div>
         )}
       </Card>
+
+      {/* Depth hint (C1: segment-aware recommendation) */}
+      {depthHint && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-primary/10 bg-primary/5 px-4 py-3">
+          <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground leading-relaxed">{depthHint.message}</p>
+            <button
+              onClick={() => handleSelect(depthHint.suggestedDepth)}
+              className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              Switch to {TUNER_LEVELS[depthHint.suggestedDepth].label}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

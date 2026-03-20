@@ -48,6 +48,19 @@ export function SectionTabBar({ section: _section }: SectionTabBarProps) {
             const active = isActive(item.href);
             const count = item.sublabelKey ? metrics[item.sublabelKey] : undefined;
 
+            if (item.disabled) {
+              return (
+                <span
+                  key={item.href}
+                  className="shrink-0 px-3 py-2 text-sm font-medium whitespace-nowrap relative min-h-[40px] inline-flex items-center text-muted-foreground/40 cursor-not-allowed"
+                  title={item.disabledTooltip}
+                  aria-disabled="true"
+                >
+                  {t(item.label)}
+                </span>
+              );
+            }
+
             return (
               <Link
                 key={item.href}

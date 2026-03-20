@@ -69,6 +69,10 @@ export interface NavItem {
   minDepth?: GovernanceDepth;
   /** Key for Living Sidebar sub-label (e.g., 'home.pendingVotes') */
   sublabelKey?: string;
+  /** Render as disabled (visible but not clickable) */
+  disabled?: boolean;
+  /** Tooltip shown on hover when disabled */
+  disabledTooltip?: string;
 }
 
 /** A labelled group of items within a section (for dual-role workspace) */
@@ -166,7 +170,13 @@ export const WORKSPACE_SPO_ITEMS: NavItem[] = [
  */
 export const WORKSPACE_CITIZEN_ITEMS: NavItem[] = [
   { href: '/workspace/author', label: 'Author', icon: PenLine },
-  { href: '/workspace/review', label: 'Review', icon: FileText },
+  {
+    href: '/workspace/review',
+    label: 'Review',
+    icon: FileText,
+    disabled: true,
+    disabledTooltip: 'Connect as a DRep or SPO to review and vote on proposals',
+  },
 ];
 
 export const GOVERNANCE_ITEMS: NavItem[] = [

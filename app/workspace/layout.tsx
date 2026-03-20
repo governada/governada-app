@@ -7,7 +7,8 @@ import { SectionSpotlightTrigger } from '@/components/discovery/SectionSpotlight
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isStudioMode =
-    pathname === '/workspace/review' || /^\/workspace\/(author|editor)\/[^/]+/.test(pathname);
+    pathname === '/workspace/review' ||
+    /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
 
   return (
     <>

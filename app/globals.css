@@ -153,8 +153,8 @@
   --primary: oklch(0.72 0.12 192);
   --primary-foreground: oklch(0.12 0.015 260);
 
-  /* Secondary: Wayfinder Amber — softer glow */
-  --secondary: oklch(0.78 0.12 75);
+  /* Secondary: Wayfinder Amber — darker bg for legible white text */
+  --secondary: oklch(0.45 0.1 75);
   --secondary-foreground: oklch(0.95 0.005 260);
 
   --muted: oklch(0.18 0.015 260);

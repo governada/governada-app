@@ -73,7 +73,7 @@ export function PortfolioSearch({
 
       {/* Archive toggle */}
       {showArchiveToggle && onShowArchivedChange && (
-        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none rounded-md bg-accent/60 backdrop-blur-sm px-3 py-1.5 border border-border/30">
           <Switch size="sm" checked={showArchived} onCheckedChange={onShowArchivedChange} />
           Archived
         </label>

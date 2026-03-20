@@ -1,6 +1,9 @@
 /**
  * Treasury Snapshot Sync — runs daily at 22:30 UTC.
  * Fetches current treasury balance from Koios /totals and stores epoch-level snapshots.
+ *
+ * Resilience: if the current epoch already has a snapshot (from a previous successful run),
+ * skip the Koios API call and only update the health score if needed.
  */
 
 import { inngest } from '@/lib/inngest';
@@ -66,67 +69,112 @@ export const syncTreasurySnapshot = inngest.createFunction(
     const syncLog = new SyncLogger(supabase, 'treasury', logId);
 
     try {
-      const snapshot = await step.run('fetch-treasury-balance', async () => {
-        const treasury = await fetchTreasuryBalance();
-        return {
-          epoch: treasury.epoch,
-          balanceLovelace: treasury.balance.toString(),
-          reservesLovelace: treasury.reserves.toString(),
-        };
+      // Check if current epoch already has a snapshot (avoids unnecessary Koios call)
+      const existingSnapshot = await step.run('check-existing-snapshot', async () => {
+        const sb = getSupabaseAdmin();
+        const { data: stats } = await sb
+          .from('governance_stats')
+          .select('current_epoch')
+          .eq('id', 1)
+          .single();
+        const currentEpoch = stats?.current_epoch ?? 0;
+        if (currentEpoch === 0) return null;
+
+        const { data: existing } = await sb
+          .from('treasury_snapshots')
+          .select('epoch_no, balance_lovelace, reserves_lovelace')
+          .eq('epoch_no', currentEpoch)
+          .maybeSingle();
+
+        if (existing) {
+          return {
+            epoch: existing.epoch_no,
+            balanceLovelace: existing.balance_lovelace,
+            reservesLovelace: existing.reserves_lovelace,
+            alreadyExists: true,
+          };
+        }
+        return null;
       });
+
+      let snapshot: { epoch: number; balanceLovelace: string; reservesLovelace: string };
+
+      if (existingSnapshot?.alreadyExists) {
+        // Epoch already snapshotted — skip Koios, just ensure health score is current
+        snapshot = {
+          epoch: existingSnapshot.epoch,
+          balanceLovelace: existingSnapshot.balanceLovelace,
+          reservesLovelace: existingSnapshot.reservesLovelace,
+        };
+        logger.info('[treasury] Epoch already snapshotted, skipping Koios fetch', {
+          epoch: snapshot.epoch,
+        });
+      } else {
+        // Fetch fresh data from Koios
+        snapshot = await step.run('fetch-treasury-balance', async () => {
+          const treasury = await fetchTreasuryBalance();
+          return {
+            epoch: treasury.epoch,
+            balanceLovelace: treasury.balance.toString(),
+            reservesLovelace: treasury.reserves.toString(),
+          };
+        });
+
+        snapshotEpoch = snapshot.epoch;
+
+        const withdrawals = await step.run('calculate-epoch-withdrawals', async () => {
+          const sb = getSupabaseAdmin();
+          const { data } = await sb
+            .from('proposals')
+            .select('withdrawal_amount')
+            .eq('proposal_type', 'TreasuryWithdrawals')
+            .eq('enacted_epoch', snapshot.epoch);
+
+          const total = (data || []).reduce(
+            (sum, p) => sum + BigInt(p.withdrawal_amount || 0) * BigInt(1_000_000),
+            BigInt(0),
+          );
+          return total.toString();
+        });
+
+        const prevSnapshot = await step.run('calculate-income', async () => {
+          const sb = getSupabaseAdmin();
+          const { data } = await sb
+            .from('treasury_snapshots')
+            .select('balance_lovelace, epoch_no')
+            .eq('epoch_no', snapshot.epoch - 1)
+            .maybeSingle();
+
+          return data;
+        });
+
+        const reservesIncome = prevSnapshot
+          ? (
+              BigInt(snapshot.balanceLovelace) -
+              BigInt(prevSnapshot.balance_lovelace) +
+              BigInt(withdrawals)
+            ).toString()
+          : '0';
+
+        await step.run('upsert-snapshot', async () => {
+          const sb = getSupabaseAdmin();
+          const { error } = await sb.from('treasury_snapshots').upsert(
+            {
+              epoch_no: snapshot.epoch,
+              balance_lovelace: snapshot.balanceLovelace,
+              reserves_lovelace: snapshot.reservesLovelace,
+              withdrawals_lovelace: withdrawals,
+              reserves_income_lovelace: reservesIncome,
+              snapshot_at: new Date().toISOString(),
+            },
+            { onConflict: 'epoch_no' },
+          );
+
+          if (error) throw new Error(`Treasury snapshot upsert failed: ${error.message}`);
+        });
+      }
 
       snapshotEpoch = snapshot.epoch;
-
-      const withdrawals = await step.run('calculate-epoch-withdrawals', async () => {
-        const sb = getSupabaseAdmin();
-        const { data } = await sb
-          .from('proposals')
-          .select('withdrawal_amount')
-          .eq('proposal_type', 'TreasuryWithdrawals')
-          .eq('enacted_epoch', snapshot.epoch);
-
-        const total = (data || []).reduce(
-          (sum, p) => sum + BigInt(p.withdrawal_amount || 0) * BigInt(1_000_000),
-          BigInt(0),
-        );
-        return total.toString();
-      });
-
-      const prevSnapshot = await step.run('calculate-income', async () => {
-        const sb = getSupabaseAdmin();
-        const { data } = await sb
-          .from('treasury_snapshots')
-          .select('balance_lovelace, epoch_no')
-          .eq('epoch_no', snapshot.epoch - 1)
-          .single();
-
-        return data;
-      });
-
-      const reservesIncome = prevSnapshot
-        ? (
-            BigInt(snapshot.balanceLovelace) -
-            BigInt(prevSnapshot.balance_lovelace) +
-            BigInt(withdrawals)
-          ).toString()
-        : '0';
-
-      await step.run('upsert-snapshot', async () => {
-        const sb = getSupabaseAdmin();
-        const { error } = await sb.from('treasury_snapshots').upsert(
-          {
-            epoch_no: snapshot.epoch,
-            balance_lovelace: snapshot.balanceLovelace,
-            reserves_lovelace: snapshot.reservesLovelace,
-            withdrawals_lovelace: withdrawals,
-            reserves_income_lovelace: reservesIncome,
-            snapshot_at: new Date().toISOString(),
-          },
-          { onConflict: 'epoch_no' },
-        );
-
-        if (error) throw new Error(`Treasury snapshot upsert failed: ${error.message}`);
-      });
 
       const healthResult = await step.run('snapshot-treasury-health', async () => {
         try {
@@ -201,12 +249,10 @@ export const syncTreasurySnapshot = inngest.createFunction(
       await syncLog.finalize(true, null, {
         epoch: snapshot.epoch,
         balance_lovelace: snapshot.balanceLovelace,
-        withdrawals_lovelace: withdrawals,
-        reserves_income_lovelace: reservesIncome,
         health_snapshot: healthResult,
+        skipped_koios: !!existingSnapshot?.alreadyExists,
       });
       await emitPostHog(true, 'treasury', syncLog.elapsed, { epoch: snapshot.epoch });
-      await pingHeartbeat('HEARTBEAT_URL_DAILY');
 
       await step.run('heartbeat-daily', () => pingHeartbeat('HEARTBEAT_URL_DAILY'));
 

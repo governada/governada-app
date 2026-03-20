@@ -25,6 +25,11 @@ const THRESHOLDS: Record<string, number> = {
   catalyst: 2880,
   catalyst_proposals: 2880,
   catalyst_funds: 2880,
+  delegator_snapshots: 2880,
+  drep_lifecycle: 2880,
+  epoch_summaries: 2880,
+  committee_sync: 2880,
+  metadata_archive: 2880,
 };
 
 export const GET = withRouteHandler(async () => {

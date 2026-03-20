@@ -3,13 +3,13 @@
  *
  * Streams (each as a separate Inngest step for durability):
  * 1. Sync Catalyst funds (14 rounds, lightweight)
- * 2. Sync all proposals with campaigns and team members
+ * 2. Sync proposals per-fund (each fund is a separate step to avoid timeout)
  */
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
-import { alertCritical, emitPostHog, errMsg, capMsg } from '@/lib/sync-utils';
+import { alertCritical, emitPostHog, errMsg, capMsg, SyncLogger } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import { syncCatalystFunds, syncCatalystProposals } from '@/lib/sync/catalyst';
 
@@ -47,39 +47,78 @@ export const syncCatalyst = inngest.createFunction(
         }
       });
 
-      // Step 2: Sync all proposals (includes campaigns + team members)
-      const proposalResult = await step.run('sync-catalyst-proposals', async () => {
-        try {
-          return await syncCatalystProposals();
-        } catch (err) {
-          logger.error('[catalyst] Proposal sync failed', { error: err });
-          return {
-            proposalsStored: 0,
-            campaignsStored: 0,
-            teamMembersStored: 0,
-            teamLinksStored: 0,
-            errors: [errMsg(err)],
-          };
-        }
+      // Step 2: Get fund IDs for per-fund proposal sync
+      const fundIds = await step.run('get-fund-ids', async () => {
+        const sb = getSupabaseAdmin();
+        const { data } = await sb
+          .from('catalyst_funds')
+          .select('id')
+          .order('id', { ascending: true });
+        return (data || []).map((f) => f.id);
       });
 
-      // Step 3: Emit analytics + alert on failures
-      await step.run('emit-analytics', async () => {
-        const allErrors = [...fundResult.errors, ...proposalResult.errors];
+      // Step 3: Sync proposals per fund (each fund is its own step to stay within timeout)
+      let totalProposals = 0;
+      let totalCampaigns = 0;
+      let totalTeamMembers = 0;
+      let totalTeamLinks = 0;
+      const allErrors: string[] = [];
 
-        await emitPostHog(allErrors.length === 0, 'catalyst', 0, {
-          funds_stored: fundResult.fundsStored,
-          proposals_stored: proposalResult.proposalsStored,
-          campaigns_stored: proposalResult.campaignsStored,
-          team_members_stored: proposalResult.teamMembersStored,
-          team_links_stored: proposalResult.teamLinksStored,
-          error_count: allErrors.length,
+      for (const fundId of fundIds) {
+        const result = await step.run(`sync-proposals-fund-${fundId}`, async () => {
+          try {
+            return await syncCatalystProposals(fundId);
+          } catch (err) {
+            const msg = errMsg(err);
+            logger.error(`[catalyst] Fund ${fundId} proposal sync failed`, { error: msg });
+            return {
+              proposalsStored: 0,
+              campaignsStored: 0,
+              teamMembersStored: 0,
+              teamLinksStored: 0,
+              errors: [msg],
+            };
+          }
         });
 
-        if (allErrors.length > 0) {
+        totalProposals += result.proposalsStored;
+        totalCampaigns += result.campaignsStored;
+        totalTeamMembers += result.teamMembersStored;
+        totalTeamLinks += result.teamLinksStored;
+        allErrors.push(...result.errors);
+      }
+
+      // Step 4: Write consolidated sync_log for catalyst_proposals
+      await step.run('finalize-proposal-sync', async () => {
+        const sb = getSupabaseAdmin();
+        const syncLog = new SyncLogger(sb, 'catalyst_proposals');
+        await syncLog.start();
+        await syncLog.finalize(allErrors.length === 0, allErrors.join('; ') || null, {
+          proposals_stored: totalProposals,
+          campaigns_stored: totalCampaigns,
+          team_members_stored: totalTeamMembers,
+          team_links_stored: totalTeamLinks,
+          funds_processed: fundIds.length,
+        });
+      });
+
+      // Step 5: Emit analytics + alert on failures
+      await step.run('emit-analytics', async () => {
+        const combinedErrors = [...fundResult.errors, ...allErrors];
+
+        await emitPostHog(combinedErrors.length === 0, 'catalyst', 0, {
+          funds_stored: fundResult.fundsStored,
+          proposals_stored: totalProposals,
+          campaigns_stored: totalCampaigns,
+          team_members_stored: totalTeamMembers,
+          team_links_stored: totalTeamLinks,
+          error_count: combinedErrors.length,
+        });
+
+        if (combinedErrors.length > 0) {
           await alertCritical(
             'Catalyst Sync Failures',
-            `${allErrors.length} error(s):\n${allErrors.join('\n')}`,
+            `${combinedErrors.length} error(s):\n${combinedErrors.slice(0, 5).join('\n')}`,
           );
         }
       });
@@ -87,7 +126,13 @@ export const syncCatalyst = inngest.createFunction(
       cronCheckOut('sync-catalyst', checkInId, true);
       return {
         funds: fundResult,
-        proposals: proposalResult,
+        proposals: {
+          proposalsStored: totalProposals,
+          campaignsStored: totalCampaigns,
+          teamMembersStored: totalTeamMembers,
+          teamLinksStored: totalTeamLinks,
+          errors: allErrors,
+        },
       };
     } catch (error) {
       cronCheckOut('sync-catalyst', checkInId, false);

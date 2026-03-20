@@ -72,8 +72,6 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
   errors: string[];
 }> {
   const supabase = getSupabaseAdmin();
-  const syncLog = new SyncLogger(supabase, 'catalyst_proposals');
-  await syncLog.start();
   const errors: string[] = [];
 
   let proposalsStored = 0;
@@ -180,13 +178,12 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
       if (linkResult.errors > 0) errors.push(`${linkResult.errors} team link errors`);
     }
 
-    // Tighten success criteria: require < 5% error rate across all record types
+    // Check error rate across all record types
     const totalAttempted =
       totalRecords + seenTeamMembers.size + teamLinks.length + totalCampaignsAttempted;
     const totalStored = proposalsStored + teamMembersStored + teamLinksStored + campaignsStored;
     const errorCount = totalAttempted > 0 ? totalAttempted - totalStored : 0;
     const errorRate = totalAttempted > 0 ? errorCount / totalAttempted : 0;
-    const isSuccess = proposalsStored > 0 && errorRate < MAX_ERROR_RATE;
 
     if (errorRate >= MAX_ERROR_RATE) {
       logger.warn('[catalyst] Error rate exceeded threshold', {
@@ -196,16 +193,10 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
         totalStored,
         errorCount,
       });
+      errors.push(
+        `Error rate ${(errorRate * 100).toFixed(1)}% exceeds ${(MAX_ERROR_RATE * 100).toFixed(0)}% threshold`,
+      );
     }
-
-    await syncLog.finalize(isSuccess, errors.length > 0 ? errors.join('; ') : null, {
-      proposals_stored: proposalsStored,
-      campaigns_stored: campaignsStored,
-      team_members_stored: teamMembersStored,
-      team_links_stored: teamLinksStored,
-      pages: pageCount,
-      error_rate: `${(errorRate * 100).toFixed(1)}%`,
-    });
 
     logger.info('[catalyst] Sync complete', {
       proposalsStored,
@@ -218,7 +209,6 @@ export async function syncCatalystProposals(fundId?: string): Promise<{
   } catch (err) {
     const msg = errMsg(err);
     errors.push(msg);
-    await syncLog.finalize(false, msg, { proposals_stored: proposalsStored });
     logger.error('[catalyst] Proposal sync failed', { error: msg });
     return { proposalsStored, campaignsStored, teamMembersStored, teamLinksStored, errors };
   }

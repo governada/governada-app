@@ -26,7 +26,13 @@ const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {
   spo_scores: { mins: 1500, event: 'drepscore/sync.spo-scores' },
   governance_epoch_stats: { mins: 1500, event: 'drepscore/sync.governance-epoch-stats' },
   data_moat: { mins: 1500, event: 'drepscore/sync.data-moat' },
+  delegator_snapshots: { mins: 2880, event: 'drepscore/sync.data-moat' },
+  drep_lifecycle: { mins: 2880, event: 'drepscore/sync.data-moat' },
+  epoch_summaries: { mins: 2880, event: 'drepscore/sync.data-moat' },
+  committee_sync: { mins: 2880, event: 'drepscore/sync.data-moat' },
+  metadata_archive: { mins: 2880, event: 'drepscore/sync.data-moat' },
   catalyst: { mins: 1500, event: 'drepscore/sync.catalyst' },
+  catalyst_proposals: { mins: 2880, event: 'drepscore/sync.catalyst' },
 };
 
 const RECENT_FAILURE_WINDOW_MS = 15 * 60 * 1000;

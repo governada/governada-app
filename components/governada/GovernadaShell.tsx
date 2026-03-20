@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,6 @@ import { SegmentProvider, useSegment } from '@/components/providers/SegmentProvi
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
-import { GovernadaSidebar } from './GovernadaSidebar';
 import { NavigationRail } from './NavigationRail';
 import { EdgeSwipeMenu } from './EdgeSwipeMenu';
 import { ShortcutProvider } from './ShortcutProvider';
@@ -65,8 +64,6 @@ const MilestoneTrigger = dynamic(
   { ssr: false },
 );
 
-const SIDEBAR_STORAGE_KEY = 'governada_sidebar_collapsed';
-
 function DeepLinkHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -103,13 +100,9 @@ function DeepLinkHandler() {
 /** Background globe — hidden on homepage only for anonymous users (who have their own hero globe in AnonymousLanding). */
 function BackgroundGlobe({
   isHomepage,
-  sidebarCollapsed,
-  useRail,
   governanceTint,
 }: {
   isHomepage: boolean;
-  sidebarCollapsed: boolean;
-  useRail?: boolean;
   governanceTint?: string;
 }) {
   const { segment } = useSegment();
@@ -117,15 +110,7 @@ function BackgroundGlobe({
   if (isHomepage && segment === 'anonymous') return null;
   return (
     <div
-      className={cn(
-        'force-dark fixed inset-0 pointer-events-none z-0 constellation-globe-container',
-        useRail
-          ? 'lg:left-12'
-          : cn(
-              'transition-[left] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]',
-              sidebarCollapsed ? 'lg:left-16' : 'lg:left-60',
-            ),
-      )}
+      className="force-dark fixed inset-0 pointer-events-none z-0 constellation-globe-container lg:left-12"
       aria-hidden="true"
       style={
         governanceTint
@@ -162,9 +147,6 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const isStudioMode =
     pathname === '/workspace/review' ||
     /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const navigationRailFlag = useFeatureFlag('navigation_rail');
-  const navigationRail = navigationRailFlag === true;
   const temporalAdaptation = useFeatureFlag('temporal_adaptation') === true;
   const governanceCopilotFlag = useFeatureFlag('governance_copilot');
   const showCopilot = governanceCopilotFlag === true && !isStudioMode;
@@ -176,19 +158,6 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
 
   // Horizontal swipe navigation between Home/Governance/You (mobile only)
   useSwipeNavigation(mobileGestures && !isStudioMode);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (stored === 'true') setSidebarCollapsed(true);
-  }, []);
-
-  const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
-      return next;
-    });
-  }, []);
 
   return (
     <SegmentProvider>
@@ -206,19 +175,12 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               compassOpen={panelVisible}
             />
           )}
-          {!isStudioMode &&
-            (navigationRail ? (
-              <NavigationRail />
-            ) : (
-              <GovernadaSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-            ))}
+          {!isStudioMode && <NavigationRail />}
 
           {/* Global constellation globe — subtle glassmorphic background */}
           {!isStudioMode && (
             <BackgroundGlobe
               isHomepage={isHomepage}
-              sidebarCollapsed={sidebarCollapsed}
-              useRail={navigationRail}
               governanceTint={temporalAdaptation ? tintColor : undefined}
             />
           )}
@@ -231,14 +193,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   'relative z-0 min-h-screen',
                   isStudioMode ? '' : 'pb-16 lg:pb-0',
-                  isStudioMode
-                    ? ''
-                    : navigationRail
-                      ? 'lg:pl-12'
-                      : cn(
-                          'transition-[padding-left] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                          sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
-                        ),
+                  isStudioMode ? '' : 'lg:pl-12',
                 )}
                 style={panelVisible ? { paddingRight: intelligencePanel.panelWidth } : undefined}
                 tabIndex={-1}
@@ -259,17 +214,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           )}
 
           {!isStudioMode && (
-            <footer
-              className={cn(
-                'relative z-0 border-t border-border/40 py-4 px-4 text-center',
-                navigationRail
-                  ? 'lg:pl-12'
-                  : cn(
-                      'transition-[padding-left] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                      sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
-                    ),
-              )}
-            >
+            <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center lg:pl-12">
               <p className="text-xs text-muted-foreground/70">
                 {t(
                   'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',

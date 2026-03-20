@@ -11,9 +11,11 @@
  * - 'calm':    No urgent proposals, analysis/research period
  *             (urgency score < 40)
  *
- * TODO: Wire to GET /api/intelligence/governance-state when Phase 4 ships.
- *       Currently defaults to 'active' mode.
+ * Fetches live data from GET /api/intelligence/governance-state, cached 60s.
  */
+
+import { useQuery } from '@tanstack/react-query';
+import type { GovernanceStateResult } from '@/lib/intelligence/governance-state';
 
 export type GovernanceMode = 'urgent' | 'active' | 'calm';
 
@@ -24,8 +26,10 @@ interface UseGovernanceModeResult {
   isUrgent: boolean;
   /** Convenience boolean for calm state checks */
   isCalm: boolean;
-  /** Raw urgency score (0-100). Default: 50 until Phase 4 API ships. */
+  /** Raw urgency score (0-100) */
   urgencyScore: number;
+  /** Whether the data is still loading (returns safe defaults while loading) */
+  isLoading: boolean;
 }
 
 /**
@@ -37,16 +41,26 @@ function scoreToMode(score: number): GovernanceMode {
   return 'calm';
 }
 
+async function fetchGovernanceState(): Promise<GovernanceStateResult> {
+  const res = await fetch('/api/intelligence/governance-state');
+  if (!res.ok) throw new Error(`Governance state fetch failed: ${res.status}`);
+  return res.json();
+}
+
 /**
- * Returns the current governance temporal mode based on governance urgency.
- *
- * Currently returns a static 'active' mode. Will be wired to the
- * governance state API endpoint when Phase 4 intelligence panel ships.
+ * Returns the current governance temporal mode based on live governance urgency.
+ * Falls back to 'active' (urgency 50) while loading or on error.
  */
 export function useGovernanceMode(): UseGovernanceModeResult {
-  // TODO: Wire to GET /api/intelligence/governance-state when Phase 4 ships.
-  // For now, default to 'active' (urgency score 50).
-  const urgencyScore = 50;
+  const { data, isLoading } = useQuery({
+    queryKey: ['governance-state'],
+    queryFn: fetchGovernanceState,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const urgencyScore = data?.urgency ?? 50;
   const mode = scoreToMode(urgencyScore);
 
   return {
@@ -54,5 +68,6 @@ export function useGovernanceMode(): UseGovernanceModeResult {
     isUrgent: mode === 'urgent',
     isCalm: mode === 'calm',
     urgencyScore,
+    isLoading,
   };
 }

@@ -5,6 +5,8 @@
  *
  * Wraps the shell to provide:
  * - Navigation shortcuts (G + key chords)
+ * - Vote action shortcuts (V + Y/N/A chords, R for rationale)
+ * - List navigation shortcuts (N for next, P for previous)
  * - Action shortcuts (?, /, Escape)
  * - Density mode cycling (Cmd+Shift+M)
  * - Context for page-specific shortcut registration
@@ -216,10 +218,9 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
         id: 'panel-intelligence',
         keys: ']',
         label: 'Intelligence Panel',
-        description: 'Toggle intelligence panel (coming soon)',
+        description: 'Toggle intelligence panel',
         category: 'panels' as const,
         action: () => {
-          // Placeholder for Phase 5 intelligence panel
           window.dispatchEvent(new CustomEvent('toggleIntelligencePanel'));
         },
       },
@@ -232,6 +233,79 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
         description: 'Cycle density mode: Browse \u2192 Work \u2192 Analyze',
         category: 'modes' as const,
         action: () => cycleMode(),
+      },
+
+      // Vote action shortcuts (V + key chords, proposal pages only)
+      {
+        id: 'action-vote-yes',
+        keys: 'V Y',
+        label: 'Vote Yes',
+        description: 'Cast a Yes vote on the current proposal',
+        category: 'actions' as const,
+        isChord: true,
+        contextPaths: ['/governance/proposals/'],
+        action: () => window.dispatchEvent(new CustomEvent('shortcut:vote', { detail: 'yes' })),
+      },
+      {
+        id: 'action-vote-no',
+        keys: 'V N',
+        label: 'Vote No',
+        description: 'Cast a No vote on the current proposal',
+        category: 'actions' as const,
+        isChord: true,
+        contextPaths: ['/governance/proposals/'],
+        action: () => window.dispatchEvent(new CustomEvent('shortcut:vote', { detail: 'no' })),
+      },
+      {
+        id: 'action-vote-abstain',
+        keys: 'V A',
+        label: 'Vote Abstain',
+        description: 'Cast an Abstain vote on the current proposal',
+        category: 'actions' as const,
+        isChord: true,
+        contextPaths: ['/governance/proposals/'],
+        action: () => window.dispatchEvent(new CustomEvent('shortcut:vote', { detail: 'abstain' })),
+      },
+      {
+        id: 'action-rationale',
+        keys: 'R',
+        label: 'Write Rationale',
+        description: 'Open rationale editor for the current proposal',
+        category: 'actions' as const,
+        contextPaths: ['/governance/proposals/'],
+        action: () => window.dispatchEvent(new CustomEvent('shortcut:rationale')),
+      },
+
+      // List navigation shortcuts
+      {
+        id: 'action-next',
+        keys: 'N',
+        label: 'Next Item',
+        description: 'Focus the next item in the list',
+        category: 'actions' as const,
+        contextPaths: [
+          '/governance/proposals',
+          '/governance/representatives',
+          '/governance/committee',
+          '/governance/pools',
+        ],
+        action: () =>
+          window.dispatchEvent(new CustomEvent('shortcut:navigate', { detail: 'next' })),
+      },
+      {
+        id: 'action-previous',
+        keys: 'P',
+        label: 'Previous Item',
+        description: 'Focus the previous item in the list',
+        category: 'actions' as const,
+        contextPaths: [
+          '/governance/proposals',
+          '/governance/representatives',
+          '/governance/committee',
+          '/governance/pools',
+        ],
+        action: () =>
+          window.dispatchEvent(new CustomEvent('shortcut:navigate', { detail: 'prev' })),
       },
     ],
     [router, cycleMode],

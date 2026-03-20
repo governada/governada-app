@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * useGovernanceTemperature — Maps governance temperature score to a CSS color
+ * useGovernanceTemperature — Maps live governance temperature score to a CSS color
  * for the ambient governance tint on the constellation globe.
  *
  * Temperature ranges:
@@ -13,9 +13,11 @@
  * Returns a CSS color value for the `--governance-tint` custom property,
  * applied as a subtle (10-15% opacity) overlay on the constellation container.
  *
- * TODO: Wire to governance temperature API when Phase 4 ships.
- *       Currently defaults to 'neutral' (temperature 50).
+ * Fetches live data from GET /api/intelligence/governance-state, cached 60s.
  */
+
+import { useQuery } from '@tanstack/react-query';
+import type { GovernanceStateResult } from '@/lib/intelligence/governance-state';
 
 export interface GovernanceTemperatureResult {
   /** Governance temperature score (0-100) */
@@ -24,6 +26,8 @@ export interface GovernanceTemperatureResult {
   tintColor: string;
   /** Human-readable label for the current state */
   label: 'cool' | 'neutral' | 'warm' | 'urgent';
+  /** Whether the data is still loading */
+  isLoading: boolean;
 }
 
 /**
@@ -34,36 +38,43 @@ function temperatureToTint(temperature: number): {
   label: GovernanceTemperatureResult['label'];
 } {
   if (temperature > 80) {
-    // Urgent red — intense governance moment
     return { color: 'rgba(239, 68, 68, 0.12)', label: 'urgent' };
   }
   if (temperature > 60) {
-    // Warm amber — active governance
     return { color: 'rgba(245, 158, 11, 0.10)', label: 'warm' };
   }
   if (temperature >= 30) {
-    // Neutral — normal activity, transparent (no tint)
     return { color: 'rgba(148, 163, 184, 0.05)', label: 'neutral' };
   }
-  // Cool blue — quiet governance period
   return { color: 'rgba(56, 189, 248, 0.10)', label: 'cool' };
+}
+
+async function fetchGovernanceState(): Promise<GovernanceStateResult> {
+  const res = await fetch('/api/intelligence/governance-state');
+  if (!res.ok) throw new Error(`Governance state fetch failed: ${res.status}`);
+  return res.json();
 }
 
 /**
  * Returns the governance temperature color for ambient tinting.
- *
- * Currently returns a static 'neutral' state. Will be wired to the
- * governance temperature API when Phase 4 ships.
+ * Falls back to neutral (temperature 50) while loading or on error.
  */
 export function useGovernanceTemperature(): GovernanceTemperatureResult {
-  // TODO: Wire to governance temperature API when Phase 4 ships.
-  // Default to neutral (temperature 50).
-  const temperature = 50;
+  const { data, isLoading } = useQuery({
+    queryKey: ['governance-state'],
+    queryFn: fetchGovernanceState,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const temperature = data?.temperature ?? 50;
   const { color, label } = temperatureToTint(temperature);
 
   return {
     temperature,
     tintColor: color,
     label,
+    isLoading,
   };
 }

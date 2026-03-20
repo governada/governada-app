@@ -53,7 +53,26 @@ function CommunityConsensusInner() {
     );
   }
 
-  if (isError || !data || data.aggregate.total === 0) return null;
+  if (isError) return null;
+
+  // No signals yet — show an inviting empty state instead of hiding
+  if (!data || data.aggregate.total === 0) {
+    return (
+      <div className="rounded-2xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4 sm:p-5 space-y-2">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Community Consensus
+          </h3>
+        </div>
+        <p className="text-sm text-foreground font-medium">No citizen signals yet this epoch</p>
+        <p className="text-xs text-muted-foreground">
+          Be the first to share your perspective on active proposals — your signal helps other
+          citizens understand community sentiment.
+        </p>
+      </div>
+    );
+  }
 
   const { aggregate, proposals } = data;
   const supportPct = Math.round((aggregate.support / aggregate.total) * 100);

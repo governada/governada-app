@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Wallet,
+  Thermometer,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ import { hapticLight } from '@/lib/haptics';
 import { HubCardSkeleton, HubCardError } from './HubCard';
 import { Button } from '@/components/ui/button';
 import { useDepthConfig } from '@/hooks/useDepthConfig';
+import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
 
 type SentimentChoice = 'support' | 'oppose' | 'unsure';
 
@@ -46,6 +48,7 @@ interface SentimentResults {
  * JTBD: "Is there something I can weigh in on?"
  */
 export function EngagementCard() {
+  const { temperature, label: tempLabel } = useGovernanceTemperature();
   const {
     data: pollsRaw,
     isLoading,
@@ -68,8 +71,42 @@ export function EngagementCard() {
   const activePolls = (pulse?.activePolls as ActivePoll[]) ?? [];
   const activeProposals = (pulse?.activeProposals as number) ?? 0;
 
-  // No engagement opportunities -- don't render
-  if (activePolls.length === 0 && activeProposals === 0) return null;
+  // No engagement opportunities — show governance temperature context instead of hiding
+  if (activePolls.length === 0 && activeProposals === 0) {
+    const tempColor =
+      tempLabel === 'urgent'
+        ? 'text-red-600 dark:text-red-400'
+        : tempLabel === 'warm'
+          ? 'text-amber-600 dark:text-amber-400'
+          : tempLabel === 'cool'
+            ? 'text-sky-600 dark:text-sky-400'
+            : 'text-muted-foreground';
+    return (
+      <div
+        className={cn(
+          'rounded-2xl border p-4 sm:p-5 space-y-1',
+          'border-white/[0.08] bg-card/15 backdrop-blur-md',
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <Thermometer className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Your Voice
+          </span>
+        </div>
+        <p className={cn('text-base font-semibold capitalize', tempColor)}>
+          Governance is {tempLabel}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {tempLabel === 'cool'
+            ? 'Quiet period — no active proposals need your input right now'
+            : tempLabel === 'urgent'
+              ? 'High activity — check back soon for new proposals to weigh in on'
+              : 'No open proposals at the moment — new ones will appear as they\u2019re submitted'}
+        </p>
+      </div>
+    );
+  }
 
   const activePoll = activePolls[0];
 

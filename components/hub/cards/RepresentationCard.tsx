@@ -157,16 +157,50 @@ function DelegatedRepresentationCard({
           </span>
         </div>
         <p className="text-base font-semibold text-foreground">{statusMessage}</p>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <User className="h-3.5 w-3.5" />
-            Score: {Math.round(drepScore)} &middot; {computeTier(drepScore)} &mdash;{' '}
-            {getScoreNarrative({ score: drepScore, percentile: 50 })}
-          </span>
-          <span className="text-muted-foreground/60">&middot;</span>
-          <span>{delegatedPool ? 'Fully represented' : 'Partial coverage'}</span>
+        <div className="space-y-1">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <User className="h-3.5 w-3.5" />
+              Score: {Math.round(drepScore)} &middot; {computeTier(drepScore)} &mdash;{' '}
+              {getScoreNarrative({ score: drepScore, percentile: 50 })}
+            </span>
+            <span className="text-muted-foreground/60">&middot;</span>
+            <span>{delegatedPool ? 'Fully represented' : 'Partial coverage'}</span>
+          </div>
+          {/* Behavioral insight line */}
+          {drep && <BehavioralInsight drep={drep} participationRate={participationRate} />}
         </div>
       </div>
     </HubCard>
   );
+}
+
+/** One-line behavioral narrative derived from DRep data */
+function BehavioralInsight({
+  drep,
+  participationRate,
+}: {
+  drep: Record<string, unknown>;
+  participationRate: number;
+}) {
+  const rationaleRate = drep.rationaleRate as number | undefined;
+  const epochsActive = drep.epochsActive as number | undefined;
+
+  const traits: string[] = [];
+
+  if (rationaleRate != null && rationaleRate >= 60) {
+    traits.push(`explains ${Math.round(rationaleRate)}% of votes`);
+  }
+  if (participationRate >= 80) {
+    traits.push('highly active');
+  } else if (participationRate >= 50) {
+    traits.push('moderately active');
+  }
+  if (epochsActive != null && epochsActive >= 10) {
+    traits.push(`voting since ${epochsActive} epochs ago`);
+  }
+
+  if (traits.length === 0) return null;
+
+  return <p className="text-xs text-muted-foreground/80 italic">{traits.join(' · ')}</p>;
 }

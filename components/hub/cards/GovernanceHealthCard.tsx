@@ -1,6 +1,7 @@
 'use client';
 
-import { Activity, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Activity } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { HubCard, HubCardSkeleton, HubCardError, type CardUrgency } from './HubCard';
 import { getBand, GHI_BAND_LABELS, type GHIBand } from '@/lib/ghi/types';
@@ -102,31 +103,32 @@ export function GovernanceHealthCard() {
           </div>
         </div>
 
-        {/* Component insights — strongest + weakest */}
+        {/* Component breakdown — mini bar chart for all active components */}
         {activeComponents.length > 0 && (
-          <div className="space-y-1 border-t border-border pt-2">
-            {strongest && strongest.value >= 60 && (
-              <div className="flex items-center gap-1.5 text-xs">
-                <TrendingUp className="h-3 w-3 text-emerald-500 shrink-0" />
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{shortName(strongest.name)}</span>{' '}
-                  leading at {strongest.value}
+          <div className="space-y-1.5 border-t border-border pt-2">
+            {sorted.map((c) => (
+              <div key={c.name} className="flex items-center gap-2 text-[10px]">
+                <span className="w-[4.5rem] truncate text-muted-foreground text-right shrink-0">
+                  {shortName(c.name)}
+                </span>
+                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all duration-700',
+                      c.value >= 70
+                        ? 'bg-emerald-500'
+                        : c.value >= 50
+                          ? 'bg-amber-500'
+                          : 'bg-red-500',
+                    )}
+                    style={{ width: `${Math.min(c.value, 100)}%` }}
+                  />
+                </div>
+                <span className="w-5 text-right tabular-nums text-muted-foreground shrink-0">
+                  {Math.round(c.value)}
                 </span>
               </div>
-            )}
-            {weakest && weakest !== strongest && (
-              <div className="flex items-center gap-1.5 text-xs">
-                {weakest.value < 50 ? (
-                  <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                )}
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{shortName(weakest.name)}</span>{' '}
-                  lowest at {weakest.value}
-                </span>
-              </div>
-            )}
+            ))}
           </div>
         )}
       </div>

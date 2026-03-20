@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Newspaper, ChevronDown, ChevronUp } from 'lucide-react';
+import { Newspaper, ChevronDown, ChevronUp, Thermometer } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { HubCardSkeleton } from './HubCard';
+import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
 
 interface BriefingHeadline {
   title: string;
@@ -37,6 +38,7 @@ interface BriefingData {
  */
 export function BriefingCard() {
   const [expanded, setExpanded] = useState(false);
+  const { temperature, label: tempLabel } = useGovernanceTemperature();
 
   const { data: raw, isLoading } = useQuery({
     queryKey: ['citizen-briefing-hub'],
@@ -51,16 +53,50 @@ export function BriefingCard() {
   if (isLoading) return <HubCardSkeleton />;
 
   const data = raw as BriefingData | undefined;
+  const headlines = data?.headlines ?? [];
+  const narrative = data?.recap?.narrative ?? null;
+  const health = data?.status?.health;
 
-  // No briefing yet — don't render
-  if (!data) return null;
-
-  const headlines = data.headlines ?? [];
-  const narrative = data.recap?.narrative ?? null;
-  const health = data.status?.health;
-
-  // Nothing useful to show
-  if (headlines.length === 0 && !narrative && !data.status?.headline) return null;
+  // No briefing data — show governance temperature as fallback instead of hiding
+  if (!data || (headlines.length === 0 && !narrative && !data.status?.headline)) {
+    const tempColor =
+      tempLabel === 'urgent'
+        ? 'text-red-600 dark:text-red-400'
+        : tempLabel === 'warm'
+          ? 'text-amber-600 dark:text-amber-400'
+          : tempLabel === 'cool'
+            ? 'text-sky-600 dark:text-sky-400'
+            : 'text-muted-foreground';
+    const tempDescription =
+      tempLabel === 'urgent'
+        ? 'Contested votes and high activity — governance needs attention'
+        : tempLabel === 'warm'
+          ? 'Active governance period — proposals are being debated'
+          : tempLabel === 'cool'
+            ? 'Quiet period — governance is stable with low activity'
+            : 'Normal governance activity this epoch';
+    return (
+      <div
+        className={cn(
+          'group block min-h-[6.5rem] rounded-2xl border p-4 sm:p-5',
+          'border-white/[0.08] bg-card/15 backdrop-blur-md',
+        )}
+      >
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Thermometer className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Governance Climate
+            </span>
+          </div>
+          <p className={cn('text-base font-semibold capitalize', tempColor)}>
+            {tempLabel} — {Math.round(temperature)}°
+          </p>
+          <p className="text-sm text-muted-foreground">{tempDescription}</p>
+        </div>
+      </div>
+    );
+  }
 
   const previewHeadlines = headlines.slice(0, 2);
   const hasMore = !!narrative || headlines.length > 2;

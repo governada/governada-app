@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, ShieldAlert, TrendingDown, GitCompareArrows } from 'lucide-react';
+import { Bell, ShieldAlert, ShieldCheck, TrendingDown, GitCompareArrows } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useGovernanceHolder, useAlignmentDrift } from '@/hooks/queries';
 import { useFeatureFlag } from '@/components/FeatureGate';
@@ -74,8 +74,42 @@ export function AlertCard() {
     };
   }
 
-  // Nothing needs attention — don't render
-  if (!alert) return null;
+  // Nothing needs attention — show positive ambient insight instead of hiding
+  if (!alert) {
+    // Build a positive insight from available DRep data
+    const drepName = (drep.name as string) || (drep.ticker as string) || 'Your DRep';
+    const rationaleRate = drep.rationaleRate as number | undefined;
+    const score = (drep.score as number) ?? 0;
+
+    let insightMessage = `${drepName} is representing you well`;
+    let insightDetail = 'No issues detected with your delegation.';
+
+    if (rationaleRate != null && rationaleRate >= 70) {
+      insightMessage = `${drepName} explains ${Math.round(rationaleRate)}% of their votes`;
+      insightDetail = 'Strong transparency — you can see the reasoning behind your representation.';
+    } else if (participationRate >= 80) {
+      insightMessage = `${drepName} has voted on ${Math.round(participationRate)}% of proposals`;
+      insightDetail = 'High participation — your ADA is consistently represented in decisions.';
+    } else if (score >= 70) {
+      insightMessage = `${drepName} has a strong governance score of ${Math.round(score)}`;
+      insightDetail = 'Your representative is among the more effective DReps in the ecosystem.';
+    }
+
+    return (
+      <HubCard href="/" urgency="success" label={insightMessage}>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            <span className="text-xs font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              All Good
+            </span>
+          </div>
+          <p className="text-base font-semibold text-foreground">{insightMessage}</p>
+          <p className="text-sm text-muted-foreground">{insightDetail}</p>
+        </div>
+      </HubCard>
+    );
+  }
 
   const AlertIcon = alert.icon;
 

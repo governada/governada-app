@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Activity, ArrowRight } from 'lucide-react';
+import { Activity, ArrowRight, Thermometer } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { briefingItem } from '@/lib/animations';
 import { Card, CardContent } from '@/components/ui/card';
+import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
 
 interface GovernancePulseProps {
   /** Number of active (open) proposals this epoch */
@@ -22,12 +23,20 @@ interface GovernancePulseProps {
  * to create urgency around delegation. Only rendered when the user has
  * no DRep delegation.
  */
+const TEMP_PILL_STYLES = {
+  cool: 'bg-sky-500/15 text-sky-400 border-sky-500/20',
+  neutral: 'bg-muted text-muted-foreground border-border/60',
+  warm: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  urgent: 'bg-red-500/15 text-red-400 border-red-500/20',
+} as const;
+
 export function GovernancePulse({
   activeProposalCount,
   aiHeadline,
   compact,
 }: GovernancePulseProps) {
   const hasActivity = activeProposalCount > 0;
+  const { temperature, label: tempLabel } = useGovernanceTemperature();
 
   const summaryText = aiHeadline
     ? aiHeadline
@@ -42,14 +51,22 @@ export function GovernancePulse({
           <div className="flex items-start gap-3">
             <Activity className="mt-0.5 h-4 w-4 shrink-0 text-primary/70" />
             <div className="min-w-0 space-y-1">
-              <p className="text-sm font-medium text-foreground">
-                Governance This Epoch
-                {compact && hasActivity && (
-                  <span className="ml-2 text-muted-foreground font-normal">
-                    &middot; {activeProposalCount} active
-                  </span>
-                )}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground">
+                  Governance This Epoch
+                  {compact && hasActivity && (
+                    <span className="ml-2 text-muted-foreground font-normal">
+                      &middot; {activeProposalCount} active
+                    </span>
+                  )}
+                </p>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize ${TEMP_PILL_STYLES[tempLabel]}`}
+                >
+                  <Thermometer className="h-2.5 w-2.5" />
+                  {tempLabel} {Math.round(temperature)}°
+                </span>
+              </div>
               {!compact && (
                 <>
                   <p className="text-sm text-muted-foreground leading-snug">{summaryText}</p>

@@ -99,7 +99,7 @@ export function NavigationRail() {
           className="flex items-center justify-center w-12 h-10 shrink-0 text-foreground hover:bg-accent/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
           aria-label="Governada home"
         >
-          <GovernadaLogo size={20} />
+          <GovernadaLogo size={28} />
         </Link>
 
         {/* Navigation icons */}

@@ -40,7 +40,7 @@ export function GovernadaLogo({
       <path
         d="M 68 19 A 35 35 0 1 0 68 58"
         fill="none"
-        stroke="url(#governada-grad)"
+        stroke="#4EEAC6"
         strokeWidth="5.5"
         strokeLinecap="round"
       />
@@ -51,41 +51,33 @@ export function GovernadaLogo({
         y1="58"
         x2="50"
         y2="50"
-        stroke="url(#governada-grad)"
+        stroke="#4EEAC6"
         strokeWidth="4"
         strokeLinecap="round"
       />
 
       {/* Outer arc nodes */}
-      <circle cx="68" cy="19" r="5" fill="url(#governada-grad)" />
-      <circle cx="44" cy="7" r="4.5" fill="url(#governada-grad)" />
-      <circle cx="20" cy="17" r="4" fill="url(#governada-grad)" />
-      <circle cx="7" cy="38" r="5" fill="url(#governada-grad)" />
-      <circle cx="10" cy="60" r="4" fill="url(#governada-grad)" />
-      <circle cx="25" cy="76" r="4.5" fill="url(#governada-grad)" />
-      <circle cx="50" cy="80" r="4" fill="url(#governada-grad)" />
-      <circle cx="68" cy="58" r="5" fill="url(#governada-grad)" />
+      <circle cx="68" cy="19" r="5" fill="#4EEAC6" />
+      <circle cx="44" cy="7" r="4.5" fill="#4EEAC6" />
+      <circle cx="20" cy="17" r="4" fill="#4EEAC6" />
+      <circle cx="7" cy="38" r="5" fill="#4EEAC6" />
+      <circle cx="10" cy="60" r="4" fill="#4EEAC6" />
+      <circle cx="25" cy="76" r="4.5" fill="#4EEAC6" />
+      <circle cx="50" cy="80" r="4" fill="#4EEAC6" />
+      <circle cx="68" cy="58" r="5" fill="#4EEAC6" />
 
       {/* Internal network nodes */}
-      <circle cx="50" cy="50" r="4.5" fill="url(#governada-grad)" />
-      <circle cx="57" cy="33" r="3.5" fill="url(#governada-grad)" />
+      <circle cx="50" cy="50" r="4.5" fill="#4EEAC6" />
+      <circle cx="57" cy="33" r="3.5" fill="#4EEAC6" />
 
       {/* Internal connection lines — network/globe feel */}
-      <line
-        x1="44"
-        y1="7"
-        x2="57"
-        y2="33"
-        stroke="url(#governada-grad)"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
+      <line x1="44" y1="7" x2="57" y2="33" stroke="#4EEAC6" strokeWidth="3" strokeLinecap="round" />
       <line
         x1="57"
         y1="33"
         x2="68"
         y2="58"
-        stroke="url(#governada-grad)"
+        stroke="#4EEAC6"
         strokeWidth="3"
         strokeLinecap="round"
       />
@@ -94,7 +86,7 @@ export function GovernadaLogo({
         y1="33"
         x2="50"
         y2="50"
-        stroke="url(#governada-grad)"
+        stroke="#4EEAC6"
         strokeWidth="3"
         strokeLinecap="round"
       />

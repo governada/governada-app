@@ -148,8 +148,10 @@ export const syncFreshnessGuard = inngest.createFunction(
 
       const now = Date.now();
       const stale: { syncType: string; staleMins: number; event: string }[] = [];
+      const seenTypes = new Set<string>();
 
       for (const row of rows) {
+        seenTypes.add(row.sync_type);
         const config = FRESHNESS_THRESHOLDS[row.sync_type];
         if (!config) continue;
         if (!row.last_run) {
@@ -160,6 +162,15 @@ export const syncFreshnessGuard = inngest.createFunction(
         const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60_000);
         if (staleMins > config.mins) {
           stale.push({ syncType: row.sync_type, staleMins, event: config.event });
+        }
+      }
+
+      // ── "Never ran" detection ──
+      // Sync types in FRESHNESS_THRESHOLDS but completely absent from v_sync_health
+      // have never produced a sync_log entry — likely a registration or trigger failure.
+      for (const [syncType, config] of Object.entries(FRESHNESS_THRESHOLDS)) {
+        if (!seenTypes.has(syncType)) {
+          stale.push({ syncType, staleMins: Infinity, event: config.event });
         }
       }
 

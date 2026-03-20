@@ -8,7 +8,7 @@
 import { inngest } from '@/lib/inngest';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { alertCritical, emitPostHog, type SyncType } from '@/lib/sync-utils';
+import { alertCritical, alertDiscord, emitPostHog, type SyncType } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 
@@ -17,6 +17,31 @@ interface CheckResult {
   passed: boolean;
   detail: string;
 }
+
+/**
+ * Maps snapshot table names to the Inngest event that populates them.
+ * Only includes tables that CAN be retriggered — epoch-transition tables
+ * (governance_participation_snapshots, epoch_recaps, governance_epoch_stats)
+ * are excluded since they're written on epoch boundaries, not on demand.
+ */
+const SNAPSHOT_HEAL_MAP: Record<string, string> = {
+  drep_score_history: 'drepscore/sync.scores',
+  ghi_snapshots: 'drepscore/sync.ghi',
+  decentralization_snapshots: 'drepscore/sync.ghi',
+  alignment_snapshots: 'drepscore/sync.alignment',
+  drep_power_snapshots: 'drepscore/sync.dreps',
+  treasury_snapshots: 'drepscore/sync.treasury',
+  treasury_health_snapshots: 'drepscore/sync.treasury',
+  delegation_snapshots: 'drepscore/sync.dreps',
+  spo_score_snapshots: 'drepscore/sync.spo-scores',
+  spo_alignment_snapshots: 'drepscore/sync.spo-cc-votes',
+  inter_body_alignment_snapshots: 'drepscore/sync.spo-cc-votes',
+  epoch_governance_summaries: 'drepscore/sync.data-moat',
+  drep_delegator_snapshots: 'drepscore/sync.data-moat',
+  committee_members: 'drepscore/sync.data-moat',
+  cc_fidelity_snapshots: 'drepscore/sync.cc-rationales',
+  proposal_classifications: 'drepscore/sync.alignment',
+};
 
 export const checkSnapshotCompleteness = inngest.createFunction(
   {
@@ -341,6 +366,34 @@ export const checkSnapshotCompleteness = inngest.createFunction(
             total_checks: checks.length,
           });
         });
+
+        // Self-heal: retrigger the sync that populates each failed snapshot table.
+        // Deduplicate events so we don't fire the same sync multiple times.
+        const eventsToSend = new Set<string>();
+        for (const f of failures) {
+          const event = SNAPSHOT_HEAL_MAP[f.name];
+          if (event) eventsToSend.add(event);
+        }
+
+        if (eventsToSend.size > 0) {
+          await step.run('self-heal-snapshots', async () => {
+            const healedNames = failures
+              .filter((f) => SNAPSHOT_HEAL_MAP[f.name])
+              .map((f) => f.name);
+
+            await inngest.send([...eventsToSend].map((name) => ({ name })));
+
+            logger.info('[snapshot-completeness] Self-healing triggered', {
+              events: [...eventsToSend],
+              tables: healedNames,
+            });
+
+            await alertDiscord(
+              'Snapshot Self-Heal Triggered',
+              `Retriggered ${eventsToSend.size} sync(s) for ${healedNames.length} missing snapshots: ${healedNames.join(', ')}`,
+            );
+          });
+        }
       }
 
       logger.info('[snapshot-completeness] Check complete', {

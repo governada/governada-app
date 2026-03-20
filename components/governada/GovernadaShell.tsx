@@ -10,9 +10,11 @@ import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
 import { GovernadaSidebar } from './GovernadaSidebar';
 import { NavigationRail } from './NavigationRail';
+import { EdgeSwipeMenu } from './EdgeSwipeMenu';
 import { ShortcutProvider } from './ShortcutProvider';
 import { ShortcutOverlay } from './ShortcutOverlay';
 import { useFeatureFlag } from '@/components/FeatureGate';
+import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
 import { PreviewBanner } from '@/components/preview/PreviewBanner';
 import { FeedbackWidget } from '@/components/preview/FeedbackWidget';
@@ -162,9 +164,14 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const temporalAdaptation = useFeatureFlag('temporal_adaptation') === true;
   const governanceCopilotFlag = useFeatureFlag('governance_copilot');
   const showCopilot = governanceCopilotFlag === true && !isStudioMode;
+  const mobileGesturesFlag = useFeatureFlag('mobile_gestures');
+  const mobileGestures = mobileGesturesFlag === true;
   const { tintColor } = useGovernanceTemperature();
   const intelligencePanel = useIntelligencePanel();
   const panelVisible = showCopilot && intelligencePanel.isOpen && intelligencePanel.canShowPanel;
+
+  // Horizontal swipe navigation between Home/Governance/You (mobile only)
+  useSwipeNavigation(mobileGestures && !isStudioMode);
 
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -265,6 +272,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
             </footer>
           )}
           {!isStudioMode && <GovernadaBottomNav />}
+          {!isStudioMode && mobileGestures && <EdgeSwipeMenu enabled={mobileGestures} />}
           <FeedbackWidget />
           <ShortcutOverlay />
         </ShortcutProvider>

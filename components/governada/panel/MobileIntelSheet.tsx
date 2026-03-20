@@ -66,9 +66,9 @@ const VELOCITY_THRESHOLD = 300;
 /** Spring config for native-feeling transitions */
 const SPRING_CONFIG = {
   type: 'spring' as const,
-  damping: 30,
-  stiffness: 350,
-  mass: 0.8,
+  damping: 28,
+  stiffness: 320,
+  mass: 0.7,
 };
 
 // ---------------------------------------------------------------------------

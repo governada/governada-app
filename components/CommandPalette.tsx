@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Command } from 'cmdk';
 import { useRouter, usePathname } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, ArrowRight, Clock } from 'lucide-react';
+import { Search, ArrowRight, Clock, Bot } from 'lucide-react';
 import { useWallet } from '@/utils/wallet';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useEpochContext } from '@/hooks/useEpochContext';
@@ -13,6 +13,9 @@ import { useLocale } from '@/components/providers/LocaleProvider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SUPPORTED_LOCALES, LOCALE_NAMES, type SupportedLocale } from '@/lib/i18n/config';
 import { getStoredSession } from '@/lib/supabaseAuth';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { isConversationalQuery } from '@/lib/intelligence/advisor';
+import { ConversationThread } from '@/components/commandpalette/ConversationThread';
 import type { GovernanceDepth } from '@/lib/governanceTuner';
 import { cn } from '@/lib/utils';
 import {
@@ -76,6 +79,8 @@ function useTrackDestinations() {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [conversationalMode, setConversationalMode] = useState(false);
+  const [conversationalQuery, setConversationalQuery] = useState('');
   const router = useRouter();
   const { t } = useTranslation();
   const { isAuthenticated, logout } = useWallet();
@@ -84,9 +89,28 @@ export function CommandPalette() {
   const { depth } = useGovernanceDepth();
   const { locale, setLocale } = useLocale();
   const queryClient = useQueryClient();
+  const conversationalNavEnabled = useFeatureFlag('conversational_nav');
 
   // Track page visits for recent destinations
   useTrackDestinations();
+
+  // Reset conversational mode when palette closes
+  useEffect(() => {
+    if (!open) {
+      setConversationalMode(false);
+      setConversationalQuery('');
+    }
+  }, [open]);
+
+  // Listen for closeCommandPalette events (from AI response entity cards)
+  useEffect(() => {
+    const handler = () => {
+      setOpen(false);
+      setQuery('');
+    };
+    window.addEventListener('closeCommandPalette', handler);
+    return () => window.removeEventListener('closeCommandPalette', handler);
+  }, []);
 
   // Recent destinations state — refreshed when palette opens
   const [recentItems, setRecentItems] = useState<RecentDestination[]>([]);
@@ -257,6 +281,25 @@ export function CommandPalette() {
     activeProposalCount !== null ? `${activeProposalCount} active proposals` : '';
   const contextLine = [epochLabel, timeLabel, proposalLabel].filter(Boolean).join(' \u00B7 ');
 
+  // ── Conversational query detection ────────────────────────────────────
+  const isQueryConversational =
+    conversationalNavEnabled && q.length >= 8 && isConversationalQuery(q);
+
+  // Activate conversational mode on Enter when query looks like a question
+  const handleConversationalSubmit = useCallback(() => {
+    if (isQueryConversational && !conversationalMode) {
+      setConversationalQuery(query.trim());
+      setConversationalMode(true);
+      setQuery('');
+    }
+  }, [isQueryConversational, conversationalMode, query]);
+
+  // Exit conversational mode back to search
+  const handleExitConversational = useCallback(() => {
+    setConversationalMode(false);
+    setConversationalQuery('');
+  }, []);
+
   // ── Select handler ─────────────────────────────────────────────────────
   const onSelect = useCallback(
     (item: CommandItem) => {
@@ -303,231 +346,291 @@ export function CommandPalette() {
             {contextLine}
           </div>
 
-          {/* Input */}
-          <div className="flex items-center gap-3 border-b border-border/50 px-4">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-            <Command.Input
-              value={query}
-              onValueChange={setQuery}
-              placeholder={t('Search DReps, proposals, pages...')}
-              className="flex-1 h-12 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          {/* Conversational mode — show AI thread instead of command list */}
+          {conversationalMode ? (
+            <ConversationThread
+              initialQuery={conversationalQuery}
+              onExit={handleExitConversational}
+              onClose={() => setOpen(false)}
             />
-            <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border/50 bg-muted/50 px-1.5 font-mono text-[10px] text-muted-foreground">
-              ESC
-            </kbd>
-          </div>
+          ) : (
+            <>
+              {/* Input */}
+              <div className="flex items-center gap-3 border-b border-border/50 px-4">
+                {isQueryConversational ? (
+                  <Bot className="h-4 w-4 text-primary shrink-0" />
+                ) : (
+                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+                <Command.Input
+                  value={query}
+                  onValueChange={setQuery}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' && isQueryConversational) {
+                      e.preventDefault();
+                      handleConversationalSubmit();
+                    }
+                  }}
+                  placeholder={t('Search DReps, proposals, pages...')}
+                  className="flex-1 h-12 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                />
+                {isQueryConversational && (
+                  <span className="text-[10px] text-primary font-medium whitespace-nowrap">
+                    &#8629; Ask AI
+                  </span>
+                )}
+                <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border/50 bg-muted/50 px-1.5 font-mono text-[10px] text-muted-foreground">
+                  ESC
+                </kbd>
+              </div>
 
-          {/* Results */}
-          <Command.List className="max-h-[360px] overflow-y-auto p-2">
-            <Command.Empty className="py-8 text-center text-sm text-muted-foreground">
-              {t('No results found.')}
-            </Command.Empty>
-
-            {/* Recent destinations (empty query only) */}
-            {visibleRecents.length > 0 && (
-              <Command.Group heading={t('Recent')} className={groupCls}>
-                {visibleRecents.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Command.Item
-                      key={item.id}
-                      value={item.id}
-                      onSelect={() => onSelect(item)}
-                      className={itemCls}
+              {/* Results */}
+              <Command.List className="max-h-[360px] overflow-y-auto p-2">
+                <Command.Empty className="py-8 text-center text-sm text-muted-foreground">
+                  {isQueryConversational ? (
+                    <button
+                      onClick={handleConversationalSubmit}
+                      className="flex flex-col items-center gap-2 mx-auto hover:text-foreground transition-colors"
                     >
-                      {Icon && <Icon className="h-4 w-4 text-muted-foreground/60 shrink-0" />}
-                      <span className="flex-1 truncate">{item.label}</span>
-                      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                    </Command.Item>
-                  );
-                })}
-              </Command.Group>
-            )}
-
-            {/* DRep results */}
-            {drepResults.length > 0 && (
-              <Command.Group heading={t('DReps')} className={groupCls}>
-                {drepResults.map((item) => (
-                  <Command.Item
-                    key={item.id}
-                    value={item.id}
-                    onSelect={() => onSelect(item)}
-                    className={cn(itemCls, 'py-2.5')}
-                  >
-                    {item.score !== undefined && (
-                      <span className="inline-flex items-center justify-center h-6 w-6 rounded text-[10px] font-bold font-mono bg-primary/10 text-primary shrink-0">
-                        {item.score}
+                      <Bot className="h-6 w-6 text-primary" />
+                      <span>
+                        Press{' '}
+                        <kbd className="font-mono bg-muted px-1 py-0.5 rounded text-xs">Enter</kbd>{' '}
+                        to ask the Governance Advisor
                       </span>
-                    )}
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {item.sublabel && (
-                      <span className="text-xs text-muted-foreground font-mono">
-                        ${item.sublabel}
+                    </button>
+                  ) : (
+                    t('No results found.')
+                  )}
+                </Command.Empty>
+
+                {/* Recent destinations (empty query only) */}
+                {visibleRecents.length > 0 && (
+                  <Command.Group heading={t('Recent')} className={groupCls}>
+                    {visibleRecents.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Command.Item
+                          key={item.id}
+                          value={item.id}
+                          onSelect={() => onSelect(item)}
+                          className={itemCls}
+                        >
+                          {Icon && <Icon className="h-4 w-4 text-muted-foreground/60 shrink-0" />}
+                          <span className="flex-1 truncate">{item.label}</span>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                )}
+
+                {/* DRep results */}
+                {drepResults.length > 0 && (
+                  <Command.Group heading={t('DReps')} className={groupCls}>
+                    {drepResults.map((item) => (
+                      <Command.Item
+                        key={item.id}
+                        value={item.id}
+                        onSelect={() => onSelect(item)}
+                        className={cn(itemCls, 'py-2.5')}
+                      >
+                        {item.score !== undefined && (
+                          <span className="inline-flex items-center justify-center h-6 w-6 rounded text-[10px] font-bold font-mono bg-primary/10 text-primary shrink-0">
+                            {item.score}
+                          </span>
+                        )}
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {item.sublabel && (
+                          <span className="text-xs text-muted-foreground font-mono">
+                            ${item.sublabel}
+                          </span>
+                        )}
+                        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
+
+                {/* Proposal results */}
+                {proposalResults.length > 0 && (
+                  <Command.Group heading={t('Proposals')} className={groupCls}>
+                    {proposalResults.map((item) => (
+                      <Command.Item
+                        key={item.id}
+                        value={item.id}
+                        onSelect={() => onSelect(item)}
+                        className={cn(itemCls, 'py-2.5')}
+                      >
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {item.sublabel && (
+                          <span className="text-xs text-muted-foreground capitalize">
+                            {item.sublabel}
+                          </span>
+                        )}
+                        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
+
+                {/* Governance actions (persona-specific) */}
+                {visibleGovActions.length > 0 && (
+                  <Command.Group heading={t('Governance')} className={groupCls}>
+                    {visibleGovActions.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Command.Item
+                          key={item.id}
+                          value={`${item.id} ${item.label}`}
+                          onSelect={() => onSelect(item)}
+                          className={itemCls}
+                        >
+                          {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">{t(item.label)}</span>
+                          {item.sublabel && (
+                            <span className="text-xs text-muted-foreground truncate max-w-[160px]">
+                              {t(item.sublabel)}
+                            </span>
+                          )}
+                          <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                )}
+
+                {/* Pages */}
+                {visiblePages.length > 0 && (
+                  <Command.Group heading={t('Pages')} className={groupCls}>
+                    {visiblePages.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Command.Item
+                          key={item.id}
+                          value={`${item.id} ${item.label}`}
+                          onSelect={() => onSelect(item)}
+                          className={itemCls}
+                        >
+                          {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">{t(item.label)}</span>
+                          {item.shortcut && (
+                            <kbd className="ml-auto text-[10px] text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded font-mono">
+                              {item.shortcut}
+                            </kbd>
+                          )}
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                )}
+
+                {/* Help */}
+                {visibleHelp.length > 0 && (
+                  <Command.Group heading={t('Help')} className={groupCls}>
+                    {visibleHelp.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Command.Item
+                          key={item.id}
+                          value={`${item.id} ${item.label}`}
+                          onSelect={() => onSelect(item)}
+                          className={itemCls}
+                        >
+                          {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">{t(item.label)}</span>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                )}
+
+                {/* Actions */}
+                {visibleActions.length > 0 && (
+                  <Command.Group heading={t('Actions')} className={groupCls}>
+                    {visibleActions.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Command.Item
+                          key={item.id}
+                          value={`${item.id} ${item.label}`}
+                          onSelect={() => onSelect(item)}
+                          className={itemCls}
+                        >
+                          {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">{t(item.label)}</span>
+                          {item.shortcut && (
+                            <kbd className="ml-auto text-[10px] text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded font-mono">
+                              {item.shortcut}
+                            </kbd>
+                          )}
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                )}
+
+                {/* Settings (depth + language — shown only when searching) */}
+                {visibleSettings.length > 0 && (
+                  <Command.Group heading={t('Settings')} className={groupCls}>
+                    {visibleSettings.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Command.Item
+                          key={item.id}
+                          value={`${item.id} ${item.label}`}
+                          onSelect={() => onSelect(item)}
+                          className={itemCls}
+                        >
+                          {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">{t(item.label)}</span>
+                          {item.sublabel && (
+                            <span className="text-xs text-muted-foreground truncate max-w-[160px]">
+                              {t(item.sublabel)}
+                            </span>
+                          )}
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                )}
+
+                {/* AI Advisor suggestion — shown when query looks conversational */}
+                {isQueryConversational && (
+                  <Command.Group heading="AI Advisor" className={groupCls}>
+                    <Command.Item
+                      value="ask-advisor"
+                      onSelect={handleConversationalSubmit}
+                      className={cn(itemCls, 'border border-primary/20 bg-primary/5')}
+                    >
+                      <Bot className="h-4 w-4 text-primary shrink-0" />
+                      <span className="flex-1 text-primary">
+                        Ask: &ldquo;{query.trim().slice(0, 60)}
+                        {query.trim().length > 60 ? '...' : ''}&rdquo;
                       </span>
-                    )}
-                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                  </Command.Item>
-                ))}
-              </Command.Group>
-            )}
-
-            {/* Proposal results */}
-            {proposalResults.length > 0 && (
-              <Command.Group heading={t('Proposals')} className={groupCls}>
-                {proposalResults.map((item) => (
-                  <Command.Item
-                    key={item.id}
-                    value={item.id}
-                    onSelect={() => onSelect(item)}
-                    className={cn(itemCls, 'py-2.5')}
-                  >
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {item.sublabel && (
-                      <span className="text-xs text-muted-foreground capitalize">
-                        {item.sublabel}
-                      </span>
-                    )}
-                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                  </Command.Item>
-                ))}
-              </Command.Group>
-            )}
-
-            {/* Governance actions (persona-specific) */}
-            {visibleGovActions.length > 0 && (
-              <Command.Group heading={t('Governance')} className={groupCls}>
-                {visibleGovActions.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Command.Item
-                      key={item.id}
-                      value={`${item.id} ${item.label}`}
-                      onSelect={() => onSelect(item)}
-                      className={itemCls}
-                    >
-                      {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <span className="flex-1">{t(item.label)}</span>
-                      {item.sublabel && (
-                        <span className="text-xs text-muted-foreground truncate max-w-[160px]">
-                          {t(item.sublabel)}
-                        </span>
-                      )}
-                      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <kbd className="text-[10px] text-primary/60 bg-primary/10 px-1.5 py-0.5 rounded font-mono">
+                        &#8629;
+                      </kbd>
                     </Command.Item>
-                  );
-                })}
-              </Command.Group>
-            )}
+                  </Command.Group>
+                )}
+              </Command.List>
 
-            {/* Pages */}
-            {visiblePages.length > 0 && (
-              <Command.Group heading={t('Pages')} className={groupCls}>
-                {visiblePages.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Command.Item
-                      key={item.id}
-                      value={`${item.id} ${item.label}`}
-                      onSelect={() => onSelect(item)}
-                      className={itemCls}
-                    >
-                      {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <span className="flex-1">{t(item.label)}</span>
-                      {item.shortcut && (
-                        <kbd className="ml-auto text-[10px] text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded font-mono">
-                          {item.shortcut}
-                        </kbd>
-                      )}
-                    </Command.Item>
-                  );
-                })}
-              </Command.Group>
-            )}
-
-            {/* Help */}
-            {visibleHelp.length > 0 && (
-              <Command.Group heading={t('Help')} className={groupCls}>
-                {visibleHelp.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Command.Item
-                      key={item.id}
-                      value={`${item.id} ${item.label}`}
-                      onSelect={() => onSelect(item)}
-                      className={itemCls}
-                    >
-                      {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <span className="flex-1">{t(item.label)}</span>
-                      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                    </Command.Item>
-                  );
-                })}
-              </Command.Group>
-            )}
-
-            {/* Actions */}
-            {visibleActions.length > 0 && (
-              <Command.Group heading={t('Actions')} className={groupCls}>
-                {visibleActions.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Command.Item
-                      key={item.id}
-                      value={`${item.id} ${item.label}`}
-                      onSelect={() => onSelect(item)}
-                      className={itemCls}
-                    >
-                      {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <span className="flex-1">{t(item.label)}</span>
-                      {item.shortcut && (
-                        <kbd className="ml-auto text-[10px] text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded font-mono">
-                          {item.shortcut}
-                        </kbd>
-                      )}
-                    </Command.Item>
-                  );
-                })}
-              </Command.Group>
-            )}
-
-            {/* Settings (depth + language — shown only when searching) */}
-            {visibleSettings.length > 0 && (
-              <Command.Group heading={t('Settings')} className={groupCls}>
-                {visibleSettings.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Command.Item
-                      key={item.id}
-                      value={`${item.id} ${item.label}`}
-                      onSelect={() => onSelect(item)}
-                      className={itemCls}
-                    >
-                      {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <span className="flex-1">{t(item.label)}</span>
-                      {item.sublabel && (
-                        <span className="text-xs text-muted-foreground truncate max-w-[160px]">
-                          {t(item.sublabel)}
-                        </span>
-                      )}
-                    </Command.Item>
-                  );
-                })}
-              </Command.Group>
-            )}
-          </Command.List>
-
-          {/* Footer */}
-          <div
-            className="flex items-center justify-between border-t border-border/50 px-4 py-2 text-[10px] text-muted-foreground"
-            aria-hidden="true"
-          >
-            <span>
-              <kbd className="font-mono">&#8593;&#8595;</kbd> {t('Navigate')}{' '}
-              <kbd className="font-mono">&#8629;</kbd> {t('Select')}{' '}
-              <kbd className="font-mono">esc</kbd> {t('Close')}
-            </span>
-            <span className="font-mono text-primary/60">$governada</span>
-          </div>
+              {/* Footer */}
+              <div
+                className="flex items-center justify-between border-t border-border/50 px-4 py-2 text-[10px] text-muted-foreground"
+                aria-hidden="true"
+              >
+                <span>
+                  <kbd className="font-mono">&#8593;&#8595;</kbd> {t('Navigate')}{' '}
+                  <kbd className="font-mono">&#8629;</kbd> {t('Select')}{' '}
+                  <kbd className="font-mono">esc</kbd> {t('Close')}
+                </span>
+                <span className="font-mono text-primary/60">$governada</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </Command.Dialog>

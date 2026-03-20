@@ -34,6 +34,7 @@
  * peek_drawer                    — Entity peek drawer on list pages (Phase 3 nav renaissance)
  * keyboard_shortcuts              — Global keyboard shortcut system with chords and help overlay (Phase 8)
  * governance_copilot               — Right-side intelligence panel with AI governance briefings (Phase 5)
+ * conversational_nav               — Governance advisor in command palette (Phase 9 nav renaissance)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

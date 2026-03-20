@@ -65,7 +65,9 @@ export function GovernadaBottomNav() {
                       'relative flex flex-col items-center justify-center gap-0.5 px-2 transition-colors [touch-action:manipulation]',
                       'min-h-[48px] min-w-[44px]',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
-                      active ? 'text-primary' : 'text-muted-foreground active:text-foreground',
+                      active
+                        ? 'text-primary'
+                        : 'text-muted-foreground active:text-foreground active:scale-95 transition-transform',
                     )}
                     aria-current={active ? 'page' : undefined}
                     aria-label={t(label)}

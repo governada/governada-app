@@ -400,7 +400,12 @@ export function CommandPalette() {
                       </span>
                     </button>
                   ) : (
-                    t('No results found.')
+                    <span className="flex flex-col items-center gap-1">
+                      <span>{t('No results found.')}</span>
+                      <span className="text-xs text-muted-foreground/50">
+                        {t('Try a DRep name, proposal title, or governance term')}
+                      </span>
+                    </span>
                   )}
                 </Command.Empty>
 

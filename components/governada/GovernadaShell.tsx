@@ -13,6 +13,7 @@ import { NavigationRail } from './NavigationRail';
 import { EdgeSwipeMenu } from './EdgeSwipeMenu';
 import { ShortcutProvider } from './ShortcutProvider';
 import { ShortcutOverlay } from './ShortcutOverlay';
+import { SectionTransition } from './SectionTransition';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { SyncFreshnessBanner } from '@/components/SyncFreshnessBanner';
@@ -120,7 +121,10 @@ function BackgroundGlobe({
         'force-dark fixed inset-0 pointer-events-none z-0 constellation-globe-container',
         useRail
           ? 'lg:left-12'
-          : cn('transition-[left] duration-200', sidebarCollapsed ? 'lg:left-16' : 'lg:left-60'),
+          : cn(
+              'transition-[left] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]',
+              sidebarCollapsed ? 'lg:left-16' : 'lg:left-60',
+            ),
       )}
       aria-hidden="true"
       style={
@@ -232,14 +236,14 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
                     : navigationRail
                       ? 'lg:pl-12'
                       : cn(
-                          'transition-[padding-left] duration-200',
+                          'transition-[padding-left] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]',
                           sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
                         ),
                 )}
                 style={panelVisible ? { paddingRight: intelligencePanel.panelWidth } : undefined}
                 tabIndex={-1}
               >
-                {children}
+                {isStudioMode ? children : <SectionTransition>{children}</SectionTransition>}
               </main>
               {!isStudioMode && <EngagementNudge />}
               {!isStudioMode && <MilestoneTrigger />}
@@ -261,7 +265,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
                 navigationRail
                   ? 'lg:pl-12'
                   : cn(
-                      'transition-[padding-left] duration-200',
+                      'transition-[padding-left] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]',
                       sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60',
                     ),
               )}

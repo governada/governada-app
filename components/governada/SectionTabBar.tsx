@@ -40,7 +40,7 @@ export function SectionTabBar({ section: _section }: SectionTabBarProps) {
   return (
     <div className="sticky top-0 md:top-10 z-20 border-b border-border/10 bg-background/40 backdrop-blur-xl pt-[env(safe-area-inset-top)] md:pt-0">
       <nav
-        className="flex items-center gap-1 px-4 lg:px-6 h-10 overflow-x-auto scrollbar-none"
+        className="flex items-center gap-1 px-4 lg:px-6 h-10 overflow-x-auto scrollbar-none [mask-image:linear-gradient(to_right,transparent_0%,black_16px,black_calc(100%-16px),transparent_100%)]"
         aria-label="Section navigation"
       >
         <LayoutGroup id="section-tabs">
@@ -62,6 +62,12 @@ export function SectionTabBar({ section: _section }: SectionTabBarProps) {
               >
                 {t(item.label)}
                 {count && <span className="text-xs text-muted-foreground/60 ml-1.5">{count}</span>}
+                {!active && item.sublabelKey && metrics[item.sublabelKey] && (
+                  <span
+                    className="ml-1 inline-block w-1 h-1 rounded-full bg-primary/60"
+                    aria-hidden="true"
+                  />
+                )}
                 {active &&
                   (prefersReducedMotion ? (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />

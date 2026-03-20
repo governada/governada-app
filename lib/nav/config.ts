@@ -118,7 +118,7 @@ export const WORKSPACE_DREP_ITEMS: NavItem[] = [
     icon: FileText,
     sublabelKey: 'workspace.pendingReview',
   },
-  { href: '/workspace/author', label: 'Author', icon: PenLine },
+  { href: '/workspace/author', label: 'Author', icon: PenLine, sublabelKey: 'workspace.drafts' },
   {
     href: '/workspace/votes',
     label: 'Voting Record',
@@ -149,7 +149,7 @@ export const WORKSPACE_SPO_ITEMS: NavItem[] = [
     icon: FileText,
     sublabelKey: 'workspace.pendingReview',
   },
-  { href: '/workspace/author', label: 'Author', icon: PenLine },
+  { href: '/workspace/author', label: 'Author', icon: PenLine, sublabelKey: 'workspace.drafts' },
   { href: '/workspace/pool-profile', label: 'Pool Profile', icon: Building },
   {
     href: '/workspace/delegators',
@@ -169,12 +169,6 @@ export const WORKSPACE_CITIZEN_ITEMS: NavItem[] = [
   { href: '/workspace/review', label: 'Review', icon: FileText },
 ];
 
-// Legacy aliases — kept for any code that still references the old names.
-// These now point at the workspace definitions (identical content, new ordering).
-export const HOME_DREP_ITEMS = WORKSPACE_DREP_ITEMS;
-export const HOME_SPO_ITEMS = WORKSPACE_SPO_ITEMS;
-export const HOME_CITIZEN_ITEMS = WORKSPACE_CITIZEN_ITEMS;
-
 export const GOVERNANCE_ITEMS: NavItem[] = [
   {
     href: '/governance/proposals',
@@ -188,8 +182,8 @@ export const GOVERNANCE_ITEMS: NavItem[] = [
     icon: Users,
     sublabelKey: 'gov.activeDreps',
   },
-  { href: '/governance/pools', label: 'Pools', icon: Building2 },
-  { href: '/governance/committee', label: 'Committee', icon: Shield },
+  { href: '/governance/pools', label: 'Pools', icon: Building2, sublabelKey: 'gov.activePools' },
+  { href: '/governance/committee', label: 'Committee', icon: Shield, sublabelKey: 'gov.ccMembers' },
   {
     href: '/governance/treasury',
     label: 'Treasury',
@@ -551,3 +545,14 @@ export function getCurrentSection(pathname: string): string | null {
   if (pathname.startsWith('/help')) return 'help';
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Section-level metric keys — used by NavigationRail for rich tooltips
+// ---------------------------------------------------------------------------
+
+/** Maps section IDs to the primary sidebar-metric key for that section's summary. */
+export const SECTION_METRIC_KEYS: Record<string, string> = {
+  workspace: 'workspace.pendingVotes',
+  governance: 'gov.activeProposals',
+  you: 'you.drepScore',
+};

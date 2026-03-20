@@ -65,7 +65,9 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
           'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
           'hover:bg-accent hover:text-accent-foreground',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-          active ? 'bg-accent text-foreground' : 'text-muted-foreground',
+          active
+            ? 'bg-accent text-foreground shadow-[0_0_12px_rgba(var(--primary-rgb,59,130,246),0.15)]'
+            : 'text-muted-foreground',
           collapsed && 'justify-center px-0',
         )}
         aria-current={active ? 'page' : undefined}
@@ -92,11 +94,13 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
         {!collapsed && (
           <span className="flex flex-col min-w-0">
             <span className="truncate">{t(item.label)}</span>
-            {sublabel && (
+            {sublabel ? (
               <span className="text-[10px] text-muted-foreground/60 truncate leading-tight">
                 {sublabel}
               </span>
-            )}
+            ) : item.sublabelKey ? (
+              <span className="h-2.5 w-10 bg-muted/20 rounded animate-pulse" />
+            ) : null}
           </span>
         )}
       </Link>
@@ -143,24 +147,41 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
   return (
     <aside
       className={cn(
-        'hidden lg:flex flex-col fixed left-0 top-10 bottom-0 z-30 border-r border-border/20 bg-background/60 backdrop-blur-xl transition-[width] duration-200',
+        'hidden lg:flex flex-col fixed left-0 top-10 bottom-0 z-30 border-r border-border/20 bg-background/60 backdrop-blur-xl transition-[width] duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]',
         collapsed ? 'w-16' : 'w-60',
       )}
     >
       <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="Sidebar navigation">
         <LayoutGroup id="sidebar-nav">
           {sections.map((section, sectionIdx) => (
-            <div key={section.id} className={cn(sectionIdx > 0 && 'mt-4')}>
+            <div
+              key={section.id}
+              className={cn(sectionIdx > 0 && 'mt-4 pt-3 border-t border-border/10')}
+            >
               {/* Section header / single link */}
               {section.items || section.groups ? (
                 <>
-                  {/* Section label — clickable for Home (navigates to /) */}
+                  {/* Section label — clickable, with contextual sub-label */}
                   {!collapsed && (
-                    <Link
-                      href={section.href}
-                      className="block px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-                    >
-                      {t(section.label)}
+                    <Link href={section.href} className="block px-3 py-1.5 group">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
+                        {t(section.label)}
+                      </span>
+                      {section.id === 'workspace' && (
+                        <span className="block text-[9px] text-muted-foreground/40 leading-tight">
+                          {t('Your actions')}
+                        </span>
+                      )}
+                      {section.id === 'governance' && (
+                        <span className="block text-[9px] text-muted-foreground/40 leading-tight">
+                          {t("What's happening")}
+                        </span>
+                      )}
+                      {section.id === 'you' && (
+                        <span className="block text-[9px] text-muted-foreground/40 leading-tight">
+                          {t('Your identity')}
+                        </span>
+                      )}
                     </Link>
                   )}
                   {collapsed && (

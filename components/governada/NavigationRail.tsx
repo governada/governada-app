@@ -17,9 +17,10 @@ import { usePathname } from 'next/navigation';
 import { motion, LayoutGroup, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { getSidebarSections, getCurrentSection } from '@/lib/nav/config';
+import { getSidebarSections, getCurrentSection, SECTION_METRIC_KEYS } from '@/lib/nav/config';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { usePinnedItems, type PinnedEntityType } from '@/hooks/usePinnedItems';
+import { useSidebarMetrics } from '@/hooks/useSidebarMetrics';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { User, FileText, Building2, Shield } from 'lucide-react';
@@ -73,6 +74,7 @@ export function NavigationRail() {
   const { depth } = useGovernanceDepth();
   const prefersReducedMotion = useReducedMotion();
   const { pinnedItems } = usePinnedItems();
+  const metrics = useSidebarMetrics();
 
   const isDelegated = !!(delegatedDrep || delegatedPool);
   const sections = getSidebarSections({ segment, drepId, poolId, depth, isDelegated });
@@ -109,9 +111,15 @@ export function NavigationRail() {
             {sections.map((section) => {
               const isActive = currentSection === section.id;
               const shortcut = SECTION_SHORTCUTS[section.id] ?? '';
-              const tooltipLabel = shortcut
-                ? `${t(section.label)} \u00B7 ${shortcut}`
-                : t(section.label);
+              const metricKey = SECTION_METRIC_KEYS[section.id];
+              const metricValue = metricKey ? metrics[metricKey] : undefined;
+              const tooltipLabel = [
+                t(section.label),
+                metricValue ? `— ${metricValue}` : null,
+                shortcut ? `· ${shortcut}` : null,
+              ]
+                .filter(Boolean)
+                .join(' ');
               const ariaLabel = shortcut ? `${t(section.label)} (${shortcut})` : t(section.label);
 
               return (
@@ -129,7 +137,7 @@ export function NavigationRail() {
                       aria-label={ariaLabel}
                       aria-current={isActive ? 'page' : undefined}
                     >
-                      <section.icon className="h-5 w-5" />
+                      <section.icon className="h-[22px] w-[22px]" />
 
                       {/* Active indicator dot */}
                       {isActive &&

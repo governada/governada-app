@@ -1,10 +1,30 @@
 'use client';
 
+import { createContext, useContext } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { cn } from '@/lib/utils';
+
+/**
+ * Context for entity pages to inject a human-readable name into the breadcrumb.
+ * E.g., a DRep profile page sets entityName="Ada Lovelace" so the breadcrumb
+ * shows "Representatives > Ada Lovelace" instead of just "Representatives > DRep".
+ */
+const BreadcrumbEntityContext = createContext<string | null>(null);
+
+export function BreadcrumbEntityProvider({
+  name,
+  children,
+}: {
+  name: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <BreadcrumbEntityContext.Provider value={name}>{children}</BreadcrumbEntityContext.Provider>
+  );
+}
 
 const ROUTE_LABELS: Record<string, string> = {
   governance: 'Governance',
@@ -65,8 +85,18 @@ function buildBreadcrumbs(pathname: string): BreadcrumbSegment[] {
 export function HeaderBreadcrumbs() {
   const pathname = usePathname();
   const { t } = useTranslation();
+  const entityName = useContext(BreadcrumbEntityContext);
 
   const segments = buildBreadcrumbs(pathname);
+
+  // If an entity page provides a name, append it as the final breadcrumb segment
+  if (entityName && segments.length > 0) {
+    const lastSegment = segments[segments.length - 1];
+    // Only append if the last segment is a generic route label (not already the entity name)
+    if (lastSegment && ROUTE_LABELS[lastSegment.label.toLowerCase()]) {
+      segments.push({ label: entityName, href: pathname });
+    }
+  }
 
   if (segments.length === 0) return null;
 

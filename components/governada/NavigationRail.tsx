@@ -22,6 +22,7 @@ import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { usePinnedItems, type PinnedEntityType } from '@/hooks/usePinnedItems';
 import { useSidebarMetrics } from '@/hooks/useSidebarMetrics';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { GovernadaLogo } from '@/components/ui/GovernadaLogo';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { User, FileText, Building2, Shield } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -98,7 +99,7 @@ export function NavigationRail() {
           className="flex items-center justify-center w-12 h-10 shrink-0 text-foreground hover:bg-accent/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
           aria-label="Governada home"
         >
-          <span className="font-display text-sm font-bold tracking-tight">g</span>
+          <GovernadaLogo size={20} />
         </Link>
 
         {/* Navigation icons */}

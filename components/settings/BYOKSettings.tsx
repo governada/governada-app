@@ -222,16 +222,25 @@ export function BYOKSettings() {
       </div>
       <div className="px-5 py-4 space-y-4">
         {isLoading && (
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-16 hidden sm:block" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-8 w-14" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
           </div>
         )}
 
         {!isLoading && !hasKeys && !showForm && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Add your own API key to use your preferred AI provider. Your key is encrypted at rest
-              and never leaves the server.
+              Bring your own AI. Your key, your model, your data stays private.
             </p>
             <Button
               variant="outline"

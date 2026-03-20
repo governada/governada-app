@@ -16,6 +16,7 @@ import { PortfolioStats } from '@/components/workspace/shared/PortfolioStats';
 import { TriageSummary } from '@/components/workspace/shared/TriageSummary';
 import type { TriageInsight } from '@/components/workspace/shared/TriageSummary';
 import { ReviewCard } from './ReviewCard';
+import { ReviewTableRow } from './ReviewTableRow';
 import type { ReviewCardVariant } from './ReviewCard';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -487,26 +488,26 @@ export function ReviewPortfolio() {
           </div>
         </div>
       ) : (
-        <div className="space-y-6" {...listProps}>
-          <ListGroup
+        <div className="space-y-1" {...listProps}>
+          <ReviewTableGroup
             column="feedback"
             drafts={filteredGroups.feedback}
             flatOffset={groupOffsets.feedback}
             getItemProps={getItemProps}
           />
-          <ListGroup
+          <ReviewTableGroup
             column="voting"
             proposals={filteredGroups.voting}
             flatOffset={groupOffsets.voting}
             getItemProps={getItemProps}
           />
-          {filteredGroups.completed.length > 0 && (
-            <CollapsibleCompletedSection
-              proposals={filteredGroups.completed}
-              flatOffset={groupOffsets.completed}
-              getItemProps={getItemProps}
-            />
-          )}
+          <ReviewTableGroup
+            column="completed"
+            proposals={filteredGroups.completed}
+            flatOffset={groupOffsets.completed}
+            getItemProps={getItemProps}
+            defaultCollapsed
+          />
         </div>
       )}
     </div>
@@ -591,108 +592,83 @@ function KanbanColumn({ column, drafts, proposals, flatOffset, getItemProps }: K
 }
 
 // ---------------------------------------------------------------------------
-// List Group
+// Table Group (Linear-style stacked rows with collapsible header)
 // ---------------------------------------------------------------------------
 
-interface ListGroupProps {
+interface ReviewTableGroupProps {
   column: ReviewColumnType;
   drafts?: ProposalDraft[];
   proposals?: ReviewQueueItem[];
   flatOffset: number;
   getItemProps: (index: number) => Record<string, unknown>;
+  defaultCollapsed?: boolean;
 }
 
-function ListGroup({ column, drafts, proposals, flatOffset, getItemProps }: ListGroupProps) {
-  const meta = COLUMN_META[column];
-  const count = (drafts?.length ?? 0) + (proposals?.length ?? 0);
-  const Icon = meta.icon;
-
-  return (
-    <div data-column={column}>
-      {/* Group header */}
-      <div className="flex items-center gap-2 mb-3 border-b border-border pb-2">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-medium text-muted-foreground">{meta.label}</h3>
-        <Badge variant="secondary" className="text-xs tabular-nums">
-          {count}
-        </Badge>
-      </div>
-
-      {/* Group content */}
-      {count === 0 ? (
-        <EmptyColumnState title={meta.emptyTitle} description={meta.emptyDescription} />
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 'var(--workspace-gap)' }}>
-          {drafts?.map((draft, i) => (
-            <ReviewCard
-              key={draft.id}
-              variant="feedback"
-              draft={draft}
-              index={i}
-              itemProps={getItemProps(flatOffset + i)}
-            />
-          ))}
-          {proposals?.map((proposal, i) => (
-            <ReviewCard
-              key={`${proposal.txHash}-${proposal.proposalIndex}`}
-              variant={column === 'completed' ? 'completed' : 'voting'}
-              proposal={proposal}
-              index={i + (drafts?.length ?? 0)}
-              itemProps={getItemProps(flatOffset + (drafts?.length ?? 0) + i)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Collapsible Completed Section (list mode only — default collapsed)
-// ---------------------------------------------------------------------------
-
-interface CollapsibleCompletedSectionProps {
-  proposals: ReviewQueueItem[];
-  flatOffset: number;
-  getItemProps: (index: number) => Record<string, unknown>;
-}
-
-function CollapsibleCompletedSection({
+function ReviewTableGroup({
+  column,
+  drafts,
   proposals,
   flatOffset,
   getItemProps,
-}: CollapsibleCompletedSectionProps) {
-  const [expanded, setExpanded] = useState(false);
+  defaultCollapsed = false,
+}: ReviewTableGroupProps) {
+  const meta = COLUMN_META[column];
+  const count = (drafts?.length ?? 0) + (proposals?.length ?? 0);
+  const Icon = meta.icon;
+  const [expanded, setExpanded] = useState(!defaultCollapsed);
+
+  // Don't render empty groups when defaultCollapsed (completed with 0 items)
+  if (count === 0 && defaultCollapsed) return null;
+
+  const variant: ReviewCardVariant =
+    column === 'completed' ? 'completed' : column === 'voting' ? 'voting' : 'feedback';
 
   return (
-    <div data-column="completed">
+    <div data-column={column}>
+      {/* Group header — clickable to collapse */}
       <button
         onClick={() => setExpanded((prev) => !prev)}
-        className="flex items-center gap-2 mb-3 border-b border-border pb-2 w-full text-left"
+        className="flex items-center gap-2 w-full px-1 py-1.5 text-left hover:bg-accent/30 rounded transition-colors"
       >
         {expanded ? (
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
         )}
-        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">Completed</span>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">{meta.label}</span>
         <Badge variant="secondary" className="text-xs tabular-nums">
-          {proposals.length}
+          {count}
         </Badge>
       </button>
 
+      {/* Rows */}
       {expanded && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 'var(--workspace-gap)' }}>
-          {proposals.map((proposal, i) => (
-            <ReviewCard
-              key={`${proposal.txHash}-${proposal.proposalIndex}`}
-              variant="completed"
-              proposal={proposal}
-              index={i}
-              itemProps={getItemProps(flatOffset + i)}
-            />
-          ))}
+        <div className="border border-border/50 rounded-md overflow-hidden">
+          {count === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground/60">
+              {meta.emptyDescription}
+            </div>
+          ) : (
+            <>
+              {drafts?.map((draft, i) => (
+                <ReviewTableRow
+                  key={draft.id}
+                  variant="feedback"
+                  draft={draft}
+                  itemProps={getItemProps(flatOffset + i)}
+                />
+              ))}
+              {proposals?.map((proposal, i) => (
+                <ReviewTableRow
+                  key={`${proposal.txHash}-${proposal.proposalIndex}`}
+                  variant={variant}
+                  proposal={proposal}
+                  itemProps={getItemProps(flatOffset + (drafts?.length ?? 0) + i)}
+                />
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>

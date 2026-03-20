@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useEffect, useRef } from 'react';
+import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWorkspaceStore } from '@/lib/workspace/store';
 import { useFocusableList } from '@/hooks/useFocusableList';
@@ -10,8 +10,17 @@ import { commandRegistry } from '@/lib/workspace/commands';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, FileEdit, MessageSquare, Globe, Archive } from 'lucide-react';
+import {
+  FileText,
+  FileEdit,
+  MessageSquare,
+  Globe,
+  Archive,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import { DraftCard } from './DraftCard';
+import { DraftTableRow } from './DraftTableRow';
 import type { ProposalDraft, DraftStatus } from '@/lib/workspace/types';
 
 // ---------------------------------------------------------------------------
@@ -283,16 +292,16 @@ export function PortfolioView({ drafts, isLoading, showArchived }: PortfolioView
     );
   }
 
-  // List mode
+  // List mode — Linear-style stacked rows grouped by status
   const listColumns: ColumnType[] = ['drafts', 'inReview', 'onChain'];
   if (showArchived && groups.archived.length > 0) {
     listColumns.push('archived');
   }
 
   return (
-    <div className="space-y-6" {...listProps}>
+    <div className="space-y-1" {...listProps}>
       {listColumns.map((col) => (
-        <ListGroup
+        <TableGroup
           key={col}
           column={col}
           drafts={groups[col]}
@@ -354,45 +363,57 @@ function KanbanColumn({ column, drafts, flatOffset, getItemProps }: KanbanColumn
 }
 
 // ---------------------------------------------------------------------------
-// List Group
+// Table Group (Linear-style stacked rows with collapsible header)
 // ---------------------------------------------------------------------------
 
-interface ListGroupProps {
+interface TableGroupProps {
   column: ColumnType;
   drafts: ProposalDraft[];
   flatOffset: number;
   getItemProps: (index: number) => Record<string, unknown>;
 }
 
-function ListGroup({ column, drafts, flatOffset, getItemProps }: ListGroupProps) {
+function TableGroup({ column, drafts, flatOffset, getItemProps }: TableGroupProps) {
   const meta = COLUMN_META[column];
   const Icon = meta.icon;
+  const [expanded, setExpanded] = useState(true);
 
   return (
     <div data-column={column}>
-      {/* Group header */}
-      <div className="flex items-center gap-2 mb-3 border-b border-border pb-2">
+      {/* Group header — clickable to collapse */}
+      <button
+        onClick={() => setExpanded((prev) => !prev)}
+        className="flex items-center gap-2 w-full px-1 py-1.5 text-left hover:bg-accent/30 rounded transition-colors"
+      >
+        {expanded ? (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
         <Icon className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-medium text-muted-foreground">{meta.label}</h3>
+        <span className="text-sm font-medium text-muted-foreground">{meta.label}</span>
         <Badge variant="secondary" className="text-xs tabular-nums">
           {drafts.length}
         </Badge>
-      </div>
+      </button>
 
-      {/* Group content */}
-      {drafts.length === 0 ? (
-        <EmptyColumnState title={meta.emptyTitle} description={meta.emptyDescription} />
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 'var(--workspace-gap)' }}>
-          {drafts.map((draft, i) => (
-            <DraftCard
-              key={draft.id}
-              draft={draft}
-              index={i}
-              column={column}
-              itemProps={getItemProps(flatOffset + i)}
-            />
-          ))}
+      {/* Rows */}
+      {expanded && (
+        <div className="border border-border/50 rounded-md overflow-hidden">
+          {drafts.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground/60">
+              {meta.emptyDescription}
+            </div>
+          ) : (
+            drafts.map((draft, i) => (
+              <DraftTableRow
+                key={draft.id}
+                draft={draft}
+                column={column}
+                itemProps={getItemProps(flatOffset + i)}
+              />
+            ))
+          )}
         </div>
       )}
     </div>

@@ -17,6 +17,7 @@ import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { SidebarPinnedItems } from './SidebarPinnedItems';
 import { useSidebarMetrics } from '@/hooks/useSidebarMetrics';
 import { Button } from '@/components/ui/button';
+import { GovernadaLogo } from '@/components/ui/GovernadaLogo';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface GovernadaSidebarProps {
@@ -151,6 +152,22 @@ export function GovernadaSidebar({ collapsed, onToggle }: GovernadaSidebarProps)
         collapsed ? 'w-16' : 'w-60',
       )}
     >
+      {/* Brand mark */}
+      <Link
+        href="/"
+        className={cn(
+          'flex items-center h-10 shrink-0 border-b border-border/10 transition-all',
+          collapsed ? 'justify-center px-0' : 'gap-2 px-4',
+        )}
+      >
+        <GovernadaLogo size={20} />
+        {!collapsed && (
+          <span className="font-display text-sm font-bold tracking-tight text-foreground">
+            governada
+          </span>
+        )}
+      </Link>
+
       <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="Sidebar navigation">
         <LayoutGroup id="sidebar-nav">
           {sections.map((section, sectionIdx) => (

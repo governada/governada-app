@@ -48,7 +48,7 @@ interface SentimentResults {
  * JTBD: "Is there something I can weigh in on?"
  */
 export function EngagementCard() {
-  const { temperature, label: tempLabel } = useGovernanceTemperature();
+  const { label: tempLabel } = useGovernanceTemperature();
   const {
     data: pollsRaw,
     isLoading,

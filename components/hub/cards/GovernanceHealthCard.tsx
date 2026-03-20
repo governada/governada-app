@@ -64,11 +64,9 @@ export function GovernanceHealthCard() {
         ? 'text-amber-600 dark:text-amber-400'
         : 'text-red-600 dark:text-red-400';
 
-  // Find weakest and strongest active components (skip disabled ones with value 0 and weight 0)
+  // Active components sorted for breakdown display (weakest → strongest)
   const activeComponents = components.filter((c) => c.weight > 0);
   const sorted = [...activeComponents].sort((a, b) => a.value - b.value);
-  const weakest = sorted[0];
-  const strongest = sorted.at(-1);
 
   // Short component name for display
   const shortName = (name: string) =>

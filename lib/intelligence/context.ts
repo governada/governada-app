@@ -51,7 +51,17 @@ export interface SuggestedAction {
   priority: 'high' | 'medium' | 'low';
 }
 
-type RouteType = 'proposal' | 'drep' | 'hub' | 'governance' | 'list' | 'unknown';
+type RouteType =
+  | 'proposal'
+  | 'drep'
+  | 'hub'
+  | 'proposals-list'
+  | 'representatives-list'
+  | 'health'
+  | 'workspace'
+  | 'governance'
+  | 'list'
+  | 'unknown';
 
 // ---------------------------------------------------------------------------
 // Route detection
@@ -75,7 +85,25 @@ function parseRoute(pathname: string): ParsedRoute {
     return { type: 'drep', entityId: decodeURIComponent(drepMatch[1]) };
   }
 
-  // /governance or /governance/*
+  // Specific governance sub-pages
+  if (pathname === '/governance/proposals' || pathname === '/proposals') {
+    return { type: 'proposals-list' };
+  }
+  if (
+    pathname === '/governance/representatives' ||
+    pathname === '/representatives' ||
+    pathname === '/dreps'
+  ) {
+    return { type: 'representatives-list' };
+  }
+  if (pathname === '/governance/health') {
+    return { type: 'health' };
+  }
+  if (pathname.startsWith('/workspace')) {
+    return { type: 'workspace' };
+  }
+
+  // Generic governance pages
   if (pathname.startsWith('/governance')) {
     return { type: 'governance' };
   }
@@ -83,11 +111,6 @@ function parseRoute(pathname: string): ParsedRoute {
   // Hub / home
   if (pathname === '/' || pathname === '/hub') {
     return { type: 'hub' };
-  }
-
-  // List pages
-  if (pathname === '/dreps' || pathname === '/proposals') {
-    return { type: 'list' };
   }
 
   return { type: 'unknown' };
@@ -401,6 +424,610 @@ async function synthesizeHubContext(stakeAddress?: string): Promise<ContextSynth
 }
 
 // ---------------------------------------------------------------------------
+// Proposals List — voting urgency, controversial proposals, treasury patterns
+// ---------------------------------------------------------------------------
+
+async function synthesizeProposalsListContext(
+  stakeAddress?: string,
+): Promise<ContextSynthesisResult> {
+  const supabase = createClient();
+
+  const highlights: ContextHighlight[] = [];
+  const suggestedActions: SuggestedAction[] = [];
+
+  // Parallel: active proposals with details, recent outcomes, treasury stats
+  const [activeResult, recentOutcomes, treasuryProposals] = await Promise.all([
+    supabase
+      .from('proposals')
+      .select('tx_hash, proposal_index, title, proposal_type, withdrawal_amount, expiration_epoch')
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null)
+      .order('proposed_epoch', { ascending: false })
+      .limit(50),
+    supabase
+      .from('proposals')
+      .select('proposal_type, ratified_epoch, dropped_epoch, expired_epoch')
+      .not('ratified_epoch', 'is', null)
+      .order('ratified_epoch', { ascending: false })
+      .limit(30),
+    supabase
+      .from('proposals')
+      .select('tx_hash, withdrawal_amount')
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null)
+      .not('withdrawal_amount', 'is', null),
+  ]);
+
+  const active = activeResult.data ?? [];
+  const outcomes = recentOutcomes.data ?? [];
+  const treasury = treasuryProposals.data ?? [];
+
+  // Current epoch estimate
+  const SHELLEY_GENESIS = 1596491091;
+  const EPOCH_LEN = 432000;
+  const SHELLEY_BASE = 209;
+  const currentEpoch = Math.floor((Date.now() / 1000 - SHELLEY_GENESIS) / EPOCH_LEN) + SHELLEY_BASE;
+
+  // Active proposal count
+  highlights.push({
+    label: 'Active Proposals',
+    value: String(active.length),
+    sentiment: active.length > 10 ? 'negative' : 'neutral',
+  });
+
+  // Proposals expiring soon
+  const expiringSoon = active.filter(
+    (p) => p.expiration_epoch && p.expiration_epoch - currentEpoch <= 2,
+  );
+  if (expiringSoon.length > 0) {
+    highlights.push({
+      label: 'Expiring Soon',
+      value: `${expiringSoon.length} proposal${expiringSoon.length !== 1 ? 's' : ''}`,
+      sentiment: 'negative',
+    });
+  }
+
+  // Treasury exposure
+  const totalTreasuryAda = treasury.reduce(
+    (sum, p) => sum + Math.round(Number(p.withdrawal_amount ?? 0) / 1_000_000),
+    0,
+  );
+  if (totalTreasuryAda > 0) {
+    highlights.push({
+      label: 'Treasury at Stake',
+      value: `${totalTreasuryAda.toLocaleString()} ADA`,
+      sentiment: totalTreasuryAda > 50_000_000 ? 'negative' : 'neutral',
+    });
+  }
+
+  // Proposal type breakdown
+  const typeCounts: Record<string, number> = {};
+  for (const p of active) {
+    const t = p.proposal_type ?? 'Other';
+    typeCounts[t] = (typeCounts[t] ?? 0) + 1;
+  }
+  const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+  if (topType && active.length > 2) {
+    highlights.push({
+      label: 'Most Common',
+      value: `${topType[0]} (${topType[1]})`,
+      sentiment: 'neutral',
+    });
+  }
+
+  // Recent pass rate
+  if (outcomes.length >= 5) {
+    const ratified = outcomes.filter((o) => o.ratified_epoch != null).length;
+    const passRate = Math.round((ratified / outcomes.length) * 100);
+    highlights.push({
+      label: 'Recent Pass Rate',
+      value: `${passRate}%`,
+      sentiment: passRate > 70 ? 'positive' : passRate < 30 ? 'negative' : 'neutral',
+    });
+  }
+
+  // Build briefing
+  const briefingParts: string[] = [];
+  briefingParts.push(`${active.length} proposals are currently active.`);
+  if (expiringSoon.length > 0) {
+    briefingParts.push(
+      `${expiringSoon.length} expire${expiringSoon.length === 1 ? 's' : ''} within 2 epochs — review before they lapse.`,
+    );
+  }
+  if (totalTreasuryAda > 0) {
+    briefingParts.push(
+      `${treasury.length} treasury withdrawal${treasury.length !== 1 ? 's' : ''} totaling ${totalTreasuryAda.toLocaleString()} ADA are pending — ${totalTreasuryAda > 50_000_000 ? 'significant treasury exposure' : 'moderate treasury impact'}.`,
+    );
+  }
+  if (topType && active.length > 3) {
+    briefingParts.push(`${topType[0]} proposals dominate the current batch.`);
+  }
+
+  // Suggested actions
+  if (expiringSoon.length > 0) {
+    suggestedActions.push({
+      label: `Review ${expiringSoon.length} expiring proposal${expiringSoon.length !== 1 ? 's' : ''}`,
+      href: '/governance/proposals',
+      priority: 'high',
+    });
+  }
+  if (stakeAddress) {
+    suggestedActions.push({
+      label: 'Check your alignment with active proposals',
+      href: '/match',
+      priority: 'medium',
+    });
+  }
+
+  return {
+    briefing: briefingParts.join(' '),
+    highlights,
+    suggestedActions,
+    routeType: 'proposals-list',
+    computedAt: new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Representatives List — top performers, score movers, delegation insights
+// ---------------------------------------------------------------------------
+
+async function synthesizeRepresentativesListContext(
+  stakeAddress?: string,
+): Promise<ContextSynthesisResult> {
+  const supabase = createClient();
+
+  const highlights: ContextHighlight[] = [];
+  const suggestedActions: SuggestedAction[] = [];
+
+  // Parallel: DRep stats, top movers, ecosystem health
+  const [drepCount, topDreps, recentMovers] = await Promise.all([
+    supabase.from('dreps').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase
+      .from('dreps')
+      .select('id, score, info, effective_participation, rationale_rate, size_tier, score_momentum')
+      .eq('is_active', true)
+      .order('score', { ascending: false })
+      .limit(10),
+    supabase
+      .from('dreps')
+      .select('id, score, info, score_momentum')
+      .eq('is_active', true)
+      .not('score_momentum', 'is', null)
+      .order('score_momentum', { ascending: false })
+      .limit(5),
+  ]);
+
+  const activeDrepCount = drepCount.count ?? 0;
+  const top = topDreps.data ?? [];
+  const movers = recentMovers.data ?? [];
+
+  highlights.push({
+    label: 'Active DReps',
+    value: String(activeDrepCount),
+    sentiment: activeDrepCount > 50 ? 'positive' : 'neutral',
+  });
+
+  // Average top-10 participation
+  if (top.length > 0) {
+    const avgPart = Math.round(
+      top.reduce((sum, d) => sum + (d.effective_participation ?? 0), 0) / top.length,
+    );
+    highlights.push({
+      label: 'Top 10 Avg Participation',
+      value: `${avgPart}%`,
+      sentiment: avgPart >= 70 ? 'positive' : avgPart >= 50 ? 'neutral' : 'negative',
+    });
+  }
+
+  // Average rationale rate across top DReps
+  if (top.length > 0) {
+    const avgRationale = Math.round(
+      top.reduce((sum, d) => sum + (d.rationale_rate ?? 0), 0) / top.length,
+    );
+    highlights.push({
+      label: 'Top 10 Rationale Rate',
+      value: `${avgRationale}%`,
+      sentiment: avgRationale >= 60 ? 'positive' : avgRationale >= 30 ? 'neutral' : 'negative',
+    });
+  }
+
+  // Biggest mover
+  const topMover = movers[0];
+  if (topMover && topMover.score_momentum && topMover.score_momentum > 1) {
+    const moverInfo = (topMover.info ?? {}) as Record<string, unknown>;
+    const moverName = (moverInfo.name as string) || topMover.id.slice(0, 12);
+    highlights.push({
+      label: 'Top Mover',
+      value: `${moverName} (+${topMover.score_momentum.toFixed(1)})`,
+      sentiment: 'positive',
+    });
+  }
+
+  // Size distribution
+  if (top.length > 0) {
+    const sizeCounts: Record<string, number> = {};
+    for (const d of top) {
+      const tier = d.size_tier ?? 'Unknown';
+      sizeCounts[tier] = (sizeCounts[tier] ?? 0) + 1;
+    }
+    const dominant = Object.entries(sizeCounts).sort((a, b) => b[1] - a[1])[0];
+    if (dominant) {
+      highlights.push({
+        label: 'Top 10 Profile',
+        value: `${dominant[1]}/10 are ${dominant[0]}`,
+        sentiment: 'neutral',
+      });
+    }
+  }
+
+  // Build briefing
+  const briefingParts: string[] = [];
+  briefingParts.push(`${activeDrepCount} DReps are currently active in governance.`);
+  if (top.length > 0) {
+    const topName = ((top[0].info ?? {}) as Record<string, unknown>).name as string | undefined;
+    briefingParts.push(`Top scorer: ${topName || top[0].id.slice(0, 12)} at ${top[0].score}/100.`);
+  }
+  if (topMover && topMover.score_momentum && topMover.score_momentum > 1) {
+    briefingParts.push(
+      `Notable momentum: some DReps are rising fast through active participation.`,
+    );
+  }
+
+  // User-specific: check if their DRep is in the top 10
+  if (stakeAddress) {
+    const { data: holder } = await supabase
+      .from('governance_holders')
+      .select('delegated_drep_id')
+      .eq('stake_address', stakeAddress)
+      .maybeSingle();
+
+    if (holder?.delegated_drep_id) {
+      const userDrepInTop = top.find((d) => d.id === holder.delegated_drep_id);
+      if (userDrepInTop) {
+        const rank = top.indexOf(userDrepInTop) + 1;
+        briefingParts.push(`Your DRep ranks #${rank} overall — strong representation.`);
+        highlights.push({
+          label: 'Your DRep Rank',
+          value: `#${rank}`,
+          sentiment: 'positive',
+        });
+      } else {
+        suggestedActions.push({
+          label: 'Compare your DRep with top performers',
+          href: '/match',
+          priority: 'medium',
+        });
+      }
+    }
+  }
+
+  suggestedActions.push({
+    label: 'Explore all DReps',
+    href: '/governance/representatives',
+    priority: 'low',
+  });
+
+  return {
+    briefing: briefingParts.join(' '),
+    highlights,
+    suggestedActions,
+    routeType: 'representatives-list',
+    computedAt: new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Health Page — GHI component analysis, cross-body dynamics, trends
+// ---------------------------------------------------------------------------
+
+async function synthesizeHealthContext(stakeAddress?: string): Promise<ContextSynthesisResult> {
+  const supabase = createClient();
+
+  const highlights: ContextHighlight[] = [];
+  const suggestedActions: SuggestedAction[] = [];
+
+  // Parallel: GHI, inter-body alignment, DRep participation
+  const [ghiResult, interBodyResult, drepStats] = await Promise.all([
+    supabase
+      .from('governance_health_index')
+      .select('score, components, computed_at, edi_score')
+      .order('computed_at', { ascending: false })
+      .limit(2),
+    supabase
+      .from('inter_body_alignment')
+      .select('alignment_score, proposal_tx_hash')
+      .order('computed_at', { ascending: false })
+      .limit(20),
+    supabase
+      .from('dreps')
+      .select('effective_participation, rationale_rate, score')
+      .eq('is_active', true),
+  ]);
+
+  const ghiRows = ghiResult.data ?? [];
+  const currentGhi = ghiRows[0];
+  const previousGhi = ghiRows[1];
+  const alignments = interBodyResult.data ?? [];
+  const dreps = drepStats.data ?? [];
+
+  // GHI score + trend
+  if (currentGhi) {
+    const score = Math.round(currentGhi.score);
+    highlights.push({
+      label: 'GHI Score',
+      value: `${score}/100`,
+      sentiment: score >= 70 ? 'positive' : score >= 50 ? 'neutral' : 'negative',
+    });
+
+    if (previousGhi) {
+      const delta = Math.round(currentGhi.score - previousGhi.score);
+      if (delta !== 0) {
+        highlights.push({
+          label: 'GHI Trend',
+          value: `${delta > 0 ? '+' : ''}${delta} since last period`,
+          sentiment: delta > 0 ? 'positive' : 'negative',
+        });
+      }
+    }
+
+    // Weakest component
+    const components = (currentGhi.components ?? []) as Array<{
+      name: string;
+      value: number;
+      weight: number;
+    }>;
+    const activeComps = components.filter((c) => c.weight > 0);
+    const weakest = activeComps.reduce((min, c) => (c.value < min.value ? c : min), activeComps[0]);
+    const strongest = activeComps.reduce(
+      (max, c) => (c.value > max.value ? c : max),
+      activeComps[0],
+    );
+    if (weakest) {
+      highlights.push({
+        label: 'Weakest Component',
+        value: `${weakest.name} (${Math.round(weakest.value)})`,
+        sentiment: weakest.value < 50 ? 'negative' : 'neutral',
+      });
+    }
+    if (strongest && strongest !== weakest) {
+      highlights.push({
+        label: 'Strongest Component',
+        value: `${strongest.name} (${Math.round(strongest.value)})`,
+        sentiment: strongest.value >= 70 ? 'positive' : 'neutral',
+      });
+    }
+
+    // EDI (Effective Decentralization)
+    if (currentGhi.edi_score != null) {
+      highlights.push({
+        label: 'Decentralization (EDI)',
+        value: `${Math.round(currentGhi.edi_score)}/100`,
+        sentiment: currentGhi.edi_score >= 60 ? 'positive' : 'neutral',
+      });
+    }
+  }
+
+  // Inter-body alignment
+  if (alignments.length >= 5) {
+    const avgAlignment = Math.round(
+      alignments.reduce((sum, a) => sum + (a.alignment_score ?? 0), 0) / alignments.length,
+    );
+    highlights.push({
+      label: 'Cross-Body Alignment',
+      value: `${avgAlignment}% agreement`,
+      sentiment: avgAlignment >= 80 ? 'positive' : avgAlignment >= 60 ? 'neutral' : 'negative',
+    });
+  }
+
+  // DRep ecosystem health
+  if (dreps.length > 0) {
+    const avgPart = Math.round(
+      dreps.reduce((sum, d) => sum + (d.effective_participation ?? 0), 0) / dreps.length,
+    );
+    highlights.push({
+      label: 'Avg DRep Participation',
+      value: `${avgPart}%`,
+      sentiment: avgPart >= 50 ? 'positive' : avgPart >= 30 ? 'neutral' : 'negative',
+    });
+  }
+
+  // Build briefing
+  const briefingParts: string[] = [];
+  if (currentGhi) {
+    const score = Math.round(currentGhi.score);
+    briefingParts.push(`Governance health is at ${score}/100.`);
+    if (previousGhi) {
+      const delta = Math.round(currentGhi.score - previousGhi.score);
+      if (delta > 2) briefingParts.push(`Trending up — improving governance engagement.`);
+      else if (delta < -2) briefingParts.push(`Trending down — participation may be slipping.`);
+      else briefingParts.push(`Stable since last measurement.`);
+    }
+    const components = (currentGhi.components ?? []) as Array<{
+      name: string;
+      value: number;
+      weight: number;
+    }>;
+    const activeComps = components.filter((c) => c.weight > 0);
+    const weak = activeComps.filter((c) => c.value < 50);
+    if (weak.length > 0) {
+      briefingParts.push(`Areas needing attention: ${weak.map((c) => c.name).join(', ')}.`);
+    }
+  }
+  if (alignments.length >= 5) {
+    const low = alignments.filter((a) => (a.alignment_score ?? 0) < 60);
+    if (low.length > alignments.length * 0.3) {
+      briefingParts.push(
+        `Cross-body tensions detected — DReps, SPOs, and CC disagree on ${low.length} recent proposals.`,
+      );
+    }
+  }
+
+  if (stakeAddress) {
+    suggestedActions.push({
+      label: 'See how your DRep contributes to health',
+      href: '/governance/health',
+      priority: 'medium',
+    });
+  }
+  suggestedActions.push({
+    label: 'Explore GHI components',
+    href: '/governance/health',
+    priority: 'low',
+  });
+
+  return {
+    briefing: briefingParts.join(' '),
+    highlights,
+    suggestedActions,
+    routeType: 'health',
+    computedAt: new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Workspace — pending reviews, draft status, activity signals
+// ---------------------------------------------------------------------------
+
+async function synthesizeWorkspaceContext(stakeAddress?: string): Promise<ContextSynthesisResult> {
+  const supabase = createClient();
+
+  const highlights: ContextHighlight[] = [];
+  const suggestedActions: SuggestedAction[] = [];
+
+  if (!stakeAddress) {
+    return {
+      briefing:
+        'Connect your wallet to see workspace intelligence — pending reviews, draft status, and collaboration signals.',
+      highlights: [],
+      suggestedActions: [{ label: 'Connect wallet', href: '/hub', priority: 'high' }],
+      routeType: 'workspace',
+      computedAt: new Date().toISOString(),
+    };
+  }
+
+  // Parallel: user's drafts, pending reviews, recent activity
+  const [draftsResult, reviewsResult, activeProposals] = await Promise.all([
+    supabase
+      .from('proposal_drafts')
+      .select('id, title, status, updated_at')
+      .eq('author_stake_address', stakeAddress)
+      .order('updated_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('proposal_reviews')
+      .select('id, status, proposal_draft_id, updated_at')
+      .eq('reviewer_stake_address', stakeAddress)
+      .eq('status', 'pending')
+      .limit(10),
+    supabase
+      .from('proposals')
+      .select('*', { count: 'exact', head: true })
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
+  ]);
+
+  const drafts = draftsResult.data ?? [];
+  const pendingReviews = reviewsResult.data ?? [];
+  const activeCount = activeProposals.count ?? 0;
+
+  // Draft status
+  const activeDrafts = drafts.filter((d) => d.status !== 'submitted' && d.status !== 'archived');
+  if (activeDrafts.length > 0) {
+    highlights.push({
+      label: 'Active Drafts',
+      value: String(activeDrafts.length),
+      sentiment: 'neutral',
+    });
+    const stale = activeDrafts.filter((d) => {
+      const updated = new Date(d.updated_at).getTime();
+      const daysAgo = (Date.now() - updated) / (1000 * 60 * 60 * 24);
+      return daysAgo > 7;
+    });
+    if (stale.length > 0) {
+      highlights.push({
+        label: 'Stale Drafts',
+        value: `${stale.length} not updated in 7+ days`,
+        sentiment: 'negative',
+      });
+    }
+  }
+
+  // Pending reviews
+  if (pendingReviews.length > 0) {
+    highlights.push({
+      label: 'Pending Reviews',
+      value: String(pendingReviews.length),
+      sentiment: pendingReviews.length > 3 ? 'negative' : 'neutral',
+    });
+  }
+
+  // Active proposals context
+  highlights.push({
+    label: 'Network Proposals',
+    value: `${activeCount} active`,
+    sentiment: 'neutral',
+  });
+
+  // Build briefing
+  const briefingParts: string[] = [];
+  if (pendingReviews.length > 0) {
+    briefingParts.push(
+      `You have ${pendingReviews.length} pending review${pendingReviews.length !== 1 ? 's' : ''} waiting for your input.`,
+    );
+  }
+  if (activeDrafts.length > 0) {
+    briefingParts.push(
+      `${activeDrafts.length} draft${activeDrafts.length !== 1 ? 's' : ''} in progress.`,
+    );
+    const stale = activeDrafts.filter((d) => {
+      const updated = new Date(d.updated_at).getTime();
+      return (Date.now() - updated) / (1000 * 60 * 60 * 24) > 7;
+    });
+    if (stale.length > 0) {
+      briefingParts.push(
+        `${stale.length} haven't been touched in over a week — consider finishing or archiving.`,
+      );
+    }
+  }
+  if (briefingParts.length === 0) {
+    briefingParts.push(
+      `Your workspace is clear. ${activeCount} proposals are active on the network — consider reviewing or drafting a new one.`,
+    );
+  }
+
+  // Suggested actions
+  if (pendingReviews.length > 0) {
+    suggestedActions.push({
+      label: `Complete ${pendingReviews.length} pending review${pendingReviews.length !== 1 ? 's' : ''}`,
+      href: '/workspace/review',
+      priority: 'high',
+    });
+  }
+  if (activeDrafts.length === 0) {
+    suggestedActions.push({
+      label: 'Start a new proposal draft',
+      href: '/workspace/author',
+      priority: 'medium',
+    });
+  }
+
+  return {
+    briefing: briefingParts.join(' '),
+    highlights,
+    suggestedActions,
+    routeType: 'workspace',
+    computedAt: new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
@@ -433,8 +1060,15 @@ export async function synthesizeContext(
             : emptyResult('drep');
         case 'hub':
           return synthesizeHubContext(stakeAddress);
+        case 'proposals-list':
+          return synthesizeProposalsListContext(stakeAddress);
+        case 'representatives-list':
+          return synthesizeRepresentativesListContext(stakeAddress);
+        case 'health':
+          return synthesizeHealthContext(stakeAddress);
+        case 'workspace':
+          return synthesizeWorkspaceContext(stakeAddress);
         case 'governance':
-          return synthesizeHubContext(stakeAddress);
         case 'list':
           return synthesizeHubContext(stakeAddress);
         default:
@@ -456,6 +1090,14 @@ export async function synthesizeContext(
           return resolvedEntityId
             ? await synthesizeDrepContext(resolvedEntityId, stakeAddress)
             : emptyResult('drep');
+        case 'proposals-list':
+          return await synthesizeProposalsListContext(stakeAddress);
+        case 'representatives-list':
+          return await synthesizeRepresentativesListContext(stakeAddress);
+        case 'health':
+          return await synthesizeHealthContext(stakeAddress);
+        case 'workspace':
+          return await synthesizeWorkspaceContext(stakeAddress);
         case 'hub':
         case 'governance':
         case 'list':

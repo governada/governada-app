@@ -28,6 +28,7 @@ const DREP_COLOR = '#2dd4bf';
 const SPO_COLOR = '#a78bfa'; // purple — visually distinct from teal DReps
 const CC_COLOR = '#fbbf24';
 const GLOBE_LINE_COLOR = '#334488';
+const MATCH_COLOR = '#f59e0b'; // Warm amber — distinct from teal, purple, gold
 
 interface GlobeConstellationProps {
   interactive?: boolean;
@@ -45,6 +46,8 @@ interface SceneState {
   dimmed: boolean;
   pulseId: string | null;
   animating: boolean;
+  matchedNodeIds: Set<string>;
+  matchIntensities: Map<string, number>;
 }
 
 // Earth-like axial tilt: 23.4 degrees
@@ -71,6 +74,8 @@ export const GlobeConstellation = forwardRef<
     dimmed: false,
     pulseId: null,
     animating: false,
+    matchedNodeIds: new Set(),
+    matchIntensities: new Map(),
   });
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
 
@@ -175,6 +180,78 @@ export const GlobeConstellation = forwardRef<
         animating: false,
       }));
     },
+
+    highlightMatches: (userAlignment: number[], threshold: number) => {
+      const matched = new Set<string>();
+      const intensities = new Map<string, number>();
+
+      for (const node of sceneState.nodes) {
+        if (node.isAnchor) continue;
+        // 6D Euclidean distance
+        let sumSq = 0;
+        for (let d = 0; d < 6; d++) {
+          const diff = (userAlignment[d] ?? 50) - (node.alignments[d] ?? 50);
+          sumSq += diff * diff;
+        }
+        const distance = Math.sqrt(sumSq);
+
+        if (distance < threshold) {
+          matched.add(node.id);
+          intensities.set(node.id, Math.max(0, Math.min(1, 1 - distance / threshold)));
+        }
+      }
+
+      setSceneState((prev) => ({
+        ...prev,
+        matchedNodeIds: matched,
+        matchIntensities: intensities,
+        dimmed: matched.size > 0,
+      }));
+
+      // Camera drift toward matched cluster centroid
+      if (matched.size > 0 && cameraControlsRef.current) {
+        let cx = 0,
+          cy = 0,
+          cz = 0,
+          count = 0;
+        for (const node of sceneState.nodes) {
+          if (matched.has(node.id)) {
+            const [rx, ry, rz] = rotateAroundY(node.position, rotationAngleRef.current);
+            cx += rx;
+            cy += ry;
+            cz += rz;
+            count++;
+          }
+        }
+        if (count > 0) {
+          cx /= count;
+          cy /= count;
+          cz /= count;
+          // Gentle camera drift -- don't zoom in, just rotate to show cluster
+          const camDist = 14; // maintain current distance
+          const dir = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1;
+          cameraControlsRef.current.setLookAt(
+            (cx / dir) * camDist * 0.3,
+            (cy / dir) * camDist * 0.3 + 3,
+            (cz / dir) * camDist * 0.7 + 10,
+            cx * 0.3,
+            cy * 0.3,
+            cz * 0.3,
+            true, // smooth transition
+          );
+        }
+      }
+    },
+
+    clearMatches: () => {
+      setSceneState((prev) => ({
+        ...prev,
+        matchedNodeIds: new Set(),
+        matchIntensities: new Map(),
+        dimmed: false,
+      }));
+      cameraControlsRef.current?.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
+    },
   }));
 
   const { data: apiData } = useGovernanceConstellation();
@@ -227,6 +304,8 @@ export const GlobeConstellation = forwardRef<
               pulseId={sceneState.pulseId}
               interactive={interactive}
               onNodeClick={interactive ? (node) => flyToNodeImpl(node.id) : undefined}
+              matchedNodeIds={sceneState.matchedNodeIds}
+              matchIntensities={sceneState.matchIntensities}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
             {quality !== 'low' && (
@@ -464,6 +543,8 @@ function ConstellationNodes({
   pulseId,
   interactive,
   onNodeClick,
+  matchedNodeIds,
+  matchIntensities,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -471,6 +552,8 @@ function ConstellationNodes({
   pulseId: string | null;
   interactive?: boolean;
   onNodeClick?: (node: ConstellationNode3D) => void;
+  matchedNodeIds: Set<string>;
+  matchIntensities: Map<string, number>;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -510,6 +593,8 @@ function ConstellationNodes({
         onNodeClick={onNodeClick}
         getColor={getDrepColor}
         emissive={2.0}
+        matchedNodeIds={matchedNodeIds}
+        matchIntensities={matchIntensities}
       />
       {groups.spo.length > 0 && (
         <NodePoints
@@ -522,6 +607,8 @@ function ConstellationNodes({
           getColor={getSpoColor}
           emissive={2.0}
           fragmentShader={SPO_FRAG}
+          matchedNodeIds={matchedNodeIds}
+          matchIntensities={matchIntensities}
         />
       )}
       {groups.cc.length > 0 && (
@@ -535,6 +622,8 @@ function ConstellationNodes({
           getColor={getCcColor}
           emissive={3.5}
           fragmentShader={CC_FRAG}
+          matchedNodeIds={matchedNodeIds}
+          matchIntensities={matchIntensities}
         />
       )}
     </>
@@ -551,6 +640,8 @@ function NodePoints({
   getColor,
   emissive,
   fragmentShader,
+  matchedNodeIds,
+  matchIntensities,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -561,8 +652,11 @@ function NodePoints({
   getColor: (node: ConstellationNode3D) => string;
   emissive: number;
   fragmentShader?: string;
+  matchedNodeIds: Set<string>;
+  matchIntensities: Map<string, number>;
 }) {
   const tmpColor = useMemo(() => new THREE.Color(), []);
+  const matchColor = useMemo(() => new THREE.Color(MATCH_COLOR), []);
 
   const buffers = useMemo(() => {
     const count = nodes.length;
@@ -570,6 +664,7 @@ function NodePoints({
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const dimmedArr = new Float32Array(count);
+    const matchingActive = matchedNodeIds.size > 0;
 
     for (let i = 0; i < count; i++) {
       const node = nodes[i];
@@ -577,21 +672,56 @@ function NodePoints({
       positions[i * 3 + 1] = node.position[1];
       positions[i * 3 + 2] = node.position[2];
 
-      tmpColor.set(getColor(node));
-      colors[i * 3] = tmpColor.r * emissive;
-      colors[i * 3 + 1] = tmpColor.g * emissive;
-      colors[i * 3 + 2] = tmpColor.b * emissive;
-
       const isHighlighted = highlightId === node.id;
       const isPulsing = pulseId === node.id;
-      sizes[i] =
-        (isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale) *
-        POINT_SCALE;
-      dimmedArr[i] = dimmed && !isHighlighted && !isPulsing ? 1.0 : 0.0;
+      const isMatched = matchedNodeIds.has(node.id);
+      const matchIntensity = matchIntensities.get(node.id) ?? 0;
+
+      // COLOR: lerp toward MATCH_COLOR when matched
+      tmpColor.set(getColor(node));
+      if (isMatched && matchingActive) {
+        const origR = tmpColor.r;
+        const origG = tmpColor.g;
+        const origB = tmpColor.b;
+        const blend = matchIntensity * 0.85; // strong but not total replacement
+        const blendedR = origR + (matchColor.r - origR) * blend;
+        const blendedG = origG + (matchColor.g - origG) * blend;
+        const blendedB = origB + (matchColor.b - origB) * blend;
+        colors[i * 3] = blendedR * emissive;
+        colors[i * 3 + 1] = blendedG * emissive;
+        colors[i * 3 + 2] = blendedB * emissive;
+      } else {
+        colors[i * 3] = tmpColor.r * emissive;
+        colors[i * 3 + 1] = tmpColor.g * emissive;
+        colors[i * 3 + 2] = tmpColor.b * emissive;
+      }
+
+      // SIZE: matched nodes slightly larger
+      const baseSize = isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale;
+      sizes[i] = (isMatched ? baseSize * (1 + 0.3 * matchIntensity) : baseSize) * POINT_SCALE;
+
+      // DIMMED: non-matched dim when matching is active
+      dimmedArr[i] =
+        matchingActive && !isMatched && !isHighlighted && !isPulsing
+          ? 1.0
+          : dimmed && !isHighlighted && !isPulsing
+            ? 1.0
+            : 0.0;
     }
 
     return { positions, colors, sizes, dimmedArr };
-  }, [nodes, highlightId, dimmed, pulseId, getColor, emissive, tmpColor]);
+  }, [
+    nodes,
+    highlightId,
+    dimmed,
+    pulseId,
+    getColor,
+    emissive,
+    tmpColor,
+    matchedNodeIds,
+    matchIntensities,
+    matchColor,
+  ]);
 
   const geoRef = useRef<THREE.BufferGeometry>(null);
 

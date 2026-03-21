@@ -10,6 +10,7 @@ interface TreasuryVerdictProps {
   ncl: NclUtilization | null;
   effectivenessRate: number | null;
   pendingCount: number;
+  pendingTotalAda?: number;
   runwayMonths: number;
 }
 
@@ -66,6 +67,7 @@ export function TreasuryVerdict({
   ncl,
   effectivenessRate,
   pendingCount,
+  pendingTotalAda,
   runwayMonths,
 }: TreasuryVerdictProps) {
   const status = deriveStatus(ncl, effectivenessRate, trend, runwayMonths);
@@ -101,7 +103,11 @@ export function TreasuryVerdict({
           </span>
         )}
         <span className="text-muted-foreground">
-          <span className="font-semibold text-foreground">{pendingCount}</span> pending
+          <span className="font-semibold text-foreground">{pendingCount}</span>{' '}
+          {pendingCount === 1 ? 'proposal' : 'proposals'} pending
+          {pendingTotalAda != null && pendingTotalAda > 0 && (
+            <span className="ml-1">(₳{formatAda(pendingTotalAda)})</span>
+          )}
         </span>
         <span className="text-muted-foreground">
           ₳<span className="font-semibold text-foreground">{formatAda(balanceAda)}</span> balance

@@ -66,10 +66,9 @@ function ProposalStatusSummary({ proposals }: { proposals: BrowseProposal[] }) {
             <span className="text-sm text-muted-foreground">decided</span>
           </div>
         </div>
-        {/* Show most recent open proposals as compact clickable rows */}
+        {/* Show all open proposals as compact clickable rows */}
         {proposals
           .filter((p) => (p.status ?? 'Open').toLowerCase() === 'open')
-          .slice(0, 3)
           .map((p) => {
             const theme = p.type ? getProposalTheme(p.type) : null;
             const TypeIcon = theme?.icon;
@@ -87,16 +86,11 @@ function ProposalStatusSummary({ proposals }: { proposals: BrowseProposal[] }) {
               </Link>
             );
           })}
-        <Link
-          href="/governance/proposals"
-          className="text-xs text-primary hover:underline"
-          onClick={(e) => {
-            // Prevent navigation loop — we're already on this page, just prompt depth change
-            e.preventDefault();
-          }}
-        >
-          See all proposals &rarr;
-        </Link>
+        {decided > 0 && (
+          <Link href="/governance/proposals" className="text-xs text-primary hover:underline">
+            See all {active + decided} proposals &rarr;
+          </Link>
+        )}
       </div>
     </div>
   );

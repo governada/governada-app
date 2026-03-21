@@ -152,7 +152,7 @@ function MemberCard({
   return (
     <Link
       href={`/governance/committee/${encodeURIComponent(member.ccHotId)}`}
-      className="group block rounded-xl border border-border/60 p-4 transition-colors hover:bg-muted/40 active:bg-muted/60"
+      className="group block rounded-xl border border-border/50 p-4 transition-colors hover:bg-muted/40 active:bg-muted/60"
     >
       <div className="flex items-start gap-3">
         {/* Grade badge */}
@@ -242,7 +242,7 @@ function Methodology() {
   ];
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card/30">
+    <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-5 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -416,7 +416,7 @@ export default function CommitteePage() {
             ) : (
               <>
                 {/* Desktop: compact rows */}
-                <div className="hidden sm:block rounded-xl border border-border/60 divide-y divide-border/40 overflow-hidden">
+                <div className="hidden sm:block rounded-xl border border-border/50 bg-card/70 backdrop-blur-md divide-y divide-border/40 overflow-hidden">
                   {sorted.map((member) => (
                     <MemberRow
                       key={member.ccHotId}

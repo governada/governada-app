@@ -47,7 +47,7 @@ interface TreasuryCurrentData {
   healthScore: number | null;
   healthComponents: Record<string, number> | null;
   pendingCount: number;
-  pendingTotalAda: number;
+  pendingTotalAda?: number;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -94,6 +94,7 @@ export function TreasuryOverview() {
   const epoch = treasury?.epoch ?? 0;
   const trend = treasury?.trend ?? 'stable';
   const pendingCount = treasury?.pendingCount ?? 0;
+  const pendingTotalAda = treasury?.pendingTotalAda ?? 0;
   const effectivenessRate = rawEffectiveness?.effectivenessRate ?? null;
 
   const nclImpact = ncl
@@ -117,6 +118,7 @@ export function TreasuryOverview() {
         ncl={ncl}
         effectivenessRate={effectivenessRate}
         pendingCount={pendingCount}
+        pendingTotalAda={pendingTotalAda}
         runwayMonths={runway}
       />
 

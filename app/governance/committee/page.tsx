@@ -20,7 +20,7 @@ import { usePeekTrigger } from '@/components/governada/peeks/PeekDrawerProvider'
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
 import { CompassGuide } from '@/components/governada/shared/CompassGuide';
-import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
+import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
 
 // ---------------------------------------------------------------------------
 // Grade utilities
@@ -455,7 +455,7 @@ export default function CommitteePage() {
 
           {/* AI Advisor teaser */}
           <motion.div variants={fadeInUp}>
-            <AdvisorTeaser />
+            <AdvisorPanel />
           </motion.div>
         </motion.div>
       )}

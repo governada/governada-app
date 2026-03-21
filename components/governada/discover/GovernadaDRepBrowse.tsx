@@ -30,10 +30,11 @@ import { useBatchEndorsementCounts } from '@/hooks/useEngagement';
 import { useDReps } from '@/hooks/queries';
 import type { EnrichedDRep } from '@/lib/koios';
 import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { AlignmentScatter } from '@/components/governada/shared/AlignmentScatter';
 import { MoversStrip } from '@/components/governada/shared/MoversStrip';
 import { InsightCard } from '@/components/governada/shared/InsightCard';
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
-import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
+import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { useWallet } from '@/utils/wallet-context';
@@ -50,6 +51,7 @@ import {
 } from '@/lib/matchStore';
 import {
   extractAlignments,
+  alignmentsToArray,
   getPersonalityLabel,
   getDominantDimension,
   getIdentityColor,
@@ -548,6 +550,27 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
       }));
   }, [dreps]);
 
+  // Scatter plot data — position DReps by alignment dimensions
+  const scatterEntities = useMemo(() => {
+    return dreps
+      .filter((d) => d.alignmentTreasuryConservative != null && d.alignmentInnovation != null)
+      .map((d) => {
+        const scores = extractAlignments(d);
+        return {
+          id: d.drepId,
+          name: d.name || d.ticker || d.handle || null,
+          score: d.drepScore ?? 0,
+          alignments: alignmentsToArray(scores),
+          dominant: getDominantDimension(scores),
+        };
+      });
+  }, [dreps]);
+
+  const userAlignmentsArray = useMemo(
+    () => (matchProfile ? alignmentsToArray(matchProfile.userAlignments) : null),
+    [matchProfile],
+  );
+
   // Top match for PersonalTeaser
   const topMatch = useMemo(() => {
     if (!matchProfile || !filtered.length) return null;
@@ -619,6 +642,15 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
       </div>
 
       <CompassGuide page="representatives" drepCount={dreps.length} />
+
+      {/* Phase 2: Alignment scatter — the visual "wow" hero */}
+      {scatterEntities.length > 20 && (
+        <AlignmentScatter
+          entities={scatterEntities}
+          userAlignments={userAlignmentsArray}
+          onEntityClick={(id) => openPeek?.({ type: 'drep', id })}
+        />
+      )}
 
       {topMovers.length > 0 && <MoversStrip movers={topMovers} entityType="drep" />}
 
@@ -875,7 +907,7 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
         category="participation"
       />
 
-      <AdvisorTeaser />
+      <AdvisorPanel />
     </div>
   );
 }

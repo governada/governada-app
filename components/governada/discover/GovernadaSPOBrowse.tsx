@@ -35,7 +35,7 @@ import { MatchAwareDiscoverHero } from './MatchAwareDiscoverHero';
 import { CompassGuide } from '@/components/governada/shared/CompassGuide';
 import { InsightCard } from '@/components/governada/shared/InsightCard';
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
-import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
+import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -504,7 +504,7 @@ export function GovernadaSPOBrowse() {
         category="participation"
       />
 
-      <AdvisorTeaser />
+      <AdvisorPanel />
     </div>
   );
 }

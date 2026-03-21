@@ -7,7 +7,7 @@ import { TreasuryOverview } from './TreasuryOverview';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CompassGuide } from '@/components/governada/shared/CompassGuide';
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
-import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
+import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
 
 export const metadata: Metadata = {
   title: 'Governada — Treasury',
@@ -80,7 +80,7 @@ export default function TreasuryPage() {
           <TreasuryOverview />
         </Suspense>
         <PersonalTeaser variant="treasury_impact" />
-        <AdvisorTeaser />
+        <AdvisorPanel />
       </div>
     </>
   );

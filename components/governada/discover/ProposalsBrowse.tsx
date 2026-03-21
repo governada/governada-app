@@ -10,9 +10,10 @@ import { useWallet } from '@/utils/wallet-context';
 import { ProposalStatusFunnel } from '@/components/governada/charts/ProposalStatusFunnel';
 import type { VotesResponseData, VoteItem } from '@/types/api';
 import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { UrgencyStrip } from '@/components/governada/shared/UrgencyStrip';
 import { InsightCard } from '@/components/governada/shared/InsightCard';
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
-import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
+import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
 import { useDepthConfig } from '@/hooks/useDepthConfig';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DepthGate } from '@/components/providers/DepthGate';
@@ -283,6 +284,10 @@ export function ProposalsBrowse() {
         </span>
       </div>
 
+      <UrgencyStrip
+        activeCount={proposals.filter((p) => (p.status ?? 'Open').toLowerCase() === 'open').length}
+      />
+
       <CompassGuide
         page="proposals"
         proposalCount={
@@ -421,7 +426,7 @@ export function ProposalsBrowse() {
 
       <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
 
-      <AdvisorTeaser />
+      <AdvisorPanel />
     </div>
   );
 }

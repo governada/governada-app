@@ -13,7 +13,7 @@ import { CitizenMandate } from '@/components/community/CitizenMandate';
 import { SentimentDivergence } from '@/components/community/SentimentDivergence';
 import { CompassGuide } from '@/components/governada/shared/CompassGuide';
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
-import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
+import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
 
 export const metadata: Metadata = {
   title: 'Governada — Governance Health',
@@ -88,7 +88,7 @@ export default function HealthPage() {
           </div>
         </DepthGate>
 
-        <AdvisorTeaser />
+        <AdvisorPanel />
       </div>
     </>
   );

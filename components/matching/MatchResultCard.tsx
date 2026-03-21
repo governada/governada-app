@@ -82,12 +82,13 @@ export function MatchResultCard({
   const hasPulsed = useRef(false);
   const prefersReducedMotion = useReducedMotion();
   const displayName = match.drepName || match.drepId.slice(0, 16) + '...';
-  const scorePercent = Math.round(match.score * 100);
+  const scorePercent = Math.round(match.score);
   const [r, g, b] = hexToRgb(match.identityColor);
 
   const narrative = generateMatchNarrative({
     agreeDimensions: match.agreeDimensions,
     differDimensions: match.differDimensions,
+    isBridge,
   });
 
   // Pulse globe node when card first appears
@@ -98,10 +99,16 @@ export function MatchResultCard({
     }
   }, [globeRef, match.drepId]);
 
-  // Collapsed dimension badges: first 2 agree + first 1 differ
+  // Show differentiating dimensions: prioritize differ, then unique agree
+  // If this DRep differs on something, show that — it's what makes them distinctive
   const collapsedBadges = [
-    ...match.agreeDimensions.slice(0, 2).map((d) => ({ label: d, type: 'agree' as const })),
-    ...match.differDimensions.slice(0, 1).map((d) => ({ label: d, type: 'differ' as const })),
+    ...match.differDimensions.slice(0, 2).map((d) => ({ label: d, type: 'differ' as const })),
+    ...(match.differDimensions.length < 2
+      ? match.agreeDimensions.slice(0, 2 - match.differDimensions.length).map((d) => ({
+          label: d,
+          type: 'agree' as const,
+        }))
+      : []),
   ];
 
   const perDimension = computePerDimensionAgreement(userAlignments, match.alignments);
@@ -125,7 +132,9 @@ export function MatchResultCard({
       {/* Bridge header */}
       {isBridge && (
         <div className="px-4 py-1.5 bg-violet-500/10 text-violet-400 text-xs font-medium">
-          A different perspective
+          {match.differDimensions.length > 0
+            ? `A different perspective on ${match.differDimensions[0]}`
+            : 'A different perspective'}
         </div>
       )}
 

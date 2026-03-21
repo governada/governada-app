@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PillCloud } from './PillCloud';
@@ -55,7 +55,6 @@ const slideVariants = {
 
 export function ConversationalRound({
   question,
-  roundNumber,
   onAnswer,
   isLoading = false,
 }: ConversationalRoundProps) {
@@ -91,6 +90,16 @@ export function ConversationalRound({
     const trimmed = rawText.trim();
     onAnswer(Array.from(selected), trimmed.length > 0 ? trimmed : undefined);
   }, [canContinue, isLoading, rawText, selected, onAnswer]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && canContinue && !isLoading) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [canContinue, isLoading, handleSubmit],
+  );
 
   // Auto-resize textarea
   useEffect(() => {
@@ -144,30 +153,52 @@ export function ConversationalRound({
           <div className="h-px flex-1 bg-white/10" />
         </div>
 
-        {/* Freeform text area */}
-        <div className="mb-6">
-          <textarea
-            ref={textareaRef}
-            value={rawText}
-            onChange={handleTextChange}
-            placeholder={placeholder}
-            aria-label="Share your governance values in your own words"
-            disabled={isLoading}
-            rows={3}
-            className={cn(
-              'w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-3',
-              'text-sm text-foreground placeholder:text-muted-foreground/50',
-              'backdrop-blur-sm transition-colors',
-              'focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/20',
-              'disabled:cursor-not-allowed disabled:opacity-50',
-            )}
-          />
+        {/* Freeform text area with inline Continue */}
+        <div className="mb-4">
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={rawText}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              aria-label="Share your governance values in your own words"
+              disabled={isLoading}
+              rows={3}
+              className={cn(
+                'w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-3 pr-28',
+                'text-sm text-foreground placeholder:text-muted-foreground/50',
+                'backdrop-blur-sm transition-colors',
+                'focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/20',
+                'disabled:cursor-not-allowed disabled:opacity-50',
+              )}
+            />
+            {/* Inline Continue button */}
+            <div className="absolute right-2 bottom-2">
+              <Button
+                onClick={handleSubmit}
+                disabled={!canContinue || isLoading}
+                size="sm"
+                className="gap-1.5 rounded-lg"
+              >
+                {isLoading ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="size-3.5" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
           <div className="mt-1 flex justify-between">
             {rawText.trim().length >= 10 ? (
               <span className="text-xs text-primary/60">AI will analyze your response</span>
             ) : (
               <span className="text-xs text-muted-foreground">
-                Optional — share your thoughts in your own words
+                Optional — share your thoughts
+                <span className="hidden sm:inline"> (Ctrl+Enter to continue)</span>
               </span>
             )}
             <span
@@ -179,23 +210,6 @@ export function ConversationalRound({
               {rawText.length}/{MAX_CHARS}
             </span>
           </div>
-        </div>
-
-        {/* Continue button */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground" aria-label={`Round ${roundNumber}`}>
-            Round {roundNumber}
-          </span>
-          <Button onClick={handleSubmit} disabled={!canContinue || isLoading} size="default">
-            {isLoading ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              'Continue'
-            )}
-          </Button>
         </div>
       </motion.div>
     </AnimatePresence>

@@ -71,6 +71,8 @@ export interface MatchNarrativeInput {
   differDimensions: string[];
   /** Optional confidence breakdown for the confidence sentence. */
   confidence?: ConfidenceBreakdown;
+  /** Whether this is a bridge match (emphasize contrast). */
+  isBridge?: boolean;
 }
 
 /**
@@ -78,10 +80,15 @@ export interface MatchNarrativeInput {
  *
  * Returns 1-2 sentences: an alignment summary + a confidence qualifier.
  */
+/**
+ * Narrative openers vary by pattern to avoid cookie-cutter feel.
+ * Uses agree/differ dimensions to pick the best frame.
+ */
 export function generateMatchNarrative({
   agreeDimensions,
   differDimensions,
   confidence,
+  isBridge,
 }: MatchNarrativeInput): string {
   const agreeNames = toDisplayNames(agreeDimensions);
   const differNames = toDisplayNames(differDimensions);
@@ -89,21 +96,32 @@ export function generateMatchNarrative({
 
   let alignmentSentence: string;
 
-  if (agreeDimensions.length >= 3 && differDimensions.length === 0) {
-    // Strong alignment
-    alignmentSentence = `Strong alignment \u2014 you share views on ${naturalList(agreeNames)}.`;
+  if (isBridge && differDimensions.length >= 1) {
+    // Bridge match: emphasize the contrast
+    const mainDiffer = differNames[0];
+    if (agreeDimensions.length >= 1) {
+      alignmentSentence = `Disagrees with you on ${mainDiffer} but strongly aligned on ${naturalList(agreeNames)} \u2014 worth considering for balance.`;
+    } else {
+      alignmentSentence = `Takes a different stance on ${mainDiffer} \u2014 a contrasting perspective to broaden your view.`;
+    }
+  } else if (agreeDimensions.length >= 4 && differDimensions.length === 0) {
+    // Very strong alignment
+    alignmentSentence = `Closely mirrors your governance values across ${naturalList(agreeNames)}.`;
+  } else if (agreeDimensions.length >= 3 && differDimensions.length === 0) {
+    // Strong alignment — vary openers
+    alignmentSentence = `Shares your priorities on ${naturalList(agreeNames)}.`;
   } else if (agreeDimensions.length >= 2 && differDimensions.length >= 1) {
-    // Mixed: agree on some, differ on others
-    alignmentSentence = `You align on ${naturalList(agreeNames)} but see ${naturalList(differNames)} differently.`;
+    // Mixed: emphasize the interesting contrast
+    alignmentSentence = `Shares your ${naturalList(agreeNames)} values but brings a different perspective on ${naturalList(differNames)}.`;
   } else if (agreeDimensions.length >= 1 && differDimensions.length === 0) {
     // Some agreement, no disagreement
-    alignmentSentence = `You share common ground on ${naturalList(agreeNames)}.`;
+    alignmentSentence = `Common ground on ${naturalList(agreeNames)}.`;
   } else if (agreeDimensions.length >= 1 && differDimensions.length >= 1) {
     // 1 agree, 1+ differ
-    alignmentSentence = `You align on ${naturalList(agreeNames)} but see ${naturalList(differNames)} differently.`;
+    alignmentSentence = `Aligned on ${naturalList(agreeNames)} with a different take on ${naturalList(differNames)}.`;
   } else if (differDimensions.length >= 1) {
     // No agreement, some differences
-    alignmentSentence = 'This DRep takes a different approach to governance than you.';
+    alignmentSentence = 'Offers a contrasting governance philosophy to yours.';
   } else {
     // Neutral across the board
     alignmentSentence = 'A moderate alignment across your governance values.';

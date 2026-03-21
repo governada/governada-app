@@ -26,9 +26,38 @@ function hexToRgb(hex: string): [number, number, number] {
   return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 
-function getShortDescription(alignments: AlignmentScores): string {
+/** Map archetype labels to rich descriptions. Falls back to dimension-based. */
+function getArchetypeDescription(personalityLabel: string, alignments: AlignmentScores): string {
+  const archetypeDescriptions: Record<string, string> = {
+    'Treasury Guardian':
+      "You prioritize careful stewardship of Cardano's treasury and believe in sustainable growth over rapid spending.",
+    'Growth Catalyst':
+      "You champion strategic investment to accelerate Cardano's ecosystem, believing bold bets today create tomorrow's network effects.",
+    'Innovation Champion':
+      'You push for technical progress and believe Cardano should lead through bold protocol upgrades and experimentation.',
+    'Security Sentinel':
+      'You believe protocol safety and network resilience are non-negotiable foundations that everything else is built on.',
+    'Transparency Advocate':
+      'You demand openness in every governance decision and believe accountability is the bedrock of legitimate governance.',
+    'Decentralization Purist':
+      'You stand for distributed power and community autonomy, resisting any concentration of control.',
+    'Balanced Governor':
+      'You weigh multiple governance dimensions carefully, seeking pragmatic outcomes rather than ideological purity.',
+    'Fiscal Conservative':
+      'You believe the treasury should be preserved for only the most impactful investments, with rigorous oversight on spending.',
+    'Community Builder':
+      "You focus on growing Cardano's community and believe governance should empower participation from everyone.",
+    'Protocol Pioneer':
+      'You believe Cardano should be at the cutting edge, pushing boundaries on what blockchain governance can achieve.',
+  };
+
+  if (archetypeDescriptions[personalityLabel]) {
+    return archetypeDescriptions[personalityLabel];
+  }
+
+  // Fallback: use dominant dimension
   const dominant = getDominantDimension(alignments);
-  const descriptions: Record<AlignmentDimension, string> = {
+  const fallbacks: Record<AlignmentDimension, string> = {
     treasuryConservative: 'You prioritize fiscal responsibility and careful treasury stewardship.',
     treasuryGrowth: 'You champion strategic investment and ecosystem growth.',
     decentralization: 'You stand for distributed power and community autonomy.',
@@ -36,7 +65,7 @@ function getShortDescription(alignments: AlignmentScores): string {
     innovation: 'You push for progress, experimentation, and bold change.',
     transparency: 'You demand openness, accountability, and clear governance.',
   };
-  return descriptions[dominant];
+  return fallbacks[dominant];
 }
 
 /* ─── Component ─────────────────────────────────────────── */
@@ -49,7 +78,7 @@ export function GovernanceIdentityCard({
   onContinue,
 }: GovernanceIdentityCardProps) {
   const [r, g, b] = hexToRgb(identityColor);
-  const description = getShortDescription(alignments);
+  const description = getArchetypeDescription(personalityLabel, alignments);
   const dominantLabel = getDimensionLabel(getDominantDimension(alignments));
   const prefersReducedMotion = useReducedMotion();
 
@@ -87,18 +116,20 @@ export function GovernanceIdentityCard({
         aria-live="assertive"
       >
         {/* Preamble */}
-        <p className="text-sm text-muted-foreground uppercase tracking-widest">You&apos;re a</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">
+          Your Governance Identity
+        </p>
 
         {/* Archetype name */}
         <h2
-          className="font-display text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight"
+          className="font-display text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight"
           style={{ color: identityColor }}
         >
           {personalityLabel}
         </h2>
 
-        {/* Short description */}
-        <p className="text-sm md:text-base text-muted-foreground max-w-md">{description}</p>
+        {/* Rich description */}
+        <p className="text-sm md:text-base text-white/80 max-w-md leading-relaxed">{description}</p>
 
         {/* Dominant dimension badge */}
         <span

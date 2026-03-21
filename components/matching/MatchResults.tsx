@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { RotateCcw, ArrowRight } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 import { Button } from '@/components/ui/button';
 import { GovernanceIdentityCard } from './GovernanceIdentityCard';
@@ -10,7 +10,6 @@ import { MatchResultCard } from './MatchResultCard';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { MatchResult } from '@/lib/matching/conversationalMatch';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
-import Link from 'next/link';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -168,16 +167,8 @@ export function MatchResults({
           <div className="flex flex-col items-center gap-3 pt-4">
             <Button variant="outline" onClick={onReset} className="gap-2 min-h-[44px]">
               <RotateCcw className="h-4 w-4" />
-              Start over
+              Continue refining
             </Button>
-
-            <Link
-              href="/match?type=spo"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
-            >
-              Looking for a stake pool? Complete your governance team
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
           </div>
         </motion.div>
       )}

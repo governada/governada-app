@@ -72,19 +72,26 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
 
         {/* Hero content */}
         <div className="relative z-10 text-center max-w-lg px-6 sm:pt-14">
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight hero-text-shadow">
-            {t('Your ADA gives you')}
-            <br />
-            <span className="text-primary">{t('a voice.')}</span>
-          </h1>
-          <p
-            className="mt-4 text-lg sm:text-xl text-white/90 font-medium"
-            style={{
-              textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
-            }}
+          <div
+            className={cn(
+              'transition-all duration-500',
+              isMatching && 'opacity-0 h-0 overflow-hidden',
+            )}
           >
-            {t('Choose who votes for you. It takes 60 seconds.')}
-          </p>
+            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight hero-text-shadow">
+              {t('Your ADA gives you')}
+              <br />
+              <span className="text-primary">{t('a voice.')}</span>
+            </h1>
+            <p
+              className="mt-4 text-lg sm:text-xl text-white/90 font-medium"
+              style={{
+                textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
+              }}
+            >
+              {t('Choose who votes for you. It takes 60 seconds.')}
+            </p>
+          </div>
 
           {/* Conversational matching pills — inline in hero when flag enabled */}
           {conversationalMatchingEnabled && (
@@ -128,21 +135,11 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           </>
         )}
 
-        {/* Stake pool text link — always visible */}
-        {conversationalMatchingEnabled && (
-          <div className="text-center">
-            <Link
-              href="/match"
-              className="text-sm text-white/50 hover:text-white/80 transition-colors"
-              style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}
-            >
-              {t('Looking for a stake pool?')}
-            </Link>
-          </div>
-        )}
+        {/* Spacer when conversational matching is enabled */}
+        {conversationalMatchingEnabled && <div />}
 
         {/* Governance consequence card — why governance matters to your ADA */}
-        {pulseData && (
+        {pulseData && !isMatching && (
           <GovernanceConsequenceCard
             activeProposals={pulseData.activeProposals}
             totalDelegators={pulseData.totalDelegators}

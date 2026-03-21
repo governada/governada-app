@@ -17,10 +17,10 @@ interface SemanticFastTrackProps {
 /* ─── Example prompts ───────────────────────────────────── */
 
 const EXAMPLE_PROMPTS = [
-  'I believe the treasury should prioritize developer tooling...',
-  'DReps should be transparent about every vote...',
-  'Cardano needs to move faster on protocol upgrades...',
-  'Security and stability matter more than speed...',
+  'I believe the treasury should prioritize developer tooling',
+  'DReps should be transparent about every vote',
+  'Cardano needs to move faster on protocol upgrades',
+  'Security and stability matter more than speed',
 ] as const;
 
 const MAX_CHARS = 500;
@@ -164,7 +164,7 @@ export function SemanticFastTrack({ onSubmit, isProcessing, className }: Semanti
                     i === activePromptIndex && 'border-primary/20 text-foreground/70',
                   )}
                 >
-                  {prompt.slice(0, 40)}...
+                  {prompt}
                 </button>
               ))}
             </div>

@@ -2,11 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Loader2, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2, RotateCcw } from 'lucide-react';
 import { posthog } from '@/lib/posthog';
 import { Button } from '@/components/ui/button';
 import { PillCloud } from './PillCloud';
-import { ConfidenceRing } from './ConfidenceRing';
 import { ConversationalRound } from './ConversationalRound';
 import { SemanticFastTrack } from './SemanticFastTrack';
 import { MatchResults } from './MatchResults';
@@ -17,7 +16,7 @@ import type { ConstellationRef } from '@/components/GovernanceConstellation';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
-type FlowState = 'idle' | 'matching' | 'ready' | 'results';
+type FlowState = 'idle' | 'matching' | 'results';
 
 interface ConversationalMatchFlowProps {
   globeRef: React.RefObject<ConstellationRef | null>;
@@ -119,17 +118,13 @@ export function ConversationalMatchFlow({
 
   const prefersReducedMotion = useReducedMotion();
   const motionTransition = prefersReducedMotion ? { duration: 0 } : { duration: 0.2 };
-  const springTransition = prefersReducedMotion
-    ? { duration: 0 }
-    : { type: 'spring' as const, stiffness: 300, damping: 20 };
-
   /* ─── URL popstate handler ─────────────────────────────── */
 
   useEffect(() => {
     function handlePopState(e: PopStateEvent) {
       if (e.state?.state === 'matching') {
         // Allow back to matching state — but we don't auto-restart
-      } else if (flowState === 'matching' || flowState === 'ready') {
+      } else if (flowState === 'matching') {
         // Back button during matching → reset to idle
         handleReset();
       }
@@ -142,9 +137,12 @@ export function ConversationalMatchFlow({
 
   /* ─── Sync hook status → flow state ────────────────────── */
 
+  // Auto-trigger match when ready — skip "ready" intermediate state
+  const hasAutoMatchedRef = useRef(false);
   useEffect(() => {
-    if (status === 'ready_to_match' && flowState === 'matching') {
-      // Don't auto-transition — let the user click "See your matches"
+    if (status === 'ready_to_match' && flowState === 'matching' && !hasAutoMatchedRef.current) {
+      hasAutoMatchedRef.current = true;
+      getMatches();
     }
     if (status === 'matched' && flowState !== 'results') {
       setFlowState('results');
@@ -178,6 +176,7 @@ export function ConversationalMatchFlow({
     identityColor,
     userAlignments,
     onMatchComplete,
+    getMatches,
   ]);
 
   /* ─── Update globe highlights after each answer ────────── */
@@ -291,29 +290,20 @@ export function ConversationalMatchFlow({
     [submitAnswer, pendingSemanticText, round],
   );
 
-  /* ─── See matches CTA ──────────────────────────────────── */
+  /* ─── Continue refining (restart session, go back to matching) ── */
 
-  const handleSeeMatches = useCallback(async () => {
-    setFlowState('ready');
-    await getMatches();
-  }, [getMatches]);
-
-  /* ─── Reset ────────────────────────────────────────────── */
-
-  const handleReset = useCallback(() => {
-    posthog.capture('match_reset');
+  const handleReset = useCallback(async () => {
+    posthog.capture('match_continue_refining');
     reset();
-    setFlowState('idle');
-    setSelectedTopics(new Set());
-    setFreeformText('');
-    setShowFastTrack(false);
+    hasAutoMatchedRef.current = false;
+    hasStartedRef.current = true;
+    setFlowState('matching');
     setPendingSemanticText(null);
-    hasStartedRef.current = false;
+    pushUrlState('matching', 'matching');
     globeRef.current?.clearMatches();
-    if (typeof window !== 'undefined') {
-      window.history.pushState({}, '', '/');
-    }
-  }, [reset, globeRef]);
+    // Start a fresh session to allow more rounds
+    await startSession();
+  }, [reset, globeRef, startSession]);
 
   /* ─── Render: Idle state ───────────────────────────────── */
 
@@ -415,7 +405,7 @@ export function ConversationalMatchFlow({
 
   if (flowState === 'matching') {
     return (
-      <div className="w-full space-y-4">
+      <div className="w-full space-y-3 max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-30 max-md:bg-background/90 max-md:backdrop-blur-lg max-md:px-4 max-md:pb-[env(safe-area-inset-bottom,12px)] max-md:pt-3 max-md:border-t max-md:border-white/[0.06]">
         <AnimatePresence mode="wait">
           {/* Waiting for first question */}
           {isLoading && !question && (
@@ -454,50 +444,30 @@ export function ConversationalMatchFlow({
           )}
         </AnimatePresence>
 
-        {/* Confidence + ready CTA */}
-        <div className="flex items-center justify-between">
-          <ConfidenceRing confidence={confidence} size={48} label="Match confidence" />
+        {/* Thin confidence bar */}
+        {confidence > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-[3px] rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${Math.min(confidence, 100)}%` }}
+              />
+            </div>
+            <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
+              {confidence}% match confidence
+            </span>
+          </div>
+        )}
 
-          {status === 'ready_to_match' && (
-            <motion.div
-              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={springTransition}
-            >
-              <Button
-                onClick={handleSeeMatches}
-                size="lg"
-                className="gap-2 rounded-xl font-semibold"
-              >
-                <Sparkles className="h-4 w-4" />
-                See your matches
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </motion.div>
-          )}
-        </div>
+        {/* Loading matches indicator (replaces old "ready" state) */}
+        {status === 'ready_to_match' && (
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            Finding your matches...
+          </div>
+        )}
 
         {error && <p className="text-center text-sm text-destructive">{error}</p>}
-      </div>
-    );
-  }
-
-  /* ─── Render: Ready state (loading matches) ────────────── */
-
-  if (flowState === 'ready') {
-    return (
-      <div className="flex flex-col items-center gap-4 py-8">
-        <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={
-            prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 200, damping: 20 }
-          }
-        >
-          <ConfidenceRing confidence={confidence} size={80} />
-        </motion.div>
-        <p className="text-sm text-muted-foreground">Finding your matches...</p>
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
       </div>
     );
   }

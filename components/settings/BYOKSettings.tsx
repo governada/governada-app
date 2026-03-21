@@ -1,14 +1,26 @@
 'use client';
 
 /**
- * BYOKSettings — manage BYOK API keys in the settings page.
+ * BYOKSettings — manage personal AI API keys in the settings page.
  *
  * Shows stored keys (masked), allows adding/testing/removing keys.
  * Gated behind the "byok_api_keys" feature flag.
  */
 
 import { useState } from 'react';
-import { Key, Plus, Trash2, CheckCircle2, XCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import {
+  Key,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  X,
+  ShieldCheck,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,14 +44,33 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useBYOKKeys, useAddBYOKKey, useDeleteBYOKKey, useTestBYOKKey } from '@/hooks/useBYOKKeys';
 
 // ---------------------------------------------------------------------------
+// Provider metadata for user education
+// ---------------------------------------------------------------------------
+
+const PROVIDER_INFO: Record<string, { label: string; keyUrl: string; placeholder: string }> = {
+  anthropic: {
+    label: 'Anthropic (Claude)',
+    keyUrl: 'https://console.anthropic.com/settings/keys',
+    placeholder: 'Paste your Anthropic key here',
+  },
+  openai: {
+    label: 'OpenAI (GPT)',
+    keyUrl: 'https://platform.openai.com/api-keys',
+    placeholder: 'Paste your OpenAI key here',
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Add Key Form
 // ---------------------------------------------------------------------------
 
-function AddKeyForm({ onSuccess }: { onSuccess: () => void }) {
+function AddKeyForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
   const [provider, setProvider] = useState<string>('anthropic');
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const addMutation = useAddBYOKKey();
+
+  const providerMeta = PROVIDER_INFO[provider] ?? PROVIDER_INFO.anthropic;
 
   const handleSubmit = () => {
     if (!apiKey.trim()) return;
@@ -56,21 +87,39 @@ function AddKeyForm({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
+    <div className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-4">
+      {/* Step 1: Choose provider */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">1. Choose your provider</label>
         <Select value={provider} onValueChange={setProvider}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Provider" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="anthropic">Anthropic</SelectItem>
-            <SelectItem value="openai">OpenAI</SelectItem>
+            <SelectItem value="anthropic">{PROVIDER_INFO.anthropic.label}</SelectItem>
+            <SelectItem value="openai">{PROVIDER_INFO.openai.label}</SelectItem>
           </SelectContent>
         </Select>
-        <div className="relative flex-1">
+      </div>
+
+      {/* Step 2: Get and paste key */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-muted-foreground">2. Paste your API key</label>
+          <a
+            href={providerMeta.keyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+          >
+            Get a key
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+        <div className="relative">
           <Input
             type={showKey ? 'text' : 'password'}
-            placeholder="sk-ant-..."
+            placeholder={providerMeta.placeholder}
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="pr-9"
@@ -84,19 +133,33 @@ function AddKeyForm({ onSuccess }: { onSuccess: () => void }) {
           </button>
         </div>
       </div>
-      <Button
-        onClick={handleSubmit}
-        disabled={!apiKey.trim() || addMutation.isPending}
-        size="sm"
-        className="gap-1.5"
-      >
-        {addMutation.isPending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Plus className="h-3.5 w-3.5" />
-        )}
-        Add key
-      </Button>
+
+      {/* Privacy note */}
+      <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground/70">
+        <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0" />
+        <span>Your key is encrypted and stored securely. It never leaves our server.</span>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleSubmit}
+          disabled={!apiKey.trim() || addMutation.isPending}
+          size="sm"
+          className="gap-1.5"
+        >
+          {addMutation.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
+          Add key
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+
       {addMutation.isError && (
         <p className="text-xs text-destructive">{addMutation.error.message}</p>
       )}
@@ -121,6 +184,7 @@ function StoredKeyRow({
   const testMutation = useTestBYOKKey();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  const providerMeta = PROVIDER_INFO[provider];
   const formattedDate = new Date(createdAt).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -130,8 +194,8 @@ function StoredKeyRow({
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
       <div className="flex items-center gap-3 min-w-0">
-        <Badge variant="secondary" className="shrink-0 capitalize">
-          {provider}
+        <Badge variant="secondary" className="shrink-0">
+          {providerMeta?.label ?? provider}
         </Badge>
         <span className="text-sm font-mono text-muted-foreground truncate">{keyPrefix}</span>
         <span className="text-xs text-muted-foreground hidden sm:inline">{formattedDate}</span>
@@ -174,8 +238,8 @@ function StoredKeyRow({
             <DialogHeader>
               <DialogTitle>Remove API Key</DialogTitle>
               <DialogDescription>
-                This will remove your {provider} API key. AI features will fall back to the platform
-                key. You can add a new key at any time.
+                This will remove your {providerMeta?.label ?? provider} API key. AI features will
+                fall back to the platform key. You can add a new key at any time.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -216,9 +280,20 @@ export function BYOKSettings() {
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-border/50">
-        <Key className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold">AI API Keys (BYOK)</h3>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <Key className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Your AI Provider</h3>
+        </div>
+        {showForm && (
+          <button
+            onClick={() => setShowForm(false)}
+            className="p-1 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Close form"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <div className="px-5 py-4 space-y-4">
         {isLoading && (
@@ -240,7 +315,12 @@ export function BYOKSettings() {
         {!isLoading && !hasKeys && !showForm && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Bring your own AI. Your key, your model, your data stays private.
+              Governada&apos;s AI features work out of the box. Add your own API key if you&apos;d
+              prefer to use your personal account with Anthropic or OpenAI.
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              Not sure what this means? You don&apos;t need it &mdash; skip this and everything
+              works the same.
             </p>
             <Button
               variant="outline"
@@ -249,12 +329,14 @@ export function BYOKSettings() {
               className="gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add API key
+              Add your own key
             </Button>
           </div>
         )}
 
-        {!isLoading && showForm && !hasKeys && <AddKeyForm onSuccess={() => setShowForm(false)} />}
+        {!isLoading && showForm && !hasKeys && (
+          <AddKeyForm onSuccess={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
+        )}
 
         {hasKeys && (
           <div className="space-y-3">
@@ -270,7 +352,10 @@ export function BYOKSettings() {
             {keys.length < 2 && (
               <>
                 {showForm ? (
-                  <AddKeyForm onSuccess={() => setShowForm(false)} />
+                  <AddKeyForm
+                    onSuccess={() => setShowForm(false)}
+                    onCancel={() => setShowForm(false)}
+                  />
                 ) : (
                   <Button
                     variant="ghost"

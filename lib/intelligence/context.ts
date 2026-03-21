@@ -15,6 +15,30 @@
 import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { cached } from '@/lib/redis';
+import {
+  getTreasuryBalance,
+  getNclUtilization,
+  getDRepTreasuryTrackRecord,
+  formatAda,
+  calculateRunwayMonths,
+  calculateBurnRate,
+  getTreasuryTrend,
+} from '@/lib/treasury';
+
+// ---------------------------------------------------------------------------
+// Shared treasury context helper (server-side, used across synthesis fns)
+// ---------------------------------------------------------------------------
+
+async function getTreasuryContext() {
+  const [treasuryData, ncl, trend] = await Promise.all([
+    getTreasuryBalance().catch(() => null),
+    getNclUtilization().catch(() => null),
+    getTreasuryTrend(10).catch(() => []),
+  ]);
+  const burnRate = calculateBurnRate(trend);
+  const runwayMonths = treasuryData ? calculateRunwayMonths(treasuryData.balanceAda, burnRate) : 0;
+  return { treasuryData, ncl, runwayMonths };
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,6 +82,7 @@ type RouteType =
   | 'proposals-list'
   | 'representatives-list'
   | 'health'
+  | 'treasury'
   | 'workspace'
   | 'governance'
   | 'list'
@@ -98,6 +123,9 @@ function parseRoute(pathname: string): ParsedRoute {
   }
   if (pathname === '/governance/health') {
     return { type: 'health' };
+  }
+  if (pathname === '/governance/treasury') {
+    return { type: 'treasury' };
   }
   if (pathname.startsWith('/workspace')) {
     return { type: 'workspace' };
@@ -216,6 +244,57 @@ async function synthesizeProposalContext(
         label: 'Expiration',
         value: `${epochsRemaining} epoch${epochsRemaining === 1 ? '' : 's'} remaining`,
         sentiment: epochsRemaining <= 1 ? 'negative' : 'neutral',
+      });
+    }
+  }
+
+  // Treasury context for withdrawal proposals
+  if (proposal.withdrawal_amount) {
+    const withdrawalAda = Math.round(Number(proposal.withdrawal_amount) / 1_000_000);
+    const treasury = await getTreasuryContext().catch(() => null);
+    if (treasury?.treasuryData) {
+      // Runway impact
+      const currentRunway = treasury.runwayMonths;
+      if (currentRunway > 0 && withdrawalAda > 0) {
+        const impactMonths = Math.round(
+          currentRunway -
+            calculateRunwayMonths(
+              treasury.treasuryData.balanceAda - withdrawalAda,
+              treasury.treasuryData.balanceAda > 0
+                ? (treasury.treasuryData.balanceAda -
+                    (treasury.treasuryData.balanceAda - withdrawalAda)) /
+                    (currentRunway / 12)
+                : 0,
+            ),
+        );
+        if (impactMonths > 0) {
+          highlights.push({
+            label: 'Runway Impact',
+            value: `-${impactMonths}mo`,
+            sentiment: impactMonths > 6 ? 'negative' : 'neutral',
+          });
+        }
+      }
+    }
+    if (treasury?.ncl) {
+      const newUtilization =
+        treasury.ncl.utilizationPct +
+        (withdrawalAda / (treasury.ncl.remainingAda + withdrawalAda)) * 100;
+      highlights.push({
+        label: 'NCL Impact',
+        value: `Budget → ${Math.round(Math.min(100, newUtilization))}%`,
+        sentiment: newUtilization > 75 ? 'negative' : newUtilization > 50 ? 'neutral' : 'positive',
+      });
+    }
+  } else {
+    // Non-treasury proposal: lighter treasury status
+    const treasury = await getTreasuryContext().catch(() => null);
+    if (treasury?.treasuryData) {
+      const healthy = treasury.runwayMonths > 24;
+      highlights.push({
+        label: 'Treasury',
+        value: healthy ? 'Healthy' : 'Needs Attention',
+        sentiment: healthy ? 'positive' : 'negative',
       });
     }
   }
@@ -351,6 +430,27 @@ async function synthesizeDrepContext(
     }
   }
 
+  // Treasury track record
+  const treasuryRecord = await getDRepTreasuryTrackRecord(drepId).catch(() => null);
+  if (treasuryRecord && treasuryRecord.totalProposals > 0) {
+    const stance =
+      treasuryRecord.approvedAda > treasuryRecord.opposedAda * 2
+        ? 'Growth'
+        : treasuryRecord.opposedAda > treasuryRecord.approvedAda * 2
+          ? 'Conservative'
+          : 'Balanced';
+    highlights.push({
+      label: 'Treasury Stance',
+      value: stance,
+      sentiment: 'neutral',
+    });
+    highlights.push({
+      label: 'Treasury Votes',
+      value: `${treasuryRecord.totalProposals} (${formatAda(treasuryRecord.approvedAda)} approved)`,
+      sentiment: 'neutral',
+    });
+  }
+
   const briefing = `${name} is a ${drep.size_tier ?? ''} DRep with a score of ${drep.score}/100. Participation rate: ${Math.round(drep.effective_participation ?? 0)}%. Rationale rate: ${Math.round(drep.rationale_rate ?? 0)}%.`;
 
   return {
@@ -396,6 +496,38 @@ async function synthesizeHubContext(stakeAddress?: string): Promise<ContextSynth
         sentiment: 'neutral',
       });
     }
+  }
+
+  // Treasury awareness
+  const treasury = await getTreasuryContext().catch(() => null);
+  if (treasury?.treasuryData) {
+    const runwayYears = treasury.runwayMonths / 12;
+    const runwayLabel =
+      runwayYears > 20 ? '10+ yr runway' : `${Math.round(treasury.runwayMonths)}mo runway`;
+    const healthy = treasury.runwayMonths > 24;
+    highlights.push({
+      label: 'Treasury',
+      value: `${healthy ? 'Healthy' : 'Attention'} · ${runwayLabel}`,
+      sentiment: healthy ? 'positive' : 'negative',
+    });
+  }
+
+  // Pending treasury proposals action
+  const pendingTreasuryResult = await supabase
+    .from('proposals')
+    .select('*', { count: 'exact', head: true })
+    .is('ratified_epoch', null)
+    .is('enacted_epoch', null)
+    .is('dropped_epoch', null)
+    .is('expired_epoch', null)
+    .not('withdrawal_amount', 'is', null);
+  const pendingTreasuryCount = pendingTreasuryResult.count ?? 0;
+  if (pendingTreasuryCount > 0) {
+    suggestedActions.push({
+      label: `Review ${pendingTreasuryCount} treasury proposal${pendingTreasuryCount !== 1 ? 's' : ''}`,
+      href: '/governance/treasury',
+      priority: 'high',
+    });
   }
 
   if (stakeAddress) {
@@ -501,6 +633,19 @@ async function synthesizeProposalsListContext(
       label: 'Treasury at Stake',
       value: `${totalTreasuryAda.toLocaleString()} ADA`,
       sentiment: totalTreasuryAda > 50_000_000 ? 'negative' : 'neutral',
+    });
+  }
+
+  // NCL utilization context
+  const nclData = await getNclUtilization().catch(() => null);
+  if (nclData && totalTreasuryAda > 0) {
+    const projectedIfAllPass =
+      nclData.utilizationPct + (totalTreasuryAda / (nclData.remainingAda + totalTreasuryAda)) * 100;
+    highlights.push({
+      label: 'NCL Budget',
+      value: `${Math.round(nclData.utilizationPct)}% used, ${Math.round(Math.min(100, projectedIfAllPass))}% if all pass`,
+      sentiment:
+        projectedIfAllPass > 75 ? 'negative' : projectedIfAllPass > 50 ? 'neutral' : 'positive',
     });
   }
 
@@ -880,6 +1025,19 @@ async function synthesizeHealthContext(stakeAddress?: string): Promise<ContextSy
     priority: 'low',
   });
 
+  // Treasury health contribution
+  const treasury = await getTreasuryContext().catch(() => null);
+  if (treasury?.treasuryData) {
+    const healthy = treasury.runwayMonths > 24;
+    const runwayYears = treasury.runwayMonths / 12;
+    const runwayLabel = runwayYears > 20 ? '10+ yr' : `${Math.round(treasury.runwayMonths)}mo`;
+    highlights.push({
+      label: 'Treasury Health',
+      value: `${healthy ? 'Healthy' : 'Attention'} · ${runwayLabel} runway`,
+      sentiment: healthy ? 'positive' : 'negative',
+    });
+  }
+
   return {
     briefing: briefingParts.join(' '),
     highlights,
@@ -1018,11 +1176,128 @@ async function synthesizeWorkspaceContext(stakeAddress?: string): Promise<Contex
     });
   }
 
+  // Treasury awareness for workspace
+  const pendingTreasuryResult = await supabase
+    .from('proposals')
+    .select('*', { count: 'exact', head: true })
+    .is('ratified_epoch', null)
+    .is('enacted_epoch', null)
+    .is('dropped_epoch', null)
+    .is('expired_epoch', null)
+    .not('withdrawal_amount', 'is', null);
+  const pendingTreasuryCount = pendingTreasuryResult.count ?? 0;
+  if (pendingTreasuryCount > 0) {
+    highlights.push({
+      label: 'Pending Treasury',
+      value: `${pendingTreasuryCount} proposal${pendingTreasuryCount !== 1 ? 's' : ''}`,
+      sentiment: pendingTreasuryCount > 5 ? 'negative' : 'neutral',
+    });
+    suggestedActions.push({
+      label: `Review ${pendingTreasuryCount} pending treasury proposal${pendingTreasuryCount !== 1 ? 's' : ''}`,
+      href: '/governance/treasury',
+      priority: 'medium',
+    });
+  }
+
   return {
     briefing: briefingParts.join(' '),
     highlights,
     suggestedActions,
     routeType: 'workspace',
+    computedAt: new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Treasury — dedicated treasury page intelligence
+// ---------------------------------------------------------------------------
+
+async function synthesizeTreasuryContext(stakeAddress?: string): Promise<ContextSynthesisResult> {
+  const highlights: ContextHighlight[] = [];
+  const suggestedActions: SuggestedAction[] = [];
+
+  const treasury = await getTreasuryContext().catch(() => null);
+
+  if (!treasury?.treasuryData) {
+    return emptyResult('treasury');
+  }
+
+  const runwayYears = treasury.runwayMonths / 12;
+  const runwayLabel = runwayYears > 20 ? '10+ years' : `${Math.round(treasury.runwayMonths)}mo`;
+  const healthy = treasury.runwayMonths > 24;
+
+  highlights.push({
+    label: 'Runway',
+    value: runwayLabel,
+    sentiment: healthy ? 'positive' : treasury.runwayMonths > 12 ? 'neutral' : 'negative',
+  });
+
+  if (treasury.ncl) {
+    highlights.push({
+      label: 'NCL Used',
+      value: `${Math.round(treasury.ncl.utilizationPct)}%`,
+      sentiment:
+        treasury.ncl.utilizationPct > 75
+          ? 'negative'
+          : treasury.ncl.utilizationPct > 50
+            ? 'neutral'
+            : 'positive',
+    });
+  }
+
+  // Pending treasury proposals
+  const supabase = createClient();
+  const pendingResult = await supabase
+    .from('proposals')
+    .select('tx_hash, withdrawal_amount', { count: 'exact' })
+    .is('ratified_epoch', null)
+    .is('enacted_epoch', null)
+    .is('dropped_epoch', null)
+    .is('expired_epoch', null)
+    .not('withdrawal_amount', 'is', null);
+  const pendingCount = pendingResult.count ?? 0;
+  const pendingTotalAda = (pendingResult.data ?? []).reduce(
+    (sum, p) => sum + Math.round(Number(p.withdrawal_amount ?? 0) / 1_000_000),
+    0,
+  );
+
+  if (pendingCount > 0) {
+    highlights.push({
+      label: 'Pending',
+      value: `${pendingCount} (${formatAda(pendingTotalAda)} ADA)`,
+      sentiment: pendingTotalAda > 50_000_000 ? 'negative' : 'neutral',
+    });
+    suggestedActions.push({
+      label: `Review ${pendingCount} pending treasury proposal${pendingCount !== 1 ? 's' : ''}`,
+      href: '/governance/proposals',
+      priority: 'high',
+    });
+  }
+
+  const briefingParts: string[] = [];
+  briefingParts.push(
+    `Treasury balance: ${formatAda(treasury.treasuryData.balanceAda)} ADA with ${runwayLabel} runway.`,
+  );
+  if (treasury.ncl) {
+    briefingParts.push(`NCL budget is ${Math.round(treasury.ncl.utilizationPct)}% utilized.`);
+  }
+  if (pendingCount > 0) {
+    briefingParts.push(
+      `${pendingCount} treasury withdrawal${pendingCount !== 1 ? 's' : ''} totaling ${formatAda(pendingTotalAda)} ADA are pending.`,
+    );
+  }
+
+  suggestedActions.push({
+    label: 'Explore treasury details',
+    href: '/governance/treasury',
+    priority: 'low',
+  });
+
+  return {
+    briefing: briefingParts.join(' '),
+    highlights,
+    suggestedActions,
+    routeType: 'treasury',
     computedAt: new Date().toISOString(),
   };
 }
@@ -1066,6 +1341,8 @@ export async function synthesizeContext(
           return synthesizeRepresentativesListContext(stakeAddress);
         case 'health':
           return synthesizeHealthContext(stakeAddress);
+        case 'treasury':
+          return synthesizeTreasuryContext(stakeAddress);
         case 'workspace':
           return synthesizeWorkspaceContext(stakeAddress);
         case 'governance':
@@ -1096,6 +1373,8 @@ export async function synthesizeContext(
           return await synthesizeRepresentativesListContext(stakeAddress);
         case 'health':
           return await synthesizeHealthContext(stakeAddress);
+        case 'treasury':
+          return await synthesizeTreasuryContext(stakeAddress);
         case 'workspace':
           return await synthesizeWorkspaceContext(stakeAddress);
         case 'hub':

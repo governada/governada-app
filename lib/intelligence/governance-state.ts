@@ -137,9 +137,12 @@ async function computeGlobalState(): Promise<Omit<GovernanceStateResult, 'userSt
     // Active proposals (not ratified/enacted/dropped/expired)
     supabase
       .from('proposals')
-      .select('tx_hash, proposal_index, expiration_epoch, proposed_epoch, block_time', {
-        count: 'exact',
-      })
+      .select(
+        'tx_hash, proposal_index, expiration_epoch, proposed_epoch, block_time, withdrawal_amount',
+        {
+          count: 'exact',
+        },
+      )
       .is('ratified_epoch', null)
       .is('enacted_epoch', null)
       .is('dropped_epoch', null)
@@ -189,6 +192,7 @@ function computeUrgency(
     expiration_epoch: number | null;
     proposed_epoch: number | null;
     block_time: number | null;
+    withdrawal_amount: string | number | null;
   }>,
   currentEpoch: number,
   epochProgress: number,
@@ -220,6 +224,17 @@ function computeUrgency(
 
   // Factor 4: Volume of active proposals (many = more urgency)
   urgencyScore += Math.min(10, Math.round(activeProposals.length * 1.5));
+
+  // Factor 5: Major treasury proposals (>10M ADA) expiring within 3 epochs
+  const MAJOR_THRESHOLD = 10_000_000 * 1_000_000; // 10M ADA in lovelace
+  const majorTreasuryExpiring = activeProposals.filter(
+    (p) =>
+      p.withdrawal_amount != null &&
+      Number(p.withdrawal_amount) >= MAJOR_THRESHOLD &&
+      p.expiration_epoch != null &&
+      p.expiration_epoch <= currentEpoch + 3,
+  );
+  urgencyScore += Math.min(15, majorTreasuryExpiring.length * 8);
 
   return Math.min(100, Math.max(0, urgencyScore));
 }

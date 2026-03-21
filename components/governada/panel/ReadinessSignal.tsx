@@ -131,6 +131,10 @@ function computeReadiness(state: GovernanceStateResult): ReadinessData {
   if (epochPct >= 80) {
     summaryParts.push('epoch ending soon');
   }
+  // Treasury urgency contributes to readiness if urgency is very high
+  if (urgency >= 80) {
+    summaryParts.push('major treasury decisions pending');
+  }
   const summary = summaryParts.length > 0 ? summaryParts.join(' · ') : 'Governance is stable';
 
   return { score: readiness, label, colorClass, strokeColor, summary, signals };

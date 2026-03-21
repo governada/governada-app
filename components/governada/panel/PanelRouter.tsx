@@ -11,6 +11,7 @@ import type { PanelRoute } from '@/hooks/useIntelligencePanel';
 import { HubPanel } from './HubPanel';
 import { ProposalPanel } from './ProposalPanel';
 import { DRepPanel } from './DRepPanel';
+import { TreasuryPanel } from './TreasuryPanel';
 import { GovernancePanel } from './GovernancePanel';
 import { DefaultPanel } from './DefaultPanel';
 
@@ -29,6 +30,8 @@ export function PanelRouter({ panelRoute, entityId }: PanelRouterProps) {
       return <ProposalPanel entityId={entityId} />;
     case 'drep':
       return <DRepPanel entityId={entityId} />;
+    case 'treasury':
+      return <TreasuryPanel />;
     case 'proposals-list':
     case 'representatives-list':
     case 'health':

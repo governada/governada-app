@@ -35,6 +35,7 @@ export type PanelRoute =
   | 'proposals-list'
   | 'representatives-list'
   | 'health'
+  | 'treasury'
   | 'workspace'
   | 'default';
 
@@ -46,6 +47,7 @@ function detectPanelRoute(pathname: string): PanelRoute {
   if (pathname === '/governance/representatives' || pathname === '/representatives')
     return 'representatives-list';
   if (pathname === '/governance/health') return 'health';
+  if (pathname === '/governance/treasury') return 'treasury';
   if (pathname.startsWith('/workspace')) return 'workspace';
   return 'default';
 }

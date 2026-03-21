@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Users, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,10 @@ import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { GovernanceConsequenceCard } from './GovernanceConsequenceCard';
 import { IntelligencePreview } from './IntelligencePreview';
+import { ConversationalMatchFlow } from '@/components/matching/ConversationalMatchFlow';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { cn } from '@/lib/utils';
+import type { ConstellationRef } from '@/components/GovernanceConstellation';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -26,9 +30,9 @@ interface AnonymousLandingProps {
 /**
  * Anonymous Landing — Optimized conversion page.
  *
- * Two clear paths:
- * 1. "Build your governance team" → /match (the conversion action)
- * 2. "Explore governance" → /governance (browse without connecting)
+ * Two modes:
+ * 1. Feature flag OFF: Original CTA cards (Choose Representative + Get Started)
+ * 2. Feature flag ON: Conversational matching pills embedded in hero with globe convergence
  *
  * Enhanced social proof: live DRep, proposal, and participation counts.
  * Glass-window peek at governance health pulse to demonstrate value.
@@ -36,17 +40,31 @@ interface AnonymousLandingProps {
  */
 export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
   const { t } = useTranslation();
+  const globeRef = useRef<ConstellationRef>(null);
+  const [isMatching, setIsMatching] = useState(false);
+  const conversationalMatchingEnabled = useFeatureFlag('conversational_matching');
 
   useEffect(() => {
     trackFunnel(FUNNEL_EVENTS.LANDING_VIEWED);
   }, []);
 
+  const handleMatchStart = () => {
+    setIsMatching(true);
+    trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_conversational' });
+  };
+
   return (
     <div className="relative flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Constellation hero */}
-      <section className="force-dark relative flex-1 min-h-[50vh] sm:-mt-14 overflow-hidden flex items-center justify-center">
+      <section
+        className={cn(
+          'force-dark relative flex-1 min-h-[50vh] sm:-mt-14 overflow-hidden flex items-center justify-center',
+          'transition-all duration-700',
+          isMatching && 'min-h-[60vh]',
+        )}
+      >
         <div className="absolute inset-0">
-          <ConstellationScene className="w-full h-full" interactive={false} />
+          <ConstellationScene ref={globeRef} className="w-full h-full" interactive={false} />
         </div>
 
         {/* Gradient fade */}
@@ -67,26 +85,60 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           >
             {t('Choose who votes for you. It takes 60 seconds.')}
           </p>
+
+          {/* Conversational matching pills — inline in hero when flag enabled */}
+          {conversationalMatchingEnabled && (
+            <div className="mt-8">
+              <ConversationalMatchFlow globeRef={globeRef} onMatchStart={handleMatchStart} />
+            </div>
+          )}
         </div>
       </section>
 
-      {/* CTAs + social proof */}
-      <section className="relative z-10 mx-auto w-full max-w-lg px-6 -mt-8 pb-12 space-y-6">
-        {/* Primary CTA — Choose your representative */}
-        <div className="flex flex-col gap-3">
-          <Button
-            asChild
-            size="lg"
-            className="w-full gap-2 text-base py-6 rounded-xl font-semibold"
-            onClick={() => trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_primary' })}
-          >
-            <Link href="/match">
-              <Users className="h-5 w-5" />
-              {t('Choose Your Representative')}
-              <ArrowRight className="h-5 w-5" />
+      {/* CTAs + social proof — dims when matching starts */}
+      <section
+        className={cn(
+          'relative z-10 mx-auto w-full max-w-lg px-6 -mt-8 pb-12 space-y-6',
+          'transition-all duration-700',
+          isMatching &&
+            'opacity-20 translate-y-10 pointer-events-none md:opacity-20 md:translate-y-10',
+          isMatching && 'max-md:hidden',
+        )}
+      >
+        {/* Original CTA cards — shown when conversational matching is disabled */}
+        {!conversationalMatchingEnabled && (
+          <>
+            {/* Primary CTA — Choose your representative */}
+            <div className="flex flex-col gap-3">
+              <Button
+                asChild
+                size="lg"
+                className="w-full gap-2 text-base py-6 rounded-xl font-semibold"
+                onClick={() =>
+                  trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_primary' })
+                }
+              >
+                <Link href="/match">
+                  <Users className="h-5 w-5" />
+                  {t('Choose Your Representative')}
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Stake pool text link — always visible */}
+        {conversationalMatchingEnabled && (
+          <div className="text-center">
+            <Link
+              href="/match"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t('Looking for a stake pool?')}
             </Link>
-          </Button>
-        </div>
+          </div>
+        )}
 
         {/* Governance consequence card — why governance matters to your ADA */}
         {pulseData && (

@@ -35,9 +35,9 @@ export function useGovernanceDepth(): GovernanceDepthState {
   const userDepth = storedDepth && isValidDepth(storedDepth) ? storedDepth : undefined;
   const defaultDepth = getDefaultDepthForSegment(segment);
 
-  // Anonymous users are locked to hands_off — ignore any stored preference
-  const depth =
-    segment === 'anonymous' ? 'hands_off' : (overrideDepth ?? userDepth ?? defaultDepth);
+  // Anonymous users default to informed — they see Compass Guide narratives and
+  // enriched browse content. Personal intelligence is gated via PersonalTeaser.
+  const depth = segment === 'anonymous' ? 'informed' : (overrideDepth ?? userDepth ?? defaultDepth);
   const level = getTunerLevel(depth);
   const isDefault = !overrideDepth && !userDepth;
 

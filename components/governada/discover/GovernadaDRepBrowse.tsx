@@ -29,7 +29,11 @@ import {
 import { useBatchEndorsementCounts } from '@/hooks/useEngagement';
 import { useDReps } from '@/hooks/queries';
 import type { EnrichedDRep } from '@/lib/koios';
-import { AnonymousNudge } from '@/components/governada/shared/AnonymousNudge';
+import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { MoversStrip } from '@/components/governada/shared/MoversStrip';
+import { InsightCard } from '@/components/governada/shared/InsightCard';
+import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
+import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { useWallet } from '@/utils/wallet-context';
@@ -529,6 +533,30 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
   const { data: endorsementData } = useBatchEndorsementCounts('drep', pageEntityIds);
   const endorsementCounts = endorsementData?.counts ?? {};
 
+  // Compute top movers from score momentum data
+  const topMovers = useMemo(() => {
+    if (!dreps.length) return [];
+    return [...dreps]
+      .filter((e) => typeof e.scoreMomentum === 'number' && e.scoreMomentum > 0.5)
+      .sort((a, b) => (b.scoreMomentum ?? 0) - (a.scoreMomentum ?? 0))
+      .slice(0, 3)
+      .map((e) => ({
+        id: e.drepId,
+        name: e.name || e.ticker || e.handle || `${e.drepId.slice(0, 16)}\u2026`,
+        score: e.drepScore ?? 0,
+        scoreDelta: Math.round(e.scoreMomentum ?? 0),
+      }));
+  }, [dreps]);
+
+  // Top match for PersonalTeaser
+  const topMatch = useMemo(() => {
+    if (!matchProfile || !filtered.length) return null;
+    const top = filtered[0];
+    return {
+      name: top.name || top.ticker || top.handle || `${top.drepId.slice(0, 16)}\u2026`,
+    };
+  }, [matchProfile, filtered]);
+
   if (isLoading) {
     return (
       <div className="space-y-2 pt-4">
@@ -590,7 +618,13 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
         )}
       </div>
 
-      <AnonymousNudge variant="representatives" />
+      <CompassGuide page="representatives" drepCount={dreps.length} />
+
+      {topMovers.length > 0 && <MoversStrip movers={topMovers} entityType="drep" />}
+
+      {sortMode === 'match' && topMatch && (
+        <PersonalTeaser variant="alignment" entityName={topMatch.name} />
+      )}
 
       {/* ── Sticky filter bar — Engaged+ ─────────────────────────── */}
       <DepthGate minDepth="engaged">
@@ -835,6 +869,13 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
       {!isInformedOnly && (
         <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       )}
+
+      <InsightCard
+        insight="The top 10 DReps by governance score have a rationale rate 3x higher than average — they don't just vote, they explain why."
+        category="participation"
+      />
+
+      <AdvisorTeaser />
     </div>
   );
 }

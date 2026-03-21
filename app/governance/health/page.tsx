@@ -11,6 +11,9 @@ import { DepthGate } from '@/components/providers/DepthGate';
 import { GovernanceTemperature } from '@/components/community/GovernanceTemperature';
 import { CitizenMandate } from '@/components/community/CitizenMandate';
 import { SentimentDivergence } from '@/components/community/SentimentDivergence';
+import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
+import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
 
 export const metadata: Metadata = {
   title: 'Governada — Governance Health',
@@ -58,9 +61,13 @@ export default function HealthPage() {
       <PageViewTracker event="governance_health_viewed" />
       <FunnelExploreTracker />
       <div className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <CompassGuide page="health" />
+
         <Suspense fallback={<HealthFallback />}>
           <GovernadaPulseOverview />
         </Suspense>
+
+        <PersonalTeaser variant="participation_score" />
 
         {/* Community Intelligence — feature-flagged + depth-gated */}
         <DepthGate minDepth="informed">
@@ -80,6 +87,8 @@ export default function HealthPage() {
             </FeatureGate>
           </div>
         </DepthGate>
+
+        <AdvisorTeaser />
       </div>
     </>
   );

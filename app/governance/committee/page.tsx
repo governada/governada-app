@@ -19,6 +19,8 @@ import { PeekTrigger } from '@/components/governada/peeks/PeekTrigger';
 import { usePeekTrigger } from '@/components/governada/peeks/PeekDrawerProvider';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
+import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
 
 // ---------------------------------------------------------------------------
 // Grade utilities
@@ -352,6 +354,7 @@ export default function CommitteePage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
       <PageViewTracker event="governance_committee_viewed" />
+      <CompassGuide page="committee" />
 
       {isLoading || !health ? (
         <CommitteePageSkeleton />
@@ -448,6 +451,11 @@ export default function CommitteePage() {
           {/* Section 6: Methodology (collapsed) */}
           <motion.div variants={fadeInUp}>
             <Methodology />
+          </motion.div>
+
+          {/* AI Advisor teaser */}
+          <motion.div variants={fadeInUp}>
+            <AdvisorTeaser />
           </motion.div>
         </motion.div>
       )}

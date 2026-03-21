@@ -5,6 +5,9 @@ import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { TreasuryOverview } from './TreasuryOverview';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
+import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
 
 export const metadata: Metadata = {
   title: 'Governada — Treasury',
@@ -71,10 +74,13 @@ export default function TreasuryPage() {
   return (
     <>
       <PageViewTracker event="governance_treasury_viewed" />
-      <div className="container mx-auto px-4 sm:px-6 py-6">
+      <div className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <CompassGuide page="treasury" />
         <Suspense fallback={<TreasuryFallback />}>
           <TreasuryOverview />
         </Suspense>
+        <PersonalTeaser variant="treasury_impact" />
+        <AdvisorTeaser />
       </div>
     </>
   );

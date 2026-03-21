@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { CircleDot, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,7 +9,10 @@ import { useProposals, useDRepVotes } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet-context';
 import { ProposalStatusFunnel } from '@/components/governada/charts/ProposalStatusFunnel';
 import type { VotesResponseData, VoteItem } from '@/types/api';
-import { AnonymousNudge } from '@/components/governada/shared/AnonymousNudge';
+import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { InsightCard } from '@/components/governada/shared/InsightCard';
+import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
+import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
 import { useDepthConfig } from '@/hooks/useDepthConfig';
 import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DepthGate } from '@/components/providers/DepthGate';
@@ -280,7 +283,12 @@ export function ProposalsBrowse() {
         </span>
       </div>
 
-      <AnonymousNudge variant="proposals" />
+      <CompassGuide
+        page="proposals"
+        proposalCount={
+          proposals.filter((p) => (p.status ?? 'Open').toLowerCase() === 'open').length
+        }
+      />
 
       {/* Status pipeline overview — Informed+ */}
       {statusCounts.length > 1 && (
@@ -358,34 +366,40 @@ export function ProposalsBrowse() {
         /* Informed: compact headline cards — title, status, DRep position */
         <div key={page} className="space-y-2">
           {pageItems.map((p, i: number) => (
-            <ProposalHeadlineCard
-              key={`${p.txHash}-${p.index}`}
-              proposal={p}
-              drepVote={
-                depthConfig.showDRepPosition ? drepVoteMap.get(`${p.txHash}:${p.index}`) : undefined
-              }
-              animationDelay={Math.min(i, 14) * 30}
-            />
+            <React.Fragment key={`${p.txHash}-${p.index}`}>
+              <ProposalHeadlineCard
+                proposal={p}
+                drepVote={
+                  depthConfig.showDRepPosition
+                    ? drepVoteMap.get(`${p.txHash}:${p.index}`)
+                    : undefined
+                }
+                animationDelay={Math.min(i, 14) * 30}
+              />
+              {i === 0 && <PersonalTeaser variant="stake_impact" />}
+            </React.Fragment>
           ))}
         </div>
       ) : (
         /* Engaged / Deep: full proposal cards */
         <div key={page} className="space-y-3">
           {pageItems.map((p, i: number) => (
-            <ProposalCard
-              key={`${p.txHash}-${p.index}`}
-              proposal={p}
-              currentEpoch={currentEpoch}
-              drepVote={drepVoteMap.get(`${p.txHash}:${p.index}`)}
-              delegatedDrepId={delegatedDrepId}
-              hasDrepVotes={drepVoteMap.size > 0}
-              animationDelay={Math.min(i, 14) * 30}
-              onPeek={
-                openPeek
-                  ? () => openPeek({ type: 'proposal', id: p.txHash, secondaryId: p.index })
-                  : undefined
-              }
-            />
+            <React.Fragment key={`${p.txHash}-${p.index}`}>
+              <ProposalCard
+                proposal={p}
+                currentEpoch={currentEpoch}
+                drepVote={drepVoteMap.get(`${p.txHash}:${p.index}`)}
+                delegatedDrepId={delegatedDrepId}
+                hasDrepVotes={drepVoteMap.size > 0}
+                animationDelay={Math.min(i, 14) * 30}
+                onPeek={
+                  openPeek
+                    ? () => openPeek({ type: 'proposal', id: p.txHash, secondaryId: p.index })
+                    : undefined
+                }
+              />
+              {i === 0 && <PersonalTeaser variant="stake_impact" />}
+            </React.Fragment>
           ))}
         </div>
       )}
@@ -400,7 +414,14 @@ export function ProposalsBrowse() {
         </div>
       </DepthGate>
 
+      <InsightCard
+        insight="DReps who provide rationales are 2.3x more likely to vote against proposals — dissent often correlates with deeper deliberation."
+        category="voting"
+      />
+
       <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+
+      <AdvisorTeaser />
     </div>
   );
 }

@@ -32,6 +32,10 @@ import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 import { MatchAwareDiscoverHero } from './MatchAwareDiscoverHero';
+import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+import { InsightCard } from '@/components/governada/shared/InsightCard';
+import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
+import { AdvisorTeaser } from '@/components/governada/shared/AdvisorTeaser';
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -365,6 +369,8 @@ export function GovernadaSPOBrowse() {
         </p>
       </div>
 
+      <CompassGuide page="pools" poolCount={pools.length} />
+
       {/* ── Sticky filter bar ────────────────────────────────────── */}
       <div className="sticky top-10 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-card/60 backdrop-blur-xl border-b border-border/30">
         <DiscoverFilterBar
@@ -490,6 +496,15 @@ export function GovernadaSPOBrowse() {
       )}
 
       <DiscoverPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+
+      <PersonalTeaser variant="pool_comparison" />
+
+      <InsightCard
+        insight="Stake pools with governance scores above 70 tend to have more stable delegator bases — governance participation signals operator commitment."
+        category="participation"
+      />
+
+      <AdvisorTeaser />
     </div>
   );
 }

@@ -174,3 +174,75 @@ export function isOnboardingDismissed(state: OnboardingState): boolean {
   if (state.sessionCount >= 3) return true;
   return isOnboardingComplete(state);
 }
+
+/* ─── Compass Guide progression (anonymous-first) ──────── */
+
+const COMPASS_KEY = 'governada_compass';
+
+/**
+ * Compass Guide progression state — starts tracking from the very first
+ * anonymous visit. Powers narrative adaptation in the CompassGuide component.
+ */
+export type CompassProgression = 'first_visit' | 'exploring' | 'quiz_completed' | 'connected';
+
+export interface CompassState {
+  /** Pages the user has visited (governance tab names) */
+  pagesViewed: string[];
+  /** Whether the match quiz has been completed */
+  quizCompleted: boolean;
+  /** Whether the user has connected a wallet */
+  walletConnected: boolean;
+  /** Total governance page views across sessions */
+  totalPageViews: number;
+  /** Timestamp of first visit */
+  firstVisitAt: number | null;
+}
+
+const DEFAULT_COMPASS: CompassState = {
+  pagesViewed: [],
+  quizCompleted: false,
+  walletConnected: false,
+  totalPageViews: 0,
+  firstVisitAt: null,
+};
+
+export function getCompassState(): CompassState {
+  if (typeof window === 'undefined') return DEFAULT_COMPASS;
+  try {
+    const raw = localStorage.getItem(COMPASS_KEY);
+    if (!raw) return DEFAULT_COMPASS;
+    return { ...DEFAULT_COMPASS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_COMPASS;
+  }
+}
+
+export function updateCompassState(partial: Partial<CompassState>) {
+  if (typeof window === 'undefined') return;
+  const current = getCompassState();
+  const updated = { ...current, ...partial };
+  localStorage.setItem(COMPASS_KEY, JSON.stringify(updated));
+}
+
+/** Record that the user visited a governance page */
+export function trackCompassPageView(page: string) {
+  if (typeof window === 'undefined') return;
+  const current = getCompassState();
+  const pagesViewed = current.pagesViewed.includes(page)
+    ? current.pagesViewed
+    : [...current.pagesViewed, page];
+  updateCompassState({
+    pagesViewed,
+    totalPageViews: current.totalPageViews + 1,
+    firstVisitAt: current.firstVisitAt ?? Date.now(),
+  });
+  trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'compass_guide', context: page });
+}
+
+/** Derive the user's current progression state from CompassState */
+export function getCompassProgression(state: CompassState): CompassProgression {
+  if (state.walletConnected) return 'connected';
+  if (state.quizCompleted) return 'quiz_completed';
+  if (state.pagesViewed.length >= 2 || state.totalPageViews >= 3) return 'exploring';
+  return 'first_visit';
+}

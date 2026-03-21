@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink, Vote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
@@ -80,6 +80,7 @@ export function MatchResultCard({
   globeRef,
 }: MatchResultCardProps) {
   const hasPulsed = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
   const displayName = match.drepName || match.drepId.slice(0, 16) + '...';
   const scorePercent = Math.round(match.score * 100);
   const [r, g, b] = hexToRgb(match.identityColor);
@@ -107,10 +108,14 @@ export function MatchResultCard({
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
+      layout={!prefersReducedMotion}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: rank * 0.2, type: 'spring', stiffness: 300, damping: 28 }}
+      transition={
+        prefersReducedMotion
+          ? { duration: 0 }
+          : { delay: rank * 0.2, type: 'spring', stiffness: 300, damping: 28 }
+      }
       className={cn(
         'rounded-xl border bg-card/40 backdrop-blur-sm overflow-hidden transition-colors',
         isBridge ? 'border-violet-500/30' : 'border-white/[0.08]',
@@ -129,6 +134,7 @@ export function MatchResultCard({
         onClick={onExpand}
         className="w-full text-left px-4 py-3 min-h-[44px]"
         aria-expanded={expanded}
+        aria-controls={`match-detail-${match.drepId}`}
       >
         <div className="flex items-center gap-3">
           {/* Rank badge */}
@@ -138,6 +144,7 @@ export function MatchResultCard({
               isBridge && 'bg-violet-500',
             )}
             style={!isBridge ? { backgroundColor: match.identityColor } : undefined}
+            aria-label={isBridge ? 'Bridge match' : `Match rank ${rank}`}
           >
             {isBridge ? '?' : rank}
           </span>
@@ -198,10 +205,13 @@ export function MatchResultCard({
       <AnimatePresence>
         {expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
+            id={`match-detail-${match.drepId}`}
+            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={
+              prefersReducedMotion ? { duration: 0 } : { duration: 0.25, ease: 'easeInOut' }
+            }
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-4 border-t border-white/[0.06] pt-4">

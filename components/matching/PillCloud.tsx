@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -34,6 +34,8 @@ export function PillCloud({
   disabled = false,
   size = 'md',
 }: PillCloudProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   const handleToggle = (id: string) => {
     if (disabled) return;
     onToggle(id);
@@ -67,15 +69,19 @@ export function PillCloud({
             disabled={disabled}
             onClick={() => handleToggle(pill.id)}
             onKeyDown={(e) => handleKeyDown(e, pill.id)}
-            initial={{ opacity: 0, scale: 0.85 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              delay: index * 0.04,
-              type: 'spring',
-              stiffness: 400,
-              damping: 25,
-            }}
-            whileTap={disabled ? undefined : { scale: 0.95 }}
+            transition={
+              prefersReducedMotion
+                ? { duration: 0 }
+                : {
+                    delay: index * 0.04,
+                    type: 'spring',
+                    stiffness: 400,
+                    damping: 25,
+                  }
+            }
+            whileTap={disabled || prefersReducedMotion ? undefined : { scale: 0.95 }}
             className={cn(
               'cursor-pointer select-none rounded-full border backdrop-blur-sm',
               'transition-colors duration-200',

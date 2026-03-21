@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,7 @@ export function SemanticFastTrack({ onSubmit, isProcessing, className }: Semanti
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activePromptIndex = useRotatingPrompt();
+  const prefersReducedMotion = useReducedMotion();
 
   const canSubmit = text.trim().length >= MIN_CHARS && !isProcessing;
 
@@ -97,6 +98,7 @@ export function SemanticFastTrack({ onSubmit, isProcessing, className }: Semanti
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder="Tell us what matters to you in Cardano governance..."
+        aria-label="Tell us what matters to you in Cardano governance"
         disabled={isProcessing}
         rows={4}
         className={cn(
@@ -130,7 +132,7 @@ export function SemanticFastTrack({ onSubmit, isProcessing, className }: Semanti
         {isProcessing ? (
           <motion.div
             key="processing"
-            initial={{ opacity: 0, y: 4 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             className="mt-3 flex items-center gap-2"
@@ -154,6 +156,7 @@ export function SemanticFastTrack({ onSubmit, isProcessing, className }: Semanti
                 <button
                   key={i}
                   onClick={() => handleExampleClick(prompt)}
+                  aria-label={`Use example: ${prompt}`}
                   className={cn(
                     'rounded-full border border-white/10 px-3 py-1',
                     'text-xs text-muted-foreground transition-colors',
@@ -170,7 +173,7 @@ export function SemanticFastTrack({ onSubmit, isProcessing, className }: Semanti
             <AnimatePresence>
               {text.trim().length >= MIN_CHARS && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
+                  initial={prefersReducedMotion ? false : { opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                 >

@@ -111,6 +111,59 @@ export function clearConversationalProfile(): void {
   }
 }
 
+/* ─── Alignment History (evolution tracking) ──────────── */
+
+const ALIGNMENT_HISTORY_KEY = 'governada_alignment_history';
+const MAX_HISTORY_ENTRIES = 10;
+
+export interface AlignmentHistoryEntry {
+  alignments: AlignmentScores;
+  archetype: string;
+  epoch: number;
+  timestamp: number;
+}
+
+/**
+ * Append an alignment snapshot to localStorage history.
+ * Keeps the last MAX_HISTORY_ENTRIES entries. Deduplicates by epoch — if an
+ * entry for the same epoch already exists, it is updated in place.
+ */
+export function saveAlignmentHistory(
+  alignments: AlignmentScores,
+  archetype: string,
+  epoch: number,
+): void {
+  try {
+    const existing = loadAlignmentHistory();
+    const now = Date.now();
+
+    // Check if we already have an entry for this epoch — update it
+    const epochIndex = existing.findIndex((e) => e.epoch === epoch);
+    if (epochIndex >= 0) {
+      existing[epochIndex] = { alignments, archetype, epoch, timestamp: now };
+    } else {
+      existing.push({ alignments, archetype, epoch, timestamp: now });
+    }
+
+    // Keep only latest entries
+    const trimmed = existing.slice(-MAX_HISTORY_ENTRIES);
+    localStorage.setItem(ALIGNMENT_HISTORY_KEY, JSON.stringify(trimmed));
+  } catch {
+    // localStorage may be unavailable
+  }
+}
+
+/** Load alignment history from localStorage. */
+export function loadAlignmentHistory(): AlignmentHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(ALIGNMENT_HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as AlignmentHistoryEntry[];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Compute Euclidean distance between user alignment and a DRep/SPO alignment.
  * Used by Discover page to sort by match compatibility.

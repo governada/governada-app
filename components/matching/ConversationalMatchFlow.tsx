@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PillCloud } from './PillCloud';
 import { ConfidenceRing } from './ConfidenceRing';
 import { ConversationalRound } from './ConversationalRound';
+import { SemanticFastTrack } from './SemanticFastTrack';
 import { MatchResults } from './MatchResults';
 import { useConversationalMatch } from '@/hooks/useConversationalMatch';
 import { saveConversationalProfile } from '@/lib/matchStore';
@@ -91,6 +92,8 @@ export function ConversationalMatchFlow({
   const [flowState, setFlowState] = useState<FlowState>('idle');
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
   const [freeformText, setFreeformText] = useState('');
+  const [showFastTrack, setShowFastTrack] = useState(false);
+  const [pendingSemanticText, setPendingSemanticText] = useState<string | null>(null);
   const hasStartedRef = useRef(false);
   const ghostText = useGhostText();
 
@@ -228,13 +231,43 @@ export function ConversationalMatchFlow({
     [freeformText, handleInitialInteraction],
   );
 
+  /* ─── Semantic fast-track submit ──────────────────────── */
+
+  const handleSemanticSubmit = useCallback(
+    async (text: string) => {
+      // Store the text to be included with the first round answer
+      setPendingSemanticText(text);
+
+      // Start the session — the pill flow still runs, but the semantic text
+      // will be threaded through as rawText on the first round answer
+      if (!hasStartedRef.current) {
+        hasStartedRef.current = true;
+        onMatchStart?.();
+        setFlowState('matching');
+        pushUrlState('matching', 'matching');
+        await startSession();
+      }
+    },
+    [onMatchStart, startSession],
+  );
+
   /* ─── Conversational round answer ──────────────────────── */
 
   const handleAnswer = useCallback(
     (selectedIds: string[], rawText?: string) => {
-      submitAnswer(selectedIds, rawText);
+      // If there's pending semantic text from fast-track, prepend it
+      const combinedText = pendingSemanticText
+        ? pendingSemanticText + (rawText ? ' ' + rawText : '')
+        : rawText;
+
+      // Clear pending text after first use
+      if (pendingSemanticText) {
+        setPendingSemanticText(null);
+      }
+
+      submitAnswer(selectedIds, combinedText || undefined);
     },
-    [submitAnswer],
+    [submitAnswer, pendingSemanticText],
   );
 
   /* ─── See matches CTA ──────────────────────────────────── */
@@ -251,6 +284,8 @@ export function ConversationalMatchFlow({
     setFlowState('idle');
     setSelectedTopics(new Set());
     setFreeformText('');
+    setShowFastTrack(false);
+    setPendingSemanticText(null);
     hasStartedRef.current = false;
     globeRef.current?.clearMatches();
     if (typeof window !== 'undefined') {
@@ -263,45 +298,86 @@ export function ConversationalMatchFlow({
   if (flowState === 'idle') {
     return (
       <div className="w-full space-y-4">
-        <p className="text-center text-sm text-muted-foreground">
-          What matters to you in governance?
-        </p>
-
-        <PillCloud
-          pills={INITIAL_TOPICS.map((t) => ({ id: t.id, text: t.text }))}
-          selected={selectedTopics}
-          onToggle={handleTopicToggle}
-          multiSelect
-          layout="cloud"
-          size="md"
-        />
-
-        <div className="relative">
-          <input
-            type="text"
-            value={freeformText}
-            onChange={(e) => setFreeformText(e.target.value)}
-            onKeyDown={handleFreeformKeyDown}
-            placeholder={ghostText}
-            className={cn(
-              'w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3',
-              'text-sm text-foreground placeholder:text-muted-foreground/50',
-              'backdrop-blur-sm transition-colors',
-              'focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/20',
-            )}
-          />
-          {freeformText.trim().length >= 10 && (
-            <button
-              onClick={handleInitialInteraction}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-primary/20 p-1.5 text-primary transition-colors hover:bg-primary/30"
-              aria-label="Start matching"
+        <AnimatePresence mode="wait">
+          {showFastTrack ? (
+            <motion.div
+              key="fast-track"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
             >
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+              <p className="text-center text-sm text-muted-foreground">Express yourself freely</p>
 
-        {isLoading && (
+              <SemanticFastTrack onSubmit={handleSemanticSubmit} isProcessing={isLoading} />
+
+              <button
+                onClick={() => setShowFastTrack(false)}
+                className="block mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                &larr; Back to topic pills
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="pills"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              <p className="text-center text-sm text-muted-foreground">
+                What matters to you in governance?
+              </p>
+
+              <PillCloud
+                pills={INITIAL_TOPICS.map((t) => ({ id: t.id, text: t.text }))}
+                selected={selectedTopics}
+                onToggle={handleTopicToggle}
+                multiSelect
+                layout="cloud"
+                size="md"
+              />
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={freeformText}
+                  onChange={(e) => setFreeformText(e.target.value)}
+                  onKeyDown={handleFreeformKeyDown}
+                  placeholder={ghostText}
+                  className={cn(
+                    'w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3',
+                    'text-sm text-foreground placeholder:text-muted-foreground/50',
+                    'backdrop-blur-sm transition-colors',
+                    'focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/20',
+                  )}
+                />
+                {freeformText.trim().length >= 10 && (
+                  <button
+                    onClick={handleInitialInteraction}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-primary/20 p-1.5 text-primary transition-colors hover:bg-primary/30"
+                    aria-label="Start matching"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Fast-track link */}
+              <button
+                onClick={() => setShowFastTrack(true)}
+                className="block mx-auto text-xs text-primary/80 hover:text-primary transition-colors"
+              >
+                Or express yourself freely &rarr;
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {isLoading && !showFastTrack && (
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Starting...

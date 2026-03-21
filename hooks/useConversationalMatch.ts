@@ -82,6 +82,7 @@ export interface ConversationalMatchState {
   userAlignments: AlignmentScores | null;
   personalityLabel: string | null;
   identityColor: string | null;
+  usedSemantic: boolean;
   confidence: number;
   isLoading: boolean;
   error: string | null;
@@ -155,6 +156,7 @@ export function useConversationalMatch() {
   const [userAlignments, setUserAlignments] = useState<AlignmentScores | null>(null);
   const [personalityLabel, setPersonalityLabel] = useState<string | null>(null);
   const [identityColor, setIdentityColor] = useState<string | null>(null);
+  const [usedSemantic, setUsedSemantic] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -327,6 +329,7 @@ export function useConversationalMatch() {
         setPersonalityLabel(data.personalityLabel);
         setIdentityColor(data.identityColor);
         setQualityGates(data.qualityGates);
+        setUsedSemantic(data.usedSemantic);
         setStatus('matched');
         clearPersistedState();
       } catch (err: unknown) {
@@ -353,6 +356,7 @@ export function useConversationalMatch() {
     setUserAlignments(null);
     setPersonalityLabel(null);
     setIdentityColor(null);
+    setUsedSemantic(false);
     setIsLoading(false);
     setError(null);
     clearPersistedState();
@@ -372,6 +376,7 @@ export function useConversationalMatch() {
     userAlignments,
     personalityLabel,
     identityColor,
+    usedSemantic,
     confidence,
     isLoading,
     error,

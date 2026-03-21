@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink, Vote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
+import { RationaleQuote } from './RationaleQuote';
 import { generateMatchNarrative } from '@/lib/matching/matchNarrative';
 import { DIMENSION_LABELS } from '@/lib/matching/dimensionAgreement';
 import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
@@ -186,6 +187,11 @@ export function MatchResultCard({
 
         {/* One-sentence narrative */}
         <p className="text-xs text-muted-foreground mt-2 ml-10 line-clamp-2">{narrative}</p>
+
+        {/* Semantic match indicator */}
+        {match.matchingRationales && match.matchingRationales.length > 0 && (
+          <p className="text-xs text-primary mt-1 ml-10">Matched on your values</p>
+        )}
       </button>
 
       {/* Expanded view */}
@@ -248,23 +254,21 @@ export function MatchResultCard({
                 ))}
               </div>
 
-              {/* Matching rationales */}
+              {/* Matching rationales from semantic search */}
               {match.matchingRationales && match.matchingRationales.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    What they&apos;ve said
-                  </p>
-                  {match.matchingRationales.slice(0, 2).map((rationale, i) => (
-                    <blockquote
-                      key={i}
-                      className="border-l-2 border-primary/30 pl-3 py-1 text-xs text-muted-foreground italic"
-                    >
-                      <p>&ldquo;{rationale.excerpt}&rdquo;</p>
-                      <cite className="not-italic text-[10px] text-muted-foreground/60 block mt-1">
-                        On: {rationale.proposalTitle}
-                      </cite>
-                    </blockquote>
-                  ))}
+                  <p className="text-sm font-medium text-foreground/90">Why this match resonates</p>
+                  {match.matchingRationales
+                    .sort((a, b) => b.similarity - a.similarity)
+                    .slice(0, 2)
+                    .map((rationale, i) => (
+                      <RationaleQuote
+                        key={i}
+                        excerpt={rationale.excerpt}
+                        proposalTitle={rationale.proposalTitle}
+                        similarity={rationale.similarity}
+                      />
+                    ))}
                 </div>
               )}
 

@@ -1,9 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Compass } from 'lucide-react';
+import { Compass, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeatureGate } from '@/components/FeatureGate';
+import {
+  predictProposalSupport,
+  type ProposalPrediction,
+} from '@/lib/intelligence/proposalPrediction';
+import type { AlignmentScores } from '@/lib/drepIdentity';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -170,6 +175,75 @@ function MiniRadar({
   );
 }
 
+/* ─── Predicted Support Section ─────────────────────────── */
+
+function PredictedSupport({ prediction }: { prediction: ProposalPrediction }) {
+  const confidenceLabel =
+    prediction.confidence === 'high'
+      ? 'High confidence'
+      : prediction.confidence === 'medium'
+        ? 'Estimated'
+        : 'Rough estimate';
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Predicted DRep Support
+        </p>
+      </div>
+
+      <div className="flex items-baseline gap-2">
+        <p className="text-xl font-bold tabular-nums text-foreground">
+          ~{prediction.estimatedSupport}%
+        </p>
+        <span className="text-[10px] text-muted-foreground">{confidenceLabel}</span>
+      </div>
+
+      {/* Breakdown bar */}
+      <div className="h-2 rounded-full overflow-hidden flex bg-white/[0.06]">
+        {prediction.breakdown.likely_yes > 0 && (
+          <div
+            className="h-full bg-emerald-500/70"
+            style={{
+              width: `${(prediction.breakdown.likely_yes / (prediction.breakdown.likely_yes + prediction.breakdown.likely_no + prediction.breakdown.uncertain)) * 100}%`,
+            }}
+          />
+        )}
+        {prediction.breakdown.uncertain > 0 && (
+          <div
+            className="h-full bg-white/20"
+            style={{
+              width: `${(prediction.breakdown.uncertain / (prediction.breakdown.likely_yes + prediction.breakdown.likely_no + prediction.breakdown.uncertain)) * 100}%`,
+            }}
+          />
+        )}
+        {prediction.breakdown.likely_no > 0 && (
+          <div
+            className="h-full bg-red-500/60"
+            style={{
+              width: `${(prediction.breakdown.likely_no / (prediction.breakdown.likely_yes + prediction.breakdown.likely_no + prediction.breakdown.uncertain)) * 100}%`,
+            }}
+          />
+        )}
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>
+          Likely yes: <span className="text-emerald-400">{prediction.breakdown.likely_yes}</span>
+        </span>
+        <span>
+          Uncertain: <span className="text-white/50">{prediction.breakdown.uncertain}</span>
+        </span>
+        <span>
+          Likely no: <span className="text-red-400">{prediction.breakdown.likely_no}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main component ───────────────────────────────────── */
 
 function ProposalAlignmentCardInner({ proposalDimensions, className }: ProposalAlignmentCardProps) {
@@ -212,6 +286,19 @@ function ProposalAlignmentCardInner({ proposalDimensions, className }: ProposalA
   const alignmentScore = proposalVector
     ? Math.round(cosineSimilarity(proposalVector, communityVector) * 100)
     : null;
+
+  // Compute proposal support prediction when dimensions are available
+  let prediction: ProposalPrediction | null = null;
+  if (proposalVector) {
+    const proposalScores: Partial<AlignmentScores> = {};
+    for (let i = 0; i < DIMENSION_KEYS.length; i++) {
+      (proposalScores as Record<string, number>)[DIMENSION_KEYS[i]] = proposalVector[i];
+    }
+    prediction = predictProposalSupport(proposalScores, {
+      communityCentroid: communityVector,
+      totalSessions: pulse.totalSessions,
+    });
+  }
 
   // Top community topic with trend for timing insight
   const topTopic = pulse.topicHeatmap[0] ?? null;
@@ -299,6 +386,18 @@ function ProposalAlignmentCardInner({ proposalDimensions, className }: ProposalA
                 important
               </>
             )}
+          </p>
+        </div>
+      )}
+
+      {/* Predicted DRep support */}
+      {prediction && <PredictedSupport prediction={prediction} />}
+
+      {/* Not yet classified notice */}
+      {!proposalVector && (
+        <div className="text-center">
+          <p className="text-[11px] text-white/40">
+            Support prediction available once proposal is classified
           </p>
         </div>
       )}

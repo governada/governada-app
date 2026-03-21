@@ -13,6 +13,8 @@ import {
   alignmentsToArray,
 } from '@/lib/drepIdentity';
 import { cn } from '@/lib/utils';
+import { loadAlignmentHistory } from '@/lib/matchStore';
+import { AlignmentEvolution } from '@/components/intelligence/AlignmentEvolution';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -181,6 +183,37 @@ function WhereYouFit({
   );
 }
 
+/* ─── Alignment Evolution Section ───────────────────────── */
+
+function AlignmentEvolutionSection() {
+  const history = loadAlignmentHistory();
+  const { data: pulse } = useQuery<PulseResponse>({
+    queryKey: ['community-pulse-lite'],
+    queryFn: async () => {
+      const res = await fetch('/api/community/pulse');
+      if (!res.ok) throw new Error('Pulse fetch failed');
+      return res.json();
+    },
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+  });
+
+  if (history.length === 0) return null;
+
+  return (
+    <div className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] p-3">
+      <AlignmentEvolution
+        history={history.map((h) => ({
+          alignments: h.alignments as unknown as Record<string, number>,
+          archetype: h.archetype,
+          epoch: h.epoch,
+        }))}
+        communityCentroid={pulse?.communityCentroid}
+      />
+    </div>
+  );
+}
+
 /* ─── Component ─────────────────────────────────────────── */
 
 export function GovernanceIdentityCard({
@@ -262,6 +295,9 @@ export function GovernanceIdentityCard({
 
         {/* Where you fit — community context */}
         <WhereYouFit alignments={alignments} identityColor={identityColor} />
+
+        {/* Alignment evolution — shown when user has history */}
+        <AlignmentEvolutionSection />
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full mt-2">

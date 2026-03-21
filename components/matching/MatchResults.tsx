@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { RotateCcw, ArrowRight } from 'lucide-react';
+import { posthog } from '@/lib/posthog';
 import { Button } from '@/components/ui/button';
 import { GovernanceIdentityCard } from './GovernanceIdentityCard';
 import { MatchResultCard } from './MatchResultCard';
@@ -59,17 +60,52 @@ export function MatchResults({
 }: MatchResultsProps) {
   const [showMatches, setShowMatches] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   const topMatches = useMemo(() => matches.slice(0, 3), [matches]);
   const bridgeMatch = useMemo(() => pickBridgeMatch(matches), [matches]);
+
+  // Fire identity viewed event once on mount
+  const identityTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!identityTrackedRef.current) {
+      identityTrackedRef.current = true;
+      posthog.capture('match_identity_viewed', {
+        personality: personalityLabel,
+        identityColor,
+      });
+    }
+  }, [personalityLabel, identityColor]);
 
   const handleContinue = useCallback(() => {
     setShowMatches(true);
   }, []);
 
-  const handleExpand = useCallback((index: number) => {
-    setExpandedIndex((prev) => (prev === index ? null : index));
+  const handleShare = useCallback(() => {
+    posthog.capture('match_identity_shared');
   }, []);
+
+  const handleExpand = useCallback(
+    (index: number, isBridge: boolean) => {
+      const isExpanding = expandedIndex !== index;
+      if (isExpanding) {
+        posthog.capture('match_result_expanded', {
+          rank: isBridge ? 'bridge' : index + 1,
+          isBridge,
+        });
+      }
+      setExpandedIndex((prev) => (prev === index ? null : index));
+    },
+    [expandedIndex],
+  );
+
+  const handleDelegate = useCallback(
+    (drepId: string, rank: number) => {
+      posthog.capture('match_delegate_clicked', { drepId, rank });
+      onDelegate?.(drepId);
+    },
+    [onDelegate],
+  );
 
   return (
     <div className="w-full space-y-6">
@@ -78,15 +114,16 @@ export function MatchResults({
         personalityLabel={personalityLabel}
         identityColor={identityColor}
         alignments={userAlignments}
+        onShare={handleShare}
         onContinue={!showMatches ? handleContinue : undefined}
       />
 
       {/* Match result cards — revealed after "See your matches" */}
       {showMatches && (
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={prefersReducedMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
           className="space-y-4"
         >
           <h3 className="text-sm font-medium text-muted-foreground">Your top matches</h3>
@@ -99,8 +136,8 @@ export function MatchResults({
               rank={i + 1}
               userAlignments={userAlignments}
               expanded={expandedIndex === i}
-              onExpand={() => handleExpand(i)}
-              onDelegate={onDelegate}
+              onExpand={() => handleExpand(i, false)}
+              onDelegate={onDelegate ? (drepId) => handleDelegate(drepId, i + 1) : undefined}
               globeRef={globeRef}
             />
           ))}
@@ -114,8 +151,8 @@ export function MatchResults({
               isBridge
               userAlignments={userAlignments}
               expanded={expandedIndex === 99}
-              onExpand={() => handleExpand(99)}
-              onDelegate={onDelegate}
+              onExpand={() => handleExpand(99, true)}
+              onDelegate={onDelegate ? (drepId) => handleDelegate(drepId, 4) : undefined}
               globeRef={globeRef}
             />
           )}

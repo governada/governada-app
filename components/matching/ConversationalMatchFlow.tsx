@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Loader2, RotateCcw, Sparkles } from 'lucide-react';
+import { posthog } from '@/lib/posthog';
 import { Button } from '@/components/ui/button';
 import { PillCloud } from './PillCloud';
 import { ConfidenceRing } from './ConfidenceRing';
@@ -107,6 +108,7 @@ export function ConversationalMatchFlow({
     personalityLabel,
     identityColor,
     confidence,
+    usedSemantic,
     isLoading,
     error,
     startSession,
@@ -114,6 +116,12 @@ export function ConversationalMatchFlow({
     getMatches,
     reset,
   } = useConversationalMatch();
+
+  const prefersReducedMotion = useReducedMotion();
+  const motionTransition = prefersReducedMotion ? { duration: 0 } : { duration: 0.2 };
+  const springTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { type: 'spring' as const, stiffness: 300, damping: 20 };
 
   /* ─── URL popstate handler ─────────────────────────────── */
 
@@ -143,6 +151,11 @@ export function ConversationalMatchFlow({
       pushUrlState('results', 'results');
       if (matches) {
         onMatchComplete?.(matches);
+        posthog.capture('match_completed', {
+          rounds: round,
+          usedSemantic: usedSemantic,
+          matchCount: matches.length,
+        });
         // Persist conversational profile for later use
         if (personalityLabel && identityColor && userAlignments) {
           saveConversationalProfile({
@@ -159,6 +172,8 @@ export function ConversationalMatchFlow({
     status,
     flowState,
     matches,
+    round,
+    usedSemantic,
     personalityLabel,
     identityColor,
     userAlignments,
@@ -191,6 +206,7 @@ export function ConversationalMatchFlow({
     onMatchStart?.();
     setFlowState('matching');
     pushUrlState('matching', 'matching');
+    posthog.capture('match_flow_started');
 
     await startSession();
   }, [onMatchStart, startSession]);
@@ -237,6 +253,7 @@ export function ConversationalMatchFlow({
     async (text: string) => {
       // Store the text to be included with the first round answer
       setPendingSemanticText(text);
+      posthog.capture('match_semantic_entered');
 
       // Start the session — the pill flow still runs, but the semantic text
       // will be threaded through as rawText on the first round answer
@@ -265,9 +282,13 @@ export function ConversationalMatchFlow({
         setPendingSemanticText(null);
       }
 
+      const method =
+        selectedIds.length > 0 && combinedText ? 'both' : combinedText ? 'text' : 'pill';
+      posthog.capture('match_round_completed', { round, method });
+
       submitAnswer(selectedIds, combinedText || undefined);
     },
-    [submitAnswer, pendingSemanticText],
+    [submitAnswer, pendingSemanticText, round],
   );
 
   /* ─── See matches CTA ──────────────────────────────────── */
@@ -280,6 +301,7 @@ export function ConversationalMatchFlow({
   /* ─── Reset ────────────────────────────────────────────── */
 
   const handleReset = useCallback(() => {
+    posthog.capture('match_reset');
     reset();
     setFlowState('idle');
     setSelectedTopics(new Set());
@@ -302,10 +324,10 @@ export function ConversationalMatchFlow({
           {showFastTrack ? (
             <motion.div
               key="fast-track"
-              initial={{ opacity: 0, y: 10 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              transition={motionTransition}
               className="space-y-3"
             >
               <p className="text-center text-sm text-muted-foreground">Express yourself freely</p>
@@ -322,10 +344,10 @@ export function ConversationalMatchFlow({
           ) : (
             <motion.div
               key="pills"
-              initial={{ opacity: 0, y: 10 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              transition={motionTransition}
               className="space-y-4"
             >
               <p className="text-center text-sm text-muted-foreground">
@@ -399,7 +421,7 @@ export function ConversationalMatchFlow({
           {isLoading && !question && (
             <motion.div
               key="loading"
-              initial={{ opacity: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-3 py-6"
@@ -413,10 +435,10 @@ export function ConversationalMatchFlow({
           {question && (
             <motion.div
               key={`round-${round}`}
-              initial={{ opacity: 0, y: 20 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
             >
               <ConversationalRound
                 question={{
@@ -438,9 +460,9 @@ export function ConversationalMatchFlow({
 
           {status === 'ready_to_match' && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              transition={springTransition}
             >
               <Button
                 onClick={handleSeeMatches}
@@ -466,9 +488,11 @@ export function ConversationalMatchFlow({
     return (
       <div className="flex flex-col items-center gap-4 py-8">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          transition={
+            prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 200, damping: 20 }
+          }
         >
           <ConfidenceRing confidence={confidence} size={80} />
         </motion.div>

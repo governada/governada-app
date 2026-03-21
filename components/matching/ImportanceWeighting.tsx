@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { posthog } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 import { getDimensionLabel } from '@/lib/drepIdentity';
@@ -53,6 +54,8 @@ export function ImportanceWeighting({
   onWeightsSet,
   onSkip,
 }: ImportanceWeightingProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   const [levels, setLevels] = useState<Record<string, ImportanceLevel>>(() => {
     const initial: Record<string, ImportanceLevel> = {};
     for (const dim of dimensions) {
@@ -72,10 +75,15 @@ export function ImportanceWeighting({
 
   const handleSubmit = useCallback(() => {
     const weights: Record<string, number> = {};
+    let dealbreakers = 0;
+    let niceToHaves = 0;
     for (const dim of dimensions) {
       const level = levels[dim] ?? 'important';
       weights[dim] = WEIGHT_MAP[level];
+      if (level === 'dealbreaker') dealbreakers++;
+      if (level === 'niceToHave') niceToHaves++;
     }
+    posthog.capture('match_importance_set', { dealbreakers, niceToHaves });
     onWeightsSet(weights);
   }, [dimensions, levels, onWeightsSet]);
 
@@ -120,18 +128,26 @@ export function ImportanceWeighting({
                     config.classes,
                   )}
                   onClick={() => cycleDimension(dim)}
-                  whileTap={{ scale: 0.97 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
+                  transition={
+                    prefersReducedMotion
+                      ? { duration: 0 }
+                      : { type: 'spring', stiffness: 400, damping: 25 }
+                  }
                 >
                   <span className="block text-sm font-medium leading-tight">
                     {getDimLabel(dim)}
                   </span>
                   <motion.span
                     key={level}
-                    initial={{ opacity: 0, y: 4 }}
+                    initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    transition={
+                      prefersReducedMotion
+                        ? { duration: 0 }
+                        : { type: 'spring', stiffness: 500, damping: 30 }
+                    }
                     className={cn(
                       'block text-xs mt-0.5',
                       level === 'dealbreaker' && 'text-red-400/80',
@@ -154,7 +170,10 @@ export function ImportanceWeighting({
           </Button>
           <button
             type="button"
-            onClick={onSkip}
+            onClick={() => {
+              posthog.capture('match_importance_skipped');
+              onSkip();
+            }}
             className="text-sm text-muted-foreground hover:text-white/70 transition-colors py-1"
           >
             Skip — equal weights

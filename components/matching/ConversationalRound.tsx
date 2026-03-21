@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,7 @@ export function ConversationalRound({
   const [rawText, setRawText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const placeholder = usePlaceholderRotation();
+  const prefersReducedMotion = useReducedMotion();
 
   const canContinue = selected.size >= 1 || rawText.trim().length >= 10;
 
@@ -111,14 +112,14 @@ export function ConversationalRound({
       <motion.div
         key={question.id}
         variants={slideVariants}
-        initial="enter"
+        initial={prefersReducedMotion ? false : 'enter'}
         animate="center"
         exit="exit"
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3, ease: 'easeInOut' }}
         className="w-full"
       >
         {/* Question text */}
-        <div className="mb-6">
+        <div className="mb-6" aria-live="polite">
           <h2 className="text-lg font-medium md:text-xl">{question.text}</h2>
           {question.description && (
             <p className="mt-1 text-sm text-muted-foreground">{question.description}</p>
@@ -150,6 +151,7 @@ export function ConversationalRound({
             value={rawText}
             onChange={handleTextChange}
             placeholder={placeholder}
+            aria-label="Share your governance values in your own words"
             disabled={isLoading}
             rows={3}
             className={cn(
@@ -181,7 +183,9 @@ export function ConversationalRound({
 
         {/* Continue button */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Round {roundNumber}</span>
+          <span className="text-xs text-muted-foreground" aria-label={`Round ${roundNumber}`}>
+            Round {roundNumber}
+          </span>
           <Button onClick={handleSubmit} disabled={!canContinue || isLoading} size="default">
             {isLoading ? (
               <>

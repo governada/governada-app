@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Share2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GovernanceRadar } from '@/components/GovernanceRadar';
@@ -51,12 +51,15 @@ export function GovernanceIdentityCard({
   const [r, g, b] = hexToRgb(identityColor);
   const description = getShortDescription(alignments);
   const dominantLabel = getDimensionLabel(getDominantDimension(alignments));
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40 }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+      transition={
+        prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 28 }
+      }
       className={cn(
         'relative w-full rounded-2xl border bg-black/60 backdrop-blur-xl',
         'p-6 md:p-8 overflow-hidden',
@@ -67,17 +70,22 @@ export function GovernanceIdentityCard({
       }}
     >
       {/* Entrance glow pulse */}
-      <motion.div
-        className="pointer-events-none absolute inset-0 rounded-2xl"
-        initial={{ opacity: 0.6 }}
-        animate={{ opacity: 0 }}
-        transition={{ duration: 1.5, ease: 'easeOut' }}
-        style={{
-          boxShadow: `inset 0 0 60px rgba(${r}, ${g}, ${b}, 0.25)`,
-        }}
-      />
+      {!prefersReducedMotion && (
+        <motion.div
+          className="pointer-events-none absolute inset-0 rounded-2xl"
+          initial={{ opacity: 0.6 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 1.5, ease: 'easeOut' }}
+          style={{
+            boxShadow: `inset 0 0 60px rgba(${r}, ${g}, ${b}, 0.25)`,
+          }}
+        />
+      )}
 
-      <div className="relative z-10 flex flex-col items-center text-center gap-4">
+      <div
+        className="relative z-10 flex flex-col items-center text-center gap-4"
+        aria-live="assertive"
+      >
         {/* Preamble */}
         <p className="text-sm text-muted-foreground uppercase tracking-widest">You&apos;re a</p>
 
@@ -114,6 +122,7 @@ export function GovernanceIdentityCard({
             <Button
               variant="outline"
               onClick={onShare}
+              aria-label="Share your governance identity"
               className="gap-2 min-h-[44px] w-full sm:w-auto"
             >
               <Share2 className="h-4 w-4" />

@@ -7,7 +7,9 @@ import { getProposalTheme, getVerdict } from '@/components/governada/proposals/p
 import { ProposalDeliveryBadge } from '@/components/governada/proposals/ProposalDeliveryBadge';
 import { NclImpactIndicator } from '@/components/shared/NclImpactIndicator';
 import { PeekTrigger } from '@/components/governada/peeks/PeekTrigger';
+import { TreasuryImpactChip } from '@/components/governada/shared/TreasuryImpactChip';
 import { useTreasuryNcl } from '@/hooks/queries';
+import { useTreasuryContext } from '@/hooks/useTreasuryContext';
 import type { DeliveryStatus } from '@/lib/proposalOutcomes';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -153,6 +155,7 @@ export function ProposalCard({
   onPeek,
 }: ProposalCardProps) {
   const { data: nclData } = useTreasuryNcl();
+  const { data: treasuryCtx } = useTreasuryContext();
   const status = p.status ?? 'Open';
   const statusLower = status.toLowerCase();
   const isOpen = statusLower === 'open';
@@ -348,6 +351,14 @@ export function ProposalCard({
               endEpoch={ncl!.period.endEpoch}
               isEnacted={statusLower === 'enacted'}
               variant="compact"
+            />
+          )}
+          {hasTreasury && treasuryCtx && treasuryCtx.burnRatePerEpoch > 0 && (
+            <TreasuryImpactChip
+              withdrawalAda={p.withdrawalAmount!}
+              burnRatePerEpoch={treasuryCtx.burnRatePerEpoch}
+              runwayMonths={treasuryCtx.runwayMonths}
+              size="sm"
             />
           )}
           <div className="flex items-center gap-1.5 ml-auto">

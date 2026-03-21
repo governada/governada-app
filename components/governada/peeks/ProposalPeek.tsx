@@ -15,6 +15,9 @@ import { useProposals, useDRepVotes } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet-context';
 import { getProposalTheme, getVerdict } from '@/components/governada/proposals/proposal-theme';
 import type { BrowseProposal } from '@/components/governada/discover/ProposalCard';
+import { TreasuryImpactChip } from '@/components/governada/shared/TreasuryImpactChip';
+import { TreasuryImpactWidget } from '@/components/workspace/review/TreasuryImpactWidget';
+import { useTreasuryContext } from '@/hooks/useTreasuryContext';
 import type { VotesResponseData, VoteItem } from '@/types/api';
 import { useMemo } from 'react';
 
@@ -82,6 +85,7 @@ export function ProposalPeek({ txHash, index }: ProposalPeekProps) {
   const data = rawData as { proposals?: BrowseProposal[]; currentEpoch?: number } | undefined;
   const { delegatedDrepId } = useWallet();
   const { data: drepVotesRaw } = useDRepVotes(delegatedDrepId);
+  const { data: treasuryCtx } = useTreasuryContext();
 
   const proposal = useMemo(() => {
     const proposals = data?.proposals ?? [];
@@ -183,6 +187,26 @@ export function ProposalPeek({ txHash, index }: ProposalPeekProps) {
           </span>
         </div>
       )}
+
+      {/* Treasury impact for withdrawal proposals */}
+      {proposal.type === 'TreasuryWithdrawals' &&
+        proposal.withdrawalAmount != null &&
+        proposal.withdrawalAmount > 0 && (
+          <div className="space-y-3">
+            {treasuryCtx && treasuryCtx.burnRatePerEpoch > 0 && (
+              <TreasuryImpactChip
+                withdrawalAda={proposal.withdrawalAmount}
+                burnRatePerEpoch={treasuryCtx.burnRatePerEpoch}
+                runwayMonths={treasuryCtx.runwayMonths}
+                size="md"
+              />
+            )}
+            <TreasuryImpactWidget
+              withdrawalAmount={proposal.withdrawalAmount * 1_000_000}
+              proposalType={proposal.type}
+            />
+          </div>
+        )}
 
       {/* Open full link */}
       <Link

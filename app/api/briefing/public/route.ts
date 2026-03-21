@@ -25,6 +25,8 @@ interface PublicHeadline {
   title: string;
   description: string;
   type?: HeadlineType;
+  /** Navigation target — makes headline clickable */
+  href?: string;
 }
 
 interface PublicBriefingResponse {
@@ -69,10 +71,21 @@ type RecapData = {
  *   DReps who voted on at least one active proposal across its full
  *   lifetime (not per-epoch).
  */
+interface ProposalInfo {
+  tx_hash: string;
+  proposal_index: number;
+  title: string | null;
+  proposal_type: string | null;
+  withdrawal_amount: number | null;
+  proposed_epoch: number | null;
+}
+
 function buildPublicHeadlines(
   recap: RecapData | null,
   lifecycleParticipationPct: number | null,
   totalVoters: number,
+  activeProposals: ProposalInfo[],
+  recapEpoch: number,
 ): PublicHeadline[] {
   if (!recap) return [];
 
@@ -83,9 +96,10 @@ function buildPublicHeadlines(
     headlines.push({
       title: `Governance approved ${recap.proposals_ratified} proposal${recap.proposals_ratified > 1 ? 's' : ''}`,
       description: recap.proposals_submitted
-        ? `${recap.proposals_submitted} were submitted this epoch — ${recap.proposals_ratified} made it through`
+        ? `${recap.proposals_submitted} were submitted this epoch \u2014 ${recap.proposals_ratified} made it through`
         : 'Ratified on-chain and moving to enactment',
       type: 'proposal',
+      href: '/governance/proposals',
     });
   }
 
@@ -103,35 +117,63 @@ function buildPublicHeadlines(
       title: `Treasury paid out ${formatted} ADA`,
       description: 'Approved withdrawal proposals were executed from the community treasury',
       type: 'treasury',
+      href: '/governance/treasury',
     });
   }
 
   // Lifecycle participation — ONLY show when genuinely strong (≥60%)
-  // Below that threshold, omit entirely. Don't reframe weak stats.
   if (lifecycleParticipationPct != null && lifecycleParticipationPct >= 60) {
     const pct = Math.round(lifecycleParticipationPct);
     headlines.push({
       title: `${pct}% of representatives engaged on active proposals`,
       description:
-        'Measured across each proposal\u2019s full voting window — governance is well-represented',
+        'Measured across each proposal\u2019s full voting window \u2014 governance is well-represented',
       type: 'governance',
+      href: '/governance/representatives',
     });
   } else if (totalVoters > 0) {
-    // Fallback: show absolute voter count (always positive framing)
     headlines.push({
       title: `${totalVoters} representatives actively governing`,
       description:
         'Representatives are reviewing and voting on proposals across their full lifecycle',
       type: 'governance',
+      href: '/governance/representatives',
     });
   }
 
-  // Proposals submitted
+  // Proposals submitted — enriched with proposal details
   if (recap.proposals_submitted && recap.proposals_submitted > 0 && headlines.length < 4) {
+    // Find the most recently proposed proposal(s) to enrich the headline
+    const recentlySubmitted = activeProposals
+      .filter((p) => p.proposed_epoch === recapEpoch)
+      .sort((a, b) => (b.withdrawal_amount ?? 0) - (a.withdrawal_amount ?? 0));
+
+    const newest = recentlySubmitted[0];
+    let description: string;
+    let href = '/governance/proposals';
+
+    if (newest?.title && newest.withdrawal_amount && newest.withdrawal_amount > 0) {
+      const amt = newest.withdrawal_amount;
+      const formatted =
+        amt >= 1_000_000
+          ? `${(amt / 1_000_000).toFixed(1)}M`
+          : amt >= 1_000
+            ? `${Math.round(amt / 1_000)}K`
+            : amt.toLocaleString();
+      description = `"${newest.title}" \u2014 requesting ${formatted} ADA from the treasury`;
+      href = `/proposal/${newest.tx_hash}?index=${newest.proposal_index}`;
+    } else if (newest?.title) {
+      description = `"${newest.title}" \u2014 submitted for community review`;
+      href = `/proposal/${newest.tx_hash}?index=${newest.proposal_index}`;
+    } else {
+      description = 'The community is actively proposing changes to Cardano governance';
+    }
+
     headlines.push({
       title: `${recap.proposals_submitted} new proposal${recap.proposals_submitted > 1 ? 's' : ''} submitted`,
-      description: 'The community is actively proposing changes to Cardano governance',
+      description,
       type: 'proposal',
+      href,
     });
   }
 
@@ -141,6 +183,7 @@ function buildPublicHeadlines(
       title: 'Governance is running smoothly',
       description: 'A stable epoch \u2014 the network is governed and secure',
       type: 'governance',
+      href: '/governance/health',
     });
   }
 
@@ -200,17 +243,18 @@ export const GET = withRouteHandler(async () => {
       .order('epoch', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    // Active proposals (not yet concluded)
+    // Active proposals with details for enriched headlines
     supabase
       .from('proposals')
-      .select('tx_hash, proposal_index')
+      .select('tx_hash, proposal_index, title, proposal_type, withdrawal_amount, proposed_epoch')
       .is('ratified_epoch', null)
       .is('expired_epoch', null)
       .is('dropped_epoch', null),
-    // Total registered DReps (not filtered by is_active which can be stale)
+    // Active DReps only (matches nav bar count)
     supabase
       .from('dreps')
-      .select('id', { count: 'exact', head: true }),
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true),
     supabase
       .from('treasury_snapshots')
       .select('balance_lovelace')
@@ -242,7 +286,13 @@ export const GET = withRouteHandler(async () => {
     lifecycleParticipationPct = Math.round((totalVoters / totalDReps) * 1000) / 10;
   }
 
-  const headlines = buildPublicHeadlines(recapResult.data, lifecycleParticipationPct, totalVoters);
+  const headlines = buildPublicHeadlines(
+    recapResult.data,
+    lifecycleParticipationPct,
+    totalVoters,
+    activeProposals,
+    recapEpoch,
+  );
 
   const treasuryBalanceAda = treasuryResult.data?.balance_lovelace
     ? Math.round(treasuryResult.data.balance_lovelace / 1_000_000)

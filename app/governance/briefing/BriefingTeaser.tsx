@@ -26,6 +26,7 @@ interface PublicHeadline {
   title: string;
   description: string;
   type?: string;
+  href?: string;
 }
 
 interface PublicBriefingData {
@@ -154,15 +155,16 @@ export function BriefingTeaser() {
           </h2>
           <div className="space-y-3">
             {headlines.map((h, i) => (
-              <div
+              <Link
                 key={i}
-                className="rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
+                href={h.href ?? '/governance'}
+                className="block rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
               >
                 <p className="text-sm font-semibold text-foreground">{h.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                   {h.description}
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

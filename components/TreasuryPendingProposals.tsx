@@ -101,7 +101,7 @@ export function TreasuryPendingProposals({ nclImpact, drepVotes }: Props) {
         {data.proposals.map((p) => (
           <Link
             key={`${p.txHash}-${p.index}`}
-            href={`/proposals/${p.txHash}/${p.index}`}
+            href={`/proposal/${p.txHash}/${p.index}`}
             className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
           >
             <div className="flex-1 min-w-0">
@@ -130,9 +130,13 @@ export function TreasuryPendingProposals({ nclImpact, drepVotes }: Props) {
               </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                 <span className="font-mono tabular-nums">
-                  {p.withdrawalAda != null ? `${formatAda(p.withdrawalAda)} ADA` : 'Amount TBD'}
+                  {p.withdrawalAda != null
+                    ? `₳${formatAda(p.withdrawalAda)}`
+                    : 'Amount not specified'}
                 </span>
-                <span>{p.pctOfBalance.toFixed(2)}% of treasury</span>
+                {p.withdrawalAda != null && p.pctOfBalance > 0 && (
+                  <span>{p.pctOfBalance.toFixed(2)}% of treasury</span>
+                )}
                 <span>Epoch {p.proposedEpoch}</span>
               </div>
               {nclImpact && p.withdrawalAda != null && p.withdrawalAda > 0 && (

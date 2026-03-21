@@ -19,6 +19,32 @@ const SEVERITY_STYLES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Parse whatChanged text — handles JSON arrays, newline-separated, or raw strings */
+function parseChangeLines(raw: string): string[] {
+  const trimmed = raw.trim();
+  // If it looks like a JSON array, try parsing it
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((s: unknown) => String(s).replace(/^[-*]\s*/, '')).filter(Boolean);
+      }
+    } catch {
+      // Not valid JSON — fall through to text parsing
+    }
+  }
+  // Strip leading/trailing brackets and quotes that might wrap the whole string
+  const cleaned = trimmed.replace(/^\[["']?|["']?\]$/g, '');
+  return cleaned
+    .split(/["\n]/)
+    .map((s) => s.replace(/^[-*,;\s]+|[",;\s]+$/g, '').trim())
+    .filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -35,7 +61,7 @@ export function CCBriefingCard({ briefing }: CCBriefingCardProps) {
   return (
     <motion.div
       variants={fadeInUp}
-      className="rounded-xl border border-border/60 bg-card/30 p-5 sm:p-6 space-y-4"
+      className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-5 sm:p-6 space-y-4"
     >
       {/* Header with AI badge */}
       <div className="flex items-start justify-between gap-3">
@@ -58,18 +84,15 @@ export function CCBriefingCard({ briefing }: CCBriefingCardProps) {
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
             Recent changes
           </p>
-          {briefing.whatChanged
-            .split('\n')
-            .filter(Boolean)
-            .map((line, idx) => (
-              <p
-                key={idx}
-                className="flex items-start gap-2 text-sm text-muted-foreground leading-relaxed"
-              >
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />
-                <span>{line.replace(/^[-*]\s*/, '')}</span>
-              </p>
-            ))}
+          {parseChangeLines(briefing.whatChanged).map((line, idx) => (
+            <p
+              key={idx}
+              className="flex items-start gap-2 text-sm text-muted-foreground leading-relaxed"
+            >
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />
+              <span>{line.replace(/^[-*]\s*/, '')}</span>
+            </p>
+          ))}
         </div>
       )}
 

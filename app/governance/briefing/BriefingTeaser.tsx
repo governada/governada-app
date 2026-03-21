@@ -123,7 +123,7 @@ export function BriefingTeaser() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Governance Briefing</h1>
         <p className="text-sm text-muted-foreground">
-          What happened in Cardano governance this epoch — powered by on-chain data and AI analysis.
+          What happened in Cardano governance last epoch — powered by on-chain data and AI analysis.
         </p>
       </div>
 
@@ -156,7 +156,7 @@ export function BriefingTeaser() {
             {headlines.map((h, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
+                className="rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
               >
                 <p className="text-sm font-semibold text-foreground">{h.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
@@ -174,7 +174,7 @@ export function BriefingTeaser() {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             AI Analysis
           </h2>
-          <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4">
+          <div className="rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4">
             <p className="text-sm leading-relaxed text-foreground/90">{narrative}</p>
           </div>
         </div>
@@ -193,7 +193,7 @@ export function BriefingTeaser() {
           {GATED_FEATURES.map((feature) => (
             <div
               key={feature.title}
-              className="rounded-xl border border-white/[0.06] bg-card/10 backdrop-blur-sm p-4 opacity-60"
+              className="rounded-xl border border-white/[0.06] bg-card/40 backdrop-blur-lg p-4 opacity-60"
             >
               <div className="flex items-center gap-2 mb-1.5">
                 <feature.icon className="h-4 w-4 text-muted-foreground" />
@@ -242,7 +242,7 @@ function StatCard({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-3 text-center">
+    <div className="rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-3 text-center">
       <Icon className="h-4 w-4 text-primary mx-auto mb-1" />
       <p className="text-lg font-bold tabular-nums">{value}</p>
       <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>

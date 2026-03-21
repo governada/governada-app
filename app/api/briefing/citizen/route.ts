@@ -314,14 +314,17 @@ export const GET = withRouteHandler(
     const circulatingSupplyLovelace = stats?.circulating_supply_lovelace ?? 0;
 
     // -----------------------------------------------------------------------
-    // 2. Epoch recap
+    // 2. Epoch recap — always for the LAST COMPLETED epoch.
+    // Recaps are generated on epoch transition for the previous epoch.
+    // Querying currentEpoch would find nothing at the start of a new epoch.
     // -----------------------------------------------------------------------
+    const recapEpoch = currentEpoch - 1;
     const { data: recap } = await supabase
       .from('epoch_recaps')
       .select(
         'proposals_submitted, proposals_ratified, proposals_expired, proposals_dropped, drep_participation_pct, treasury_withdrawn_ada, ai_narrative',
       )
-      .eq('epoch', currentEpoch)
+      .eq('epoch', recapEpoch)
       .maybeSingle();
 
     // -----------------------------------------------------------------------

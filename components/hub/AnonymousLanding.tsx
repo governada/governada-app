@@ -99,7 +99,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
         {/* Get Started card — encourage wallet connection */}
         <Link
           href="/get-started"
-          className="block rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4 space-y-2 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
+          className="block rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 space-y-2 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
           onClick={() =>
             trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_get_started' })
           }

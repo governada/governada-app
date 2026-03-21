@@ -79,7 +79,7 @@ export function BriefingCard() {
       <div
         className={cn(
           'group block min-h-[6.5rem] rounded-2xl border p-4 sm:p-5',
-          'border-white/[0.08] bg-card/15 backdrop-blur-md',
+          'border-white/[0.08] bg-card/60 backdrop-blur-xl',
         )}
       >
         <div className="space-y-1">
@@ -114,7 +114,7 @@ export function BriefingCard() {
         'group block min-h-[6.5rem] rounded-2xl border p-4 sm:p-5',
         'transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-        'border-white/[0.08] bg-card/15 backdrop-blur-md',
+        'border-white/[0.08] bg-card/60 backdrop-blur-xl',
       )}
     >
       {/* Header row — always a link to the full briefing */}

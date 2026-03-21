@@ -239,6 +239,78 @@ _(Patterns for first-time user experiences, value communication, progressive dis
 
 _(Patterns for finding, filtering, matching, recommendation)_
 
+#### Conversational Adaptive Matching (Typeform + Duolingo + ChatGPT Hybrid)
+
+- **Source**: Typeform (https://typeform.com), Duolingo placement test, ChatGPT custom instructions
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they do**: Typeform's one-question-at-a-time conversational flow achieves 2-3x completion rates vs. traditional forms. Duolingo's adaptive placement test calibrates difficulty from answers, showing value before asking for signup. ChatGPT scaffolds preference collection with open-ended prompts alongside structured inputs.
+- **Why it's world-class**: Combining structured choices (pills/buttons) with freeform text input in a conversational flow captures both explicit preferences and nuanced intent. Adaptive branching means fewer questions for better signal. "Play first, profile second" converts skeptics.
+- **Applicable to**: Conversational DRep matching — present governance pills one round at a time, branch based on answers, accept freeform text for semantic embedding, show match results before wallet connect. Backend already exists (`conversationalMatch.ts`).
+- **Adoption difficulty**: Medium — backend ready, needs conversational UI component + animation system
+
+#### Transparent Match Breakdown (OkCupid + LinkedIn "How You Match")
+
+- **Source**: OkCupid match questions (https://okcupid.com), LinkedIn "How You Match" feature
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they do**: OkCupid shows per-question agreement with importance weighting — disagreement on a "Mandatory" question matters more than agreement on "Irrelevant" ones. LinkedIn shows side-by-side comparison of your profile vs. job requirements with green checkmarks for matches and gaps highlighted.
+- **Why it's world-class**: In governance, explainability is non-negotiable. Showing _which specific priorities_ drive the match percentage builds trust and educates citizens about their own governance values. Gap visibility is more actionable than match percentage alone.
+- **Applicable to**: DRep match results — per-dimension agreement/disagreement breakdown, importance weighting, "Why this match?" expansion panel. Data exists in `dimensionAgreement.ts`.
+- **Adoption difficulty**: Easy — dimension agreement logic exists, needs visual breakdown component
+
+#### Importance Weighting as Signal Amplifier (iSideWith)
+
+- **Source**: iSideWith (https://isidewith.com) — 81M users, 83% quiz completion
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they do**: After answering a policy question, users rate importance (Irrelevant → Mandatory). Results include "passion factor" (how central is this to the candidate's platform?) and "confidence factor" (consistency of their stance over time). Match algorithm weights dimensions by stated importance.
+- **Why it's world-class**: Not all governance topics matter equally to each citizen. Importance weighting transforms a one-size-fits-all quiz into a personalized preference model. The "passion factor" adds DRep behavioral signal beyond position alignment.
+- **Applicable to**: Add importance weighting to conversational matching rounds. Weight 6D alignment distances by citizen's stated importance. Surface DRep "passion" (voting frequency on aligned topics) and "confidence" (consistency over time).
+- **Adoption difficulty**: Medium — matching algorithm needs weighted distance formula, question UI needs importance selector
+
+#### Curated Scarcity in Results (Coffee Meets Bagel)
+
+- **Source**: Coffee Meets Bagel (https://coffeemeetsbagel.com)
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they do**: Instead of infinite scroll, users receive limited daily matches. The constraint forces deeper engagement with each profile. Research shows too much choice causes decision paralysis and reduces satisfaction.
+- **Why it's world-class**: In DRep delegation, there are 800+ DReps. Showing all of them causes paradox of choice. Curating 3-5 high-quality matches with clear explanations produces better delegation decisions than a browsable directory.
+- **Applicable to**: Match results capped at 3-5 DReps with deep explanation cards. "See more" available but not the default. Already partially implemented (top 3 in current results).
+- **Adoption difficulty**: Easy — already showing top 3, needs deeper per-match explanation
+
+#### React to Specific Elements (Hinge Prompts for Governance)
+
+- **Source**: Hinge (https://hinge.co) — likes on text prompts 47% more likely to lead to dates than likes on photos
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they do**: Instead of binary swipe-on-whole-profile, users react to specific photos or text prompt answers. This generates richer preference signal about _what specifically_ attracted them and creates a conversation starter.
+- **Why it's world-class**: Applied to governance: let citizens react to specific DRep policy statements or voting rationale excerpts during matching. This captures finer-grained preference signal than multiple-choice questions while educating citizens about what DReps actually say.
+- **Applicable to**: Conversational matching round where citizens see real DRep statements and react (agree/disagree/interesting). Reactions feed into semantic embeddings for similarity matching. DRep rationale embeddings already exist.
+- **Adoption difficulty**: Medium — need DRep statement selection pipeline + reaction UI + embedding integration
+
+#### Identity Reveal as Shareable Moment (Spotify Wrapped × 23andMe)
+
+- **Source**: Spotify Wrapped (120M+ engaged, 60M+ shares in 2022), 23andMe ancestry reveal
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they do**: Spotify transforms passive data into sequential identity reveals (Stories format) with interactive "guess before reveal" moments, bold shareable cards, and community comparisons. 23andMe reveals results in stages, building anticipation with progressive depth.
+- **Why it's world-class**: Passive data reflected as identity creates the strongest viral loop in consumer software. Users share who their data says they ARE. The sequential reveal with curiosity gaps is addictive. Applied to governance, making delegation feel like identity expression rather than a chore could transform conversion.
+- **Applicable to**: Post-match "Governance Identity Reveal" — sequential card reveals of governance archetype, priority ranking, community comparison, top DRep match. Shareable governance identity cards sized for social media.
+- **Adoption difficulty**: Medium — personality classification exists, needs Stories-format reveal component + shareable card renderer
+
+#### Anti-Pattern: Over-Questioning (OkCupid Research)
+
+- **Source**: OkCupid research — https://daily.jstor.org/dont-fall-in-love-okcupid/
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they did**: OkCupid has thousands of match questions. Research found match percentage is irrelevant to relationship success — users answering 500 questions don't find better matches than those answering 50.
+- **Why it's notable**: Diminishing returns on questions are steep. Signal-per-question matters more than question count. A well-designed 4-6 question flow with importance weighting outperforms 50 shallow questions.
+- **Applicable to**: Keep conversational matching to max 4 rounds (quality-gated, can stop at 2). Each round must maximize information gain. Already implemented in `conversationalMatch.ts` quality gates.
+- **Adoption difficulty**: N/A — anti-pattern to avoid
+
+#### Anti-Pattern: Opaque Algorithm Erodes Trust
+
+- **Source**: Multiple — Netflix, TikTok recommendation backlash, governance-specific trust research
+- **Discovered**: 2026-03-20 (explore-feature: conversational matching)
+- **What they did**: Powerful but opaque recommendation systems breed conspiracy theories and distrust. In governance contexts specifically, lack of explainability undermines legitimacy.
+- **Why it's notable**: In governance matching, radical transparency is non-negotiable. Show exactly why each DRep matched: per-dimension agreement, confidence sources, and what would change the match. Opacity is acceptable for entertainment; it's disqualifying for civic tools.
+- **Applicable to**: Every match result must have a "Why this match?" breakdown. Confidence sources visible. Algorithm methodology accessible. Already have `matchNarrative.ts` and `dimensionAgreement.ts` — need to surface them prominently.
+- **Adoption difficulty**: Easy — data exists, needs prominent UI placement
+
 ### Profile & Identity
 
 #### Passive Data as Shareable Identity (Spotify Wrapped Pattern)

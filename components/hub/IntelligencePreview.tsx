@@ -63,7 +63,7 @@ export function IntelligencePreview() {
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4 space-y-3 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5">
+    <div className="rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 space-y-3 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5">
       {/* Header */}
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
@@ -103,7 +103,7 @@ export function IntelligencePreview() {
 
 function IntelligencePreviewSkeleton() {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-card/15 backdrop-blur-md p-4 space-y-3">
+    <div className="rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Skeleton className="h-4 w-4 rounded-full" />
         <Skeleton className="h-3 w-40" />

@@ -3,7 +3,7 @@
 /**
  * DiscoveryHub — Orchestrator component.
  *
- * Mounts the floating FAB and manages the Sheet panel state.
+ * Manages the Compass panel state and exposes openHub via context.
  * Lazy-loaded in GovernadaShell for zero impact on initial page load.
  */
 
@@ -12,15 +12,14 @@ import { useRouter } from 'next/navigation';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { posthog } from '@/lib/posthog';
-import { DiscoveryFab } from './DiscoveryFab';
 import { DiscoveryHubContext } from './DiscoveryHubContext';
-import { DiscoveryPanel } from './DiscoveryPanel';
+import { CompassPanel } from './CompassPanel';
 
 export function DiscoveryHub({
-  hideFab = false,
+  currentPage,
   children,
 }: {
-  hideFab?: boolean;
+  currentPage?: string;
   children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -59,14 +58,16 @@ export function DiscoveryHub({
   );
 
   return (
-    <DiscoveryHubContext.Provider value={{ openHub: handleOpen }}>
-      {!hideFab && <DiscoveryFab onClick={handleOpen} progress={explorationProgress.percent} />}
-
+    <DiscoveryHubContext.Provider value={{ openHub: handleOpen, setCurrentPage: () => {} }}>
       {children}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" showCloseButton className="w-[340px] sm:w-[380px] p-0">
-          <DiscoveryPanel onStartTour={handleStartTour} onClose={handleClose} />
+          <CompassPanel
+            onStartTour={handleStartTour}
+            onClose={handleClose}
+            currentPage={currentPage}
+          />
         </SheetContent>
       </Sheet>
     </DiscoveryHubContext.Provider>

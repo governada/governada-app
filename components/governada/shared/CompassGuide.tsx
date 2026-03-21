@@ -6,6 +6,7 @@ import { Navigation2, Sparkles, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { fadeInUp } from '@/lib/animations';
+import { useDiscoveryHub } from '@/components/discovery/DiscoveryHubContext';
 import {
   type CompassProgression,
   type CompassState,
@@ -120,6 +121,7 @@ export function CompassGuide({
 }: CompassGuideProps) {
   const [progression, setProgression] = useState<CompassProgression>('first_visit');
   const [mounted, setMounted] = useState(false);
+  const discovery = useDiscoveryHub();
 
   useEffect(() => {
     // Track the page view and derive progression
@@ -205,6 +207,17 @@ export function CompassGuide({
             AI-generated briefing — updates with each epoch
           </span>
         </div>
+      )}
+
+      {/* Open Compass link */}
+      {discovery && (
+        <button
+          onClick={() => discovery.openHub()}
+          className="flex items-center gap-1 text-[10px] text-primary/60 hover:text-primary transition-colors"
+        >
+          <Navigation2 className="h-3 w-3" />
+          Open Compass
+        </button>
       )}
     </motion.div>
   );

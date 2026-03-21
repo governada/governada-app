@@ -26,6 +26,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { GovernadaLogo } from '@/components/ui/GovernadaLogo';
+import { useDiscoveryHub } from '@/components/discovery/DiscoveryHubContext';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPromptModal } from './DepthPromptModal';
 import { EpochStrip } from './EpochStrip';
@@ -197,6 +198,7 @@ interface GovernadaHeaderProps {
 export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderProps = {}) {
   const router = useRouter();
   const { t } = useTranslation();
+  const discovery = useDiscoveryHub();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
   const {
     segment,
@@ -464,24 +466,22 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
           {/* Governance pulse */}
           <GovernancePulse />
 
-          {/* Compass toggle */}
-          {compassToggle && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'hidden lg:inline-flex h-8 w-8',
-                compassOpen
-                  ? 'text-primary bg-primary/10'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-              onClick={compassToggle}
-              aria-label={compassOpen ? 'Close Compass panel' : 'Open Compass panel'}
-              aria-pressed={compassOpen}
-            >
-              <Compass className="h-4 w-4" />
-            </Button>
-          )}
+          {/* Compass toggle — always visible */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'hidden lg:inline-flex h-8 w-8',
+              compassOpen
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            onClick={compassToggle ?? (() => discovery?.openHub())}
+            aria-label={compassOpen ? 'Close Compass panel' : 'Open Compass Guide'}
+            aria-pressed={compassOpen}
+          >
+            <Compass className="h-4 w-4" />
+          </Button>
 
           {/* Notification bell dropdown */}
           {connected && isAuthenticated && <NotificationBell unreadCount={unreadCount} />}

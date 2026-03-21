@@ -25,7 +25,7 @@ interface ConversationalRoundProps {
 
 const PLACEHOLDERS = [
   'I care about...',
-  'Cardano should...',
+  'Cardano should prioritize...',
   'The treasury needs...',
   'Good governance means...',
 ];
@@ -136,6 +136,13 @@ export function ConversationalRound({
           />
         </div>
 
+        {/* Divider */}
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs text-muted-foreground">— or describe in your own words —</span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
         {/* Freeform text area */}
         <div className="mb-6">
           <textarea
@@ -144,7 +151,7 @@ export function ConversationalRound({
             onChange={handleTextChange}
             placeholder={placeholder}
             disabled={isLoading}
-            rows={2}
+            rows={3}
             className={cn(
               'w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-3',
               'text-sm text-foreground placeholder:text-muted-foreground/50',
@@ -154,12 +161,16 @@ export function ConversationalRound({
             )}
           />
           <div className="mt-1 flex justify-between">
-            <span className="text-xs text-muted-foreground">
-              Optional — share your thoughts in your own words
-            </span>
+            {rawText.trim().length >= 10 ? (
+              <span className="text-xs text-primary/60">AI will analyze your response</span>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Optional — share your thoughts in your own words
+              </span>
+            )}
             <span
               className={cn(
-                'text-xs text-muted-foreground',
+                'text-xs text-muted-foreground text-right',
                 rawText.length > MAX_CHARS * 0.9 && 'text-amber-500',
               )}
             >

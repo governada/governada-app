@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowRight, Loader2, RotateCcw, TrendingUp } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { posthog } from '@/lib/posthog';
 import { Button } from '@/components/ui/button';
 import { PillCloud } from './PillCloud';
@@ -25,18 +26,42 @@ interface ConversationalMatchFlowProps {
   onMatchComplete?: (matches: unknown[]) => void;
 }
 
-/* ─── Initial topic pills ───────────────────────────────── */
+/* ─── Fallback topic pills (used when API is unavailable) ── */
 
-const INITIAL_TOPICS = [
-  { id: 'topic-treasury', text: 'Treasury' },
-  { id: 'topic-innovation', text: 'Innovation' },
-  { id: 'topic-security', text: 'Security' },
-  { id: 'topic-transparency', text: 'Transparency' },
-  { id: 'topic-decentralization', text: 'Decentralization' },
-  { id: 'topic-developer-funding', text: 'Developer Funding' },
-  { id: 'topic-community-growth', text: 'Community Growth' },
-  { id: 'topic-constitutional', text: 'Constitutional Compliance' },
+const FALLBACK_TOPICS = [
+  { id: 'topic-treasury', text: 'Treasury', trending: false },
+  { id: 'topic-innovation', text: 'Innovation', trending: false },
+  { id: 'topic-security', text: 'Security', trending: false },
+  { id: 'topic-transparency', text: 'Transparency', trending: false },
+  { id: 'topic-decentralization', text: 'Decentralization', trending: false },
+  { id: 'topic-developer-funding', text: 'Developer Funding', trending: false },
+  { id: 'topic-community-growth', text: 'Community Growth', trending: false },
+  { id: 'topic-constitutional', text: 'Constitutional Compliance', trending: false },
 ] as const;
+
+/* ─── Dynamic topic API types ──────────────────────────── */
+
+interface MatchingTopicResponse {
+  topics: Array<{
+    id: string;
+    slug: string;
+    displayText: string;
+    source: string;
+    trending: boolean;
+    selectionCount: number;
+  }>;
+}
+
+/** Fire-and-forget: increment selection count for a topic */
+function trackTopicSelection(slug: string): void {
+  fetch('/api/governance/matching-topics/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug }),
+  }).catch(() => {
+    // Non-critical telemetry — silently swallow
+  });
+}
 
 /* ─── Ghost text rotation ───────────────────────────────── */
 
@@ -97,6 +122,31 @@ export function ConversationalMatchFlow({
   const [pendingSemanticText, setPendingSemanticText] = useState<string | null>(null);
   const hasStartedRef = useRef(false);
   const ghostText = useGhostText();
+
+  /* ─── Fetch dynamic topics from API ──────────────────── */
+
+  const { data: topicsData } = useQuery<MatchingTopicResponse>({
+    queryKey: ['matching-topics'],
+    queryFn: async () => {
+      const res = await fetch('/api/governance/matching-topics');
+      if (!res.ok) throw new Error('Failed to fetch topics');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
+
+  /** Dynamic pills — falls back to hardcoded list if API unavailable */
+  const topicPills = useMemo(() => {
+    if (topicsData?.topics && topicsData.topics.length > 0) {
+      return topicsData.topics.map((t) => ({
+        id: `topic-${t.slug}`,
+        text: t.displayText,
+        trending: t.trending,
+      }));
+    }
+    return FALLBACK_TOPICS.map((t) => ({ id: t.id, text: t.text, trending: t.trending }));
+  }, [topicsData]);
 
   const {
     round,
@@ -230,6 +280,9 @@ export function ConversationalMatchFlow({
           next.delete(id);
         } else {
           next.add(id);
+          // Fire-and-forget: track selection for community intelligence
+          const slug = id.replace(/^topic-/, '');
+          trackTopicSelection(slug);
         }
         return next;
       });
@@ -355,7 +408,11 @@ export function ConversationalMatchFlow({
               </p>
 
               <PillCloud
-                pills={INITIAL_TOPICS.map((t) => ({ id: t.id, text: t.text }))}
+                pills={topicPills.map((t) => ({
+                  id: t.id,
+                  text: t.trending ? `${t.text}` : t.text,
+                  icon: t.trending ? <TrendingUp className="h-3 w-3 text-orange-400" /> : undefined,
+                }))}
                 selected={selectedTopics}
                 onToggle={handleTopicToggle}
                 multiSelect

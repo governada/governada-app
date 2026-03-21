@@ -1,12 +1,13 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
 interface PillCloudProps {
-  pills: Array<{ id: string; text: string }>;
+  pills: Array<{ id: string; text: string; icon?: ReactNode }>;
   selected: Set<string>;
   onToggle: (id: string) => void;
   multiSelect?: boolean;
@@ -93,7 +94,10 @@ export function PillCloud({
               disabled && 'pointer-events-none opacity-50',
             )}
           >
-            {pill.text}
+            <span className="flex items-center gap-1.5">
+              {pill.icon}
+              {pill.text}
+            </span>
           </motion.button>
         );
       })}

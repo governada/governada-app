@@ -37,6 +37,14 @@ const ConstellationScene = dynamic(
   { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
 );
 
+const DelegatorInsightsCard = dynamic(
+  () =>
+    import('@/components/intelligence/DelegatorInsightsCard').then((m) => ({
+      default: m.DelegatorInsightsCard,
+    })),
+  { ssr: false },
+);
+
 import {
   TIER_SCORE_COLOR,
   TIER_BG as TIER_BG_BASE,
@@ -393,6 +401,9 @@ export function HomeDRep() {
             Open workspace <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
+
+        {/* ── Delegator Intelligence (community intelligence) ────── */}
+        {drepId && <DelegatorInsightsCard drepId={drepId} />}
 
         {/* ── As a Citizen — governance briefing layer (informed+ depth only) ── */}
         <DepthGate minDepth="informed">

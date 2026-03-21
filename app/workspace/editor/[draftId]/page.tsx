@@ -38,6 +38,7 @@ import { StatusBar } from '@/components/workspace/layout/StatusBar';
 import { SaveErrorBanner } from '@/components/workspace/layout/SaveErrorBanner';
 import { RevisionJustificationFlow } from '@/components/workspace/editor/RevisionJustificationFlow';
 import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
+import { ProposalAlignmentCard } from '@/components/intelligence/ProposalAlignmentCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import type { ProposalType } from '@/lib/workspace/types';
@@ -535,7 +536,14 @@ function WorkspaceEditorPage() {
           context={
             <AuthorPanelWrapper
               agentContent={agentChatNode}
-              readinessContent={draftId ? <ReadinessPanel draftId={draftId} /> : undefined}
+              readinessContent={
+                draftId ? (
+                  <>
+                    <ReadinessPanel draftId={draftId} />
+                    <ProposalAlignmentCard className="mt-4" />
+                  </>
+                ) : undefined
+              }
             />
           }
           statusBar={<AuthorActionBarWrapper statusInfo={statusBarNode} />}

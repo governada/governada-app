@@ -306,15 +306,17 @@ export const GlobeConstellation = forwardRef<
         true,
       );
 
-      // Hold the dramatic lock — give user time to register the "found you" moment
-      await sleep(2500);
+      // Hold the dramatic lock — the "Cerebro found you" moment
+      // Keep the node highlighted and rotation stopped — results will render over this
+      await sleep(3000);
       setSceneState((prev) => ({
         ...prev,
         pulseId: null,
         animating: false,
         flyToActive: false,
-        flyToTarget: null,
+        // Keep flyToTarget set so the globe stays focused on the match
       }));
+      // Don't restore rotation — let the globe stay locked during results
     },
 
     clearMatches: () => {
@@ -409,7 +411,7 @@ export const GlobeConstellation = forwardRef<
                 matchIntensities={sceneState.matchIntensities}
               />
             )}
-            {quality !== 'low' && (
+            {quality !== 'low' && sceneState.scanProgress < 0.5 && (
               <ScanningRing
                 active={sceneState.matchedNodeIds.size > 0}
                 progress={sceneState.scanProgress}

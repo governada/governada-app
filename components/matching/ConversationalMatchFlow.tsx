@@ -25,6 +25,10 @@ interface ConversationalMatchFlowProps {
   globeRef: React.RefObject<ConstellationRef | null>;
   onMatchStart?: () => void;
   onMatchComplete?: (matches: unknown[]) => void;
+  /** Pre-selected topic hints (from URL params) */
+  initialTopics?: string[];
+  /** Auto-start the session immediately (when arriving from homepage pill tap) */
+  autoStart?: boolean;
 }
 
 /* ─── Fallback topic pills (used when API is unavailable) ── */
@@ -137,9 +141,13 @@ export function ConversationalMatchFlow({
   globeRef,
   onMatchStart,
   onMatchComplete,
+  initialTopics,
+  autoStart,
 }: ConversationalMatchFlowProps) {
   const [flowState, setFlowState] = useState<FlowState>('idle');
-  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(
+    () => new Set(initialTopics ?? []),
+  );
   const [freeformText, setFreeformText] = useState('');
   const [showFastTrack, setShowFastTrack] = useState(false);
   const [pendingSemanticText, setPendingSemanticText] = useState<string | null>(null);
@@ -312,6 +320,16 @@ export function ConversationalMatchFlow({
     },
     [onMatchStart, startSession, selectedTopics],
   );
+
+  /* ─── Auto-start when arriving from homepage with topic ── */
+
+  useEffect(() => {
+    if (autoStart && !hasStartedRef.current) {
+      handleInitialInteraction(initialTopics);
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ─── Topic pill toggle ────────────────────────────────── */
 

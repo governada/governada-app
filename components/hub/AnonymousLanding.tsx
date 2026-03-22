@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Users, Wallet } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, Users, Wallet, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
@@ -10,11 +11,11 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { BarChart3 } from 'lucide-react';
 import { GovernanceConsequenceCard } from './GovernanceConsequenceCard';
 import { IntelligencePreview } from './IntelligencePreview';
-import { ConversationalMatchFlow } from '@/components/matching/ConversationalMatchFlow';
+import { PillCloud } from '@/components/matching/PillCloud';
 import { CommunityPulse } from '@/components/intelligence/CommunityPulse';
 import { useFeatureFlag } from '@/components/FeatureGate';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -29,142 +30,161 @@ interface AnonymousLandingProps {
   };
 }
 
+interface MatchingTopicResponse {
+  topics: Array<{
+    id: string;
+    slug: string;
+    displayText: string;
+    source: string;
+    trending: boolean;
+    selectionCount: number;
+  }>;
+}
+
+const FALLBACK_TOPICS = [
+  { id: 'topic-treasury', text: 'Treasury', trending: false },
+  { id: 'topic-innovation', text: 'Innovation', trending: false },
+  { id: 'topic-security', text: 'Security', trending: false },
+  { id: 'topic-transparency', text: 'Transparency', trending: false },
+  { id: 'topic-decentralization', text: 'Decentralization', trending: false },
+  { id: 'topic-developer-funding', text: 'Developer Funding', trending: false },
+  { id: 'topic-community-growth', text: 'Community Growth', trending: false },
+  { id: 'topic-constitutional', text: 'Constitutional Compliance', trending: false },
+] as const;
+
 /**
  * Anonymous Landing — Optimized conversion page.
  *
- * Two modes:
- * 1. Feature flag OFF: Original CTA cards (Choose Representative + Get Started)
- * 2. Feature flag ON: Conversational matching pills embedded in hero with globe convergence
- *
- * Enhanced social proof: live DRep, proposal, and participation counts.
- * Glass-window peek at governance health pulse to demonstrate value.
- * PostHog funnel instrumented at every interaction.
+ * When conversational matching is enabled, topic pills navigate to the
+ * dedicated /match page (Xavier's Room) instead of running the flow inline.
  */
 export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
   const { t } = useTranslation();
-  const globeRef = useRef<ConstellationRef>(null);
-  const [isMatching, setIsMatching] = useState(false);
+  const router = useRouter();
   const conversationalMatchingEnabled = useFeatureFlag('conversational_matching');
   const communityIntelligenceEnabled = useFeatureFlag('community_intelligence');
+
+  const { data: topicsData } = useQuery<MatchingTopicResponse>({
+    queryKey: ['matching-topics'],
+    queryFn: async () => {
+      const res = await fetch('/api/governance/matching-topics');
+      if (!res.ok) throw new Error('Failed to fetch topics');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    enabled: conversationalMatchingEnabled === true,
+  });
+
+  const topicPills = topicsData?.topics?.length
+    ? topicsData.topics.map((t) => ({
+        id: `topic-${t.slug}`,
+        text: t.displayText,
+        trending: t.trending,
+      }))
+    : FALLBACK_TOPICS.map((t) => ({ id: t.id, text: t.text, trending: t.trending }));
 
   useEffect(() => {
     trackFunnel(FUNNEL_EVENTS.LANDING_VIEWED);
   }, []);
 
-  const handleMatchStart = () => {
-    setIsMatching(true);
-    trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_conversational' });
+  /** Navigate to /match with the tapped topic as a query param */
+  const handleTopicTap = (topicId: string) => {
+    trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_pill', topic: topicId });
+    router.push(`/match?topic=${encodeURIComponent(topicId)}`);
   };
 
   return (
     <div className="relative flex flex-col min-h-[calc(100vh-4rem)]">
-      {/* Constellation hero — fills viewport on mobile during matching */}
-      <section
-        className={cn(
-          'force-dark relative sm:-mt-14 overflow-visible flex items-start sm:items-center justify-center',
-          'transition-all duration-700',
-          isMatching
-            ? 'min-h-[calc(100vh-4rem)] max-md:min-h-[calc(100dvh-4rem)]'
-            : 'flex-1 min-h-[50vh]',
-        )}
-      >
+      {/* Constellation hero */}
+      <section className="force-dark relative sm:-mt-14 overflow-visible flex items-start sm:items-center justify-center flex-1 min-h-[50vh]">
         <div className="absolute inset-0 overflow-hidden">
-          <ConstellationScene ref={globeRef} className="w-full h-full" interactive={false} />
+          <ConstellationScene className="w-full h-full" interactive={false} />
         </div>
 
-        {/* Gradient fade — only when not matching on mobile */}
-        <div
-          className={cn(
-            'absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none',
-            'transition-opacity duration-500',
-            isMatching && 'max-md:opacity-0',
-          )}
-        />
+        {/* Gradient fade */}
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
-        {/* Hero content — text lives in flow, matching flow anchored to bottom on mobile */}
-        <div
-          className={cn(
-            'relative z-10 text-center px-6 pt-16 sm:pt-14 w-full flex flex-col',
-            isMatching
-              ? 'max-w-lg max-md:h-full max-md:justify-between max-md:pt-20 max-md:pb-0'
-              : 'max-w-lg',
-          )}
-        >
-          <div
-            className={cn(
-              'transition-all duration-500',
-              isMatching && 'opacity-0 max-md:h-0 max-md:overflow-hidden md:h-0 md:overflow-hidden',
-            )}
+        {/* Hero content */}
+        <div className="relative z-10 text-center px-6 pt-16 sm:pt-14 w-full flex flex-col max-w-lg">
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight hero-text-shadow">
+            {t('Your ADA gives you')}
+            <br />
+            <span className="text-primary">{t('a voice.')}</span>
+          </h1>
+          <p
+            className="mt-4 text-lg sm:text-xl text-white/90 font-medium"
+            style={{
+              textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
+            }}
           >
-            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight hero-text-shadow">
-              {t('Your ADA gives you')}
-              <br />
-              <span className="text-primary">{t('a voice.')}</span>
-            </h1>
-            <p
-              className="mt-4 text-lg sm:text-xl text-white/90 font-medium"
-              style={{
-                textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5)',
-              }}
-            >
-              {t('Choose who votes for you. It takes 60 seconds.')}
-            </p>
-          </div>
+            {t('Choose who votes for you. It takes 60 seconds.')}
+          </p>
 
-          {/* Conversational matching flow */}
+          {/* Topic pills — tapping navigates to /match */}
           {conversationalMatchingEnabled && (
-            <div className={cn('mt-8', isMatching && 'max-md:mt-auto')}>
-              <ConversationalMatchFlow globeRef={globeRef} onMatchStart={handleMatchStart} />
+            <div className="mt-8 space-y-4 rounded-2xl bg-black/40 backdrop-blur-md p-5 border border-white/[0.06]">
+              <p className="text-center text-sm text-white/70 font-medium">
+                What matters to you in governance?
+              </p>
+              <PillCloud
+                pills={topicPills.map((t) => ({
+                  id: t.id,
+                  text: t.trending ? t.text : t.text,
+                  icon: t.trending ? <TrendingUp className="h-3 w-3 text-orange-400" /> : undefined,
+                }))}
+                selected={new Set()}
+                onToggle={handleTopicTap}
+                multiSelect={false}
+                layout="cloud"
+                size="md"
+              />
+              {/* Direct CTA for impatient users */}
+              <Button
+                asChild
+                variant="ghost"
+                className="w-full gap-2 text-primary/80 hover:text-primary"
+              >
+                <Link href="/match">
+                  Just find my match
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
             </div>
           )}
         </div>
       </section>
 
-      {/* CTAs + social proof — dims when matching starts */}
-      <section
-        className={cn(
-          'relative z-10 mx-auto w-full max-w-lg px-6 -mt-8 pb-12 space-y-6',
-          'transition-all duration-700',
-          isMatching &&
-            'opacity-20 translate-y-10 pointer-events-none md:opacity-20 md:translate-y-10',
-          isMatching && 'max-md:hidden',
-        )}
-      >
-        {/* Original CTA cards — shown when conversational matching is disabled */}
+      {/* CTAs + social proof */}
+      <section className="relative z-10 mx-auto w-full max-w-lg px-6 -mt-8 pb-12 space-y-6">
         {!conversationalMatchingEnabled && (
-          <>
-            {/* Primary CTA — Choose your representative */}
-            <div className="flex flex-col gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="w-full gap-2 text-base py-6 rounded-xl font-semibold"
-                onClick={() =>
-                  trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_primary' })
-                }
-              >
-                <Link href="/match">
-                  <Users className="h-5 w-5" />
-                  {t('Choose Your Representative')}
-                  <ArrowRight className="h-5 w-5" />
-                </Link>
-              </Button>
-            </div>
-          </>
+          <div className="flex flex-col gap-3">
+            <Button
+              asChild
+              size="lg"
+              className="w-full gap-2 text-base py-6 rounded-xl font-semibold"
+              onClick={() =>
+                trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'landing_primary' })
+              }
+            >
+              <Link href="/match">
+                <Users className="h-5 w-5" />
+                {t('Choose Your Representative')}
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
         )}
 
-        {/* Spacer when conversational matching is enabled */}
         {conversationalMatchingEnabled && <div />}
 
-        {/* Governance consequence card — why governance matters to your ADA */}
-        {pulseData && !isMatching && (
+        {pulseData && (
           <GovernanceConsequenceCard
             activeProposals={pulseData.activeProposals}
             totalDelegators={pulseData.totalDelegators}
           />
         )}
 
-        {/* Get Started card — encourage wallet connection */}
         <Link
           href="/get-started"
           className="block rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 space-y-2 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
@@ -186,10 +206,8 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           </span>
         </Link>
 
-        {/* Intelligence preview — real AI headline from latest epoch briefing */}
         <IntelligencePreview />
 
-        {/* Community Pulse — what the Cardano community cares about */}
         {communityIntelligenceEnabled && (
           <div className="rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-sm p-4 space-y-3">
             <div className="flex items-center gap-2">

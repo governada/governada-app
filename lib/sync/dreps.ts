@@ -40,6 +40,7 @@ interface SupabaseDRepRow {
   profile_completeness: number;
   anchor_url: string | null;
   anchor_hash: string | null;
+  profile_metadata_hash: string | null;
 }
 
 /* ─── Serializable types for Inngest step data passing ─── */
@@ -298,42 +299,76 @@ export async function phaseUpsertDReps(
   const start = Date.now();
   const supabase = getSupabaseAdmin();
 
-  const drepRows: SupabaseDRepRow[] = dreps.map((drep) => ({
-    id: drep.drepId,
-    metadata: drep.metadata || {},
-    info: {
-      drepHash: drep.drepHash,
-      handle: drep.handle,
-      name: drep.name,
-      ticker: drep.ticker,
-      description: drep.description,
-      votingPower: drep.votingPower,
-      votingPowerLovelace: drep.votingPowerLovelace,
-      delegatorCount: delegatorCounts[drep.drepId] ?? 0,
-      totalVotes: drep.totalVotes,
-      yesVotes: drep.yesVotes,
-      noVotes: drep.noVotes,
-      abstainVotes: drep.abstainVotes,
-      isActive: drep.isActive,
-      anchorUrl: drep.anchorUrl,
-      epochVoteCounts: drep.epochVoteCounts,
-    },
-    votes: [],
-    score: drep.drepScore,
-    participation_rate: drep.participationRate,
-    rationale_rate: drep.rationaleRate,
-    reliability_score: drep.reliabilityScore,
-    reliability_streak: drep.reliabilityStreak,
-    reliability_recency: drep.reliabilityRecency,
-    reliability_longest_gap: drep.reliabilityLongestGap,
-    reliability_tenure: drep.reliabilityTenure,
-    deliberation_modifier: drep.deliberationModifier,
-    effective_participation: drep.effectiveParticipation,
-    size_tier: drep.sizeTier,
-    profile_completeness: drep.profileCompleteness,
-    anchor_url: drep.anchorUrl || null,
-    anchor_hash: drep.anchorHash || null,
-  }));
+  // Load existing profile_metadata_hash values to detect changes
+  const existingHashes = new Map<string, string | null>();
+  try {
+    const { data: hashRows } = await supabase
+      .from('dreps')
+      .select('id, profile_metadata_hash')
+      .range(0, 99999);
+    for (const row of hashRows || []) {
+      existingHashes.set(row.id, row.profile_metadata_hash);
+    }
+  } catch (err) {
+    log.warn('[dreps] Could not read existing profile_metadata_hash values', {
+      error: errMsg(err),
+    });
+  }
+
+  const now = new Date().toISOString();
+
+  // Track which DReps had their metadata hash change
+  const hashChangedIds: string[] = [];
+
+  const drepRows: SupabaseDRepRow[] = dreps.map((drep) => {
+    const currentHash = drep.anchorHash || null;
+    const storedHash = existingHashes.get(drep.drepId) ?? null;
+
+    // Detect metadata hash change (case-insensitive comparison)
+    const hashChanged =
+      currentHash != null &&
+      (storedHash == null || currentHash.toLowerCase() !== storedHash.toLowerCase());
+
+    if (hashChanged) hashChangedIds.push(drep.drepId);
+
+    return {
+      id: drep.drepId,
+      metadata: drep.metadata || {},
+      info: {
+        drepHash: drep.drepHash,
+        handle: drep.handle,
+        name: drep.name,
+        ticker: drep.ticker,
+        description: drep.description,
+        votingPower: drep.votingPower,
+        votingPowerLovelace: drep.votingPowerLovelace,
+        delegatorCount: delegatorCounts[drep.drepId] ?? 0,
+        totalVotes: drep.totalVotes,
+        yesVotes: drep.yesVotes,
+        noVotes: drep.noVotes,
+        abstainVotes: drep.abstainVotes,
+        isActive: drep.isActive,
+        anchorUrl: drep.anchorUrl,
+        epochVoteCounts: drep.epochVoteCounts,
+      },
+      votes: [],
+      score: drep.drepScore,
+      participation_rate: drep.participationRate,
+      rationale_rate: drep.rationaleRate,
+      reliability_score: drep.reliabilityScore,
+      reliability_streak: drep.reliabilityStreak,
+      reliability_recency: drep.reliabilityRecency,
+      reliability_longest_gap: drep.reliabilityLongestGap,
+      reliability_tenure: drep.reliabilityTenure,
+      deliberation_modifier: drep.deliberationModifier,
+      effective_participation: drep.effectiveParticipation,
+      size_tier: drep.sizeTier,
+      profile_completeness: drep.profileCompleteness,
+      anchor_url: drep.anchorUrl || null,
+      anchor_hash: drep.anchorHash || null,
+      profile_metadata_hash: currentHash,
+    };
+  });
 
   const drepResult = await batchUpsert(
     supabase,
@@ -343,6 +378,22 @@ export async function phaseUpsertDReps(
     'DReps',
   );
   log.info('[dreps] Upserted DReps', { success: drepResult.success, errors: drepResult.errors });
+
+  // Update profile_last_changed_at only for DReps whose metadata hash changed
+  if (hashChangedIds.length > 0) {
+    try {
+      // Batch update in groups of 100
+      for (let i = 0; i < hashChangedIds.length; i += 100) {
+        const batch = hashChangedIds.slice(i, i + 100);
+        await supabase.from('dreps').update({ profile_last_changed_at: now }).in('id', batch);
+      }
+      log.info('[dreps] Updated profile_last_changed_at for hash changes', {
+        count: hashChangedIds.length,
+      });
+    } catch (err) {
+      log.warn('[dreps] Failed to update profile_last_changed_at', { error: errMsg(err) });
+    }
+  }
 
   return {
     success: drepResult.success,

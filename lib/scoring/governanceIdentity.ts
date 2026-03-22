@@ -99,8 +99,9 @@ function computeProfileQuality(profile: DRepProfileData, nowSeconds: number): nu
 
   const rawProfile = Math.min(100, score);
 
-  // V3.2: Apply staleness decay
-  const stalenessFactor = computeStalenessFactor(profile.updatedAt, nowSeconds);
+  // V3.2: Apply staleness decay (prefer profileLastChangedAt over updatedAt)
+  const stalenessTimestamp = profile.profileLastChangedAt ?? profile.updatedAt;
+  const stalenessFactor = computeStalenessFactor(stalenessTimestamp, nowSeconds);
   return rawProfile * stalenessFactor;
 }
 

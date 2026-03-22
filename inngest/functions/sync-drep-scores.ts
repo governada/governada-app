@@ -65,7 +65,9 @@ export const syncDrepScores = inngest.createFunction(
           await Promise.all([
             supabase
               .from('dreps')
-              .select('id, info, metadata, metadata_hash_verified, anchor_hash, updated_at')
+              .select(
+                'id, info, metadata, metadata_hash_verified, anchor_hash, updated_at, profile_last_changed_at',
+              )
               .range(0, 99999),
             supabase
               .from('proposals')
@@ -260,12 +262,20 @@ export const syncDrepScores = inngest.createFunction(
             if (!isNaN(parsed)) updatedAtSeconds = Math.floor(parsed / 1000);
           }
 
+          // Parse profile_last_changed_at (preferred for staleness)
+          let profileLastChangedAtSeconds: number | null = null;
+          if (row.profile_last_changed_at) {
+            const parsed = new Date(row.profile_last_changed_at).getTime();
+            if (!isNaN(parsed)) profileLastChangedAtSeconds = Math.floor(parsed / 1000);
+          }
+
           profiles.set(row.id, {
             drepId: row.id,
             metadata: row.metadata || null,
             delegatorCount,
             metadataHashVerified: row.metadata_hash_verified || false,
             updatedAt: updatedAtSeconds,
+            profileLastChangedAt: profileLastChangedAtSeconds,
           });
         }
 

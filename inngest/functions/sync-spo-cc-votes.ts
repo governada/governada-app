@@ -99,7 +99,19 @@ export const syncSpoAndCcVotes = inngest.createFunction(
           if (m.cc_cold_id) hotToCold.set(m.cc_hot_id, m.cc_cold_id);
         }
 
-        const rows = votes.map((v) => ({
+        // Deduplicate: a voter can change their vote, producing multiple rows
+        // for the same (cc_hot_id, proposal_tx_hash, proposal_index). Keep the
+        // latest by block_time to avoid "ON CONFLICT cannot affect row a second time".
+        const deduped = new Map<string, (typeof votes)[number]>();
+        for (const v of votes) {
+          const key = `${v.cc_hot_id}:${v.proposal_tx_hash}:${v.proposal_index}`;
+          const existing = deduped.get(key);
+          if (!existing || v.block_time > existing.block_time) {
+            deduped.set(key, v);
+          }
+        }
+
+        const rows = [...deduped.values()].map((v) => ({
           cc_hot_id: v.cc_hot_id,
           cc_cold_id: hotToCold.get(v.cc_hot_id) ?? null,
           proposal_tx_hash: v.proposal_tx_hash,

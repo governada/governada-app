@@ -25,7 +25,7 @@ import {
   RELIABILITY_WEIGHTS,
   IDENTITY_WEIGHTS,
   CLOSE_MARGIN,
-  DISSENT_CURVE,
+  DISSENT_SUBSTANCE_MODIFIER,
   TIER_BOUNDARIES,
 } from '../lib/scoring/calibration';
 import { calibrate, type CalibrationCurve } from '../lib/ghi/calibration';
@@ -377,7 +377,7 @@ async function main() {
     reliabilityWeights: RELIABILITY_WEIGHTS,
     identityWeights: IDENTITY_WEIGHTS,
     closeMargin: CLOSE_MARGIN,
-    dissentCurve: DISSENT_CURVE,
+    dissentSubstanceModifier: DISSENT_SUBSTANCE_MODIFIER,
     tierBoundaries: TIER_BOUNDARIES,
     ghiCalibration: GHI_CALIBRATION,
     ghiComponentWeights: GHI_COMPONENT_WEIGHTS,

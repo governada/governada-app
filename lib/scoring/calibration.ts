@@ -17,16 +17,16 @@
 /**
  * DRep pillar weights (must sum to 1.0).
  *
- * Rationale: Engagement Quality (35%) is weighted highest because rationale
- * provision and quality are the strongest signals of governance diligence.
- * Participation and Reliability (25% each) reward showing up consistently.
- * Identity (15%) is the baseline — important but not dominant.
+ * V3.2: EQ raised to 40% (hardest pillar to game — requires actual governance
+ * substance), GI reduced to 10% (easiest to game — fill out a form).
+ * Shifting weight from gameable to non-gameable pillars makes the composite
+ * more resistant to manipulation and more meaningful under public scrutiny.
  */
 export const DREP_PILLAR_WEIGHTS = {
-  engagementQuality: 0.35,
+  engagementQuality: 0.4,
   effectiveParticipation: 0.25,
   reliability: 0.25,
-  governanceIdentity: 0.15,
+  governanceIdentity: 0.1,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -48,42 +48,42 @@ export const ENGAGEMENT_LAYER_WEIGHTS = {
 
 /**
  * Deliberation sub-signal weights (must sum to 1.0).
+ *
+ * V3.2: Dissent removed as standalone signal (incentivized strategic contrarianism).
+ * Vote diversity replaced by rationale diversity (catches copy-paste, not vote direction).
+ * Coverage breadth replaces type breadth (weighted by proposal frequency).
  */
 export const DELIBERATION_WEIGHTS = {
-  voteDiversity: 0.4,
-  dissent: 0.35,
-  typeBreadth: 0.25,
+  rationaleDiversity: 0.6,
+  coverageBreadth: 0.4,
 } as const;
 
 /**
- * Vote diversity thresholds — penalizes rubber-stamping.
- * Maps dominant vote ratio → score.
- * >95% same direction = 15 (severe penalty), >90% = 35, etc.
+ * Rationale diversity config.
+ * Measures unique meta_hashes vs total rationales — detects copy-paste rationales.
+ * Below minRationales → neutral 50 (insufficient data).
  */
-export const VOTE_DIVERSITY_THRESHOLDS = [
-  { maxRatio: 0.75, score: 100 },
-  { maxRatio: 0.85, score: 75 },
-  { maxRatio: 0.9, score: 55 },
-  { maxRatio: 0.95, score: 35 },
-  { maxRatio: 1.0, score: 15 },
-] as const;
-
-/** Minimum votes needed to evaluate diversity (below this → neutral 50). */
-export const VOTE_DIVERSITY_MIN_VOTES = 5;
+export const RATIONALE_DIVERSITY_CONFIG = {
+  /** Minimum rationales with meta_hash to evaluate diversity. */
+  minRationales: 3,
+  /** Score when below minRationales (neutral). */
+  neutralScore: 50,
+} as const;
 
 /**
- * Dissent scoring curve breakpoints.
- * Sweet spot: 15-40% dissent = maximum score (independent thinking).
- * 0% = rubber-stamper (25), >40% = contrarian (decays to 15).
+ * Dissent-with-substance modifier config.
+ * V3.2: Instead of a standalone dissent signal, dissent is a quality multiplier.
+ * When a DRep votes against the majority AND provides a quality rationale (≥ minQuality),
+ * their rationale quality contribution for that vote gets a bonus multiplier.
+ * Capped to maxVoteFraction of total votes to prevent always-dissent gaming.
  */
-export const DISSENT_CURVE = {
-  zeroRate: 25,
-  sweetSpotStart: 0.15,
-  sweetSpotEnd: 0.4,
-  sweetSpotScore: 100,
-  minScore: 15,
-  /** Minimum eligible votes to evaluate dissent. */
-  minVotes: 5,
+export const DISSENT_SUBSTANCE_MODIFIER = {
+  /** Multiplier applied to rationale quality for substantive dissent votes. */
+  multiplier: 1.2,
+  /** Minimum rationale quality score to qualify for the modifier. */
+  minQuality: 60,
+  /** Maximum fraction of votes that can receive the modifier (prevents gaming). */
+  maxVoteFraction: 0.4,
 } as const;
 
 // ---------------------------------------------------------------------------

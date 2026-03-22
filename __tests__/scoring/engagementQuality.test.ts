@@ -33,11 +33,12 @@ function makeSummaries(keys: string[], yesRatios: number[]): Map<string, Proposa
   return map;
 }
 
-const ALL_TYPES = new Set([
-  'TreasuryWithdrawals',
-  'ParameterChange',
-  'HardForkInitiation',
-  'InfoAction',
+/** V3.2: proposalTypeCounts replaces allProposalTypes Set */
+const TYPE_COUNTS = new Map([
+  ['TreasuryWithdrawals', 10],
+  ['ParameterChange', 5],
+  ['HardForkInitiation', 2],
+  ['InfoAction', 3],
 ]);
 
 // ── Tests ──
@@ -59,6 +60,7 @@ describe('computeEngagementQuality', () => {
             blockTime: NOW - p * 5 * ONE_DAY,
             proposalBlockTime: NOW - (p * 5 + 2) * ONE_DAY,
             rationaleQuality: d < 7 ? 50 + d * 5 : null,
+            rationaleMetaHash: d < 7 ? `hash_${d}_${p}` : null,
             proposalType: [
               'TreasuryWithdrawals',
               'ParameterChange',
@@ -76,7 +78,7 @@ describe('computeEngagementQuality', () => {
       Array.from({ length: 20 }, (_, i) => 0.3 + (i / 20) * 0.4),
     );
 
-    const scores = computeEngagementQuality(drepVotes, summaries, ALL_TYPES, NOW);
+    const scores = computeEngagementQuality(drepVotes, summaries, TYPE_COUNTS, NOW);
     expect(scores.size).toBe(10);
     for (const [, score] of scores) {
       expect(score).toBeGreaterThanOrEqual(0);
@@ -90,7 +92,7 @@ describe('computeEngagementQuality', () => {
     const scores = computeEngagementQuality(
       new Map([['drep_empty', []]]),
       emptySummaries(),
-      ALL_TYPES,
+      TYPE_COUNTS,
       NOW,
     );
     expect(scores.get('drep_empty')).toBe(0);
@@ -109,45 +111,10 @@ describe('computeEngagementQuality', () => {
         },
       ]),
       emptySummaries(),
-      ALL_TYPES,
+      TYPE_COUNTS,
       NOW,
     );
     expect(scores.get('d1')).toBeGreaterThan(0);
-  });
-
-  // ── Edge: All votes same direction (rubber-stamp) ──
-
-  it('penalizes rubber-stamping (>95% same vote direction)', () => {
-    const diverseVotes = makeVotes(
-      'diverse',
-      Array.from({ length: 10 }, (_, i) => ({
-        proposalKey: `tx_${i}-0`,
-        vote: (i % 3 === 0 ? 'No' : i % 3 === 1 ? 'Abstain' : 'Yes') as VoteData['vote'],
-        blockTime: NOW - i * ONE_DAY,
-        rationaleQuality: 60,
-      })),
-    );
-
-    const rubberStamp = makeVotes(
-      'stamp',
-      Array.from({ length: 10 }, (_, i) => ({
-        proposalKey: `tx_${i}-0`,
-        vote: 'Yes' as const,
-        blockTime: NOW - i * ONE_DAY,
-        rationaleQuality: 60,
-      })),
-    );
-
-    const summaries = makeSummaries(
-      Array.from({ length: 10 }, (_, i) => `tx_${i}-0`),
-      Array.from({ length: 10 }, () => 0.7),
-    );
-
-    const diverseScores = computeEngagementQuality(diverseVotes, summaries, ALL_TYPES, NOW);
-    const stampScores = computeEngagementQuality(rubberStamp, summaries, ALL_TYPES, NOW);
-
-    // Diverse voter should score higher on deliberation signal
-    expect(diverseScores.get('diverse')!).toBeGreaterThan(stampScores.get('stamp')!);
   });
 
   // ── Edge: All rationales scored 0 ──
@@ -163,7 +130,7 @@ describe('computeEngagementQuality', () => {
         })),
       ),
       emptySummaries(),
-      ALL_TYPES,
+      TYPE_COUNTS,
       NOW,
     );
     // With all quality=0, quality layer = 0 but provision and deliberation can still contribute
@@ -181,13 +148,14 @@ describe('computeEngagementQuality', () => {
         Array.from({ length: 8 }, (_, i) => ({
           proposalKey: `tx_${i}-0`,
           rationaleQuality: 100,
+          rationaleMetaHash: `unique_hash_${i}`,
           blockTime: NOW - i * ONE_DAY,
           vote: (i % 3 === 0 ? 'No' : 'Yes') as VoteData['vote'],
           proposalType: ['TreasuryWithdrawals', 'ParameterChange', 'HardForkInitiation'][i % 3],
         })),
       ),
       emptySummaries(),
-      ALL_TYPES,
+      TYPE_COUNTS,
       NOW,
     );
     expect(scores.get('d1')!).toBeGreaterThan(60);
@@ -214,12 +182,10 @@ describe('computeEngagementQuality', () => {
       },
     ]);
 
-    const recentScores = computeEngagementQuality(recentVotes, emptySummaries(), ALL_TYPES, NOW);
-    const oldScores = computeEngagementQuality(oldVotes, emptySummaries(), ALL_TYPES, NOW);
+    const recentScores = computeEngagementQuality(recentVotes, emptySummaries(), TYPE_COUNTS, NOW);
+    const oldScores = computeEngagementQuality(oldVotes, emptySummaries(), TYPE_COUNTS, NOW);
 
     // Both have same quality but old vote is decayed
-    // The provision rate is binary (has quality > 0 = yes), but the quality layer uses decay
-    // The 180-day-old vote should contribute ~50% weight
     expect(recentScores.get('recent')!).toBeGreaterThanOrEqual(oldScores.get('old')!);
   });
 
@@ -242,68 +208,10 @@ describe('computeEngagementQuality', () => {
       })),
     );
 
-    const scores = computeEngagementQuality(onlyInfoActions, emptySummaries(), ALL_TYPES, NOW);
+    const scores = computeEngagementQuality(onlyInfoActions, emptySummaries(), TYPE_COUNTS, NOW);
     // InfoActions are excluded from provision and quality layers
-    // Only deliberation signal contributes (and it returns 50 for ≤5 votes)
     const score = scores.get('d1')!;
     expect(score).toBeLessThanOrEqual(30); // mostly zeros from provision+quality
-  });
-
-  // ── Dissent scoring ──
-
-  it('scores dissent sweet spot (15-40%) highest', () => {
-    // DRep who votes against majority 25% of the time (sweet spot)
-    const sweetSpotVotes: VoteData[] = [];
-    const summaries = new Map<string, ProposalVotingSummary>();
-    for (let i = 0; i < 20; i++) {
-      const key = `tx_d${i}-0`;
-      // Majority is Yes on all proposals
-      summaries.set(key, {
-        proposalKey: key,
-        drepYesVotePower: 7000,
-        drepNoVotePower: 3000,
-        drepAbstainVotePower: 0,
-      });
-      sweetSpotVotes.push(
-        makeVoteData({
-          drepId: 'moderate',
-          proposalKey: key,
-          // 25% dissent (vote No when majority is Yes)
-          vote: i < 5 ? 'No' : 'Yes',
-          blockTime: NOW - i * ONE_DAY,
-          rationaleQuality: 60,
-        }),
-      );
-    }
-
-    const zeroDissentVotes: VoteData[] = [];
-    for (let i = 0; i < 20; i++) {
-      const key = `tx_d${i}-0`;
-      zeroDissentVotes.push(
-        makeVoteData({
-          drepId: 'conformist',
-          proposalKey: key,
-          vote: 'Yes', // always agrees with majority
-          blockTime: NOW - i * ONE_DAY,
-          rationaleQuality: 60,
-        }),
-      );
-    }
-
-    const moderateScores = computeEngagementQuality(
-      new Map([['moderate', sweetSpotVotes]]),
-      summaries,
-      ALL_TYPES,
-      NOW,
-    );
-    const conformistScores = computeEngagementQuality(
-      new Map([['conformist', zeroDissentVotes]]),
-      summaries,
-      ALL_TYPES,
-      NOW,
-    );
-
-    expect(moderateScores.get('moderate')!).toBeGreaterThan(conformistScores.get('conformist')!);
   });
 
   // ── Scores bounded 0-100 ──
@@ -325,7 +233,7 @@ describe('computeEngagementQuality', () => {
       );
     }
 
-    const scores = computeEngagementQuality(drepVotes, emptySummaries(), ALL_TYPES, NOW);
+    const scores = computeEngagementQuality(drepVotes, emptySummaries(), TYPE_COUNTS, NOW);
     for (const [, score] of scores) {
       expect(score).toBeGreaterThanOrEqual(0);
       expect(score).toBeLessThanOrEqual(100);

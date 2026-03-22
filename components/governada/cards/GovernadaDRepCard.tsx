@@ -8,6 +8,7 @@ import { TIER_SCORE_COLOR, TIER_BORDER, TIER_BG, TIER_GLOW, tierKey } from './ti
 import { TierBadge } from './TierBadge';
 import type { EnrichedDRep } from '@/lib/koios';
 import { ScoreExplainer } from '@/components/ui/ScoreExplainer';
+import { ProactiveReviewerBadge } from '@/components/ui/ProactiveReviewerBadge';
 import {
   extractAlignments,
   getPersonalityLabel,
@@ -36,6 +37,10 @@ interface GovernadaDRepCardProps {
   rank?: number;
   matchScore?: number | null;
   endorsementCount?: number;
+  /** Number of substantive proposal reviews in the last 90 days (Layer 2 badge). */
+  proactiveReviewCount?: number;
+  /** Show the proactive reviewer badge in "coming soon" mode. */
+  showProactiveReviewerBadge?: boolean;
 }
 
 export function GovernadaDRepCard({
@@ -43,6 +48,8 @@ export function GovernadaDRepCard({
   rank,
   matchScore,
   endorsementCount,
+  proactiveReviewCount,
+  showProactiveReviewerBadge = false,
 }: GovernadaDRepCardProps) {
   const score = drep.drepScore ?? 0;
   const tier = tierKey(computeTier(score));
@@ -144,6 +151,16 @@ export function GovernadaDRepCard({
                 {label}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* ── Proactive Reviewer badge (Layer 2, not in composite score) ── */}
+        {showProactiveReviewerBadge && (
+          <div className="mb-3">
+            <ProactiveReviewerBadge
+              reviewCount={proactiveReviewCount ?? 0}
+              comingSoon={proactiveReviewCount == null}
+            />
           </div>
         )}
 

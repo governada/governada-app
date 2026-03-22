@@ -306,6 +306,25 @@ export const SPO_RELIABILITY_PARAMS = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Vote Change Bonus
+// ---------------------------------------------------------------------------
+
+/**
+ * Vote change with explanation bonus.
+ * When a DRep changes their vote on a proposal (detected via multiple vote_tx_hash
+ * entries for the same drep_id + proposal) AND provides a quality rationale on the
+ * new vote (≥ qualityThreshold), the rationale quality contribution for that vote
+ * gets a multiplier bonus. This rewards adaptive governance — reconsidering based
+ * on new information and explaining why.
+ */
+export const VOTE_CHANGE_BONUS = {
+  /** Minimum rationale quality score on the changed vote to qualify for the bonus. */
+  qualityThreshold: 50,
+  /** Multiplier applied to rationale quality for qualified vote changes. */
+  multiplier: 1.1,
+} as const;
+
+// ---------------------------------------------------------------------------
 // Temporal Decay — Shared
 // ---------------------------------------------------------------------------
 

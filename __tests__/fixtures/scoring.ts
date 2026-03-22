@@ -32,6 +32,7 @@ export function makeVoteData(overrides: Partial<VoteData> = {}): VoteData {
     rationaleQuality: 70,
     importanceWeight: 2,
     rationaleMetaHash: null,
+    hasVoteChanged: false,
     ...overrides,
   };
 }

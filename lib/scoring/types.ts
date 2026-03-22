@@ -21,6 +21,8 @@ export interface VoteData {
   importanceWeight: number;
   /** CIP-100 metadata hash — unique per rationale document. Used for diversity detection. */
   rationaleMetaHash: string | null;
+  /** True if this vote replaced a previous vote on the same proposal (adaptive governance). */
+  hasVoteChanged: boolean;
 }
 
 export interface ProposalScoringContext {

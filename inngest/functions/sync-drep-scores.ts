@@ -186,9 +186,22 @@ export const syncDrepScores = inngest.createFunction(
         // Temp: epoch counts per DRep
         const drepEpochCounts = new Map<string, Map<number, number>>();
 
+        // Detect vote changes: count how many vote_tx_hashes exist per (drep_id, proposal)
+        // If >1, the DRep changed their vote on that proposal.
+        const voteCountByDrepProposal = new Map<string, number>();
+        for (const v of voteRows) {
+          const key = `${v.drep_id}::${v.proposal_tx_hash}-${v.proposal_index}`;
+          voteCountByDrepProposal.set(key, (voteCountByDrepProposal.get(key) || 0) + 1);
+        }
+
         for (const v of voteRows) {
           const proposalKey = `${v.proposal_tx_hash}-${v.proposal_index}`;
           const ctx = proposalContexts.get(proposalKey);
+
+          // A vote is a "changed vote" if there are multiple vote transactions
+          // for the same DRep + proposal combination
+          const drepProposalKey = `${v.drep_id}::${proposalKey}`;
+          const hasVoteChanged = (voteCountByDrepProposal.get(drepProposalKey) || 0) > 1;
 
           const voteData: VoteData = {
             drepId: v.drep_id,
@@ -200,6 +213,7 @@ export const syncDrepScores = inngest.createFunction(
             rationaleQuality: v.rationale_quality,
             importanceWeight: ctx?.importanceWeight || 1,
             rationaleMetaHash: v.meta_hash,
+            hasVoteChanged,
           };
 
           if (!drepVotes.has(v.drep_id)) drepVotes.set(v.drep_id, []);

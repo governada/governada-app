@@ -17,6 +17,7 @@ import {
   DELIBERATION_WEIGHTS,
   RATIONALE_DIVERSITY_CONFIG,
   DISSENT_SUBSTANCE_MODIFIER,
+  VOTE_CHANGE_BONUS,
 } from './calibration';
 
 const LAYER_WEIGHTS = ENGAGEMENT_LAYER_WEIGHTS;
@@ -94,6 +95,10 @@ function computeProvisionRate(votes: VoteData[], nowSeconds: number): number {
  * the majority AND provides a quality rationale (≥ minQuality), the quality
  * contribution for that vote is boosted by the multiplier. Capped to maxVoteFraction
  * of total eligible votes to prevent always-dissent gaming.
+ *
+ * V3.2: Includes "vote change with explanation" bonus — when a DRep changes their
+ * vote on a proposal (hasVoteChanged) AND provides a quality rationale (≥ threshold),
+ * the quality contribution for that vote is boosted. This rewards adaptive governance.
  */
 function computeRationaleQuality(
   votes: VoteData[],
@@ -134,6 +139,11 @@ function computeRationaleQuality(
           dissentBonusesApplied++;
         }
       }
+    }
+
+    // Apply vote-change-with-explanation bonus (stacks with dissent modifier)
+    if (v.hasVoteChanged && v.rationaleQuality >= VOTE_CHANGE_BONUS.qualityThreshold) {
+      qualityScore = Math.min(100, qualityScore * VOTE_CHANGE_BONUS.multiplier);
     }
 
     totalWeight += w;

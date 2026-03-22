@@ -63,6 +63,7 @@ import { DRepProfileHero } from '@/components/DRepProfileHero';
 import { DRepDetailedAnalysis } from '@/components/drep/DRepDetailedAnalysis';
 import { FeatureGate } from '@/components/FeatureGate';
 import { getFeatureFlag } from '@/lib/featureFlags';
+import { ProactiveReviewerBadge } from '@/components/ui/ProactiveReviewerBadge';
 import { DelegationImpactPreview } from '@/components/drep/DelegationImpactPreview';
 import { TrustCard } from '@/components/governada/profiles/TrustCard';
 const CitizenEndorsements = nextDynamic(
@@ -604,6 +605,13 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
         <WatchEntityButton entityType="drep" entityId={drep.drepId} />
         <PinButton type="drep" id={drep.drepId} label={drepName} />
       </DRepProfileHero>
+
+      {/* ── Proactive Reviewer badge (Layer 2 signal, NOT in composite score) ── */}
+      <FeatureGate flag="proactive_governance_badge">
+        <div className="flex items-center gap-2">
+          <ProactiveReviewerBadge reviewCount={0} comingSoon />
+        </div>
+      </FeatureGate>
 
       {/* Tier progress lives in the DRep/SPO workspace homepage, not on public profiles */}
 

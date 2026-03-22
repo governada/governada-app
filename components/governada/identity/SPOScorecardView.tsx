@@ -6,6 +6,8 @@ import { useSPOPoolCompetitive, useSPOSummary } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink } from 'lucide-react';
+import { ScoreVersionBadge } from '@/components/ui/ScoreVersionBadge';
+import { CURRENT_SPO_SCORE_VERSION } from '@/lib/scoring/versioning';
 
 /**
  * SPOScorecardView — Your personal pool governance scorecard.
@@ -77,6 +79,7 @@ export function SPOScorecardView() {
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold tabular-nums text-foreground">{score}</span>
               <span className="text-sm text-muted-foreground">/100</span>
+              <ScoreVersionBadge version={CURRENT_SPO_SCORE_VERSION} entityType="spo" />
             </div>
           </div>
           <div className="text-right space-y-1">

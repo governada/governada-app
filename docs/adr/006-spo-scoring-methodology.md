@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — **V2 (current, Mar 2026)**. Supersedes V1 3-pillar model.
+Accepted — **V3.2 (current, Mar 2026)**. Supersedes V3.1.
 
 ## Context
 
@@ -86,6 +86,48 @@ Same tier system as DRep Score: Emerging (0-39), Bronze (40-54), Silver (55-69),
 - Shared: `lib/scoring/percentile.ts`, `lib/scoring/types.ts`
 - Pipeline: `inngest/functions/sync-spo-scores.ts`
 - Storage: `pools` table (current scores), `spo_score_snapshots` (history)
+
+## V3.2 Changes (Mar 2026)
+
+V3.2 is a methodology hardening release. Weights are unchanged; sub-component formulas are rewritten for robustness.
+
+### Deliberation Quality Rewrite
+
+Replaced the V3.1 three-layer model (Rationale Provision 40%, Vote Timing Distribution 30%, Proposal Coverage Entropy 30%) with a four-layer behavioral model:
+
+- **Vote Diversity (35%)** — penalizes >85% same-direction voting with an abstain penalty. Rubber-stamping and abstain-farming both score poorly.
+- **Dissent Rate (30%)** — 15-40% minority voting is the sweet spot. Too low = herd behavior; too high = contrarian noise.
+- **Type Breadth (20%)** — fraction of distinct proposal types voted on.
+- **Coverage Entropy (15%)** — Shannon entropy across proposal types (retained from V3.1 at lower weight).
+
+Rationale provision and vote timing were removed. SPOs rarely provide rationales (unlike DReps), making that signal noisy. Vote timing was intended for bot detection but produced false positives on pools that batch-vote.
+
+### Governance Identity Hardening
+
+- **Pool Identity Quality (60%)** now cross-validates metadata against voting activity. Governance statement points are gated behind minimum vote counts — a pool with a great statement but zero votes scores lower than one with a basic statement and active voting.
+- **Delegation Responsiveness (40%)** uses a neutral 50 default when insufficient data exists (was falling back to count percentile, which leaked pool size into governance scoring).
+- Pool size (delegator count) fully excluded from governance scoring.
+
+### Graduated Confidence System
+
+Tier caps based on vote count, mirroring DRep Score:
+
+- <3 votes: capped at Emerging
+- 3-5 votes: capped at Bronze
+- 6-9 votes: capped at Silver
+- 10+ votes: uncapped
+
+### Sybil/Gaming Penalty
+
+Pools with >95% same-direction votes AND abstain rate >40% receive a composite penalty (multiplier 0.7-0.9). Targets abstain-farming patterns.
+
+### Versioning Infrastructure
+
+Every score write now includes `score_version` column. Historical scores are traceable to the methodology version that produced them. UI displays version badge linking to methodology changelog.
+
+## V3.1 (Historical)
+
+V3.1 introduced the 4-pillar model (Participation 38%, Deliberation 24%, Reliability 23%, Identity 15%) with percentile normalization, importance weighting, and temporal decay. See the V2 section below for the original 4-pillar specification which V3.1 was based on.
 
 ## Consequences
 

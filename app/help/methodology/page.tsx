@@ -98,11 +98,12 @@ const SPO_PILLARS = [
     weight: SPO_PILLAR_WEIGHTS.deliberation,
     color: 'bg-emerald-500',
     description:
-      'Multi-signal measure of deliberation depth, including bot-detection via vote timing analysis.',
+      'Voting behavior signals that reward thoughtful, independent governance participation. Penalizes rubber-stamping and abstain-farming.',
     layers: [
-      'Rationale Provision (40%) — importance-weighted % with rationale',
-      'Vote Timing Distribution (30%) — stddev of time-to-vote (natural variation scores highest)',
-      'Proposal Coverage Entropy (30%) — Shannon entropy across proposal types',
+      'Vote Diversity (35%) — penalizes >85% same-direction voting with abstain penalty',
+      'Dissent Rate (30%) — 15-40% minority voting is the sweet spot for independent thinking',
+      'Type Breadth (20%) — fraction of distinct proposal types voted on',
+      'Coverage Entropy (15%) — Shannon entropy across proposal types',
     ],
   },
   {
@@ -124,10 +125,10 @@ const SPO_PILLARS = [
     weight: SPO_PILLAR_WEIGHTS.governanceIdentity,
     color: 'bg-violet-500',
     description:
-      'Evaluates pool identity quality and community trust. Governance statements are scored via a keyword quality checklist rather than pure character count.',
+      'Evaluates pool identity quality cross-validated against actual governance behavior. Metadata-only profiles score lower than profiles backed by voting activity. Pool size (delegator count) is excluded from governance scoring.',
     layers: [
-      'Pool Identity Quality (60%) — ticker, name, governance statement (keyword checklist), description, homepage, social links, hash verification',
-      'Delegation Responsiveness (40%) — delegator retention after governance activity (falls back to count percentile)',
+      'Pool Identity Quality (60%) — metadata fields cross-validated against voting activity (statement points gated behind vote counts)',
+      'Delegation Responsiveness (40%) — delegator retention after governance activity (neutral 50 default when insufficient data)',
     ],
   },
 ];

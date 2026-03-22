@@ -25,31 +25,37 @@ interface HealthVitalTracesPanelProps {
   isLive: boolean;
 }
 
+/** History point — components come as an array from the API, not a Record */
+interface GHIHistoryComponent {
+  name: string;
+  value: number;
+  weight: number;
+  contribution: number;
+}
+
 interface GHIHistoryPoint {
   epoch: number;
   score: number;
-  components: Record<string, number>;
+  components: GHIHistoryComponent[];
 }
 
 interface GHITrend {
   direction: string;
   delta: number;
-  streak: number;
+  streakEpochs?: number;
 }
 
-interface ComponentTrend {
-  key: string;
-  label: string;
-  current: number;
-  previous: number;
+/** componentTrends from API is an object keyed by display name */
+interface ComponentTrendValue {
+  direction: string;
   delta: number;
 }
 
 interface GHIData {
-  current: { score: number; band: string };
+  current: { score: number; band: string; components?: GHIHistoryComponent[] };
   history: GHIHistoryPoint[];
   trend: GHITrend;
-  componentTrends: ComponentTrend[];
+  componentTrends: Record<string, ComponentTrendValue>;
   calibration: Record<string, { min: number; max: number }>;
 }
 
@@ -398,7 +404,7 @@ export function HealthVitalTracesPanel({
   const score = ghi?.current?.score ?? 0;
   const band = ghi?.current?.band ?? 'fair';
   const trend = ghi?.trend;
-  const componentTrends = useMemo(() => ghi?.componentTrends ?? [], [ghi?.componentTrends]);
+  const rawComponentTrends = ghi?.componentTrends;
   const history = useMemo(() => ghi?.history ?? [], [ghi?.history]);
 
   const bandStyle = BAND_CONFIG[band] ?? BAND_CONFIG.fair;
@@ -415,26 +421,44 @@ export function HealthVitalTracesPanel({
     return history.map((h) => Math.max(0, Math.min(100, h.score)));
   }, [history]);
 
-  // Extract per-component traces from history
+  // Extract per-component traces from history.
+  // History components are arrays of {name, value, ...} — match by label.
   const componentTraces = useMemo(() => {
     const traces: Record<string, number[]> = {};
     for (const comp of ALL_COMPONENTS) {
       traces[comp.key] = history.map((h) => {
-        const val = h.components?.[comp.key];
+        const arr = Array.isArray(h.components) ? h.components : [];
+        const match = arr.find((c) => c.name === comp.label);
+        const val = match?.value;
         return val != null ? Math.max(0, Math.min(100, val)) : 50;
       });
     }
     return traces;
   }, [history]);
 
-  // Build anomaly map: component key -> boolean (|delta| > 5)
-  const anomalyMap = useMemo(() => {
-    const map: Record<string, boolean> = {};
-    for (const ct of componentTrends) {
-      map[ct.key] = Math.abs(ct.delta) > 5;
+  // Build anomaly map and current values from componentTrends (object keyed by display name).
+  const { anomalyMap, currentValues } = useMemo(() => {
+    const aMap: Record<string, boolean> = {};
+    const cVals: Record<string, number> = {};
+    if (rawComponentTrends && typeof rawComponentTrends === 'object') {
+      for (const comp of ALL_COMPONENTS) {
+        const trend = rawComponentTrends[comp.label];
+        if (trend) {
+          aMap[comp.key] = Math.abs(trend.delta) > 5;
+        }
+      }
     }
-    return map;
-  }, [componentTrends]);
+    // Get current values from the latest history point or current.components
+    const latestComponents =
+      ghi?.current?.components ?? (history[0]?.components ? history[0].components : []);
+    if (Array.isArray(latestComponents)) {
+      for (const comp of ALL_COMPONENTS) {
+        const match = latestComponents.find((c: GHIHistoryComponent) => c.name === comp.label);
+        if (match) cVals[comp.key] = match.value;
+      }
+    }
+    return { anomalyMap: aMap, currentValues: cVals };
+  }, [rawComponentTrends, ghi?.current?.components, history]);
 
   // SVG dimensions
   const svgWidth = 600;
@@ -548,8 +572,7 @@ export function HealthVitalTracesPanel({
           const isAnomaly = anomalyMap[comp.key] ?? false;
 
           // Find the current value for the label
-          const currentTrend = componentTrends.find((ct) => ct.key === comp.key);
-          const currentValue = currentTrend?.current ?? 0;
+          const currentValue = currentValues[comp.key] ?? 0;
 
           return (
             <g key={comp.key} transform={`translate(0, ${yOffset})`}>
@@ -613,13 +636,14 @@ export function HealthVitalTracesPanel({
                 {group.category}
               </span>
               {group.components.map((comp) => {
-                const ct = componentTrends.find((t) => t.key === comp.key);
-                if (!ct) return null;
-                const isAnomaly = Math.abs(ct.delta) > 5;
+                const trendVal = rawComponentTrends?.[comp.label];
+                const curVal = currentValues[comp.key] ?? 0;
+                const delta = trendVal?.delta ?? 0;
+                const isAnomaly = Math.abs(delta) > 5;
 
                 return (
                   <div key={comp.key} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground truncate mr-2">{ct.label}</span>
+                    <span className="text-muted-foreground truncate mr-2">{comp.label}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span
                         className={cn(
@@ -627,17 +651,17 @@ export function HealthVitalTracesPanel({
                           isAnomaly ? 'text-rose-400' : 'text-foreground',
                         )}
                       >
-                        {Math.round(ct.current)}
+                        {Math.round(curVal)}
                       </span>
-                      {ct.delta !== 0 && (
+                      {delta !== 0 && (
                         <span
                           className={cn(
                             'text-[10px] tabular-nums',
-                            ct.delta > 0 ? 'text-emerald-400' : 'text-rose-400',
+                            delta > 0 ? 'text-emerald-400' : 'text-rose-400',
                           )}
                         >
-                          {ct.delta > 0 ? '+' : ''}
-                          {Math.round(ct.delta * 10) / 10}
+                          {delta > 0 ? '+' : ''}
+                          {Math.round(delta * 10) / 10}
                         </span>
                       )}
                     </div>

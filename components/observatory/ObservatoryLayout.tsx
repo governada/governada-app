@@ -50,9 +50,10 @@ export function ObservatoryLayout({ initialFocus }: ObservatoryLayoutProps) {
   // Get current epoch from GHI history (latest epoch in history array)
   const { data: ghiData } = useGovernanceHealthIndex(5);
   const currentEpoch = useMemo(() => {
-    const history = (ghiData as { history?: { epoch: number }[] })?.history;
-    if (!history?.length) return 0;
-    return Math.max(...history.map((h: { epoch: number }) => h.epoch));
+    const data = ghiData as { history?: { epoch: number }[] } | undefined;
+    const history = data?.history;
+    if (!Array.isArray(history) || !history.length) return 0;
+    return Math.max(...history.map((h) => h.epoch));
   }, [ghiData]);
 
   // Playback engine

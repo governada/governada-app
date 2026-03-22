@@ -102,6 +102,60 @@ describe('computeRationaleDiversity', () => {
   });
 });
 
+// ── Semantic Diversity Hybrid Tests ──
+
+describe('computeRationaleDiversity with semantic diversity', () => {
+  it('blends 70% semantic + 30% hash when semantic score provided', () => {
+    // 10 unique hashes out of 10 → hash diversity = 100
+    const votes = Array.from({ length: 10 }, (_, i) =>
+      makeVoteData({
+        rationaleMetaHash: `hash_${i}`,
+        proposalKey: `tx_${i}-0`,
+      }),
+    );
+    // Semantic diversity = 50 (moderate)
+    // Hybrid = 0.7 * 50 + 0.3 * 100 = 35 + 30 = 65
+    expect(computeRationaleDiversity(votes, 50)).toBeCloseTo(65, 1);
+  });
+
+  it('uses hash-only when semantic score is null', () => {
+    const votes = Array.from({ length: 10 }, (_, i) =>
+      makeVoteData({
+        rationaleMetaHash: `hash_${i}`,
+        proposalKey: `tx_${i}-0`,
+      }),
+    );
+    // No semantic → pure hash diversity = 100
+    expect(computeRationaleDiversity(votes, null)).toBe(100);
+    expect(computeRationaleDiversity(votes)).toBe(100);
+  });
+
+  it('catches gamer: unique hashes but semantically identical content', () => {
+    // 10 unique hashes (gamer changed metadata slightly) → hash diversity = 100
+    // But semantic diversity = 5 (near-identical content detected by embeddings)
+    const votes = Array.from({ length: 10 }, (_, i) =>
+      makeVoteData({
+        rationaleMetaHash: `unique_hash_${i}`,
+        proposalKey: `tx_${i}-0`,
+      }),
+    );
+    // Hybrid = 0.7 * 5 + 0.3 * 100 = 3.5 + 30 = 33.5
+    const score = computeRationaleDiversity(votes, 5);
+    expect(score).toBeCloseTo(33.5, 1);
+    // Much lower than hash-only (100) — gamer detected
+    expect(score).toBeLessThan(40);
+  });
+
+  it('still returns neutral 50 for insufficient rationales regardless of semantic', () => {
+    const votes = [
+      makeVoteData({ rationaleMetaHash: 'hash_1', proposalKey: 'tx_0-0' }),
+      makeVoteData({ rationaleMetaHash: 'hash_2', proposalKey: 'tx_1-0' }),
+    ];
+    // Below minRationales → neutral 50 even with semantic score
+    expect(computeRationaleDiversity(votes, 80)).toBe(50);
+  });
+});
+
 // ── Coverage Breadth Tests ──
 
 describe('computeCoverageBreadth', () => {

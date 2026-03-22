@@ -1,5 +1,5 @@
 /**
- * Governance Identity pillar (15% of DRep Score).
+ * Governance Identity pillar (10% of DRep Score).
  * Two sub-components: Profile Quality (60%) and Community Presence (40%).
  *
  * V3.2 changes:

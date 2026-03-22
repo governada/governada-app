@@ -232,18 +232,65 @@ export function computeFullConstitutionalFidelity(
 // Helpers
 // ---------------------------------------------------------------------------
 
+const SPELLED_TO_ROMAN: Record<string, string> = {
+  one: 'I',
+  two: 'II',
+  three: 'III',
+  four: 'IV',
+  five: 'V',
+  six: 'VI',
+  seven: 'VII',
+  eight: 'VIII',
+  nine: 'IX',
+  ten: 'X',
+};
+
+const CONSTITUTIONAL_CONCEPTS: Record<string, string> = {
+  treasury: 'Article IV',
+  withdrawal: 'Article IV',
+  'hard fork': 'Article III',
+  'protocol parameter': 'Article III',
+  committee: 'Article V',
+  'no confidence': 'Article V',
+  'new constitution': 'Article VI',
+  amendment: 'Article VI',
+  delegation: 'Article II',
+  governance: 'Article II',
+  drep: 'Article II',
+  'stake pool': 'Article II',
+};
+
 /** Normalize article citations to top-level article identity (e.g., "Article IV"). */
 function normalizeArticle(citation: string): string | null {
   // Match patterns like "Article IV", "Article II, § 6", "Article VII, Section 4"
   const match = citation.match(/Article\s+([IVX]+|\d+)/i);
   if (match) return `Article ${match[1].toUpperCase()}`;
 
+  // Abbreviated format: "Art. II", "Art. 4"
+  const abbrevMatch = citation.match(/Art\.\s*([IVX]+|\d+)/i);
+  if (abbrevMatch) return `Article ${abbrevMatch[1].toUpperCase()}`;
+
+  // Spelled-out numbers: "Article One" → "Article I"
+  const spelledMatch = citation.match(
+    /Article\s+(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)/i,
+  );
+  if (spelledMatch) {
+    const roman = SPELLED_TO_ROMAN[spelledMatch[1].toLowerCase()];
+    if (roman) return `Article ${roman}`;
+  }
+
   // Also handle "Appendix I", "Preamble", etc.
   if (/appendix/i.test(citation)) return 'Appendix';
   if (/preamble/i.test(citation)) return 'Preamble';
 
   // If citation contains "Constitution" broadly, don't count as a specific article
-  if (/constitution/i.test(citation) && !match) return null;
+  if (/constitution/i.test(citation)) return null;
+
+  // Conceptual references: map keywords to canonical articles
+  const lower = citation.toLowerCase();
+  for (const [keyword, article] of Object.entries(CONSTITUTIONAL_CONCEPTS)) {
+    if (lower.includes(keyword)) return article;
+  }
 
   return null;
 }

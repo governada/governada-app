@@ -292,9 +292,12 @@ function TableOfContents() {
     { id: 'tiers', label: 'Tier System' },
     { id: 'spo-scoring', label: 'SPO Governance Scoring' },
     { id: 'cc-transparency', label: 'CC Constitutional Fidelity' },
+    { id: 'cc-not-scored', label: 'What CC Fidelity Does Not Score' },
+    { id: 'ai-reasoning', label: 'AI Reasoning Quality' },
     { id: 'alignment', label: 'Alignment Dimensions' },
     { id: 'ghi', label: 'Governance Health Index' },
     { id: 'data-sources', label: 'Data Sources' },
+    { id: 'methodology-feedback', label: 'Challenge Our Methodology' },
     { id: 'citation', label: 'Citation Guide' },
   ];
 
@@ -547,6 +550,99 @@ export default function MethodologyPage() {
           </div>
         </section>
 
+        {/* What CC Fidelity Does Not Score */}
+        <section className="space-y-4">
+          <SectionAnchor id="cc-not-scored" />
+          <h3 className="text-lg font-bold">What This Score Does Not Measure</h3>
+          <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+            <li className="pl-3 border-l-2 border-border">
+              <strong className="text-foreground">Vote direction</strong> — A &ldquo;No&rdquo; vote
+              with excellent constitutional reasoning scores identically to a &ldquo;Yes&rdquo;
+              vote. We never evaluate whether a vote was &ldquo;right.&rdquo;
+            </li>
+            <li className="pl-3 border-l-2 border-border">
+              <strong className="text-foreground">Political alignment</strong> — We measure process
+              quality, not ideology or policy positions.
+            </li>
+            <li className="pl-3 border-l-2 border-border">
+              <strong className="text-foreground">Speed of response</strong> — Voting within the
+              governance window is sufficient. Faster is not scored higher.
+            </li>
+            <li className="pl-3 border-l-2 border-border">
+              <strong className="text-foreground">Agreement with other CC members</strong> —
+              Independence is not penalized. Unanimous agreement and sole dissent are treated
+              equally.
+            </li>
+            <li className="pl-3 border-l-2 border-border">
+              <strong className="text-foreground">Proposal outcomes</strong> — Scores reflect
+              reasoning quality at the time of the vote, not whether the proposal ultimately
+              succeeded or failed.
+            </li>
+          </ul>
+        </section>
+
+        {/* AI Reasoning Quality */}
+        <section className="space-y-4">
+          <SectionAnchor id="ai-reasoning" />
+          <h3 className="text-lg font-bold">How AI Reasoning Quality Works</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Every CC rationale is scored by Claude (Anthropic) at deterministic temperature 0.2.
+            Each rationale is scored independently, then averaged across all votes for the member.
+            The AI produces three sub-scores:
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/70 backdrop-blur-md px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Rationality</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                  Evidence-based reasoning and logical soundness. Does the rationale cite specific
+                  constitutional articles, precedent, or on-chain data? Are conclusions logically
+                  supported?
+                </p>
+              </div>
+              <div className="shrink-0 text-right pt-0.5">
+                <span className="text-sm font-bold tabular-nums text-muted-foreground">50%</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/70 backdrop-blur-md px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Reciprocity</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                  Engagement with counterarguments and alternative interpretations. Does the
+                  rationale acknowledge opposing views, address edge cases, or explain trade-offs?
+                </p>
+              </div>
+              <div className="shrink-0 text-right pt-0.5">
+                <span className="text-sm font-bold tabular-nums text-muted-foreground">30%</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/70 backdrop-blur-md px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Clarity</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                  Prose quality and accessibility. Is the rationale readable by non-experts? Is it
+                  well-structured and free of jargon without sacrificing precision?
+                </p>
+              </div>
+              <div className="shrink-0 text-right pt-0.5">
+                <span className="text-sm font-bold tabular-nums text-muted-foreground">20%</span>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              <strong className="text-foreground">Boilerplate detection.</strong> Each rationale is
+              compared against the member&rsquo;s own prior submissions. Copy-paste rationales that
+              repeat earlier text without substantive adaptation receive a quality penalty.
+            </p>
+            <p>
+              <strong className="text-foreground">AI confidence.</strong> The model self-reports
+              confidence in each score. Low-confidence scores are flagged so users can weigh them
+              appropriately.
+            </p>
+          </div>
+        </section>
+
         {/* Alignment Dimensions */}
         <section className="space-y-4">
           <SectionAnchor id="alignment" />
@@ -682,6 +778,29 @@ export default function MethodologyPage() {
               health is monitored via the System Stability GHI component.
             </p>
           </div>
+        </section>
+
+        {/* Methodology Feedback */}
+        <section className="space-y-4">
+          <SectionAnchor id="methodology-feedback" />
+          <h2 className="text-xl font-bold">Challenge Our Methodology</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            We believe accountability requires openness to scrutiny. If you are a CC member, DRep,
+            or community member who believes our scoring methodology is unfair, incomplete, or
+            incorrect, we want to hear from you.
+          </p>
+          <a
+            href="https://github.com/governada/governada-app/discussions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Join the Discussion
+          </a>
+          <p className="text-xs text-muted-foreground">
+            All methodology changes are documented in our public repository. Scoring weights, AI
+            prompts, and grade thresholds are open source.
+          </p>
         </section>
 
         {/* Citation Guide */}

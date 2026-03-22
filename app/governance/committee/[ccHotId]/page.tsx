@@ -56,6 +56,7 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     proposalFidelityHistory,
     allMembers,
     { data: proposals },
+    analysisRows,
   ] = await Promise.all([
     supabase.from('cc_members').select('*').eq('cc_hot_id', decodedId).maybeSingle(),
     // Use cold ID for vote aggregation when available (handles hot key rotations)
@@ -85,6 +86,12 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     getCCProposalFidelityHistory(decodedId),
     getCCMembersFidelity(),
     supabase.from('proposals').select('tx_hash, proposal_index, title, proposal_type'),
+    supabase
+      .from('cc_rationale_analysis')
+      .select(
+        'proposal_tx_hash, proposal_index, deliberation_quality, rationality_score, reciprocity_score, clarity_score, boilerplate_score, confidence, notable_finding, finding_severity',
+      )
+      .eq('cc_hot_id', decodedId),
   ]);
 
   const safeVotes = votes ?? [];
@@ -226,6 +233,18 @@ export default async function CCMemberProfilePage({ params }: PageProps) {
     enrichedVotes,
     fidelityHistory,
     proposalFidelityHistory,
+    rationaleAnalyses: (analysisRows?.data ?? []).map((a) => ({
+      proposalTxHash: a.proposal_tx_hash,
+      proposalIndex: a.proposal_index,
+      deliberationQuality: a.deliberation_quality ?? 0,
+      rationalityScore: a.rationality_score ?? 0,
+      reciprocityScore: a.reciprocity_score ?? 0,
+      clarityScore: a.clarity_score ?? 0,
+      boilerplateScore: a.boilerplate_score ?? null,
+      confidence: a.confidence ?? null,
+      notableFinding: a.notable_finding ?? null,
+      findingSeverity: a.finding_severity ?? null,
+    })),
   };
 
   return (

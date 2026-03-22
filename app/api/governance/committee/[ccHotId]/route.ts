@@ -194,6 +194,8 @@ export const GET = withRouteHandler(async (request: Request) => {
       rationalityScore: a.rationality_score as number,
       reciprocityScore: a.reciprocity_score as number,
       clarityScore: a.clarity_score as number,
+      boilerplateScore: a.boilerplate_score as number | null,
+      confidence: a.confidence as number | null,
       notableFinding: (a.notable_finding as string) ?? null,
       findingSeverity: (a.finding_severity as string) ?? null,
       novelInterpretation: a.novel_interpretation as boolean,

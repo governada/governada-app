@@ -263,6 +263,7 @@ export const analyzeCcRationales = inngest.createFunction(
                 notable_finding: result.notable_finding,
                 finding_severity: result.finding_severity,
                 boilerplate_score: result.boilerplate_score ?? null,
+                confidence: result.confidence ?? null,
                 analyzed_at: new Date().toISOString(),
                 model_version: 'claude-sonnet-4-5',
               },

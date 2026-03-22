@@ -53,6 +53,19 @@ import type { CCFidelitySnapshot, CCProposalFidelitySnapshot } from '@/lib/data'
 // Types
 // ---------------------------------------------------------------------------
 
+interface RationaleAnalysis {
+  proposalTxHash: string;
+  proposalIndex: number;
+  deliberationQuality: number;
+  rationalityScore: number;
+  reciprocityScore: number;
+  clarityScore: number;
+  boilerplateScore: number | null;
+  confidence: number | null;
+  notableFinding: string | null;
+  findingSeverity: string | null;
+}
+
 export interface EnrichedVote {
   proposalTxHash: string;
   proposalIndex: number;
@@ -100,6 +113,7 @@ interface ProfileData {
   enrichedVotes: EnrichedVote[];
   fidelityHistory: CCFidelitySnapshot[];
   proposalFidelityHistory?: CCProposalFidelitySnapshot[];
+  rationaleAnalyses?: RationaleAnalysis[];
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +134,26 @@ function pillarBarColor(score: number | null): string {
   if (score >= 60) return 'bg-sky-500/80';
   if (score >= 40) return 'bg-amber-500/80';
   return 'bg-rose-500/80';
+}
+
+function scoreColor(score: number): string {
+  if (score >= 80) return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+  if (score >= 60) return 'text-sky-500 bg-sky-500/10 border-sky-500/30';
+  if (score >= 40) return 'text-amber-500 bg-amber-500/10 border-amber-500/30';
+  return 'text-rose-500 bg-rose-500/10 border-rose-500/30';
+}
+
+function severityColor(severity: string): string {
+  switch (severity) {
+    case 'critical':
+      return 'text-rose-500';
+    case 'concern':
+      return 'text-amber-500';
+    case 'noteworthy':
+      return 'text-sky-500';
+    default:
+      return 'text-muted-foreground';
+  }
 }
 
 const VOTES_PER_PAGE = 10;
@@ -400,6 +434,14 @@ function PillarBreakdown({ data }: { data: ProfileData }) {
           delay={0.2}
         />
       </div>
+      <a
+        href="https://github.com/governada/governada-app/discussions"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline"
+      >
+        Disagree with this score?
+      </a>
     </div>
   );
 }
@@ -408,10 +450,34 @@ function PillarBreakdown({ data }: { data: ProfileData }) {
 // Voting Record Tab (paginated, with filters for Level 3)
 // ---------------------------------------------------------------------------
 
-function VotingRecordTab({ votes }: { votes: EnrichedVote[] }) {
+function VotingRecordTab({
+  votes,
+  rationaleAnalyses,
+}: {
+  votes: EnrichedVote[];
+  rationaleAnalyses?: RationaleAnalysis[];
+}) {
   const [page, setPage] = useState(0);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [alignmentFilter, setAlignmentFilter] = useState<'all' | 'aligned' | 'diverged'>('all');
+  const [expandedVotes, setExpandedVotes] = useState<Set<string>>(new Set());
+
+  const analysisMap = useMemo(() => {
+    const map = new Map<string, RationaleAnalysis>();
+    for (const a of rationaleAnalyses ?? []) {
+      map.set(`${a.proposalTxHash}:${a.proposalIndex}`, a);
+    }
+    return map;
+  }, [rationaleAnalyses]);
+
+  const toggleExpanded = (key: string) => {
+    setExpandedVotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   // Available proposal types
   const proposalTypes = useMemo(() => {
@@ -509,70 +575,149 @@ function VotingRecordTab({ votes }: { votes: EnrichedVote[] }) {
             {pageVotes.map((v) => {
               const isAligned =
                 v.drepMajority && v.drepMajority !== 'Abstain' ? v.vote === v.drepMajority : null;
+              const voteKey = `${v.proposalTxHash}:${v.proposalIndex}`;
+              const analysis = analysisMap.get(voteKey);
+              const isExpanded = expandedVotes.has(voteKey);
               return (
                 <tr
                   key={`${v.proposalTxHash}-${v.proposalIndex}`}
-                  className="border-b last:border-0 hover:bg-muted/40 transition-colors"
+                  className="border-b last:border-0 hover:bg-muted/40 transition-colors group"
                 >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/proposal/${v.proposalTxHash}/${v.proposalIndex}`}
-                      className="hover:text-primary transition-colors"
-                    >
-                      {v.proposalTitle ? (
-                        <span className="text-sm line-clamp-1">{v.proposalTitle}</span>
-                      ) : (
-                        <span className="font-mono text-xs">
-                          {v.proposalTxHash.slice(0, 12)}\u2026
-                        </span>
-                      )}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {v.proposalType}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <Badge
-                      variant="outline"
-                      className={
-                        v.vote === 'Yes'
-                          ? 'text-emerald-500 border-emerald-500/40'
-                          : v.vote === 'No'
-                            ? 'text-rose-500 border-rose-500/40'
-                            : 'text-amber-500 border-amber-500/40'
-                      }
-                    >
-                      {v.vote}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-center hidden sm:table-cell">
-                    {v.drepMajority && v.drepMajority !== 'Abstain' ? (
-                      <span
-                        className={cn('text-xs', isAligned ? 'text-emerald-500' : 'text-rose-500')}
-                      >
-                        {v.drepMajority} {isAligned ? '(aligned)' : '(diverged)'}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">\u2014</span>
+                  <td colSpan={6} className="p-0">
+                    <div className="flex items-center">
+                      <div className="flex-1 grid grid-cols-[1fr] md:grid-cols-[1fr_auto_auto_auto_auto_auto] items-center">
+                        <div className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {analysis && (
+                              <button
+                                onClick={() => toggleExpanded(voteKey)}
+                                className="shrink-0 p-0.5 rounded hover:bg-muted transition-colors"
+                                aria-label={isExpanded ? 'Collapse analysis' : 'Expand analysis'}
+                              >
+                                <ChevronDown
+                                  className={cn(
+                                    'h-3.5 w-3.5 text-muted-foreground transition-transform',
+                                    isExpanded && 'rotate-180',
+                                  )}
+                                />
+                              </button>
+                            )}
+                            <Link
+                              href={`/proposal/${v.proposalTxHash}/${v.proposalIndex}`}
+                              className="hover:text-primary transition-colors"
+                            >
+                              {v.proposalTitle ? (
+                                <span className="text-sm line-clamp-1">{v.proposalTitle}</span>
+                              ) : (
+                                <span className="font-mono text-xs">
+                                  {v.proposalTxHash.slice(0, 12)}\u2026
+                                </span>
+                              )}
+                            </Link>
+                          </div>
+                        </div>
+                        <div className="px-4 py-3 hidden md:block">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {v.proposalType}
+                          </Badge>
+                        </div>
+                        <div className="px-4 py-3 text-center">
+                          <Badge
+                            variant="outline"
+                            className={
+                              v.vote === 'Yes'
+                                ? 'text-emerald-500 border-emerald-500/40'
+                                : v.vote === 'No'
+                                  ? 'text-rose-500 border-rose-500/40'
+                                  : 'text-amber-500 border-amber-500/40'
+                            }
+                          >
+                            {v.vote}
+                          </Badge>
+                        </div>
+                        <div className="px-4 py-3 text-center hidden sm:block">
+                          {v.drepMajority && v.drepMajority !== 'Abstain' ? (
+                            <span
+                              className={cn(
+                                'text-xs',
+                                isAligned ? 'text-emerald-500' : 'text-rose-500',
+                              )}
+                            >
+                              {v.drepMajority} {isAligned ? '(aligned)' : '(diverged)'}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">\u2014</span>
+                          )}
+                        </div>
+                        <div className="px-4 py-3 text-center hidden lg:block">
+                          {v.rationaleSummary ? (
+                            <span className="text-xs text-emerald-500" title={v.rationaleSummary}>
+                              {v.citedArticles.length > 0
+                                ? `${v.citedArticles.length} articles`
+                                : 'Provided'}
+                            </span>
+                          ) : v.hasRationale ? (
+                            <span className="text-xs text-amber-500">Pending parse</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">None</span>
+                          )}
+                        </div>
+                        <div className="px-4 py-3 text-right hidden sm:block tabular-nums text-muted-foreground">
+                          {v.epoch}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Collapsible rationale analysis detail */}
+                    {analysis && isExpanded && (
+                      <div className="px-4 pb-3 pt-0 border-t border-border/30 bg-muted/20">
+                        <div className="flex flex-wrap items-center gap-2 py-2">
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium tabular-nums',
+                              scoreColor(analysis.rationalityScore),
+                            )}
+                          >
+                            Rationality: {analysis.rationalityScore}
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium tabular-nums',
+                              scoreColor(analysis.reciprocityScore),
+                            )}
+                          >
+                            Reciprocity: {analysis.reciprocityScore}
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium tabular-nums',
+                              scoreColor(analysis.clarityScore),
+                            )}
+                          >
+                            Clarity: {analysis.clarityScore}
+                          </span>
+                        </div>
+                        {analysis.notableFinding && (
+                          <p
+                            className={cn(
+                              'text-[11px] italic leading-relaxed',
+                              severityColor(analysis.findingSeverity ?? 'info'),
+                            )}
+                          >
+                            {analysis.notableFinding}
+                          </p>
+                        )}
+                        {analysis.boilerplateScore != null && analysis.boilerplateScore > 50 && (
+                          <p className="text-[10px] text-amber-500 mt-1">
+                            &#9888; Template reuse detected
+                          </p>
+                        )}
+                        {analysis.confidence != null && analysis.confidence < 60 && (
+                          <p className="text-[10px] text-amber-500 mt-1">
+                            &#9888; Low AI confidence
+                          </p>
+                        )}
+                      </div>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-center hidden lg:table-cell">
-                    {v.rationaleSummary ? (
-                      <span className="text-xs text-emerald-500" title={v.rationaleSummary}>
-                        {v.citedArticles.length > 0
-                          ? `${v.citedArticles.length} articles`
-                          : 'Provided'}
-                      </span>
-                    ) : v.hasRationale ? (
-                      <span className="text-xs text-amber-500">Pending parse</span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">None</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right hidden sm:table-cell tabular-nums text-muted-foreground">
-                    {v.epoch}
                   </td>
                 </tr>
               );
@@ -941,7 +1086,7 @@ function DeepMode({
         </TabsList>
 
         <TabsContent value="votes" className="pt-4">
-          <VotingRecordTab votes={data.enrichedVotes} />
+          <VotingRecordTab votes={data.enrichedVotes} rationaleAnalyses={data.rationaleAnalyses} />
         </TabsContent>
 
         <TabsContent value="reasoning" className="pt-4">

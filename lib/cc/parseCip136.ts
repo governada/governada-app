@@ -108,7 +108,8 @@ export function parseCip136(json: Record<string, unknown>): CIP136Rationale {
 
   // Fallback: extract article citations from rationale text
   if (citedArticles.length === 0 && rationaleStatement) {
-    const articlePattern = /Article\s+[IVX]+(?:,?\s*(?:§|Section)\s*\d+(?:\.\d+)?)?/g;
+    const articlePattern =
+      /Article\s+[IVX]+(?:,?\s*(?:§|Section)\s*\d+(?:\.\d+)?)?|Art\.\s*[IVX\d]+|Article\s+(?:One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)|Appendix\s+[IVX\d]+|Preamble|§\s*\d+/g;
     const matches = rationaleStatement.match(articlePattern);
     if (matches) {
       for (const m of [...new Set(matches)]) {

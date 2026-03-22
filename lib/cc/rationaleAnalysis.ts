@@ -56,6 +56,7 @@ export interface RationaleAnalysisResult {
   finding_severity: 'info' | 'noteworthy' | 'concern' | 'critical' | null;
   /** 0-100: How much of this rationale is copy-pasted from prior submissions. 0=original, 100=verbatim copy. */
   boilerplate_score: number;
+  confidence: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +155,11 @@ Analyze this rationale and return a JSON object with these fields:
     - 50-70: Mostly template text with minor proposal-specific adjustments
     - 80-100: Verbatim or near-verbatim copy of a prior submission
     Compare against the prior rationale summaries provided above (if any).
+
+14. **confidence** (0-100): Your confidence in the accuracy of the above scores.
+    Lower confidence when: the rationale is very short (<50 words), uses a language
+    other than English, references constitutional concepts you're uncertain about,
+    or when the rationale is too vague to assess meaningfully.
 
 Return ONLY valid JSON matching this schema. No commentary.`;
 }

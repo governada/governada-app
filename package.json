@@ -93,7 +93,7 @@
     "d3-shape": "^3.2.0",
     "framer-motion": "^12.38.0",
     "fuse.js": "^7.1.0",
-    "inngest": "^3.52.6",
+    "inngest": "^4.0.4",
     "jose": "^6.2.2",
     "lucide-react": "^0.577.0",
     "ml-matrix": "^6.12.1",

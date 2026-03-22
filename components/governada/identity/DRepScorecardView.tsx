@@ -56,14 +56,14 @@ export function DRepScorecardView() {
 
   const { score } = data;
   const pillars = [
-    { label: 'Engagement Quality', value: score.pillars.engagementQuality, weight: '35%' },
+    { label: 'Engagement Quality', value: score.pillars.engagementQuality, weight: '40%' },
     {
       label: 'Effective Participation',
       value: score.pillars.effectiveParticipation,
       weight: '25%',
     },
     { label: 'Reliability', value: score.pillars.reliability, weight: '25%' },
-    { label: 'Governance Identity', value: score.pillars.governanceIdentity, weight: '15%' },
+    { label: 'Governance Identity', value: score.pillars.governanceIdentity, weight: '10%' },
   ];
 
   const TrendIcon = score.trend >= 0 ? TrendingUp : TrendingDown;

@@ -34,11 +34,11 @@ const DREP_PILLARS = [
     weight: PILLAR_WEIGHTS.engagementQuality,
     color: 'bg-blue-500',
     description:
-      'Measures the depth of governance participation through three layers: rationale provision rate (40%), AI-assessed rationale quality (40%), and deliberation signal (20%) which captures vote diversity, dissent rate, and proposal type breadth.',
+      'Measures the depth of governance participation through three layers: rationale provision rate (40%), AI-assessed rationale quality with dissent-substance modifier (40%), and deliberation signal (20%) combining rationale diversity and coverage breadth.',
     layers: [
       'Provision Rate (40%) — importance-weighted % of votes with rationale',
-      'Rationale Quality (40%) — AI-scored reasoning quality, weighted by importance and recency',
-      'Deliberation Signal (20%) — vote diversity (40%), dissent rate (35%), type breadth (25%)',
+      'Rationale Quality (40%) — AI-scored across 5 dimensions (specificity, reasoning depth, constitutional grounding, coherence, proposal relevance). Outcome-blind: same quality earns the same score regardless of vote direction. DReps who vote against the majority AND provide quality rationale (score ≥60) receive a 1.2x bonus on that vote.',
+      'Deliberation Signal (20%) — rationale diversity (60%): penalizes copy-paste rationales across votes; coverage breadth (40%): governance surface coverage weighted by proposal availability',
     ],
   },
   {
@@ -72,10 +72,10 @@ const DREP_PILLARS = [
     weight: PILLAR_WEIGHTS.governanceIdentity,
     color: 'bg-violet-500',
     description:
-      "Rewards DReps who provide meaningful identity and intent information. Quality-tiered field scoring (not binary has/hasn't) across CIP-119 metadata fields, plus community trust signals.",
+      "Rewards DReps who provide meaningful identity and intent information. Quality-tiered field scoring (not binary has/hasn't) across CIP-119 metadata fields, with staleness decay for outdated profiles, plus delegation health signals.",
     layers: [
-      'Profile Quality (60%) — name, objectives, motivations, qualifications, bio, social links, hash verification',
-      'Community Presence (40%) — absolute delegator tiers (250+=100, 100+=95, 50+=80, 15+=60, 5+=40, 1+=20)',
+      'Profile Quality (60%) — name, objectives, motivations, qualifications, bio, social links, hash verification. Profiles not updated within 6 months start losing points (staleness decay, floor 50%)',
+      'Delegation Health (40%) — retention rate (33%): are delegators staying?; diversity (33%): is delegation power spread across many delegators?; organic growth (34%): is the DRep attracting new delegators? Falls back to delegator count tiers when insufficient snapshot history.',
     ],
   },
 ];
@@ -289,6 +289,7 @@ function TableOfContents() {
   const sections = [
     { id: 'philosophy', label: 'Philosophy' },
     { id: 'drep-scoring', label: 'DRep Scoring' },
+    { id: 'anti-gaming', label: 'Anti-Gaming Safeguards' },
     { id: 'tiers', label: 'Tier System' },
     { id: 'spo-scoring', label: 'SPO Governance Scoring' },
     { id: 'cc-transparency', label: 'CC Constitutional Fidelity' },
@@ -297,6 +298,7 @@ function TableOfContents() {
     { id: 'alignment', label: 'Alignment Dimensions' },
     { id: 'ghi', label: 'Governance Health Index' },
     { id: 'data-sources', label: 'Data Sources' },
+    { id: 'version-history', label: 'Version History' },
     { id: 'methodology-feedback', label: 'Challenge Our Methodology' },
     { id: 'citation', label: 'Citation Guide' },
   ];
@@ -376,6 +378,19 @@ export default function MethodologyPage() {
               recent score history reveals whether a DRep or SPO is improving or declining. DRep
               momentum uses a 14-day window; SPO momentum uses a 30-day window.
             </p>
+            <p>
+              <strong className="text-foreground">Outcome-blind assessment.</strong> Rationale
+              quality is assessed independently of vote direction. A well-reasoned &ldquo;No&rdquo;
+              scores the same as a well-reasoned &ldquo;Yes&rdquo;. The score never rewards or
+              penalizes political positions &mdash; only the quality of governance process.
+            </p>
+            <p>
+              <strong className="text-foreground">Honest about limitations.</strong> AI-based
+              rationale quality assessment is approximate. It evaluates reasoning structure, not
+              political correctness. Edge cases exist &mdash; a technically excellent rationale
+              referencing obscure domain knowledge may score lower than it deserves. We continuously
+              calibrate and welcome community feedback on scoring accuracy.
+            </p>
           </div>
         </section>
 
@@ -390,8 +405,8 @@ export default function MethodologyPage() {
           </p>
           <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4">
             <code className="block text-xs text-muted-foreground font-mono">
-              Score = (Engagement Quality x 0.35) + (Effective Participation x 0.25) + (Reliability
-              x 0.25) + (Governance Identity x 0.15)
+              Score = (Engagement Quality x 0.40) + (Effective Participation x 0.25) + (Reliability
+              x 0.25) + (Governance Identity x 0.10)
             </code>
           </div>
 
@@ -429,6 +444,65 @@ export default function MethodologyPage() {
                 </ul>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Anti-Gaming Safeguards */}
+        <section className="space-y-4">
+          <SectionAnchor id="anti-gaming" />
+          <h2 className="text-xl font-bold">Anti-Gaming Safeguards</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Any public scoring system creates incentives. We design against known gaming vectors so
+            the score rewards genuine governance quality, not metric optimization.
+          </p>
+          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3">
+              <p className="text-xs font-semibold text-foreground">
+                What the score does NOT incentivize
+              </p>
+              <ul className="space-y-1.5 text-[11px]">
+                <li className="pl-3 border-l-2 border-border">
+                  <strong className="text-foreground">Voting speed.</strong> Voting at any point
+                  within the governance window is equally valued. There is no bonus for voting
+                  first.
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  <strong className="text-foreground">Strategic contrarianism.</strong> Dissent is
+                  not a standalone signal. The 1.2x quality modifier only applies when a minority
+                  vote is accompanied by a quality rationale (score 60+), and is capped at 40% of
+                  votes. Voting &ldquo;No&rdquo; without reasoning earns nothing extra.
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  <strong className="text-foreground">Copy-paste rationales.</strong> Rationale
+                  diversity tracking uses CIP-100 metadata hashes to detect when the same rationale
+                  document is submitted across multiple votes. Unique, proposal-specific reasoning
+                  scores higher.
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  <strong className="text-foreground">Rubber-stamping.</strong> Voting on every
+                  proposal with identical reasoning and no substantive engagement earns a low
+                  Engagement Quality score even if participation is high.
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  <strong className="text-foreground">Profile set-and-forget.</strong> Governance
+                  Identity applies staleness decay to profiles not updated in 6+ months. A
+                  well-filled profile from registration day that&apos;s never maintained will
+                  gradually lose points.
+                </li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3">
+              <p className="text-xs font-semibold text-foreground">
+                Proactive governance is naturally rewarded
+              </p>
+              <p className="text-[11px]">
+                DReps who proactively review proposals before voting tend to write more informed,
+                specific rationales. Our rationale quality assessment naturally rewards this
+                behavior &mdash; not because we measure the review, but because better preparation
+                produces better reasoning. The score measures the output (rationale quality), not
+                the input (whether you used any particular tool).
+              </p>
+            </div>
           </div>
         </section>
 
@@ -777,6 +851,70 @@ export default function MethodologyPage() {
               pipeline includes self-healing: failed syncs are retried with exponential backoff, and
               health is monitored via the System Stability GHI component.
             </p>
+          </div>
+        </section>
+
+        {/* Version History */}
+        <section className="space-y-4">
+          <SectionAnchor id="version-history" />
+          <h2 className="text-xl font-bold">Version History</h2>
+          <div className="space-y-2">
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
+              <p className="text-xs font-semibold text-foreground">
+                V3.2 (March 2026) &mdash; Defensibility Rebuild
+              </p>
+              <ul className="space-y-1 text-[11px] text-muted-foreground">
+                <li className="pl-3 border-l-2 border-border">
+                  Pillar weights rebalanced: EQ 35% &rarr; 40%, GI 15% &rarr; 10%. Engagement
+                  quality is the hardest pillar to game and the strongest signal of accountability.
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  Dissent removed as standalone signal. Replaced with dissent-with-substance
+                  modifier (1.2x quality bonus for minority votes with rationale quality 60+).
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  Deliberation signal rebuilt: vote diversity &rarr; rationale diversity (catches
+                  copy-paste); type breadth &rarr; coverage breadth (weighted by proposal
+                  availability).
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  Governance Identity: delegation health signals (retention, diversity, growth)
+                  replace raw delegator count. Profile staleness decay added.
+                </li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
+              <p className="text-xs font-semibold text-foreground">V3.1 (February 2026)</p>
+              <ul className="space-y-1 text-[11px] text-muted-foreground">
+                <li className="pl-3 border-l-2 border-border">
+                  Added AI rationale quality scoring (5-dimension assessment).
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  Introduced importance weighting for proposals (3x critical, 2x important).
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  Added confidence gating (vote count tiers cap achievable rank).
+                </li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-2">
+              <p className="text-xs font-semibold text-foreground">
+                V3.0 (January 2026) &mdash; Four-Pillar Architecture
+              </p>
+              <ul className="space-y-1 text-[11px] text-muted-foreground">
+                <li className="pl-3 border-l-2 border-border">
+                  Initial four-pillar model: Engagement Quality, Effective Participation,
+                  Reliability, Governance Identity.
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  Absolute calibration curves (not percentile ranking). Temporal decay with{' '}
+                  {DECAY_HALF_LIFE_DAYS}-day half-life.
+                </li>
+                <li className="pl-3 border-l-2 border-border">
+                  Six-tier system (Emerging through Legendary) shared across DReps and SPOs.
+                </li>
+              </ul>
+            </div>
           </div>
         </section>
 

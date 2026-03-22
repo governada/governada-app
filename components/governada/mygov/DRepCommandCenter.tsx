@@ -57,10 +57,10 @@ import type {
 } from '@/types/api';
 
 const PILLAR_META = [
-  { key: 'engagementQuality', label: 'Engagement', icon: Zap, weight: '35%' },
+  { key: 'engagementQuality', label: 'Engagement', icon: Zap, weight: '40%' },
   { key: 'effectiveParticipation', label: 'Participation', icon: Vote, weight: '25%' },
   { key: 'reliability', label: 'Reliability', icon: Shield, weight: '25%' },
-  { key: 'governanceIdentity', label: 'Identity', icon: Fingerprint, weight: '15%' },
+  { key: 'governanceIdentity', label: 'Identity', icon: Fingerprint, weight: '10%' },
 ] as const;
 
 const ALIGNMENT_META = [

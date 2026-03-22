@@ -122,31 +122,41 @@ export function DRepScoreModal() {
       <p>
         Formula:{' '}
         <code className="bg-muted px-2 py-0.5 rounded">
-          Effective Participation (45%) + Rationale (35%) + Consistency (20%)
+          Engagement Quality (40%) + Effective Participation (25%) + Reliability (25%) + Governance
+          Identity (10%)
         </code>
       </p>
       <div className="bg-muted p-4 rounded-lg space-y-3">
         <div>
-          <p className="font-medium mb-1">Effective Participation (45%)</p>
+          <p className="font-medium mb-1">Engagement Quality (40%)</p>
           <p className="text-sm text-muted-foreground">
-            How often this DRep votes on available proposals, with a discount applied if they vote
-            uniformly (&gt;85% one direction), which suggests rubber-stamping.
+            How well this DRep explains their votes. Three layers: rationale provision rate,
+            AI-assessed rationale quality (outcome-blind), and deliberation signals including
+            rationale diversity and coverage breadth.
           </p>
         </div>
         <div>
-          <p className="font-medium mb-1">Rationale (35%)</p>
+          <p className="font-medium mb-1">Effective Participation (25%)</p>
           <p className="text-sm text-muted-foreground">
-            How often this DRep submits on-chain rationale metadata with their votes. This measures
-            governance transparency through the official CIP-100 standard. Some DReps share
-            reasoning through external channels (blogs, videos) that isn&apos;t captured by this
-            metric.
+            How often this DRep votes on available proposals, weighted by proposal importance.
+            Critical proposals (hard forks, constitutional changes) count 3x. Close-margin proposals
+            receive a 1.5x bonus.
           </p>
         </div>
         <div>
-          <p className="font-medium mb-1">Consistency (20%)</p>
+          <p className="font-medium mb-1">Reliability (25%)</p>
           <p className="text-sm text-muted-foreground">
-            How steadily this DRep participates over time. A DRep who votes consistently across
-            epochs scores higher than one who was active then disappeared.
+            How steadily this DRep participates over time. Active streak, recency, gap penalty, and
+            tenure. A DRep who votes consistently across epochs scores higher than one who was
+            active then disappeared.
+          </p>
+        </div>
+        <div>
+          <p className="font-medium mb-1">Governance Identity (10%)</p>
+          <p className="text-sm text-muted-foreground">
+            Profile quality (CIP-119 metadata completeness with staleness decay) and delegation
+            health (retention, diversity, growth). Well-documented DReps with healthy delegation
+            relationships score higher.
           </p>
         </div>
       </div>

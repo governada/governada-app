@@ -38,6 +38,7 @@ interface CategoryFlow {
 // Constants
 // ---------------------------------------------------------------------------
 
+/** Maps category name prefixes to colors. API returns full names like "Development & Infrastructure". */
 const CATEGORY_COLORS: Record<string, string> = {
   Development: '#06b6d4', // cyan-500
   Community: '#10b981', // emerald-500
@@ -58,12 +59,26 @@ const CATEGORY_BG_CLASSES: Record<string, string> = {
 
 const FLOW_ANIM_DURATION = 1.5;
 
+/** Match by prefix — "Development & Infrastructure" → "Development" */
+function matchCategoryKey(category: string): string {
+  for (const key of Object.keys(CATEGORY_COLORS)) {
+    if (category.startsWith(key)) return key;
+  }
+  return 'Other';
+}
+
 function getCategoryColor(category: string): string {
-  return CATEGORY_COLORS[category] ?? CATEGORY_COLORS.Other;
+  return CATEGORY_COLORS[matchCategoryKey(category)] ?? CATEGORY_COLORS.Other;
 }
 
 function getCategoryBgClass(category: string): string {
-  return CATEGORY_BG_CLASSES[category] ?? CATEGORY_BG_CLASSES.Other;
+  return CATEGORY_BG_CLASSES[matchCategoryKey(category)] ?? CATEGORY_BG_CLASSES.Other;
+}
+
+/** Short display name for flow labels */
+function shortCategoryName(category: string): string {
+  const key = matchCategoryKey(category);
+  return key === 'Other' ? category : key;
 }
 
 // ---------------------------------------------------------------------------
@@ -228,7 +243,7 @@ function FlowVisualization({
               className="fill-current text-[9px] opacity-60"
               style={{ fill: f.color }}
             >
-              {f.category}
+              {shortCategoryName(f.category)}
             </text>
           </g>
         ))}
@@ -394,42 +409,30 @@ export function TreasurySankeyPanel({
 
   const isLoading = currentLoading || categoriesLoading || nclLoading;
 
-  // Parse treasury current data
+  // Parse treasury current data — API returns flat object
   const treasury = currentData as
     | {
-        balance?: { balanceAda: number; epoch: number };
-        trend?: {
-          snapshots: Array<{
-            epoch: number;
-            balanceAda: number;
-            withdrawalsAda: number;
-          }>;
-        };
-        pending?: {
-          proposals: Array<{ withdrawalAda: number | null }>;
-          totalAda: number;
-          count: number;
-        };
+        balance: number;
+        epoch: number;
+        pendingCount: number;
+        pendingTotalAda: number;
+        trend: string;
+        runwayMonths: number;
+        burnRatePerEpoch: number;
+        healthScore: number;
       }
     | undefined;
 
-  const balanceAda = treasury?.balance?.balanceAda ?? 0;
-  const pendingCount = treasury?.pending?.count ?? 0;
+  const balanceAda = treasury?.balance ?? 0;
+  const pendingCount = treasury?.pendingCount ?? 0;
+  const epoch = treasury?.epoch ?? 0;
 
-  // Derive trend
-  const trend = useMemo(() => {
-    const snapshots = treasury?.trend?.snapshots ?? [];
-    if (snapshots.length < 3) return 'stable';
-    const recent = snapshots.slice(-3);
-    const first = recent[0].balanceAda;
-    const last = recent[recent.length - 1].balanceAda;
-    if (last > first * 1.01) return 'growing';
-    if (last < first * 0.99) return 'shrinking';
-    return 'stable';
-  }, [treasury?.trend?.snapshots]);
+  // Trend comes directly from API
+  const trend = treasury?.trend ?? 'stable';
 
-  // NCL data
-  const ncl = (nclData?.ncl ?? null) as {
+  // NCL data — API wraps in { ncl: ... }
+  const nclRaw = nclData as { ncl?: Record<string, unknown> } | undefined;
+  const ncl = (nclRaw?.ncl ?? null) as {
     utilizationPct: number;
     remainingAda: number;
     period: { nclAda: number };
@@ -476,11 +479,7 @@ export function TreasurySankeyPanel({
             </span>
           )}
         </div>
-        {expanded && (
-          <span className="text-xs text-muted-foreground">
-            Epoch {treasury?.balance?.epoch ?? '...'}
-          </span>
-        )}
+        {expanded && <span className="text-xs text-muted-foreground">Epoch {epoch || '...'}</span>}
       </div>
 
       {/* Stats */}
@@ -512,15 +511,22 @@ export function TreasurySankeyPanel({
       {/* Category Legend */}
       {categoryFlows.length > 0 && <CategoryLegend categories={categoryFlows} />}
 
-      {/* Expanded: additional sections (Phase 4 placeholder) */}
-      {expanded && (
-        <div className="mt-6 space-y-6">
-          {/* Accountability section placeholder */}
-          <div className="rounded-lg border border-border/50 bg-muted/30 p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Accountability deep-dive, pending proposals, and historical analysis will appear here
-              in Phase 4.
+      {/* Expanded: runway + key metrics */}
+      {expanded && treasury && (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-border/30 bg-card/40 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+              Runway
             </p>
+            <p className="text-lg font-bold tabular-nums">
+              {treasury.runwayMonths >= 999 ? '∞' : `${treasury.runwayMonths}mo`}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/30 bg-card/40 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+              Health
+            </p>
+            <p className="text-lg font-bold tabular-nums">{treasury.healthScore}/100</p>
           </div>
         </div>
       )}

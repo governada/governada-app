@@ -101,11 +101,16 @@ function computeSeatPositions(
 // Seat initial
 // ---------------------------------------------------------------------------
 
-function memberInitial(name: string | null): string {
-  if (!name) return '?';
-  const trimmed = name.trim();
-  if (trimmed.length === 0) return '?';
-  return trimmed.charAt(0).toUpperCase();
+function memberInitial(name: string | null, hotId?: string): string {
+  if (name) {
+    const trimmed = name.trim();
+    if (trimmed.length > 0) return trimmed.charAt(0).toUpperCase();
+  }
+  // Fallback: first char of hot ID hash for visual distinction
+  if (hotId && hotId.length > 5) {
+    return hotId.slice(5, 6).toUpperCase();
+  }
+  return '?';
 }
 
 // ---------------------------------------------------------------------------
@@ -252,21 +257,27 @@ export function CommitteeHemicyclePanel({
         {health?.avgFidelity != null && `, avg fidelity ${Math.round(health.avgFidelity)}%`}
       </p>
 
-      {/* Expanded detail sections (Phase 4 placeholders) */}
-      {expanded && (
-        <div className="w-full space-y-3 pt-2">
-          <div className="rounded-lg border border-border/50 bg-card/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Bloc analysis</p>
-            {/* Phase 4: bloc breakdown component */}
-          </div>
-          <div className="rounded-lg border border-border/50 bg-card/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Agreement matrix</p>
-            {/* Phase 4: heatmap component */}
-          </div>
-          <div className="rounded-lg border border-border/50 bg-card/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Constitutional narrative</p>
-            {/* Phase 4: narrative digest component */}
-          </div>
+      {/* Expanded: bloc summary + briefing excerpt */}
+      {expanded && data?.blocs && data.blocs.length > 0 && (
+        <div className="w-full space-y-2 pt-2 border-t border-border/20">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Voting Blocs
+          </p>
+          {data.blocs.map((bloc) => (
+            <div key={bloc.label} className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">{bloc.label}</span>
+              <span className="font-medium tabular-nums">
+                {bloc.members.length} members · {Math.round(bloc.internalAgreementPct)}% agreement
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {expanded && data?.briefing?.headline && (
+        <div className="w-full pt-2 border-t border-border/20">
+          <p className="text-xs text-muted-foreground leading-relaxed italic">
+            {data.briefing.headline}
+          </p>
         </div>
       )}
     </div>
@@ -300,7 +311,7 @@ function HemicycleSeat({
 
   const grade = gradeColor(member.fidelityGrade);
   const glow = archetypeGlow(archetype?.label);
-  const initial = memberInitial(member.name);
+  const initial = memberInitial(member.name, member.ccHotId);
   const fontSize = expanded ? 14 : 10;
 
   const seatContent = (

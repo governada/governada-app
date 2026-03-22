@@ -69,16 +69,34 @@ export const GET = withRouteHandler(
       }
     }
 
-    return NextResponse.json(
-      {
-        current: current as GHIResult,
-        history,
-        trend,
-        componentTrends,
-        calibration: GHI_CALIBRATION,
-      },
-      { headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' } },
-    );
+    const result = {
+      current: current as GHIResult,
+      history,
+      trend,
+      componentTrends,
+      calibration: GHI_CALIBRATION,
+    };
+
+    // CSV export: ?format=csv returns epoch,score,band for easy consumption
+    const format = request.nextUrl.searchParams.get('format');
+    if (format === 'csv') {
+      const csvLines = ['epoch,score,band'];
+      for (const h of history) {
+        csvLines.push(`${h.epoch},${h.score},${h.band}`);
+      }
+      csvLines.push(`current,${current.score},${current.band}`);
+      return new NextResponse(csvLines.join('\n'), {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="ghi-history.csv"`,
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+        },
+      });
+    }
+
+    return NextResponse.json(result, {
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' },
+    });
   },
   { rateLimit: { max: 60, window: 60 } },
 );

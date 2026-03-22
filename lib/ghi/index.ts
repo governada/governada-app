@@ -1,8 +1,7 @@
 /**
- * GHI v2 Orchestrator — computes the Governance Health Index from 8 components.
+ * GHI v2 Orchestrator — computes the Governance Health Index from up to 10 components.
  *
- * Replaces the old lib/ghi.ts computeGHI(). Re-exports types/constants for
- * backward compatibility so no consumer changes are needed.
+ * Re-exports types/constants for backward compatibility so no consumer changes are needed.
  */
 
 import { createClient } from '@/lib/supabase';
@@ -18,6 +17,7 @@ import {
   computePowerDistribution,
   computeSystemStability,
   computeTreasuryHealth,
+  computeGovernanceOutcomes,
   type ComponentInput,
 } from './components';
 import type { EDIResult } from './ediMetrics';
@@ -44,30 +44,40 @@ const BASE_WEIGHTS = GHI_COMPONENT_WEIGHTS;
 
 type ComponentName = keyof typeof BASE_WEIGHTS;
 
+/** Names of components controlled by feature flags. */
+const FLAGGED_COMPONENTS: readonly ComponentName[] = [
+  'Citizen Engagement',
+  'Governance Outcomes',
+] as const;
+
 /**
  * Compute effective GHI component weights.
  *
- * When Citizen Engagement is disabled (default — requires sufficient delegation
- * snapshot history), its 9% weight is redistributed proportionally across the
- * remaining 8 components so the total always sums to 1.0.
+ * When flagged components are disabled, their weights are redistributed
+ * proportionally across the remaining enabled components so the total
+ * always sums to 1.0.
  *
  * This redistribution is proportional (each component keeps its relative share),
  * not arbitrary. The GHI API response includes actual weights used so consumers
  * can verify what model is active.
  */
-function getWeights(citizenEngagementEnabled: boolean): Record<ComponentName, number> {
-  if (citizenEngagementEnabled) {
-    return { ...BASE_WEIGHTS };
-  }
+function getWeights(enabledFlags: Record<string, boolean>): Record<ComponentName, number> {
+  const disabled = FLAGGED_COMPONENTS.filter((name) => !enabledFlags[name]);
+  if (disabled.length === 0) return { ...BASE_WEIGHTS };
 
-  const { 'Citizen Engagement': _, ...rest } = BASE_WEIGHTS;
-  const totalRemaining = Object.values(rest).reduce((s, w) => s + w, 0);
+  const disabledSet = new Set(disabled);
+  const enabledEntries = Object.entries(BASE_WEIGHTS).filter(
+    ([name]) => !disabledSet.has(name as ComponentName),
+  );
+  const totalRemaining = enabledEntries.reduce((s, [, w]) => s + w, 0);
 
   const redistributed: Record<string, number> = {};
-  for (const [name, weight] of Object.entries(rest)) {
+  for (const [name, weight] of enabledEntries) {
     redistributed[name] = weight / totalRemaining;
   }
-  redistributed['Citizen Engagement'] = 0;
+  for (const name of disabled) {
+    redistributed[name] = 0;
+  }
 
   return redistributed as Record<ComponentName, number>;
 }
@@ -84,6 +94,8 @@ export interface GHIComputeResult extends GHIResult {
     calibrationVersion?: string;
     /** Whether Citizen Engagement component is active */
     citizenEngagementEnabled?: boolean;
+    /** Whether Governance Outcomes component is active */
+    governanceOutcomesEnabled?: boolean;
   };
 }
 
@@ -101,9 +113,15 @@ export async function computeGHI(): Promise<GHIComputeResult> {
   const input: ComponentInput = { supabase, currentEpoch };
 
   const citizenEngagementEnabled = await getFeatureFlag('ghi_citizen_engagement', false);
-  const weights = getWeights(citizenEngagementEnabled);
+  const governanceOutcomesEnabled = await getFeatureFlag('ghi_governance_outcomes', false);
 
-  // Compute all components in parallel
+  const enabledFlags: Record<string, boolean> = {
+    'Citizen Engagement': citizenEngagementEnabled,
+    'Governance Outcomes': governanceOutcomesEnabled,
+  };
+  const weights = getWeights(enabledFlags);
+
+  // Compute all always-on components in parallel
   const [
     participation,
     spoParticipation,
@@ -124,9 +142,13 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     computeTreasuryHealth(input),
   ]);
 
-  // Citizen engagement: only compute if flag is on
+  // Flagged components: only compute if enabled
   const engagement = citizenEngagementEnabled
     ? await computeCitizenEngagement({ ...input })
+    : { raw: 0, detail: { skipped: true } };
+
+  const outcomes = governanceOutcomesEnabled
+    ? await computeGovernanceOutcomes(input)
     : { raw: 0, detail: { skipped: true } };
 
   // Apply calibration curves
@@ -142,6 +164,9 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     'Power Distribution': calibrate(power.raw, CALIBRATION.powerDistribution),
     'System Stability': calibrate(stability.raw, CALIBRATION.systemStability),
     'Treasury Health': calibrate(treasuryHealth.raw, CALIBRATION.treasuryHealth),
+    'Governance Outcomes': governanceOutcomesEnabled
+      ? calibrate(outcomes.raw, CALIBRATION.governanceOutcomes)
+      : 0,
   };
 
   const components: GHIComponent[] = Object.entries(calibrated).map(([name, value]) => {
@@ -171,6 +196,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
       activeDrepCount: power.detail?.activeDrepCount,
       calibrationVersion: CALIBRATION_VERSION.version,
       citizenEngagementEnabled,
+      governanceOutcomesEnabled,
     },
   };
 }

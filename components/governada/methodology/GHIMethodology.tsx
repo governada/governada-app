@@ -428,6 +428,35 @@ Above ceiling    → cap 95 (never 100)`}</pre>
           </ul>
           <CurveTable curve={GHI_CALIBRATION.treasuryHealth} label="Treasury Health" />
         </SubSection>
+
+        <SubSection title="Governance Outcomes (6%) — Currently Disabled">
+          <p>
+            Closes the governance value loop: are enacted proposals actually delivering results for
+            Cardano? Without this component, GHI measures governance process health but not whether
+            governance produces positive outcomes.
+          </p>
+          <p>Three sub-signals:</p>
+          <ul className="ml-4 list-disc space-y-1">
+            <li>
+              <strong>Delivery Rate (40%)</strong> — What fraction of enacted proposals have been
+              delivered or partially delivered, based on community accountability polls?
+            </li>
+            <li>
+              <strong>Community Satisfaction (30%)</strong> — &ldquo;Would you approve this proposal
+              again?&rdquo; sentiment aggregated across evaluated proposals.
+            </li>
+            <li>
+              <strong>Treasury Efficiency (30%)</strong> — Average delivery quality score across all
+              evaluated proposals (weighted by poll data quality).
+            </li>
+          </ul>
+          <p>
+            Currently disabled via feature flag because it requires sufficient enacted proposals
+            with outcome data. When disabled, its 6% weight is redistributed proportionally across
+            the other components.
+          </p>
+          <CurveTable curve={GHI_CALIBRATION.governanceOutcomes} label="Governance Outcomes" />
+        </SubSection>
       </Section>
 
       {/* 4. DRep Score V3.2 */}
@@ -734,9 +763,9 @@ Above ceiling    → cap 95 (never 100)`}</pre>
             diversity are not yet captured.
           </li>
           <li>
-            <strong>Governance outcomes not yet scored:</strong> GHI measures governance process
-            health (are actors participating well?) but does not yet assess whether approved
-            proposals deliver positive outcomes. This is a planned future component.
+            <strong>Governance outcomes data is nascent:</strong> The Governance Outcomes component
+            exists but is feature-flagged until sufficient enacted proposals have completed their
+            delivery cycles. Early data may be noisy due to small sample sizes.
           </li>
           <li>
             <strong>Goodhart&apos;s Law risk:</strong> When a measure becomes a target, it ceases to
@@ -769,6 +798,10 @@ Above ceiling    → cap 95 (never 100)`}</pre>
             </li>
             <li>
               System Stability: infrastructure health replaced by governance throughput stability
+            </li>
+            <li>
+              Governance Outcomes added as 10th component (6%, feature-flagged) — closes the
+              governance value loop
             </li>
             <li>All calibration breakpoints justified with behavioral anchors</li>
           </ul>

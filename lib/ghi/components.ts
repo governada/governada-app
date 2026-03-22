@@ -1,11 +1,11 @@
 /**
  * GHI v2 Component Computations
  *
- * 9 components across 4 categories (weights from calibration.ts):
+ * 10 components across 4 categories (weights from calibration.ts):
  *   Engagement (32%):     DRep Participation (14%), SPO Participation (9%), Citizen Engagement (9%)
  *   Quality (37%):        Deliberation Quality (14%), Governance Effectiveness (14%), CC Constitutional Fidelity (9%)
  *   Resilience (23%):     Power Distribution (14%), System Stability (9%)
- *   Sustainability (8%):  Treasury Health (8%)
+ *   Sustainability (14%): Treasury Health (8%), Governance Outcomes (6%)
  *
  * Each function returns a raw 0-100 score. Calibration is applied externally.
  *
@@ -745,6 +745,90 @@ export async function computeSystemStability({
       drepRetention: Math.round(retentionScore),
       scoreVolatility: Math.round(volatilityScore),
       throughputStability: Math.round(throughputStabilityScore),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2J. Governance Outcomes (6%) — feature flagged
+//
+// Closes the governance value loop: proposals → deliberation → decision → outcome.
+// Without this, GHI measures process health but not whether governance
+// produces positive results for Cardano.
+//
+// Sub-signals:
+//   1. Delivery Rate (40%) — What fraction of enacted proposals have delivered?
+//   2. Community Satisfaction (30%) — Would voters approve again? (poll-based)
+//   3. Treasury Efficiency (30%) — Delivery quality weighted by ADA amount
+//      for treasury withdrawals (are we getting ROI on governance spending?)
+//
+// Requires sufficient enacted proposals with outcome data to produce
+// meaningful scores. Feature flagged via `ghi_governance_outcomes`.
+// ---------------------------------------------------------------------------
+
+export async function computeGovernanceOutcomes({
+  supabase,
+}: ComponentInput): Promise<ComponentScore> {
+  // Fetch all proposals with outcome tracking data
+  const { data: outcomes } = await supabase
+    .from('proposal_outcomes')
+    .select(
+      'proposal_tx_hash, proposal_index, delivery_status, delivery_score, would_approve_again_pct, total_poll_responses',
+    )
+    .not('delivery_status', 'eq', 'unknown');
+
+  if (!outcomes?.length) return { raw: 0, detail: { evaluatedProposals: 0 } };
+
+  // Only score proposals with substantive data (not just lifecycle status)
+  const evaluated = outcomes.filter(
+    (o) =>
+      o.delivery_status !== 'in_progress' &&
+      (o.total_poll_responses > 0 || o.delivery_status === 'delivered'),
+  );
+
+  if (evaluated.length === 0) {
+    return { raw: 0, detail: { evaluatedProposals: 0, totalOutcomes: outcomes.length } };
+  }
+
+  // --- Sub-signal 1: Delivery Rate (40%) ---
+  // What fraction of evaluated proposals were delivered or partially delivered?
+  const delivered = evaluated.filter(
+    (o) => o.delivery_status === 'delivered' || o.delivery_status === 'partial',
+  ).length;
+  const deliveryRate = (delivered / evaluated.length) * 100;
+
+  // --- Sub-signal 2: Community Satisfaction (30%) ---
+  // Average "would approve again" percentage across evaluated proposals with poll data
+  const withPolls = evaluated.filter(
+    (o) => o.would_approve_again_pct != null && o.total_poll_responses > 0,
+  );
+  let satisfactionScore = 50; // neutral default
+  if (withPolls.length > 0) {
+    satisfactionScore =
+      withPolls.reduce((sum, o) => sum + (o.would_approve_again_pct ?? 50), 0) / withPolls.length;
+  }
+
+  // --- Sub-signal 3: Treasury Efficiency (30%) ---
+  // Average delivery score across all evaluated proposals with scores
+  // This is already weighted by poll quality in the proposal outcomes computation
+  const withScores = evaluated.filter((o) => o.delivery_score != null);
+  let efficiencyScore = 50; // neutral default
+  if (withScores.length > 0) {
+    efficiencyScore =
+      withScores.reduce((sum, o) => sum + (o.delivery_score ?? 0), 0) / withScores.length;
+  }
+
+  const raw = deliveryRate * 0.4 + satisfactionScore * 0.3 + efficiencyScore * 0.3;
+
+  return {
+    raw: Math.min(100, Math.max(0, Math.round(raw))),
+    detail: {
+      evaluatedProposals: evaluated.length,
+      totalOutcomes: outcomes.length,
+      deliveryRate: Math.round(deliveryRate),
+      communitySatisfaction: Math.round(satisfactionScore),
+      treasuryEfficiency: Math.round(efficiencyScore),
+      deliveredCount: delivered,
     },
   };
 }

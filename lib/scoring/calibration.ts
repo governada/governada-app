@@ -928,6 +928,35 @@ export const GHI_CALIBRATION = {
     targetHigh: 70,
     ceiling: 90,
   },
+  /**
+   * Governance Outcomes (6% of GHI when enabled).
+   * Measures whether enacted proposals deliver results.
+   *
+   * Three sub-signals: Delivery Rate (40%), Community Satisfaction (30%),
+   * Treasury Efficiency (30%).
+   *
+   * - floor (15): Very few evaluated proposals, low delivery rate (~15%),
+   *   minimal poll data. Most proposals still in progress or unknown.
+   *   Calibrated: 20 (entering "fair").
+   *
+   * - targetLow (35): ~35% delivery rate, some community poll data
+   *   showing moderate satisfaction (~50%), basic delivery scores.
+   *   Calibrated: 50 (midpoint).
+   *
+   * - targetHigh (65): ~65% delivery rate, community satisfaction at
+   *   ~65%+, good delivery scores across treasury proposals.
+   *   Calibrated: 80 (entering "strong").
+   *
+   * - ceiling (85): 85%+ delivery rate, strong community approval
+   *   (~80%+), high treasury efficiency scores.
+   *   Calibrated: 95 (cap).
+   */
+  governanceOutcomes: {
+    floor: 15,
+    targetLow: 35,
+    targetHigh: 65,
+    ceiling: 85,
+  },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -938,32 +967,32 @@ export const GHI_CALIBRATION = {
  * GHI component weights (must sum to 1.0).
  *
  * Full model (all components enabled):
- *   Engagement (32%):     DRep Participation (14%) + SPO Participation (9%) + Citizen Engagement (9%)
- *   Quality (37%):        Deliberation Quality (14%) + Governance Effectiveness (14%) + CC Constitutional Fidelity (9%)
- *   Resilience (23%):     Power Distribution (14%) + System Stability (9%)
- *   Sustainability (8%):  Treasury Health (8%)
+ *   Engagement (30%):      DRep Participation (13%) + SPO Participation (9%) + Citizen Engagement (8%)
+ *   Quality (35%):         Deliberation Quality (13%) + Governance Effectiveness (13%) + CC Constitutional Fidelity (9%)
+ *   Resilience (21%):      Power Distribution (13%) + System Stability (8%)
+ *   Sustainability (14%):  Treasury Health (8%) + Governance Outcomes (6%)
  *
- * When Citizen Engagement is disabled (feature flag `ghi_citizen_engagement`):
- *   Its 9% weight is redistributed proportionally across the remaining 8 components.
- *   Effective weights become (rounded):
- *     DRep Participation: 15.4%, SPO Participation: 9.9%, Deliberation Quality: 15.4%,
- *     Governance Effectiveness: 15.4%, CC Fidelity: 9.9%, Power Distribution: 15.4%,
- *     System Stability: 9.9%, Treasury Health: 8.8%
+ * V3.2 rebalance: Added Governance Outcomes at 6% by taking 1% from each of the
+ * four 14% components (→13%) and 1% from each of Citizen Engagement and System
+ * Stability (→8%). This keeps the relative ordering intact while funding the
+ * new component that closes the governance value loop.
  *
- *   Citizen Engagement requires 5+ epochs of delegation snapshot history to produce
- *   meaningful scores. It will be enabled once sufficient data accumulates.
+ * When Citizen Engagement OR Governance Outcomes is disabled (feature flags
+ * `ghi_citizen_engagement`, `ghi_governance_outcomes`):
+ *   Their weights are redistributed proportionally across enabled components.
  *   See lib/ghi/index.ts getWeights() for the redistribution logic.
  */
 export const GHI_COMPONENT_WEIGHTS = {
-  'DRep Participation': 0.14,
+  'DRep Participation': 0.13,
   'SPO Participation': 0.09,
-  'Citizen Engagement': 0.09,
-  'Deliberation Quality': 0.14,
-  'Governance Effectiveness': 0.14,
+  'Citizen Engagement': 0.08,
+  'Deliberation Quality': 0.13,
+  'Governance Effectiveness': 0.13,
   'CC Constitutional Fidelity': 0.09,
-  'Power Distribution': 0.14,
-  'System Stability': 0.09,
+  'Power Distribution': 0.13,
+  'System Stability': 0.08,
   'Treasury Health': 0.08,
+  'Governance Outcomes': 0.06,
 } as const;
 
 /**

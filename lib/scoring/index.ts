@@ -65,6 +65,11 @@ export {
   type AttributionEntry,
 } from './spoAttribution';
 export { detectSybilPairs, type SybilFlag } from './sybilDetection';
+export {
+  cosineSimilarity,
+  computeSemanticDiversityScore,
+  computeSemanticDiversityMap,
+} from './semanticDiversity';
 
 // Score Tiers
 export {

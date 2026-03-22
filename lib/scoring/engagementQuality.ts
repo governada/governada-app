@@ -31,12 +31,15 @@ const INFO_ACTION = 'InfoAction';
  * @param votingSummaries Map of proposalKey → voting power summary (for majority determination)
  * @param proposalTypeCounts Map of proposalType → count of proposals of that type
  * @param nowSeconds Current unix timestamp
+ * @param semanticDiversity Optional map of drepId → pre-computed semantic diversity score (0-100).
+ *   When provided and a DRep has a score, blended with meta_hash diversity using calibration weights.
  */
 export function computeEngagementQuality(
   drepVotes: Map<string, VoteData[]>,
   votingSummaries: Map<string, ProposalVotingSummary>,
   proposalTypeCounts: Map<string, number>,
   nowSeconds: number,
+  semanticDiversity?: Map<string, number>,
 ): Map<string, number> {
   const scores = new Map<string, number>();
 
@@ -48,7 +51,8 @@ export function computeEngagementQuality(
 
     const provision = computeProvisionRate(votes, nowSeconds);
     const quality = computeRationaleQuality(votes, votingSummaries, nowSeconds);
-    const deliberation = computeDeliberationSignal(votes, proposalTypeCounts);
+    const semanticScore = semanticDiversity?.get(drepId) ?? null;
+    const deliberation = computeDeliberationSignal(votes, proposalTypeCounts, semanticScore);
 
     const raw =
       provision * LAYER_WEIGHTS.provision +
@@ -160,8 +164,9 @@ function computeRationaleQuality(
 function computeDeliberationSignal(
   votes: VoteData[],
   proposalTypeCounts: Map<string, number>,
+  semanticDiversityScore: number | null,
 ): number {
-  const diversity = computeRationaleDiversity(votes);
+  const diversity = computeRationaleDiversity(votes, semanticDiversityScore);
   const breadth = computeCoverageBreadth(votes, proposalTypeCounts);
 
   return diversity * DELIB_WEIGHTS.rationaleDiversity + breadth * DELIB_WEIGHTS.coverageBreadth;
@@ -172,16 +177,35 @@ function computeDeliberationSignal(
  * Catches copy-paste rationales (same meta_hash reused across votes) without
  * penalizing vote direction. Below minRationales → neutral 50.
  *
- * Score = (unique meta_hashes / total votes with meta_hash) × 100
+ * V3.2+: When a pre-computed semantic diversity score is available (from embedding
+ * cosine similarity), blends semantic (70%) + meta_hash (30%) for a hybrid score.
+ * This catches sophisticated gamers who slightly modify boilerplate to get different
+ * meta_hashes while submitting semantically identical content.
+ *
+ * Hash diversity = (unique meta_hashes / total votes with meta_hash) × 100
+ * Hybrid = semanticWeight × semanticScore + hashWeight × hashDiversity
  */
-export function computeRationaleDiversity(votes: VoteData[]): number {
+export function computeRationaleDiversity(
+  votes: VoteData[],
+  semanticDiversityScore?: number | null,
+): number {
   const hashVotes = votes.filter((v) => v.rationaleMetaHash != null);
   if (hashVotes.length < RATIONALE_DIVERSITY_CONFIG.minRationales) {
     return RATIONALE_DIVERSITY_CONFIG.neutralScore;
   }
 
   const uniqueHashes = new Set(hashVotes.map((v) => v.rationaleMetaHash));
-  return (uniqueHashes.size / hashVotes.length) * 100;
+  const hashDiversity = (uniqueHashes.size / hashVotes.length) * 100;
+
+  // Blend with semantic diversity when available
+  if (semanticDiversityScore != null) {
+    return (
+      RATIONALE_DIVERSITY_CONFIG.semanticWeight * semanticDiversityScore +
+      RATIONALE_DIVERSITY_CONFIG.hashWeight * hashDiversity
+    );
+  }
+
+  return hashDiversity;
 }
 
 /**

@@ -148,7 +148,9 @@ export function YouDrawIt() {
   const { data: historyRaw, isLoading: historyLoading } = useTreasuryHistory(30);
   const { data: simRaw, isLoading: simLoading } = useTreasurySimulate(1);
 
-  const history = historyRaw as HistoryEntry[] | undefined;
+  // API returns { snapshots: [...], incomeVsOutflow: [...] }, not a flat array
+  const historyObj = historyRaw as { snapshots?: HistoryEntry[] } | undefined;
+  const history = historyObj?.snapshots;
   const simulation = simRaw as SimulationData | undefined;
 
   const loading = historyLoading || simLoading;

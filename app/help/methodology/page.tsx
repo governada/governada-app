@@ -133,6 +133,67 @@ const SPO_PILLARS = [
   },
 ];
 
+const SPO_WORKED_EXAMPLES = [
+  {
+    name: 'The Thoughtful Operator',
+    composite: 74,
+    tier: 'Gold',
+    tierColor: 'bg-yellow-500/20 text-yellow-400',
+    description:
+      'Votes on 80% of proposals with mixed Yes/No positions (25% dissent). Published governance statement backed by 15+ votes. Votes across all proposal types.',
+    pillars: [
+      { name: 'Participation', score: 72, why: '16/20 proposals voted, importance-weighted' },
+      {
+        name: 'Deliberation',
+        score: 82,
+        why: 'Good vote diversity, 25% dissent (sweet spot), broad type coverage',
+      },
+      { name: 'Reliability', score: 78, why: 'Active 8 consecutive epochs, minor gap in epoch 3' },
+      {
+        name: 'Identity',
+        score: 65,
+        why: 'Statement + 2 social links, vote-validated, neutral retention',
+      },
+    ],
+  },
+  {
+    name: 'The Rubber-Stamper',
+    composite: 52,
+    tier: 'Bronze',
+    tierColor: 'bg-orange-500/20 text-orange-400',
+    description:
+      'Votes Yes on every proposal without variation. Full metadata profile but no independent judgment. Votes only on treasury proposals.',
+    pillars: [
+      { name: 'Participation', score: 72, why: '20/20 proposals voted (same as Thoughtful)' },
+      {
+        name: 'Deliberation',
+        score: 18,
+        why: '100% Yes = severe diversity penalty, 0% dissent, 1 type only',
+      },
+      { name: 'Reliability', score: 85, why: 'Perfect streak, no gaps' },
+      { name: 'Identity', score: 70, why: 'Full metadata, vote-validated' },
+    ],
+  },
+  {
+    name: 'The Metadata Gamer',
+    composite: 12,
+    tier: 'Emerging',
+    tierColor: 'bg-zinc-500/20 text-zinc-400',
+    description:
+      'Perfect metadata (statement, links, description) but only 2 governance votes cast. Tier capped at Emerging due to low vote count.',
+    pillars: [
+      { name: 'Participation', score: 8, why: '2/20 proposals voted' },
+      { name: 'Deliberation', score: 0, why: 'Below 5-vote minimum for diversity scoring' },
+      { name: 'Reliability', score: 12, why: 'Short tenure, large gap' },
+      {
+        name: 'Identity',
+        score: 35,
+        why: 'Statement present but only 5 pts unlocked (2 votes < 3 threshold)',
+      },
+    ],
+  },
+];
+
 const CC_PILLARS = [
   {
     name: 'Participation',
@@ -541,7 +602,12 @@ export default function MethodologyPage() {
         {/* SPO Governance Scoring */}
         <section className="space-y-6">
           <SectionAnchor id="spo-scoring" />
-          <h2 className="text-xl font-bold">SPO Governance Score</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold">SPO Governance Score</h2>
+            <span className="text-[10px] font-mono text-muted-foreground/60 border border-border/30 rounded px-1.5 py-0.5">
+              V3.2
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Stake Pool Operators are scored on their governance participation using the same tier
             system as DReps. The four pillars are tailored to SPO governance behavior, with absolute
@@ -586,6 +652,46 @@ export default function MethodologyPage() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* SPO Worked Examples */}
+          <div className="space-y-4 mt-6">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+              Worked Examples
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Three representative SPO profiles showing how V3.2 scoring works in practice. All
+              numbers are illustrative — actual scores depend on the full proposal landscape.
+            </p>
+
+            {SPO_WORKED_EXAMPLES.map((ex) => (
+              <div
+                key={ex.name}
+                className="rounded-xl border border-border/50 bg-card/70 backdrop-blur-md p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold">{ex.name}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold tabular-nums">{ex.composite}</span>
+                    <span
+                      className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', ex.tierColor)}
+                    >
+                      {ex.tier}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{ex.description}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {ex.pillars.map((p) => (
+                    <div key={p.name} className="text-[11px] text-muted-foreground">
+                      <span className="font-medium">{p.name}:</span>{' '}
+                      <span className="tabular-nums">{p.score}</span>
+                      <span className="text-muted-foreground/50"> — {p.why}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

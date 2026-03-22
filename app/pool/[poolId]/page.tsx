@@ -61,6 +61,7 @@ const StakePoolButton = nextDynamic(
 );
 
 import { SpoProfileHero } from '@/components/governada/profiles/SpoProfileHero';
+import { SybilWarning } from '@/components/governada/identity/SybilWarning';
 import { WatchEntityButton } from '@/components/WatchEntityButton';
 import { PinButton } from '@/components/shared/PinButton';
 import { EntityPageConnections } from '@/components/shared/EntityPageConnections';
@@ -353,7 +354,7 @@ export default async function PoolProfilePage({ params }: PageProps) {
   const poolRow = await getPoolRow(poolId);
   const hasScored = poolRow != null;
 
-  const [scoreHistoryRes, scoreRank, interBody] = await Promise.all([
+  const [scoreHistoryRes, scoreRank, interBody, sybilRes] = await Promise.all([
     hasScored
       ? supabase
           .from('spo_score_snapshots')
@@ -372,10 +373,23 @@ export default async function PoolProfilePage({ params }: PageProps) {
       ? getGovernanceScoreRank(poolRow.governance_score)
       : Promise.resolve(null),
     getInterBodyAlignment(poolId, safeVotes, proposals),
+    supabase
+      .from('spo_sybil_flags')
+      .select('pool_a, pool_b, agreement_rate')
+      .or(`pool_a.eq.${poolId},pool_b.eq.${poolId}`)
+      .neq('resolved', true),
   ]);
 
   const scoreSnapshots = scoreHistoryRes.data ?? [];
   const sortedSnapshots = [...scoreSnapshots].reverse();
+
+  // Sybil correlation flags
+  const sybilRows = sybilRes.data ?? [];
+  const sybilFlagged = sybilRows.length > 0;
+  const sybilPartnerCount = new Set(
+    sybilRows.map((r) => (r.pool_a === poolId ? r.pool_b : r.pool_a)),
+  ).size;
+  const sybilMaxRate = sybilRows.reduce((max, r) => Math.max(max, r.agreement_rate), 0);
 
   // ── Unscored pool fallback ────────────────────────────────────────────────
   if (!hasScored) {
@@ -777,6 +791,11 @@ export default async function PoolProfilePage({ params }: PageProps) {
           <WatchEntityButton entityType="spo" entityId={poolId} />
           <PinButton type="pool" id={poolId} label={displayName} />
         </SpoProfileHero>
+
+        {/* Sybil correlation warning */}
+        {sybilFlagged && (
+          <SybilWarning partnerCount={sybilPartnerCount} maxAgreementRate={sybilMaxRate} />
+        )}
 
         {/* Chapter 1.5: Governance Philosophy — prominent accent-bordered blockquote */}
         {governanceStatement && (

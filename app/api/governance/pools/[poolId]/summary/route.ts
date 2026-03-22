@@ -28,6 +28,19 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
     return NextResponse.json({ error: 'Pool not found' }, { status: 404 });
   }
 
+  // Sybil correlation flags
+  const { data: sybilRows } = await supabase
+    .from('spo_sybil_flags')
+    .select('pool_a, pool_b, agreement_rate')
+    .or(`pool_a.eq.${poolId},pool_b.eq.${poolId}`)
+    .neq('resolved', true);
+
+  const sybilFlagged = (sybilRows ?? []).length > 0;
+  const sybilPartnerIds = new Set(
+    (sybilRows ?? []).map((r) => (r.pool_a === poolId ? r.pool_b : r.pool_a)),
+  );
+  const sybilMaxRate = (sybilRows ?? []).reduce((max, r) => Math.max(max, r.agreement_rate), 0);
+
   const { data: snapshot } = await supabase
     .from('spo_score_snapshots')
     .select('governance_score, epoch_no')
@@ -69,6 +82,11 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       scoreDelta,
       momentum: pool.score_momentum ?? null,
       poolStatus: pool.pool_status ?? 'registered',
+      sybilFlags: {
+        flagged: sybilFlagged,
+        partnerCount: sybilPartnerIds.size,
+        maxAgreementRate: sybilMaxRate,
+      },
       alignment: {
         treasuryConservative: pool.alignment_treasury_conservative,
         treasuryGrowth: pool.alignment_treasury_growth,

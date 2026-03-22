@@ -296,10 +296,10 @@ export const syncCcRationales = inngest.createFunction(
         .single();
       const currentEpoch = stats?.current_epoch ?? 0;
 
-      // Get all CC votes
+      // Get all CC votes (include epoch for tenure-start proxy)
       const { data: votes } = await supabase
         .from('cc_votes')
-        .select('cc_hot_id, proposal_tx_hash, proposal_index, vote, block_time, meta_url');
+        .select('cc_hot_id, proposal_tx_hash, proposal_index, vote, block_time, epoch, meta_url');
 
       // Get proposals for eligible count and type lookups
       const { data: proposals } = await supabase
@@ -356,6 +356,15 @@ export const syncCcRationales = inngest.createFunction(
         });
       }
 
+      // Build earliest vote epoch per member (proxy for tenure start when authorization_epoch is null)
+      const earliestVoteEpoch = new Map<string, number>();
+      for (const v of votes) {
+        if (v.epoch != null) {
+          const prev = earliestVoteEpoch.get(v.cc_hot_id);
+          if (prev === undefined || v.epoch < prev) earliestVoteEpoch.set(v.cc_hot_id, v.epoch);
+        }
+      }
+
       // Group votes by member
       const memberVotes = new Map<string, CCMemberVoteData[]>();
       for (const v of votes) {
@@ -372,12 +381,18 @@ export const syncCcRationales = inngest.createFunction(
 
       let scored = 0;
       for (const [ccHotId, mvotes] of memberVotes) {
-        // Per-member eligible proposals based on authorization/expiration epochs
+        // Per-member eligible proposals based on authorization/expiration epochs.
+        // When authorization_epoch is null (Koios doesn't always return start_epoch
+        // for newly authorized members), use the member's earliest vote epoch as a
+        // proxy for tenure start. This prevents penalizing new members for not voting
+        // on proposals from before their authorization.
+        const epochs = memberEpochMap.get(ccHotId);
+        const authEpoch = epochs?.authorization_epoch ?? earliestVoteEpoch.get(ccHotId) ?? null;
+
         const memberEligible = proposals.filter((p) => {
-          const epochs = memberEpochMap.get(ccHotId);
-          if (!epochs?.authorization_epoch || !p.proposed_epoch) return true; // fallback
-          if (p.proposed_epoch < epochs.authorization_epoch) return false;
-          if (epochs.expiration_epoch && p.proposed_epoch > epochs.expiration_epoch) return false;
+          if (!authEpoch || !p.proposed_epoch) return true;
+          if (p.proposed_epoch < authEpoch) return false;
+          if (epochs?.expiration_epoch && p.proposed_epoch > epochs.expiration_epoch) return false;
           return true;
         });
         const memberEligibleCount = new Set(

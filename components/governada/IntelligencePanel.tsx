@@ -61,7 +61,7 @@ export function IntelligencePanel({ isOpen, onClose, panelWidth }: IntelligenceP
           <div className="flex items-center justify-between px-3 py-2 border-b border-border/10 shrink-0">
             <div className="flex items-center gap-2">
               <Compass className="h-4 w-4 text-primary/70" aria-hidden="true" />
-              <h2 className="text-xs font-semibold text-foreground/80">Compass</h2>
+              <h2 className="text-xs font-semibold text-foreground/80">Solon</h2>
             </div>
             <button
               type="button"

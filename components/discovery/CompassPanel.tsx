@@ -23,8 +23,10 @@ import {
   Sparkles,
   Lock,
   ArrowUp,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useAdvisor, getRemainingMessages } from '@/hooks/useAdvisor';
@@ -161,7 +163,20 @@ export function CompassPanel({ currentPage, onStartTour, onClose }: CompassPanel
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Navigation2 className="h-5 w-5 text-teal-400 shrink-0" />
           <div className="min-w-0">
-            <h2 className="text-base font-semibold truncate">Compass Guide</h2>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <h2 className="inline-flex items-center gap-1 text-base font-semibold cursor-help">
+                    Solon
+                    <Info className="h-3 w-3 text-muted-foreground/40" />
+                  </h2>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={4} className="max-w-[240px]">
+                  Named after Solon of Athens (c.{'\u00A0'}630–560{'\u00A0'}BC) — the lawmaker who
+                  laid the foundations of Athenian democracy.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
           </div>
         </div>

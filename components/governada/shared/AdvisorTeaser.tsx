@@ -21,14 +21,14 @@ export function AdvisorTeaser({ className }: AdvisorTeaserProps) {
           <div className="flex items-center gap-3">
             <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground/60" />
             <span className="flex-1 text-sm text-muted-foreground/60">
-              Ask any governance question...
+              Ask Solon any governance question...
             </span>
             <Lock className="h-4 w-4 shrink-0 text-muted-foreground/40" />
           </div>
         </div>
       </Link>
       <p className="mt-1.5 text-center text-xs text-muted-foreground/60">
-        Connect your wallet to unlock the AI advisor
+        Connect your wallet to unlock Solon, your governance advisor
       </p>
     </div>
   );

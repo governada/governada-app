@@ -27,12 +27,7 @@ import {
 } from 'lucide-react';
 import { GovernadaLogo } from '@/components/ui/GovernadaLogo';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
-
-const CompassPanelLazy = dynamic(
-  () => import('@/components/discovery/CompassPanel').then((m) => ({ default: m.CompassPanel })),
-  { ssr: false },
-);
+import { useDiscoveryHub } from '@/components/discovery/DiscoveryHubContext';
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPromptModal } from './DepthPromptModal';
 import { EpochStrip } from './EpochStrip';
@@ -204,7 +199,7 @@ interface GovernadaHeaderProps {
 export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderProps = {}) {
   const router = useRouter();
   const { t } = useTranslation();
-  const [compassSheetOpen, setCompassSheetOpen] = useState(false);
+  const discovery = useDiscoveryHub();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
   const {
     segment,
@@ -488,8 +483,8 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
                 ? 'text-primary bg-primary/10'
                 : 'text-muted-foreground hover:text-foreground',
             )}
-            onClick={compassToggle ?? (() => setCompassSheetOpen(true))}
-            aria-label={compassOpen ? 'Close Compass panel' : 'Open Compass Guide'}
+            onClick={compassToggle ?? (() => discovery?.openHub())}
+            aria-label={compassOpen ? 'Close Solon panel' : 'Open Solon'}
             aria-pressed={compassOpen}
           >
             <Compass className="h-4 w-4" />
@@ -945,18 +940,6 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
       )}
       {/* First-use governance depth prompt */}
       <DepthPromptModal />
-
-      {/* Compass Guide panel — Sheet owned by header for guaranteed click handling */}
-      {!compassToggle && (
-        <Sheet open={compassSheetOpen} onOpenChange={setCompassSheetOpen}>
-          <SheetContent side="right" showCloseButton className="w-[340px] sm:w-[380px] p-0">
-            <CompassPanelLazy
-              onStartTour={() => setCompassSheetOpen(false)}
-              onClose={() => setCompassSheetOpen(false)}
-            />
-          </SheetContent>
-        </Sheet>
-      )}
     </header>
   );
 }

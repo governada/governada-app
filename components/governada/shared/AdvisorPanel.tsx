@@ -117,7 +117,7 @@ export function AdvisorPanel({ pageContext, className }: AdvisorPanelProps) {
         )}
       >
         <Sparkles className="h-4 w-4 shrink-0 text-teal-400" />
-        <span className="flex-1 text-left text-sm font-medium">Governance Advisor</span>
+        <span className="flex-1 text-left text-sm font-medium">Solon</span>
         <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-400">
           Beta
         </span>

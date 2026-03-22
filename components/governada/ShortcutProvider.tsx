@@ -217,8 +217,8 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
       {
         id: 'panel-intelligence',
         keys: ']',
-        label: 'Compass',
-        description: 'Toggle Compass panel',
+        label: 'Solon',
+        description: 'Toggle Solon panel',
         category: 'panels' as const,
         action: () => {
           window.dispatchEvent(new CustomEvent('toggleIntelligencePanel'));

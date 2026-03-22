@@ -31,6 +31,7 @@ export function makeVoteData(overrides: Partial<VoteData> = {}): VoteData {
     proposalType: 'TreasuryWithdrawals',
     rationaleQuality: 70,
     importanceWeight: 2,
+    rationaleMetaHash: null,
     ...overrides,
   };
 }
@@ -136,6 +137,7 @@ export function makeRealisticScenario(drepCount: number, proposalCount: number) 
   ];
 
   const allProposalTypes = new Set(proposalTypes);
+  const proposalTypeCounts = new Map<string, number>();
 
   // Create proposals
   const proposals = Array.from({ length: proposalCount }, (_, i) => {
@@ -147,6 +149,11 @@ export function makeRealisticScenario(drepCount: number, proposalCount: number) 
       importanceWeight: pType === 'HardForkInitiation' ? 3 : pType === 'ParameterChange' ? 2 : 1,
     });
   });
+
+  // Build proposal type counts (V3.2)
+  for (const p of proposals) {
+    proposalTypeCounts.set(p.proposalType, (proposalTypeCounts.get(p.proposalType) || 0) + 1);
+  }
 
   // Create voting summaries (varied margins)
   const votingSummaries = new Map<string, ProposalVotingSummary>();
@@ -198,6 +205,7 @@ export function makeRealisticScenario(drepCount: number, proposalCount: number) 
   return {
     proposals,
     allProposalTypes,
+    proposalTypeCounts,
     votingSummaries,
     drepVotes,
     allProposals: new Map(proposals.map((p) => [p.proposalKey, p])),

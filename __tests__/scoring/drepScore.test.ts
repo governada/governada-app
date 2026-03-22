@@ -94,16 +94,16 @@ describe('computeDRepScores', () => {
     expect(result.effectiveParticipationCalibrated).toBe(76);
     expect(result.reliabilityCalibrated).toBe(91);
     expect(result.governanceIdentityCalibrated).toBe(65);
-    expect(result.composite).toBe(83);
+    expect(result.composite).toBe(84);
   });
 
   // ── Pillar weight verification ──
 
-  it('uses correct pillar weights (35/25/25/15)', () => {
-    expect(PILLAR_WEIGHTS.engagementQuality).toBe(0.35);
+  it('uses correct pillar weights (40/25/25/10)', () => {
+    expect(PILLAR_WEIGHTS.engagementQuality).toBe(0.4);
     expect(PILLAR_WEIGHTS.effectiveParticipation).toBe(0.25);
     expect(PILLAR_WEIGHTS.reliability).toBe(0.25);
-    expect(PILLAR_WEIGHTS.governanceIdentity).toBe(0.15);
+    expect(PILLAR_WEIGHTS.governanceIdentity).toBe(0.1);
 
     const total = Object.values(PILLAR_WEIGHTS).reduce((s, w) => s + w, 0);
     expect(total).toBeCloseTo(1.0, 10);
@@ -262,11 +262,12 @@ describe('computeDRepScores', () => {
 
     // With absolute calibration (not percentile), scores are determined solely by raw values:
     //   a (90/85/80/75): high raws → high calibrated → composite ~93
-    //   b (60/55/50/45): mid raws → mid calibrated → composite ~72
+    //   b (60/55/50/45): mid raws → mid calibrated → composite ~73
     //   c (30/25/20/15): low raws → low calibrated → composite ~43
+    // V3.2 weights: EQ 40%, EP 25%, Rel 25%, GI 10%
     expect(results.get('a')!.composite).toBe(93);
-    expect(results.get('b')!.composite).toBe(72);
-    expect(results.get('c')!.composite).toBe(43);
+    expect(results.get('b')!.composite).toBe(73);
+    expect(results.get('c')!.composite).toBe(44);
   });
 
   // ── Confidence field ──
@@ -316,7 +317,7 @@ describe('computeDRepScores', () => {
 
   // ── Zero-activity override ──
 
-  it('caps zero-activity DReps to GI-only composite (~15% of GI calibrated)', () => {
+  it('caps zero-activity DReps to GI-only composite (~10% of GI calibrated)', () => {
     // DRep with zero activity on all 3 activity pillars but high GI
     // should NOT score from dampened-to-median activity scores.
     // Instead, activity calibrated scores should be forced to 0.

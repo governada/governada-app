@@ -1,16 +1,22 @@
 /**
- * Engagement Quality pillar (35% of DRep Score).
- * Three layers: Provision Rate, Rationale Quality, Deliberation Signal.
- * Replaces the old binary rationale rate.
+ * Engagement Quality pillar (40% of DRep Score V3.2).
+ * Three layers: Provision Rate, Rationale Quality (with dissent-with-substance modifier),
+ * Deliberation Signal (rationale diversity + coverage breadth).
+ *
+ * V3.2 changes:
+ * - Vote diversity removed (penalized honest voting patterns)
+ * - Dissent rate removed as standalone signal (incentivized strategic contrarianism)
+ * - Added: rationale diversity via meta_hash uniqueness (catches copy-paste)
+ * - Added: coverage breadth weighted by proposal frequency (doesn't penalize specialization)
+ * - Added: dissent-with-substance modifier on rationale quality layer
  */
 
 import { DECAY_LAMBDA, type VoteData, type ProposalVotingSummary } from './types';
 import {
   ENGAGEMENT_LAYER_WEIGHTS,
   DELIBERATION_WEIGHTS,
-  VOTE_DIVERSITY_THRESHOLDS,
-  VOTE_DIVERSITY_MIN_VOTES,
-  DISSENT_CURVE,
+  RATIONALE_DIVERSITY_CONFIG,
+  DISSENT_SUBSTANCE_MODIFIER,
 } from './calibration';
 
 const LAYER_WEIGHTS = ENGAGEMENT_LAYER_WEIGHTS;
@@ -22,13 +28,13 @@ const INFO_ACTION = 'InfoAction';
  *
  * @param drepVotes Map of drepId → their votes (enriched with rationale quality & importance)
  * @param votingSummaries Map of proposalKey → voting power summary (for majority determination)
- * @param allProposalTypes Set of all distinct proposal types in the system
+ * @param proposalTypeCounts Map of proposalType → count of proposals of that type
  * @param nowSeconds Current unix timestamp
  */
 export function computeEngagementQuality(
   drepVotes: Map<string, VoteData[]>,
   votingSummaries: Map<string, ProposalVotingSummary>,
-  allProposalTypes: Set<string>,
+  proposalTypeCounts: Map<string, number>,
   nowSeconds: number,
 ): Map<string, number> {
   const scores = new Map<string, number>();
@@ -40,8 +46,8 @@ export function computeEngagementQuality(
     }
 
     const provision = computeProvisionRate(votes, nowSeconds);
-    const quality = computeRationaleQuality(votes, nowSeconds);
-    const deliberation = computeDeliberationSignal(votes, votingSummaries, allProposalTypes);
+    const quality = computeRationaleQuality(votes, votingSummaries, nowSeconds);
+    const deliberation = computeDeliberationSignal(votes, proposalTypeCounts);
 
     const raw =
       provision * LAYER_WEIGHTS.provision +
@@ -83,10 +89,26 @@ function computeProvisionRate(votes: VoteData[], nowSeconds: number): number {
  * Layer 2 — Rationale Quality (40% of pillar).
  * Weighted average of AI quality scores across votes, with importance and decay.
  * DReps with 0 rationales get 0. DReps with few but excellent rationales can score high.
+ *
+ * V3.2: Includes "dissent with substance" modifier — when a DRep votes against
+ * the majority AND provides a quality rationale (≥ minQuality), the quality
+ * contribution for that vote is boosted by the multiplier. Capped to maxVoteFraction
+ * of total eligible votes to prevent always-dissent gaming.
  */
-function computeRationaleQuality(votes: VoteData[], nowSeconds: number): number {
+function computeRationaleQuality(
+  votes: VoteData[],
+  votingSummaries: Map<string, ProposalVotingSummary>,
+  nowSeconds: number,
+): number {
   let weightedQuality = 0;
   let totalWeight = 0;
+
+  // Determine how many votes can receive the dissent modifier
+  const eligibleVotes = votes.filter((v) => v.proposalType !== INFO_ACTION);
+  const maxDissentBonuses = Math.floor(
+    eligibleVotes.length * DISSENT_SUBSTANCE_MODIFIER.maxVoteFraction,
+  );
+  let dissentBonusesApplied = 0;
 
   for (const v of votes) {
     if (v.proposalType === INFO_ACTION) continue;
@@ -96,8 +118,26 @@ function computeRationaleQuality(votes: VoteData[], nowSeconds: number): number 
     const decay = Math.exp(-DECAY_LAMBDA * ageDays);
     const w = v.importanceWeight * decay;
 
+    let qualityScore = v.rationaleQuality;
+
+    // Apply dissent-with-substance modifier
+    if (
+      dissentBonusesApplied < maxDissentBonuses &&
+      v.rationaleQuality >= DISSENT_SUBSTANCE_MODIFIER.minQuality &&
+      v.vote !== 'Abstain'
+    ) {
+      const summary = votingSummaries.get(v.proposalKey);
+      if (summary) {
+        const majority = summary.drepYesVotePower >= summary.drepNoVotePower ? 'Yes' : 'No';
+        if (v.vote !== majority) {
+          qualityScore = Math.min(100, v.rationaleQuality * DISSENT_SUBSTANCE_MODIFIER.multiplier);
+          dissentBonusesApplied++;
+        }
+      }
+    }
+
     totalWeight += w;
-    weightedQuality += v.rationaleQuality * w;
+    weightedQuality += qualityScore * w;
   }
 
   return totalWeight === 0 ? 0 : weightedQuality / totalWeight;
@@ -105,102 +145,70 @@ function computeRationaleQuality(votes: VoteData[], nowSeconds: number): number 
 
 /**
  * Layer 3 — Deliberation Signal (20% of pillar).
- * Sub-components: vote diversity, dissent rate, proposal type breadth.
+ * V3.2 sub-components: rationale diversity (60%) + coverage breadth (40%).
  */
 function computeDeliberationSignal(
   votes: VoteData[],
-  votingSummaries: Map<string, ProposalVotingSummary>,
-  allProposalTypes: Set<string>,
+  proposalTypeCounts: Map<string, number>,
 ): number {
-  const diversity = computeVoteDiversity(votes);
-  const dissent = computeDissentRate(votes, votingSummaries);
-  const breadth = computeTypeBreadth(votes, allProposalTypes);
+  const diversity = computeRationaleDiversity(votes);
+  const breadth = computeCoverageBreadth(votes, proposalTypeCounts);
 
-  return (
-    diversity * DELIB_WEIGHTS.voteDiversity +
-    dissent * DELIB_WEIGHTS.dissent +
-    breadth * DELIB_WEIGHTS.typeBreadth
-  );
+  return diversity * DELIB_WEIGHTS.rationaleDiversity + breadth * DELIB_WEIGHTS.coverageBreadth;
 }
 
 /**
- * Vote diversity: rescale the existing deliberation modifier concept to 0-100.
- * Penalizes rubber-stamping (>85% same vote direction).
+ * Rationale diversity: measures unique meta_hashes vs total votes with rationale.
+ * Catches copy-paste rationales (same meta_hash reused across votes) without
+ * penalizing vote direction. Below minRationales → neutral 50.
+ *
+ * Score = (unique meta_hashes / total votes with meta_hash) × 100
  */
-function computeVoteDiversity(votes: VoteData[]): number {
-  if (votes.length <= VOTE_DIVERSITY_MIN_VOTES) return 50; // too few votes to judge
-
-  const counts = { Yes: 0, No: 0, Abstain: 0 };
-  for (const v of votes) counts[v.vote]++;
-
-  const dominant = Math.max(counts.Yes, counts.No, counts.Abstain);
-  const dominantRatio = dominant / votes.length;
-
-  // Thresholds sorted ascending by maxRatio — first match wins
-  for (const t of VOTE_DIVERSITY_THRESHOLDS) {
-    if (dominantRatio <= t.maxRatio) return t.score;
+export function computeRationaleDiversity(votes: VoteData[]): number {
+  const hashVotes = votes.filter((v) => v.rationaleMetaHash != null);
+  if (hashVotes.length < RATIONALE_DIVERSITY_CONFIG.minRationales) {
+    return RATIONALE_DIVERSITY_CONFIG.neutralScore;
   }
-  return VOTE_DIVERSITY_THRESHOLDS[VOTE_DIVERSITY_THRESHOLDS.length - 1].score;
+
+  const uniqueHashes = new Set(hashVotes.map((v) => v.rationaleMetaHash));
+  return (uniqueHashes.size / hashVotes.length) * 100;
 }
 
 /**
- * Dissent rate: percentage of votes against the eventual majority outcome.
- * Moderate dissent (15-40%) scores highest (independent thinking).
- * Zero = rubber-stamper, very high = contrarian.
+ * Coverage breadth: what fraction of governance surface area has this DRep covered,
+ * weighted by proposal frequency. A DRep who votes on all treasury proposals
+ * (90% of proposals) scores ~90 even if they miss the one HardFork.
+ *
+ * For each proposal type T:
+ *   typeWeight[T] = count of proposals of type T / total proposals
+ *   covered[T] = 1 if DRep voted on at least one T, else 0
+ *
+ * coverageScore = sum(covered[T] * typeWeight[T]) / sum(typeWeight[T]) * 100
  */
-function computeDissentRate(
+export function computeCoverageBreadth(
   votes: VoteData[],
-  votingSummaries: Map<string, ProposalVotingSummary>,
+  proposalTypeCounts: Map<string, number>,
 ): number {
-  let dissentCount = 0;
-  let eligibleCount = 0;
+  if (proposalTypeCounts.size === 0) return 50;
 
-  for (const v of votes) {
-    if (v.vote === 'Abstain') continue;
-
-    const summary = votingSummaries.get(v.proposalKey);
-    if (!summary) continue;
-
-    eligibleCount++;
-    const majority = summary.drepYesVotePower >= summary.drepNoVotePower ? 'Yes' : 'No';
-
-    if (v.vote !== majority) dissentCount++;
-  }
-
-  if (eligibleCount < DISSENT_CURVE.minVotes) return 50; // too few data points
-
-  const rate = dissentCount / eligibleCount;
-  return scoreDissentCurve(rate);
-}
-
-/**
- * Dissent scoring curve: sweet spot at 15-40%.
- */
-function scoreDissentCurve(rate: number): number {
-  const { zeroRate, sweetSpotStart, sweetSpotEnd, sweetSpotScore, minScore } = DISSENT_CURVE;
-  if (rate <= 0) return zeroRate;
-  if (rate < sweetSpotStart)
-    return zeroRate + (rate / sweetSpotStart) * (sweetSpotScore - zeroRate);
-  if (rate <= sweetSpotEnd) return sweetSpotScore;
-  if (rate < 1.0)
-    return Math.max(
-      minScore,
-      sweetSpotScore - ((rate - sweetSpotEnd) / (1 - sweetSpotEnd)) * (sweetSpotScore - minScore),
-    );
-  return minScore;
-}
-
-/**
- * Proposal type breadth: what fraction of distinct proposal types
- * has this DRep voted on? Rewards governance surface area coverage.
- */
-function computeTypeBreadth(votes: VoteData[], allProposalTypes: Set<string>): number {
-  if (allProposalTypes.size === 0) return 50;
+  const totalProposals = [...proposalTypeCounts.values()].reduce((a, b) => a + b, 0);
+  if (totalProposals === 0) return 50;
 
   const votedTypes = new Set<string>();
   for (const v of votes) votedTypes.add(v.proposalType);
 
-  return (votedTypes.size / allProposalTypes.size) * 100;
+  let coveredWeight = 0;
+  let totalWeight = 0;
+
+  for (const [pType, count] of proposalTypeCounts) {
+    const typeWeight = count / totalProposals;
+    totalWeight += typeWeight;
+    if (votedTypes.has(pType)) {
+      coveredWeight += typeWeight;
+    }
+  }
+
+  return totalWeight === 0 ? 50 : (coveredWeight / totalWeight) * 100;
 }
 
 function clamp(v: number): number {

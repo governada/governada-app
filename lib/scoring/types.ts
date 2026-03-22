@@ -19,6 +19,8 @@ export interface VoteData {
   proposalType: string;
   rationaleQuality: number | null;
   importanceWeight: number;
+  /** CIP-100 metadata hash — unique per rationale document. Used for diversity detection. */
+  rationaleMetaHash: string | null;
 }
 
 export interface ProposalScoringContext {

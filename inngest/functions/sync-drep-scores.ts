@@ -89,6 +89,7 @@ export const syncDrepScores = inngest.createFunction(
           block_time: number;
           epoch_no: number | null;
           rationale_quality: number | null;
+          meta_hash: string | null;
         }> = [];
         {
           const VOTE_PAGE = 1000;
@@ -97,7 +98,7 @@ export const syncDrepScores = inngest.createFunction(
             const { data, error } = await supabase
               .from('drep_votes')
               .select(
-                'drep_id, proposal_tx_hash, proposal_index, vote, block_time, epoch_no, rationale_quality',
+                'drep_id, proposal_tx_hash, proposal_index, vote, block_time, epoch_no, rationale_quality, meta_hash',
               )
               .range(vPage * VOTE_PAGE, (vPage + 1) * VOTE_PAGE - 1);
             if (error) throw new Error(`drep_votes page ${vPage}: ${JSON.stringify(error)}`);
@@ -124,6 +125,7 @@ export const syncDrepScores = inngest.createFunction(
         // Proposal context map
         const proposalContexts = new Map<string, ProposalScoringContext>();
         const allProposalTypes = new Set<string>();
+        const proposalTypeCounts = new Map<string, number>();
         const proposalBlockTimes = new Map<string, number>();
 
         for (const p of proposalRows || []) {
@@ -142,6 +144,10 @@ export const syncDrepScores = inngest.createFunction(
             importanceWeight: weight,
           });
           allProposalTypes.add(p.proposal_type);
+          proposalTypeCounts.set(
+            p.proposal_type,
+            (proposalTypeCounts.get(p.proposal_type) || 0) + 1,
+          );
           proposalBlockTimes.set(key, p.block_time || 0);
         }
 
@@ -192,6 +198,7 @@ export const syncDrepScores = inngest.createFunction(
             proposalType: ctx?.proposalType || 'InfoAction',
             rationaleQuality: v.rationale_quality,
             importanceWeight: ctx?.importanceWeight || 1,
+            rationaleMetaHash: v.meta_hash,
           };
 
           if (!drepVotes.has(v.drep_id)) drepVotes.set(v.drep_id, []);
@@ -247,7 +254,7 @@ export const syncDrepScores = inngest.createFunction(
         const rawEngagement = computeEngagementQuality(
           drepVotes,
           votingSummaries,
-          allProposalTypes,
+          proposalTypeCounts,
           nowSeconds,
         );
 

@@ -18,6 +18,7 @@ import {
   detectTierChange,
   computeDRepConfidence,
   getDRepTierCap,
+  computeSemanticDiversityMap,
   type VoteData,
   type ProposalScoringContext,
   type ProposalVotingSummary,
@@ -305,6 +306,52 @@ export const syncDrepScores = inngest.createFunction(
 
         timing.step2_build_maps_ms = Date.now() - s2;
 
+        // ── Step 2.5: Load rationale embeddings for semantic diversity ──
+        let semanticDiversity: Map<string, number> | undefined;
+        {
+          const sEmb = Date.now();
+          const drepIds = [...drepVotes.keys()];
+
+          // Check if embeddings exist before loading (quick count check)
+          const { count: embCount } = await supabase
+            .from('embeddings')
+            .select('*', { count: 'exact', head: true })
+            .eq('entity_type', 'rationale')
+            .limit(1);
+
+          if (embCount && embCount > 0) {
+            // Load rationale embeddings for all DReps with votes
+            // entity_id format for rationale embeddings: drep_id
+            const { data: embRows } = await supabase
+              .from('embeddings')
+              .select('entity_id, embedding')
+              .eq('entity_type', 'rationale')
+              .in('entity_id', drepIds);
+
+            if (embRows?.length) {
+              const drepEmbeddings = new Map<string, number[][]>();
+              for (const row of embRows) {
+                if (!row.embedding) continue;
+                const vec = row.embedding as unknown as number[];
+                if (!Array.isArray(vec) || vec.length === 0) continue;
+                if (!drepEmbeddings.has(row.entity_id)) {
+                  drepEmbeddings.set(row.entity_id, []);
+                }
+                drepEmbeddings.get(row.entity_id)!.push(vec);
+              }
+
+              semanticDiversity = computeSemanticDiversityMap(drepEmbeddings);
+              logger.info('[scoring] Computed semantic diversity', {
+                drepsWithEmbeddings: drepEmbeddings.size,
+                drepsWithScores: semanticDiversity.size,
+                loadTimeMs: Date.now() - sEmb,
+              });
+            }
+          } else {
+            logger.info('[scoring] No rationale embeddings found, using meta_hash diversity only');
+          }
+        }
+
         // ── Step 3: Compute raw pillar scores ──────────────────────────
         const s3 = Date.now();
 
@@ -313,6 +360,7 @@ export const syncDrepScores = inngest.createFunction(
           votingSummaries,
           proposalTypeCounts,
           nowSeconds,
+          semanticDiversity,
         );
 
         const rawParticipation = computeEffectiveParticipation(

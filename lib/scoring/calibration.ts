@@ -61,6 +61,7 @@ export const DELIBERATION_WEIGHTS = {
 /**
  * Rationale diversity config.
  * Measures unique meta_hashes vs total rationales — detects copy-paste rationales.
+ * V3.2+: Augmented with embedding-based semantic similarity when available.
  * Below minRationales → neutral 50 (insufficient data).
  */
 export const RATIONALE_DIVERSITY_CONFIG = {
@@ -68,6 +69,12 @@ export const RATIONALE_DIVERSITY_CONFIG = {
   minRationales: 3,
   /** Score when below minRationales (neutral). */
   neutralScore: 50,
+  /** Weight for semantic (embedding-based) diversity when available. */
+  semanticWeight: 0.7,
+  /** Weight for meta_hash diversity when semantic is available. */
+  hashWeight: 0.3,
+  /** Minimum embeddings required to use semantic diversity. */
+  minEmbeddingsForSemantic: 3,
 } as const;
 
 /**

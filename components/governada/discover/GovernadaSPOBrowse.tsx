@@ -360,44 +360,44 @@ export function GovernadaSPOBrowse() {
     );
   }
 
-  // ── Spotlight for anonymous/hands-off users ────────────────────────
-  if (!isAtLeast('informed')) {
-    if (spotlightEnabled && spotlightViewMode === 'spotlight') {
-      return (
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight">Explore Stake Pools</h1>
-            <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
-          </div>
-          {solonEnabled && <SolonDiscoveryPanel entityType="spo" entityCount={pools.length} />}
-          {showConstellation && constellationEnabled ? (
-            <ConstellationBrowse
-              trackedIds={spotlightTracking.trackedIds}
-              onNodeSelect={(id) => router.push(`/pool/${id}`)}
-              onClose={() => setShowConstellation(false)}
-            />
-          ) : (
-            <>
-              <SpotlightTheater
-                queue={spotlightQueue}
-                entityType="spo"
-                sort="score"
-                renderCard={renderSpotlightCard}
-                onDetails={handleSpotlightDetails}
-              />
-              {constellationEnabled && spotlightTracking.trackedCount >= 3 && (
-                <ConstellationCTA
-                  trackedCount={spotlightTracking.trackedCount}
-                  onClick={() => setShowConstellation(true)}
-                />
-              )}
-            </>
-          )}
+  // ── Spotlight mode — renders for ALL users when flag is on ──────────
+  if (spotlightEnabled && spotlightViewMode === 'spotlight') {
+    return (
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold tracking-tight">Explore Stake Pools</h1>
+          <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
         </div>
-      );
-    }
+        {solonEnabled && <SolonDiscoveryPanel entityType="spo" entityCount={pools.length} />}
+        {showConstellation && constellationEnabled ? (
+          <ConstellationBrowse
+            trackedIds={spotlightTracking.trackedIds}
+            onNodeSelect={(id) => router.push(`/pool/${id}`)}
+            onClose={() => setShowConstellation(false)}
+          />
+        ) : (
+          <>
+            <SpotlightTheater
+              queue={spotlightQueue}
+              entityType="spo"
+              sort="score"
+              renderCard={renderSpotlightCard}
+              onDetails={handleSpotlightDetails}
+            />
+            {constellationEnabled && spotlightTracking.trackedCount >= 3 && (
+              <ConstellationCTA
+                trackedCount={spotlightTracking.trackedCount}
+                onClick={() => setShowConstellation(true)}
+              />
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
 
-    // Fallback: existing hands-off
+  // ── Hands-Off: match-aware discovery hero ──────────────────────────
+  if (!isAtLeast('informed')) {
     const poolEntities = pools.map((p) => ({
       id: p.poolId,
       name: p.ticker || p.poolName || `${p.poolId.slice(0, 16)}\u2026`,

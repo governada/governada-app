@@ -631,47 +631,47 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
     );
   }
 
-  // ── Spotlight mode for anonymous/hands-off users ────────────────────
-  if (!isAtLeast('informed')) {
-    if (spotlightEnabled && spotlightViewMode === 'spotlight') {
-      return (
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight">Explore Representatives</h1>
-            <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
-          </div>
-
-          {solonEnabled && <SolonDiscoveryPanel entityType="drep" entityCount={dreps.length} />}
-
-          {showConstellation && constellationEnabled ? (
-            <ConstellationBrowse
-              trackedIds={spotlightTracking.trackedIds}
-              onNodeSelect={(id) => router.push(`/drep/${id}`)}
-              onClose={() => setShowConstellation(false)}
-            />
-          ) : (
-            <>
-              <SpotlightTheater
-                queue={spotlightQueue}
-                entityType="drep"
-                sort="score"
-                renderCard={renderSpotlightCard}
-                onDetails={handleSpotlightDetails}
-              />
-
-              {constellationEnabled && spotlightTracking.trackedCount >= 3 && (
-                <ConstellationCTA
-                  trackedCount={spotlightTracking.trackedCount}
-                  onClick={() => setShowConstellation(true)}
-                />
-              )}
-            </>
-          )}
+  // ── Spotlight mode — renders for ALL users when flag is on ──────────
+  if (spotlightEnabled && spotlightViewMode === 'spotlight') {
+    return (
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold tracking-tight">Explore Representatives</h1>
+          <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
         </div>
-      );
-    }
 
-    // Fallback: existing hands-off experience
+        {solonEnabled && <SolonDiscoveryPanel entityType="drep" entityCount={dreps.length} />}
+
+        {showConstellation && constellationEnabled ? (
+          <ConstellationBrowse
+            trackedIds={spotlightTracking.trackedIds}
+            onNodeSelect={(id) => router.push(`/drep/${id}`)}
+            onClose={() => setShowConstellation(false)}
+          />
+        ) : (
+          <>
+            <SpotlightTheater
+              queue={spotlightQueue}
+              entityType="drep"
+              sort="score"
+              renderCard={renderSpotlightCard}
+              onDetails={handleSpotlightDetails}
+            />
+
+            {constellationEnabled && spotlightTracking.trackedCount >= 3 && (
+              <ConstellationCTA
+                trackedCount={spotlightTracking.trackedCount}
+                onClick={() => setShowConstellation(true)}
+              />
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── Hands-Off: match-aware discovery or delegation summary ──────────
+  if (!isAtLeast('informed')) {
     if (delegatedDrepId) {
       return <YourDRepSummary dreps={dreps} />;
     }

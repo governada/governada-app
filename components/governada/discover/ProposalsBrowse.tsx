@@ -309,28 +309,30 @@ export function ProposalsBrowse() {
     );
   }
 
-  // ── Spotlight for hands-off users ──────────────────────────────────
-  if (depthConfig.proposalDetail === 'headline' && !isAtLeast('informed')) {
-    if (spotlightEnabled && spotlightViewMode === 'spotlight') {
-      return (
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight">Explore Proposals</h1>
-            <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
-          </div>
-          {solonEnabled && (
-            <SolonDiscoveryPanel entityType="proposal" entityCount={proposals.length} />
-          )}
-          <SpotlightTheater
-            queue={spotlightQueue}
-            entityType="proposal"
-            sort="score"
-            renderCard={renderSpotlightCard}
-            onDetails={handleSpotlightDetails}
-          />
+  // ── Spotlight mode — renders for ALL users when flag is on ──────────
+  if (spotlightEnabled && spotlightViewMode === 'spotlight') {
+    return (
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold tracking-tight">Explore Proposals</h1>
+          <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
         </div>
-      );
-    }
+        {solonEnabled && (
+          <SolonDiscoveryPanel entityType="proposal" entityCount={proposals.length} />
+        )}
+        <SpotlightTheater
+          queue={spotlightQueue}
+          entityType="proposal"
+          sort="score"
+          renderCard={renderSpotlightCard}
+          onDetails={handleSpotlightDetails}
+        />
+      </div>
+    );
+  }
+
+  // ── Hands-Off: compact status summary only ──────────────────────────────
+  if (depthConfig.proposalDetail === 'headline' && !isAtLeast('informed')) {
     return <ProposalStatusSummary proposals={proposals} />;
   }
 

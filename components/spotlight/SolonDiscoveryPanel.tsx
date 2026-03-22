@@ -2,29 +2,33 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Send, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ScrollText, Send, X, ChevronDown, ChevronUp, Loader2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fadeInUp } from '@/lib/animations';
 import { useAdvisor } from '@/hooks/useAdvisor';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SolonSuggestedPrompts } from './SolonSuggestedPrompts';
 import type { SpotlightEntityType } from './types';
 
+// ─── Seneca's Voice ───────────────────────────────────────────────────────────
+
+const SENECA_TOOLTIP =
+  'Inspired by Seneca the Younger (c.\u00A04\u00A0BC\u2013AD\u00A065) \u2014 Stoic philosopher, statesman, and advisor whose letters on wisdom and governance remain influential two millennia later.';
+
+const SENECA_GREETINGS: Record<SpotlightEntityType, string> = {
+  drep: '"It is not that we have a short time to live, but that we waste a great deal of it." There are representatives below who take governance seriously — and others who registered and vanished. Ask me anything.',
+  spo: 'The pools below don\u2019t just produce blocks \u2014 some also vote on the future of the protocol. Worth knowing which ones show up. Ask me what you want to know.',
+  proposal:
+    'Every proposal below will shape Cardano for years. Some allocate millions from the treasury. Others change the protocol itself. Ask me about any of them.',
+};
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-interface SolonDiscoveryPanelProps {
+interface SenecaDiscoveryPanelProps {
   entityType: SpotlightEntityType;
   entityCount: number;
-  /** Called when Solon wants to curate the spotlight queue */
   onQueryResults?: (query: string) => void;
 }
-
-// ─── Entity Labels ────────────────────────────────────────────────────────────
-
-const ENTITY_LABELS: Record<SpotlightEntityType, string> = {
-  drep: 'representatives',
-  spo: 'stake pools',
-  proposal: 'proposals',
-};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -32,7 +36,7 @@ export function SolonDiscoveryPanel({
   entityType,
   entityCount,
   onQueryResults,
-}: SolonDiscoveryPanelProps) {
+}: SenecaDiscoveryPanelProps) {
   const reducedMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -43,7 +47,6 @@ export function SolonDiscoveryPanel({
     pageContext: `spotlight_discovery_${entityType}`,
   });
 
-  // Auto-scroll messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -51,7 +54,6 @@ export function SolonDiscoveryPanel({
   const handleSend = useCallback(() => {
     const trimmed = inputValue.trim();
     if (!trimmed || isStreaming) return;
-
     sendMessage(trimmed);
     setInputValue('');
     setIsExpanded(true);
@@ -86,45 +88,57 @@ export function SolonDiscoveryPanel({
 
   return (
     <motion.div
-      className="overflow-hidden rounded-xl border border-primary/10 bg-card/40 backdrop-blur-md"
+      className="overflow-hidden rounded-xl border border-border/50 bg-card/70 backdrop-blur-md"
       variants={reducedMotion ? undefined : fadeInUp}
       initial={reducedMotion ? undefined : 'hidden'}
       animate="visible"
     >
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* Solon avatar */}
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-          S
+      {/* Seneca header */}
+      <div className="space-y-3 px-5 pb-2 pt-5 sm:px-6">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <ScrollText className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-help items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Seneca
+                  <Info className="h-3 w-3 text-muted-foreground/40" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4} className="max-w-[260px]">
+                {SENECA_TOOLTIP}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {hasMessages && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="ml-auto shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          )}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-muted-foreground">
-            Cardano has{' '}
-            <span className="tabular-nums font-medium text-foreground">{entityCount}</span> active{' '}
-            {ENTITY_LABELS[entityType]}.{' '}
-            <span className="text-primary/80">What matters to you in governance?</span>
+        {/* Seneca's greeting — italic, Stoic voice */}
+        {!hasMessages && (
+          <p className="text-sm italic leading-relaxed text-muted-foreground">
+            {SENECA_GREETINGS[entityType]}
           </p>
-        </div>
-
-        {hasMessages && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground"
-          >
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
         )}
       </div>
 
       {/* Suggested prompts (only when no messages) */}
       {!hasMessages && (
-        <div className="border-t border-border/10 px-4 py-3">
+        <div className="border-t border-border/10 px-5 py-3 sm:px-6">
           <SolonSuggestedPrompts entityType={entityType} onSelect={handlePromptSelect} />
         </div>
       )}
 
-      {/* Messages (expandable) */}
+      {/* Conversation messages */}
       <AnimatePresence>
         {isExpanded && hasMessages && (
           <motion.div
@@ -134,7 +148,7 @@ export function SolonDiscoveryPanel({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="max-h-60 space-y-3 overflow-y-auto border-t border-border/10 px-4 py-3">
+            <div className="max-h-60 space-y-3 overflow-y-auto border-t border-border/10 px-5 py-3 sm:px-6">
               {messages.map((msg, i) => (
                 <div
                   key={i}
@@ -148,7 +162,7 @@ export function SolonDiscoveryPanel({
                       {msg.content}
                     </span>
                   ) : (
-                    <span>
+                    <span className="italic">
                       {msg.content}
                       {isStreaming && i === messages.length - 1 && (
                         <span className="ml-1 inline-flex gap-0.5">
@@ -168,8 +182,7 @@ export function SolonDiscoveryPanel({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Clear button */}
-            <div className="flex justify-end border-t border-border/10 px-4 py-2">
+            <div className="flex justify-end border-t border-border/10 px-5 py-2 sm:px-6">
               <button
                 onClick={handleClear}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -182,15 +195,16 @@ export function SolonDiscoveryPanel({
         )}
       </AnimatePresence>
 
-      {/* Input */}
-      <div className="flex items-center gap-2 border-t border-border/10 px-4 py-2.5">
+      {/* Input — "Ask Seneca" */}
+      <div className="flex items-center gap-2 border-t border-border/10 px-5 py-2.5 sm:px-6">
+        <ScrollText className="h-3.5 w-3.5 shrink-0 text-primary/40" />
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={`Ask about ${ENTITY_LABELS[entityType]}...`}
+          placeholder="Ask Seneca anything\u2026"
           className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
           disabled={isStreaming}
         />
@@ -207,9 +221,8 @@ export function SolonDiscoveryPanel({
         </button>
       </div>
 
-      {/* Error */}
       {error && (
-        <div className="border-t border-red-500/20 bg-red-500/5 px-4 py-2 text-xs text-red-400">
+        <div className="border-t border-red-500/20 bg-red-500/5 px-5 py-2 text-xs text-red-400 sm:px-6">
           {error}
         </div>
       )}

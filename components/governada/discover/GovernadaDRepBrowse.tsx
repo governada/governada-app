@@ -60,11 +60,10 @@ import {
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { SpotlightTheater } from '@/components/spotlight/SpotlightTheater';
 import { SpotlightDRepCard } from '@/components/spotlight/SpotlightDRepCard';
-import { ViewModeToggle } from '@/components/spotlight/ViewModeToggle';
 import { SolonDiscoveryPanel } from '@/components/spotlight/SolonDiscoveryPanel';
 import { ConstellationCTA } from '@/components/spotlight/ConstellationCTA';
 import { ConstellationBrowse } from '@/components/spotlight/ConstellationBrowse';
-import { useSpotlightTracking, useSpotlightViewMode } from '@/hooks/useSpotlightTracking';
+import { useSpotlightTracking } from '@/hooks/useSpotlightTracking';
 import { useSpotlightNarrative } from '@/hooks/useSpotlightNarratives';
 import type { SpotlightEntity } from '@/components/spotlight/types';
 
@@ -594,7 +593,6 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
   const spotlightEnabled = useFeatureFlag('spotlight_browse');
   const solonEnabled = useFeatureFlag('solon_discovery');
   const constellationEnabled = useFeatureFlag('constellation_browse');
-  const [spotlightViewMode, setSpotlightViewMode] = useSpotlightViewMode();
   const spotlightTracking = useSpotlightTracking('drep');
   const [showConstellation, setShowConstellation] = useState(false);
   const router = useRouter();
@@ -632,13 +630,10 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
   }
 
   // ── Spotlight mode — renders for ALL users when flag is on ──────────
-  if (spotlightEnabled && spotlightViewMode === 'spotlight') {
+  if (spotlightEnabled) {
     return (
       <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight">Explore Representatives</h1>
-          <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
-        </div>
+        <h1 className="text-xl font-bold tracking-tight">Explore Representatives</h1>
 
         {solonEnabled && <SolonDiscoveryPanel entityType="drep" entityCount={dreps.length} />}
 

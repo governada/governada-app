@@ -27,9 +27,8 @@ import { useRouter } from 'next/navigation';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { SpotlightTheater } from '@/components/spotlight/SpotlightTheater';
 import { SpotlightProposalCard } from '@/components/spotlight/SpotlightProposalCard';
-import { ViewModeToggle } from '@/components/spotlight/ViewModeToggle';
 import { SolonDiscoveryPanel } from '@/components/spotlight/SolonDiscoveryPanel';
-import { useSpotlightTracking, useSpotlightViewMode } from '@/hooks/useSpotlightTracking';
+import { useSpotlightTracking } from '@/hooks/useSpotlightTracking';
 import type { SpotlightEntity } from '@/components/spotlight/types';
 
 const STATUS_FILTERS = ['All', 'Open', 'Ratified', 'Enacted', 'Expired', 'Dropped'];
@@ -265,7 +264,6 @@ export function ProposalsBrowse() {
   // ── Spotlight mode ──────────────────────────────────────────────────
   const spotlightEnabled = useFeatureFlag('spotlight_browse');
   const solonEnabled = useFeatureFlag('solon_discovery');
-  const [spotlightViewMode, setSpotlightViewMode] = useSpotlightViewMode();
   const spotlightTracking = useSpotlightTracking('proposal');
   const router = useRouter();
 
@@ -310,13 +308,10 @@ export function ProposalsBrowse() {
   }
 
   // ── Spotlight mode — renders for ALL users when flag is on ──────────
-  if (spotlightEnabled && spotlightViewMode === 'spotlight') {
+  if (spotlightEnabled) {
     return (
       <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight">Explore Proposals</h1>
-          <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
-        </div>
+        <h1 className="text-xl font-bold tracking-tight">Explore Proposals</h1>
         {solonEnabled && (
           <SolonDiscoveryPanel entityType="proposal" entityCount={proposals.length} />
         )}

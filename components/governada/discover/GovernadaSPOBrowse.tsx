@@ -40,11 +40,10 @@ import { useRouter } from 'next/navigation';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { SpotlightTheater } from '@/components/spotlight/SpotlightTheater';
 import { SpotlightSPOCard } from '@/components/spotlight/SpotlightSPOCard';
-import { ViewModeToggle } from '@/components/spotlight/ViewModeToggle';
 import { SolonDiscoveryPanel } from '@/components/spotlight/SolonDiscoveryPanel';
 import { ConstellationCTA } from '@/components/spotlight/ConstellationCTA';
 import { ConstellationBrowse } from '@/components/spotlight/ConstellationBrowse';
-import { useSpotlightTracking, useSpotlightViewMode } from '@/hooks/useSpotlightTracking';
+import { useSpotlightTracking } from '@/hooks/useSpotlightTracking';
 import type { SpotlightEntity } from '@/components/spotlight/types';
 
 /* ── Constants ──────────────────────────────────────────────────── */
@@ -318,7 +317,6 @@ export function GovernadaSPOBrowse() {
   const spotlightEnabled = useFeatureFlag('spotlight_browse');
   const solonEnabled = useFeatureFlag('solon_discovery');
   const constellationEnabled = useFeatureFlag('constellation_browse');
-  const [spotlightViewMode, setSpotlightViewMode] = useSpotlightViewMode();
   const spotlightTracking = useSpotlightTracking('spo');
   const [showConstellation, setShowConstellation] = useState(false);
   const router = useRouter();
@@ -361,13 +359,10 @@ export function GovernadaSPOBrowse() {
   }
 
   // ── Spotlight mode — renders for ALL users when flag is on ──────────
-  if (spotlightEnabled && spotlightViewMode === 'spotlight') {
+  if (spotlightEnabled) {
     return (
       <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight">Explore Stake Pools</h1>
-          <ViewModeToggle mode={spotlightViewMode} onChange={setSpotlightViewMode} hideTable />
-        </div>
+        <h1 className="text-xl font-bold tracking-tight">Explore Stake Pools</h1>
         {solonEnabled && <SolonDiscoveryPanel entityType="spo" entityCount={pools.length} />}
         {showConstellation && constellationEnabled ? (
           <ConstellationBrowse

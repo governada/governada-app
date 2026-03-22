@@ -49,6 +49,8 @@ export interface DRepProfileData {
   brokenUris?: Set<string>;
   /** Unix seconds when the profile was last updated on-chain, or null if unknown. */
   updatedAt: number | null;
+  /** Unix seconds when profile_metadata_hash last changed, or null if not yet tracked. */
+  profileLastChangedAt: number | null;
 }
 
 /**

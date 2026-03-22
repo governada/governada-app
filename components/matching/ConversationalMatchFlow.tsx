@@ -199,6 +199,11 @@ export function ConversationalMatchFlow({
       getMatches();
     }
     if (status === 'matched' && flowState !== 'results') {
+      // Fly to the top match node before revealing results — the "found you" moment
+      if (matches && matches.length > 0 && globeRef.current?.flyToMatch) {
+        globeRef.current.flyToMatch(matches[0].drepId).catch(() => {});
+      }
+
       setFlowState('results');
       pushUrlState('results', 'results');
       if (matches) {

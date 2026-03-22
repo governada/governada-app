@@ -35,6 +35,7 @@ export interface ConstellationRef {
   pulseNode: (drepId: string) => void;
   resetCamera: () => void;
   highlightMatches: (userAlignment: number[], threshold: number) => void;
+  flyToMatch: (drepId: string) => Promise<void>;
   clearMatches: () => void;
 }
 

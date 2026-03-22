@@ -54,7 +54,7 @@ interface SceneState {
 const AXIAL_TILT = 23.4 * (Math.PI / 180);
 const INITIAL_CAMERA: [number, number, number] = [0, 3, 14];
 const INITIAL_TARGET: [number, number, number] = [0, 0, 0];
-const ROTATION_SPEED = 0.012; // slow, majestic rotation (~8.7 min/revolution)
+const DEFAULT_ROTATION_SPEED = 0.012; // slow, majestic rotation (~8.7 min/revolution)
 
 export const GlobeConstellation = forwardRef<
   import('@/components/GovernanceConstellation').ConstellationRef,
@@ -65,6 +65,7 @@ export const GlobeConstellation = forwardRef<
 ) {
   const cameraControlsRef = useRef<CameraControls>(null);
   const rotationAngleRef = useRef(0);
+  const rotationSpeedRef = useRef(DEFAULT_ROTATION_SPEED);
   const [ready, setReady] = useState(false);
   const [sceneState, setSceneState] = useState<SceneState>({
     nodes: [],
@@ -208,7 +209,7 @@ export const GlobeConstellation = forwardRef<
         dimmed: matched.size > 0,
       }));
 
-      // Camera drift toward matched cluster centroid
+      // Progressive camera zoom — closer as threshold narrows ("Xavier's room" convergence)
       if (matched.size > 0 && cameraControlsRef.current) {
         let cx = 0,
           cy = 0,
@@ -227,20 +228,53 @@ export const GlobeConstellation = forwardRef<
           cx /= count;
           cy /= count;
           cz /= count;
-          // Gentle camera drift -- don't zoom in, just rotate to show cluster
-          const camDist = 14; // maintain current distance
+
+          // Zoom level scales with threshold — tighter threshold = closer camera
+          // threshold 160 → camDist 13 (barely zoomed), threshold 35 → camDist 6 (very close)
+          const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
+
+          // Slow rotation as we zoom in — creates "locking on" feeling
+          // Full speed at zoomFactor 0, near-stopped at zoomFactor 1
+          rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * (1 - zoomFactor * 0.85);
+          const camDist = 13 - zoomFactor * 7; // 13 → 6
+          const lookWeight = 0.3 + zoomFactor * 0.4; // 0.3 → 0.7 (look more directly at cluster)
+
           const dir = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1;
+          const nx = cx / dir;
+          const ny = cy / dir;
+          const nz = cz / dir;
+
           cameraControlsRef.current.setLookAt(
-            (cx / dir) * camDist * 0.3,
-            (cy / dir) * camDist * 0.3 + 3,
-            (cz / dir) * camDist * 0.7 + 10,
-            cx * 0.3,
-            cy * 0.3,
-            cz * 0.3,
-            true, // smooth transition
+            nx * camDist * lookWeight,
+            ny * camDist * lookWeight + (3 - zoomFactor * 1.5),
+            nz * camDist * (1 - lookWeight * 0.3) + camDist * 0.5,
+            cx * lookWeight,
+            cy * lookWeight,
+            cz * lookWeight,
+            true,
           );
         }
       }
+    },
+
+    flyToMatch: async (drepId: string) => {
+      // Final "locking on" — fly to the top match node dramatically
+      const node = sceneState.nodes.find((n) => n.id === drepId || n.fullId === drepId);
+      if (!node || !cameraControlsRef.current) return;
+
+      // Stop rotation completely
+      rotationSpeedRef.current = 0;
+
+      // Pulse the node
+      setSceneState((prev) => ({ ...prev, pulseId: drepId, animating: true }));
+
+      // Fly to the node — close and personal
+      const [x, y, z] = rotateAroundY(node.position, rotationAngleRef.current);
+      await cameraControlsRef.current.setLookAt(x * 1.3, y * 1.3, z * 1.3 + 2.5, x, y, z, true);
+
+      // Hold the pulse a bit longer than normal
+      await sleep(1500);
+      setSceneState((prev) => ({ ...prev, pulseId: null, animating: false }));
     },
 
     clearMatches: () => {
@@ -250,6 +284,7 @@ export const GlobeConstellation = forwardRef<
         matchIntensities: new Map(),
         dimmed: false,
       }));
+      rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
       cameraControlsRef.current?.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
     },
   }));
@@ -292,7 +327,11 @@ export const GlobeConstellation = forwardRef<
           <ambientLight intensity={0.05} />
 
           <AmbientStarfield count={quality === 'low' ? 200 : 400} />
-          <TiltedGlobeGroup enabled={!sceneState.animating} rotationRef={rotationAngleRef}>
+          <TiltedGlobeGroup
+            enabled={!sceneState.animating}
+            rotationRef={rotationAngleRef}
+            speedRef={rotationSpeedRef}
+          >
             <InnerGlow />
             <GlobeAtmosphere radius={8.1} color="#4488cc" intensity={0.8} />
             <GlobeAtmosphere radius={8.5} color="#2244aa" intensity={0.3} />
@@ -677,28 +716,30 @@ function NodePoints({
       const isMatched = matchedNodeIds.has(node.id);
       const matchIntensity = matchIntensities.get(node.id) ?? 0;
 
-      // COLOR: lerp toward MATCH_COLOR when matched
+      // COLOR: lerp toward MATCH_COLOR when matched, boost emissive for glow
       tmpColor.set(getColor(node));
       if (isMatched && matchingActive) {
         const origR = tmpColor.r;
         const origG = tmpColor.g;
         const origB = tmpColor.b;
-        const blend = matchIntensity * 0.85; // strong but not total replacement
+        const blend = matchIntensity * 0.85;
         const blendedR = origR + (matchColor.r - origR) * blend;
         const blendedG = origG + (matchColor.g - origG) * blend;
         const blendedB = origB + (matchColor.b - origB) * blend;
-        colors[i * 3] = blendedR * emissive;
-        colors[i * 3 + 1] = blendedG * emissive;
-        colors[i * 3 + 2] = blendedB * emissive;
+        // Boost emissive for high-intensity matches — drives stronger bloom glow
+        const matchEmissive = emissive * (1 + matchIntensity * 1.2);
+        colors[i * 3] = blendedR * matchEmissive;
+        colors[i * 3 + 1] = blendedG * matchEmissive;
+        colors[i * 3 + 2] = blendedB * matchEmissive;
       } else {
         colors[i * 3] = tmpColor.r * emissive;
         colors[i * 3 + 1] = tmpColor.g * emissive;
         colors[i * 3 + 2] = tmpColor.b * emissive;
       }
 
-      // SIZE: matched nodes slightly larger
+      // SIZE: matched nodes grow more dramatically with intensity
       const baseSize = isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale;
-      sizes[i] = (isMatched ? baseSize * (1 + 0.3 * matchIntensity) : baseSize) * POINT_SCALE;
+      sizes[i] = (isMatched ? baseSize * (1 + 0.5 * matchIntensity) : baseSize) * POINT_SCALE;
 
       // DIMMED: non-matched dim when matching is active
       dimmedArr[i] =
@@ -1083,10 +1124,12 @@ function NetworkPulses({ edges, dimmed }: { edges: ConstellationEdge3D[]; dimmed
 function TiltedGlobeGroup({
   enabled,
   rotationRef,
+  speedRef,
   children,
 }: {
   enabled: boolean;
   rotationRef: React.MutableRefObject<number>;
+  speedRef: React.MutableRefObject<number>;
   children: React.ReactNode;
 }) {
   const groupRef = useRef<THREE.Group>(null);
@@ -1094,7 +1137,7 @@ function TiltedGlobeGroup({
   useFrame((_, delta) => {
     if (groupRef.current) {
       if (enabled) {
-        rotationRef.current += delta * ROTATION_SPEED;
+        rotationRef.current += delta * speedRef.current;
       }
       // Apply axial tilt on X, then spin on Y (local)
       groupRef.current.rotation.x = AXIAL_TILT;

@@ -33,6 +33,7 @@ Build failures or production bugs if violated:
 - **`.env.local` is PRODUCTION.** No sync/backfill/write ops without user approval.
 - **Feature-flag risky features** via `getFeatureFlag()` / `<FeatureGate>`.
 - **Feature flags for proposal workspace.** All proposal features gated behind `proposal_workspace` and sub-flags (`review_inline_annotations`, `review_treasury_impact`, etc.). See `lib/featureFlags.ts`.
+- **Log deferred work.** When intentionally deferring work to post-launch (validation studies, data-dependent features, follow-up improvements), add it to `docs/strategy/context/post-launch-followups.md` with: source, priority, why deferred, what's needed, and success criteria. This is the single source of truth for unfinished work.
 
 ## Tech Stack
 
@@ -120,6 +121,7 @@ C:\Users\dalto\governada\
 | Work plan template (parallel agents)      | `docs/strategy/context/work-plan-template.md`      | ~80   |
 | Competitive landscape (updated by audits) | `docs/strategy/context/competitive-landscape.md`   | ~150  |
 | World-class patterns library              | `docs/strategy/context/world-class-patterns.md`    | ~100  |
+| Post-launch follow-ups (deferred work)    | `docs/strategy/context/post-launch-followups.md`   | ~50   |
 | Design language (Compass spec)            | `docs/strategy/design-language.md`                 | ~590  |
 | Civic Identity Rings plan                 | `docs/strategy/plans/civic-identity-rings.md`      | ~280  |
 | Full vision (strategic audits only)       | `docs/strategy/ultimate-vision.md`                 | ~730  |

@@ -3,7 +3,7 @@
 /**
  * Score Breakdown Component
  * Provides tooltip content for DRep Score breakdown
- * Shows: Rationale (35%), Effective Participation (30%), Reliability (20%), Profile (15%)
+ * Shows: Engagement Quality (40%), Effective Participation (25%), Reliability (25%), Governance Identity (10%)
  */
 
 import { EnrichedDRep } from '@/lib/koios';
@@ -17,10 +17,10 @@ interface ScoreBreakdownProps {
 }
 
 export const WEIGHTS = {
-  effectiveParticipation: 0.3,
-  rationale: 0.35,
-  reliability: 0.2,
-  profileCompleteness: 0.15,
+  engagementQuality: 0.4,
+  effectiveParticipation: 0.25,
+  reliability: 0.25,
+  governanceIdentity: 0.1,
 };
 
 export function ScoreBreakdownTooltip({ drep, children }: ScoreBreakdownProps) {
@@ -33,32 +33,32 @@ export function ScoreBreakdownTooltip({ drep, children }: ScoreBreakdownProps) {
 
   const components = [
     {
+      label: 'Engagement Quality',
+      value: applyRationaleCurve(safeRationale),
+      weight: WEIGHTS.engagementQuality,
+      description:
+        'Rationale provision, AI-assessed quality, and deliberation signals. Outcome-blind scoring rewards quality reasoning regardless of vote direction.',
+    },
+    {
       label: 'Effective Participation',
       value: safeEffectiveParticipation,
       weight: WEIGHTS.effectiveParticipation,
       description:
-        'How often this DRep votes on available proposals. Discounted if voting pattern suggests rubber-stamping.',
-    },
-    {
-      label: 'Rationale',
-      value: applyRationaleCurve(safeRationale),
-      weight: WEIGHTS.rationale,
-      description:
-        'Weighted by proposal importance. InfoActions excluded. Curve-adjusted to reward consistent effort.',
+        'Importance-weighted voting coverage. Critical proposals count 3x, close-margin proposals get a 1.5x bonus.',
     },
     {
       label: 'Reliability',
       value: safeReliability,
       weight: WEIGHTS.reliability,
       description:
-        'Can delegators count on this DRep to keep showing up? Measures voting streak, recency, and gaps.',
+        'Can delegators count on this DRep to keep showing up? Measures active streak, recency, gaps, and tenure.',
     },
     {
-      label: 'Profile Completeness',
+      label: 'Governance Identity',
       value: safeProfileCompleteness,
-      weight: WEIGHTS.profileCompleteness,
+      weight: WEIGHTS.governanceIdentity,
       description:
-        'CIP-119 metadata completeness: objectives, motivations, qualifications, and verified social links.',
+        'Profile quality (CIP-119 metadata with staleness decay) and delegation health (retention, diversity, growth).',
     },
   ];
 

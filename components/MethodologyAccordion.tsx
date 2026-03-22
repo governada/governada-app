@@ -19,12 +19,44 @@ export function MethodologyAccordion() {
           <AccordionTrigger className="text-xs py-2">Overall Formula</AccordionTrigger>
           <AccordionContent className="text-xs text-muted-foreground space-y-2">
             <code className="block bg-muted p-2 rounded text-[11px]">
-              Score = (Participation × 0.30) + (Rationale × 0.35) + (Reliability × 0.20) + (Profile
-              × 0.15)
+              Score = (Engagement Quality × 0.40) + (Effective Participation × 0.25) + (Reliability
+              × 0.25) + (Governance Identity × 0.10)
             </code>
             <p>
-              Rationale is weighted highest because explaining votes is the best signal of
-              accountability.
+              Engagement Quality is weighted highest because explaining votes with quality reasoning
+              is the strongest signal of governance accountability.
+            </p>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="engagement">
+          <AccordionTrigger className="text-xs py-2">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              Engagement Quality (40%)
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="text-xs text-muted-foreground space-y-2">
+            <p>
+              Three layers measuring depth of governance engagement: rationale provision,
+              AI-assessed rationale quality, and deliberation signals.
+            </p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li>
+                <strong>Provision Rate (40%)</strong>: Importance-weighted % of votes with rationale
+              </li>
+              <li>
+                <strong>Rationale Quality (40%)</strong>: AI-scored reasoning quality. Outcome-blind
+                &mdash; same quality earns the same score regardless of vote direction
+              </li>
+              <li>
+                <strong>Deliberation Signal (20%)</strong>: Rationale diversity (60%) + coverage
+                breadth (40%)
+              </li>
+            </ul>
+            <p>
+              DReps who vote against the majority with quality rationale (score 60+) receive a 1.2x
+              quality bonus. Copy-paste rationales are detected and penalized.
             </p>
           </AccordionContent>
         </AccordionItem>
@@ -32,106 +64,78 @@ export function MethodologyAccordion() {
         <AccordionItem value="participation">
           <AccordionTrigger className="text-xs py-2">
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              Effective Participation (30%)
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Effective Participation (25%)
             </span>
           </AccordionTrigger>
           <AccordionContent className="text-xs text-muted-foreground space-y-2">
             <p>
-              Raw participation rate adjusted by a Deliberation Modifier that penalizes uniform
-              voting patterns.
+              Importance-weighted voting coverage with temporal decay. Critical proposals (hard
+              forks, constitutional changes) count 3x; important proposals 2x.
             </p>
             <ul className="list-disc pl-4 space-y-0.5">
-              <li>&gt;95% same direction: 30% penalty</li>
-              <li>&gt;90% same direction: 15% penalty</li>
-              <li>≤85% same direction: no penalty</li>
+              <li>Close-margin proposals (decided by &lt;20% margin) receive a 1.5x bonus</li>
+              <li>Older votes decay over time &mdash; current engagement matters most</li>
             </ul>
-            <p>
-              Rubber-stamping is penalized — thoughtful DReps engage with each proposal
-              individually.
-            </p>
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="rationale">
-          <AccordionTrigger className="text-xs py-2">
-            <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-              Rationale Quality (35%)
-            </span>
-          </AccordionTrigger>
-          <AccordionContent className="text-xs text-muted-foreground space-y-2">
-            <p>
-              Measures how often meaningful on-chain rationale is provided, weighted by proposal
-              importance.
-            </p>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>
-                <strong>Critical (3×)</strong>: Hard forks, no confidence, committee changes
-              </li>
-              <li>
-                <strong>Important (2×)</strong>: Treasury withdrawals &gt;1M, parameter changes
-              </li>
-              <li>
-                <strong>Standard (1×)</strong>: Routine treasury withdrawals
-              </li>
-            </ul>
-            <p>
-              A forgiving curve rewards initial effort. Min 50 characters to count as rationale.
-            </p>
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="reliability">
           <AccordionTrigger className="text-xs py-2">
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-purple-500" />
-              Reliability (20%)
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              Reliability (25%)
             </span>
           </AccordionTrigger>
           <AccordionContent className="text-xs text-muted-foreground space-y-2">
             <p>
-              Tracks the pattern of engagement over time — can you count on this DRep to show up?
+              Tracks the pattern of engagement over time &mdash; can you count on this DRep to show
+              up?
             </p>
             <ul className="list-disc pl-4 space-y-0.5">
               <li>
-                <strong>Active Streak (35%)</strong>: Consecutive epochs with votes
+                <strong>Active Streak (35%)</strong>: Consecutive proposal-active epochs with votes
               </li>
               <li>
                 <strong>Recency (30%)</strong>: Exponential decay since last vote
               </li>
               <li>
-                <strong>Gap Penalty (20%)</strong>: Penalizes longest inactivity stretch
+                <strong>Gap Penalty (25%)</strong>: Penalizes longest inactivity stretch
               </li>
               <li>
-                <strong>Tenure (15%)</strong>: Time since first vote (log curve)
+                <strong>Tenure (10%)</strong>: Time since first vote (log curve)
               </li>
             </ul>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="profile">
+        <AccordionItem value="identity">
           <AccordionTrigger className="text-xs py-2">
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-cyan-500" />
-              Profile Completeness (15%)
+              <span className="h-2 w-2 rounded-full bg-violet-500" />
+              Governance Identity (10%)
             </span>
           </AccordionTrigger>
           <AccordionContent className="text-xs text-muted-foreground space-y-2">
-            <p>Rewards DReps who provide useful identity and intent information:</p>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>Name, bio/description, social links</li>
-              <li>Objectives, motivations, qualifications (CIP-119)</li>
-              <li>Payment address for accountability</li>
-            </ul>
             <p>
-              Well-documented profiles score higher since delegators can make informed decisions.
+              Rewards DReps who provide meaningful identity information and maintain healthy
+              delegation relationships.
             </p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li>
+                <strong>Profile Quality (60%)</strong>: CIP-119 metadata completeness with staleness
+                decay for outdated profiles
+              </li>
+              <li>
+                <strong>Delegation Health (40%)</strong>: Retention, diversity, and organic growth
+                signals
+              </li>
+            </ul>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
       <Link
-        href="/methodology"
+        href="/help/methodology"
         className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
       >
         See full methodology &rarr;

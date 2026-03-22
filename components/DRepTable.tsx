@@ -140,7 +140,7 @@ export function DRepTable({
             <SortableHeader
               columnKey="drepScore"
               label="DRep Score"
-              tooltip="An objective 0-100 accountability score based on Effective Participation (45%), Rationale (35%), and Consistency (20%). Hover over the score for breakdown."
+              tooltip="An objective 0-100 accountability score based on Engagement Quality (40%), Effective Participation (25%), Reliability (25%), and Governance Identity (10%). Hover over the score for breakdown."
               align="center"
             />
 

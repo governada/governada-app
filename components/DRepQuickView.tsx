@@ -57,9 +57,10 @@ export function DRepQuickView({
   const score = drep.drepScore ?? 0;
 
   const pillars = [
-    { label: 'Effective Participation', value: drep.effectiveParticipation, weight: '45%' },
-    { label: 'Rationale Quality', value: drep.rationaleRate, weight: '35%' },
-    { label: 'Reliability', value: drep.reliabilityScore, weight: '20%' },
+    { label: 'Engagement Quality', value: drep.rationaleRate, weight: '40%' },
+    { label: 'Effective Participation', value: drep.effectiveParticipation, weight: '25%' },
+    { label: 'Reliability', value: drep.reliabilityScore, weight: '25%' },
+    { label: 'Governance Identity', value: drep.profileCompleteness, weight: '10%' },
   ];
 
   return (

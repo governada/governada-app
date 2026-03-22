@@ -90,10 +90,11 @@ describe('computeDRepScores', () => {
 
     const result = results.get('solo')!;
     // Calibrated via piecewise linear curves (absolute, not percentile)
-    expect(result.engagementQualityCalibrated).toBe(89);
-    expect(result.effectiveParticipationCalibrated).toBe(76);
-    expect(result.reliabilityCalibrated).toBe(91);
-    expect(result.governanceIdentityCalibrated).toBe(65);
+    // V3.2 justified calibration: EQ{8,28,58,82}, EP{12,32,65,88}, Rel{12,35,68,88}, GI{15,35,62,82}
+    expect(result.engagementQualityCalibrated).toBe(91);
+    expect(result.effectiveParticipationCalibrated).toBe(75);
+    expect(result.reliabilityCalibrated).toBe(89);
+    expect(result.governanceIdentityCalibrated).toBe(61);
     expect(result.composite).toBe(84);
   });
 
@@ -262,12 +263,13 @@ describe('computeDRepScores', () => {
 
     // With absolute calibration (not percentile), scores are determined solely by raw values:
     //   a (90/85/80/75): high raws → high calibrated → composite ~93
-    //   b (60/55/50/45): mid raws → mid calibrated → composite ~73
-    //   c (30/25/20/15): low raws → low calibrated → composite ~43
+    //   b (60/55/50/45): mid raws → mid calibrated → composite ~72
+    //   c (30/25/20/15): low raws → low calibrated → composite ~40
+    // V3.2 justified calibration curves: EQ{8,28,58,82}, EP{12,32,65,88}, Rel{12,35,68,88}, GI{15,35,62,82}
     // V3.2 weights: EQ 40%, EP 25%, Rel 25%, GI 10%
     expect(results.get('a')!.composite).toBe(93);
-    expect(results.get('b')!.composite).toBe(73);
-    expect(results.get('c')!.composite).toBe(44);
+    expect(results.get('b')!.composite).toBe(72);
+    expect(results.get('c')!.composite).toBe(40);
   });
 
   // ── Confidence field ──

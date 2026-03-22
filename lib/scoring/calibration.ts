@@ -344,6 +344,17 @@ export const TIER_BOUNDARIES = [
 // ---------------------------------------------------------------------------
 
 /**
+ * Calibration version metadata — tracks when curves were last justified
+ * and what methodology was used.
+ */
+export const CALIBRATION_VERSION = {
+  version: '3.2.0',
+  lastCalibrated: '2026-03-22',
+  methodology:
+    'Behavioral threshold analysis — each breakpoint maps to specific governance behaviors. See comments on DREP_PILLAR_CALIBRATION and SPO_PILLAR_CALIBRATION.',
+} as const;
+
+/**
  * Absolute calibration curves for DRep pillar scores.
  * Replaces percentile normalization: raw score → calibrated score via
  * piecewise linear mapping. Your actions = your score, independent of
@@ -351,61 +362,308 @@ export const TIER_BOUNDARIES = [
  *
  * This enables measuring growth in average DRep scores over time as a
  * measure of Governada's impact on Cardano governance health.
+ *
+ * Each breakpoint is justified by the behavioral thresholds derived from
+ * the scoring functions. The calibrate() function maps:
+ *   Below floor    → 0-20  (Critical / Emerging tier)
+ *   Floor→targetLow  → 20-50 (Fair / Bronze-range)
+ *   TargetLow→targetHigh → 50-80 (Good / Silver-Gold range)
+ *   TargetHigh→ceiling  → 80-95 (Strong / Diamond range)
+ *   Above ceiling   → capped at 95
  */
 export const DREP_PILLAR_CALIBRATION = {
+  /**
+   * Engagement Quality (40% of composite).
+   * Three layers: Provision Rate (40%), Rationale Quality (40%), Deliberation (20%).
+   *
+   * Raw score composition at behavioral milestones:
+   * - raw ≈ 0: No votes or no rationales at all → score 0.
+   * - raw ≈ 8: Votes on a few proposals, provides rationale ~20% of the time,
+   *   rationale quality avg ~20/100, neutral deliberation (50 from < 3 rationales).
+   *   Provision: 20×0.4=8, Quality: 20×0.4=8, Deliberation: 50×0.2=10 → ~26 raw.
+   *   Actually this is higher — floor should catch truly minimal engagement.
+   *   floor=8 catches: voted 1-2 times, 1 low-quality rationale.
+   *   Provision ~10%, Quality ~10, Delib neutral → 10×0.4 + 10×0.4 + 50×0.2 = 18.
+   *   floor=8 means even that maps to calibrated ~20 (fair entry).
+   *
+   * - floor (8): DRep voted once or twice total, provided 1 rationale of minimal
+   *   quality. Provision ~5-10%, quality ~5-10, deliberation neutral (50).
+   *   Raw ≈ 5×0.4 + 5×0.4 + 50×0.2 = 14 — but with decay, recent single vote
+   *   could yield ~8. Calibrated: 20 (entering "fair" zone).
+   *
+   * - targetLow (28): Votes on ~30% of proposals, provides rationales ~40% of the
+   *   time, avg quality ~35/100, moderate diversity.
+   *   Provision: 40×0.4=16, Quality: 35×0.4=14, Deliberation: ~45×0.2=9 → ~39 raw.
+   *   With decay pulling older votes down, active DRep at this level ≈ 28.
+   *   Calibrated: 50 (midpoint, solidly "fair" → entering "good").
+   *
+   * - targetHigh (58): Votes on 60%+ of proposals, provides rationales ~75% of the
+   *   time, avg quality ~60/100, good diversity (unique rationales, covers most
+   *   proposal types). Some dissent-with-substance bonuses.
+   *   Provision: 75×0.4=30, Quality: 60×0.4=24, Deliberation: ~70×0.2=14 → ~68 raw.
+   *   Temporal decay moderates to ~58 for sustained behavior.
+   *   Calibrated: 80 (entering "strong" zone).
+   *
+   * - ceiling (82): Votes on 90%+ of proposals, provides rationales ~95% of the time,
+   *   avg quality ~80/100, excellent diversity, dissent bonuses on minority votes.
+   *   Provision: 95×0.4=38, Quality: 80×0.4=32, Deliberation: ~85×0.2=17 → ~87 raw.
+   *   With decay: ~82. Calibrated: 95 (cap — near-perfect engagement).
+   */
   engagementQuality: {
-    floor: 5,
-    targetLow: 25,
-    targetHigh: 60,
-    ceiling: 85,
+    floor: 8,
+    targetLow: 28,
+    targetHigh: 58,
+    ceiling: 82,
   },
+
+  /**
+   * Effective Participation (25% of composite).
+   * Importance-weighted vote coverage: (weighted votes / weighted proposal pool) × 100.
+   * Close-margin proposals get 1.5× weight. Critical types get 3×, important get 2×.
+   *
+   * - raw = 0: Never voted.
+   * - floor (12): Voted on ~10-15% of proposals by weight. A DRep who voted on a
+   *   handful of standard proposals out of ~50+ total. With temporal decay, recent
+   *   sporadic voting yields raw ~12.
+   *   Calibrated: 20 (entering "fair").
+   *
+   * - targetLow (32): Voted on ~30-35% of proposals by weight. A DRep who votes on
+   *   roughly a third of governance actions, including some important ones.
+   *   With close-margin bonuses on contentious votes, could reach ~32 with 25%
+   *   raw coverage if several were close-margin.
+   *   Calibrated: 50 (midpoint).
+   *
+   * - targetHigh (65): Voted on ~60-70% of proposals by weight. A DRep who votes on
+   *   most proposals, including critical types (HardFork, NoConfidence) and
+   *   significant treasury withdrawals. Close-margin bonuses push this higher.
+   *   Calibrated: 80 (entering "strong").
+   *
+   * - ceiling (88): Voted on 85%+ of proposals by weight, including all critical
+   *   and important types. Close-margin bonuses on contentious proposals push
+   *   effective coverage near 88. Near-perfect participation.
+   *   Calibrated: 95 (cap).
+   */
   effectiveParticipation: {
-    floor: 10,
-    targetLow: 30,
+    floor: 12,
+    targetLow: 32,
     targetHigh: 65,
-    ceiling: 90,
+    ceiling: 88,
   },
+
+  /**
+   * Reliability (25% of composite).
+   * Four sub-components: Streak (35%), Recency (30%), Gap (25%), Tenure (10%).
+   *
+   * Sub-component raw score ranges:
+   * - Streak: 10 pts/epoch, so 3-epoch streak = 30, 5 = 50, 10 = 100.
+   * - Recency: exp decay with divisor 5. 0 epochs ago = 100, 2 = 67, 5 = 37, 10 = 14.
+   * - Gap: 100 - 12×longestGap. 0 gap = 100, 3 = 64, 5 = 40, 8+ = 4.
+   * - Tenure: 20 + 80×(1 - e^(-tenure/30)). 0 epochs = 20, 10 = 44, 30 = 69, 60 = 87.
+   *
+   * - floor (12): DRep voted once long ago. Streak 0 (10×0=0), Recency ~14 (10 epochs
+   *   ago), Gap ~40 (5 proposal-epochs missed), Tenure ~44 (10 epochs).
+   *   Combined: 0×0.35 + 14×0.30 + 40×0.25 + 44×0.10 = 0+4.2+10+4.4 = ~19.
+   *   With even worse scenarios (longer gap, older): ~12.
+   *   Calibrated: 20 (entering "fair").
+   *
+   * - targetLow (35): DRep votes semi-regularly. Streak of 2 (20), Recency ~67
+   *   (2 epochs ago), Gap ~64 (3-epoch gap), Tenure ~44 (10 epochs).
+   *   Combined: 20×0.35 + 67×0.30 + 64×0.25 + 44×0.10 = 7+20+16+4.4 = ~47.
+   *   But with some misses pulling streak/recency down: ~35.
+   *   Calibrated: 50 (midpoint).
+   *
+   * - targetHigh (68): DRep votes consistently. Streak of 5 (50), Recency 100
+   *   (voted this epoch), Gap ~76 (2-epoch gap once), Tenure ~69 (30 epochs).
+   *   Combined: 50×0.35 + 100×0.30 + 76×0.25 + 69×0.10 = 17.5+30+19+6.9 = ~73.
+   *   Moderate tenure pulls slightly lower: ~68.
+   *   Calibrated: 80 (entering "strong").
+   *
+   * - ceiling (88): DRep has voted every proposal-epoch for 7+ epochs (streak 70+),
+   *   voted this epoch (recency 100), no gaps (100), tenure 60+ epochs (~87).
+   *   Combined: 70×0.35 + 100×0.30 + 100×0.25 + 87×0.10 = 24.5+30+25+8.7 = ~88.
+   *   Calibrated: 95 (cap — rock-solid reliability).
+   */
   reliability: {
-    floor: 10,
-    targetLow: 30,
-    targetHigh: 65,
-    ceiling: 85,
+    floor: 12,
+    targetLow: 35,
+    targetHigh: 68,
+    ceiling: 88,
   },
+
+  /**
+   * Governance Identity (10% of composite).
+   * Two sub-components: Profile Quality (60%) and Community Presence (40%).
+   *
+   * Profile Quality max raw = 100 (name 15, objectives 20, motivations 15,
+   * qualifications 10, bio 10, social links 30, hash verified 5 = 105, capped 100).
+   * With staleness decay: fresh profile = 1.0×, 270 days = 0.75×, 360+ days = 0.5×.
+   *
+   * Community Presence: delegation health (retention/diversity/growth) or fallback
+   * delegator tiers (250+ = 100, 100+ = 95, 50+ = 80, 15+ = 60, 5+ = 40, 1+ = 20).
+   *
+   * - floor (15): Minimal profile (name only = 15 pts, nothing else).
+   *   Profile: 15×0.6 = 9. Community: 0 delegators = 0×0.4 = 0. Raw ~9.
+   *   Or: name + short bio (15+3=18), 1 delegator (20).
+   *   Profile: 18×0.6 = 10.8. Community: 20×0.4 = 8. Raw ~19.
+   *   floor=15 catches the bare-minimum-profile DRep.
+   *   Calibrated: 20 (entering "fair").
+   *
+   * - targetLow (35): Basic profile with name, short objectives/motivations
+   *   (15+15+10=40), one social link (25), 5+ delegators (40).
+   *   Profile: 40×0.6 = 24 (if fresh). Community: 40×0.4 = 16. Raw ~40.
+   *   With mild staleness (0.9×): profile 36×0.6=21.6 + 16 = ~38.
+   *   targetLow=35 reflects "filled out the basics."
+   *   Calibrated: 50 (midpoint).
+   *
+   * - targetHigh (62): Good profile: name (15), long objectives (20), long
+   *   motivations (15), qualifications (7), bio (7), 2+ social links (30),
+   *   hash verified (5) = 99 → 100. Fresh. 50+ delegators (80).
+   *   Profile: 100×0.6 = 60. Community: 80×0.4 = 32. Raw ~92.
+   *   But with any staleness or fewer delegators: 15+ delegators (60).
+   *   Profile 80×0.6=48, Community 60×0.4=24 → 72.
+   *   targetHigh=62 is achievable with a strong (not perfect) profile + moderate community.
+   *   Calibrated: 80 (entering "strong").
+   *
+   * - ceiling (82): Near-perfect profile (100 raw, fresh), 100+ delegators
+   *   (score 95) or healthy delegation metrics.
+   *   Profile: 100×0.6 = 60. Community: 95×0.4 = 38. Raw ~98.
+   *   ceiling=82 accounts for most DReps having some staleness or delegation gaps.
+   *   With 6-month-old profile (0.75×): 75×0.6=45 + 95×0.4=38 → 83.
+   *   Calibrated: 95 (cap — exemplary governance identity).
+   */
   governanceIdentity: {
-    floor: 10,
-    targetLow: 30,
-    targetHigh: 60,
-    ceiling: 80,
+    floor: 15,
+    targetLow: 35,
+    targetHigh: 62,
+    ceiling: 82,
   },
 } as const;
 
 /**
  * Absolute calibration curves for SPO pillar scores.
+ *
+ * SPO governance participation is structurally lower than DRep participation
+ * (block production is primary role, governance is secondary), so curves
+ * are slightly more generous — rewarding SPOs who engage at all.
  */
 export const SPO_PILLAR_CALIBRATION = {
+  /**
+   * SPO Participation (35% of composite).
+   * Same formula as DRep Effective Participation: importance-weighted vote coverage.
+   * SPOs typically vote less than DReps (governance is secondary to block production),
+   * so the curve is shifted left to reward any meaningful engagement.
+   *
+   * - floor (10): SPO voted on ~10% of proposals. A pool operator who cast a few
+   *   votes on high-profile proposals only.
+   *   Calibrated: 20 (entering "fair").
+   *
+   * - targetLow (28): SPO voted on ~25-30% of proposals, including some important
+   *   ones. Solid engagement for a pool operator.
+   *   Calibrated: 50 (midpoint).
+   *
+   * - targetHigh (60): SPO voted on ~55-65% of proposals including critical types.
+   *   This is strong for an SPO — most never reach this level.
+   *   Calibrated: 80 (entering "strong").
+   *
+   * - ceiling (85): SPO voted on 80%+ of proposals. Exceptional for a pool operator.
+   *   Calibrated: 95 (cap).
+   */
   participation: {
     floor: 10,
-    targetLow: 30,
-    targetHigh: 65,
-    ceiling: 90,
-  },
-  deliberation: {
-    floor: 5,
-    targetLow: 20,
-    targetHigh: 55,
-    ceiling: 80,
-  },
-  reliability: {
-    floor: 10,
-    targetLow: 30,
-    targetHigh: 65,
+    targetLow: 28,
+    targetHigh: 60,
     ceiling: 85,
   },
+
+  /**
+   * SPO Deliberation Quality (25% of composite).
+   * Two sub-components: Rationale Provision (55%) and Coverage Entropy (45%).
+   * SPOs rarely provide rationales (no CIP-100 tooling standard for SPOs yet),
+   * so the curve is the most generous of all pillars.
+   *
+   * - floor (6): SPO provided at least 1 rationale or has minimal coverage entropy.
+   *   Rationale provision ~5% + coverage entropy with 1 type.
+   *   Raw: 5×0.55 + 15×0.45 ≈ 9.5. With low coverage: ~6.
+   *   Calibrated: 20 (entering "fair").
+   *
+   * - targetLow (22): SPO provides rationales ~20% of the time, covers 2-3
+   *   proposal types. Raw: 20×0.55 + 40×0.45 = 11+18 = 29. With decay: ~22.
+   *   Calibrated: 50 (midpoint — this is already above-average for SPOs).
+   *
+   * - targetHigh (52): SPO provides rationales ~50% of the time, covers most
+   *   proposal types with reasonable entropy.
+   *   Raw: 50×0.55 + 60×0.45 = 27.5+27 = 54.5. With decay: ~52.
+   *   Calibrated: 80 (entering "strong").
+   *
+   * - ceiling (78): SPO provides rationales ~80%+ of the time with balanced
+   *   coverage entropy across all types. Exceptional deliberation for an SPO.
+   *   Raw: 80×0.55 + 80×0.45 = 44+36 = 80. With decay: ~78.
+   *   Calibrated: 95 (cap).
+   */
+  deliberation: {
+    floor: 6,
+    targetLow: 22,
+    targetHigh: 52,
+    ceiling: 78,
+  },
+
+  /**
+   * SPO Reliability (25% of composite).
+   * Five sub-components: Active Streak (30%), Recency (25%), Gap (15%),
+   * Engagement Consistency (15%), Tenure (15%).
+   *
+   * SPO reliability params: streak 15 pts/epoch (vs DRep 10), gap penalty 15/epoch
+   * (vs DRep 12), same recency/tenure. Consistency is unique to SPOs.
+   *
+   * - floor (12): SPO voted once some time ago. Low streak, poor recency, some gaps.
+   *   Streak 0, Recency ~14 (10 epochs ago), Gap ~40 (4 missed), Consistency 50 (default),
+   *   Tenure ~44. Combined: 0×0.3 + 14×0.25 + 40×0.15 + 50×0.15 + 44×0.15 = 0+3.5+6+7.5+6.6=~24.
+   *   Worse scenarios: ~12.
+   *   Calibrated: 20 (entering "fair").
+   *
+   * - targetLow (32): SPO votes semi-regularly. Streak of 2 (30), Recency ~67
+   *   (2 epochs ago), Gap ~55 (3 missed), Consistency ~60, Tenure ~44.
+   *   Combined: 30×0.3 + 67×0.25 + 55×0.15 + 60×0.15 + 44×0.15 = 9+16.75+8.25+9+6.6=~50.
+   *   With missed epochs: ~32.
+   *   Calibrated: 50 (midpoint).
+   *
+   * - targetHigh (65): SPO votes consistently. Streak of 4 (60), Recency 100,
+   *   Gap ~70 (2-epoch gap), Consistency ~80, Tenure ~69.
+   *   Combined: 60×0.3 + 100×0.25 + 70×0.15 + 80×0.15 + 69×0.15 = 18+25+10.5+12+10.35=~76.
+   *   Moderate tenure/consistency: ~65.
+   *   Calibrated: 80 (entering "strong").
+   *
+   * - ceiling (86): SPO has voted every proposal-epoch for 6+ epochs (streak 90),
+   *   voted this epoch (100), no gaps (100), high consistency (90), good tenure (~87).
+   *   Combined: 90×0.3 + 100×0.25 + 100×0.15 + 90×0.15 + 87×0.15 = 27+25+15+13.5+13.05=~94.
+   *   ceiling=86 accounts for typical operational gaps.
+   *   Calibrated: 95 (cap).
+   */
+  reliability: {
+    floor: 12,
+    targetLow: 32,
+    targetHigh: 65,
+    ceiling: 86,
+  },
+
+  /**
+   * SPO Governance Identity (15% of composite).
+   * Same scoring as DRep Governance Identity: Profile Quality (60%) + Community
+   * Presence (40%). SPOs use the same profile field scores and delegation metrics.
+   *
+   * The curve is identical to DRep GI since the scoring function is shared and
+   * SPOs face the same profile/community dynamics.
+   *
+   * - floor (15): Minimal profile (name only, no delegators).
+   * - targetLow (35): Basic profile with name + short objectives + 1 social link, 5+ delegators.
+   * - targetHigh (62): Strong profile (most fields filled), 15+ delegators.
+   * - ceiling (82): Near-perfect fresh profile, 100+ delegators or healthy delegation.
+   */
   governanceIdentity: {
-    floor: 10,
-    targetLow: 30,
-    targetHigh: 60,
-    ceiling: 80,
+    floor: 15,
+    targetLow: 35,
+    targetHigh: 62,
+    ceiling: 82,
   },
 } as const;
 

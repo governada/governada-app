@@ -230,13 +230,19 @@ export function ConversationalMatchFlow({
     }
     if (status === 'matched' && flowState !== 'results') {
       hapticFeedback('success');
-      // Fly to the top match node before revealing results — the "found you" moment
-      if (matches && matches.length > 0 && globeRef.current?.flyToMatch) {
-        globeRef.current.flyToMatch(matches[0].drepId).catch(() => {});
-      }
 
-      setFlowState('results');
-      pushUrlState('results', 'results');
+      // Fly to the top match node — wait for the dramatic "Cerebro found you" moment
+      // before revealing results. The globe holds for 3s during flyToMatch.
+      const revealResults = () => {
+        setFlowState('results');
+        pushUrlState('results', 'results');
+      };
+
+      if (matches && matches.length > 0 && globeRef.current?.flyToMatch) {
+        globeRef.current.flyToMatch(matches[0].drepId).then(revealResults).catch(revealResults);
+      } else {
+        revealResults();
+      }
       if (matches) {
         onMatchComplete?.(matches);
         posthog.capture('match_completed', {

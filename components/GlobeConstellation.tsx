@@ -254,6 +254,7 @@ export const GlobeConstellation = forwardRef<
           const ny = cy / dir;
           const nz = cz / dir;
 
+          // Smooth camera convergence (false = animate, not instant jump)
           cameraControlsRef.current.setLookAt(
             nx * camDist * lookWeight,
             ny * camDist * lookWeight + (3 - zoomFactor * 1.5),
@@ -261,7 +262,7 @@ export const GlobeConstellation = forwardRef<
             cx * lookWeight,
             cy * lookWeight,
             cz * lookWeight,
-            true,
+            false,
           );
         }
       }
@@ -296,6 +297,8 @@ export const GlobeConstellation = forwardRef<
       // Fly to the node — position camera outside the globe looking at the node
       // Camera at ~1.8x node distance, offset slightly above for drama
       const camDist = Math.max(dist * 1.8, 8);
+
+      // Smooth cinematic fly-in (false = animate, not instant)
       await cameraControlsRef.current.setLookAt(
         nx * camDist,
         ny * camDist + 1.5,
@@ -303,7 +306,7 @@ export const GlobeConstellation = forwardRef<
         x,
         y,
         z,
-        true,
+        false,
       );
 
       // Hold the dramatic lock — the "Cerebro found you" moment
@@ -1281,23 +1284,21 @@ function ScanningRing({ active, progress }: { active: boolean; progress: number 
   const matRef = useRef<THREE.MeshBasicMaterial>(null);
   const targetOpacity = useRef(0);
 
-  // Scale ring down as camera zooms in — prevents ugly line at close range
-  // progress 0 → scale 1 (radius 8.5), progress 1 → scale 0.65 (radius ~5.5)
-  const ringScale = 1 - progress * 0.35;
-
   useFrame((_, delta) => {
     if (!meshRef.current || !matRef.current) return;
     // Continuous rotation on Z-axis tilted differently from globe
     meshRef.current.rotation.z += delta * 0.036; // ~3x globe speed
     meshRef.current.rotation.x += delta * 0.008; // slight tumble
 
-    // Smooth scale transition
-    const s = ringScale;
+    // Scale ring down aggressively — disappears before camera gets close enough to clip
+    // progress 0 → scale 1 (radius 8.5), progress 0.5+ → rapidly shrinks
+    const s = Math.max(0, 1 - progress * 0.7);
     meshRef.current.scale.set(s, s, s);
 
-    // Smooth opacity transition — fade out at high zoom (progress > 0.8)
-    const fadeOut = progress > 0.8 ? 1 - (progress - 0.8) / 0.2 : 1;
-    const desired = active ? (0.2 + progress * 0.15) * fadeOut : 0;
+    // Fade out early — visible only in the first half of convergence (rounds 1-2)
+    // progress 0 → full opacity, progress 0.5 → gone
+    const fadeOut = progress > 0.3 ? Math.max(0, 1 - (progress - 0.3) / 0.2) : 1;
+    const desired = active ? (0.15 + progress * 0.1) * fadeOut : 0;
     targetOpacity.current += (desired - targetOpacity.current) * Math.min(1, delta * 3);
     matRef.current.opacity = targetOpacity.current;
   });

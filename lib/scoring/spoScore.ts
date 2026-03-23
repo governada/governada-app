@@ -13,6 +13,7 @@ import {
   SPO_PILLAR_CALIBRATION,
   calibrate,
 } from './calibration';
+import { dampenPillarScore } from './confidence';
 
 export const SPO_PILLAR_WEIGHTS = _SPO_WEIGHTS;
 
@@ -110,11 +111,18 @@ export function computeSpoScores(
       rlCal = 0;
     }
 
+    // Confidence dampening: pull pillar scores toward neutral (50) based on
+    // confidence level. Low-data SPOs get moderated scores.
+    const pDampened = dampenPillarScore(pCal, confidence);
+    const dDampened = dampenPillarScore(dCal, confidence);
+    const rlDampened = dampenPillarScore(rlCal, confidence);
+    const giDampened = dampenPillarScore(giCal, confidence);
+
     const composite = Math.round(
-      SPO_PILLAR_WEIGHTS.participation * pCal +
-        SPO_PILLAR_WEIGHTS.deliberation * dCal +
-        SPO_PILLAR_WEIGHTS.reliability * rlCal +
-        SPO_PILLAR_WEIGHTS.governanceIdentity * giCal,
+      SPO_PILLAR_WEIGHTS.participation * pDampened +
+        SPO_PILLAR_WEIGHTS.deliberation * dDampened +
+        SPO_PILLAR_WEIGHTS.reliability * rlDampened +
+        SPO_PILLAR_WEIGHTS.governanceIdentity * giDampened,
     );
 
     const history = scoreHistory.get(poolId);

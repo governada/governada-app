@@ -101,4 +101,71 @@ If no constitutional concerns, return: {"flags": [], "score": "pass", "summary":
       };
     }
   },
+
+  validationPass: {
+    systemPrompt: `You are a constitutional compliance validator. Your job is to verify that each flagged constitutional concern is actually grounded in the proposal text and the Cardano Constitution. Remove any flags that are speculative, hallucinated, or not supported by the actual proposal content.
+
+Return ONLY valid JSON with this structure:
+{
+  "validated_flags": [{"article": "...", "section": "...", "concern": "...", "severity": "..."}],
+  "rejected_flags": [{"article": "...", "reason": "why this flag was rejected"}]
+}`,
+
+    buildPrompt: (input: Input, output: Output): string => {
+      const parts = [
+        'Validate these constitutional flags against the actual proposal:',
+        '',
+        `Proposal: "${input.title}"`,
+        `Type: ${input.proposalType}`,
+      ];
+      if (input.abstract) parts.push(`Abstract: ${input.abstract}`);
+      if (input.motivation) parts.push(`Motivation: ${input.motivation}`);
+      if (input.rationale) parts.push(`Rationale: ${input.rationale}`);
+      parts.push('', 'Flags to validate:');
+      for (const flag of output.flags) {
+        parts.push(
+          `- ${flag.article}${flag.section ? ` ${flag.section}` : ''}: ${flag.concern} [${flag.severity}]`,
+        );
+      }
+      parts.push(
+        '',
+        'For each flag, verify it is grounded in the actual proposal text. Reject flags that are speculative or not supported by what the proposal actually says.',
+      );
+      return parts.join('\n');
+    },
+
+    parseValidation: (raw: string, originalOutput: Output): Output => {
+      try {
+        const cleaned = raw
+          .replace(/^```json\s*/, '')
+          .replace(/\s*```$/, '')
+          .trim();
+        const parsed = JSON.parse(cleaned);
+        const validatedFlags: ConstitutionalFlag[] = Array.isArray(parsed.validated_flags)
+          ? parsed.validated_flags
+          : originalOutput.flags;
+
+        const hasCritical = validatedFlags.some(
+          (f: ConstitutionalFlag) => f.severity === 'critical',
+        );
+        const hasWarning = validatedFlags.some(
+          (f: ConstitutionalFlag) => f.severity === 'warning' || f.severity === 'critical',
+        );
+
+        return {
+          flags: validatedFlags,
+          score: hasCritical ? 'fail' : hasWarning ? 'warning' : 'pass',
+          summary:
+            validatedFlags.length === 0
+              ? 'No constitutional conflicts detected after validation.'
+              : `${validatedFlags.length} validated concern(s).`,
+        };
+      } catch {
+        // If validation parsing fails, keep the original output
+        return originalOutput;
+      }
+    },
+
+    maxTokens: 1024,
+  },
 });

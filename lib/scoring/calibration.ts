@@ -457,11 +457,58 @@ export const TIER_BOUNDARIES = [
  * and what methodology was used.
  */
 export const CALIBRATION_VERSION = {
-  version: '3.2.0',
-  lastCalibrated: '2026-03-22',
+  version: '3.2.1',
+  lastCalibrated: '2026-03-23',
   methodology:
     'Behavioral threshold analysis — each breakpoint maps to specific governance behaviors. See comments on DREP_PILLAR_CALIBRATION and SPO_PILLAR_CALIBRATION.',
 } as const;
+
+/**
+ * CONFIDENCE THRESHOLD RATIONALE
+ *
+ * DRep: 15+ votes for full confidence. DReps vote on 5-10 proposals per epoch;
+ * 15 votes represents ~2-3 epochs of active participation.
+ *
+ * SPO: Same tier caps as DRep (5/10/15 vote thresholds). SPOs can vote on
+ * every eligible proposal; individual votes carry less signal than DRep votes.
+ * The confidence formula uses the same decay rate (voteDecayRate=12) but
+ * SPO tier assignment applies the same graduated caps.
+ *
+ * Proposer: 7+ proposals for full confidence. Proposals are rare events (1-2 per
+ * proposer per year); 7 proposals represents significant governance engagement.
+ * Graduated: 1 = 40% (Emerging cap), 2-3 = 60% (Bronze), 4-6 = 80% (Silver), 7+ = 100%.
+ *
+ * CC: No confidence gating. Only ~7 members; every vote is high-signal.
+ *
+ * GHI: No confidence gating. Ecosystem metric, not individual.
+ *
+ * All systems apply confidence dampening to pillar scores (pulling toward neutral 50)
+ * via dampenPillarScore() in addition to tier caps. This prevents low-data entities
+ * from appearing falsely strong or weak at the pillar level.
+ */
+
+/**
+ * PILLAR WEIGHT RATIONALE (cross-system comparison)
+ *
+ * | System   | Quality/EQ | Participation/EP | Reliability | Identity/GI |
+ * |----------|-----------|------------------|-------------|-------------|
+ * | DRep     | 40%       | 25%              | 25%         | 10%         |
+ * | SPO      | 25%       | 35%              | 25%         | 15%         |
+ * | Proposer | 30%       | 35% (track rec)  | —           | 15%+20%     |
+ *
+ * DRep: Quality highest because rationale quality is the strongest governance signal
+ * and hardest to game (AI-assessed, dual-rubric ensemble). A DRep's value is in the
+ * quality of their analysis, not just showing up.
+ *
+ * SPO: Participation highest because SPO governance is secondary to block production;
+ * showing up to vote at all is the primary signal. Deliberation quality lower (25%)
+ * because SPOs rarely provide rationales — CIP-100 tooling isn't standard for SPOs yet.
+ *
+ * Proposer: Track Record highest (35%) because proposal approval/delivery is the most
+ * concrete evidence of governance contribution. Quality (30%) assessed by AI ensemble.
+ * Fiscal Responsibility (20%) applies only to treasury proposers. Governance Citizenship
+ * (15%) rewards type diversity and sustained engagement.
+ */
 
 /**
  * Absolute calibration curves for DRep pillar scores.

@@ -150,4 +150,83 @@ ${constitutionRef}`;
       };
     }
   },
+
+  validationPass: {
+    systemPrompt: `You are a constitutional conflict validator. Your job is to verify that each detected amendment conflict is actually grounded in the proposed amendment text and the unchanged constitutional articles. Remove conflicts that are speculative, hallucinated, or not supported by the actual text.
+
+Return ONLY valid JSON with this structure:
+{
+  "validated_conflicts": [{"amendedArticle": "...", "conflictingArticle": "...", "description": "...", "severity": "..."}],
+  "rejected_conflicts": [{"amendedArticle": "...", "conflictingArticle": "...", "reason": "why this conflict was rejected"}]
+}`,
+
+    buildPrompt: (input: Input, output: AmendmentConflictCheckOutput): string => {
+      const parts = [
+        'Validate these amendment conflict findings against the actual texts:',
+        '',
+        'Proposed amendments:',
+      ];
+      for (const amendment of input.amendments) {
+        parts.push(
+          `  Article: ${amendment.articleId}`,
+          `  Original: "${amendment.originalText.slice(0, 200)}${amendment.originalText.length > 200 ? '...' : ''}"`,
+          `  Proposed: "${amendment.proposedText.slice(0, 200)}${amendment.proposedText.length > 200 ? '...' : ''}"`,
+          '',
+        );
+      }
+      parts.push('Detected conflicts to validate:');
+      for (const conflict of output.conflicts) {
+        parts.push(
+          `- ${conflict.amendedArticle} vs ${conflict.conflictingArticle}: ${conflict.description} [${conflict.severity}]`,
+        );
+      }
+      parts.push(
+        '',
+        'For each conflict, verify it is grounded in the actual amendment text and the referenced unchanged article. Reject conflicts that are speculative or not supported by the actual texts.',
+      );
+      return parts.join('\n');
+    },
+
+    parseValidation: (
+      raw: string,
+      originalOutput: AmendmentConflictCheckOutput,
+    ): AmendmentConflictCheckOutput => {
+      try {
+        const cleaned = raw
+          .replace(/^```json\s*/, '')
+          .replace(/\s*```$/, '')
+          .trim();
+        const parsed = JSON.parse(cleaned);
+        const validatedConflicts: AmendmentConflict[] = Array.isArray(parsed.validated_conflicts)
+          ? parsed.validated_conflicts.map(
+              (c: {
+                amendedArticle?: string;
+                conflictingArticle?: string;
+                description?: string;
+                severity?: string;
+              }) => ({
+                amendedArticle: String(c.amendedArticle ?? ''),
+                conflictingArticle: String(c.conflictingArticle ?? ''),
+                description: String(c.description ?? ''),
+                severity: (['info', 'warning', 'critical'].includes(c.severity ?? '')
+                  ? c.severity
+                  : 'info') as AmendmentConflict['severity'],
+              }),
+            )
+          : originalOutput.conflicts;
+
+        return {
+          conflicts: validatedConflicts,
+          summary:
+            validatedConflicts.length === 0
+              ? 'No conflicts detected after validation.'
+              : `${validatedConflicts.length} validated conflict(s).`,
+        };
+      } catch {
+        return originalOutput;
+      }
+    },
+
+    maxTokens: 1024,
+  },
 });

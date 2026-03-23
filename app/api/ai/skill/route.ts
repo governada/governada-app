@@ -222,7 +222,28 @@ export const POST = withRouteHandler(
     }
 
     // Parse output
-    const output = skill.parseOutput(result.data);
+    let output = skill.parseOutput(result.data);
+
+    // Optional validation pass: run a lightweight check to filter hallucinated flags
+    if (skill.validationPass) {
+      try {
+        const valPrompt = skill.validationPass.buildPrompt(validatedInput, output);
+        const valResult = await ai.generateText(valPrompt, {
+          system: skill.validationPass.systemPrompt,
+          model: 'FAST',
+          maxTokens: skill.validationPass.maxTokens ?? 1024,
+        });
+        if (valResult.data) {
+          output = skill.validationPass.parseValidation(valResult.data, output);
+        }
+      } catch (err) {
+        // Validation pass is best-effort — if it fails, use the original output
+        logger.warn('[skill] Validation pass failed, using original output', {
+          skill: parsed.skill,
+          error: err,
+        });
+      }
+    }
 
     // Log provenance
     await ai.logActivity({

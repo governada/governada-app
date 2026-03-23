@@ -374,11 +374,12 @@ describe('computeDRepScores', () => {
     expect(partial.composite).toBeGreaterThan(0);
   });
 
-  // ── Confidence does NOT affect calibrated scores (only tier assignment) ──
+  // ── Confidence dampens pillar scores toward neutral (50) ──
 
-  it('confidence does not affect composite — same raw scores produce same composite', () => {
-    // Two DReps with identical raw scores but different confidence levels
-    // should produce identical composites (confidence only gates tier, not score).
+  it('low confidence dampens composite toward neutral — high confidence preserves score', () => {
+    // Two DReps with identical raw scores but different confidence levels.
+    // Low-confidence DRep gets pillar scores pulled toward 50 (neutral),
+    // resulting in a lower composite than the high-confidence DRep.
     const confidences = new Map([
       ['low_conf', 30],
       ['high_conf', 100],
@@ -408,8 +409,14 @@ describe('computeDRepScores', () => {
     const low = results.get('low_conf')!;
     const high = results.get('high_conf')!;
 
-    // Same raw scores → same composite, regardless of confidence
-    expect(low.composite).toBe(high.composite);
+    // High confidence preserves the full composite
+    // Low confidence pulls pillar scores toward 50, reducing composite
+    expect(low.composite).toBeLessThan(high.composite);
+    // 100% confidence → no dampening
+    expect(high.composite).toBeGreaterThan(80);
+    // 30% confidence → significant dampening toward 50
+    expect(low.composite).toBeLessThan(75);
+    expect(low.composite).toBeGreaterThan(50);
     // Confidence is stored for downstream tier cap logic
     expect(low.confidence).toBe(30);
     expect(high.confidence).toBe(100);

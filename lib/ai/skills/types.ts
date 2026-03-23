@@ -44,6 +44,25 @@ export interface SkillDefinition<TInput = unknown, TOutput = unknown> {
   maxTokens?: number;
   /** Whether this skill requires authentication */
   requiresAuth?: boolean;
+  /**
+   * Optional validation pass configuration.
+   * When provided, after the primary AI call returns and output is parsed,
+   * a lightweight validation call (using the FAST model) checks the output
+   * for hallucinations or ungrounded claims against the original input.
+   *
+   * The validation prompt receives the parsed output + original input and
+   * returns a filtered version of the output with ungrounded items removed.
+   */
+  validationPass?: {
+    /** Build the validation prompt from the original input and parsed output */
+    buildPrompt: (input: TInput, output: TOutput) => string;
+    /** System prompt for the validation model */
+    systemPrompt: string;
+    /** Parse the validation response and return the filtered output */
+    parseValidation: (raw: string, originalOutput: TOutput) => TOutput;
+    /** Max tokens for validation response (defaults to 1024) */
+    maxTokens?: number;
+  };
 }
 
 /** Result of invoking a skill */

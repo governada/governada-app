@@ -17,6 +17,7 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { calibrate, type CalibrationCurve } from '@/lib/scoring/calibration';
+import { dampenPillarScore } from '@/lib/scoring/confidence';
 import { logger } from '@/lib/logger';
 import type { ProposalQualityResult } from './proposalQuality';
 
@@ -448,21 +449,28 @@ export async function scoreAllProposers(
     const calFiscal = calibrate(rawFiscal, PROPOSER_CALIBRATION.fiscalResponsibility);
     const calCitizenship = calibrate(rawCitizenship, PROPOSER_CALIBRATION.governanceCitizenship);
 
+    // 7a. Confidence dampening: pull pillar scores toward neutral (50) based on
+    // proposal count confidence. Low-data proposers get moderated scores.
+    const confidence = computeConfidence(proposer.proposal_count);
+    const dampTrackRecord = dampenPillarScore(calTrackRecord, confidence);
+    const dampQuality = dampenPillarScore(calQuality, confidence);
+    const dampFiscal = dampenPillarScore(calFiscal, confidence);
+    const dampCitizenship = dampenPillarScore(calCitizenship, confidence);
+
     // 8. Composite
     const composite = Math.min(
       100,
       Math.max(
         0,
         Math.round(
-          calTrackRecord * PROPOSER_PILLAR_WEIGHTS.trackRecord +
-            calQuality * PROPOSER_PILLAR_WEIGHTS.proposalQuality +
-            calFiscal * PROPOSER_PILLAR_WEIGHTS.fiscalResponsibility +
-            calCitizenship * PROPOSER_PILLAR_WEIGHTS.governanceCitizenship,
+          dampTrackRecord * PROPOSER_PILLAR_WEIGHTS.trackRecord +
+            dampQuality * PROPOSER_PILLAR_WEIGHTS.proposalQuality +
+            dampFiscal * PROPOSER_PILLAR_WEIGHTS.fiscalResponsibility +
+            dampCitizenship * PROPOSER_PILLAR_WEIGHTS.governanceCitizenship,
         ),
       ),
     );
 
-    const confidence = computeConfidence(proposer.proposal_count);
     const tier = getTier(composite, proposer.proposal_count);
 
     // 9. Update

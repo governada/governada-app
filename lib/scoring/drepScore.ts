@@ -11,6 +11,7 @@
 
 import { PILLAR_WEIGHTS, type DRepScoreResult } from './types';
 import { calibrate, DREP_PILLAR_CALIBRATION } from './calibration';
+import { dampenPillarScore } from './confidence';
 
 /**
  * Compute final DRep Scores for all DReps from raw pillar scores.
@@ -67,11 +68,19 @@ export function computeDRepScores(
       rlCal = 0;
     }
 
+    // Confidence dampening: pull pillar scores toward neutral (50) based on
+    // confidence level. Low-data DReps get moderated scores instead of
+    // potentially misleading extremes. Applied after calibration + zero-override.
+    const eqDampened = dampenPillarScore(eqCal, confidence);
+    const epDampened = dampenPillarScore(epCal, confidence);
+    const rlDampened = dampenPillarScore(rlCal, confidence);
+    const giDampened = dampenPillarScore(giCal, confidence);
+
     const composite = Math.round(
-      eqCal * PILLAR_WEIGHTS.engagementQuality +
-        epCal * PILLAR_WEIGHTS.effectiveParticipation +
-        rlCal * PILLAR_WEIGHTS.reliability +
-        giCal * PILLAR_WEIGHTS.governanceIdentity,
+      eqDampened * PILLAR_WEIGHTS.engagementQuality +
+        epDampened * PILLAR_WEIGHTS.effectiveParticipation +
+        rlDampened * PILLAR_WEIGHTS.reliability +
+        giDampened * PILLAR_WEIGHTS.governanceIdentity,
     );
 
     const history = scoreHistory.get(drepId);

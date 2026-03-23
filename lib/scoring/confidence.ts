@@ -113,6 +113,34 @@ export function dampenPercentile(rawPercentile: number, confidence: number): num
 }
 
 // ---------------------------------------------------------------------------
+// Shared: Confidence dampening for pillar scores
+// ---------------------------------------------------------------------------
+
+/**
+ * Dampen a calibrated pillar score toward neutral based on confidence.
+ * Low-confidence entities get scores pulled toward 50 (neutral).
+ * High-confidence entities keep their actual scores.
+ *
+ * This ensures a 2-vote DRep (50% confidence) gets pillar scores pulled
+ * halfway toward 50, preventing low-data entities from appearing falsely
+ * strong or weak. Applied after calibration, before composite computation.
+ *
+ * Formula: dampened = 50 + (calibratedScore - 50) * (confidence / 100)
+ *
+ * Examples:
+ * - 100% confidence, score 80 → 80 (unchanged)
+ * - 50% confidence, score 80 → 65 (pulled toward neutral)
+ * - 50% confidence, score 20 → 35 (pulled toward neutral)
+ * - 0% confidence, score anything → 50 (fully neutral)
+ *
+ * NOT applied to CC Fidelity (only 7 members, confidence N/A) or GHI (ecosystem metric).
+ */
+export function dampenPillarScore(calibratedScore: number, confidence: number): number {
+  const confidenceFactor = Math.max(0, Math.min(100, confidence)) / 100;
+  return Math.round(50 + (calibratedScore - 50) * confidenceFactor);
+}
+
+// ---------------------------------------------------------------------------
 // Shared: Confidence-weighted percentile normalization
 // ---------------------------------------------------------------------------
 

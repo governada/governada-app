@@ -270,8 +270,13 @@ export const DREP_CONFIDENCE = {
  * Replaces the binary tierThreshold with vote-count-based caps.
  */
 export const SPO_CONFIDENCE = {
-  /** Vote count decay: 80% at ~15 votes. */
-  voteDecayRate: 12,
+  /**
+   * Vote count decay: 80% at ~20 votes (vs DRep's 12).
+   * SPOs vote more frequently than DReps (they participate in every eligible proposal),
+   * so each individual vote carries less signal. Requiring more votes for the same
+   * confidence prevents inflated confidence from easy-to-cast bulk votes.
+   */
+  voteDecayRate: 20,
   /** Epoch span decay: 80% at ~20 epochs. */
   spanDecayRate: 20,
   /** Type coverage threshold: 100% at 60% coverage. */
@@ -324,12 +329,45 @@ export const SPO_RELIABILITY_PARAMS = {
 /**
  * SPO Deliberation Quality sub-component weights.
  * V3.2: Replaces broken rationale-based scoring with voting behavior signals.
+ *
+ * When an SPO has scored rationales available, weights shift to include
+ * rationale quality at 20% (reducing other weights proportionally).
+ * See SPO_DELIBERATION_WEIGHTS_WITH_RATIONALE.
  */
 export const SPO_DELIBERATION_WEIGHTS = {
   voteDiversity: 0.35,
   dissent: 0.3,
   typeBreadth: 0.2,
   coverageEntropy: 0.15,
+} as const;
+
+/**
+ * SPO Deliberation Quality weights when rationale quality data is available.
+ * Rationale quality at 20% — reduces vote diversity (35→25%), dissent (30→25%),
+ * type breadth (20→17%), coverage entropy (15→13%).
+ * SPOs are NOT penalized for missing rationales — this only activates when present.
+ */
+export const SPO_DELIBERATION_WEIGHTS_WITH_RATIONALE = {
+  voteDiversity: 0.25,
+  dissent: 0.25,
+  typeBreadth: 0.17,
+  coverageEntropy: 0.13,
+  rationaleQuality: 0.2,
+} as const;
+
+/**
+ * SPO vote change bonus — mirrors DRep VOTE_CHANGE_BONUS.
+ * When an SPO changes their vote on a proposal (detected via multiple tx_hash
+ * entries for the same pool_id + proposal), the deliberation quality contribution
+ * for that proposal gets a multiplier bonus.
+ *
+ * Unlike DRep (which requires a quality rationale threshold), SPOs rarely provide
+ * rationales, so the bonus applies to any vote change — the act of reconsidering
+ * itself is the signal of deliberation.
+ */
+export const SPO_VOTE_CHANGE_BONUS = {
+  /** Multiplier applied to deliberation quality for vote-changed proposals. */
+  multiplier: 1.1,
 } as const;
 
 /**

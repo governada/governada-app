@@ -14,6 +14,11 @@ import {
 import { computeSpoDeliberationQuality } from '@/lib/scoring/spoDeliberationQuality';
 import { computeConfidence } from '@/lib/scoring/confidence';
 import { detectSybilPairs } from '@/lib/scoring/sybilDetection';
+import {
+  computeSybilConfidencePenalty,
+  applySybilPenalty,
+  type SybilConfidenceFlag,
+} from '@/lib/scoring/sybilPenalty';
 import { getExtendedImportanceWeight } from '@/lib/scoring';
 import { getFeatureFlag } from '@/lib/featureFlags';
 import { CURRENT_SPO_SCORE_VERSION } from '@/lib/scoring/versioning';
@@ -39,6 +44,7 @@ interface SpoVoteRow {
   vote: string;
   block_time: number;
   epoch: number | null;
+  tx_hash: string;
 }
 
 interface ClassificationRow {
@@ -138,7 +144,7 @@ export const syncSpoScores = inngest.createFunction(
         fetchAll(() =>
           supabase
             .from('spo_votes')
-            .select('pool_id, proposal_tx_hash, proposal_index, vote, block_time, epoch'),
+            .select('pool_id, proposal_tx_hash, proposal_index, vote, block_time, epoch, tx_hash'),
         ),
         fetchAll(() =>
           supabase
@@ -237,6 +243,24 @@ export const syncSpoScores = inngest.createFunction(
           totalWeightedPool += ctx.importanceWeight * Math.exp(-DECAY_LAMBDA * ageDays);
         }
 
+        // Detect vote changes: pool_id + proposalKey with multiple distinct tx_hash entries
+        // means the SPO changed their vote on that proposal (sign of deliberation).
+        const voteChanges = new Set<string>(); // "pool_id::proposalKey"
+        {
+          const poolProposalTxHashes = new Map<string, Set<string>>();
+          for (const v of voteRows as SpoVoteRow[]) {
+            const compositeKey = `${v.pool_id}::${v.proposal_tx_hash}-${v.proposal_index}`;
+            const txSet = poolProposalTxHashes.get(compositeKey) ?? new Set();
+            txSet.add(v.tx_hash);
+            poolProposalTxHashes.set(compositeKey, txSet);
+          }
+          for (const [compositeKey, txSet] of poolProposalTxHashes) {
+            if (txSet.size > 1) {
+              voteChanges.add(compositeKey);
+            }
+          }
+        }
+
         // Build vote data with V3 fields
         const allVotes: SpoVoteDataV3[] = [];
         const poolVotes = new Map<string, SpoVoteDataV3[]>();
@@ -290,7 +314,7 @@ export const syncSpoScores = inngest.createFunction(
           }
         }
 
-        // Compute V3.2 Deliberation Quality scores
+        // Compute V3.3 Deliberation Quality scores (with vote-change bonus)
         const deliberationVotes = new Map<
           string,
           Array<{
@@ -302,6 +326,7 @@ export const syncSpoScores = inngest.createFunction(
             importanceWeight: number;
             hasRationale: boolean;
             spoMajorityVote?: 'Yes' | 'No' | null;
+            hasVoteChanged?: boolean;
           }>
         >();
         for (const [poolId, votes] of poolVotes) {
@@ -316,6 +341,7 @@ export const syncSpoScores = inngest.createFunction(
               importanceWeight: v.importanceWeight,
               hasRationale: v.hasRationale,
               spoMajorityVote: spoMajorityByProposal.get(v.proposalKey) ?? null,
+              hasVoteChanged: voteChanges.has(`${poolId}::${v.proposalKey}`),
             })),
           );
         }
@@ -393,7 +419,41 @@ export const syncSpoScores = inngest.createFunction(
           scoreHistory.set(h.pool_id, arr);
         }
 
-        // Compute V3 scores with all 10 arguments
+        // Run sybil detection BEFORE score computation so penalty applies to confidence
+        const sybilFlags = detectSybilPairs(poolVoteMap);
+
+        // Load existing unresolved sybil flags from DB for penalty computation
+        const { data: existingSybilFlags } = await supabase
+          .from('spo_sybil_flags')
+          .select('pool_a, pool_b, agreement_rate, resolved')
+          .eq('resolved', false);
+
+        // Merge current detection with existing flags for penalty computation
+        const allSybilFlags: SybilConfidenceFlag[] = [
+          ...(existingSybilFlags || []).map((f) => ({
+            pool_a: f.pool_a as string,
+            pool_b: f.pool_b as string,
+            agreement_rate: f.agreement_rate as number,
+            resolved: f.resolved as boolean,
+          })),
+          // Add newly detected flags (not yet in DB)
+          ...sybilFlags.map((f) => ({
+            pool_a: f.poolA,
+            pool_b: f.poolB,
+            agreement_rate: f.agreementRate,
+            resolved: false,
+          })),
+        ];
+
+        // Apply sybil confidence penalties
+        for (const [poolId, baseConf] of confidences) {
+          const penalty = computeSybilConfidencePenalty(poolId, allSybilFlags);
+          if (penalty > 0) {
+            confidences.set(poolId, applySybilPenalty(baseConf, penalty));
+          }
+        }
+
+        // Compute V3 scores with all 10 arguments (confidence now includes sybil penalty)
         const finalScores = computeSpoScores(
           allVotes,
           totalWeightedPool,
@@ -407,8 +467,7 @@ export const syncSpoScores = inngest.createFunction(
           activeEpochs,
         );
 
-        // Run sybil detection
-        const sybilFlags = detectSybilPairs(poolVoteMap);
+        // Persist sybil flags
         if (sybilFlags.length > 0) {
           logger.warn('[sync-spo-scores] Sybil flags detected', { count: sybilFlags.length });
           const sybilInserts = sybilFlags.map((f) => ({

@@ -2,14 +2,25 @@
  * SPO Deliberation Quality pillar (25% of SPO Score V3).
  *
  * V3.2: Replaces broken rationale-based scoring with voting behavior signals.
- * Four sub-components:
+ * V3.3: Adds optional rationale quality blending (when available) and vote-change bonus.
+ *
+ * Base sub-components (when no rationales available):
  * - Vote Diversity (35%): Penalizes rubber-stamping (>85% same direction)
  * - Dissent Rate (30%): 15-40% minority voting is the sweet spot
  * - Type Breadth (20%): Fraction of distinct proposal types voted on
  * - Coverage Entropy (15%): Shannon entropy across proposal types
+ *
+ * When rationale quality data is available, rationale quality is blended at 20%
+ * (weights shift: diversity 25%, dissent 25%, breadth 17%, entropy 13%).
+ * SPOs are NOT penalized for missing rationales — additive only.
  */
 
-import { SPO_DELIBERATION_WEIGHTS, SPO_ABSTAIN_PENALTY } from './calibration';
+import {
+  SPO_DELIBERATION_WEIGHTS,
+  SPO_DELIBERATION_WEIGHTS_WITH_RATIONALE,
+  SPO_ABSTAIN_PENALTY,
+  SPO_VOTE_CHANGE_BONUS,
+} from './calibration';
 
 export interface SpoDeliberationVoteData {
   proposalKey: string;
@@ -21,10 +32,14 @@ export interface SpoDeliberationVoteData {
   hasRationale: boolean;
   /** Majority vote direction among all SPOs for this proposal (by simple count). */
   spoMajorityVote?: 'Yes' | 'No' | null;
+  /** Whether this vote replaced a previous vote on the same proposal. */
+  hasVoteChanged?: boolean;
+  /** AI-scored rationale quality (0-100). Only present when rationale exists and has been scored. */
+  rationaleQuality?: number;
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component 1: Vote Diversity (35%)
+// Sub-component 1: Vote Diversity (35% / 25% with rationale)
 // ---------------------------------------------------------------------------
 
 /**
@@ -92,7 +107,7 @@ export function computeSpoVoteDiversity(votes: SpoDeliberationVoteData[]): numbe
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component 2: Dissent Rate (30%)
+// Sub-component 2: Dissent Rate (30% / 25% with rationale)
 // ---------------------------------------------------------------------------
 
 /**
@@ -144,7 +159,7 @@ export function computeSpoDissentRate(votes: SpoDeliberationVoteData[]): number 
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component 3: Type Breadth (20%)
+// Sub-component 3: Type Breadth (20% / 17% with rationale)
 // ---------------------------------------------------------------------------
 
 /**
@@ -171,7 +186,7 @@ export function computeSpoTypeBreadth(
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component 4: Coverage Entropy (15%) — kept from V3
+// Sub-component 4: Coverage Entropy (15% / 13% with rationale) — kept from V3
 // ---------------------------------------------------------------------------
 
 /**
@@ -213,6 +228,12 @@ export function computeCoverageEntropy(
 
 /**
  * Compute raw Deliberation Quality scores (0-100) for all SPOs.
+ *
+ * V3.3 enhancements:
+ * - When rationale quality data is available for an SPO, blends it in at 20%
+ *   weight (additive — SPOs without rationales keep original weights).
+ * - Vote-change bonus: proposals where the SPO changed their vote get a 1.1x
+ *   multiplier on their deliberation contribution.
  */
 export function computeSpoDeliberationQuality(
   poolVotes: Map<string, SpoDeliberationVoteData[]>,
@@ -220,7 +241,6 @@ export function computeSpoDeliberationQuality(
   _nowSeconds: number,
 ): Map<string, number> {
   const scores = new Map<string, number>();
-  const w = SPO_DELIBERATION_WEIGHTS;
 
   for (const [poolId, votes] of poolVotes) {
     if (votes.length === 0) {
@@ -233,11 +253,42 @@ export function computeSpoDeliberationQuality(
     const breadth = computeSpoTypeBreadth(votes, allProposalTypes);
     const entropy = computeCoverageEntropy(votes, allProposalTypes);
 
-    const raw =
-      diversity * w.voteDiversity +
-      dissent * w.dissent +
-      breadth * w.typeBreadth +
-      entropy * w.coverageEntropy;
+    // Check if this SPO has any scored rationales
+    const votesWithRationale = votes.filter(
+      (v) => v.rationaleQuality != null && v.rationaleQuality > 0,
+    );
+    const hasRationaleData = votesWithRationale.length > 0;
+
+    let raw: number;
+
+    if (hasRationaleData) {
+      // Blend rationale quality into deliberation using shifted weights
+      const avgRationaleQuality =
+        votesWithRationale.reduce((sum, v) => sum + (v.rationaleQuality ?? 0), 0) /
+        votesWithRationale.length;
+
+      const w = SPO_DELIBERATION_WEIGHTS_WITH_RATIONALE;
+      raw =
+        diversity * w.voteDiversity +
+        dissent * w.dissent +
+        breadth * w.typeBreadth +
+        entropy * w.coverageEntropy +
+        avgRationaleQuality * w.rationaleQuality;
+    } else {
+      // Standard weights — no rationale penalty
+      const w = SPO_DELIBERATION_WEIGHTS;
+      raw =
+        diversity * w.voteDiversity +
+        dissent * w.dissent +
+        breadth * w.typeBreadth +
+        entropy * w.coverageEntropy;
+    }
+
+    // Apply vote-change bonus: if any votes were changed, boost the score
+    const voteChangedCount = votes.filter((v) => v.hasVoteChanged).length;
+    if (voteChangedCount > 0) {
+      raw = Math.min(100, raw * SPO_VOTE_CHANGE_BONUS.multiplier);
+    }
 
     scores.set(poolId, clamp(Math.round(raw)));
   }

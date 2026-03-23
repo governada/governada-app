@@ -54,6 +54,7 @@ import { computeAiQuality } from '@/inngest/functions/compute-ai-quality';
 import { detectGamingSignals } from '@/inngest/functions/detect-gaming-signals';
 import { extractMatchingTopics } from '@/inngest/functions/extract-matching-topics';
 import { scoreProposers } from '@/inngest/functions/score-proposers';
+import { scoreAiQuality } from '@/inngest/functions/score-ai-quality';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
@@ -109,5 +110,6 @@ export const { GET, POST, PUT } = serve({
     detectGamingSignals,
     extractMatchingTopics,
     scoreProposers,
+    scoreAiQuality,
   ],
 });

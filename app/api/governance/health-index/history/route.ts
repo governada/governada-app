@@ -13,7 +13,7 @@ export const GET = withRouteHandler(
     const supabase = createClient();
     const { data: snapshots } = await supabase
       .from('ghi_snapshots')
-      .select('epoch_no, score, band, components')
+      .select('epoch_no, score, band, components, narrative')
       .order('epoch_no', { ascending: false })
       .limit(epochs);
 
@@ -26,6 +26,7 @@ export const GET = withRouteHandler(
       components:
         (s.components as { name: string; value: number; weight: number; contribution: number }[]) ??
         null,
+      narrative: (s.narrative as string) ?? null,
     }));
 
     const trend: { direction: 'up' | 'down' | 'flat'; delta: number; streakEpochs: number } = {

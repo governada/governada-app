@@ -2465,6 +2465,7 @@ export type Database = {
           power_source: string | null;
           proposal_index: number;
           proposal_tx_hash: string;
+          rationale_ai_summary: string | null;
           rationale_proposal_awareness: number | null;
           rationale_quality: number | null;
           rationale_reasoning_depth: number | null;
@@ -2485,6 +2486,7 @@ export type Database = {
           power_source?: string | null;
           proposal_index: number;
           proposal_tx_hash: string;
+          rationale_ai_summary?: string | null;
           rationale_proposal_awareness?: number | null;
           rationale_quality?: number | null;
           rationale_reasoning_depth?: number | null;
@@ -2505,6 +2507,7 @@ export type Database = {
           power_source?: string | null;
           proposal_index?: number;
           proposal_tx_hash?: string;
+          rationale_ai_summary?: string | null;
           rationale_proposal_awareness?: number | null;
           rationale_quality?: number | null;
           rationale_reasoning_depth?: number | null;
@@ -2884,6 +2887,7 @@ export type Database = {
           components: Json;
           computed_at: string | null;
           epoch_no: number;
+          narrative: string | null;
           score: number;
         };
         Insert: {
@@ -2891,6 +2895,7 @@ export type Database = {
           components: Json;
           computed_at?: string | null;
           epoch_no: number;
+          narrative?: string | null;
           score: number;
         };
         Update: {
@@ -2898,6 +2903,7 @@ export type Database = {
           components?: Json;
           computed_at?: string | null;
           epoch_no?: number;
+          narrative?: string | null;
           score?: number;
         };
         Relationships: [];
@@ -5035,6 +5041,8 @@ export type Database = {
       proposals: {
         Row: {
           abstract: string | null;
+          ai_proposal_quality: number | null;
+          ai_proposal_quality_details: Json | null;
           ai_summary: string | null;
           assessment_sealed_until: string | null;
           block_time: number | null;
@@ -5058,6 +5066,8 @@ export type Database = {
         };
         Insert: {
           abstract?: string | null;
+          ai_proposal_quality?: number | null;
+          ai_proposal_quality_details?: Json | null;
           ai_summary?: string | null;
           assessment_sealed_until?: string | null;
           block_time?: number | null;
@@ -5081,6 +5091,8 @@ export type Database = {
         };
         Update: {
           abstract?: string | null;
+          ai_proposal_quality?: number | null;
+          ai_proposal_quality_details?: Json | null;
           ai_summary?: string | null;
           assessment_sealed_until?: string | null;
           block_time?: number | null;

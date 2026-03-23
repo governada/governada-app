@@ -414,12 +414,6 @@ export const GlobeConstellation = forwardRef<
                 matchIntensities={sceneState.matchIntensities}
               />
             )}
-            {quality !== 'low' && sceneState.scanProgress < 0.5 && (
-              <ScanningRing
-                active={sceneState.matchedNodeIds.size > 0}
-                progress={sceneState.scanProgress}
-              />
-            )}
             {quality !== 'low' && (
               <NetworkPulses edges={sceneState.edges} dimmed={sceneState.dimmed} />
             )}
@@ -1274,55 +1268,6 @@ function MatchedEdgeGlow({
         blending={THREE.AdditiveBlending}
       />
     </lineSegments>
-  );
-}
-
-// --- Scanning sweep ring (radar-like ring during matching) ---
-
-function ScanningRing({ active, progress }: { active: boolean; progress: number }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const matRef = useRef<THREE.MeshBasicMaterial>(null);
-  const targetOpacity = useRef(0);
-
-  useFrame((_, delta) => {
-    if (!meshRef.current || !matRef.current) return;
-    // Continuous rotation on Z-axis tilted differently from globe
-    meshRef.current.rotation.z += delta * 0.036; // ~3x globe speed
-    meshRef.current.rotation.x += delta * 0.008; // slight tumble
-
-    // Scale ring down aggressively — disappears before camera gets close enough to clip
-    // progress 0 → scale 1 (radius 8.5), progress 0.5+ → rapidly shrinks
-    const s = Math.max(0, 1 - progress * 0.7);
-    meshRef.current.scale.set(s, s, s);
-
-    // Fade out early — visible only in the first half of convergence (rounds 1-2)
-    // progress 0 → full opacity, progress 0.5 → gone
-    const fadeOut = progress > 0.3 ? Math.max(0, 1 - (progress - 0.3) / 0.2) : 1;
-    const desired = active ? (0.15 + progress * 0.1) * fadeOut : 0;
-    targetOpacity.current += (desired - targetOpacity.current) * Math.min(1, delta * 3);
-    matRef.current.opacity = targetOpacity.current;
-  });
-
-  // Lerp color from teal toward amber as progress increases
-  const color = useMemo(() => {
-    const teal = new THREE.Color('#2dd4bf');
-    const amber = new THREE.Color('#f59e0b');
-    return teal.clone().lerp(amber, progress * 0.6);
-  }, [progress]);
-
-  return (
-    <mesh ref={meshRef} rotation={[Math.PI / 3, 0, 0]}>
-      <torusGeometry args={[8.5, 0.02 + progress * 0.02, 8, 64]} />
-      <meshBasicMaterial
-        ref={matRef}
-        color={color}
-        transparent
-        opacity={0}
-        toneMapped={false}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </mesh>
   );
 }
 

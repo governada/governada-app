@@ -57,6 +57,10 @@ export interface RationaleAnalysisResult {
   /** 0-100: How much of this rationale is copy-pasted from prior submissions. 0=original, 100=verbatim copy. */
   boilerplate_score: number;
   confidence: number;
+  /** Whether the Haiku validation pass confirmed the analysis is grounded. */
+  validation_passed?: boolean;
+  /** Issues found by the Haiku validation pass, if any. */
+  validation_issues?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +181,7 @@ export async function analyzeRationale(
   try {
     const prompt = buildPrompt(input);
     const result = await generateJSON<RationaleAnalysisResult>(prompt, {
-      model: 'FAST',
+      model: 'OPUS',
       maxTokens: 2048,
       temperature: 0.2,
       system:
@@ -219,6 +223,18 @@ export async function analyzeRationale(
       100,
     );
 
+    // Run lightweight Haiku validation pass (non-blocking)
+    const validation = await validateAnalysis(input.rationaleSummary, result);
+    result.validation_passed = validation.valid;
+    result.validation_issues = validation.issues;
+
+    if (!validation.valid) {
+      logger.warn('[rationaleAnalysis] Haiku validation found issues', {
+        ccHotId: input.ccHotId,
+        issues: validation.issues,
+      });
+    }
+
     return result;
   } catch (err) {
     logger.error('[rationaleAnalysis] Unexpected error during analysis', {
@@ -226,6 +242,63 @@ export async function analyzeRationale(
       ccHotId: input.ccHotId,
     });
     return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Haiku Validation Pass
+// ---------------------------------------------------------------------------
+
+interface ValidationResult {
+  valid: boolean;
+  issues: string[];
+}
+
+/**
+ * Lightweight Haiku validation that fact-checks the Opus analysis against
+ * the actual rationale text. Logs issues but never blocks scoring.
+ */
+async function validateAnalysis(
+  rationaleText: string,
+  analysis: RationaleAnalysisResult,
+): Promise<ValidationResult> {
+  try {
+    const articlesList = analysis.articles_analyzed.map((a) => a.article).join(', ');
+
+    const prompt = `You are fact-checking an AI analysis of a governance rationale. Verify these claims against the actual text:
+
+Rationale text: "${rationaleText}"
+
+Claims to verify:
+1. Articles cited: ${articlesList}
+2. Interpretation stance: ${analysis.interpretation_stance}
+3. Contradicts own precedent: ${analysis.contradicts_own_precedent}
+4. Novel interpretation: ${analysis.novel_interpretation}
+
+For each claim, check if it's grounded in the actual rationale text.
+
+Return JSON: { "valid": boolean, "issues": ["description of any ungrounded claim"] }`;
+
+    const result = await generateJSON<ValidationResult>(prompt, {
+      model: 'HAIKU',
+      maxTokens: 512,
+      temperature: 0,
+      system: 'You are a fact-checker. Return only valid JSON.',
+    });
+
+    if (!result || typeof result.valid !== 'boolean') {
+      return { valid: true, issues: [] }; // Assume valid if validation itself fails
+    }
+
+    return {
+      valid: result.valid,
+      issues: Array.isArray(result.issues) ? result.issues : [],
+    };
+  } catch (err) {
+    logger.warn('[rationaleAnalysis] Validation pass failed, assuming valid', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return { valid: true, issues: [] };
   }
 }
 

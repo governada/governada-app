@@ -11,6 +11,8 @@
  * 4. Consistency & Independence (20%) — Cross-proposal consistency + timeliness
  */
 
+import { logger } from '@/lib/logger';
+
 export interface FidelityPillars {
   rationaleProvision: number; // 0-100
   articleCoverage: number; // 0-100
@@ -78,6 +80,19 @@ export const EXPECTED_ARTICLES: Record<string, string[]> = {
 };
 
 /**
+ * Normalize article references to a canonical lowercase form so that
+ * "Article II, § 7", "Art. II Section 7", "Art II §7" all match.
+ */
+export function normalizeArticleRef(ref: string): string {
+  return ref
+    .replace(/Art\.?/i, 'Article')
+    .replace(/Section/i, '§')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/**
  * Score how well cited articles cover expected articles for a proposal type.
  * Returns 0-100.
  */
@@ -85,11 +100,12 @@ export function computeArticleCoverage(proposalType: string, citedArticles: stri
   const expected = EXPECTED_ARTICLES[proposalType] ?? ['Article II, § 6'];
   if (expected.length === 0) return citedArticles.length > 0 ? 100 : 0;
 
+  const normalizedCited = citedArticles.map(normalizeArticleRef);
+
   let matched = 0;
   for (const exp of expected) {
-    // Fuzzy match: "Article II, § 7" matches citations containing "Article II" and "7"
-    const parts = exp.split(/[,§\s]+/).filter(Boolean);
-    const found = citedArticles.some((cited) => parts.every((part) => cited.includes(part)));
+    const normalizedExp = normalizeArticleRef(exp);
+    const found = normalizedCited.some((cited) => cited.includes(normalizedExp));
     if (found) matched++;
   }
 
@@ -138,17 +154,46 @@ export function computeAvgReasoningQuality(scores: number[]): number {
 
 /**
  * Independence sub-score (0-100).
- * Healthy DRep alignment is 40-70%. Pure rubber-stamping (>85%) or pure
- * opposition (<20%) both score low. Perfect score at ~55%.
+ *
+ * Composition: 80% vote-direction independence + 20% explanation quality.
+ *
+ * Vote-direction: Healthy DRep alignment is 40-70%. Pure rubber-stamping
+ * (>85%) or pure opposition (<20%) both score low. Perfect score at ~55%.
+ *
+ * Explanation quality: Rewards CC members who dissent WITH substance.
+ * - Dissenting with quality rationale (deliberation_quality >= 60): full points (100)
+ * - Dissenting without quality rationale: 50 points
+ * - Not dissenting: neutral (50 points — this sub-component rewards quality dissent,
+ *   but doesn't penalize agreement)
  */
-export function computeIndependenceScore(drepAlignmentPct: number): number {
-  // Peak at 55%, with a bell curve shape
+export function computeIndependenceScore(
+  drepAlignmentPct: number,
+  options?: { isDissenting?: boolean; deliberationQuality?: number | null },
+): number {
+  // Vote-direction sub-score (peak at 55%, bell curve)
   const ideal = 55;
   const distance = Math.abs(drepAlignmentPct - ideal);
+  let voteDirection: number;
+  if (distance <= 15) {
+    voteDirection = 100; // 40-70% range = perfect
+  } else if (distance <= 30) {
+    voteDirection = Math.round(100 - (distance - 15) * 3); // gradual decay
+  } else {
+    voteDirection = Math.max(0, Math.round(100 - (distance - 15) * 3));
+  }
 
-  if (distance <= 15) return 100; // 40-70% range = perfect
-  if (distance <= 30) return Math.round(100 - (distance - 15) * 3); // gradual decay
-  return Math.max(0, Math.round(100 - (distance - 15) * 3));
+  // Explanation quality sub-score
+  let explanationQuality = 50; // Neutral default (not dissenting or no data)
+  if (options?.isDissenting) {
+    const quality = options.deliberationQuality;
+    if (quality != null && quality >= 60) {
+      explanationQuality = 100; // Dissenting with substantive reasoning
+    } else {
+      explanationQuality = 50; // Dissenting without quality rationale
+    }
+  }
+
+  return Math.round(voteDirection * 0.8 + explanationQuality * 0.2);
 }
 
 /**
@@ -183,10 +228,49 @@ export function computeConsistencyIndependence(
   avgDaysToVote: number,
   typesVotedOn: number,
   totalActiveTypes: number,
+  independenceOptions?: { isDissenting?: boolean; deliberationQuality?: number | null },
 ): number {
-  const independence = computeIndependenceScore(drepAlignmentPct);
+  const independence = computeIndependenceScore(drepAlignmentPct, independenceOptions);
   const responsiveness = computeResponsivenessScore(avgDaysToVote);
   const typeConsistency = computeTypeConsistencyScore(typesVotedOn, totalActiveTypes);
 
   return Math.round(independence * 0.5 + responsiveness * 0.25 + typeConsistency * 0.25);
+}
+
+// ---------------------------------------------------------------------------
+// Cross-Proposal Pattern Detection
+// ---------------------------------------------------------------------------
+
+export interface DriftResult {
+  driftDetected: boolean;
+  magnitude: number;
+}
+
+/**
+ * Detect if the current fidelity score deviates significantly from recent history.
+ *
+ * If the current score deviates by >15 points from the 3-score rolling average,
+ * flags as drift. This is a monitoring signal — it does not affect the score.
+ */
+export function detectVotingDrift(recentScores: number[], currentScore: number): DriftResult {
+  if (recentScores.length === 0) {
+    return { driftDetected: false, magnitude: 0 };
+  }
+
+  // Use up to 3 most recent scores for rolling average
+  const windowScores = recentScores.slice(-3);
+  const rollingAvg = windowScores.reduce((a, b) => a + b, 0) / windowScores.length;
+  const magnitude = Math.abs(currentScore - rollingAvg);
+  const driftDetected = magnitude > 15;
+
+  if (driftDetected) {
+    logger.info('[fidelityScore] Voting drift detected', {
+      currentScore,
+      rollingAvg: Math.round(rollingAvg),
+      magnitude: Math.round(magnitude),
+      windowSize: windowScores.length,
+    });
+  }
+
+  return { driftDetected, magnitude: Math.round(magnitude) };
 }

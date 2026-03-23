@@ -22,6 +22,51 @@ _Organized by experience type. Add new patterns in the relevant section, or crea
 
 _(Patterns for first-time user experiences, value communication, progressive disclosure)_
 
+#### Duolingo — Value Before Signup (Deferred Account Creation)
+
+- **Source**: Duolingo — https://goodux.appcues.com/blog/duolingo-user-onboarding
+- **Discovered**: 2026-03-23 (explore-feature: getting started)
+- **What they do**: Users complete a full lesson (2-3 minutes, earn XP, start a streak) BEFORE any account creation prompt. Signup is framed as "save your progress" — loss prevention, not access granting. Users who maintain 7-day streaks are 3.6x more likely to stay engaged.
+- **Why it's world-class**: By the time signup appears, users have invested effort and have something to lose. Completion rates dramatically higher than traditional signup-first flows.
+- **Applicable to**: Let citizens explore governance, get matched, see alignment — all pre-wallet. Connect prompt becomes "save your governance profile" not "sign up."
+- **Adoption difficulty**: Low — existing match flow already works pre-auth
+
+#### Coinbase Smart Wallet — Invisible Blockchain Auth
+
+- **Source**: Coinbase — https://www.coinbase.com/blog/evolving-wallets-to-bring-a-billion-users-onchain
+- **Discovered**: 2026-03-23 (explore-feature: getting started)
+- **What they do**: Passkey-based wallet creation — single biometric scan, no seed phrases, no extensions. Gas fees sponsored by dapp. Wallet created INSIDE the dapp, user never leaves. 1M+ users.
+- **Why it's world-class**: Makes blockchain auth feel like signing up for any consumer app. Zero crypto-specific jargon in the UI.
+- **Applicable to**: Future direction for Governada — auto-detect wallet or offer embedded wallet as fallback. Make blockchain infrastructure invisible.
+- **Adoption difficulty**: High — requires account abstraction infrastructure
+
+#### Peloton — Single-Question Segmentation
+
+- **Source**: Peloton — https://medium.com/agileinsider/fitness-gamification-a-product-managers-review-of-the-peloton-bike-and-the-leaderboard-53e5aafba1ea
+- **Discovered**: 2026-03-23 (explore-feature: getting started)
+- **What they do**: Asks ONE question: "What draws you to fitness?" Answer (competition, weight loss, mental health, strength) determines the ENTIRE initial experience. Competition-motivated users see leaderboards. Mental-health users see meditation.
+- **Why it's world-class**: One question about MOTIVATION (not features, not demographics) replaces a lengthy preference survey. Dramatically different onboarding paths from a single fork.
+- **Applicable to**: "What brings you to Cardano governance?" → delegation focus, treasury curiosity, health monitoring, or learning mode. One question, five different first experiences.
+- **Adoption difficulty**: Low — segmentation logic straightforward
+
+#### Estonia e-Residency — Civic Identity Ceremony
+
+- **Source**: Estonia e-Residency — https://e-estonia.com/solutions/estonian-e-identity/e-residency/
+- **Discovered**: 2026-03-23 (explore-feature: getting started)
+- **What they do**: Created "digital citizenship" independent of physical presence. 100K+ e-residents from 170+ countries. The application process is a civic experience — background check, verification, physical ID card pickup at embassy. Reframes bureaucracy as "membership in a digital nation."
+- **Why it's world-class**: The physical card creates tangible connection to a digital identity. Getting an e-Residency card FEELS like receiving a citizenship document.
+- **Applicable to**: Civic Ceremony concept — wallet connection as "claiming civic identity," Governance Rings as visual ID, shareable Civic Identity Card as the tangible artifact.
+- **Adoption difficulty**: Medium — needs ceremony animations + identity card generator
+
+#### Taiwan Polis — Subtractive Civic Design
+
+- **Source**: Taiwan vTaiwan + Polis — https://www.technologyreview.com/2018/08/21/240284/the-simple-but-ingenious-system-taiwan-uses-to-crowdsource-its-laws/
+- **Discovered**: 2026-03-23 (explore-feature: getting started)
+- **What they do**: Users can ONLY agree, disagree, or pass — no replies, no comments. This eliminates trolling. Opinion clusters visualized in real-time, showing where consensus exists.
+- **Why it's world-class**: Subtractive design transformed online deliberation from combative to collaborative. The visualization of opinion clusters makes "public opinion" tangible.
+- **Applicable to**: Alignment visualization — show citizens where they sit among governance participants. Real-time visualization of civic identity positioning.
+- **Adoption difficulty**: Low — alignment computation already exists
+
 #### Participation Spectrum with Depth Choice
 
 - **Source**: Decidim + CitizenLab (Go Vocal) — https://decidim.org/ + https://www.govocal.com/

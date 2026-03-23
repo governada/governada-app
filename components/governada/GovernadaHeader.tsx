@@ -24,7 +24,10 @@ import {
   Loader2,
   UserCog,
   Compass,
+  Wallet,
+  ChevronDown,
 } from 'lucide-react';
+import { useQuickConnect } from '@/hooks/useQuickConnect';
 import { GovernadaLogo } from '@/components/ui/GovernadaLogo';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { useDiscoveryHub } from '@/components/discovery/DiscoveryHubContext';
@@ -183,6 +186,150 @@ function NotificationBell({ unreadCount }: { unreadCount: number }) {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/* ── Quick connect for anonymous users ──────────────────────── */
+
+function QuickConnectButton({
+  t,
+  locale,
+  setLocale,
+  walletModalOpen,
+  setWalletModalOpen,
+}: {
+  t: (key: string) => string;
+  locale: SupportedLocale;
+  setLocale: (locale: SupportedLocale) => void;
+  walletModalOpen: boolean;
+  setWalletModalOpen: (open: boolean) => void;
+}) {
+  const {
+    detectedWallets,
+    primaryWallet,
+    primaryWalletLabel,
+    quickConnect,
+    isConnecting,
+    error,
+    clearError,
+    hasSingleWallet,
+  } = useQuickConnect();
+
+  // Auto-dismiss error after 4 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(clearError, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, clearError]);
+
+  return (
+    <>
+      {/* Language picker for unauthenticated users */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            aria-label={t('Change language')}
+          >
+            <Languages className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          {SUPPORTED_LOCALES.map((loc: SupportedLocale) => (
+            <DropdownMenuItem key={loc} onClick={() => setLocale(loc)} className="justify-between">
+              <span>{LOCALE_NAMES[loc]}</span>
+              {locale === loc && <span className="text-primary">&#10003;</span>}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Smart wallet connect — adapts based on detected wallets */}
+      {hasSingleWallet && primaryWallet ? (
+        /* Single wallet detected: direct 1-click button */
+        <div className="relative">
+          <Button
+            variant="outline"
+            size="sm"
+            className="whitespace-nowrap gap-1.5"
+            onClick={() => quickConnect()}
+            disabled={isConnecting}
+          >
+            {isConnecting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Wallet className="h-3.5 w-3.5" />
+            )}
+            {isConnecting ? t('Connecting...') : `${t('Connect')} ${primaryWalletLabel}`}
+          </Button>
+          {error && (
+            <div className="absolute top-full right-0 mt-1.5 px-3 py-1.5 bg-destructive/90 text-destructive-foreground text-xs rounded-md whitespace-nowrap z-50 shadow-lg">
+              {error}
+            </div>
+          )}
+        </div>
+      ) : detectedWallets.length > 1 ? (
+        /* Multiple wallets: dropdown selector */
+        <div className="relative">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap gap-1.5"
+                disabled={isConnecting}
+              >
+                {isConnecting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wallet className="h-3.5 w-3.5" />
+                )}
+                {isConnecting ? t('Connecting...') : t('Connect')}
+                {!isConnecting && <ChevronDown className="h-3 w-3 opacity-50" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                {t('Select wallet')}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {detectedWallets.map((wallet) => (
+                <DropdownMenuItem
+                  key={wallet}
+                  onClick={() => quickConnect(wallet)}
+                  className="gap-2"
+                >
+                  <Wallet className="h-4 w-4" />
+                  <span className="capitalize">{wallet}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {error && (
+            <div className="absolute top-full right-0 mt-1.5 px-3 py-1.5 bg-destructive/90 text-destructive-foreground text-xs rounded-md whitespace-nowrap z-50 shadow-lg">
+              {error}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* No wallets detected: open full modal */
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="whitespace-nowrap gap-1.5"
+            onClick={() => setWalletModalOpen(true)}
+          >
+            <Wallet className="h-3.5 w-3.5" />
+            {t('Connect Wallet')}
+          </Button>
+          <WalletConnectModal open={walletModalOpen} onOpenChange={setWalletModalOpen} />
+        </>
+      )}
+    </>
   );
 }
 
@@ -801,42 +948,13 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <>
-              {/* Language picker for unauthenticated users */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    aria-label={t('Change language')}
-                  >
-                    <Languages className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  {SUPPORTED_LOCALES.map((loc: SupportedLocale) => (
-                    <DropdownMenuItem
-                      key={loc}
-                      onClick={() => setLocale(loc)}
-                      className="justify-between"
-                    >
-                      <span>{LOCALE_NAMES[loc]}</span>
-                      {locale === loc && <span className="text-primary">&#10003;</span>}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="outline"
-                size="sm"
-                className="whitespace-nowrap"
-                onClick={() => setWalletModalOpen(true)}
-              >
-                {t('Connect Wallet')}
-              </Button>
-              <WalletConnectModal open={walletModalOpen} onOpenChange={setWalletModalOpen} />
-            </>
+            <QuickConnectButton
+              t={t}
+              locale={locale}
+              setLocale={setLocale}
+              walletModalOpen={walletModalOpen}
+              setWalletModalOpen={setWalletModalOpen}
+            />
           )}
         </div>
       </div>

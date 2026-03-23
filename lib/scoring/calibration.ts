@@ -1091,23 +1091,20 @@ export const DRIFT_THRESHOLDS = {
 // ---------------------------------------------------------------------------
 
 /**
- * Enhanced GHI deliberation quality weights when `embedding_ghi_deliberation` flag is ON.
- * Adds semantic diversity and reasoning coherence sub-signals.
+ * Enhanced GHI deliberation quality weights (permanent, data-driven).
+ * When embedding data is available, the 5-signal composition is used.
+ * When embeddings are not available, falls back to 3-signal (rationale 0.5, debate 0.3, independence 0.2).
  * Must sum to 1.0.
  *
- * Compared to base weights (rationale 0.5, debate 0.3, independence 0.2):
- * - Rationale quality reduced from 0.5 → 0.35 (still dominant)
- * - Debate diversity reduced from 0.3 → 0.2
- * - Voting independence reduced from 0.2 → 0.15
- * - Semantic diversity added at 0.2 (embedding-based argument spread)
- * - Reasoning coherence added at 0.1 (rationale-proposal relevance)
+ * Semantic signals are weighted heavily because they measure argument quality
+ * via embeddings — the strongest defensibility signal in the deliberation dimension.
  */
 export const EMBEDDING_DELIBERATION_WEIGHTS = {
-  rationaleQuality: 0.35,
-  debateDiversity: 0.2,
-  votingIndependence: 0.15,
-  semanticDiversity: 0.2,
-  reasoningCoherence: 0.1,
+  rationaleQuality: 0.25,
+  debateDiversity: 0.15,
+  votingIndependence: 0.1,
+  semanticDiversity: 0.3,
+  reasoningCoherence: 0.2,
 } as const;
 
 // ---------------------------------------------------------------------------

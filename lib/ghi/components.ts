@@ -17,7 +17,6 @@ import { createClient } from '@/lib/supabase';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { calculateTreasuryHealthScore } from '@/lib/treasury';
 import { computeEDI, type EDIResult } from './ediMetrics';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { computePairwiseDiversity } from '@/lib/embeddings/quality';
 import { cosineSimilarity } from '@/lib/embeddings/query';
 
@@ -278,16 +277,15 @@ export async function computeDeliberationQuality({
     }
   }
 
-  // --- Check if embedding-enhanced deliberation is enabled ---
-  const embeddingEnabled = await getFeatureFlag('embedding_ghi_deliberation', false);
-
+  // --- Check if embedding data is available (data-driven, no feature flag) ---
   let semanticDiversityScore = 0;
   let reasoningCoherenceScore = 0;
+  let embeddingsAvailable = false;
 
-  if (embeddingEnabled) {
+  try {
+    const adminSupabase = getSupabaseAdmin();
     // --- Sub-signal 4: Semantic Argument Diversity (embedding-based) ---
     // Get all rationale embeddings for recent proposals and compute pairwise diversity
-    const adminSupabase = getSupabaseAdmin();
     const { data: rationaleEmbeddings } = await adminSupabase
       .from('embeddings')
       .select('entity_id, secondary_id, embedding')
@@ -295,6 +293,8 @@ export async function computeDeliberationQuality({
       .limit(500);
 
     if (rationaleEmbeddings?.length && rationaleEmbeddings.length >= 2) {
+      embeddingsAvailable = true;
+
       // Group by proposal (entity_id contains tx_hash:index)
       const proposalGroups = new Map<string, number[][]>();
       for (const re of rationaleEmbeddings) {
@@ -319,52 +319,56 @@ export async function computeDeliberationQuality({
         // Pairwise diversity returns 0-1 (1 = maximally diverse). Scale to 0-100.
         semanticDiversityScore = Math.round((totalDiversity / proposalCount) * 100);
       }
-    }
 
-    // --- Sub-signal 5: Reasoning Coherence (rationale-proposal relevance) ---
-    // For each rationale, compute similarity to its proposal's embedding
-    const { data: proposalEmbeddings } = await adminSupabase
-      .from('embeddings')
-      .select('entity_id, embedding')
-      .eq('entity_type', 'proposal')
-      .limit(500);
+      // --- Sub-signal 5: Reasoning Coherence (rationale-proposal relevance) ---
+      // For each rationale, compute similarity to its proposal's embedding
+      const { data: proposalEmbeddings } = await adminSupabase
+        .from('embeddings')
+        .select('entity_id, embedding')
+        .eq('entity_type', 'proposal')
+        .limit(500);
 
-    if (rationaleEmbeddings?.length && proposalEmbeddings?.length) {
-      const proposalEmbeddingMap = new Map<string, number[]>(
-        proposalEmbeddings.map((pe) => [pe.entity_id, pe.embedding as unknown as number[]]),
-      );
+      if (proposalEmbeddings?.length) {
+        const proposalEmbeddingMap = new Map<string, number[]>(
+          proposalEmbeddings.map((pe) => [pe.entity_id, pe.embedding as unknown as number[]]),
+        );
 
-      let totalCoherence = 0;
-      let coherenceCount = 0;
+        let totalCoherence = 0;
+        let coherenceCount = 0;
 
-      for (const re of rationaleEmbeddings) {
-        const proposalEmb = proposalEmbeddingMap.get(re.entity_id);
-        if (proposalEmb) {
-          const similarity = cosineSimilarity(re.embedding as unknown as number[], proposalEmb);
-          // Cosine similarity ranges -1 to 1; map to 0-100
-          totalCoherence += Math.max(0, similarity) * 100;
-          coherenceCount++;
+        for (const re of rationaleEmbeddings) {
+          const proposalEmb = proposalEmbeddingMap.get(re.entity_id);
+          if (proposalEmb) {
+            const similarity = cosineSimilarity(re.embedding as unknown as number[], proposalEmb);
+            // Cosine similarity ranges -1 to 1; map to 0-100
+            totalCoherence += Math.max(0, similarity) * 100;
+            coherenceCount++;
+          }
+        }
+
+        if (coherenceCount > 0) {
+          reasoningCoherenceScore = Math.round(totalCoherence / coherenceCount);
         }
       }
-
-      if (coherenceCount > 0) {
-        reasoningCoherenceScore = Math.round(totalCoherence / coherenceCount);
-      }
     }
+  } catch {
+    // If embeddings query fails, fall back gracefully to 3-signal version
+    embeddingsAvailable = false;
   }
 
   // --- Compose final score ---
+  // When embeddings are available, use the full 5-signal composition.
+  // When not available (data not yet computed for this epoch), fall back to 3-signal.
   let raw: number;
-  if (embeddingEnabled) {
-    // Enhanced composition with semantic signals
+  if (embeddingsAvailable) {
     raw =
-      rationaleScore * 0.35 +
-      debateDiversityScore * 0.2 +
-      independenceScore * 0.15 +
-      semanticDiversityScore * 0.2 +
-      reasoningCoherenceScore * 0.1;
+      rationaleScore * 0.25 +
+      debateDiversityScore * 0.15 +
+      independenceScore * 0.1 +
+      semanticDiversityScore * 0.3 +
+      reasoningCoherenceScore * 0.2;
   } else {
-    // Original 3-signal composition
+    // Fallback 3-signal composition (no embeddings data for this epoch)
     raw = rationaleScore * 0.5 + debateDiversityScore * 0.3 + independenceScore * 0.2;
   }
 
@@ -374,10 +378,11 @@ export async function computeDeliberationQuality({
       rationaleQuality: Math.round(rationaleScore),
       debateDiversity: Math.round(debateDiversityScore),
       votingIndependence: Math.round(independenceScore),
-      ...(embeddingEnabled && {
+      ...(embeddingsAvailable && {
         semanticDiversity: semanticDiversityScore,
         reasoningCoherence: reasoningCoherenceScore,
       }),
+      embeddingsAvailable: embeddingsAvailable ? 1 : 0,
     },
   };
 }
@@ -458,13 +463,59 @@ export async function computeGovernanceEffectiveness({
 // 2E. Power Distribution (15%) — EDI-powered
 // ---------------------------------------------------------------------------
 
+/**
+ * Compute HHI-based delegation concentration penalty.
+ * Penalizes the Power Distribution score when voting power is concentrated
+ * among a small number of DReps (anti-whale check).
+ *
+ * HHI = sum(share_i^2) where share_i = drep_power / total_delegated_power
+ * Normalized to 0-100 scale. Penalty applied when HHI > 15 (moderately concentrated).
+ */
+function computeDelegationConcentrationPenalty(drepPowers: number[]): number {
+  const total = drepPowers.reduce((a, b) => a + b, 0);
+  if (total === 0) return 0;
+
+  const shares = drepPowers.map((p) => p / total);
+  const hhiRaw = shares.reduce((sum, s) => sum + s * s, 0);
+
+  // HHI ranges from 1/N (perfect distribution) to 1 (monopoly)
+  // Normalize: 0 = perfectly distributed, 100 = single entity
+  const normalizedHHI = hhiRaw * 100;
+
+  // Penalty: if HHI > 15 (moderately concentrated), start penalizing
+  if (normalizedHHI <= 15) return 0;
+  return Math.min(20, (normalizedHHI - 15) * 0.5); // max 20 point penalty
+}
+
+/**
+ * Compute quality-weighted EDI adjustment.
+ * Prevents "hollow diversity" — many DReps registered but most are low-quality/inactive.
+ * Penalizes when >50% of total voting power is held by Emerging-tier DReps (score < 40).
+ */
+function computeQualityDistributionPenalty(
+  drepScores: Array<{ score: number; votingPower: number }>,
+): number {
+  const totalPower = drepScores.reduce((sum, d) => sum + d.votingPower, 0);
+  if (totalPower === 0) return 0;
+
+  const emergingPower = drepScores
+    .filter((d) => d.score < 40)
+    .reduce((sum, d) => sum + d.votingPower, 0);
+
+  const emergingPowerShare = emergingPower / totalPower;
+
+  if (emergingPowerShare > 0.5) return 15;
+  if (emergingPowerShare > 0.3) return 10;
+  return 0;
+}
+
 export async function computePowerDistribution({
   supabase,
   currentEpoch,
 }: ComponentInput): Promise<ComponentScore & { edi: EDIResult }> {
   const { data: dreps } = await supabase
     .from('dreps')
-    .select('id, info')
+    .select('id, info, score')
     .not('info->isActive', 'is', null);
 
   const activeDreps = (dreps ?? []).filter(
@@ -494,7 +545,25 @@ export async function computePowerDistribution({
     onboardingBonus = Math.min(10, Math.round(newRate * 30));
   }
 
-  const raw = Math.min(100, edi.compositeScore + onboardingBonus);
+  // Anti-whale: HHI delegation concentration penalty
+  const concentrationPenalty = computeDelegationConcentrationPenalty(votingPowers);
+
+  // Quality-weighted EDI: penalize hollow diversity (many DReps but mostly low-quality)
+  const drepScoresWithPower = activeDreps
+    .map((d) => ({
+      score: (d.score as number) ?? 0,
+      votingPower: parseInt(
+        String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'),
+        10,
+      ),
+    }))
+    .filter((d) => d.votingPower > 0);
+  const qualityPenalty = computeQualityDistributionPenalty(drepScoresWithPower);
+
+  const raw = Math.min(
+    100,
+    Math.max(0, edi.compositeScore + onboardingBonus - concentrationPenalty - qualityPenalty),
+  );
 
   return {
     raw,
@@ -502,6 +571,8 @@ export async function computePowerDistribution({
     detail: {
       ediComposite: edi.compositeScore,
       onboardingBonus,
+      concentrationPenalty: Math.round(concentrationPenalty),
+      qualityPenalty,
       activeDrepCount: activeDreps.length,
     },
   };

@@ -44,7 +44,7 @@ const BASE_WEIGHTS = GHI_COMPONENT_WEIGHTS;
 
 type ComponentName = keyof typeof BASE_WEIGHTS;
 
-/** Names of components controlled by feature flags. */
+/** Names of components controlled by feature flags or data availability. */
 const FLAGGED_COMPONENTS: readonly ComponentName[] = [
   'Citizen Engagement',
   'Governance Outcomes',
@@ -113,15 +113,9 @@ export async function computeGHI(): Promise<GHIComputeResult> {
   const input: ComponentInput = { supabase, currentEpoch };
 
   const citizenEngagementEnabled = await getFeatureFlag('ghi_citizen_engagement', false);
-  const governanceOutcomesEnabled = await getFeatureFlag('ghi_governance_outcomes', false);
 
-  const enabledFlags: Record<string, boolean> = {
-    'Citizen Engagement': citizenEngagementEnabled,
-    'Governance Outcomes': governanceOutcomesEnabled,
-  };
-  const weights = getWeights(enabledFlags);
-
-  // Compute all always-on components in parallel
+  // Compute all always-on components in parallel, including Governance Outcomes
+  // (which is now data-driven instead of feature-flagged)
   const [
     participation,
     spoParticipation,
@@ -131,6 +125,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     power,
     stability,
     treasuryHealth,
+    outcomes,
   ] = await Promise.all([
     computeDRepParticipation(input),
     computeSPOParticipation(input),
@@ -140,16 +135,23 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     computePowerDistribution(input),
     computeSystemStability(input),
     computeTreasuryHealth(input),
+    computeGovernanceOutcomes(input),
   ]);
+
+  // Governance Outcomes is now data-driven: if proposal_outcomes has data, compute normally.
+  // If no data, redistribute its weight proportionally to other components.
+  const governanceOutcomesHasData = (outcomes.detail?.evaluatedProposals ?? 0) > 0;
 
   // Flagged components: only compute if enabled
   const engagement = citizenEngagementEnabled
     ? await computeCitizenEngagement({ ...input })
     : { raw: 0, detail: { skipped: true } };
 
-  const outcomes = governanceOutcomesEnabled
-    ? await computeGovernanceOutcomes(input)
-    : { raw: 0, detail: { skipped: true } };
+  const enabledFlags: Record<string, boolean> = {
+    'Citizen Engagement': citizenEngagementEnabled,
+    'Governance Outcomes': governanceOutcomesHasData,
+  };
+  const weights = getWeights(enabledFlags);
 
   // Apply calibration curves
   const calibrated = {
@@ -164,7 +166,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     'Power Distribution': calibrate(power.raw, CALIBRATION.powerDistribution),
     'System Stability': calibrate(stability.raw, CALIBRATION.systemStability),
     'Treasury Health': calibrate(treasuryHealth.raw, CALIBRATION.treasuryHealth),
-    'Governance Outcomes': governanceOutcomesEnabled
+    'Governance Outcomes': governanceOutcomesHasData
       ? calibrate(outcomes.raw, CALIBRATION.governanceOutcomes)
       : 0,
   };
@@ -196,7 +198,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
       activeDrepCount: power.detail?.activeDrepCount,
       calibrationVersion: CALIBRATION_VERSION.version,
       citizenEngagementEnabled,
-      governanceOutcomesEnabled,
+      governanceOutcomesEnabled: governanceOutcomesHasData,
     },
   };
 }

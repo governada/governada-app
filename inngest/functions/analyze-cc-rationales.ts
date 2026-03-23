@@ -266,7 +266,7 @@ export const analyzeCcRationales = inngest.createFunction(
                 boilerplate_score: result.boilerplate_score ?? null,
                 confidence: result.confidence ?? null,
                 analyzed_at: new Date().toISOString(),
-                model_version: MODELS.FAST,
+                model_version: MODELS.OPUS,
               },
               {
                 onConflict: 'cc_hot_id,proposal_tx_hash,proposal_index',

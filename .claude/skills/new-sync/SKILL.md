@@ -1,7 +1,6 @@
 ---
 name: new-sync
 description: Add a new Inngest sync function with all required boilerplate
-disable-model-invocation: true
 ---
 
 Create a new Inngest sync function for: $ARGUMENTS

@@ -1,7 +1,6 @@
 ---
 name: ship
 description: Execute the full deploy pipeline from current changes to production verification
-disable-model-invocation: true
 ---
 
 Execute the full Governada deploy pipeline. Do NOT pause between steps.

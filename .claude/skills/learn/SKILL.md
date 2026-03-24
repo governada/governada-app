@@ -1,7 +1,6 @@
 ---
 name: learn
 description: Record a lesson learned from the current session into persistent memory
-disable-model-invocation: true
 ---
 
 A lesson was learned during this session. Record it properly:

@@ -499,7 +499,7 @@ export async function phasePostSync(
           epoch,
           drep_id: drep.drepId,
           delegator_count: delegatorCounts[drep.drepId] ?? 0,
-          total_power_lovelace: BigInt(drep.votingPowerLovelace || '0').toString(),
+          total_power_lovelace: Math.round(Number(drep.votingPowerLovelace || '0')).toString(),
           snapshot_at: new Date().toISOString(),
         }));
 

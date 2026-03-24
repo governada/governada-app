@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { withRetry } from '@/lib/retry';
@@ -115,10 +116,19 @@ export function authorizeCron(request: NextRequest): NextResponse | null {
     return NextResponse.json({ success: false, error: 'CRON_SECRET not set' }, { status: 500 });
   }
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  const expected = `Bearer ${cronSecret}`;
+  if (
+    !authHeader ||
+    authHeader.length !== expected.length ||
+    !timingSafeCompare(authHeader, expected)
+  ) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   return null;
+}
+
+function timingSafeCompare(a: string, b: string): boolean {
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
 export function initSupabase():

@@ -28,31 +28,22 @@ export function rateLimitHeaders(result: RateLimitResult): Record<string, string
   };
 }
 
-let _hourLimiter: Ratelimit | null = null;
-let _dayLimiter: Ratelimit | null = null;
+const _limiterCache = new Map<string, Ratelimit>();
 
 function getUpstashLimiter(window: 'hour' | 'day', limit: number): Ratelimit {
   const redis = getRedis();
+  const cacheKey = `${window}:${limit}`;
 
-  if (window === 'hour') {
-    if (!_hourLimiter) {
-      _hourLimiter = new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(limit, '1 h'),
-        prefix: 'rl:hour',
-      });
-    }
-    return _hourLimiter;
-  }
-
-  if (!_dayLimiter) {
-    _dayLimiter = new Ratelimit({
+  let limiter = _limiterCache.get(cacheKey);
+  if (!limiter) {
+    limiter = new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(limit, '1 d'),
-      prefix: 'rl:day',
+      limiter: Ratelimit.slidingWindow(limit, window === 'hour' ? '1 h' : '1 d'),
+      prefix: `rl:${window}:${limit}`,
     });
+    _limiterCache.set(cacheKey, limiter);
   }
-  return _dayLimiter;
+  return limiter;
 }
 
 export async function checkRateLimit(opts: {

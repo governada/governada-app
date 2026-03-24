@@ -21,6 +21,16 @@ interface CIP30Api {
   signData(addr: string, payload: string): Promise<{ signature: string; key: string }>;
 }
 
+/** Hash wallet address for analytics (client-side, using Web Crypto API) */
+async function hashForAnalytics(address: string): Promise<string> {
+  const data = new TextEncoder().encode(address);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const hex = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  return `wallet_${hex.slice(0, 16)}`;
+}
+
 function extractErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
@@ -287,8 +297,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         try {
           const { posthog } = await import('@/lib/posthog');
+          // Hash wallet address before sending to PostHog for privacy
+          const hashedId = await hashForAnalytics(addresses[0]);
           posthog.capture('wallet_connected', { wallet_type: name });
-          posthog.identify(addresses[0], { segment: 'holder', wallet_type: name });
+          posthog.identify(hashedId, { segment: 'holder', wallet_type: name });
           // Funnel event: wallet connected
           const { trackFunnel, FUNNEL_EVENTS } = await import('@/lib/funnel');
           trackFunnel(FUNNEL_EVENTS.WALLET_CONNECTED, { source: name });

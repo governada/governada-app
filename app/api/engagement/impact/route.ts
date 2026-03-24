@@ -5,6 +5,7 @@ import { captureServerEvent } from '@/lib/posthog-server';
 import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { ImpactTagSchema } from '@/lib/api/schemas/engagement';
+import { checkEpochRateLimit } from '@/lib/api/epochRateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,20 @@ export const POST = withRouteHandler(
     const walletAddress = wallet!;
     const { proposalTxHash, proposalIndex, awareness, rating, comment, stakeAddress } =
       ImpactTagSchema.parse(await request.json());
+
+    // Per-epoch rate limit (30 impact tags per epoch)
+    const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+    const epochRL = await checkEpochRateLimit({
+      action: 'impact',
+      userId: userId!,
+      epoch: currentEpoch,
+    });
+    if (!epochRL.allowed) {
+      return NextResponse.json(
+        { error: `Impact tag limit reached for this epoch (${epochRL.limit} max)` },
+        { status: 429 },
+      );
+    }
 
     const supabase = getSupabaseAdmin();
 
@@ -65,7 +80,6 @@ export const POST = withRouteHandler(
       }
     }
 
-    const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
     supabase
       .from('governance_events')
       .insert({

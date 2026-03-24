@@ -14,7 +14,7 @@
 import { logger } from '@/lib/logger';
 
 interface EpochRateLimitConfig {
-  action: 'sentiment' | 'concern' | 'priority' | 'endorsement';
+  action: 'sentiment' | 'concern' | 'priority' | 'endorsement' | 'impact';
   userId: string;
   epoch: number;
 }
@@ -24,6 +24,7 @@ const EPOCH_LIMITS: Record<string, number> = {
   concern: 20,
   priority: 5,
   endorsement: 30,
+  impact: 30,
 };
 
 /**

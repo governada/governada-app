@@ -90,6 +90,51 @@ export const precomputeEngagementSignals = inngest.createFunction(
     const supabase = getSupabaseAdmin();
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
+    // Step 0: Pre-scan for anomalous users (run BEFORE aggregation to exclude them)
+    const flaggedUserIds = await step.run('detect-anomalies-prescan', async () => {
+      const [sentiments, concernFlags] = await Promise.all([
+        fetchAllBatched<{ user_id: string; sentiment: string }>(() =>
+          supabase.from('citizen_sentiment').select('user_id, sentiment'),
+        ),
+        fetchAllBatched<{ user_id: string }>(() =>
+          supabase.from('citizen_concern_flags').select('user_id'),
+        ),
+      ]);
+
+      const anomalies = detectAnomalies(sentiments, concernFlags);
+      const flagged = [...new Set([...anomalies.allSameDirection, ...anomalies.highVolume])];
+
+      if (flagged.length > 0) {
+        // Store anomaly report for admin visibility
+        await supabase.from('engagement_signal_aggregations').upsert(
+          {
+            entity_type: 'system' as string,
+            entity_id: `anomaly-report-${currentEpoch}`,
+            signal_type: 'anomaly_flags' as string,
+            data: {
+              allSameDirection: anomalies.allSameDirection.length,
+              highVolumeConcerns: anomalies.highVolume.length,
+              flaggedUserIds: flagged.slice(0, 50), // Cap stored IDs for privacy
+              detectedAt: new Date().toISOString(),
+            },
+            epoch: currentEpoch,
+            computed_at: new Date().toISOString(),
+          },
+          { onConflict: 'entity_type,entity_id,signal_type,epoch' },
+        );
+
+        logger.info('Anomaly pre-scan: flagged users excluded from weighted aggregations', {
+          allSameDirection: anomalies.allSameDirection.length,
+          highVolume: anomalies.highVolume.length,
+          totalFlagged: flagged.length,
+        });
+      }
+
+      return flagged;
+    });
+
+    const flaggedSet = new Set(flaggedUserIds);
+
     // Step 1: Aggregate sentiment per proposal (raw + weighted)
     const sentimentStats = await step.run('aggregate-sentiment', async () => {
       const sentiments = await fetchAllBatched<{
@@ -142,7 +187,8 @@ export const precomputeEngagementSignals = inngest.createFunction(
           });
         }
         const agg = byProposal.get(key)!;
-        const weight = credWeights.get(s.user_id) ?? 0.1;
+        // Flagged users count in raw totals but get zero weight in weighted aggregations
+        const weight = flaggedSet.has(s.user_id) ? 0 : (credWeights.get(s.user_id) ?? 0.1);
 
         agg.total++;
         agg.weightedTotal += weight;
@@ -249,7 +295,7 @@ export const precomputeEngagementSignals = inngest.createFunction(
         const key = `${f.proposal_tx_hash}:${f.proposal_index}`;
         if (!byProposal.has(key)) byProposal.set(key, { raw: {}, weighted: {} });
         const agg = byProposal.get(key)!;
-        const weight = credWeights.get(f.user_id) ?? 0.1;
+        const weight = flaggedSet.has(f.user_id) ? 0 : (credWeights.get(f.user_id) ?? 0.1);
         agg.raw[f.flag_type] = (agg.raw[f.flag_type] || 0) + 1;
         agg.weighted[f.flag_type] =
           Math.round(((agg.weighted[f.flag_type] || 0) + weight) * 100) / 100;
@@ -346,7 +392,7 @@ export const precomputeEngagementSignals = inngest.createFunction(
 
       for (const s of signals) {
         const ranking = s.ranked_priorities;
-        const weight = credWeights.get(s.user_id) ?? 0.1;
+        const weight = flaggedSet.has(s.user_id) ? 0 : (credWeights.get(s.user_id) ?? 0.1);
         for (let i = 0; i < ranking.length; i++) {
           const points = maxPoints - i;
           scores[ranking[i]] = (scores[ranking[i]] || 0) + points;
@@ -434,51 +480,8 @@ export const precomputeEngagementSignals = inngest.createFunction(
       return { closed: expired.length - quorumNotMet, quorumNotMet };
     });
 
-    // Step 6: Anomaly detection
-    const anomalyStats = await step.run('detect-anomalies', async () => {
-      // Fetch all sentiments and concern flags for anomaly detection
-      const [sentiments, concernFlags] = await Promise.all([
-        fetchAllBatched<{ user_id: string; sentiment: string }>(() =>
-          supabase.from('citizen_sentiment').select('user_id, sentiment'),
-        ),
-        fetchAllBatched<{ user_id: string }>(() =>
-          supabase.from('citizen_concern_flags').select('user_id'),
-        ),
-      ]);
-
-      const anomalies = detectAnomalies(sentiments, concernFlags);
-
-      const totalFlagged = anomalies.allSameDirection.length + anomalies.highVolume.length;
-
-      if (totalFlagged > 0) {
-        // Store anomaly report as a special aggregation entry for admin visibility
-        await supabase.from('engagement_signal_aggregations').upsert(
-          {
-            entity_type: 'system' as string,
-            entity_id: `anomaly-report-${currentEpoch}`,
-            signal_type: 'anomaly_flags' as string,
-            data: {
-              allSameDirection: anomalies.allSameDirection.length,
-              highVolumeConcerns: anomalies.highVolume.length,
-              flaggedUserIds: [
-                ...new Set([...anomalies.allSameDirection, ...anomalies.highVolume]),
-              ].slice(0, 50), // Cap stored IDs for privacy
-              detectedAt: new Date().toISOString(),
-            },
-            epoch: currentEpoch,
-            computed_at: new Date().toISOString(),
-          },
-          { onConflict: 'entity_type,entity_id,signal_type,epoch' },
-        );
-
-        logger.info('Anomalies detected', {
-          allSameDirection: anomalies.allSameDirection.length,
-          highVolume: anomalies.highVolume.length,
-        });
-      }
-
-      return { flagged: totalFlagged };
-    });
+    // Step 6: (moved to Step 0 — anomaly detection now runs before aggregation)
+    const anomalyStats = { flagged: flaggedUserIds.length };
 
     // Step 7: Aggregate endorsements per entity (raw + weighted)
     const endorsementStats = await step.run('aggregate-endorsements', async () => {
@@ -525,7 +528,7 @@ export const precomputeEngagementSignals = inngest.createFunction(
           });
         }
         const agg = byEntity.get(key)!;
-        const weight = credWeights.get(e.user_id) ?? 0.1;
+        const weight = flaggedSet.has(e.user_id) ? 0 : (credWeights.get(e.user_id) ?? 0.1);
 
         agg.total++;
         agg.weightedTotal += weight;

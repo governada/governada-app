@@ -12,9 +12,21 @@ export const dynamic = 'force-dynamic';
 export const POST = withRouteHandler(
   async (request: NextRequest, { userId, wallet }: RouteContext) => {
     const walletAddress = wallet!;
-    const { rankedPriorities, epoch, stakeAddress } = PrioritySignalSchema.parse(
-      await request.json(),
-    );
+    const {
+      rankedPriorities,
+      epoch: clientEpoch,
+      stakeAddress,
+    } = PrioritySignalSchema.parse(await request.json());
+
+    // Server-side epoch validation: only accept current or previous epoch
+    const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+    if (clientEpoch > currentEpoch || clientEpoch < currentEpoch - 1) {
+      return NextResponse.json(
+        { error: 'Invalid epoch. Must be current or previous epoch.' },
+        { status: 400 },
+      );
+    }
+    const epoch = clientEpoch;
 
     // Per-epoch rate limit (5 priority signals per epoch)
     const epochRL = await checkEpochRateLimit({
@@ -74,7 +86,7 @@ export const POST = withRouteHandler(
       }
     }
 
-    const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
+    const eventEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
     supabase
       .from('governance_events')
       .insert({
@@ -82,7 +94,7 @@ export const POST = withRouteHandler(
         wallet_address: walletAddress,
         event_type: 'priority_signal',
         event_data: { rankedPriorities, epoch },
-        epoch: currentEpoch,
+        epoch: eventEpoch,
       })
       .then(({ error: evtErr }) => {
         if (evtErr)

@@ -19,15 +19,27 @@ import {
 import { computeTier } from '@/lib/scoring/tiers';
 import { getPoolStrengths } from '@/components/governada/cards/GovernadaSPOCard';
 
-// Rate limit: 5/min/IP (simple in-memory counter)
+// Rate limit: 5/min/IP (bounded in-memory counter)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 5;
 const RATE_WINDOW = 60_000;
+const RATE_MAP_MAX = 5_000;
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
+    // Evict expired entries when map grows too large
+    if (rateLimitMap.size >= RATE_MAP_MAX) {
+      for (const [key, val] of rateLimitMap) {
+        if (now > val.resetAt) rateLimitMap.delete(key);
+      }
+      // If still over limit after eviction, drop oldest entries
+      if (rateLimitMap.size >= RATE_MAP_MAX) {
+        const keysToDelete = [...rateLimitMap.keys()].slice(0, 1000);
+        for (const k of keysToDelete) rateLimitMap.delete(k);
+      }
+    }
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW });
     return true;
   }

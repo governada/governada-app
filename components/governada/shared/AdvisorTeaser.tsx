@@ -16,7 +16,7 @@ export function AdvisorTeaser({ className }: AdvisorTeaserProps) {
 
   return (
     <div className={cn('w-full', className)}>
-      <Link href="/get-started" className="group block">
+      <Link href="/match" className="group block">
         <div className="relative rounded-xl border border-border/50 bg-card/30 px-4 py-3">
           <div className="flex items-center gap-3">
             <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground/60" />

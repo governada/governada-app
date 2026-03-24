@@ -132,6 +132,60 @@ export type Database = {
           },
         ];
       };
+      ai_health_metrics: {
+        Row: {
+          created_at: string | null;
+          divergence: number | null;
+          divergence_flag: boolean | null;
+          error_message: string | null;
+          id: number;
+          input_rejection_reason: string | null;
+          input_valid: boolean | null;
+          latency_ms: number | null;
+          model: string;
+          output_rejection_reason: string | null;
+          output_valid: boolean | null;
+          provider: string;
+          status: string;
+          tokens_used: number | null;
+          use_case: string;
+        };
+        Insert: {
+          created_at?: string | null;
+          divergence?: number | null;
+          divergence_flag?: boolean | null;
+          error_message?: string | null;
+          id?: number;
+          input_rejection_reason?: string | null;
+          input_valid?: boolean | null;
+          latency_ms?: number | null;
+          model: string;
+          output_rejection_reason?: string | null;
+          output_valid?: boolean | null;
+          provider: string;
+          status: string;
+          tokens_used?: number | null;
+          use_case: string;
+        };
+        Update: {
+          created_at?: string | null;
+          divergence?: number | null;
+          divergence_flag?: boolean | null;
+          error_message?: string | null;
+          id?: number;
+          input_rejection_reason?: string | null;
+          input_valid?: boolean | null;
+          latency_ms?: number | null;
+          model?: string;
+          output_rejection_reason?: string | null;
+          output_valid?: boolean | null;
+          provider?: string;
+          status?: string;
+          tokens_used?: number | null;
+          use_case?: string;
+        };
+        Relationships: [];
+      };
       alignment_drift_records: {
         Row: {
           alternative_dreps: Json | null;
@@ -3128,6 +3182,48 @@ export type Database = {
           snapshot_at?: string;
           total_drep_count?: number;
           total_voting_power_lovelace?: number | null;
+        };
+        Relationships: [];
+      };
+      governance_passport: {
+        Row: {
+          ceremony_completed: boolean | null;
+          civic_level: string | null;
+          created_at: string | null;
+          id: string;
+          match_archetype: string | null;
+          match_results: Json | null;
+          ring_deliberation: number | null;
+          ring_impact: number | null;
+          ring_participation: number | null;
+          stake_address: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          ceremony_completed?: boolean | null;
+          civic_level?: string | null;
+          created_at?: string | null;
+          id?: string;
+          match_archetype?: string | null;
+          match_results?: Json | null;
+          ring_deliberation?: number | null;
+          ring_impact?: number | null;
+          ring_participation?: number | null;
+          stake_address: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          ceremony_completed?: boolean | null;
+          civic_level?: string | null;
+          created_at?: string | null;
+          id?: string;
+          match_archetype?: string | null;
+          match_results?: Json | null;
+          ring_deliberation?: number | null;
+          ring_impact?: number | null;
+          ring_participation?: number | null;
+          stake_address?: string;
+          updated_at?: string | null;
         };
         Relationships: [];
       };

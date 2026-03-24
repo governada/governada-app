@@ -33,7 +33,7 @@ export const FUNNEL_EVENTS = {
 
 export type FunnelEvent = (typeof FUNNEL_EVENTS)[keyof typeof FUNNEL_EVENTS];
 
-/* ─── Onboarding hub events (get-started flow) ────────── */
+/* ─── Onboarding hub events (legacy get-started flow — kept for historical analytics) ── */
 
 export const ONBOARDING_EVENTS = {
   /** Page loaded */

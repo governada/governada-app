@@ -148,7 +148,6 @@ function derivePageContext(pathname: string): string | undefined {
   if (pathname.startsWith('/match')) return 'match';
   if (pathname.startsWith('/my-gov') || pathname.startsWith('/you')) return 'you';
   if (pathname.startsWith('/governance/health')) return 'governance';
-  if (pathname.startsWith('/get-started')) return 'help';
   return undefined;
 }
 

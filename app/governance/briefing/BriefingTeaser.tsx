@@ -218,7 +218,7 @@ export function BriefingTeaser() {
             and get notified when new briefings are ready.
           </p>
           <Button asChild size="lg" className="gap-2">
-            <Link href="/get-started">
+            <Link href="/match">
               <Wallet className="h-4 w-4" />
               Connect Wallet
               <ArrowRight className="h-4 w-4" />

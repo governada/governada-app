@@ -9,10 +9,11 @@ import {
 } from '@/lib/passport';
 
 /**
- * React hook for reading/writing the Governance Passport from localStorage.
+ * React hook for reading/writing the Governance Passport.
  *
- * Provides `passport` state that stays synced with localStorage, plus an
- * `update` helper that merges partial updates and persists them.
+ * Currently uses localStorage. Server-side persistence for authenticated
+ * users is available via loadPassportFromServer/savePassportToServer in
+ * lib/passport.ts and can be wired through API routes.
  */
 export function usePassport() {
   const [passport, setPassport] = useState<GovernancePassport | null>(null);
@@ -35,13 +36,13 @@ export function usePassport() {
   const update = useCallback((partial: Partial<GovernancePassport>) => {
     setPassport((prev) => {
       const current = prev ?? createPassport();
-      const updated = { ...current, ...partial };
+      const updated = { ...current, ...partial, updatedAt: new Date().toISOString() };
       savePassport(updated);
       return updated;
     });
   }, []);
 
-  /** Reset the passport to a fresh stage 1 state. */
+  /** Reset the passport to a fresh state. */
   const reset = useCallback(() => {
     const fresh = createPassport();
     savePassport(fresh);

@@ -229,7 +229,7 @@ export function InlineDelegationCTA({ drepId, drepName }: InlineDelegationCTAPro
           </p>
           <p className="text-center">
             <Link
-              href="/get-started"
+              href="/help"
               className="text-xs text-primary/80 hover:text-primary hover:underline transition-colors"
             >
               Need help getting set up? &rarr;

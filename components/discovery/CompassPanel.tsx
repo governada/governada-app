@@ -118,9 +118,9 @@ function getSuggestions(ctx: SuggestionContext): Suggestion[] {
     if (walletState === 'detected') {
       suggestions.push({ label: 'Connect & Delegate', action: 'wallet' });
     } else if (walletState === 'none_detected') {
-      suggestions.push({ label: 'Get a wallet to delegate', href: '/get-started' });
+      suggestions.push({ label: 'Get a wallet to delegate', href: '/help' });
     } else if (walletState === 'no_ada') {
-      suggestions.push({ label: 'How to get ADA', href: '/get-started' });
+      suggestions.push({ label: 'How to get ADA', href: '/help' });
     } else if (walletState === 'has_ada' || walletState === 'connected') {
       suggestions.push({ label: 'Delegate Now', href: '/match' });
     }
@@ -388,7 +388,7 @@ export function CompassPanel({ currentPage, onStartTour, onClose }: CompassPanel
         {isAnonymous ? (
           <div className="px-5 py-3">
             <Link
-              href="/get-started"
+              href="/match"
               className="flex items-center gap-2 rounded-lg bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground/60 hover:bg-muted/50 transition-colors"
             >
               <Lock className="h-4 w-4 shrink-0" />

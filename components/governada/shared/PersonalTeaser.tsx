@@ -70,7 +70,7 @@ export function PersonalTeaser({ variant, entityName, className }: PersonalTease
         {fakeValue}
       </span>
       <Link
-        href="/get-started"
+        href="/match"
         className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
       >
         <Lock className="h-3 w-3" />

@@ -97,6 +97,9 @@ const nextConfig: NextConfig = {
       // Three Worlds IA — delegation moved under You
       { source: '/delegation', destination: '/you/delegation', permanent: true },
 
+      // Legacy get-started wizard — replaced by Globe Convergence + Seneca onboarding
+      { source: '/get-started', destination: '/', permanent: true },
+
       // Workspace cockpit consolidation — old sub-pages → cockpit
       { source: '/workspace/rationales', destination: '/workspace', permanent: false },
       { source: '/workspace/performance', destination: '/workspace', permanent: false },

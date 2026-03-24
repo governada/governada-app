@@ -7,7 +7,6 @@ import { AnonymousLanding } from './AnonymousLanding';
 import { CitizenHub } from './CitizenHub';
 import { HubHero } from './HubHero';
 import { HubCardSkeleton } from './cards/HubCard';
-import { OnboardingChecklist } from '@/components/funnel/OnboardingChecklist';
 import { DRepCockpit } from '@/components/workspace/DRepCockpit';
 import { CompetitiveContext } from '@/components/workspace/CompetitiveContext';
 import { ProfileShareToolkit } from '@/components/workspace/ProfileShareToolkit';
@@ -61,7 +60,6 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
         <div className="mx-auto w-full max-w-2xl px-[var(--space-md)] space-y-[var(--space-card-gap)]">
           <ActionQueueCard />
         </div>
-        <OnboardingChecklist />
         <CitizenHub />
       </>
     );

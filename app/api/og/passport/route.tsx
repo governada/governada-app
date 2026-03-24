@@ -494,7 +494,7 @@ export async function GET(request: NextRequest) {
           </div>
         </div>
 
-        <OGFooter left="Governance Passport" right="governada.io/get-started" />
+        <OGFooter left="Governance Passport" right="governada.io" />
       </OGBackground>,
       {
         width: 1200,

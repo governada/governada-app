@@ -253,7 +253,7 @@ export function getYouItems(
 
 /** Help items — used in header dropdown (no longer in sidebar) */
 export const HELP_ITEMS: NavItem[] = [
-  { href: '/get-started', label: 'Get Started', icon: Rocket },
+  { href: '/match', label: 'Get Started', icon: Rocket },
   { href: '/help', label: 'FAQ', icon: HelpCircle },
   { href: '/help/glossary', label: 'Glossary', icon: BookOpen },
   { href: '/help/methodology', label: 'Methodology', icon: BarChart3 },

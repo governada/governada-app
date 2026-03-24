@@ -142,9 +142,9 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
             />
           )}
 
-          {/* Get Started card */}
+          {/* Connect wallet card */}
           <Link
-            href="/get-started"
+            href="/match"
             className="block rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 space-y-2 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
             onClick={() =>
               trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_get_started' })
@@ -152,15 +152,15 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
           >
             <div className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">{t('Get Started')}</span>
+              <span className="text-sm font-semibold text-foreground">{t('Find Your Match')}</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {t(
-                'Connect your wallet to see personalized governance insights, track your delegation, and discover representatives aligned with your values.',
+                'Discover representatives aligned with your values, connect your wallet, and start participating in governance.',
               )}
             </p>
             <span className="inline-flex items-center gap-1 text-xs text-primary/80 hover:text-primary">
-              {t('Learn how')} <ArrowRight className="h-3 w-3" />
+              {t('Start matching')} <ArrowRight className="h-3 w-3" />
             </span>
           </Link>
 

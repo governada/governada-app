@@ -189,7 +189,7 @@ export const HELP_COMMANDS: CommandItem[] = [
     sublabel: 'Introduction to Governada',
     group: 'help',
     icon: Rocket,
-    href: '/get-started',
+    href: '/match',
   },
   {
     id: 'help-faq',
@@ -471,7 +471,6 @@ const ROUTE_LABELS: Record<string, string> = {
   '/help/glossary': 'Glossary',
   '/help/methodology': 'Methodology',
   '/help/support': 'Support',
-  '/get-started': 'Get Started',
   '/developers': 'Developers',
 };
 

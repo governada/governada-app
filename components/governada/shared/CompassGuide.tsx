@@ -61,7 +61,7 @@ const SENECA_NARRATIVES: Record<
     },
     quiz_completed: {
       text: "Your values are mapped. Your matched representatives are voting on these proposals right now. Connect your wallet and I'll show you whether they're representing you well — or whether you should reconsider.",
-      cta: { label: 'Connect your wallet', href: '/get-started' },
+      cta: { label: 'Connect your wallet', href: '/match' },
     },
     connected: {
       text: "These are today's open decisions. I'll tell you if anything here conflicts with your stated values.",
@@ -77,7 +77,7 @@ const SENECA_NARRATIVES: Record<
     },
     quiz_completed: {
       text: "I've ranked these representatives against your values. But a match score only tells part of the story. Connect your wallet and I'll show you the full alignment — where you agree, where you differ, and why it matters.",
-      cta: { label: 'See full alignment', href: '/get-started' },
+      cta: { label: 'See full alignment', href: '/match' },
     },
     connected: {
       text: "Your representatives and their recent actions. I'll flag any votes that diverge from your stated priorities.",
@@ -93,7 +93,7 @@ const SENECA_NARRATIVES: Record<
     },
     quiz_completed: {
       text: "I've identified pools that align with your governance values and participate actively. Connect your wallet to compare them against your current pool — you might be leaving representation on the table.",
-      cta: { label: 'Compare pools', href: '/get-started' },
+      cta: { label: 'Compare pools', href: '/match' },
     },
     connected: {
       text: "Governance-active pools. I'll note any that better match your values than your current delegation.",
@@ -105,11 +105,11 @@ const SENECA_NARRATIVES: Record<
     },
     exploring: {
       text: '"No one is free who is a slave to their ignorance." You\'ve been learning how governance works. The committee is the last safeguard — connect your wallet and I\'ll show you how their rulings ripple into your delegation.',
-      cta: { label: 'See your impact', href: '/get-started' },
+      cta: { label: 'See your impact', href: '/match' },
     },
     quiz_completed: {
       text: "You understand the governance structure. Connect your wallet and I'll trace how committee decisions affect the proposals your matched representatives are voting on — the chain of accountability matters.",
-      cta: { label: 'Connect to trace', href: '/get-started' },
+      cta: { label: 'Connect to trace', href: '/match' },
     },
     connected: {
       text: "Committee activity and constitutional rulings. I'll alert you to any decisions that affect your delegation chain.",
@@ -121,11 +121,11 @@ const SENECA_NARRATIVES: Record<
     },
     exploring: {
       text: '"Wealth consists not in having great possessions, but in having few wants." Still — it helps to know how the treasury affects your stake. Connect your wallet and I\'ll make it concrete.',
-      cta: { label: 'Show me', href: '/get-started' },
+      cta: { label: 'Show me', href: '/match' },
     },
     quiz_completed: {
       text: "Your governance values include views on treasury spending. Connect your wallet and I'll break down whether current allocations align with what you believe the treasury should fund.",
-      cta: { label: 'See treasury alignment', href: '/get-started' },
+      cta: { label: 'See treasury alignment', href: '/match' },
     },
     connected: {
       text: "Treasury flows and runway projections. I'm watching for spending patterns that conflict with your priorities.",
@@ -137,11 +137,11 @@ const SENECA_NARRATIVES: Record<
     },
     exploring: {
       text: "You've explored the pieces. This dashboard shows whether they add up to a functioning democracy. Connect your wallet and I'll show you where you fit in these numbers — participant or bystander.",
-      cta: { label: 'Find your place', href: '/get-started' },
+      cta: { label: 'Find your place', href: '/match' },
     },
     quiz_completed: {
       text: '"We suffer more in imagination than in reality." The health metrics here are real. Connect your wallet and I\'ll show you how your participation — active or absent — contributes to these scores.',
-      cta: { label: 'See your contribution', href: '/get-started' },
+      cta: { label: 'See your contribution', href: '/match' },
     },
     connected: {
       text: "System health at a glance. I'll flag any governance metric that shifts meaningfully between epochs.",

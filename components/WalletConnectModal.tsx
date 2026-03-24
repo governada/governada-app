@@ -266,9 +266,9 @@ export function WalletConnectModal({
                         </p>
                       </div>
                       <Button asChild className="w-full">
-                        <Link href="/get-started" onClick={() => onOpenChange(false)}>
+                        <Link href="/help" onClick={() => onOpenChange(false)}>
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          Get started with a wallet
+                          Learn how to get a wallet
                         </Link>
                       </Button>
                     </div>

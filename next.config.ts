@@ -19,27 +19,12 @@ const nextConfig: NextConfig = {
     '@emurgo/cardano-serialization-lib-nodejs',
   ],
   async headers() {
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us.i.posthog.com https://*.ingest.us.sentry.io blob:",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co https://us.i.posthog.com https://us.posthog.com https://*.ingest.us.sentry.io https://*.sentry.io https://api.koios.rest wss://*.supabase.co",
-      "worker-src 'self' blob:",
-      "child-src 'self' blob:",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-      "base-uri 'self'",
-      "object-src 'none'",
-      'report-uri /api/csp-report',
-    ].join('; ');
-
+    // CSP is handled per-request in middleware.ts (nonce-based, dynamic).
+    // Only static security headers remain here.
     return [
       {
         source: '/((?!api).*)',
         headers: [
-          { key: 'Content-Security-Policy', value: csp },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',

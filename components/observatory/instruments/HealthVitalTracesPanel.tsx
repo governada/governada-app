@@ -159,9 +159,9 @@ const ALL_COMPONENTS = COMPONENT_GROUPS.flatMap((group) =>
    ────────────────────────────────────────────── */
 
 const MAIN_TRACE_HEIGHT = 80;
-const COMPONENT_TRACE_HEIGHT = 32;
+const COMPONENT_TRACE_HEIGHT = 42;
 const COMPONENT_TRACE_GAP = 6;
-const PADDING = { top: 8, right: 48, bottom: 4, left: 8 };
+const PADDING = { top: 8, right: 56, bottom: 4, left: 8 };
 
 /** Build an SVG path `d` attribute from an array of values (0–100 scale). */
 function buildTracePath(
@@ -598,21 +598,21 @@ export function HealthVitalTracesPanel({
                 transition={{ duration: 0.3, delay: prefersReducedMotion ? 0 : 0.5 + idx * 0.08 }}
               >
                 <text
-                  x={svgWidth - 2}
-                  y={COMPONENT_TRACE_HEIGHT / 2 - 2}
+                  x={svgWidth - 3}
+                  y={COMPONENT_TRACE_HEIGHT / 2 - 4}
                   textAnchor="end"
-                  className="text-[8px] fill-muted-foreground"
-                  style={{ fontSize: '8px' }}
+                  className="fill-muted-foreground"
+                  style={{ fontSize: '9px' }}
                 >
                   {comp.label}
                 </text>
                 <text
-                  x={svgWidth - 2}
-                  y={COMPONENT_TRACE_HEIGHT / 2 + 9}
+                  x={svgWidth - 3}
+                  y={COMPONENT_TRACE_HEIGHT / 2 + 10}
                   textAnchor="end"
-                  className="text-[10px] font-bold"
+                  className="font-bold"
                   style={{
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fill: isAnomaly
                       ? comp.alertColor
                       : currentValue >= 70

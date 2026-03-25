@@ -68,7 +68,7 @@ function trackTopicSelection(slug: string): void {
   });
 }
 
-/* ─── Ghost text rotation ───────────────────────────────── */
+/* ─── Ghost text typewriter ─────────────────────────────── */
 
 const GHOST_TEXTS = [
   'Or tell us what matters...',
@@ -77,17 +77,53 @@ const GHOST_TEXTS = [
   'What kind of governance do you want?',
 ];
 
-function useGhostText(intervalMs = 3500): string {
-  const [index, setIndex] = useState(0);
+function useGhostText(): string {
+  const [text, setText] = useState('');
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const phaseRef = useRef<'typing' | 'pausing' | 'erasing'>('typing');
+  const charRef = useRef(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % GHOST_TEXTS.length);
-    }, intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs]);
+    const phrase = GHOST_TEXTS[phraseIndex];
+    let timer: ReturnType<typeof setTimeout>;
 
-  return GHOST_TEXTS[index];
+    function tick() {
+      const phase = phaseRef.current;
+      if (phase === 'typing') {
+        charRef.current++;
+        setText(phrase.slice(0, charRef.current));
+        if (charRef.current >= phrase.length) {
+          phaseRef.current = 'pausing';
+          timer = setTimeout(tick, 2000);
+        } else {
+          timer = setTimeout(tick, 50);
+        }
+      } else if (phase === 'pausing') {
+        phaseRef.current = 'erasing';
+        timer = setTimeout(tick, 25);
+      } else {
+        // erasing
+        charRef.current--;
+        setText(phrase.slice(0, charRef.current));
+        if (charRef.current <= 0) {
+          phaseRef.current = 'typing';
+          setPhraseIndex((prev) => (prev + 1) % GHOST_TEXTS.length);
+        } else {
+          timer = setTimeout(tick, 25);
+        }
+      }
+    }
+
+    // Reset for new phrase
+    phaseRef.current = 'typing';
+    charRef.current = 0;
+    setText('');
+    timer = setTimeout(tick, 300);
+
+    return () => clearTimeout(timer);
+  }, [phraseIndex]);
+
+  return text;
 }
 
 /* ─── Haptic feedback (mobile vibration at key moments) ─── */

@@ -64,7 +64,6 @@ import { SolonDiscoveryPanel } from '@/components/spotlight/SolonDiscoveryPanel'
 import { ConstellationCTA } from '@/components/spotlight/ConstellationCTA';
 import { ConstellationBrowse } from '@/components/spotlight/ConstellationBrowse';
 import { useSpotlightTracking } from '@/hooks/useSpotlightTracking';
-import { useSpotlightNarrative } from '@/hooks/useSpotlightNarratives';
 import type { SpotlightEntity } from '@/components/spotlight/types';
 
 const TIER_CHIPS: { value: string; label: string; tooltip?: string }[] = [
@@ -394,6 +393,52 @@ function YourDRepSummary({ dreps }: { dreps: EnrichedDRep[] }) {
 
 type SortMode = 'score' | 'match';
 
+/* ── Seeded shuffle helpers ──────────────────────────────────────── */
+
+/** Linear congruential generator seeded with a number. Returns a pseudo-random float [0, 1). */
+function lcgRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
+/** Shuffle an array in-place using a seeded RNG (Fisher-Yates). */
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const rng = lcgRandom(seed);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Group items by tier, shuffle within each tier using a daily seed, then flatten. */
+function shuffleWithinTiers<T>(items: T[], getTier: (item: T) => string, dailySeed: number): T[] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const t = getTier(item);
+    if (!groups.has(t)) groups.set(t, []);
+    groups.get(t)!.push(item);
+  }
+  const tierOrder = ['Legendary', 'Diamond', 'Gold', 'Silver', 'Bronze', 'Emerging'];
+  const result: T[] = [];
+  for (const tier of tierOrder) {
+    const group = groups.get(tier);
+    if (group?.length) {
+      // Mix the daily seed with a tier-specific offset so each tier shuffles differently
+      const tierOffset = tierOrder.indexOf(tier) * 7919;
+      result.push(...seededShuffle([...group], (dailySeed + tierOffset) >>> 0));
+    }
+  }
+  // Append any tiers not in our known order list (safety)
+  for (const [tier, group] of groups) {
+    if (!tierOrder.includes(tier)) result.push(...group);
+  }
+  return result;
+}
+
 export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
   const openPeek = usePeekTrigger();
   const { data: rawData, isLoading } = useDReps();
@@ -520,14 +565,26 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
     return result;
   }, [dreps, deferredSearch, filters, sortMode, matchProfile]);
 
+  // Daily seed — stable for all users on the same UTC day.
+  // Computed once on mount via ref to satisfy the react-hooks/purity rule.
+  const dailySeedRef = useRef(Math.floor(Date.now() / 86_400_000));
+  const dailySeed = dailySeedRef.current;
+
+  // Apply daily-seeded shuffle within tiers when using score mode (not match mode,
+  // which already re-orders by personal alignment distance)
+  const shuffled = useMemo(() => {
+    if (sortMode === 'match') return filtered;
+    return shuffleWithinTiers(filtered, (d) => computeTier(d.drepScore ?? 0), dailySeed);
+  }, [filtered, sortMode, dailySeed]);
+
   // Separate active/inactive for card view compact treatment
   const { activeItems, inactiveItems } = useMemo(() => {
-    if (filters.activeOnly) return { activeItems: filtered, inactiveItems: [] };
+    if (filters.activeOnly) return { activeItems: shuffled, inactiveItems: [] };
     return {
-      activeItems: filtered.filter((d) => d.isActive),
-      inactiveItems: filtered.filter((d) => !d.isActive),
+      activeItems: shuffled.filter((d) => d.isActive),
+      inactiveItems: shuffled.filter((d) => !d.isActive),
     };
-  }, [filtered, filters.activeOnly]);
+  }, [shuffled, filters.activeOnly]);
 
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
@@ -535,7 +592,7 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
   }, []);
 
   // Pagination operates on active items in card view, all items in table
-  const paginationItems = viewMode === 'cards' ? activeItems : filtered;
+  const paginationItems = viewMode === 'cards' ? activeItems : shuffled;
   const totalPages = Math.ceil(paginationItems.length / pageSize);
   const pageItems = paginationItems.slice(page * pageSize, (page + 1) * pageSize);
 
@@ -712,6 +769,9 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
             Every DRep has a unique governance philosophy. Find someone who represents your values.
           </p>
         )}
+        <p className="text-xs text-muted-foreground/60 mt-1">
+          Showing DReps active this epoch &middot; order varies daily within each tier
+        </p>
       </div>
 
       <CompassGuide page="representatives" drepCount={dreps.length} />

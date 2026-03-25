@@ -143,6 +143,42 @@ function TriBodyVoteBars({ triBody }: { triBody: TriBody }) {
   );
 }
 
+// ─── Outcome pill for resolved proposals ────────────────────────────────────
+
+function OutcomePill({ status, expirationEpoch }: { status: string; expirationEpoch?: number }) {
+  const epochLabel = expirationEpoch ? ` Ep\u00a0${expirationEpoch}` : '';
+
+  if (status === 'ratified') {
+    return (
+      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 text-sky-400 bg-sky-500/10 border-sky-500/20">
+        Ratified{epochLabel}
+      </span>
+    );
+  }
+  if (status === 'enacted') {
+    return (
+      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 text-violet-400 bg-violet-500/10 border-violet-500/20">
+        Enacted{epochLabel}
+      </span>
+    );
+  }
+  if (status === 'expired') {
+    return (
+      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 text-zinc-400 bg-zinc-500/10 border-zinc-500/20">
+        Expired
+      </span>
+    );
+  }
+  if (status === 'dropped') {
+    return (
+      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 text-red-400 bg-red-500/10 border-red-500/20">
+        Dropped
+      </span>
+    );
+  }
+  return null;
+}
+
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export function ProposalCard({
@@ -164,7 +200,9 @@ export function ProposalCard({
   const TypeIcon = theme?.icon;
   const verdict = getVerdict(statusLower, p.triBody);
   const epochsLeft =
-    isOpen && currentEpoch && p.expirationEpoch ? p.expirationEpoch - currentEpoch : null;
+    isOpen && currentEpoch != null && p.expirationEpoch != null
+      ? p.expirationEpoch - currentEpoch
+      : null;
   const isUrgent = epochsLeft != null && epochsLeft <= 2;
   const hasTreasury = p.type === 'TreasuryWithdrawals' && p.withdrawalAmount;
   const pill = drepVote ? VOTE_PILL[drepVote] : null;
@@ -210,16 +248,7 @@ export function ProposalCard({
             compact
           />
         )}
-        <span
-          className={cn(
-            'text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0',
-            verdict.color,
-            verdict.bgColor,
-            verdict.borderColor,
-          )}
-        >
-          {verdict.label}
-        </span>
+        <OutcomePill status={statusLower} expirationEpoch={p.expirationEpoch} />
         {onPeek && <PeekTrigger onClick={onPeek} ariaLabel={`Preview ${title}`} />}
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5 transition-all duration-200" />
       </Link>

@@ -40,4 +40,4 @@ export type SpotlightAction = 'track' | 'skip' | 'details';
 
 // ─── Queue Sorting ────────────────────────────────────────────────────────────
 
-export type QueueSort = 'score' | 'match';
+export type QueueSort = 'score' | 'match' | 'recency';

@@ -22,20 +22,22 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSentryContext } from '@/hooks/useSentryContext';
 import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
 import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
-import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+import { useSenecaThread } from '@/hooks/useSenecaThread';
+import { useWhisper } from '@/hooks/useWhisper';
+import { useEpochContext } from '@/hooks/useEpochContext';
 
-const IntelligencePanel = dynamic(
+const SenecaOrb = dynamic(
   () =>
-    import('@/components/governada/IntelligencePanel').then((m) => ({
-      default: m.IntelligencePanel,
+    import('@/components/governada/SenecaOrb').then((m) => ({
+      default: m.SenecaOrb,
     })),
   { ssr: false },
 );
 
-const MobileIntelSheet = dynamic(
+const SenecaThread = dynamic(
   () =>
-    import('@/components/governada/panel/MobileIntelSheet').then((m) => ({
-      default: m.MobileIntelSheet,
+    import('@/components/governada/SenecaThread').then((m) => ({
+      default: m.SenecaThread,
     })),
   { ssr: false },
 );
@@ -144,6 +146,74 @@ function SentryContextSync() {
   return null;
 }
 
+/** Seneca Orb + Thread wrapper — renders the floating orb and conversation panel. */
+function SenecaOrbAndThread({
+  seneca,
+  isStudioMode,
+}: {
+  seneca: ReturnType<typeof useSenecaThread>;
+  isStudioMode: boolean;
+}) {
+  const { segment } = useSegment();
+  const isAuthenticated = segment !== 'anonymous';
+  const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
+  const daysRemaining = totalDays - day;
+
+  // Whisper system — contextual one-liners from the orb
+  const pageContext = seneca.panelRoute === 'hub' ? 'homepage' : seneca.panelRoute;
+  const { currentWhisper, dismissWhisper } = useWhisper(pageContext, {
+    activeProposals: activeProposalCount ?? undefined,
+    epochProgress: epoch ? (day / totalDays) * 100 : undefined,
+    daysRemaining,
+    isAuthenticated,
+  });
+
+  // Sigil state based on mode
+  const sigilState =
+    seneca.mode === 'matching'
+      ? ('searching' as const)
+      : seneca.mode === 'conversation'
+        ? ('speaking' as const)
+        : seneca.mode === 'research'
+          ? ('thinking' as const)
+          : ('idle' as const);
+
+  return (
+    <>
+      {/* Floating Orb — always visible (except when Thread is open) */}
+      {!seneca.isOpen && (
+        <SenecaOrb
+          onClick={seneca.toggle}
+          sigilState={isStudioMode ? 'idle' : sigilState}
+          accentColor={seneca.persona.accentColor}
+          whisper={isStudioMode ? null : currentWhisper}
+          onWhisperDismiss={dismissWhisper}
+        />
+      )}
+
+      {/* Floating Thread Panel */}
+      <SenecaThread
+        isOpen={seneca.isOpen}
+        onClose={seneca.close}
+        mode={seneca.mode}
+        persona={seneca.persona}
+        panelRoute={seneca.panelRoute}
+        entityId={seneca.entityId}
+        pendingQuery={seneca.pendingQuery}
+        messages={seneca.messages}
+        onStartConversation={seneca.startConversation}
+        onStartResearch={seneca.startResearch}
+        onStartMatch={seneca.startMatch}
+        onReturnToIdle={seneca.returnToIdle}
+        onAddMessage={seneca.addMessage}
+        onUpdateLastAssistant={seneca.updateLastAssistant}
+        onClearConversation={seneca.clearConversation}
+        isAuthenticated={isAuthenticated}
+      />
+    </>
+  );
+}
+
 /** Derive a page context key from the pathname for Seneca's contextual awareness. */
 function derivePageContext(pathname: string): string | undefined {
   if (pathname === '/') return 'governance';
@@ -172,12 +242,11 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
     /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
   const temporalAdaptation = useFeatureFlag('temporal_adaptation') === true;
   const governanceCopilotFlag = useFeatureFlag('governance_copilot');
-  const showCopilot = governanceCopilotFlag === true && !isStudioMode;
+  const showSeneca = governanceCopilotFlag === true;
   const mobileGesturesFlag = useFeatureFlag('mobile_gestures');
   const mobileGestures = mobileGesturesFlag === true;
   const { tintColor } = useGovernanceTemperature();
-  const intelligencePanel = useIntelligencePanel();
-  const panelVisible = showCopilot && intelligencePanel.isOpen && intelligencePanel.canShowPanel;
+  const seneca = useSenecaThread();
 
   // Horizontal swipe navigation between Home/Governance/You (mobile only)
   useSwipeNavigation(mobileGestures && !isStudioMode);
@@ -195,16 +264,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           {/* Discovery context wraps everything so header Compass icon can open the panel */}
           <SpotlightProvider>
             <DiscoveryHub currentPage={derivePageContext(pathname)}>
-              {!isStudioMode && (
-                <GovernadaHeader
-                  compassToggle={
-                    showCopilot && intelligencePanel.canShowPanel
-                      ? intelligencePanel.toggle
-                      : undefined
-                  }
-                  compassOpen={panelVisible}
-                />
-              )}
+              {!isStudioMode && <GovernadaHeader />}
               {!isStudioMode && <NavigationRail />}
 
               {/* Global constellation globe — subtle glassmorphic background */}
@@ -221,7 +281,6 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
                   isStudioMode ? '' : 'pb-16 lg:pb-0',
                   isStudioMode ? '' : 'lg:pl-12',
                 )}
-                style={panelVisible ? { paddingRight: intelligencePanel.panelWidth } : undefined}
                 tabIndex={-1}
               >
                 {isStudioMode ? children : <SectionTransition>{children}</SectionTransition>}
@@ -230,23 +289,8 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               {!isStudioMode && <MilestoneTrigger />}
             </DiscoveryHub>
           </SpotlightProvider>
-          {/* Governance Compass Intelligence Panel — desktop */}
-          {showCopilot && intelligencePanel.canShowPanel && (
-            <IntelligencePanel
-              isOpen={intelligencePanel.isOpen}
-              onClose={intelligencePanel.close}
-              panelWidth={intelligencePanel.panelWidth}
-            />
-          )}
-          {/* Governance Compass Intelligence — mobile (PeekBar + bottom sheet) */}
-          {showCopilot && !intelligencePanel.canShowPanel && (
-            <MobileIntelSheet>
-              {/* Briefing content rendered inside the sheet */}
-              <div className="text-xs text-muted-foreground/60 text-center py-4">
-                Seneca is ready to help
-              </div>
-            </MobileIntelSheet>
-          )}
+          {/* Seneca Orb + Thread — unified floating companion */}
+          {showSeneca && <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />}
 
           {!isStudioMode && (
             <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center lg:pl-12">

@@ -8,8 +8,7 @@ import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { useQuery } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'framer-motion';
 import { GlobeTooltip } from '@/components/governada/GlobeTooltip';
-import { SenecaDock } from '@/components/governada/home/SenecaDock';
-import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
@@ -40,7 +39,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
   const prefersReducedMotion = useReducedMotion();
-  const { startMatch } = useIntelligencePanel();
+  const { startMatch } = useSenecaThread();
 
   // Bridge globe node clicks to Seneca panel
   const { handleNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
@@ -83,10 +82,8 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
     [],
   );
 
-  const handleStartMatch = useCallback(() => {
-    startMatch();
-    trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'seneca_dock_match' });
-  }, [startMatch]);
+  // startMatch is available via the Seneca Thread (opened from the global Orb)
+  void startMatch; // keep the hook call for globe bridge compatibility
 
   return (
     <div className="relative min-h-[100dvh]">
@@ -109,12 +106,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
       {/* Cursor-following tooltip for globe nodes */}
       <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} />
 
-      {/* Seneca Dock — bottom-left entry point */}
-      <SenecaDock
-        onStartMatch={handleStartMatch}
-        narrativePulse={narrativeData?.narrative}
-        activeProposals={pulseData?.activeProposals}
-      />
+      {/* Seneca Orb handles the entry point now — rendered globally by GovernadaShell */}
 
       {/* Subtle scroll escape hatch — bottom center */}
       <motion.button

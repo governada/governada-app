@@ -10,6 +10,10 @@
  * 2. **Half sheet** (default open) — 50% screen height
  * 3. **Full sheet** — 85% screen height
  *
+ * Supports two content modes:
+ * - **Briefing** (default) — children content (panels, readiness signal)
+ * - **Conversation** — SenecaConversation for interactive AI chat
+ *
  * Interactions:
  * - Drag handle at top for resize
  * - Drag down past 30% threshold to close
@@ -32,6 +36,10 @@ import {
   type PanInfo,
 } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+import { SenecaConversation } from './SenecaConversation';
+import { SenecaInput } from './SenecaInput';
+import { SenecaResearch } from './SenecaResearch';
 import { PeekBar } from './PeekBar';
 
 // ---------------------------------------------------------------------------
@@ -81,7 +89,11 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
+  const { panelRoute, entityId, mode, pendingQuery, startConversation, returnToBriefing } =
+    useIntelligencePanel();
+
   const isOpen = state !== 'closed';
+  const isConversation = mode === 'conversation' || mode === 'research';
 
   // Motion value for drag offset
   const y = useMotionValue(0);
@@ -113,20 +125,40 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
     y.set(0);
   }, [y]);
 
+  /** Open the sheet and immediately start a conversation with a ghost prompt. */
+  const openWithPrompt = useCallback(
+    (prompt: string) => {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      setState('full'); // Go full height for conversation
+      y.set(0);
+      startConversation(prompt);
+    },
+    [y, startConversation],
+  );
+
   const close = useCallback(() => {
     setState('closed');
     y.set(0);
+    returnToBriefing();
     // Restore focus
     if (previousFocusRef.current) {
       previousFocusRef.current.focus();
       previousFocusRef.current = null;
     }
-  }, [y]);
+  }, [y, returnToBriefing]);
 
   const expand = useCallback(() => {
     setState('full');
     y.set(0);
   }, [y]);
+
+  // Auto-expand when entering conversation mode
+  useEffect(() => {
+    if (isConversation && state === 'half') {
+      setState('full');
+      y.set(0);
+    }
+  }, [isConversation, state, y]);
 
   // ---------------------------------------------------------------------------
   // Drag handling
@@ -157,9 +189,13 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
           return;
         }
         if (offsetY > currentHeight * CLOSE_THRESHOLD) {
-          // Slow drag past threshold = collapse to half
-          setState('half');
-          y.set(0);
+          // Slow drag past threshold = collapse to half (only in briefing mode)
+          if (isConversation) {
+            close();
+          } else {
+            setState('half');
+            y.set(0);
+          }
           return;
         }
       }
@@ -167,7 +203,7 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
       // Snap back
       y.set(0);
     },
-    [state, getTargetHeight, close, expand, y],
+    [state, getTargetHeight, close, expand, y, isConversation],
   );
 
   // ---------------------------------------------------------------------------
@@ -220,7 +256,7 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
   return (
     <>
       {/* Peek bar — visible only when sheet is closed, on mobile only */}
-      <PeekBar onOpen={open} isSheetOpen={isOpen} />
+      <PeekBar onOpen={open} onOpenWithPrompt={openWithPrompt} isSheetOpen={isOpen} />
 
       {/* Sheet + backdrop */}
       <AnimatePresence>
@@ -286,9 +322,9 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
               {/* State indicator (half/full) */}
               <div className="flex items-center justify-between px-4 pb-2">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Intelligence
+                  {isConversation ? 'Seneca' : 'Intelligence'}
                 </span>
-                {state === 'half' && (
+                {state === 'half' && !isConversation && (
                   <button
                     type="button"
                     onClick={expand}
@@ -298,7 +334,7 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
                     Expand
                   </button>
                 )}
-                {state === 'full' && (
+                {state === 'full' && !isConversation && (
                   <button
                     type="button"
                     onClick={() => {
@@ -313,8 +349,34 @@ export function MobileIntelSheet({ children, className }: MobileIntelSheetProps)
                 )}
               </div>
 
-              {/* Scrollable content */}
-              <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">{children}</div>
+              {/* Content — conversation or briefing */}
+              {mode === 'research' && pendingQuery ? (
+                <SenecaResearch question={pendingQuery} onBack={returnToBriefing} />
+              ) : mode === 'conversation' ? (
+                <SenecaConversation
+                  initialQuery={pendingQuery}
+                  onBack={returnToBriefing}
+                  panelRoute={panelRoute}
+                  entityId={entityId}
+                />
+              ) : (
+                <>
+                  {/* Scrollable briefing content */}
+                  <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+                    {children}
+                  </div>
+
+                  {/* Seneca input at bottom of briefing */}
+                  <SenecaInput
+                    panelRoute={panelRoute}
+                    onSubmit={(query) => {
+                      expand();
+                      startConversation(query);
+                    }}
+                    className="mx-0"
+                  />
+                </>
+              )}
             </motion.aside>
           </>
         )}

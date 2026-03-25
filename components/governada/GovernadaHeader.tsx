@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Search,
@@ -346,6 +346,7 @@ interface GovernadaHeaderProps {
 
 export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   const { t } = useTranslation();
   const discovery = useDiscoveryHub();
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
@@ -568,7 +569,9 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const headerTransparent = !scrolled;
+  // On the anonymous homepage, the globe fills the viewport — keep header always transparent
+  const isAnonymousHomepage = pathname === '/' && segment === 'anonymous';
+  const headerTransparent = isAnonymousHomepage || !scrolled;
 
   // Mobile: scroll-direction-aware show/hide (X/Twitter pattern)
   const scrollDirection = useScrollDirection(10);

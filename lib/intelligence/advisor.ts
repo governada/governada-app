@@ -15,6 +15,7 @@
 import { logger } from '@/lib/logger';
 import { createAnthropicStream } from '@/lib/ai';
 import { buildSenecaPrompt } from '@/lib/ai/senecaPersona';
+import { PERSONAS, type PersonaId } from '@/lib/intelligence/senecaPersonas';
 
 // ---------------------------------------------------------------------------
 // Question / intent detection
@@ -144,6 +145,8 @@ export interface AdvisorContext {
   matchState?: 'idle' | 'matching' | 'matched' | 'delegated';
   /** Wallet detection and connection state */
   walletState?: 'none_detected' | 'detected' | 'connected' | 'has_ada' | 'no_ada';
+  /** Active Seneca persona (determines personality modifier) */
+  persona?: PersonaId;
 }
 
 export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
@@ -238,6 +241,12 @@ export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
 
   if (ctx.governanceSnapshot) {
     lines.push('', '## Current Governance Data', ctx.governanceSnapshot);
+  }
+
+  // Append persona personality modifier if provided
+  if (ctx.persona) {
+    const persona = PERSONAS[ctx.persona];
+    lines.push('', '## Seneca Persona Mode', persona.personalityModifier);
   }
 
   const additionalContext = [...contextParts, ...lines].join('\n');

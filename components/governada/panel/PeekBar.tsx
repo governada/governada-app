@@ -3,9 +3,9 @@
 /**
  * PeekBar — always-visible 40px hint bar on mobile (<1024px).
  *
- * Shows a 1-line context hint from governance state data (e.g.,
- * "3 active proposals · 42% epoch progress"). Tapping opens the
- * mobile intelligence bottom sheet.
+ * Shows a rotating Seneca ghost prompt when collapsed. Tapping the bar
+ * opens the mobile intelligence bottom sheet. Tapping the ghost prompt
+ * text opens the sheet in conversation mode with that prompt pre-filled.
  *
  * Positioned fixed at the bottom, above the bottom nav bar.
  * Subtle glassmorphic styling matching the app.
@@ -13,11 +13,12 @@
  * Feature-flagged behind `governance_copilot`.
  */
 
-import { useMemo } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
-import { ChevronUp, Zap } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { ChevronUp, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useSenecaGhostPrompts } from '@/hooks/useSenecaGhostPrompts';
+import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,109 +27,42 @@ import { useQuery } from '@tanstack/react-query';
 interface PeekBarProps {
   /** Handler called when the bar is tapped / swiped up */
   onOpen: () => void;
+  /** Handler called when a ghost prompt is tapped — opens sheet in conversation mode */
+  onOpenWithPrompt?: (prompt: string) => void;
   /** Whether the sheet is currently open (hide bar when open) */
   isSheetOpen: boolean;
   /** Additional classes */
   className?: string;
 }
 
-interface GovernanceStateResponse {
-  urgency: number;
-  temperature: number;
-  epoch: {
-    currentEpoch: number;
-    progress: number;
-    remainingSeconds: number;
-    activeProposalCount: number;
-  };
-  userState: {
-    delegatedDrepId: string | null;
-    pendingVotes: number;
-    hasPendingActions: boolean;
-    drepScore: number | null;
-    drepRank: number | null;
-  } | null;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function buildHintText(data: GovernanceStateResponse | undefined): string {
-  if (!data) return 'Governance intelligence loading...';
-
-  const parts: string[] = [];
-
-  // Active proposals count
-  if (data.epoch.activeProposalCount > 0) {
-    const count = data.epoch.activeProposalCount;
-    parts.push(`${count} active proposal${count === 1 ? '' : 's'}`);
-  }
-
-  // User-specific hints
-  if (data.userState) {
-    if (data.userState.pendingVotes > 0) {
-      parts.push(
-        `${data.userState.pendingVotes} pending vote${data.userState.pendingVotes === 1 ? '' : 's'}`,
-      );
-    }
-    if (data.userState.delegatedDrepId) {
-      parts.push('DRep delegated');
-    }
-  }
-
-  // Epoch progress
-  const epochPct = Math.round(data.epoch.progress * 100);
-  if (epochPct > 0) {
-    parts.push(`Epoch ${epochPct}%`);
-  }
-
-  if (parts.length === 0) {
-    return 'Governance is quiet';
-  }
-
-  // Show up to 2 parts for brevity in the bar
-  return parts.slice(0, 2).join(' \u00B7 ');
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function PeekBar({ onOpen, isSheetOpen, className }: PeekBarProps) {
+export function PeekBar({ onOpen, onOpenWithPrompt, isSheetOpen, className }: PeekBarProps) {
   const prefersReducedMotion = useReducedMotion();
+  const { panelRoute } = useIntelligencePanel();
+  const { currentPrompt } = useSenecaGhostPrompts(panelRoute);
 
-  const { data } = useQuery<GovernanceStateResponse>({
-    queryKey: ['governance-state-peek'],
-    queryFn: async () => {
-      const res = await fetch('/api/intelligence/governance-state');
-      if (!res.ok) throw new Error('Failed to fetch governance state');
-      return res.json();
-    },
-    staleTime: 60_000,
-    refetchInterval: 120_000,
-  });
+  // Track prompt changes for crossfade key
+  const [displayPrompt, setDisplayPrompt] = useState(currentPrompt);
+  const prevPromptRef = useRef(currentPrompt);
 
-  const hintText = useMemo(() => buildHintText(data), [data]);
-
-  // Urgency indicator (subtle tint)
-  const urgencyColor = useMemo(() => {
-    if (!data) return 'text-muted-foreground';
-    if (data.urgency >= 70) return 'text-amber-400';
-    if (data.urgency >= 40) return 'text-primary/80';
-    return 'text-muted-foreground';
-  }, [data]);
+  useEffect(() => {
+    if (currentPrompt !== prevPromptRef.current) {
+      prevPromptRef.current = currentPrompt;
+      setDisplayPrompt(currentPrompt);
+    }
+  }, [currentPrompt]);
 
   if (isSheetOpen) return null;
 
   return (
-    <motion.button
-      type="button"
-      onClick={onOpen}
+    <motion.div
       className={cn(
         // Fixed at bottom, above bottom nav (bottom-nav is typically 64px)
         'fixed left-0 right-0 z-40 lg:hidden',
-        'h-10 flex items-center justify-between gap-2 px-4',
+        'h-10 flex items-center gap-2 px-3',
         // Glassmorphic
         'bg-background/70 backdrop-blur-xl',
         'border-t border-border/20',
@@ -145,16 +79,44 @@ export function PeekBar({ onOpen, isSheetOpen, className }: PeekBarProps) {
         duration: prefersReducedMotion ? 0 : 0.3,
         ease: [0.16, 1, 0.3, 1],
       }}
-      aria-label="Open governance intelligence panel"
     >
-      {/* Left: context hint */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <Zap className={cn('h-3.5 w-3.5 shrink-0', urgencyColor)} />
-        <span className="text-xs text-muted-foreground truncate">{hintText}</span>
-      </div>
+      {/* Left: Seneca icon + ghost prompt (tappable to open with prompt) */}
+      <button
+        type="button"
+        onClick={() => {
+          if (onOpenWithPrompt && displayPrompt) {
+            onOpenWithPrompt(displayPrompt);
+          } else {
+            onOpen();
+          }
+        }}
+        className="flex items-center gap-2 min-w-0 flex-1 text-left"
+        aria-label={`Ask Seneca: ${displayPrompt}`}
+      >
+        <Compass className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={displayPrompt}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="text-xs text-muted-foreground/70 truncate italic"
+          >
+            {displayPrompt}
+          </motion.span>
+        </AnimatePresence>
+      </button>
 
-      {/* Right: expand indicator */}
-      <ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-    </motion.button>
+      {/* Right: expand indicator (opens sheet in briefing mode) */}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="shrink-0 p-1 -mr-1"
+        aria-label="Open governance intelligence panel"
+      >
+        <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/50" />
+      </button>
+    </motion.div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -26,6 +26,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { posthog } from '@/lib/posthog';
 import dynamic from 'next/dynamic';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
+import type { ConstellationRef } from '@/components/GovernanceConstellation';
+
+const MatchPromptPanel = lazy(() =>
+  import('@/components/governada/match/MatchPromptPanel').then((m) => ({
+    default: m.MatchPromptPanel,
+  })),
+);
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -198,8 +205,10 @@ interface HomeAnonymousProps {
 
 export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
   const heroRef = useRef<HTMLElement>(null);
+  const globeRef = useRef<ConstellationRef>(null);
   const prefersReducedMotion = useReducedMotion();
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
+  const [matchPanelOpen, setMatchPanelOpen] = useState(false);
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ['start start', 'end start'],
@@ -208,6 +217,19 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
 
   const handleNodeHover = useCallback((node: ConstellationNode3D | null) => {
     setHoveredNode(node);
+  }, []);
+
+  const handleAlignmentChange = useCallback((alignments: number[], threshold: number) => {
+    globeRef.current?.highlightMatches(alignments, threshold);
+  }, []);
+
+  const handleMatchFound = useCallback((drepId: string) => {
+    globeRef.current?.flyToMatch(drepId);
+  }, []);
+
+  const handleMatchClose = useCallback(() => {
+    setMatchPanelOpen(false);
+    globeRef.current?.clearMatches();
   }, []);
 
   return (
@@ -220,6 +242,7 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
       >
         <div className="absolute inset-0">
           <ConstellationScene
+            ref={globeRef}
             className="w-full h-full"
             interactive
             breathing={!prefersReducedMotion}
@@ -233,7 +256,39 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
         {/* Hover card for globe nodes */}
-        <AnimatePresence>{hoveredNode && <NodeHoverCard node={hoveredNode} />}</AnimatePresence>
+        <AnimatePresence>
+          {hoveredNode && !matchPanelOpen && <NodeHoverCard node={hoveredNode} />}
+        </AnimatePresence>
+
+        {/* Match CTA — floating button when panel is closed */}
+        {!matchPanelOpen && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5 }}
+            onClick={() => {
+              setMatchPanelOpen(true);
+              posthog?.capture('living_globe_match_cta_clicked');
+            }}
+            className="absolute bottom-6 left-4 z-40 inline-flex items-center gap-2 rounded-xl bg-primary/90 backdrop-blur-sm px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary transition-colors shadow-lg"
+          >
+            <Zap className="h-4 w-4" />
+            Find Your Match
+          </motion.button>
+        )}
+
+        {/* Match prompt panel — compact side panel */}
+        <AnimatePresence>
+          {matchPanelOpen && (
+            <Suspense fallback={null}>
+              <MatchPromptPanel
+                onAlignmentChange={handleAlignmentChange}
+                onMatchFound={handleMatchFound}
+                onClose={handleMatchClose}
+              />
+            </Suspense>
+          )}
+        </AnimatePresence>
 
         {/* Live data overlay on constellation */}
         <div className="absolute top-16 sm:top-20 left-4 right-4 flex justify-center pointer-events-none">

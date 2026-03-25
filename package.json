@@ -51,11 +51,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
-    "@cubejs-client/core": "^1.6.25",
-    "@cubejs-client/react": "^1.6.25",
     "@icons-pack/react-simple-icons": "^13.13.0",
     "@meshsdk/core": "^1.9.0-beta.101",
-    "@meshsdk/react": "^2.0.0-beta.2",
+    "@radix-ui/react-label": "^2.1.8",
     "@react-email/components": "^1.0.10",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
@@ -113,7 +111,6 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "three": "^0.183.2",
-    "ts-node": "^10.9.2",
     "web-push": "^3.6.7",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"

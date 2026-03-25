@@ -32,6 +32,14 @@ const IntelligencePanel = dynamic(
   { ssr: false },
 );
 
+const MobileIntelSheet = dynamic(
+  () =>
+    import('@/components/governada/panel/MobileIntelSheet').then((m) => ({
+      default: m.MobileIntelSheet,
+    })),
+  { ssr: false },
+);
+
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
   { ssr: false },
@@ -222,13 +230,22 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               {!isStudioMode && <MilestoneTrigger />}
             </DiscoveryHub>
           </SpotlightProvider>
-          {/* Governance Compass Intelligence Panel */}
+          {/* Governance Compass Intelligence Panel — desktop */}
           {showCopilot && intelligencePanel.canShowPanel && (
             <IntelligencePanel
               isOpen={intelligencePanel.isOpen}
               onClose={intelligencePanel.close}
               panelWidth={intelligencePanel.panelWidth}
             />
+          )}
+          {/* Governance Compass Intelligence — mobile (PeekBar + bottom sheet) */}
+          {showCopilot && !intelligencePanel.canShowPanel && (
+            <MobileIntelSheet>
+              {/* Briefing content rendered inside the sheet */}
+              <div className="text-xs text-muted-foreground/60 text-center py-4">
+                Seneca is ready to help
+              </div>
+            </MobileIntelSheet>
           )}
 
           {!isStudioMode && (

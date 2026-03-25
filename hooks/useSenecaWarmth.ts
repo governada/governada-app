@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,6 +118,14 @@ export function useSenecaWarmth(): SenecaWarmthResult {
   const [visited, setVisited] = useState(false);
   const [matchMemory, setMatchMemory] = useState<MatchMemory | null>(null);
   const [walletDetected, setWalletDetected] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Admin QA: ?seneca_state=first_visit|returning|post_match overrides dock state
+  const adminOverride = searchParams.get('seneca_state') as
+    | 'first_visit'
+    | 'returning'
+    | 'post_match'
+    | null;
 
   // Initialize on mount
   useEffect(() => {
@@ -130,10 +139,30 @@ export function useSenecaWarmth(): SenecaWarmthResult {
   }, []);
 
   const dockState = useMemo<DockState>(() => {
+    // Admin QA override
+    if (adminOverride === 'first_visit') return 'first-visit';
+    if (adminOverride === 'returning') return 'returning';
+    if (adminOverride === 'post_match') return 'post-match';
     if (matchMemory) return 'post-match';
     if (visited) return 'returning';
     return 'first-visit';
-  }, [visited, matchMemory]);
+  }, [visited, matchMemory, adminOverride]);
+
+  // For admin QA: provide synthetic match memory when forcing post_match state
+  const effectiveMatchMemory = useMemo<MatchMemory | null>(() => {
+    if (adminOverride === 'post_match' && !matchMemory) {
+      return {
+        topMatches: [
+          { name: 'ShelleyGov', score: 87 },
+          { name: 'CardanoGuardian', score: 82 },
+          { name: 'TreasuryWatch', score: 79 },
+        ],
+        timestamp: Date.now(),
+        archetype: 'Treasury Guardian',
+      };
+    }
+    return matchMemory;
+  }, [adminOverride, matchMemory]);
 
   const greeting = useMemo(() => getTimeGreeting(), []);
 
@@ -168,7 +197,7 @@ export function useSenecaWarmth(): SenecaWarmthResult {
   return {
     dockState,
     walletDetected,
-    matchMemory,
+    matchMemory: effectiveMatchMemory,
     greeting,
     markVisited,
     saveMatchMemory,

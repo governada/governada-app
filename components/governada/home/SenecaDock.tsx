@@ -1,22 +1,27 @@
 'use client';
 
 /**
- * SenecaDock — Warm, context-aware Seneca entry point on the anonymous homepage.
+ * SenecaDock — Warm, conversational Seneca entry point on the anonymous homepage.
  *
  * Replaces hero text by communicating what Cardano governance IS, why it matters,
  * and what the user can do — through Seneca's voice, not marketing copy.
  *
- * Three states:
+ * Three visit states:
  * 1. First Visit  — Value proposition + "Find my representative" CTA
- * 2. Returning    — Dynamic narrative pulse + "Continue where I left off"
- * 3. Post-Match   — Previous match results + "Ready to delegate?"
+ * 2. Returning    — Dynamic narrative pulse + "Continue" / "Start fresh"
+ * 3. Post-Match   — Previous match results + "See my matches" / restart
+ *
+ * Instead of a free-form chat input (which would hit the AI API), anonymous users
+ * get structured conversational options — Seneca guides them through governance
+ * discovery with pre-computed responses. Full AI chat unlocks after login.
  *
  * Also detects wallet extensions for personalized messaging.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { Send, Sparkles, ArrowRight, RotateCcw } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { Sparkles, ArrowRight, RotateCcw, BookOpen, BarChart3, Users } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { useSenecaWarmth } from '@/hooks/useSenecaWarmth';
 import { CompassSigil } from '@/components/governada/CompassSigil';
 
@@ -25,20 +30,50 @@ import { CompassSigil } from '@/components/governada/CompassSigil';
 // ---------------------------------------------------------------------------
 
 interface SenecaDockProps {
-  onStartConversation: (query: string) => void;
   onStartMatch?: () => void;
   narrativePulse?: string;
+  /** Active proposal count for contextual messaging */
+  activeProposals?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Conversational guide options (no AI API calls — pre-computed content)
+// ---------------------------------------------------------------------------
+
+interface GuideOption {
+  label: string;
+  icon: React.ReactNode;
+  /** Route to navigate to, OR 'match' to trigger match flow */
+  action: string;
+}
+
+const GUIDE_OPTIONS: GuideOption[] = [
+  {
+    label: "What's being decided right now?",
+    icon: <BarChart3 className="h-3.5 w-3.5 shrink-0" />,
+    action: '/governance/proposals',
+  },
+  {
+    label: 'How does Cardano governance work?',
+    icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
+    action: '/governance/health',
+  },
+  {
+    label: 'Who are the representatives?',
+    icon: <Users className="h-3.5 w-3.5 shrink-0" />,
+    action: '/governance/representatives',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function SenecaDock({ onStartConversation, onStartMatch, narrativePulse }: SenecaDockProps) {
-  const [inputValue, setInputValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+export function SenecaDock({ onStartMatch, narrativePulse, activeProposals }: SenecaDockProps) {
+  const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const { dockState, walletDetected, matchMemory, greeting, markVisited } = useSenecaWarmth();
+  const [showGuide, setShowGuide] = useState(false);
 
   // Mark visited after first render
   useEffect(() => {
@@ -46,22 +81,22 @@ export function SenecaDock({ onStartConversation, onStartMatch, narrativePulse }
     return () => clearTimeout(timer);
   }, [markVisited]);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      const query = inputValue.trim();
-      if (!query) return;
-      onStartConversation(query);
-      setInputValue('');
-    },
-    [inputValue, onStartConversation],
-  );
-
   const handleMatchClick = useCallback(() => {
     if (onStartMatch) {
       onStartMatch();
     }
   }, [onStartMatch]);
+
+  const handleGuideAction = useCallback(
+    (action: string) => {
+      if (action === 'match') {
+        handleMatchClick();
+      } else {
+        router.push(action);
+      }
+    },
+    [handleMatchClick, router],
+  );
 
   return (
     <motion.div
@@ -79,17 +114,23 @@ export function SenecaDock({ onStartConversation, onStartMatch, narrativePulse }
           </div>
 
           {/* State-dependent warm content */}
-          {dockState === 'first-visit' && <FirstVisitContent walletDetected={walletDetected} />}
+          {dockState === 'first-visit' && (
+            <FirstVisitContent walletDetected={walletDetected} activeProposals={activeProposals} />
+          )}
           {dockState === 'returning' && (
-            <ReturningContent greeting={greeting} narrativePulse={narrativePulse} />
+            <ReturningContent
+              greeting={greeting}
+              narrativePulse={narrativePulse}
+              activeProposals={activeProposals}
+            />
           )}
           {dockState === 'post-match' && matchMemory && (
             <PostMatchContent matchMemory={matchMemory} />
           )}
         </div>
 
-        {/* Primary CTA */}
-        <div className="px-4 pb-3">
+        {/* Primary CTA — Find my representative */}
+        <div className="px-4 pb-2">
           {dockState === 'post-match' && matchMemory ? (
             <div className="flex gap-2">
               <button
@@ -121,27 +162,42 @@ export function SenecaDock({ onStartConversation, onStartMatch, narrativePulse }
           )}
         </div>
 
-        {/* Free-form input */}
-        <form onSubmit={handleSubmit} className="px-4 pb-4">
-          <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask Seneca anything..."
-              className="flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/25 focus:outline-none"
-            />
+        {/* Conversational guide options — replaces free-form input for anonymous users */}
+        <div className="px-4 pb-4">
+          {!showGuide ? (
             <button
-              type="submit"
-              disabled={!inputValue.trim()}
-              className="shrink-0 text-white/30 hover:text-primary disabled:opacity-20 transition-colors"
-              aria-label="Send"
+              type="button"
+              onClick={() => setShowGuide(true)}
+              className="w-full text-center text-[11px] text-white/30 hover:text-white/50 transition-colors py-1.5"
             >
-              <Send className="h-3.5 w-3.5" />
+              Or let me guide you through governance →
             </button>
-          </div>
-        </form>
+          ) : (
+            <AnimatePresence>
+              <motion.div
+                initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="space-y-1.5 overflow-hidden"
+              >
+                <p className="text-[11px] text-white/35 pb-1">What would you like to explore?</p>
+                {GUIDE_OPTIONS.map((option) => (
+                  <button
+                    key={option.action}
+                    type="button"
+                    onClick={() => handleGuideAction(option.action)}
+                    className="w-full flex items-center gap-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2 text-[13px] text-white/60 hover:text-white/85 hover:bg-white/[0.07] hover:border-white/[0.12] transition-all text-left group"
+                  >
+                    <span className="text-white/30 group-hover:text-primary/70 transition-colors">
+                      {option.icon}
+                    </span>
+                    {option.label}
+                  </button>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </div>
       </div>
     </motion.div>
   );
@@ -151,7 +207,13 @@ export function SenecaDock({ onStartConversation, onStartMatch, narrativePulse }
 // Sub-components for each dock state
 // ---------------------------------------------------------------------------
 
-function FirstVisitContent({ walletDetected }: { walletDetected: boolean }) {
+function FirstVisitContent({
+  walletDetected,
+  activeProposals,
+}: {
+  walletDetected: boolean;
+  activeProposals?: number;
+}) {
   return (
     <div className="space-y-2">
       <h2
@@ -163,13 +225,19 @@ function FirstVisitContent({ walletDetected }: { walletDetected: boolean }) {
       <p className="text-[13px] text-white/55 leading-relaxed">
         {walletDetected ? (
           <>
-            I see you have a wallet — you&apos;re halfway to participating. Find a representative
-            for your ADA in about 60 seconds.
+            I see you have a wallet — you&apos;re halfway to participating.
+            {activeProposals && activeProposals > 0
+              ? ` There are ${activeProposals} proposals being decided right now. `
+              : ' '}
+            Find a representative for your ADA in about 60 seconds.
           </>
         ) : (
           <>
-            700 representatives are making decisions about a $2 billion treasury right now. One of
-            them could represent your ADA — and finding them takes 60 seconds.
+            700 representatives are making decisions about a $2 billion treasury right now.
+            {activeProposals && activeProposals > 0
+              ? ` ${activeProposals} proposals are being voted on this epoch. `
+              : ' '}
+            One of them could represent your ADA — and finding them takes 60 seconds.
           </>
         )}
       </p>
@@ -180,9 +248,11 @@ function FirstVisitContent({ walletDetected }: { walletDetected: boolean }) {
 function ReturningContent({
   greeting,
   narrativePulse,
+  activeProposals,
 }: {
   greeting: string;
   narrativePulse?: string;
+  activeProposals?: number;
 }) {
   return (
     <div className="space-y-2">
@@ -194,9 +264,14 @@ function ReturningContent({
       </h2>
       {narrativePulse ? (
         <p className="text-[13px] text-white/55 leading-relaxed">{narrativePulse}</p>
+      ) : activeProposals && activeProposals > 0 ? (
+        <p className="text-[13px] text-white/55 leading-relaxed">
+          Governance is active — {activeProposals} proposal{activeProposals > 1 ? 's are' : ' is'}{' '}
+          being decided right now. Find your representative, or explore what&apos;s at stake.
+        </p>
       ) : (
         <p className="text-[13px] text-white/55 leading-relaxed">
-          Governance is always moving. Ask me what&apos;s changed, or find your representative.
+          Governance is always moving. Find your representative, or explore what&apos;s happening.
         </p>
       )}
     </div>

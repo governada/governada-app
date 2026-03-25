@@ -13,7 +13,7 @@ import { DepthGate } from '@/components/providers/DepthGate';
 import { GovernanceTemperature } from '@/components/community/GovernanceTemperature';
 import { CitizenMandate } from '@/components/community/CitizenMandate';
 import { SentimentDivergence } from '@/components/community/SentimentDivergence';
-import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
 import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
 import { HealthQuickNav } from '@/components/governada/pulse/HealthQuickNav';
@@ -67,7 +67,6 @@ export default async function HealthPage() {
       <PageViewTracker event="governance_health_viewed" />
       <FunnelExploreTracker />
       <div className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <CompassGuide page="health" />
         <HealthQuickNav />
 
         <Suspense fallback={<HealthFallback />}>

@@ -1209,6 +1209,46 @@ _(Patterns for loading states, optimistic UI, streaming, progressive rendering)_
 
 _(Patterns for mobile-first design, touch interactions, adaptive layouts)_
 
+### Hero & Visualization
+
+_(Patterns for homepage heroes, data-driven visualizations, interactive 3D experiences)_
+
+#### IOG Koi Pond — Switchable Generative Art Hero
+
+- **Source**: Input Output — https://www.iog.io/
+- **Discovered**: 2026-03-24 (explore-feature: homepage hero)
+- **What they do**: Three full-screen Canvas 2D visualizations (Koi pond / Butterfly particle explosion / Symphony network graph) switchable via bottom-right dropdown. Each is a branded generative art piece running on a single 2D canvas. Auto-rotating dark ambient backgrounds.
+- **Why it's world-class**: Creates instant brand identity through ambient art. The koi swimming is genuinely beautiful and memorable. Multiple switchable experiences add depth.
+- **Applicable to**: Our constellation globe already exceeds this technically (WebGL vs Canvas 2D). Key takeaway: the EMOTIONAL impact matters more than technical complexity. IOG's koi are decorative but create a "I need to show someone this" moment. Our globe should do the same but with REAL data.
+- **Adoption difficulty**: N/A — we already have superior infrastructure. Lesson is about art direction and emotional calibration.
+
+#### GitHub Globe — Live Data as Visualization
+
+- **Source**: GitHub — https://github.blog/engineering/engineering-principles/visualizing-githubs-global-community/
+- **Discovered**: 2026-03-24 (explore-feature: homepage hero)
+- **What they do**: 3D WebGL globe with arcs representing real-time pull requests. Data refreshed throughout the day via warehouse queries + geocoding. Points dynamically populated from PR geography. Every arc is a real contribution.
+- **Why it's world-class**: The visualization IS the data. The globe is never the same twice. Communicates "global community" without a single word of copy. Technical blog post details the engineering decisions transparently.
+- **Applicable to**: Direct inspiration for homepage globe. Our constellation already has 1200+ real governance nodes. Adding real-time vote pulses as arcs/particles would match this pattern while being MORE interactive (GitHub's globe is read-only).
+- **Adoption difficulty**: Low — most infrastructure exists. Need to animate recentEvents as visual pulses on the globe.
+
+#### Stripe Globe — Scale Communication
+
+- **Source**: Stripe — https://stripe.com/blog/globe
+- **Discovered**: 2026-03-24 (explore-feature: homepage hero)
+- **What they do**: 1:40M scale interactive 3D Earth showing global payment flows as animated arcs. Custom WebGL shaders for dot-sphere rendering. Conveys "we process payments everywhere" through visual density.
+- **Why it's world-class**: Arc density communicates business health at a glance. No numbers needed — the visual IS the metric.
+- **Applicable to**: Our globe atmosphere color + node brightness can communicate governance health the same way. A healthy governance epoch = bright, active globe. A quiet epoch = dim, slow globe. The visual state IS the metric.
+- **Adoption difficulty**: Low — atmosphere color lerping already exists in the codebase (used during match flow). Just need to drive it from GHI instead.
+
+#### Apple Activity Rings — Glanceable Completion Loops
+
+- **Source**: Apple — developer.apple.com/design/human-interface-guidelines/activity-rings
+- **Discovered**: 2026-03-24 (explore-feature: homepage hero)
+- **What they do**: Three concentric rings (Move/Exercise/Stand) filling throughout the day. On-screen celebration animation on ring completion. Streak tracking drives habitual return. "You see more of what you did than what you didn't do."
+- **Why it's world-class**: Status comprehension in 0.5 seconds. Ring completion creates dopamine-driven habit loops. The design shows progress, not deficit.
+- **Applicable to**: Governance Rings already exist in Governada (Participation/Deliberation/Impact). Wrapping them around the globe as 3D orbiting rings would create both a brand signature AND a glanceable health indicator on the homepage.
+- **Adoption difficulty**: Medium — GovernanceRings component exists as 2D SVG. Adapting to 3D ring geometry around the globe is ~1 day of Three.js work.
+
 ---
 
 ## Update Protocol

@@ -35,7 +35,14 @@ interface GlobeConstellationProps {
   onReady?: () => void;
   onContracted?: () => void;
   onNodeSelect?: (node: ConstellationNode3D) => void;
+  onNodeHover?: (node: ConstellationNode3D | null) => void;
   className?: string;
+  /** 0-100 governance health index — drives atmosphere color (teal=healthy, amber=stressed) */
+  healthScore?: number;
+  /** 0-100 governance urgency — drives heartbeat pulse frequency */
+  urgency?: number;
+  /** Enable breathing animation (gentle scale pulse) */
+  breathing?: boolean;
 }
 
 interface SceneState {
@@ -63,7 +70,17 @@ export const GlobeConstellation = forwardRef<
   import('@/components/GovernanceConstellation').ConstellationRef,
   GlobeConstellationProps
 >(function GlobeConstellation(
-  { interactive, onReady, onContracted, onNodeSelect, className },
+  {
+    interactive,
+    onReady,
+    onContracted,
+    onNodeSelect,
+    onNodeHover,
+    className,
+    healthScore = 75,
+    urgency = 30,
+    breathing = false,
+  },
   ref,
 ) {
   const cameraControlsRef = useRef<CameraControls>(null);
@@ -86,10 +103,42 @@ export const GlobeConstellation = forwardRef<
   });
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
 
+  const { data: apiData } = useGovernanceConstellation();
+
   const onNodeSelectRef = useRef(onNodeSelect);
   useEffect(() => {
     onNodeSelectRef.current = onNodeSelect;
   }, [onNodeSelect]);
+
+  const onNodeHoverRef = useRef(onNodeHover);
+  useEffect(() => {
+    onNodeHoverRef.current = onNodeHover;
+  }, [onNodeHover]);
+
+  // Health-driven atmosphere color: teal (healthy) → amber (stressed) → red (critical)
+  const healthProgress = useMemo(() => {
+    // Invert: high health = 0 (cool teal), low health = 1 (warm amber/red)
+    return Math.max(0, Math.min(1, 1 - healthScore / 100));
+  }, [healthScore]);
+
+  // Activity map: track which nodes have recent events for brightness boost
+  const activityMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const typedData = apiData as ConstellationApiData | undefined;
+    if (!typedData?.recentEvents) return map;
+    const now = Date.now();
+    for (const event of typedData.recentEvents) {
+      const id = event.drepId;
+      if (!id) continue;
+      // More recent = brighter (1.0 = just happened, 0.2 = 7 days ago)
+      const age = event.timestamp ? now - event.timestamp : 0;
+      const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+      const freshness = Math.max(0.2, 1 - age / maxAge);
+      const existing = map.get(id) ?? 0;
+      map.set(id, Math.max(existing, freshness));
+    }
+    return map;
+  }, [apiData]);
 
   const flyToNodeImpl = async (nodeId: string): Promise<ConstellationNode3D | null> => {
     const controls = cameraControlsRef.current;
@@ -337,8 +386,6 @@ export const GlobeConstellation = forwardRef<
     },
   }));
 
-  const { data: apiData } = useGovernanceConstellation();
-
   useEffect(() => {
     if (!apiData) return;
     const gpu = estimateGPUTier();
@@ -379,6 +426,8 @@ export const GlobeConstellation = forwardRef<
             enabled={!sceneState.animating}
             rotationRef={rotationAngleRef}
             speedRef={rotationSpeedRef}
+            breathing={breathing && !sceneState.dimmed}
+            urgency={urgency}
           >
             <InnerGlow />
             <GlobeAtmosphere
@@ -386,14 +435,18 @@ export const GlobeConstellation = forwardRef<
               color="#4488cc"
               warmColor="#cc8844"
               intensity={0.8}
-              matchProgress={sceneState.scanProgress}
+              matchProgress={
+                sceneState.scanProgress > 0 ? sceneState.scanProgress : healthProgress * 0.5
+              }
             />
             <GlobeAtmosphere
               radius={8.5}
               color="#2244aa"
               warmColor="#aa6622"
               intensity={0.3}
-              matchProgress={sceneState.scanProgress}
+              matchProgress={
+                sceneState.scanProgress > 0 ? sceneState.scanProgress : healthProgress * 0.3
+              }
             />
             <GlobeWireframe radius={8} opacity={0.04} />
             <ConstellationNodes
@@ -403,8 +456,10 @@ export const GlobeConstellation = forwardRef<
               pulseId={sceneState.pulseId}
               interactive={interactive}
               onNodeClick={interactive ? (node) => flyToNodeImpl(node.id) : undefined}
+              onNodeHover={interactive ? (node) => onNodeHoverRef.current?.(node) : undefined}
               matchedNodeIds={sceneState.matchedNodeIds}
               matchIntensities={sceneState.matchIntensities}
+              activityMap={activityMap}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
             {quality !== 'low' && (
@@ -421,6 +476,16 @@ export const GlobeConstellation = forwardRef<
 
           {quality !== 'low' && (
             <FlyToParticles target={sceneState.flyToTarget} active={sceneState.flyToActive} />
+          )}
+
+          {breathing && quality !== 'low' && !sceneState.dimmed && (
+            <HeartbeatPulse
+              urgency={urgency}
+              healthColor={new THREE.Color('#4488cc').lerp(
+                new THREE.Color('#cc8844'),
+                healthProgress * 0.5,
+              )}
+            />
           )}
 
           {quality !== 'low' && (
@@ -662,8 +727,10 @@ function ConstellationNodes({
   pulseId,
   interactive,
   onNodeClick,
+  onNodeHover,
   matchedNodeIds,
   matchIntensities,
+  activityMap,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -671,8 +738,10 @@ function ConstellationNodes({
   pulseId: string | null;
   interactive?: boolean;
   onNodeClick?: (node: ConstellationNode3D) => void;
+  onNodeHover?: (node: ConstellationNode3D | null) => void;
   matchedNodeIds: Set<string>;
   matchIntensities: Map<string, number>;
+  activityMap?: Map<string, number>;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -710,10 +779,12 @@ function ConstellationNodes({
         pulseId={pulseId}
         interactive={interactive}
         onNodeClick={onNodeClick}
+        onNodeHover={onNodeHover}
         getColor={getDrepColor}
         emissive={2.0}
         matchedNodeIds={matchedNodeIds}
         matchIntensities={matchIntensities}
+        activityMap={activityMap}
       />
       {groups.spo.length > 0 && (
         <NodePoints
@@ -723,11 +794,13 @@ function ConstellationNodes({
           pulseId={pulseId}
           interactive={interactive}
           onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
           getColor={getSpoColor}
           emissive={2.0}
           fragmentShader={SPO_FRAG}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
+          activityMap={activityMap}
         />
       )}
       {groups.cc.length > 0 && (
@@ -738,11 +811,13 @@ function ConstellationNodes({
           pulseId={pulseId}
           interactive={interactive}
           onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
           getColor={getCcColor}
           emissive={3.5}
           fragmentShader={CC_FRAG}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
+          activityMap={activityMap}
         />
       )}
     </>
@@ -756,11 +831,13 @@ function NodePoints({
   pulseId,
   interactive,
   onNodeClick,
+  onNodeHover,
   getColor,
   emissive,
   fragmentShader,
   matchedNodeIds,
   matchIntensities,
+  activityMap,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -768,11 +845,13 @@ function NodePoints({
   pulseId: string | null;
   interactive?: boolean;
   onNodeClick?: (node: ConstellationNode3D) => void;
+  onNodeHover?: (node: ConstellationNode3D | null) => void;
   getColor: (node: ConstellationNode3D) => string;
   emissive: number;
   fragmentShader?: string;
   matchedNodeIds: Set<string>;
   matchIntensities: Map<string, number>;
+  activityMap?: Map<string, number>;
 }) {
   const tmpColor = useMemo(() => new THREE.Color(), []);
   const matchColor = useMemo(() => new THREE.Color(MATCH_COLOR), []);
@@ -812,9 +891,12 @@ function NodePoints({
         colors[i * 3 + 1] = blendedG * matchEmissive;
         colors[i * 3 + 2] = blendedB * matchEmissive;
       } else {
-        colors[i * 3] = tmpColor.r * emissive;
-        colors[i * 3 + 1] = tmpColor.g * emissive;
-        colors[i * 3 + 2] = tmpColor.b * emissive;
+        // Activity-based brightness: recently active nodes glow brighter
+        const activity = activityMap?.get(node.id) ?? activityMap?.get(node.fullId) ?? 0;
+        const activityBoost = 1 + activity * 0.8; // up to 1.8x brighter
+        colors[i * 3] = tmpColor.r * emissive * activityBoost;
+        colors[i * 3 + 1] = tmpColor.g * emissive * activityBoost;
+        colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost;
       }
 
       // SIZE: matched nodes grow more dramatically with intensity
@@ -842,6 +924,7 @@ function NodePoints({
     matchedNodeIds,
     matchIntensities,
     matchColor,
+    activityMap,
   ]);
 
   const geoRef = useRef<THREE.BufferGeometry>(null);
@@ -872,6 +955,16 @@ function NodePoints({
             }
           : undefined
       }
+      onPointerMove={
+        interactive
+          ? (e: { stopPropagation: () => void; index?: number }) => {
+              const idx = e.index;
+              if (idx !== undefined && idx < nodes.length) {
+                onNodeHover?.(nodes[idx]);
+              }
+            }
+          : undefined
+      }
       onPointerEnter={
         interactive
           ? () => {
@@ -883,6 +976,7 @@ function NodePoints({
         interactive
           ? () => {
               document.body.style.cursor = '';
+              onNodeHover?.(null);
             }
           : undefined
       }
@@ -1393,16 +1487,20 @@ function TiltedGlobeGroup({
   enabled,
   rotationRef,
   speedRef,
+  breathing,
+  urgency,
   children,
 }: {
   enabled: boolean;
-  rotationRef: React.MutableRefObject<number>;
-  speedRef: React.MutableRefObject<number>;
+  rotationRef: React.RefObject<number>;
+  speedRef: React.RefObject<number>;
+  breathing?: boolean;
+  urgency?: number;
   children: React.ReactNode;
 }) {
   const groupRef = useRef<THREE.Group>(null);
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (groupRef.current) {
       if (enabled) {
         rotationRef.current += delta * speedRef.current;
@@ -1410,10 +1508,101 @@ function TiltedGlobeGroup({
       // Apply axial tilt on X, then spin on Y (local)
       groupRef.current.rotation.x = AXIAL_TILT;
       groupRef.current.rotation.y = rotationRef.current;
+
+      // Breathing: gentle rhythmic scale pulse
+      if (breathing) {
+        // Heartbeat rate: 8-16 bpm based on urgency (0-100)
+        const bpm = 8 + ((urgency ?? 30) / 100) * 8;
+        const freq = bpm / 60; // Hz
+        const t = clock.getElapsedTime();
+        // Double-bump heartbeat shape: two quick pulses then rest
+        const phase = (t * freq) % 1;
+        const beat =
+          phase < 0.1
+            ? Math.sin((phase * Math.PI) / 0.1) * 0.003
+            : phase < 0.2
+              ? Math.sin(((phase - 0.1) * Math.PI) / 0.1) * 0.0015
+              : 0;
+        const scale = 1 + beat;
+        groupRef.current.scale.setScalar(scale);
+      }
     }
   });
 
   return <group ref={groupRef}>{children}</group>;
+}
+
+// --- Heartbeat pulse ring (expanding ripple from globe center) ---
+
+const HEARTBEAT_VERT = /* glsl */ `
+varying float vAlpha;
+uniform float uProgress;
+uniform float uRadius;
+
+void main() {
+  // Ring expands outward from globe center
+  vec3 pos = position * (uRadius + uProgress * 4.0);
+  vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+  // Fade out as ring expands
+  vAlpha = (1.0 - uProgress) * 0.4;
+}
+`;
+
+const HEARTBEAT_FRAG = /* glsl */ `
+varying float vAlpha;
+uniform vec3 uColor;
+
+void main() {
+  gl_FragColor = vec4(uColor, vAlpha);
+}
+`;
+
+function HeartbeatPulse({
+  urgency = 30,
+  healthColor,
+}: {
+  urgency?: number;
+  healthColor: THREE.Color;
+}) {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const progressRef = useRef(0);
+
+  const uniforms = useMemo(
+    () => ({
+      uProgress: { value: 0 },
+      uRadius: { value: 8.0 },
+      uColor: { value: healthColor },
+    }),
+    [healthColor],
+  );
+
+  useFrame((state, delta) => {
+    if (!matRef.current) return;
+    const bpm = 8 + (urgency / 100) * 8;
+    const period = 60 / bpm;
+    progressRef.current = (progressRef.current + delta) % period;
+    const t = progressRef.current / period;
+    matRef.current.uniforms.uProgress.value = t;
+    matRef.current.uniforms.uColor.value = healthColor;
+  });
+
+  return (
+    <mesh rotation-x={Math.PI / 2}>
+      <ringGeometry args={[0.98, 1.0, 64]} />
+      <shaderMaterial
+        ref={matRef}
+        vertexShader={HEARTBEAT_VERT}
+        fragmentShader={HEARTBEAT_FRAG}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
 }
 
 // --- Helpers ---

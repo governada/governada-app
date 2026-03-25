@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -11,10 +11,6 @@ import {
   Vote,
   HelpCircle,
   Coins,
-  Shield,
-  UserCheck,
-  DollarSign,
-  BarChart3,
 } from 'lucide-react';
 import {
   useInView,
@@ -23,17 +19,147 @@ import {
   useScroll,
   useReducedMotion,
   motion,
+  AnimatePresence,
 } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { posthog } from '@/lib/posthog';
 import dynamic from 'next/dynamic';
+import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
   { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
 );
+import { useQuery } from '@tanstack/react-query';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
+
+/** Typewriter text — reveals text character by character */
+function TypewriterText({ text, className }: { text: string; className?: string }) {
+  const [displayedLength, setDisplayedLength] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setDisplayedLength(text.length);
+      return;
+    }
+    setDisplayedLength(0);
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayedLength(i);
+      if (i >= text.length) clearInterval(interval);
+    }, 25); // ~40 chars/second
+    return () => clearInterval(interval);
+  }, [text, prefersReducedMotion]);
+
+  return (
+    <span className={className}>
+      {text.slice(0, displayedLength)}
+      {displayedLength < text.length && <span className="animate-pulse text-primary/60">|</span>}
+    </span>
+  );
+}
+
+/** Fetches governance narrative and renders with typewriter effect */
+function NarrativeLine({ fallback }: { fallback: string }) {
+  const { data } = useQuery({
+    queryKey: ['homepage-narrative'],
+    queryFn: async () => {
+      const res = await fetch('/api/homepage/narrative');
+      if (!res.ok) return null;
+      return res.json() as Promise<{ narrative: string; healthScore: number; urgency: number }>;
+    },
+    staleTime: 5 * 60 * 1000, // 5 min
+    refetchOnWindowFocus: false,
+  });
+
+  const text = data?.narrative ?? fallback;
+
+  return (
+    <p
+      className="text-sm sm:text-base text-white/70 text-center tabular-nums max-w-lg"
+      style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}
+    >
+      <TypewriterText text={text} />
+    </p>
+  );
+}
+
+// --- Tier badge colors ---
+const TIER_STYLES: Record<string, string> = {
+  diamond: 'bg-cyan-950/40 text-cyan-300',
+  legendary: 'bg-purple-950/40 text-purple-300',
+  gold: 'bg-yellow-950/40 text-yellow-400',
+  silver: 'bg-gray-800/40 text-gray-300',
+  bronze: 'bg-orange-950/40 text-orange-400',
+  emerging: 'bg-teal-950/40 text-teal-400',
+};
+
+function getTierFromScore(score: number): string {
+  if (score >= 90) return 'diamond';
+  if (score >= 80) return 'legendary';
+  if (score >= 65) return 'gold';
+  if (score >= 50) return 'silver';
+  if (score >= 35) return 'bronze';
+  return 'emerging';
+}
+
+/** Floating hover card for globe node interaction */
+function NodeHoverCard({ node }: { node: ConstellationNode3D }) {
+  const tier = getTierFromScore(node.score);
+  const typeLabel =
+    node.nodeType === 'drep' ? 'DRep' : node.nodeType === 'spo' ? 'SPO' : 'CC Member';
+  const typeColor =
+    node.nodeType === 'drep'
+      ? 'text-teal-400'
+      : node.nodeType === 'spo'
+        ? 'text-violet-400'
+        : 'text-amber-400';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 4, scale: 0.98 }}
+      transition={{ duration: 0.15 }}
+      className="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-white/10 bg-black/85 backdrop-blur-md px-4 py-3 shadow-2xl max-w-[280px]"
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className={cn('text-[10px] font-semibold uppercase tracking-wider', typeColor)}>
+          {typeLabel}
+        </span>
+        <span
+          className={cn(
+            'text-[10px] font-bold px-1.5 py-0.5 rounded',
+            TIER_STYLES[tier] ?? TIER_STYLES.emerging,
+          )}
+        >
+          {tier.charAt(0).toUpperCase() + tier.slice(1)}
+        </span>
+      </div>
+      <p className="text-sm font-semibold text-white truncate">
+        {node.name || `${node.id.slice(0, 12)}...`}
+      </p>
+      <div className="flex items-center gap-3 mt-1.5 text-xs text-white/60">
+        <span>
+          Score <strong className="text-white/90">{node.score}</strong>
+        </span>
+        {node.power > 0 && (
+          <span>
+            Power{' '}
+            <strong className="text-white/90">
+              {'\u20B3'}
+              {(node.power * 100).toFixed(0)}M
+            </strong>
+          </span>
+        )}
+      </div>
+      <p className="text-[10px] text-white/40 mt-1.5">Click to explore &rarr;</p>
+    </motion.div>
+  );
+}
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -73,27 +199,41 @@ interface HomeAnonymousProps {
 export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
   const heroRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
+  const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ['start start', 'end start'],
   });
-  const heroTextY = useTransform(scrollYProgress, [0, 1], [0, 60]);
   const heroTextOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+
+  const handleNodeHover = useCallback((node: ConstellationNode3D | null) => {
+    setHoveredNode(node);
+  }, []);
 
   return (
     <div className="relative min-h-screen flex flex-col">
-      {/* ── Constellation hero ─────────────────────────────────────── */}
+      {/* ── Living Globe hero ──────────────────────────────────────── */}
       <section
         ref={heroRef}
-        className="relative h-[55vh] sm:h-[calc(55vh+3.5rem)] min-h-[420px] sm:-mt-14 overflow-hidden"
-        aria-label="Governance constellation visualization"
+        className="relative h-[65vh] sm:h-[calc(65vh+3.5rem)] min-h-[500px] sm:-mt-14 overflow-hidden"
+        aria-label="Living governance constellation — interactive 3D visualization"
       >
         <div className="absolute inset-0">
-          <ConstellationScene className="w-full h-full" interactive={false} />
+          <ConstellationScene
+            className="w-full h-full"
+            interactive
+            breathing={!prefersReducedMotion}
+            healthScore={75}
+            urgency={Math.min(100, pulseData.activeProposals * 2)}
+            onNodeHover={handleNodeHover}
+          />
         </div>
 
         {/* Gradient fade at bottom */}
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+
+        {/* Hover card for globe nodes */}
+        <AnimatePresence>{hoveredNode && <NodeHoverCard node={hoveredNode} />}</AnimatePresence>
 
         {/* Live data overlay on constellation */}
         <div className="absolute top-16 sm:top-20 left-4 right-4 flex justify-center pointer-events-none">
@@ -156,34 +296,23 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
           </TooltipProvider>
         </div>
 
-        {/* Value prop overlay */}
+        {/* Value prop + dynamic narrative overlay */}
         <motion.div
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:pt-14 pointer-events-none"
-          style={prefersReducedMotion ? {} : { y: heroTextY, opacity: heroTextOpacity }}
+          className="absolute inset-0 flex flex-col items-center justify-end pb-20 px-4 pointer-events-none"
+          style={prefersReducedMotion ? {} : { opacity: heroTextOpacity }}
         >
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white drop-shadow-lg leading-tight text-center">
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white drop-shadow-lg leading-tight text-center mb-3">
             Your ADA gives you a voice.
           </h1>
 
-          {/* Gap where the constellation core sun shows through */}
-          <div className="h-10 sm:h-16" />
-
-          <p className="font-display text-xl sm:text-2xl lg:text-3xl font-semibold text-[#fff0d4] drop-shadow-lg text-center">
-            It takes 60 seconds to use it.
-          </p>
-
-          {/* Live urgency hook */}
-          {pulseData.activeProposals > 0 && (
-            <p
-              className="text-sm sm:text-base text-white/70 mt-4 text-center tabular-nums"
-              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}
-            >
-              <strong className="text-white/90">{pulseData.activeProposals} proposals</strong> are
-              being decided right now.{' '}
-              <strong className="text-[#fff0d4]">&#x20B3;{pulseData.totalAdaGoverned}</strong> is at
-              stake.
-            </p>
-          )}
+          {/* Dynamic AI narrative — changes every visit */}
+          <NarrativeLine
+            fallback={
+              pulseData.activeProposals > 0
+                ? `${pulseData.activeProposals} proposals being decided. ₳${pulseData.totalAdaGoverned} at stake.`
+                : 'Explore the governance network above.'
+            }
+          />
         </motion.div>
       </section>
 
@@ -327,109 +456,6 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
           ))}
         </motion.div>
       </section>
-
-      {/* ── Glass Window — Personal dashboard preview ────────────── */}
-      <motion.section
-        className="mx-auto w-full max-w-2xl px-4 mt-8"
-        variants={fadeInUp}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-40px' }}
-        aria-label="Personal governance dashboard preview"
-      >
-        <div className="relative rounded-xl border border-primary/20 bg-card overflow-hidden">
-          {/* Glass overlay with CTA */}
-          <div className="absolute inset-0 backdrop-blur-[3px] bg-card/70 z-10 flex flex-col items-center justify-center gap-3 px-6">
-            <Shield className="h-6 w-6 text-primary" aria-hidden />
-            <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-foreground">Your Governance Dashboard</p>
-              <p className="text-xs text-muted-foreground max-w-[300px]">
-                Connect your wallet to see your voting power, DRep performance, and personal
-                treasury share
-              </p>
-            </div>
-            <Link
-              href="/match"
-              onClick={() => posthog?.capture('citizen_glass_window_clicked')}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2',
-                'text-sm font-semibold text-primary-foreground',
-                'hover:bg-primary/90 transition-colors',
-              )}
-            >
-              <Zap className="h-3.5 w-3.5" />
-              Get Started — 60 Seconds
-            </Link>
-          </div>
-
-          {/* Behind glass: realistic dashboard preview */}
-          <div className="opacity-30 pointer-events-none select-none p-5" aria-hidden="true">
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-4">
-              <Shield className="h-4 w-4 text-primary" />
-              <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                Your Governance Impact
-              </span>
-            </div>
-
-            {/* Stats grid — mirrors GovernanceImpactCard layout */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <Vote className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                    Voting Power
-                  </span>
-                </div>
-                <p className="text-lg font-bold text-foreground tabular-nums">{'\u20B3'}12,450</p>
-                <p className="text-[11px] text-muted-foreground">0.0023% of governance</p>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <UserCheck className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                    Your DRep
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-foreground truncate">CardanoMax</span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400">
-                    Gold
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">92% participation</p>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <DollarSign className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                    Treasury Share
-                  </span>
-                </div>
-                <p className="text-lg font-bold text-foreground tabular-nums">{'\u20B3'}3,847</p>
-                <p className="text-[11px] text-muted-foreground">Your proportional share</p>
-              </div>
-            </div>
-
-            {/* Epoch activity row */}
-            <div className="border-t border-border mt-4 pt-3">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <BarChart3 className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  This Epoch
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Your DRep voted on <strong>12</strong> of{' '}
-                <strong>{pulseData.activeProposals || 14}</strong> proposals &mdash;{' '}
-                <strong>86%</strong> participation
-              </p>
-            </div>
-          </div>
-        </div>
-      </motion.section>
 
       {/* ── Social proof strip ──────────────────────────────────────── */}
       <motion.section

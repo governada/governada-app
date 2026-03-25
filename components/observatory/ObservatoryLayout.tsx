@@ -11,17 +11,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Wallet, Shield, Activity, ArrowLeft, Maximize2, Gift, Play } from 'lucide-react';
+import { Wallet, Shield, Activity, ArrowLeft, Maximize2, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePlayback } from '@/lib/observatory/usePlayback';
 import type { ObservatoryFocus } from '@/lib/observatory/types';
-import { PlaybackBar } from './PlaybackBar';
 import { TreasurySankeyPanel } from './instruments/TreasurySankeyPanel';
 import { CommitteeHemicyclePanel } from './instruments/CommitteeHemicyclePanel';
 import { HealthVitalTracesPanel } from './instruments/HealthVitalTracesPanel';
 import { ObservatoryNarrativeBar } from './narrative/ObservatoryNarrativeBar';
 import { GovernanceWrapped } from './wrapped/GovernanceWrapped';
-import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { useGovernanceHealthIndex, useObservatoryNarratives } from '@/hooks/queries';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { FeatureGate } from '@/components/FeatureGate';
@@ -40,15 +37,12 @@ export function ObservatoryLayout({ initialFocus }: ObservatoryLayoutProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefersReducedMotion = useReducedMotion();
-  const { depth } = useGovernanceDepth();
 
   // Determine focus from URL or prop
   const focusParam = (searchParams.get('focus') as ObservatoryFocus) ?? initialFocus ?? null;
   const [expandedPanel, setExpandedPanel] = useState<ObservatoryFocus>(focusParam);
   const [mobileIndex, setMobileIndex] = useState(0);
   const [showWrapped, setShowWrapped] = useState(false);
-  // Playback bar collapsed by default — user opts in to replay
-  const [replayExpanded, setReplayExpanded] = useState(false);
 
   // Get current epoch: prefer GHI history, fall back to EpochContext (always valid)
   const epochCtx = useEpochContext();
@@ -63,14 +57,8 @@ export function ObservatoryLayout({ initialFocus }: ObservatoryLayoutProps) {
     return epochCtx.epoch;
   }, [ghiData, ghiLoading, epochCtx.epoch]);
 
-  // Playback engine
-  const playback = usePlayback({ currentEpoch });
-
   // Observatory narratives (for drilldown panels)
   const { data: narratives } = useObservatoryNarratives(currentEpoch);
-
-  // Show playback bar for exploring+ users (not first-visit anonymous)
-  const showPlayback = depth !== 'hands_off';
 
   const handleExpand = useCallback(
     (panel: ObservatoryFocus) => {
@@ -95,38 +83,14 @@ export function ObservatoryLayout({ initialFocus }: ObservatoryLayoutProps) {
     });
   }, []);
 
-  // When replay is collapsed, always show live data (position=1, isLive=true)
-  // When replay is expanded, use the actual playback state
-  const playbackPosition = replayExpanded ? playback.state.position : 1;
-  const isLive = replayExpanded ? playback.state.isLive : true;
+  // Always show live data — no playback/replay
+  const playbackPosition = 1;
+  const isLive = true;
 
   // If a panel is expanded, show the full detail view
   if (expandedPanel) {
     return (
       <div className="space-y-0">
-        {/* Playback bar — only shown when user opts in */}
-        {showPlayback && replayExpanded && (
-          <PlaybackBar
-            state={playback.state}
-            onTogglePlay={playback.togglePlay}
-            onSeek={playback.seek}
-            onSetSpeed={playback.setSpeed}
-            onGoLive={playback.goLive}
-          />
-        )}
-        {/* Replay toggle button — shown when bar is collapsed */}
-        {showPlayback && !replayExpanded && (
-          <div className="px-4 pt-3">
-            <button
-              onClick={() => setReplayExpanded(true)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Play className="w-3 h-3" />
-              Watch how Epoch {currentEpoch} unfolded
-            </button>
-          </div>
-        )}
-
         {/* Back button */}
         <div className="px-4 pt-3 pb-1">
           <button
@@ -180,31 +144,8 @@ export function ObservatoryLayout({ initialFocus }: ObservatoryLayoutProps) {
   // Three-panel Observatory view
   return (
     <div className="space-y-0">
-      {/* Playback bar — only shown when user opts in */}
-      {showPlayback && replayExpanded && (
-        <PlaybackBar
-          state={playback.state}
-          onTogglePlay={playback.togglePlay}
-          onSeek={playback.seek}
-          onSetSpeed={playback.setSpeed}
-          onGoLive={playback.goLive}
-        />
-      )}
-      {/* Replay toggle button — shown when bar is collapsed */}
-      {showPlayback && !replayExpanded && (
-        <div className="px-4 pt-3">
-          <button
-            onClick={() => setReplayExpanded(true)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Play className="w-3 h-3" />
-            Watch how Epoch {currentEpoch} unfolded
-          </button>
-        </div>
-      )}
-
-      {/* AI Narrative — uses current epoch when replay is collapsed, playback epoch when expanded */}
-      <ObservatoryNarrativeBar epoch={replayExpanded ? playback.state.epoch : currentEpoch} />
+      {/* AI Narrative */}
+      <ObservatoryNarrativeBar epoch={currentEpoch} />
 
       {/* Desktop: Three-panel layout */}
       <div className="hidden md:grid md:grid-cols-3 gap-3 px-4 py-3">

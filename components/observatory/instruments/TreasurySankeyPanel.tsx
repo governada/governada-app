@@ -302,8 +302,9 @@ function NclBudgetBar({
   position: number;
   compact?: boolean;
 }) {
-  const enactedPct = (ncl.enactedWithdrawalsAda / ncl.period.nclAda) * 100;
-  const pendingPct = (ncl.pendingWithdrawalsAda / ncl.period.nclAda) * 100;
+  const nclBudgetAda = ncl.period?.nclAda ?? 0;
+  const enactedPct = nclBudgetAda > 0 ? ((ncl.enactedWithdrawalsAda ?? 0) / nclBudgetAda) * 100 : 0;
+  const pendingPct = nclBudgetAda > 0 ? ((ncl.pendingWithdrawalsAda ?? 0) / nclBudgetAda) * 100 : 0;
   const displayEnacted = enactedPct * Math.min(position, 1);
   const displayPending = pendingPct * Math.min(position, 1);
 
@@ -403,7 +404,7 @@ function PendingProposalsList({
         Pending Proposals
       </p>
       {proposals.map((p) => {
-        const pctOfBudget = nclBudget > 0 ? (p.withdrawalAda / nclBudget) * 100 : 0;
+        const pctOfBudget = nclBudget > 0 ? ((p.withdrawalAda ?? 0) / nclBudget) * 100 : 0;
         return (
           <div
             key={`${p.txHash}-${p.index}`}
@@ -432,7 +433,7 @@ function PendingProposalsList({
           </div>
         );
       })}
-      {nclRemaining > 0 && (
+      {nclRemaining > 0 && nclBudget > 0 && (
         <p className="text-[10px] text-muted-foreground italic">
           If all pass, {formatAda(nclRemaining)} of {formatAda(nclBudget)} budget remains (
           {((nclRemaining / nclBudget) * 100).toFixed(0)}%)
@@ -542,8 +543,17 @@ export function TreasurySankeyPanel({
 
   // ── Compact View ────────────────────────────────────────────────────────
   if (!expanded) {
+    const runwayMonths = treasury?.runwayMonths ?? 0;
+    const burnRate = treasury?.burnRatePerEpoch ?? 0;
+    const runwayLabel =
+      runwayMonths >= 999 || burnRate === 0
+        ? 'Insufficient data'
+        : runwayMonths >= 564
+          ? `${Math.floor(runwayMonths / 12)}+ years`
+          : `${runwayMonths}mo`;
+
     return (
-      <div className="space-y-3 p-3">
+      <div className="space-y-2.5 p-3">
         {/* Reservoir: balance headline */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -566,15 +576,44 @@ export function TreasurySankeyPanel({
           )}
         </div>
 
+        {/* Runway estimate */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <TrendingUp className="w-3 h-3 shrink-0" />
+          <span>
+            Runway: <span className="font-medium text-foreground">{runwayLabel}</span>
+          </span>
+        </div>
+
         {/* Budget Window: NCL bar */}
         {ncl && <NclBudgetBar ncl={ncl} position={effectivePosition} compact />}
 
-        {/* Top pending proposal (engagement hook) */}
+        {/* Mini NCL utilization bar (when NCL data exists but no full bar) */}
+        {ncl && (
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <CircleDollarSign className="w-3 h-3 shrink-0" />
+            <span>NCL: {(ncl.utilizationPct ?? 0).toFixed(0)}% utilized</span>
+            {ncl.epochsRemaining > 0 && (
+              <span className="ml-auto tabular-nums">{ncl.epochsRemaining} ep left</span>
+            )}
+          </div>
+        )}
+
+        {/* Pending proposals with total ADA */}
         {pendingProposals.length > 0 && (
           <div className="flex items-center gap-2 text-xs">
             <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
             <span className="truncate text-muted-foreground">
-              {pendingProposals.length} pending · {formatAda(pending?.totalAda ?? 0)} requested
+              {pendingProposals.length} pending
+              {(pending?.totalAda ?? 0) > 0 && (
+                <>
+                  {' '}
+                  ·{' '}
+                  <span className="font-medium text-foreground">
+                    {formatAda(pending?.totalAda ?? 0)}
+                  </span>{' '}
+                  requested
+                </>
+              )}
             </span>
           </div>
         )}
@@ -688,7 +727,7 @@ export function TreasurySankeyPanel({
             <div className="rounded-lg border border-border/20 bg-card/30 px-2.5 py-1.5 text-center">
               <p className="text-[10px] text-muted-foreground">Utilized</p>
               <p className="text-sm font-bold tabular-nums">
-                {ncl.projectedUtilizationPct.toFixed(1)}%
+                {(ncl.projectedUtilizationPct ?? 0).toFixed(1)}%
               </p>
               <p className="text-[9px] text-muted-foreground">if all pass</p>
             </div>

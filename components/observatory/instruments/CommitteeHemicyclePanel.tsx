@@ -150,13 +150,14 @@ export function CommitteeHemicyclePanel({
     return new Map(rawMembers.map((m, i) => [m.ccHotId, i]));
   }, [rawMembers]);
 
-  // SVG dimensions
+  // SVG dimensions — ensure enough room for bottom seats (radius + glow + margin)
   const seatRadius = expanded ? 20 : 14;
   const arcRadius = expanded ? 120 : 80;
   const svgWidth = expanded ? 320 : 220;
-  const svgHeight = expanded ? 180 : 120;
+  const bottomMargin = seatRadius + 8; // seat radius + glow ring + padding
+  const svgHeight = expanded ? 200 : 140;
   const cx = svgWidth / 2;
-  const cy = svgHeight - 10; // arc center at bottom
+  const cy = svgHeight - bottomMargin; // arc center positioned to fit all seats
 
   const members = data?.members ?? [];
   const health = data?.health;
@@ -470,7 +471,7 @@ function HemicycleSeat({
 
   // SVG viewBox dimensions (must match parent)
   const svgW = expanded ? 320 : 220;
-  const svgH = expanded ? 180 : 120;
+  const svgH = expanded ? 200 : 140;
   const tooltipXPct = (position.x / svgW) * 100;
   const tooltipYPct = (position.y / svgH) * 100;
 

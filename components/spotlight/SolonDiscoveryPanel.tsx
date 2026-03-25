@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ScrollText, Send, X, ChevronDown, ChevronUp, Loader2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,29 @@ interface SenecaDiscoveryPanelProps {
   onQueryResults?: (query: string) => void;
 }
 
+// ─── Anonymous prompt → filter redirect map ──────────────────────────────────
+
+const ANONYMOUS_PROMPT_REDIRECTS: Record<SpotlightEntityType, Record<string, string>> = {
+  drep: {
+    'Who votes on every proposal?': '/governance/representatives',
+    'DReps focused on developer funding': '/governance/representatives',
+    'Most active newcomers': '/governance/representatives',
+    'Representatives who explain their votes': '/governance/representatives',
+  },
+  spo: {
+    'Most active governance pools': '/governance/pools',
+    'Pools with strong deliberation': '/governance/pools',
+    'Large pools that participate in governance': '/governance/pools',
+    'Pools focused on decentralization': '/governance/pools',
+  },
+  proposal: {
+    "What's being decided right now?": '/governance/proposals?status=Open',
+    'Treasury spending proposals': '/governance/proposals?status=Open&type=Treasury',
+    'Most contested proposals': '/governance/proposals?status=Open',
+    'Proposals closing soon': '/governance/proposals?status=Open',
+  },
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SolonDiscoveryPanel({
@@ -41,6 +65,7 @@ export function SolonDiscoveryPanel({
   onQueryResults,
 }: SenecaDiscoveryPanelProps) {
   const reducedMotion = useReducedMotion();
+  const router = useRouter();
   const { segment } = useSegment();
   const isAnonymous = segment === 'anonymous';
   const [isExpanded, setIsExpanded] = useState(false);
@@ -67,11 +92,28 @@ export function SolonDiscoveryPanel({
 
   const handlePromptSelect = useCallback(
     (prompt: string) => {
+      // Anonymous users: redirect to relevant filtered page instead of AI advisor
+      if (isAnonymous) {
+        const redirectMap = ANONYMOUS_PROMPT_REDIRECTS[entityType];
+        const href = redirectMap?.[prompt];
+        if (href) {
+          router.push(href);
+          return;
+        }
+        // Fallback: navigate to the entity listing page
+        const fallbackRoutes: Record<SpotlightEntityType, string> = {
+          drep: '/governance/representatives',
+          spo: '/governance/pools',
+          proposal: '/governance/proposals',
+        };
+        router.push(fallbackRoutes[entityType]);
+        return;
+      }
       sendMessage(prompt);
       setIsExpanded(true);
       onQueryResults?.(prompt);
     },
-    [sendMessage, onQueryResults],
+    [isAnonymous, entityType, router, sendMessage, onQueryResults],
   );
 
   const handleKeyDown = useCallback(

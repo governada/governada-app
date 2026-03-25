@@ -143,6 +143,16 @@ const COMPONENT_GROUPS: {
       { key: 'system_stability', label: 'System Stability' },
     ],
   },
+  {
+    category: 'Sustainability',
+    color: 'oklch(0.75 0.14 85)',
+    glowColor: 'oklch(0.75 0.14 85 / 0.1)',
+    alertColor: 'oklch(0.65 0.18 15)',
+    components: [
+      { key: 'treasury_health', label: 'Treasury Health' },
+      { key: 'governance_outcomes', label: 'Governance Outcomes' },
+    ],
+  },
 ];
 
 /** Flatten for iteration with stagger index. */
@@ -163,7 +173,7 @@ const ALL_COMPONENTS = COMPONENT_GROUPS.flatMap((group) =>
 const MAIN_TRACE_HEIGHT = 80;
 const COMPONENT_TRACE_HEIGHT = 42;
 const COMPONENT_TRACE_GAP = 6;
-const PADDING = { top: 8, right: 56, bottom: 4, left: 8 };
+const PADDING = { top: 8, right: 80, bottom: 4, left: 8 };
 
 /** Build an SVG path `d` attribute from an array of values (0–100 scale). */
 function buildTracePath(
@@ -251,7 +261,7 @@ function TraceSkeleton({ expanded }: { expanded?: boolean }) {
       <Skeleton className={cn('w-full rounded-lg', expanded ? 'h-[80px]' : 'h-[60px]')} />
       {expanded && (
         <div className="space-y-1">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton key={i} className="w-full h-[24px] rounded" />
           ))}
         </div>

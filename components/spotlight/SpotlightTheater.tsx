@@ -104,9 +104,10 @@ export function SpotlightTheater({
 
   const advance = useCallback(
     (dir: 1 | -1 = 1) => {
-      const newSinceBreathe = entitiesSinceBreathe + 1;
+      // Only count forward navigation toward the breathe interval
+      const newSinceBreathe = dir === 1 ? entitiesSinceBreathe + 1 : entitiesSinceBreathe;
 
-      // Check for breathe point
+      // Check for breathe point (forward only)
       if (newSinceBreathe >= BREATHE_INTERVAL && dir === 1) {
         setShowBreathe(true);
         setEntitiesSinceBreathe(0);
@@ -118,7 +119,7 @@ export function SpotlightTheater({
       if (nextIndex >= 0 && nextIndex < queue.length) {
         setCurrentIndex(nextIndex);
         tracking.setIndex(nextIndex);
-        setEntitiesSinceBreathe(newSinceBreathe);
+        if (dir === 1) setEntitiesSinceBreathe(newSinceBreathe);
       }
     },
     [currentIndex, queue.length, entitiesSinceBreathe, tracking],
@@ -230,6 +231,8 @@ export function SpotlightTheater({
       {/* Controls */}
       <SpotlightControls
         onAction={handleAction}
+        onBack={() => advance(-1)}
+        canGoBack={currentIndex > 0}
         isTracked={isTracked}
         delay={reducedMotion ? 0 : 1}
         immediate={!!reducedMotion}

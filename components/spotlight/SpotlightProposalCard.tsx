@@ -52,6 +52,43 @@ function VoteBar({ label, yes, no, abstain, delay, immediate }: VoteBarProps) {
   );
 }
 
+// ─── Outcome Badge ────────────────────────────────────────────────────────────
+
+function OutcomeBadge({ status, expirationEpoch }: { status: string; expirationEpoch?: number }) {
+  const s = status.toLowerCase();
+  const epochLabel = expirationEpoch ? ` Ep ${expirationEpoch}` : '';
+
+  if (s === 'ratified') {
+    return (
+      <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-0.5 text-xs font-medium text-sky-400">
+        Ratified{epochLabel}
+      </span>
+    );
+  }
+  if (s === 'enacted') {
+    return (
+      <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium text-violet-400">
+        Enacted{epochLabel}
+      </span>
+    );
+  }
+  if (s === 'expired') {
+    return (
+      <span className="rounded-full border border-zinc-500/20 bg-zinc-500/10 px-2.5 py-0.5 text-xs font-medium text-zinc-400">
+        Expired
+      </span>
+    );
+  }
+  if (s === 'dropped') {
+    return (
+      <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-400">
+        Dropped
+      </span>
+    );
+  }
+  return null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface SpotlightProposalCardProps {
@@ -72,9 +109,15 @@ export function SpotlightProposalCard({
   const verdict = getVerdict(proposal.status ?? 'open', proposal.triBody);
   const isOpen = proposal.status === 'open' || proposal.status === 'active';
 
-  // Urgency
+  const isResolved = ['ratified', 'enacted', 'expired', 'dropped'].includes(
+    (proposal.status ?? '').toLowerCase(),
+  );
+
+  // Urgency — only meaningful for open proposals
   const epochsRemaining =
-    proposal.expirationEpoch && currentEpoch ? proposal.expirationEpoch - currentEpoch : null;
+    isOpen && proposal.expirationEpoch && currentEpoch
+      ? proposal.expirationEpoch - currentEpoch
+      : null;
   const isUrgent = epochsRemaining != null && epochsRemaining <= 1;
 
   // Status color
@@ -121,18 +164,27 @@ export function SpotlightProposalCard({
             </span>
           )}
 
-          {isUrgent && (
-            <span className="flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-400">
-              <AlertTriangle className="h-3 w-3" />
-              {epochsRemaining === 0 ? 'Last epoch!' : `${epochsRemaining} epoch left`}
-            </span>
-          )}
-
-          {epochsRemaining != null && !isUrgent && epochsRemaining > 0 && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {epochsRemaining} epochs remaining
-            </span>
+          {isResolved ? (
+            /* Outcome badge for decided proposals — no epoch countdown */
+            <OutcomeBadge
+              status={proposal.status ?? ''}
+              expirationEpoch={proposal.expirationEpoch}
+            />
+          ) : (
+            <>
+              {isUrgent && (
+                <span className="flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  {epochsRemaining === 0 ? 'Last epoch!' : `${epochsRemaining} epoch left`}
+                </span>
+              )}
+              {epochsRemaining != null && !isUrgent && epochsRemaining > 0 && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {epochsRemaining} epochs remaining
+                </span>
+              )}
+            </>
           )}
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Users, Wallet } from 'lucide-react';
+import { ArrowRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
@@ -141,28 +141,6 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
               totalDelegators={pulseData.totalDelegators}
             />
           )}
-
-          {/* Connect wallet card */}
-          <Link
-            href="/match"
-            className="block rounded-xl border border-white/[0.08] bg-card/60 backdrop-blur-xl p-4 space-y-2 transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
-            onClick={() =>
-              trackFunnel(FUNNEL_EVENTS.EXPLORE_CLICKED, { source: 'landing_get_started' })
-            }
-          >
-            <div className="flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">{t('Find Your Match')}</span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {t(
-                'Discover representatives aligned with your values, connect your wallet, and start participating in governance.',
-              )}
-            </p>
-            <span className="inline-flex items-center gap-1 text-xs text-primary/80 hover:text-primary">
-              {t('Start matching')} <ArrowRight className="h-3 w-3" />
-            </span>
-          </Link>
 
           {/* Intelligence preview */}
           <IntelligencePreview />

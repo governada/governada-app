@@ -18,6 +18,7 @@ const ENTITY_LABELS: Record<SpotlightEntityType, string> = {
 const SORT_LABELS: Record<QueueSort, string> = {
   score: 'Highest scoring first',
   match: 'Best match first',
+  recency: 'Most recent first',
 };
 
 /**

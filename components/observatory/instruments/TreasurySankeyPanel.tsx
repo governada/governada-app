@@ -15,7 +15,6 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
-  Wallet,
   Clock,
   TrendingUp,
   TrendingDown,
@@ -419,7 +418,13 @@ function PendingProposalsList({
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium truncate">{p.title}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                {formatAda(p.withdrawalAda)} · {pctOfBudget.toFixed(1)}% of budget
+                {formatAda(p.withdrawalAda)}
+                {nclBudget > 0 && (
+                  <>
+                    {' · '}
+                    {pctOfBudget.toFixed(1)}% of NCL budget
+                  </>
+                )}
               </p>
             </div>
             <span
@@ -612,7 +617,9 @@ export function TreasurySankeyPanel({
           <div className="rounded-lg border border-border/20 bg-card/30 px-3 py-2">
             <p className="text-[10px] text-muted-foreground">Runway</p>
             <p className="text-sm font-bold tabular-nums">
-              {treasury && treasury.runwayMonths >= 999 ? '∞' : `${treasury?.runwayMonths ?? 0}mo`}
+              {treasury && (treasury.runwayMonths >= 999 || treasury.burnRatePerEpoch === 0)
+                ? 'Insufficient data'
+                : `${treasury?.runwayMonths ?? 0}mo`}
             </p>
           </div>
           <div className="rounded-lg border border-border/20 bg-card/30 px-3 py-2">
@@ -622,31 +629,37 @@ export function TreasurySankeyPanel({
         </div>
 
         {/* Spending categories flow */}
-        {categoryFlows.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-              Historical Spending
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Historical Spending
+          </p>
+          {categoryFlows.length > 0 ? (
+            <>
+              <FlowVisualization
+                categories={categoryFlows}
+                position={effectivePosition}
+                prefersReducedMotion={prefersReducedMotion}
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {categoryFlows.map((cat) => (
+                  <span
+                    key={cat.category}
+                    className={cn(
+                      'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                      getCategoryBgClass(cat.category),
+                    )}
+                  >
+                    {shortCategoryName(cat.category)}: {formatAda(cat.totalAda)}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              No treasury withdrawals recorded this epoch
             </p>
-            <FlowVisualization
-              categories={categoryFlows}
-              position={effectivePosition}
-              prefersReducedMotion={prefersReducedMotion}
-            />
-            <div className="flex flex-wrap gap-1.5">
-              {categoryFlows.map((cat) => (
-                <span
-                  key={cat.category}
-                  className={cn(
-                    'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                    getCategoryBgClass(cat.category),
-                  )}
-                >
-                  {shortCategoryName(cat.category)}: {formatAda(cat.totalAda)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       {/* Divider */}

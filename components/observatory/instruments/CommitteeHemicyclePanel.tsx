@@ -1,7 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePeekTrigger } from '@/components/governada/peeks/PeekDrawerProvider';
@@ -124,6 +126,12 @@ export function CommitteeHemicyclePanel({
 }: CommitteeHemicyclePanelProps) {
   const { data, isLoading, isError } = useCommitteeMembers();
   const openPeek = usePeekTrigger();
+  const [tooltip, setTooltip] = useState<{
+    member: CommitteeMemberQuickView;
+    archetype: CCArchetype | undefined;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Derive archetype lookup
   const archetypes = data?.archetypes;
@@ -189,13 +197,14 @@ export function CommitteeHemicyclePanel({
   );
 
   return (
-    <div className={cn('flex flex-col items-center', expanded ? 'gap-4' : 'gap-2')}>
+    <div className={cn('relative flex flex-col items-center', expanded ? 'gap-4' : 'gap-2')}>
       {/* Hemicycle SVG */}
       <svg
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         className={cn('w-full max-w-xs', expanded && 'max-w-sm')}
         role="img"
         aria-label="Committee hemicycle showing member seats arranged in a semicircle"
+        onMouseLeave={() => setTooltip(null)}
       >
         {/* Agreement / tension lines (rendered beneath seats) */}
         {agreementLines.map((a, idx) => {
@@ -245,9 +254,43 @@ export function CommitteeHemicyclePanel({
             onPeek={
               expanded && openPeek ? () => openPeek({ type: 'cc', id: member.ccHotId }) : undefined
             }
+            onHover={(member, archetype, x, y) => setTooltip({ member, archetype, x, y })}
+            onHoverEnd={() => setTooltip(null)}
           />
         ))}
       </svg>
+
+      {/* Seat tooltip */}
+      {tooltip && (
+        <div
+          className="pointer-events-none absolute z-50 rounded-lg border border-border/40 bg-card/95 backdrop-blur-sm px-3 py-2 shadow-xl text-xs space-y-1"
+          style={{
+            // Position relative to the SVG container; offset slightly above cursor
+            left: `${tooltip.x}%`,
+            top: `${tooltip.y}%`,
+            transform: 'translate(-50%, -120%)',
+          }}
+        >
+          <p className="font-semibold">
+            {tooltip.member.name ??
+              `${tooltip.member.ccHotId.slice(0, 8)}…${tooltip.member.ccHotId.slice(-4)}`}
+          </p>
+          {tooltip.archetype && <p className="text-muted-foreground">{tooltip.archetype.label}</p>}
+          {tooltip.member.fidelityGrade && (
+            <p>
+              Fidelity:{' '}
+              <span className={cn('font-bold', gradeColor(tooltip.member.fidelityGrade).tw)}>
+                {tooltip.member.fidelityGrade}
+              </span>
+              {tooltip.member.voteCount > 0 && (
+                <span className="text-muted-foreground ml-1">
+                  — voted constitutional {tooltip.member.yesCount}/{tooltip.member.voteCount} times
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Status line */}
       <p className="text-xs text-muted-foreground text-center leading-tight px-2">
@@ -257,7 +300,35 @@ export function CommitteeHemicyclePanel({
         {health?.avgFidelity != null && `, avg fidelity ${Math.round(health.avgFidelity)}%`}
       </p>
 
-      {/* Expanded: bloc summary + briefing excerpt */}
+      {/* Expanded: fidelity breakdown, bloc summary, briefing excerpt, profile CTA */}
+      {expanded && members.length > 0 && (
+        <div className="w-full space-y-2 pt-2 border-t border-border/20">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Fidelity Breakdown
+          </p>
+          {members.map((m) => (
+            <div key={m.ccHotId} className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground truncate mr-2 max-w-[60%]">
+                {m.name ?? `${m.ccHotId.slice(0, 8)}…`}
+              </span>
+              <span className="shrink-0 text-muted-foreground tabular-nums">
+                {m.voteCount > 0 ? (
+                  <>
+                    <span className={cn('font-semibold', gradeColor(m.fidelityGrade).tw)}>
+                      {m.fidelityGrade ?? '—'}
+                    </span>
+                    <span className="ml-1 text-[10px]">
+                      {m.yesCount}/{m.voteCount} constitutional
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground/50">No votes</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       {expanded && data?.blocs && data.blocs.length > 0 && (
         <div className="w-full space-y-2 pt-2 border-t border-border/20">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -280,6 +351,20 @@ export function CommitteeHemicyclePanel({
           </p>
         </div>
       )}
+      {/* Open full committee profile */}
+      {expanded && (
+        <Link
+          href="/governance/committee"
+          className={cn(
+            'w-full flex items-center justify-center gap-2 py-2.5 rounded-lg',
+            'text-xs font-medium transition-colors',
+            'bg-primary/10 text-primary hover:bg-primary/20',
+          )}
+        >
+          Open full Chamber profile
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      )}
     </div>
   );
 }
@@ -296,6 +381,13 @@ interface HemicycleSeatProps {
   archetype?: CCArchetype;
   expanded: boolean;
   onPeek?: () => void;
+  onHover?: (
+    member: CommitteeMemberQuickView,
+    archetype: CCArchetype | undefined,
+    x: number,
+    y: number,
+  ) => void;
+  onHoverEnd?: () => void;
 }
 
 function HemicycleSeat({
@@ -306,6 +398,8 @@ function HemicycleSeat({
   archetype,
   expanded,
   onPeek,
+  onHover,
+  onHoverEnd,
 }: HemicycleSeatProps) {
   if (!position) return null;
 
@@ -363,6 +457,19 @@ function HemicycleSeat({
     </motion.g>
   );
 
+  // SVG viewBox dimensions (must match parent)
+  const svgW = expanded ? 320 : 220;
+  const svgH = expanded ? 180 : 120;
+  const tooltipXPct = (position.x / svgW) * 100;
+  const tooltipYPct = (position.y / svgH) * 100;
+
+  const hoverHandlers = onHover
+    ? {
+        onMouseEnter: () => onHover(member, archetype, tooltipXPct, tooltipYPct),
+        onMouseLeave: onHoverEnd,
+      }
+    : {};
+
   if (onPeek) {
     return (
       <g
@@ -377,6 +484,7 @@ function HemicycleSeat({
           }
         }}
         aria-label={`View ${member.name ?? 'committee member'} details`}
+        {...hoverHandlers}
       >
         {seatContent}
         {/* Hover ring for interactive seats */}
@@ -393,7 +501,11 @@ function HemicycleSeat({
     );
   }
 
-  return seatContent;
+  return (
+    <g {...hoverHandlers} className={onHover ? 'cursor-default' : undefined}>
+      {seatContent}
+    </g>
+  );
 }
 
 function StatusBadge({ status }: { status?: 'healthy' | 'attention' | 'critical' }) {

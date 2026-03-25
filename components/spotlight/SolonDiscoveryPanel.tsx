@@ -2,18 +2,21 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ScrollText, Send, X, ChevronDown, ChevronUp, Loader2, Info } from 'lucide-react';
+import { ScrollText, Send, X, ChevronDown, ChevronUp, Loader2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fadeInUp } from '@/lib/animations';
 import { useAdvisor } from '@/hooks/useAdvisor';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSegment } from '@/components/providers/SegmentProvider';
 import { SolonSuggestedPrompts } from './SolonSuggestedPrompts';
 import type { SpotlightEntityType } from './types';
 
 // ─── Seneca's Voice ───────────────────────────────────────────────────────────
 
-const SENECA_TOOLTIP =
-  'Inspired by Seneca the Younger (c.\u00A04\u00A0BC\u2013AD\u00A065) \u2014 Stoic philosopher, statesman, and advisor whose letters on wisdom and governance remain influential two millennia later.';
+const SENECA_PLACEHOLDERS: Record<SpotlightEntityType, string> = {
+  drep: 'Ask about any representative...',
+  spo: 'Ask about any pool...',
+  proposal: 'Ask about any proposal...',
+};
 
 const SENECA_GREETINGS: Record<SpotlightEntityType, string> = {
   drep: '"It is not that we have a short time to live, but that we waste a great deal of it." There are representatives below who take governance seriously — and others who registered and vanished. Ask me anything.',
@@ -34,10 +37,12 @@ interface SenecaDiscoveryPanelProps {
 
 export function SolonDiscoveryPanel({
   entityType,
-  entityCount,
+  entityCount: _entityCount,
   onQueryResults,
 }: SenecaDiscoveryPanelProps) {
   const reducedMotion = useReducedMotion();
+  const { segment } = useSegment();
+  const isAnonymous = segment === 'anonymous';
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -99,19 +104,9 @@ export function SolonDiscoveryPanel({
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <ScrollText className="h-3.5 w-3.5 text-primary" />
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex cursor-help items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Seneca
-                  <Info className="h-3 w-3 text-muted-foreground/40" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="max-w-[260px]">
-                {SENECA_TOOLTIP}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Seneca
+          </span>
 
           {hasMessages && (
             <button
@@ -197,20 +192,26 @@ export function SolonDiscoveryPanel({
 
       {/* Input — "Ask Seneca" */}
       <div className="flex items-center gap-2 border-t border-border/10 px-5 py-2.5 sm:px-6">
-        <ScrollText className="h-3.5 w-3.5 shrink-0 text-primary/40" />
+        {isAnonymous ? (
+          <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+        ) : (
+          <ScrollText className="h-3.5 w-3.5 shrink-0 text-primary/40" />
+        )}
         <input
           ref={inputRef}
           type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask Seneca anything\u2026"
-          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
-          disabled={isStreaming}
+          value={isAnonymous ? '' : inputValue}
+          onChange={(e) => !isAnonymous && setInputValue(e.target.value)}
+          onKeyDown={isAnonymous ? undefined : handleKeyDown}
+          placeholder={
+            isAnonymous ? 'Connect wallet to ask Seneca' : SENECA_PLACEHOLDERS[entityType]
+          }
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed"
+          disabled={isStreaming || isAnonymous}
         />
         <button
           onClick={handleSend}
-          disabled={!inputValue.trim() || isStreaming}
+          disabled={!inputValue.trim() || isStreaming || isAnonymous}
           className="shrink-0 rounded-lg bg-primary/10 p-2 text-primary transition-colors hover:bg-primary/20 disabled:opacity-30"
         >
           {isStreaming ? (

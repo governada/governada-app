@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { CircleDot, ChevronRight } from 'lucide-react';
+import { CircleDot, ChevronRight, ChevronDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useProposals, useDRepVotes } from '@/hooks/queries';
@@ -28,8 +28,8 @@ import { useFeatureFlag } from '@/components/FeatureGate';
 import { SpotlightTheater } from '@/components/spotlight/SpotlightTheater';
 import { SpotlightProposalCard } from '@/components/spotlight/SpotlightProposalCard';
 import { SolonDiscoveryPanel } from '@/components/spotlight/SolonDiscoveryPanel';
-import { useSpotlightTracking } from '@/hooks/useSpotlightTracking';
 import type { SpotlightEntity } from '@/components/spotlight/types';
+import { useSegment } from '@/components/providers/SegmentProvider';
 
 const STATUS_FILTERS = ['All', 'Open', 'Ratified', 'Enacted', 'Expired', 'Dropped'];
 const TYPE_FILTERS = [
@@ -170,22 +170,27 @@ export function ProposalsBrowse() {
   const { data: drepVotesRaw } = useDRepVotes(delegatedDrepId);
   const depthConfig = useDepthConfig('governance');
   const { isAtLeast } = useGovernanceDepth();
+  const { segment } = useSegment();
+  const isAnonymous = segment === 'anonymous';
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  // Anonymous users default to Open-only to reduce noise from decided proposals
+  const [statusFilter, setStatusFilter] = useState(() => (isAnonymous ? 'Open' : 'All'));
   const [typeFilter, setTypeFilter] = useState('All');
   const [page, setPage] = useState(0);
+  const [recentlyDecidedExpanded, setRecentlyDecidedExpanded] = useState(false);
 
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
     contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  const isDefault = search === '' && statusFilter === 'All' && typeFilter === 'All';
+  const defaultStatusFilter = isAnonymous ? 'Open' : 'All';
+  const isDefault = search === '' && statusFilter === defaultStatusFilter && typeFilter === 'All';
 
   const resetFilters = () => {
     setSearch('');
-    setStatusFilter('All');
+    setStatusFilter(defaultStatusFilter);
     setTypeFilter('All');
     setPage(0);
   };
@@ -258,21 +263,46 @@ export function ProposalsBrowse() {
       .map((s) => ({ status: s, count: counts[s] || 0, color: STATUS_COLOR_MAP[s] || '#64748b' }));
   }, [proposals]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const pageItems = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  // Sort filtered proposals by recency (most recently submitted = lowest txHash lexically is NOT
+  // reliable; use expirationEpoch descending as a proxy for recency — highest epoch = newest).
+  // Fall back to array order (already ordered by the API) when epochs are equal.
+  const filteredByRecency = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const ea = a.expirationEpoch ?? 0;
+      const eb = b.expirationEpoch ?? 0;
+      return eb - ea;
+    });
+  }, [filtered]);
+
+  const totalPages = Math.ceil(filteredByRecency.length / PAGE_SIZE);
+  const pageItems = filteredByRecency.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  // Recently Decided section: last 5 ratified/enacted proposals for anonymous users
+  const recentlyDecided = useMemo(() => {
+    if (!isAnonymous) return [];
+    return proposals
+      .filter((p) => {
+        const s = (p.status ?? '').toLowerCase();
+        return s === 'ratified' || s === 'enacted';
+      })
+      .sort((a, b) => (b.expirationEpoch ?? 0) - (a.expirationEpoch ?? 0))
+      .slice(0, 5);
+  }, [proposals, isAnonymous]);
 
   // ── Spotlight mode ──────────────────────────────────────────────────
   const spotlightEnabled = useFeatureFlag('spotlight_browse');
   const solonEnabled = useFeatureFlag('solon_discovery');
-  const spotlightTracking = useSpotlightTracking('proposal');
   const router = useRouter();
 
   const spotlightQueue: SpotlightEntity[] = useMemo(() => {
-    return filtered.map((p) => ({
-      entityType: 'proposal' as const,
-      id: `${p.txHash}-${p.index}`,
-      data: p,
-    }));
+    // Sort by recency (highest expirationEpoch first = most recently submitted)
+    return [...filtered]
+      .sort((a, b) => (b.expirationEpoch ?? 0) - (a.expirationEpoch ?? 0))
+      .map((p) => ({
+        entityType: 'proposal' as const,
+        id: `${p.txHash}-${p.index}`,
+        data: p,
+      }));
   }, [filtered]);
 
   const renderSpotlightCard = useCallback(
@@ -318,7 +348,7 @@ export function ProposalsBrowse() {
         <SpotlightTheater
           queue={spotlightQueue}
           entityType="proposal"
-          sort="score"
+          sort="recency"
           renderCard={renderSpotlightCard}
           onDetails={handleSpotlightDetails}
         />
@@ -468,6 +498,70 @@ export function ProposalsBrowse() {
               {i === 0 && <PersonalTeaser variant="stake_impact" />}
             </React.Fragment>
           ))}
+        </div>
+      )}
+
+      {/* Recently Decided — compact collapsed section for anonymous users */}
+      {isAnonymous && recentlyDecided.length > 0 && (
+        <div className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden">
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors text-left"
+            onClick={() => setRecentlyDecidedExpanded((v) => !v)}
+            aria-expanded={recentlyDecidedExpanded}
+          >
+            <span className="text-sm font-medium text-muted-foreground">Recently Decided</span>
+            <span className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-muted/60 text-[11px] font-semibold text-muted-foreground">
+                {recentlyDecided.length}
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground/60 transition-transform duration-200 ${recentlyDecidedExpanded ? 'rotate-180' : ''}`}
+              />
+            </span>
+          </button>
+          {recentlyDecidedExpanded && (
+            <div className="border-t border-border/30 divide-y divide-border/20">
+              {recentlyDecided.map((p) => {
+                const theme = p.type ? getProposalTheme(p.type) : null;
+                const TypeIcon = theme?.icon;
+                const statusLower = (p.status ?? '').toLowerCase();
+                const epochLabel = p.expirationEpoch ? ` Ep\u00a0${p.expirationEpoch}` : '';
+                const outcomeLabel =
+                  statusLower === 'ratified'
+                    ? `Ratified${epochLabel}`
+                    : statusLower === 'enacted'
+                      ? `Enacted${epochLabel}`
+                      : statusLower === 'expired'
+                        ? 'Expired'
+                        : 'Dropped';
+                const outcomeClass =
+                  statusLower === 'ratified'
+                    ? 'text-sky-400'
+                    : statusLower === 'enacted'
+                      ? 'text-violet-400'
+                      : 'text-zinc-400';
+                return (
+                  <Link
+                    key={`${p.txHash}-${p.index}`}
+                    href={`/proposal/${p.txHash}/${p.index}`}
+                    className="group flex items-center gap-2.5 px-4 py-2.5 hover:bg-muted/20 transition-colors"
+                  >
+                    {TypeIcon && (
+                      <TypeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                    )}
+                    <span className="flex-1 text-sm text-muted-foreground/80 group-hover:text-foreground/90 truncate min-w-0 transition-colors">
+                      {p.title || `${p.txHash?.slice(0, 16)}\u2026`}
+                    </span>
+                    <span className={`text-[11px] font-medium shrink-0 ${outcomeClass}`}>
+                      {outcomeLabel}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

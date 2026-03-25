@@ -602,23 +602,8 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Epoch strip */}
+          {/* Epoch strip + governance pulse (together) */}
           <EpochStrip />
-
-          {/* Search / command palette */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={() =>
-              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
-            }
-            aria-label={t('Search')}
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-
-          {/* Governance pulse */}
           <GovernancePulse />
 
           {/* Compass toggle — visible on all breakpoints */}
@@ -636,6 +621,19 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
             aria-pressed={compassOpen}
           >
             <Compass className="h-4 w-4" />
+          </Button>
+
+          {/* Search / command palette */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() =>
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
+            }
+            aria-label={t('Search')}
+          >
+            <Search className="h-4 w-4" />
           </Button>
 
           {/* Notification bell dropdown */}

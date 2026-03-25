@@ -239,6 +239,50 @@ function SPOTableRow({
   );
 }
 
+/* ── Seeded shuffle helpers ──────────────────────────────────────── */
+
+/** Linear congruential generator seeded with a number. Returns a pseudo-random float [0, 1). */
+function lcgRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
+/** Shuffle an array in-place using a seeded RNG (Fisher-Yates). */
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const rng = lcgRandom(seed);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Group items by tier, shuffle within each tier using a daily seed, then flatten. */
+function shuffleWithinTiers<T>(items: T[], getTier: (item: T) => string, dailySeed: number): T[] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const t = getTier(item);
+    if (!groups.has(t)) groups.set(t, []);
+    groups.get(t)!.push(item);
+  }
+  const tierOrder = ['Legendary', 'Diamond', 'Gold', 'Silver', 'Bronze', 'Emerging'];
+  const result: T[] = [];
+  for (const tier of tierOrder) {
+    const group = groups.get(tier);
+    if (group?.length) {
+      const tierOffset = tierOrder.indexOf(tier) * 7919;
+      result.push(...seededShuffle([...group], (dailySeed + tierOffset) >>> 0));
+    }
+  }
+  for (const [tier, group] of groups) {
+    if (!tierOrder.includes(tier)) result.push(...group);
+  }
+  return result;
+}
+
 /* ── Main browse component ──────────────────────────────────────── */
 
 export function GovernadaSPOBrowse() {
@@ -307,8 +351,19 @@ export function GovernadaSPOBrowse() {
     return result;
   }, [pools, deferredSearch, filters]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const pageItems = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  // Daily seed — stable for all users on the same UTC day.
+  // Computed once on mount via ref to satisfy the react-hooks/purity rule.
+  const dailySeedRef = useRef(Math.floor(Date.now() / 86_400_000));
+  const dailySeed = dailySeedRef.current;
+
+  // Apply daily-seeded shuffle within tiers
+  const shuffled = useMemo(
+    () => shuffleWithinTiers(filtered, (p) => computeTier(p.governanceScore ?? 0), dailySeed),
+    [filtered, dailySeed],
+  );
+
+  const totalPages = Math.ceil(shuffled.length / pageSize);
+  const pageItems = shuffled.slice(page * pageSize, (page + 1) * pageSize);
 
   // Determine if search hit the "governance-active only" boundary
   const searchHasResults = !deferredSearch.trim() || filtered.length > 0;
@@ -439,6 +494,9 @@ export function GovernadaSPOBrowse() {
         <p className="text-sm text-muted-foreground mt-1 max-w-xl">
           How are stake pools participating in Cardano governance? Find pools that vote actively and
           align with your values.
+        </p>
+        <p className="text-xs text-muted-foreground/60 mt-1">
+          Showing pools active this epoch &middot; order varies daily within each tier
         </p>
       </div>
 

@@ -340,8 +340,8 @@ function truncateImpersonateAddress(addr: string): string {
 }
 
 interface GovernadaHeaderProps {
-  compassToggle?: () => void;
-  compassOpen?: boolean;
+  compassToggle?: () => void; // deprecated — orb handles this now
+  compassOpen?: boolean; // deprecated
 }
 
 export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderProps = {}) {

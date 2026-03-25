@@ -18,7 +18,14 @@ interface ConstellationSceneProps {
   onReady?: () => void;
   onContracted?: () => void;
   onNodeSelect?: (node: ConstellationNode3D) => void;
+  onNodeHover?: (node: ConstellationNode3D | null) => void;
   className?: string;
+  /** 0-100 governance health index — drives atmosphere color */
+  healthScore?: number;
+  /** 0-100 governance urgency — drives heartbeat pulse frequency */
+  urgency?: number;
+  /** Enable breathing animation (gentle scale pulse) */
+  breathing?: boolean;
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -31,7 +31,61 @@ const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
   { ssr: false, loading: () => <div className="w-full h-full bg-background" /> },
 );
+import { useQuery } from '@tanstack/react-query';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
+
+/** Typewriter text — reveals text character by character */
+function TypewriterText({ text, className }: { text: string; className?: string }) {
+  const [displayedLength, setDisplayedLength] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setDisplayedLength(text.length);
+      return;
+    }
+    setDisplayedLength(0);
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayedLength(i);
+      if (i >= text.length) clearInterval(interval);
+    }, 25); // ~40 chars/second
+    return () => clearInterval(interval);
+  }, [text, prefersReducedMotion]);
+
+  return (
+    <span className={className}>
+      {text.slice(0, displayedLength)}
+      {displayedLength < text.length && <span className="animate-pulse text-primary/60">|</span>}
+    </span>
+  );
+}
+
+/** Fetches governance narrative and renders with typewriter effect */
+function NarrativeLine({ fallback }: { fallback: string }) {
+  const { data } = useQuery({
+    queryKey: ['homepage-narrative'],
+    queryFn: async () => {
+      const res = await fetch('/api/homepage/narrative');
+      if (!res.ok) return null;
+      return res.json() as Promise<{ narrative: string; healthScore: number; urgency: number }>;
+    },
+    staleTime: 5 * 60 * 1000, // 5 min
+    refetchOnWindowFocus: false,
+  });
+
+  const text = data?.narrative ?? fallback;
+
+  return (
+    <p
+      className="text-sm sm:text-base text-white/70 text-center tabular-nums max-w-lg"
+      style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}
+    >
+      <TypewriterText text={text} />
+    </p>
+  );
+}
 
 // --- Tier badge colors ---
 const TIER_STYLES: Record<string, string> = {
@@ -150,7 +204,6 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
     target: heroRef,
     offset: ['start start', 'end start'],
   });
-  const heroTextY = useTransform(scrollYProgress, [0, 1], [0, 60]);
   const heroTextOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
   const handleNodeHover = useCallback((node: ConstellationNode3D | null) => {
@@ -243,34 +296,23 @@ export function HomeAnonymous({ pulseData }: HomeAnonymousProps) {
           </TooltipProvider>
         </div>
 
-        {/* Value prop overlay */}
+        {/* Value prop + dynamic narrative overlay */}
         <motion.div
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:pt-14 pointer-events-none"
-          style={prefersReducedMotion ? {} : { y: heroTextY, opacity: heroTextOpacity }}
+          className="absolute inset-0 flex flex-col items-center justify-end pb-20 px-4 pointer-events-none"
+          style={prefersReducedMotion ? {} : { opacity: heroTextOpacity }}
         >
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white drop-shadow-lg leading-tight text-center">
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white drop-shadow-lg leading-tight text-center mb-3">
             Your ADA gives you a voice.
           </h1>
 
-          {/* Gap where the constellation core sun shows through */}
-          <div className="h-10 sm:h-16" />
-
-          <p className="font-display text-xl sm:text-2xl lg:text-3xl font-semibold text-[#fff0d4] drop-shadow-lg text-center">
-            It takes 60 seconds to use it.
-          </p>
-
-          {/* Live urgency hook */}
-          {pulseData.activeProposals > 0 && (
-            <p
-              className="text-sm sm:text-base text-white/70 mt-4 text-center tabular-nums"
-              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}
-            >
-              <strong className="text-white/90">{pulseData.activeProposals} proposals</strong> are
-              being decided right now.{' '}
-              <strong className="text-[#fff0d4]">&#x20B3;{pulseData.totalAdaGoverned}</strong> is at
-              stake.
-            </p>
-          )}
+          {/* Dynamic AI narrative — changes every visit */}
+          <NarrativeLine
+            fallback={
+              pulseData.activeProposals > 0
+                ? `${pulseData.activeProposals} proposals being decided. ₳${pulseData.totalAdaGoverned} at stake.`
+                : 'Explore the governance network above.'
+            }
+          />
         </motion.div>
       </section>
 

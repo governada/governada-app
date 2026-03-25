@@ -36,6 +36,11 @@ interface GlobeConstellationProps {
   onContracted?: () => void;
   onNodeSelect?: (node: ConstellationNode3D) => void;
   onNodeHover?: (node: ConstellationNode3D | null) => void;
+  /** Hover callback with screen coordinates for cursor-following tooltip */
+  onNodeHoverScreen?: (
+    node: ConstellationNode3D | null,
+    screenPos: { x: number; y: number } | null,
+  ) => void;
   className?: string;
   /** 0-100 governance health index — drives atmosphere color (teal=healthy, amber=stressed) */
   healthScore?: number;
@@ -43,6 +48,10 @@ interface GlobeConstellationProps {
   urgency?: number;
   /** Enable breathing animation (gentle scale pulse) */
   breathing?: boolean;
+  /** Override the default camera position [x, y, z]. Default: [0, 3, 14] */
+  initialCameraPosition?: [number, number, number];
+  /** Override the default camera target [x, y, z]. Default: [0, 0, 0] */
+  initialCameraTarget?: [number, number, number];
 }
 
 interface SceneState {
@@ -76,10 +85,13 @@ export const GlobeConstellation = forwardRef<
     onContracted,
     onNodeSelect,
     onNodeHover,
+    onNodeHoverScreen,
     className,
     healthScore = 75,
     urgency = 30,
     breathing = false,
+    initialCameraPosition,
+    initialCameraTarget,
   },
   ref,
 ) {
@@ -87,6 +99,23 @@ export const GlobeConstellation = forwardRef<
   const rotationAngleRef = useRef(0);
   const rotationSpeedRef = useRef(DEFAULT_ROTATION_SPEED);
   const [ready, setReady] = useState(false);
+
+  // Effective camera position/target — allow overrides from props
+  const effectiveCamera = useMemo(
+    () => initialCameraPosition ?? INITIAL_CAMERA,
+    [initialCameraPosition],
+  );
+  const effectiveTarget = useMemo(
+    () => initialCameraTarget ?? INITIAL_TARGET,
+    [initialCameraTarget],
+  );
+
+  // --- Interaction state: click-vs-drag disambiguation + auto-rotation pause ---
+  const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerDownTimeRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mouseScreenRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [sceneState, setSceneState] = useState<SceneState>({
     nodes: [],
     edges: [],
@@ -115,6 +144,11 @@ export const GlobeConstellation = forwardRef<
     onNodeHoverRef.current = onNodeHover;
   }, [onNodeHover]);
 
+  const onNodeHoverScreenRef = useRef(onNodeHoverScreen);
+  useEffect(() => {
+    onNodeHoverScreenRef.current = onNodeHoverScreen;
+  }, [onNodeHoverScreen]);
+
   // Health-driven atmosphere color: teal (healthy) → amber (stressed) → red (critical)
   const healthProgress = useMemo(() => {
     // Invert: high health = 0 (cool teal), low health = 1 (warm amber/red)
@@ -126,7 +160,7 @@ export const GlobeConstellation = forwardRef<
     const map = new Map<string, number>();
     const typedData = apiData as ConstellationApiData | undefined;
     if (!typedData?.recentEvents) return map;
-    const now = Date.now();
+    const now = Date.now(); // eslint-disable-line react-hooks/purity -- timestamp for freshness calc
     for (const event of typedData.recentEvents) {
       const id = event.drepId;
       if (!id) continue;
@@ -214,7 +248,7 @@ export const GlobeConstellation = forwardRef<
       await sleep(2000);
 
       setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false }));
-      await controls.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
+      await controls.setLookAt(...effectiveCamera, ...effectiveTarget, true);
       await sleep(800);
       setSceneState((prev) => ({ ...prev, animating: false }));
       onContracted?.();
@@ -228,7 +262,7 @@ export const GlobeConstellation = forwardRef<
     },
 
     resetCamera: () => {
-      cameraControlsRef.current?.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
+      cameraControlsRef.current?.setLookAt(...effectiveCamera, ...effectiveTarget, true);
       setSceneState((prev) => ({
         ...prev,
         highlightId: null,
@@ -382,7 +416,7 @@ export const GlobeConstellation = forwardRef<
         flyToActive: false,
       }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
-      cameraControlsRef.current?.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
+      cameraControlsRef.current?.setLookAt(...effectiveCamera, ...effectiveTarget, true);
     },
   }));
 
@@ -401,12 +435,92 @@ export const GlobeConstellation = forwardRef<
   const dpr =
     quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);
 
+  // --- Canvas-level interaction handlers ---
+  const handleCanvasPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!interactive) return;
+      pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+      pointerDownTimeRef.current = Date.now();
+      isDraggingRef.current = false;
+
+      // Pause auto-rotation while user is interacting
+      rotationSpeedRef.current = 0;
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+    },
+    [interactive],
+  );
+
+  const handleCanvasPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!interactive) return;
+      mouseScreenRef.current = { x: e.clientX, y: e.clientY };
+
+      // Detect drag: if moved more than 5px from pointer-down, mark as dragging
+      const down = pointerDownPosRef.current;
+      if (down) {
+        const dx = e.clientX - down.x;
+        const dy = e.clientY - down.y;
+        if (dx * dx + dy * dy > 25) {
+          isDraggingRef.current = true;
+        }
+      }
+    },
+    [interactive],
+  );
+
+  const handleCanvasPointerUp = useCallback(() => {
+    if (!interactive) return;
+    const elapsed = Date.now() - pointerDownTimeRef.current;
+    if (elapsed > 200 || isDraggingRef.current) {
+      isDraggingRef.current = true; // ensure it's flagged for NodePoints click suppression
+    }
+    pointerDownPosRef.current = null;
+
+    // Resume auto-rotation after 5 seconds of inactivity
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
+    }, 5000);
+  }, [interactive]);
+
+  const handleCanvasDoubleClick = useCallback(() => {
+    if (!interactive) return;
+    const controls = cameraControlsRef.current;
+    if (!controls) return;
+    const dist = controls.distance;
+    if (dist < 12) {
+      // Zoomed in — reset to default
+      controls.setLookAt(...effectiveCamera, ...effectiveTarget, true);
+      setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false, animating: false }));
+    } else {
+      // At default — zoom in
+      controls.dolly(4, true);
+    }
+  }, [interactive, effectiveCamera, effectiveTarget]);
+
+  // Cleanup idle timer on unmount
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
   return (
-    <div className={`relative z-0 w-full ${className || ''}`} style={{ background: '#0a0b14' }}>
+    <div
+      className={`relative z-0 w-full ${className || ''}`}
+      style={{ background: '#0a0b14' }}
+      onPointerDown={handleCanvasPointerDown}
+      onPointerMove={handleCanvasPointerMove}
+      onPointerUp={handleCanvasPointerUp}
+      onDoubleClick={handleCanvasDoubleClick}
+    >
       {ready && (
         <Canvas
           dpr={dpr}
-          camera={{ position: INITIAL_CAMERA, fov: 60 }}
+          camera={{ position: effectiveCamera, fov: 60 }}
           gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
           style={{
             position: 'absolute',
@@ -455,8 +569,25 @@ export const GlobeConstellation = forwardRef<
               dimmed={sceneState.dimmed}
               pulseId={sceneState.pulseId}
               interactive={interactive}
-              onNodeClick={interactive ? (node) => flyToNodeImpl(node.id) : undefined}
-              onNodeHover={interactive ? (node) => onNodeHoverRef.current?.(node) : undefined}
+              onNodeClick={
+                interactive
+                  ? (node) => {
+                      if (isDraggingRef.current) return; // suppress click after drag
+                      flyToNodeImpl(node.id);
+                    }
+                  : undefined
+              }
+              onNodeHover={
+                interactive
+                  ? (node) => {
+                      onNodeHoverRef.current?.(node);
+                      onNodeHoverScreenRef.current?.(
+                        node,
+                        node ? { ...mouseScreenRef.current } : null,
+                      );
+                    }
+                  : undefined
+              }
               matchedNodeIds={sceneState.matchedNodeIds}
               matchIntensities={sceneState.matchIntensities}
               activityMap={activityMap}
@@ -504,8 +635,29 @@ export const GlobeConstellation = forwardRef<
             ref={cameraControlsRef}
             makeDefault
             smoothTime={0.8}
-            mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}
-            touches={{ one: 0, two: 0, three: 0 }}
+            mouseButtons={
+              interactive
+                ? {
+                    left: 1 as const, // ACTION.ROTATE
+                    middle: 0 as const,
+                    right: 0 as const,
+                    wheel: 16 as const, // ACTION.DOLLY
+                  }
+                : { left: 0 as const, middle: 0 as const, right: 0 as const, wheel: 0 as const }
+            }
+            touches={
+              interactive
+                ? {
+                    one: 64 as const, // ACTION.TOUCH_ROTATE
+                    two: 1024 as const, // ACTION.TOUCH_DOLLY
+                    three: 0 as const,
+                  }
+                : { one: 0 as const, two: 0 as const, three: 0 as const }
+            }
+            minPolarAngle={Math.PI / 2 - 0.785}
+            maxPolarAngle={Math.PI / 2 + 0.785}
+            minDistance={8}
+            maxDistance={22}
           />
         </Canvas>
       )}

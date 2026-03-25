@@ -19,6 +19,11 @@ interface ConstellationSceneProps {
   onContracted?: () => void;
   onNodeSelect?: (node: ConstellationNode3D) => void;
   onNodeHover?: (node: ConstellationNode3D | null) => void;
+  /** Hover callback with screen coordinates for cursor-following tooltip */
+  onNodeHoverScreen?: (
+    node: ConstellationNode3D | null,
+    screenPos: { x: number; y: number } | null,
+  ) => void;
   className?: string;
   /** 0-100 governance health index — drives atmosphere color */
   healthScore?: number;
@@ -26,6 +31,10 @@ interface ConstellationSceneProps {
   urgency?: number;
   /** Enable breathing animation (gentle scale pulse) */
   breathing?: boolean;
+  /** Override the default camera position [x, y, z] */
+  initialCameraPosition?: [number, number, number];
+  /** Override the default camera target [x, y, z] */
+  initialCameraTarget?: [number, number, number];
 }
 
 /**

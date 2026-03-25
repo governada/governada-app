@@ -71,29 +71,31 @@ function extractEntityId(pathname: string): string | undefined {
 // Hook
 // ---------------------------------------------------------------------------
 
+export type PanelMode = 'briefing' | 'conversation' | 'research' | 'matching';
+
 export interface UseIntelligencePanelResult {
-  /** Whether the panel is open */
   isOpen: boolean;
-  /** Toggle the panel open/closed */
   toggle: () => void;
-  /** Open the panel */
   open: () => void;
-  /** Close the panel */
   close: () => void;
-  /** Current panel route (determines content) */
   panelRoute: PanelRoute;
-  /** Entity ID extracted from current route (for API calls) */
   entityId: string | undefined;
-  /** Panel width in pixels (responsive to viewport) */
   panelWidth: number;
-  /** Whether the viewport is wide enough for the panel */
   canShowPanel: boolean;
+  mode: PanelMode;
+  pendingQuery: string | undefined;
+  startConversation: (query?: string) => void;
+  startResearch: (query: string) => void;
+  startMatch: () => void;
+  returnToBriefing: () => void;
 }
 
 export function useIntelligencePanel(): UseIntelligencePanelResult {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(0);
+  const [mode, setMode] = useState<PanelMode>('briefing');
+  const [pendingQuery, setPendingQuery] = useState<string | undefined>(undefined);
 
   // Restore persisted state on mount
   useEffect(() => {
@@ -155,11 +157,69 @@ export function useIntelligencePanel(): UseIntelligencePanelResult {
 
   const close = useCallback(() => {
     setIsOpen(false);
+    setMode('briefing');
+    setPendingQuery(undefined);
     try {
       localStorage.setItem(STORAGE_KEY, 'false');
     } catch {
       // localStorage unavailable
     }
+  }, []);
+
+  // Reset to briefing on route change
+  useEffect(() => {
+    setMode('briefing');
+    setPendingQuery(undefined);
+  }, [pathname]);
+
+  const startConversation = useCallback(
+    (query?: string) => {
+      setMode('conversation');
+      setPendingQuery(query);
+      if (!isOpen) {
+        setIsOpen(true);
+        try {
+          localStorage.setItem(STORAGE_KEY, 'true');
+        } catch {
+          // localStorage unavailable
+        }
+      }
+    },
+    [isOpen],
+  );
+
+  const startResearch = useCallback(
+    (query: string) => {
+      setMode('research');
+      setPendingQuery(query);
+      if (!isOpen) {
+        setIsOpen(true);
+        try {
+          localStorage.setItem(STORAGE_KEY, 'true');
+        } catch {
+          // localStorage unavailable
+        }
+      }
+    },
+    [isOpen],
+  );
+
+  const startMatch = useCallback(() => {
+    setMode('matching');
+    setPendingQuery(undefined);
+    if (!isOpen) {
+      setIsOpen(true);
+      try {
+        localStorage.setItem(STORAGE_KEY, 'true');
+      } catch {
+        // localStorage unavailable
+      }
+    }
+  }, [isOpen]);
+
+  const returnToBriefing = useCallback(() => {
+    setMode('briefing');
+    setPendingQuery(undefined);
   }, []);
 
   const panelRoute = useMemo(() => detectPanelRoute(pathname), [pathname]);
@@ -182,5 +242,11 @@ export function useIntelligencePanel(): UseIntelligencePanelResult {
     entityId,
     panelWidth,
     canShowPanel,
+    mode,
+    pendingQuery,
+    startConversation,
+    startResearch,
+    startMatch,
+    returnToBriefing,
   };
 }

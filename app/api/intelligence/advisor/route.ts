@@ -42,6 +42,7 @@ const AdvisorRequestSchema = z.object({
     pageContext: z.string().optional(),
     matchState: z.enum(['idle', 'matching', 'matched', 'delegated']).optional(),
     walletState: z.enum(['none_detected', 'detected', 'connected', 'has_ada', 'no_ada']).optional(),
+    persona: z.enum(['navigator', 'analyst', 'partner', 'guide']).optional(),
   }),
 });
 
@@ -181,6 +182,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       pageContext: parsed.context.pageContext,
       matchState: parsed.context.matchState,
       walletState: parsed.context.walletState,
+      persona: parsed.context.persona,
     };
 
     // --- Stream response ---

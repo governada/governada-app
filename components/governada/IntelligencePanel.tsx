@@ -1,42 +1,37 @@
 'use client';
 
-/**
- * IntelligencePanel — Governance Compass right-side panel.
- *
- * The crown jewel of the Navigation Renaissance. A collapsible right-side
- * intelligence panel powered by AI-synthesized governance briefings.
- *
- * Features:
- * - Glassmorphic design matching existing shell chrome
- * - WHOOP-style Governance Readiness Signal at top
- * - Route-based AI briefings via PanelRouter
- * - Arc Browser-style compress/expand sections
- * - Perplexity-style inline source citations
- * - Responsive width (320px on >=1440px, 280px on 1280-1439px)
- * - Framer Motion slide animation with reduced-motion fallback
- * - Density mode support via ModeProvider
- * - Feature-flagged behind `governance_copilot`
- */
-
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
 import { ReadinessSignal } from './panel/ReadinessSignal';
 import { PanelRouter } from './panel/PanelRouter';
+import { SenecaInput } from './panel/SenecaInput';
+import { SenecaConversation } from './panel/SenecaConversation';
+import { SenecaResearch } from './panel/SenecaResearch';
+import { SenecaMatch } from './panel/SenecaMatch';
+import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 
 interface IntelligencePanelProps {
-  /** Whether the panel is open */
   isOpen: boolean;
-  /** Close the panel */
   onClose: () => void;
-  /** Panel width in pixels */
   panelWidth: number;
+  /** Called when user clicks an entity link in a Seneca response */
+  onEntityFocus?: (entityType: string, entityId: string) => void;
+  /** Called to execute globe commands from Seneca match flow */
+  onGlobeCommand?: (cmd: GlobeCommand) => void;
 }
 
-export function IntelligencePanel({ isOpen, onClose, panelWidth }: IntelligencePanelProps) {
+export function IntelligencePanel({
+  isOpen,
+  onClose,
+  panelWidth,
+  onEntityFocus,
+  onGlobeCommand,
+}: IntelligencePanelProps) {
   const prefersReducedMotion = useReducedMotion();
-  const { panelRoute, entityId } = useIntelligencePanel();
+  const { panelRoute, entityId, mode, pendingQuery, startConversation, returnToBriefing } =
+    useIntelligencePanel();
 
   return (
     <AnimatePresence>
@@ -78,24 +73,43 @@ export function IntelligencePanel({ isOpen, onClose, panelWidth }: IntelligenceP
             </button>
           </div>
 
-          {/* Governance Readiness Signal */}
-          <ReadinessSignal />
+          {mode === 'matching' ? (
+            <SenecaMatch onBack={returnToBriefing} onGlobeCommand={onGlobeCommand} />
+          ) : mode === 'research' && pendingQuery ? (
+            <SenecaResearch question={pendingQuery} onBack={returnToBriefing} />
+          ) : mode === 'conversation' ? (
+            <SenecaConversation
+              initialQuery={pendingQuery}
+              onBack={returnToBriefing}
+              panelRoute={panelRoute}
+              entityId={entityId}
+              onEntityFocus={onEntityFocus}
+            />
+          ) : (
+            <>
+              {/* Governance Readiness Signal */}
+              <ReadinessSignal />
 
-          {/* Scrollable panel content */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent">
-            <PanelRouter panelRoute={panelRoute} entityId={entityId} />
-          </div>
+              {/* Scrollable panel content */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent">
+                <PanelRouter panelRoute={panelRoute} entityId={entityId} />
+              </div>
 
-          {/* Panel footer — keyboard hint */}
-          <div className="shrink-0 border-t border-border/10 px-3 py-1.5">
-            <p className="text-[10px] text-muted-foreground/40 text-center">
-              Press{' '}
-              <kbd className="px-1 py-0.5 rounded bg-muted/30 text-muted-foreground/50 text-[9px] font-mono">
-                ]
-              </kbd>{' '}
-              to toggle
-            </p>
-          </div>
+              {/* Seneca input */}
+              <SenecaInput panelRoute={panelRoute} onSubmit={(query) => startConversation(query)} />
+
+              {/* Panel footer */}
+              <div className="shrink-0 border-t border-border/10 px-3 py-1.5">
+                <p className="text-[10px] text-muted-foreground/40 text-center">
+                  Press{' '}
+                  <kbd className="px-1 py-0.5 rounded bg-muted/30 text-muted-foreground/50 text-[9px] font-mono">
+                    ]
+                  </kbd>{' '}
+                  to toggle &middot; Type to ask Seneca
+                </p>
+              </div>
+            </>
+          )}
         </motion.aside>
       )}
     </AnimatePresence>

@@ -26,6 +26,8 @@ export interface AIResponseProps {
   isStreaming: boolean;
   /** Error message if the response failed */
   error?: string;
+  /** Called when user clicks an entity link, with entity type and id */
+  onEntityFocus?: (entityType: string, entityId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,11 +83,13 @@ function EntityCard({
   label,
   href,
   onClick,
+  onEntityFocus,
 }: {
   type: 'proposal_link' | 'drep_link';
   label: string;
   href: string;
   onClick: (href: string) => void;
+  onEntityFocus?: (entityType: string, entityId: string) => void;
 }) {
   const Icon = type === 'proposal_link' ? FileText : User;
   const typeLabel = type === 'proposal_link' ? 'Proposal' : 'DRep';
@@ -95,6 +99,16 @@ function EntityCard({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Extract entity ID from href and notify globe bridge
+        if (onEntityFocus) {
+          const entityType = type === 'drep_link' ? 'drep' : 'proposal';
+          // Extract ID from paths like /drep/<id> or /governance/proposals/<hash>#<index>
+          const segments = href.split('/').filter(Boolean);
+          const entityId = segments[segments.length - 1]?.split('#')[0] ?? '';
+          if (entityId) {
+            onEntityFocus(entityType, entityId);
+          }
+        }
         onClick(href);
       }}
       className={cn(
@@ -119,9 +133,11 @@ function EntityCard({
 function FormattedText({
   content,
   onNavigate,
+  onEntityFocus,
 }: {
   content: string;
   onNavigate: (href: string) => void;
+  onEntityFocus?: (entityType: string, entityId: string) => void;
 }) {
   const segments = useMemo(() => parseEntityLinks(content), [content]);
 
@@ -140,6 +156,7 @@ function FormattedText({
             label={seg.text}
             href={seg.href ?? '#'}
             onClick={onNavigate}
+            onEntityFocus={onEntityFocus}
           />
         );
       })}
@@ -174,6 +191,7 @@ export const AIResponse = memo(function AIResponse({
   content,
   isStreaming,
   error,
+  onEntityFocus,
 }: AIResponseProps) {
   const router = useRouter();
 
@@ -231,7 +249,11 @@ export const AIResponse = memo(function AIResponse({
               <div key={i} className="flex gap-2 pl-2">
                 <span className="text-muted-foreground shrink-0 select-none">&bull;</span>
                 <span>
-                  <FormattedText content={trimmed.slice(2)} onNavigate={handleNavigate} />
+                  <FormattedText
+                    content={trimmed.slice(2)}
+                    onNavigate={handleNavigate}
+                    onEntityFocus={onEntityFocus}
+                  />
                 </span>
               </div>
             );
@@ -246,7 +268,11 @@ export const AIResponse = memo(function AIResponse({
                   {numberedMatch[1]}.
                 </span>
                 <span>
-                  <FormattedText content={numberedMatch[2]} onNavigate={handleNavigate} />
+                  <FormattedText
+                    content={numberedMatch[2]}
+                    onNavigate={handleNavigate}
+                    onEntityFocus={onEntityFocus}
+                  />
                 </span>
               </div>
             );
@@ -255,7 +281,11 @@ export const AIResponse = memo(function AIResponse({
           // Regular text
           return (
             <p key={i}>
-              <FormattedText content={trimmed} onNavigate={handleNavigate} />
+              <FormattedText
+                content={trimmed}
+                onNavigate={handleNavigate}
+                onEntityFocus={onEntityFocus}
+              />
             </p>
           );
         })}

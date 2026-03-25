@@ -40,7 +40,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
   const prefersReducedMotion = useReducedMotion();
-  const { startConversation, startMatch } = useIntelligencePanel();
+  const { startMatch } = useIntelligencePanel();
 
   // Bridge globe node clicks to Seneca panel
   const { handleNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
@@ -83,14 +83,6 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
     [],
   );
 
-  const handleStartConversation = useCallback(
-    (query: string) => {
-      startConversation(query);
-      trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'seneca_dock' });
-    },
-    [startConversation],
-  );
-
   const handleStartMatch = useCallback(() => {
     startMatch();
     trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'seneca_dock_match' });
@@ -119,9 +111,9 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
 
       {/* Seneca Dock — bottom-left entry point */}
       <SenecaDock
-        onStartConversation={handleStartConversation}
         onStartMatch={handleStartMatch}
         narrativePulse={narrativeData?.narrative}
+        activeProposals={pulseData?.activeProposals}
       />
 
       {/* Subtle scroll escape hatch — bottom center */}

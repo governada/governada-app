@@ -40,6 +40,7 @@ import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
 import { SenecaConversation } from './SenecaConversation';
 import { SenecaInput } from './SenecaInput';
 import { SenecaResearch } from './SenecaResearch';
+import { SenecaMatch } from './SenecaMatch';
 import { PeekBar } from './PeekBar';
 
 // ---------------------------------------------------------------------------
@@ -95,7 +96,7 @@ export function MobileIntelSheet({ children, narrativePulse, className }: Mobile
     useIntelligencePanel();
 
   const isOpen = state !== 'closed';
-  const isConversation = mode === 'conversation' || mode === 'research';
+  const isConversation = mode === 'conversation' || mode === 'research' || mode === 'matching';
 
   // Motion value for drag offset
   const y = useMotionValue(0);
@@ -154,11 +155,17 @@ export function MobileIntelSheet({ children, narrativePulse, className }: Mobile
     y.set(0);
   }, [y]);
 
-  // Auto-expand when entering conversation mode
+  // Auto-open and expand when entering conversation/matching mode
   useEffect(() => {
-    if (isConversation && state === 'half') {
-      setState('full');
-      y.set(0);
+    if (isConversation) {
+      if (state === 'closed') {
+        previousFocusRef.current = document.activeElement as HTMLElement;
+        setState('full');
+        y.set(0);
+      } else if (state === 'half') {
+        setState('full');
+        y.set(0);
+      }
     }
   }, [isConversation, state, y]);
 
@@ -356,8 +363,10 @@ export function MobileIntelSheet({ children, narrativePulse, className }: Mobile
                 )}
               </div>
 
-              {/* Content — conversation or briefing */}
-              {mode === 'research' && pendingQuery ? (
+              {/* Content — matching, conversation, research, or briefing */}
+              {mode === 'matching' ? (
+                <SenecaMatch onBack={returnToBriefing} />
+              ) : mode === 'research' && pendingQuery ? (
                 <SenecaResearch question={pendingQuery} onBack={returnToBriefing} />
               ) : mode === 'conversation' ? (
                 <SenecaConversation

@@ -40,6 +40,7 @@
  * ambient_annotations              — Ambient AI annotations on proposal, DRep, and score pages (Phase 7)
  * community_intelligence            — Community Pulse dashboard (aggregate preference intelligence from matching)
  * governance_observatory             — Unified Observatory page replacing Treasury/Committee/Health tabs
+ * globe_homepage_v2                  — Inhabited Constellation: globe-centric authenticated homepage with user node, bonds, Seneca DJ
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

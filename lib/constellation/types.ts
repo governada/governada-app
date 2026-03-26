@@ -1,6 +1,6 @@
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 
-export type GovernanceNodeType = 'drep' | 'spo' | 'cc';
+export type GovernanceNodeType = 'drep' | 'spo' | 'cc' | 'user' | 'proposal';
 
 export interface ConstellationNode3D {
   id: string;
@@ -30,7 +30,7 @@ export interface ConstellationNode3D {
   fidelityGrade?: string;
 }
 
-export type EdgeType = 'proximity' | 'infrastructure' | 'lastmile' | 'orbital';
+export type EdgeType = 'proximity' | 'infrastructure' | 'lastmile' | 'orbital' | 'delegation';
 
 export interface ConstellationEdge3D {
   from: [number, number, number];
@@ -39,7 +39,7 @@ export interface ConstellationEdge3D {
 }
 
 export interface FindMeTarget {
-  type: 'delegated' | 'undelegated' | 'drep' | 'spo';
+  type: 'delegated' | 'undelegated' | 'drep' | 'spo' | 'user';
   drepId?: string;
   poolId?: string;
 }

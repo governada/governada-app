@@ -30,7 +30,7 @@ const DIM_LONGITUDES: Record<string, number> = (() => {
   return map;
 })();
 
-const GLOBE_RADIUS = 8;
+export const GLOBE_RADIUS = 8;
 const CC_RADIUS = 10.5; // orbital altitude — well above surface for clear guardian ring
 const SPO_ARC_RADIUS = GLOBE_RADIUS + 0.3; // slightly above surface
 const MIN_VISIBLE_SCALE = 0.06;
@@ -39,7 +39,7 @@ const SPO_SCALE_FACTOR = 0.6;
 const CC_SCALE_FACTOR = 1.3; // slightly larger than DReps for guardian presence
 const SPO_LIMIT = 400;
 
-interface LayoutInput {
+export interface LayoutInput {
   id: string;
   fullId: string;
   name: string | null;
@@ -139,7 +139,7 @@ export function computeGlobeLayout(inputs: LayoutInput[], nodeLimit: number): La
  * - Weighted average of all dimensions → fine-tuned longitude
  * - Specialization strength → latitude (generalists near equator, specialists toward poles)
  */
-function computeSpherePosition(input: LayoutInput): [number, number] {
+export function computeSpherePosition(input: LayoutInput): [number, number] {
   const scores = input.alignments;
   const hash = simpleHash(input.id);
   const hashNorm = (hash % 10000) / 10000;
@@ -275,7 +275,11 @@ function greatCircleArc(
   return points;
 }
 
-function sphereToCartesian(lat: number, lon: number, radius: number): [number, number, number] {
+export function sphereToCartesian(
+  lat: number,
+  lon: number,
+  radius: number,
+): [number, number, number] {
   return [
     radius * Math.cos(lat) * Math.cos(lon),
     radius * Math.cos(lat) * Math.sin(lon),

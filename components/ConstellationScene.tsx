@@ -35,6 +35,15 @@ interface ConstellationSceneProps {
   initialCameraPosition?: [number, number, number];
   /** Override the default camera target [x, y, z] */
   initialCameraTarget?: [number, number, number];
+  /** Authenticated user's constellation node */
+  userNode?: ConstellationNode3D | null;
+  /** Active proposal nodes */
+  proposalNodes?: ConstellationNode3D[];
+  /** Delegation bond data */
+  delegationBond?: {
+    drepNodeId: string;
+    driftScore: number;
+  } | null;
 }
 
 /**

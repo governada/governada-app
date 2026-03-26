@@ -15,13 +15,21 @@ export interface AdvisorContext {
   entityId?: string;
 }
 
+export interface GlobeStreamCommand {
+  cmd: string;
+  target?: string;
+  alignment?: number[];
+  threshold?: number;
+}
+
 export async function readAdvisorStream(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-  context: AdvisorContext,
+  context: AdvisorContext & { mode?: 'conversation' | 'briefing' },
   onDelta: (text: string) => void,
   onError: (error: string) => void,
   onDone: () => void,
   signal?: AbortSignal,
+  onGlobeCommand?: (command: GlobeStreamCommand) => void,
 ): Promise<void> {
   try {
     const headers: Record<string, string> = {
@@ -36,7 +44,10 @@ export async function readAdvisorStream(
     const res = await fetch('/api/intelligence/advisor', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ messages, context }),
+      body: JSON.stringify({
+        messages,
+        context: { ...context, mode: context.mode ?? 'conversation' },
+      }),
       signal,
     });
 
@@ -73,7 +84,26 @@ export async function readAdvisorStream(
           };
 
           if (data.type === 'text_delta' && data.content) {
-            onDelta(data.content);
+            // Parse [[globe:cmd:target]] markers from briefing text
+            if (onGlobeCommand) {
+              const markerRe = /\[\[globe:(\w+):?([^\]]*)\]\]/g;
+              let match: RegExpExecArray | null;
+              let cleanText = data.content;
+              while ((match = markerRe.exec(data.content)) !== null) {
+                const [full, cmd, target] = match;
+                cleanText = cleanText.replace(full, '');
+                onGlobeCommand({ cmd, target: target || undefined });
+              }
+              if (cleanText) onDelta(cleanText);
+            } else {
+              onDelta(data.content);
+            }
+          } else if (data.type === 'globe_command') {
+            // Direct globe commands injected by the server
+            const cmdData = data as unknown as { type: string; command?: GlobeStreamCommand };
+            if (onGlobeCommand && cmdData.command) {
+              onGlobeCommand(cmdData.command);
+            }
           } else if (data.type === 'error' && data.content) {
             onError(data.content);
           } else if (data.type === 'done') {

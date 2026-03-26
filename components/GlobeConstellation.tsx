@@ -15,6 +15,7 @@ import { CameraControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
+import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
 import type {
   ConstellationApiData,
   FindMeTarget,
@@ -27,6 +28,8 @@ export type { ConstellationRef } from '@/components/GovernanceConstellation';
 const DREP_COLOR = '#2dd4bf';
 const SPO_COLOR = '#a78bfa'; // purple — visually distinct from teal DReps
 const CC_COLOR = '#fbbf24';
+const USER_COLOR = '#f0e6d0'; // warm white-gold — personal, clearly "you"
+const PROPOSAL_COLOR = '#e8dfd0'; // warm white — governance-neutral
 const MATCH_COLOR = '#f59e0b'; // Warm amber — distinct from teal, purple, gold
 
 interface GlobeConstellationProps {
@@ -51,6 +54,15 @@ interface GlobeConstellationProps {
   initialCameraPosition?: [number, number, number];
   /** Override the default camera target [x, y, z]. Default: [0, 0, 0] */
   initialCameraTarget?: [number, number, number];
+  /** Authenticated user's constellation node — rendered with distinctive glow */
+  userNode?: ConstellationNode3D | null;
+  /** Active proposal nodes to render as octahedra on the globe */
+  proposalNodes?: ConstellationNode3D[];
+  /** Delegation bond: delegated DRep node ID and drift score */
+  delegationBond?: {
+    drepNodeId: string;
+    driftScore: number;
+  } | null;
 }
 
 interface SceneState {
@@ -91,6 +103,9 @@ export const GlobeConstellation = forwardRef<
     breathing = false,
     initialCameraPosition,
     initialCameraTarget,
+    userNode,
+    proposalNodes,
+    delegationBond,
   },
   ref,
 ) {
@@ -473,11 +488,31 @@ export const GlobeConstellation = forwardRef<
     setQuality(gpu);
     const nodeLimit = gpu === 'low' ? 200 : gpu === 'mid' ? 500 : 800;
     const typedData = apiData as ConstellationApiData;
-    const { nodes, edges, nodeMap } = computeGlobeLayout(typedData.nodes, nodeLimit);
-    setSceneState((prev) => ({ ...prev, nodes, edges, nodeMap }));
+    const layout = computeGlobeLayout(typedData.nodes, nodeLimit);
+
+    // Inject authenticated user's node into the constellation
+    if (userNode) {
+      layout.nodes.push(userNode);
+      layout.nodeMap.set(userNode.id, userNode);
+    }
+
+    // Inject proposal nodes
+    if (proposalNodes?.length) {
+      for (const pNode of proposalNodes) {
+        layout.nodes.push(pNode);
+        layout.nodeMap.set(pNode.id, pNode);
+      }
+    }
+
+    setSceneState((prev) => ({
+      ...prev,
+      nodes: layout.nodes,
+      edges: layout.edges,
+      nodeMap: layout.nodeMap,
+    }));
     setReady(true);
     onReady?.();
-  }, [apiData, onReady]);
+  }, [apiData, onReady, userNode, proposalNodes]);
 
   const dpr =
     quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);
@@ -627,6 +662,20 @@ export const GlobeConstellation = forwardRef<
               activityMap={activityMap}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            {delegationBond &&
+              userNode &&
+              (() => {
+                const drepNode = sceneState.nodeMap.get(delegationBond.drepNodeId);
+                if (!drepNode) return null;
+                return (
+                  <DelegationBondComponent
+                    userPosition={userNode.position}
+                    drepPosition={drepNode.position}
+                    driftScore={delegationBond.driftScore}
+                    visible
+                  />
+                );
+              })()}
             {quality !== 'low' && (
               <MatchedEdgeGlow
                 nodes={sceneState.nodes}
@@ -879,18 +928,30 @@ function ConstellationNodes({
     const drep: ConstellationNode3D[] = [];
     const spo: ConstellationNode3D[] = [];
     const cc: ConstellationNode3D[] = [];
+    const user: ConstellationNode3D[] = [];
+    const proposal: ConstellationNode3D[] = [];
     for (const n of nodes) {
+      if (n.nodeType === 'user') {
+        user.push(n);
+        continue;
+      }
+      if (n.nodeType === 'proposal') {
+        proposal.push(n);
+        continue;
+      }
       if (n.isAnchor) continue;
       if (n.nodeType === 'spo') spo.push(n);
       else if (n.nodeType === 'cc') cc.push(n);
       else drep.push(n);
     }
-    return { drep, spo, cc };
+    return { drep, spo, cc, user, proposal };
   }, [nodes]);
 
   const getDrepColor = useCallback(() => DREP_COLOR, []);
   const getSpoColor = useCallback(() => SPO_COLOR, []);
   const getCcColor = useCallback(() => CC_COLOR, []);
+  const getUserColor = useCallback(() => USER_COLOR, []);
+  const getProposalColor = useCallback(() => PROPOSAL_COLOR, []);
 
   if (nodes.length === 0 || !frameReady) return null;
 
@@ -940,6 +1001,38 @@ function ConstellationNodes({
           getColor={getCcColor}
           emissive={3.5}
           fragmentShader={CC_FRAG}
+          matchedNodeIds={matchedNodeIds}
+          matchIntensities={matchIntensities}
+          activityMap={activityMap}
+        />
+      )}
+      {groups.user.length > 0 && (
+        <NodePoints
+          nodes={groups.user}
+          highlightId={highlightId}
+          dimmed={false}
+          pulseId={pulseId}
+          interactive={interactive}
+          onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
+          getColor={getUserColor}
+          emissive={4.0}
+          matchedNodeIds={matchedNodeIds}
+          matchIntensities={matchIntensities}
+          activityMap={activityMap}
+        />
+      )}
+      {groups.proposal.length > 0 && (
+        <NodePoints
+          nodes={groups.proposal}
+          highlightId={highlightId}
+          dimmed={dimmed}
+          pulseId={pulseId}
+          interactive={interactive}
+          onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
+          getColor={getProposalColor}
+          emissive={2.5}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}

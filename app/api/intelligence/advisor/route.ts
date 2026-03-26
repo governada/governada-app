@@ -43,6 +43,7 @@ const AdvisorRequestSchema = z.object({
     matchState: z.enum(['idle', 'matching', 'matched', 'delegated']).optional(),
     walletState: z.enum(['none_detected', 'detected', 'connected', 'has_ada', 'no_ada']).optional(),
     persona: z.enum(['navigator', 'analyst', 'partner', 'guide']).optional(),
+    mode: z.enum(['conversation', 'briefing']).optional(),
   }),
 });
 

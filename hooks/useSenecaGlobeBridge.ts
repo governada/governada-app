@@ -20,7 +20,13 @@ import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
 export type GlobeCommand =
   | { type: 'flyTo'; nodeId: string }
   | { type: 'pulse'; nodeId: string }
-  | { type: 'highlight'; alignment: number[]; threshold: number }
+  | {
+      type: 'highlight';
+      alignment: number[];
+      threshold: number;
+      noZoom?: boolean;
+      zoomToCluster?: boolean;
+    }
   | { type: 'reset' }
   | { type: 'clear' };
 
@@ -69,7 +75,10 @@ export function useSenecaGlobeBridge(
           globe.pulseNode(command.nodeId);
           break;
         case 'highlight':
-          globe.highlightMatches(command.alignment, command.threshold);
+          globe.highlightMatches(command.alignment, command.threshold, {
+            noZoom: command.noZoom,
+            zoomToCluster: command.zoomToCluster,
+          });
           break;
         case 'reset':
           globe.resetCamera();

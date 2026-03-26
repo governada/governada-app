@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 interface GlobeTooltipProps {
   node: ConstellationNode3D | null;
   screenPos: { x: number; y: number } | null;
+  /** Show "Find your match" CTA for anonymous users */
+  showMatchCta?: boolean;
 }
 
 const OFFSET = 16;
@@ -22,9 +25,9 @@ function formatAda(amount: number): string {
 /**
  * Cursor-following tooltip for globe node hover.
  * Shows entity-specific details for DReps, SPOs, and CC members.
- * Flips position near viewport edges to stay visible.
+ * Optionally shows a "Find your match" CTA for anonymous users.
  */
-export function GlobeTooltip({ node, screenPos }: GlobeTooltipProps) {
+export function GlobeTooltip({ node, screenPos, showMatchCta }: GlobeTooltipProps) {
   const prefersReducedMotion = useReducedMotion();
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -38,18 +41,14 @@ export function GlobeTooltip({ node, screenPos }: GlobeTooltipProps) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Default: right and below cursor
     let x = screenPos.x + OFFSET;
     let y = screenPos.y + OFFSET;
 
-    // Flip horizontal near right edge
     if (screenPos.x > vw - 300) {
       x = screenPos.x - OFFSET - 260;
     }
-
-    // Flip vertical near bottom edge
     if (screenPos.y > vh - 200) {
-      y = screenPos.y - OFFSET - 120;
+      y = screenPos.y - OFFSET - 140;
     }
 
     setPosition({ x, y });
@@ -63,6 +62,10 @@ export function GlobeTooltip({ node, screenPos }: GlobeTooltipProps) {
       ? `${node.id.slice(0, 12)}...`
       : '';
 
+  const handleMatchClick = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('startSenecaMatch'));
+  }, []);
+
   return (
     <AnimatePresence>
       {node && position && (
@@ -73,7 +76,8 @@ export function GlobeTooltip({ node, screenPos }: GlobeTooltipProps) {
           exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.15 }}
           className={cn(
-            'pointer-events-none fixed z-[100]',
+            'fixed z-[100]',
+            showMatchCta ? 'pointer-events-auto' : 'pointer-events-none',
             'rounded-xl border border-white/10 bg-black/85 backdrop-blur-md',
             'px-4 py-3 shadow-2xl max-w-[280px]',
           )}
@@ -89,6 +93,17 @@ export function GlobeTooltip({ node, screenPos }: GlobeTooltipProps) {
           {node.nodeType === 'drep' && <DRepTooltipContent node={node} />}
           {node.nodeType === 'spo' && <SPOTooltipContent node={node} />}
           {node.nodeType === 'cc' && <CCTooltipContent node={node} />}
+
+          {/* Match CTA for anonymous users */}
+          {showMatchCta && node.nodeType === 'drep' && (
+            <button
+              onClick={handleMatchClick}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary/15 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/25 transition-colors"
+            >
+              <Compass className="h-3 w-3" />
+              Find your match
+            </button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

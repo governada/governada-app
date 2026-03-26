@@ -127,10 +127,12 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
   );
 
   // Computed alignment from current answers (builds incrementally)
-  // Auto-scroll to bottom when step changes
+  // Auto-scroll to bottom when step changes — double-rAF ensures DOM has updated
   useEffect(() => {
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      });
     });
   }, [step]);
 
@@ -147,10 +149,17 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
       setAnswers(newAnswers);
 
       // Update globe with progressive alignment highlight
+      // Q1-Q2: highlight only (no zoom), Q3: zoom to cluster, Q4: handled by submitMatch flyTo
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
       const threshold = THRESHOLDS[questionIndex] ?? 35;
-      sendGlobeCommand({ type: 'highlight', alignment: vector, threshold });
+      sendGlobeCommand({
+        type: 'highlight',
+        alignment: vector,
+        threshold,
+        noZoom: questionIndex <= 1,
+        zoomToCluster: questionIndex === 2,
+      });
 
       // Advance to next question or submit
       if (questionIndex < TOTAL_QUESTIONS - 1) {

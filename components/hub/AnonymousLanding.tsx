@@ -82,8 +82,15 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
     [],
   );
 
-  // startMatch is available via the Seneca Thread (opened from the global Orb)
-  void startMatch; // keep the hook call for globe bridge compatibility
+  // Listen for "Find your match" CTA clicks from tooltip cards
+  useEffect(() => {
+    function handleStartMatch() {
+      startMatch();
+      trackFunnel(FUNNEL_EVENTS.MATCH_STARTED, { source: 'globe_tooltip_cta' });
+    }
+    window.addEventListener('startSenecaMatch', handleStartMatch);
+    return () => window.removeEventListener('startSenecaMatch', handleStartMatch);
+  }, [startMatch]);
 
   return (
     <div className="relative min-h-[100dvh]">
@@ -104,7 +111,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
       </div>
 
       {/* Cursor-following tooltip for globe nodes */}
-      <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} />
+      <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta />
 
       {/* Seneca Orb handles the entry point now — rendered globally by GovernadaShell */}
 

@@ -34,7 +34,11 @@ export interface ConstellationRef {
   flyToNode: (nodeId: string) => Promise<ConstellationNode3D | null>;
   pulseNode: (drepId: string) => void;
   resetCamera: () => void;
-  highlightMatches: (userAlignment: number[], threshold: number) => void;
+  highlightMatches: (
+    userAlignment: number[],
+    threshold: number,
+    options?: { noZoom?: boolean; zoomToCluster?: boolean },
+  ) => void;
   flyToMatch: (drepId: string) => Promise<void>;
   clearMatches: () => void;
 }
@@ -186,7 +190,11 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
         setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false, animating: false }));
       },
 
-      highlightMatches: (userAlignment: number[], threshold: number) => {
+      highlightMatches: (
+        userAlignment: number[],
+        threshold: number,
+        _options?: { noZoom?: boolean; zoomToCluster?: boolean },
+      ) => {
         const matched = new Set<string>();
         const intensities = new Map<string, number>();
 

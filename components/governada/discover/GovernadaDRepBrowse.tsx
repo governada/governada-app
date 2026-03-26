@@ -443,7 +443,12 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
   const openPeek = usePeekTrigger();
   const { data: rawData, isLoading } = useDReps();
   const drepsData = rawData as { allDReps?: EnrichedDRep[] } | undefined;
-  const dreps: EnrichedDRep[] = useMemo(() => drepsData?.allDReps ?? [], [drepsData]);
+  // Show DReps with delegators (votingPower > 0) — filters out empty registrations
+  // that have no delegators and never participated
+  const dreps: EnrichedDRep[] = useMemo(
+    () => (drepsData?.allDReps ?? []).filter((d) => (d.votingPower ?? 0) > 0),
+    [drepsData],
+  );
   const { isAtLeast } = useGovernanceDepth();
   const { delegatedDrepId } = useWallet();
 

@@ -60,41 +60,51 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
 
   // ── Governance metrics (everyone) ─────────────────────────────────────
 
-  const [activeProposals, drepCount, poolCount, ghiSnapshots, treasury, criticalCount] =
-    await Promise.all([
-      supabase
-        .from('proposals')
-        .select('tx_hash', { count: 'exact', head: true })
-        .is('ratified_epoch', null)
-        .is('enacted_epoch', null)
-        .is('dropped_epoch', null)
-        .is('expired_epoch', null),
-      supabase
-        .from('dreps')
-        .select('id', { count: 'exact', head: true })
-        .eq('info->>isActive', 'true'),
-      supabase.from('pools').select('pool_id', { count: 'exact', head: true }).gt('vote_count', 0),
-      supabase
-        .from('ghi_snapshots')
-        .select('ghi_score')
-        .order('epoch_no', { ascending: false })
-        .limit(2),
-      getTreasuryBalance(),
-      supabase
-        .from('proposals')
-        .select('tx_hash', { count: 'exact', head: true })
-        .in('proposal_type', CRITICAL_TYPES)
-        .is('ratified_epoch', null)
-        .is('enacted_epoch', null)
-        .is('dropped_epoch', null)
-        .is('expired_epoch', null),
-    ]);
+  const [
+    activeProposals,
+    totalProposals,
+    drepCount,
+    poolCount,
+    ghiSnapshots,
+    treasury,
+    criticalCount,
+  ] = await Promise.all([
+    supabase
+      .from('proposals')
+      .select('tx_hash', { count: 'exact', head: true })
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
+    supabase.from('proposals').select('tx_hash', { count: 'exact', head: true }),
+    supabase.from('dreps').select('id', { count: 'exact', head: true }),
+    supabase.from('pools').select('pool_id', { count: 'exact', head: true }).gt('vote_count', 0),
+    supabase
+      .from('ghi_snapshots')
+      .select('ghi_score')
+      .order('epoch_no', { ascending: false })
+      .limit(2),
+    getTreasuryBalance(),
+    supabase
+      .from('proposals')
+      .select('tx_hash', { count: 'exact', head: true })
+      .in('proposal_type', CRITICAL_TYPES)
+      .is('ratified_epoch', null)
+      .is('enacted_epoch', null)
+      .is('dropped_epoch', null)
+      .is('expired_epoch', null),
+  ]);
 
-  // Active proposals with critical count
+  // Show total proposals with active count highlight
   const totalActive = activeProposals.count ?? 0;
+  const total = totalProposals.count ?? 0;
   const critical = criticalCount.count ?? 0;
   metrics['gov.activeProposals'] =
-    critical > 0 ? `${totalActive} active · ${critical} critical` : `${totalActive} active`;
+    critical > 0
+      ? `${totalActive} active · ${total} total`
+      : totalActive > 0
+        ? `${totalActive} active · ${total} total`
+        : `${total} proposals`;
 
   metrics['gov.activeDreps'] = `${drepCount.count ?? 0} DReps`;
   metrics['gov.activePools'] = `${poolCount.count ?? 0} pools`;

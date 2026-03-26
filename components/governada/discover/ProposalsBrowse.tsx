@@ -181,7 +181,7 @@ export function ProposalsBrowse() {
       const p = new URLSearchParams(window.location.search).get('status');
       if (p && STATUS_FILTERS.includes(p)) return p;
     }
-    return isAnonymous ? 'Open' : 'All';
+    return 'All';
   });
   const [typeFilter, setTypeFilter] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -198,7 +198,7 @@ export function ProposalsBrowse() {
     contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  const defaultStatusFilter = isAnonymous ? 'Open' : 'All';
+  const defaultStatusFilter = 'All';
   const isDefault = search === '' && statusFilter === defaultStatusFilter && typeFilter === 'All';
 
   const resetFilters = () => {

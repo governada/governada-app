@@ -3,11 +3,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import {
-  computeSpherePosition,
-  sphereToCartesian,
-  GLOBE_RADIUS,
-} from '@/lib/constellation/globe-layout';
 import { getDominantDimension, alignmentsToArray } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
@@ -68,7 +63,6 @@ export function useUserConstellationNode(): {
 
     // Cold-start: if profile hasn't loaded or has no alignment data, use neutral position
     const alignments = profile?.alignmentScores ?? NEUTRAL_ALIGNMENTS;
-    const hasData = (profile?.votesUsed ?? 0) > 0 && profile?.alignmentScores !== null;
     const dominant = getDominantDimension(alignments);
     const alignmentArray = alignmentsToArray(alignments);
 
@@ -84,11 +78,12 @@ export function useUserConstellationNode(): {
       nodeType: 'user' as const,
     };
 
-    const [lon, lat] = computeSpherePosition(layoutInput);
-    const position = sphereToCartesian(lat, lon, GLOBE_RADIUS);
+    // User node lives at the CENTER of the globe — they look outward 360°
+    // to see governance nodes on the sphere surface around them
+    const position: [number, number, number] = [0, 0, 0];
 
-    // User node must be unmissable — larger than any DRep (max 0.25)
-    const scale = hasData ? 0.35 : 0.28;
+    // User node is invisible (camera IS the user) — scale near zero
+    const scale = 0.01;
 
     return {
       ...layoutInput,

@@ -517,25 +517,16 @@ export const GlobeConstellation = forwardRef<
     setReady(true);
     onReady?.();
 
-    // Auto fly-in: camera moves TO the user's position, looking outward.
-    // The user doesn't see their own node — they ARE their node.
-    // Surrounding constellation is what they see: nearby DReps, proposals, their DRep bond.
+    // Auto fly-in: camera swoops to the CENTER of the globe.
+    // User is at the origin — governance nodes surround them on the sphere surface.
+    // Look outward in any direction to see DReps, proposals, CC members. Planetarium.
     if (flyToUserOnReady && userNode && !userFlyInDone.current) {
       userFlyInDone.current = true;
       setTimeout(() => {
         const controls = cameraControlsRef.current;
         if (!controls) return;
-        const node = layout.nodeMap.get(userNode.id);
-        if (!node) return;
-        const [x, y, z] = node.position;
-        // Camera AT the user's position, looking toward the globe center (origin)
-        // Slightly offset outward so the camera is just outside the surface
-        const len = Math.sqrt(x * x + y * y + z * z) || 1;
-        const offset = 1.2; // just outside the surface
-        const cx = x + (x / len) * offset;
-        const cy = y + (y / len) * offset;
-        const cz = z + (z / len) * offset;
-        controls.setLookAt(cx, cy, cz, 0, 0, 0, true);
+        // Camera at center, looking outward (toward +X axis as default direction)
+        controls.setLookAt(0, 0, 0, 8, 0, 0, true);
       }, 1200);
     }
   }, [apiData, onReady, userNode, proposalNodes, flyToUserOnReady]);

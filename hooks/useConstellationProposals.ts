@@ -71,8 +71,8 @@ const PROPOSAL_MAX_SCALE = 0.2;
 // Proposal radius: slightly above the globe surface so they float visibly
 const PROPOSAL_RADIUS = GLOBE_RADIUS + 0.5;
 
-// Rough estimate: Cardano mainnet epoch as of early 2026. Updated each session via health-index.
-const FALLBACK_EPOCH = 540;
+// Cardano mainnet epoch as of March 2026. Proposals don't need exact epoch for urgency calc.
+const FALLBACK_EPOCH = 621;
 
 export function useConstellationProposals(userAlignments?: number[]) {
   const { data: proposals, isLoading: proposalsLoading } = useQuery<ProposalSummary[]>({
@@ -102,7 +102,8 @@ export function useConstellationProposals(userAlignments?: number[]) {
   const proposalNodes = useMemo<ConstellationNode3D[]>(() => {
     if (!proposals) return [];
 
-    const activeProposals = proposals.filter((p) => p.status === 'active');
+    // Status values: 'Open' (active), 'Enacted', 'Dropped', 'Expired'
+    const activeProposals = proposals.filter((p) => p.status === 'Open' || p.status === 'active');
 
     return activeProposals.map((p) => {
       const alignments = proposalToAlignments(p);

@@ -5,10 +5,10 @@ import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { useReducedMotion } from 'framer-motion';
 import { GlobeTooltip } from '@/components/governada/GlobeTooltip';
-import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
 import { useConstellationProposals } from '@/hooks/useConstellationProposals';
+import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
@@ -38,9 +38,8 @@ function shouldShowBriefing(): boolean {
 /**
  * InhabitedConstellation — The globe-centric authenticated homepage.
  *
- * Globe fills the viewport. User node is placed at alignment position.
- * Seneca opens automatically and starts a briefing once per day.
- * Fly-in is attempted but nothing else depends on it succeeding.
+ * Globe fills the viewport. User node placed at alignment position.
+ * Seneca thread auto-opens and starts briefing once per day.
  */
 export function InhabitedConstellation() {
   const globeRef = useRef<ConstellationRef>(null);
@@ -66,8 +65,10 @@ export function InhabitedConstellation() {
   // Proposal nodes
   const { proposalNodes } = useConstellationProposals(userAlignments ?? undefined);
 
-  // Intelligence panel
-  const { open: openPanel, isOpen: panelOpen, startConversation } = useIntelligencePanel();
+  // Seneca thread (Zustand store — the actual panel controller)
+  const senecaOpen = useSenecaThreadStore((s) => s.isOpen);
+  const senecaSetOpen = useSenecaThreadStore((s) => s.setOpen);
+  const senecaStartConversation = useSenecaThreadStore((s) => s.startConversation);
 
   // Bridge
   const { handleNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
@@ -94,51 +95,42 @@ export function InhabitedConstellation() {
     refetchOnWindowFocus: false,
   });
 
-  // --- Auto-open panel + briefing on simple timer (no dependency chain) ---
+  // --- Auto-open Seneca + briefing ---
   useEffect(() => {
-    const panelTimer = setTimeout(() => {
-      if (!panelOpen) openPanel();
-    }, 2000);
-    return () => clearTimeout(panelTimer);
+    const timer = setTimeout(() => {
+      if (!senecaOpen) senecaSetOpen(true);
+    }, 2500);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!panelOpen || briefingTriggered.current) return;
+    if (!senecaOpen || briefingTriggered.current) return;
     if (!shouldShowBriefing()) return;
     briefingTriggered.current = true;
 
     const timer = setTimeout(() => {
-      startConversation('Brief me on governance');
+      senecaStartConversation('Brief me on governance');
     }, 1000);
     return () => clearTimeout(timer);
-  }, [panelOpen, startConversation]);
+  }, [senecaOpen, senecaStartConversation]);
 
-  // --- Fly-in: attempt when globe is ready and user node exists ---
+  // --- Fly-in ---
   const onGlobeReady = useCallback(() => {
     if (flyInAttempted.current || !userNode) return;
     flyInAttempted.current = true;
-
     setTimeout(() => {
-      const globe = globeRef.current;
-      if (!globe) return;
-      globe.flyToNode(userNode.id).catch(() => {
-        // fly-in failed — globe stays at orbit, which is fine
-      });
+      globeRef.current?.flyToNode(userNode.id).catch(() => {});
     }, 800);
   }, [userNode]);
 
-  // Also try fly-in when user node arrives after globe is already ready
   useEffect(() => {
     if (!userNode || flyInAttempted.current) return;
-    // Small delay to let globe re-render with the user node
     const timer = setTimeout(() => {
       if (flyInAttempted.current) return;
       flyInAttempted.current = true;
-      const globe = globeRef.current;
-      if (!globe) return;
-      globe.flyToNode(userNode.id).catch(() => {});
-    }, 1500);
+      globeRef.current?.flyToNode(userNode.id).catch(() => {});
+    }, 2000);
     return () => clearTimeout(timer);
   }, [userNode]);
 

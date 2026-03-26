@@ -517,7 +517,9 @@ export const GlobeConstellation = forwardRef<
     setReady(true);
     onReady?.();
 
-    // Auto fly-in to user node (bypasses ref chain — uses cameraControls directly)
+    // Auto fly-in: camera moves TO the user's position, looking outward.
+    // The user doesn't see their own node — they ARE their node.
+    // Surrounding constellation is what they see: nearby DReps, proposals, their DRep bond.
     if (flyToUserOnReady && userNode && !userFlyInDone.current) {
       userFlyInDone.current = true;
       setTimeout(() => {
@@ -526,9 +528,14 @@ export const GlobeConstellation = forwardRef<
         const node = layout.nodeMap.get(userNode.id);
         if (!node) return;
         const [x, y, z] = node.position;
-        // Camera positioned at 1.5x distance from node, looking at it
-        controls.setLookAt(x * 1.5, y * 1.5, z * 1.5 + 3, x, y, z, true);
-        setSceneState((prev) => ({ ...prev, highlightId: node.id }));
+        // Camera AT the user's position, looking toward the globe center (origin)
+        // Slightly offset outward so the camera is just outside the surface
+        const len = Math.sqrt(x * x + y * y + z * z) || 1;
+        const offset = 1.2; // just outside the surface
+        const cx = x + (x / len) * offset;
+        const cy = y + (y / len) * offset;
+        const cz = z + (z / len) * offset;
+        controls.setLookAt(cx, cy, cz, 0, 0, 0, true);
       }, 1200);
     }
   }, [apiData, onReady, userNode, proposalNodes, flyToUserOnReady]);

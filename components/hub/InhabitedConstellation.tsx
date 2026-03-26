@@ -8,8 +8,6 @@ import { GlobeTooltip } from '@/components/governada/GlobeTooltip';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
 import { useConstellationProposals } from '@/hooks/useConstellationProposals';
-import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
-import { useAdvisor } from '@/hooks/useAdvisor';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
@@ -23,19 +21,6 @@ const MobileConstellationView = dynamic(
   { ssr: false },
 );
 
-function shouldShowBriefing(): boolean {
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    const key = `governada_briefing_${today}`;
-    const shown = sessionStorage.getItem(key);
-    if (shown) return false;
-    sessionStorage.setItem(key, '1');
-    return true;
-  } catch {
-    return true;
-  }
-}
-
 /**
  * InhabitedConstellation — The globe-centric authenticated homepage.
  *
@@ -48,7 +33,6 @@ export function InhabitedConstellation() {
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const prefersReducedMotion = useReducedMotion();
-  const briefingTriggered = useRef(false);
   const flyInAttempted = useRef(false);
 
   // Detect mobile
@@ -65,15 +49,6 @@ export function InhabitedConstellation() {
 
   // Proposal nodes
   const { proposalNodes } = useConstellationProposals(userAlignments ?? undefined);
-
-  // Seneca thread store
-  const senecaSetOpen = useSenecaThreadStore((s) => s.setOpen);
-  const senecaSetMode = useSenecaThreadStore((s) => s.setMode);
-  const senecaAddMessage = useSenecaThreadStore((s) => s.addMessage);
-  const senecaUpdateLastAssistant = useSenecaThreadStore((s) => s.updateLastAssistant);
-
-  // Advisor hook — handles actual streaming to the AI
-  const advisor = useAdvisor({ pageContext: 'homepage', visitorMode: 'authenticated' });
 
   // Bridge
   const { handleNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
@@ -100,41 +75,16 @@ export function InhabitedConstellation() {
     refetchOnWindowFocus: false,
   });
 
-  // --- Auto-open Seneca + stream briefing ---
+  // --- Auto-open Seneca thread via CustomEvent (same path as ] keyboard shortcut) ---
   useEffect(() => {
-    if (briefingTriggered.current) return;
-    if (!shouldShowBriefing()) return;
-    briefingTriggered.current = true;
-
     const timer = setTimeout(() => {
-      // Open the Seneca thread panel
-      senecaSetOpen(true);
-      senecaSetMode('conversation');
-
-      // Add user message to store
-      senecaAddMessage({
-        id: `briefing-${Date.now()}`,
-        role: 'user',
-        content: 'Brief me on governance',
-        ts: Date.now(),
-      });
-
-      // Send via useAdvisor which handles the actual streaming
-      advisor.sendMessage('Brief me on governance');
+      // Open Seneca via the event the useSenecaThread hook listens for
+      // This uses the same path as the ] keyboard shortcut — known to work
+      window.dispatchEvent(new CustomEvent('toggleIntelligencePanel'));
     }, 3000);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Sync advisor messages into Seneca thread store
-  useEffect(() => {
-    if (advisor.messages.length === 0) return;
-    const lastMsg = advisor.messages[advisor.messages.length - 1];
-    if (lastMsg.role === 'assistant' && lastMsg.content) {
-      senecaUpdateLastAssistant(lastMsg.content);
-    }
-  }, [advisor.messages, senecaUpdateLastAssistant]);
 
   // --- Fly-in ---
   const onGlobeReady = useCallback(() => {

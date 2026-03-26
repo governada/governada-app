@@ -30,7 +30,7 @@ import {
 import { useBatchEndorsementCounts } from '@/hooks/useEngagement';
 import { useDReps } from '@/hooks/queries';
 import type { EnrichedDRep } from '@/lib/koios';
-import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+
 import { AlignmentScatter } from '@/components/governada/shared/AlignmentScatter';
 import { MoversStrip } from '@/components/governada/shared/MoversStrip';
 import { InsightCard } from '@/components/governada/shared/InsightCard';
@@ -773,8 +773,6 @@ export function GovernadaDRepBrowse(_props: GovernadaDRepBrowseProps) {
           Showing DReps active this epoch &middot; order varies daily within each tier
         </p>
       </div>
-
-      <CompassGuide page="representatives" drepCount={dreps.length} />
 
       {/* Phase 2: Alignment scatter — the visual "wow" hero */}
       {scatterEntities.length > 20 && (

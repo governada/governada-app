@@ -32,7 +32,7 @@ import { useGovernanceDepth } from '@/hooks/useGovernanceDepth';
 import { DiscoverFilterBar } from './DiscoverFilterBar';
 import { DiscoverPagination } from './DiscoverPagination';
 import { MatchAwareDiscoverHero } from './MatchAwareDiscoverHero';
-import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+
 import { InsightCard } from '@/components/governada/shared/InsightCard';
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
 import { AdvisorPanel } from '@/components/governada/shared/AdvisorPanel';
@@ -499,8 +499,6 @@ export function GovernadaSPOBrowse() {
           Showing pools active this epoch &middot; order varies daily within each tier
         </p>
       </div>
-
-      <CompassGuide page="pools" poolCount={pools.length} />
 
       {/* ── Sticky filter bar ────────────────────────────────────── */}
       <div className="sticky top-10 lg:top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-card/60 backdrop-blur-xl border-b border-border/30">

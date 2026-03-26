@@ -9,7 +9,7 @@ import { useProposals, useDRepVotes } from '@/hooks/queries';
 import { useWallet } from '@/utils/wallet-context';
 import { ProposalStatusFunnel } from '@/components/governada/charts/ProposalStatusFunnel';
 import type { VotesResponseData, VoteItem } from '@/types/api';
-import { CompassGuide } from '@/components/governada/shared/CompassGuide';
+
 import { UrgencyStrip } from '@/components/governada/shared/UrgencyStrip';
 import { InsightCard } from '@/components/governada/shared/InsightCard';
 import { PersonalTeaser } from '@/components/governada/shared/PersonalTeaser';
@@ -391,13 +391,6 @@ export function ProposalsBrowse() {
 
       <UrgencyStrip
         activeCount={proposals.filter((p) => (p.status ?? 'Open').toLowerCase() === 'open').length}
-      />
-
-      <CompassGuide
-        page="proposals"
-        proposalCount={
-          proposals.filter((p) => (p.status ?? 'Open').toLowerCase() === 'open').length
-        }
       />
 
       {/* Status pipeline overview — Informed+ */}

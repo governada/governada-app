@@ -23,14 +23,13 @@ import {
   X,
   Loader2,
   UserCog,
-  Compass,
   Wallet,
   ChevronDown,
 } from 'lucide-react';
 import { useQuickConnect } from '@/hooks/useQuickConnect';
 import { GovernadaLogo } from '@/components/ui/GovernadaLogo';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
-import { useDiscoveryHub } from '@/components/discovery/DiscoveryHubContext';
+
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPromptModal } from './DepthPromptModal';
 import { EpochStrip } from './EpochStrip';
@@ -339,16 +338,11 @@ function truncateImpersonateAddress(addr: string): string {
   return `${addr.slice(0, 8)}...${addr.slice(-8)}`;
 }
 
-interface GovernadaHeaderProps {
-  compassToggle?: () => void; // deprecated — orb handles this now
-  compassOpen?: boolean; // deprecated
-}
-
-export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderProps = {}) {
+export function GovernadaHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useTranslation();
-  const discovery = useDiscoveryHub();
+
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
   const {
     segment,
@@ -608,23 +602,6 @@ export function GovernadaHeader({ compassToggle, compassOpen }: GovernadaHeaderP
           {/* Epoch strip + governance pulse (together) */}
           <EpochStrip />
           <GovernancePulse />
-
-          {/* Compass toggle — visible on all breakpoints */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'inline-flex h-8 w-8',
-              compassOpen
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-            onClick={compassToggle ?? (() => discovery?.openHub())}
-            aria-label={compassOpen ? 'Close Seneca panel' : 'Open Seneca'}
-            aria-pressed={compassOpen}
-          >
-            <Compass className="h-4 w-4" />
-          </Button>
 
           {/* Search / command palette */}
           <Button

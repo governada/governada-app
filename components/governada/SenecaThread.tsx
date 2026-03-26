@@ -9,7 +9,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Search, Loader2, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { useSenecaSearch } from '@/hooks/useSenecaSearch';
+import type { SearchResult } from '@/hooks/useSenecaSearch';
 import { CompassSigil } from '@/components/governada/CompassSigil';
 import { SenecaMatch } from '@/components/governada/panel/SenecaMatch';
 import { SenecaResearch } from '@/components/governada/panel/SenecaResearch';
@@ -26,7 +29,7 @@ import { cn } from '@/lib/utils';
 interface SenecaThreadProps {
   isOpen: boolean;
   onClose: () => void;
-  mode: 'idle' | 'conversation' | 'research' | 'matching';
+  mode: 'idle' | 'conversation' | 'research' | 'matching' | 'search';
   persona: {
     id: string;
     label: string;
@@ -79,6 +82,8 @@ function sigilStateForMode(mode: SenecaThreadProps['mode']) {
       return 'searching' as const;
     case 'matching':
       return 'thinking' as const;
+    case 'search':
+      return 'searching' as const;
     default:
       return 'idle' as const;
   }
@@ -89,22 +94,22 @@ function sigilStateForMode(mode: SenecaThreadProps['mode']) {
 // ---------------------------------------------------------------------------
 
 const IDLE_BRIEFINGS: Record<PanelRoute, string> = {
-  hub: "Welcome. I'm tracking governance activity across the Cardano network. Ask me anything, or pick one of the quick actions below.",
+  hub: "Cardano governance is happening right now. Representatives are voting on proposals that shape the ecosystem's future. I can help you explore what's at stake — or find who should represent your ADA.",
   proposal:
-    "I've analyzed this proposal's context, voting patterns, and treasury impact. Ask me for a summary or deeper analysis.",
-  drep: "I can tell you about this representative's voting history, alignment profile, and how they compare to others.",
+    "Every proposal carries consequences that outlast the epoch it was written in. I can walk you through what this one means, who's voted, and why it matters.",
+  drep: 'This representative has a story written in on-chain votes. I can show you their record, their alignment, and how they compare to others you might consider.',
   'proposals-list':
-    "Here's the current proposal landscape. I can help you filter, compare, or understand what's at stake.",
+    "Each proposal below could reshape Cardano's direction. Search by topic to find what matters to you, or let me highlight what needs attention.",
   'representatives-list':
-    'Browse the representative directory. I can help you find someone who matches your governance priorities.',
+    'These are the people who vote on your behalf. Search by priority — treasury transparency, developer funding, decentralization — to find who aligns with your values.',
   health:
-    "I'm monitoring network governance health indicators. Ask about participation rates, quorum status, or trends.",
+    'Governance health tells the story of how well the system is working. Participation, quorum, voting patterns — the vital signs of decentralized democracy.',
   treasury:
-    'The treasury is the lifeblood of Cardano development. I can break down allocations, pending requests, and spending patterns.',
+    "The treasury funds Cardano's future. I can break down where the money goes, what's being requested, and the spending patterns that shape the ecosystem.",
   workspace:
-    'Your workspace is where proposals come to life. I can help with drafting, reviewing, or understanding the submission process.',
+    'Your workspace is where proposals come to life. I can help with drafting, constitutional compliance, or understanding what makes a proposal succeed.',
   default:
-    "I'm Seneca, your governance companion. I can help you understand Cardano governance, find your representative, or analyze proposals.",
+    "I'm Seneca, your governance companion. I can help you explore Cardano governance, find your representative, or discover what's being decided right now.",
 };
 
 // ---------------------------------------------------------------------------
@@ -191,7 +196,7 @@ function getQuickActions(route: PanelRoute): QuickAction[] {
 
 interface GuidedOption {
   label: string;
-  action: 'conversation' | 'match' | 'navigate';
+  action: 'conversation' | 'match' | 'navigate' | 'search';
   query?: string;
   href?: string;
 }
@@ -201,32 +206,74 @@ function getAnonOptions(route: PanelRoute): GuidedOption[] {
     case 'proposals-list':
       return [
         {
-          label: 'What are these proposals about?',
-          action: 'conversation',
-          query: 'Explain what these governance proposals are about',
+          label: 'Treasury spending proposals',
+          action: 'search',
+          query: 'treasury spending funding',
+        },
+        { label: 'Protocol changes', action: 'search', query: 'protocol parameter change update' },
+        {
+          label: 'Most contested proposals',
+          action: 'search',
+          query: 'contested controversial debate',
         },
         { label: 'Find my representative', action: 'match' },
-        { label: 'How does governance work?', action: 'navigate', href: '/governance' },
+      ];
+    case 'representatives-list':
+      return [
+        {
+          label: 'Treasury transparency advocates',
+          action: 'search',
+          query: 'treasury transparency accountability',
+        },
+        {
+          label: 'Developer funding supporters',
+          action: 'search',
+          query: 'developer tooling funding development',
+        },
+        {
+          label: 'Decentralization advocates',
+          action: 'search',
+          query: 'decentralization community governance',
+        },
+        { label: 'Find my match', action: 'match' },
       ];
     case 'hub':
       return [
         {
-          label: "What's happening in governance?",
-          action: 'conversation',
-          query: "What's happening in Cardano governance right now?",
+          label: "What's being decided right now?",
+          action: 'search',
+          query: 'active proposals being voted on',
         },
         { label: 'Find my representative', action: 'match' },
-        { label: 'How does governance work?', action: 'navigate', href: '/governance' },
+        {
+          label: 'How does governance work?',
+          action: 'conversation',
+          query: 'How does Cardano governance work?',
+        },
+      ];
+    case 'proposal':
+      return [
+        { label: 'Similar proposals', action: 'search', query: 'proposals like this one' },
+        { label: 'Find my representative', action: 'match' },
+      ];
+    case 'drep':
+      return [
+        {
+          label: 'Similar representatives',
+          action: 'search',
+          query: 'representatives with similar values',
+        },
+        { label: 'Find my match', action: 'match' },
       ];
     default:
       return [
-        {
-          label: 'Tell me about this page',
-          action: 'conversation',
-          query: `Explain what I'm looking at on the ${ROUTE_LABELS[route]} page`,
-        },
+        { label: 'Explore proposals', action: 'search', query: 'governance proposals' },
         { label: 'Find my representative', action: 'match' },
-        { label: 'How does governance work?', action: 'navigate', href: '/governance' },
+        {
+          label: 'How does governance work?',
+          action: 'conversation',
+          query: 'How does Cardano governance work?',
+        },
       ];
   }
 }
@@ -313,6 +360,9 @@ export function SenecaThread({
     [onStartConversation, onStartResearch, onStartMatch],
   );
 
+  // Semantic search
+  const senecaSearch = useSenecaSearch();
+
   // Anon option handler
   const handleAnonOption = useCallback(
     (option: GuidedOption) => {
@@ -324,14 +374,18 @@ export function SenecaThread({
           onStartMatch();
           break;
         case 'navigate':
-          // Navigate handled externally — for now treat as conversation
           if (option.href) {
             window.location.href = option.href;
           }
           break;
+        case 'search':
+          if (option.query) {
+            senecaSearch.search(option.query);
+          }
+          break;
       }
     },
-    [onStartConversation, onStartMatch],
+    [onStartConversation, onStartMatch, senecaSearch],
   );
 
   // Determine persona label to show in header
@@ -485,23 +539,36 @@ export function SenecaThread({
                   }
                 />
               )}
+
+              {/* Search results (shown in idle mode when search has results) */}
+              {mode === 'idle' && senecaSearch.hasSearched && (
+                <SearchResultsContent
+                  results={senecaSearch.results}
+                  query={senecaSearch.query}
+                  isSearching={senecaSearch.isSearching}
+                  error={senecaSearch.error}
+                  onClear={senecaSearch.clearSearch}
+                  accentColor={persona.accentColor}
+                />
+              )}
             </div>
 
             {/* ── Input area ── */}
             {(mode === 'idle' || mode === 'conversation') && (
-              <div className="shrink-0">
+              <div className="shrink-0 border-t border-white/[0.06]">
                 {isAuthenticated ? (
+                  /* Authenticated: full AI conversation input */
                   <SenecaInput
                     panelRoute={panelRoute}
                     onSubmit={(query) => onStartConversation(query)}
                     disabled={false}
                   />
-                ) : // Anonymous: no free-text input, options are in the content area
-                mode === 'idle' ? null : (
-                  <SenecaInput
+                ) : (
+                  /* Anonymous: semantic search input (no AI API cost) */
+                  <SearchInput
+                    onSearch={(q) => senecaSearch.search(q)}
+                    isSearching={senecaSearch.isSearching}
                     panelRoute={panelRoute}
-                    onSubmit={(query) => onStartConversation(query)}
-                    disabled={false}
                   />
                 )}
               </div>
@@ -668,4 +735,234 @@ function ConversationContent({
       })}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Search input for anonymous users
+// ---------------------------------------------------------------------------
+
+const SEARCH_PLACEHOLDERS: Record<PanelRoute, string> = {
+  hub: 'Search proposals, representatives, pools...',
+  proposal: 'Search for similar proposals...',
+  drep: 'Search for similar representatives...',
+  'proposals-list': 'Search proposals by topic...',
+  'representatives-list': 'Search representatives by priority...',
+  health: 'Search governance topics...',
+  treasury: 'Search treasury proposals...',
+  workspace: 'Search governance entities...',
+  default: 'Search proposals, representatives, pools...',
+};
+
+function SearchInput({
+  onSearch,
+  isSearching,
+  panelRoute,
+}: {
+  onSearch: (query: string) => void;
+  isSearching: boolean;
+  panelRoute: PanelRoute;
+}) {
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (value.trim().length >= 2) {
+        onSearch(value.trim());
+      }
+    },
+    [value, onSearch],
+  );
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-2.5">
+      <div className="relative flex-1">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={SEARCH_PLACEHOLDERS[panelRoute]}
+          className={cn(
+            'w-full pl-8 pr-3 py-2 rounded-xl text-sm',
+            'bg-white/[0.04] border border-white/[0.08]',
+            'text-foreground/90 placeholder:text-muted-foreground/40',
+            'focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/30',
+            'transition-colors',
+          )}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              inputRef.current?.blur();
+            }
+          }}
+        />
+        {isSearching && (
+          <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary animate-spin" />
+        )}
+      </div>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Search results display
+// ---------------------------------------------------------------------------
+
+function SearchResultsContent({
+  results,
+  query,
+  isSearching,
+  error,
+  onClear,
+  accentColor,
+}: {
+  results: SearchResult[];
+  query: string;
+  isSearching: boolean;
+  error: string | null;
+  onClear: () => void;
+  accentColor?: string;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <div className="px-3 py-2 space-y-2">
+      {/* Search context header */}
+      <div className="flex items-center gap-2">
+        <CompassSigil
+          state={isSearching ? 'searching' : 'idle'}
+          size={14}
+          accentColor={accentColor}
+        />
+        <p className="text-xs text-muted-foreground/70 flex-1">
+          {isSearching ? (
+            'Searching across governance...'
+          ) : error ? (
+            <span className="text-red-400/70">{error}</span>
+          ) : results.length === 0 ? (
+            <>No results found for &ldquo;{query}&rdquo;. Try different terms.</>
+          ) : (
+            <>
+              Found {results.length} result{results.length !== 1 ? 's' : ''} for &ldquo;{query}
+              &rdquo;
+            </>
+          )}
+        </p>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+        >
+          Clear
+        </button>
+      </div>
+
+      {/* Seneca narration of results */}
+      {results.length > 0 && !isSearching && (
+        <motion.div
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex gap-2 items-start"
+        >
+          <p className="text-sm text-foreground/70 leading-relaxed">
+            {getSearchNarration(results, query)}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Loading skeleton */}
+      {isSearching && (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="animate-pulse rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 space-y-2"
+            >
+              <div className="h-3 bg-white/[0.06] rounded w-3/4" />
+              <div className="h-2.5 bg-white/[0.04] rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Result cards */}
+      {!isSearching &&
+        results.map((result, i) => (
+          <motion.div
+            key={`${result.entityType}-${result.entityId}`}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+          >
+            <Link
+              href={result.href}
+              className={cn(
+                'block rounded-xl p-3 space-y-1',
+                'bg-white/[0.03] border border-white/[0.06]',
+                'hover:bg-white/[0.06] hover:border-white/[0.10]',
+                'transition-colors group',
+              )}
+            >
+              {/* Type badge + similarity */}
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                    result.entityType === 'proposal'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-violet-500/10 text-violet-400',
+                  )}
+                >
+                  {result.entityType === 'proposal' ? 'Proposal' : 'Representative'}
+                </span>
+                {result.status && (
+                  <span className="text-[10px] text-muted-foreground/50">{result.status}</span>
+                )}
+                <span className="text-[10px] text-muted-foreground/30 ml-auto">
+                  {Math.round(result.similarity * 100)}% match
+                </span>
+              </div>
+
+              {/* Title */}
+              <p className="text-sm font-medium text-foreground/85 group-hover:text-foreground/95 line-clamp-2 transition-colors">
+                {result.title}
+              </p>
+
+              {/* Subtitle */}
+              {result.subtitle && (
+                <p className="text-xs text-muted-foreground/50 line-clamp-1">{result.subtitle}</p>
+              )}
+
+              {/* Arrow hint */}
+              <div className="flex items-center gap-1 text-primary/50 group-hover:text-primary/70 transition-colors">
+                <span className="text-[10px]">View details</span>
+                <ArrowRight className="h-2.5 w-2.5" />
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Narration helper — Seneca contextualizes the search results
+// ---------------------------------------------------------------------------
+
+function getSearchNarration(results: SearchResult[], query: string): string {
+  const proposalCount = results.filter((r) => r.entityType === 'proposal').length;
+  const drepCount = results.filter((r) => r.entityType === 'drep_profile').length;
+
+  if (proposalCount > 0 && drepCount > 0) {
+    return `I found ${proposalCount} proposal${proposalCount !== 1 ? 's' : ''} and ${drepCount} representative${drepCount !== 1 ? 's' : ''} related to "${query}." Here's what stands out:`;
+  }
+  if (proposalCount > 0) {
+    return `Here are ${proposalCount} proposal${proposalCount !== 1 ? 's' : ''} related to "${query}." Each one could shape Cardano's direction:`;
+  }
+  if (drepCount > 0) {
+    return `I found ${drepCount} representative${drepCount !== 1 ? 's' : ''} whose priorities align with "${query}":`;
+  }
+  return `Here's what I found for "${query}":`;
 }

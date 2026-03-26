@@ -1249,6 +1249,55 @@ _(Patterns for homepage heroes, data-driven visualizations, interactive 3D exper
 - **Applicable to**: Governance Rings already exist in Governada (Participation/Deliberation/Impact). Wrapping them around the globe as 3D orbiting rings would create both a brand signature AND a glanceable health indicator on the homepage.
 - **Adoption difficulty**: Medium — GovernanceRings component exists as 2D SVG. Adapting to 3D ring geometry around the globe is ~1 day of Three.js work.
 
+### Immersive & Spatial UI
+
+_(Patterns for 3D interfaces, command centers, spatial computing, HUD overlays)_
+
+#### Territory Studio / JARVIS — Concentric Information Shells
+
+- **Source**: Territory Studio (Guardians of the Galaxy, Ex Machina, Avengers) — https://territorystudio.com/
+- **Discovered**: 2026-03-26 (explore-feature: globe command center)
+- **What they do**: Sci-fi interfaces use concentric shells — most urgent data closest to center, context radiates outward. JARVIS adapts its interface based on context (HUD when flying, holographic table when designing). The AI narrates and highlights, not just displays.
+- **Why it's world-class**: Information hierarchy encoded spatially — no scrolling, no tabs, no priority labels needed. Distance from center IS priority.
+- **Applicable to**: Globe homepage command rings — urgent items at inner radius, active at middle, context at outer. Seneca as the JARVIS-like narrator that reshapes what the globe shows.
+- **Adoption difficulty**: Medium — extend globe layout with user-relative concentric zones
+
+#### Elite Dangerous — 3D Spherical Radar with Triple Encoding
+
+- **Source**: Elite Dangerous — https://elite-dangerous.fandom.com/wiki/HUD/Center
+- **Discovered**: 2026-03-26 (explore-feature: globe command center)
+- **What they do**: User sits at center of a hemispheric scanner. Contacts appear as dots with vertical stalks encoding depth. Color = disposition (green/red/yellow), shape = type (square/triangle), animation = threat level (flashing = firing at you).
+- **Why it's world-class**: Three data dimensions encoded simultaneously via preattentive visual channels. The brain reads color, shape, and motion BEFORE conscious processing.
+- **Applicable to**: Globe entities should triple-encode: color = alignment/disposition, shape = type (already: points/diamonds/octahedra), animation = urgency (pulsing = needs attention). The constellation IS a governance radar.
+- **Adoption difficulty**: Low — shape/color already differentiated, add urgency-based animation
+
+#### visionOS — Progressive Immersion (Window → Volume → Space)
+
+- **Source**: Apple Vision Pro — https://developer.apple.com/visionos/
+- **Discovered**: 2026-03-26 (explore-feature: globe command center)
+- **What they do**: Three container primitives that compose: Windows (2D panels floating in space), Volumes (3D objects), Spaces (full immersive environments). Apps start as windows and can escalate to full immersion. Gaze-responsive elements subtly lift and brighten on attention.
+- **Why it's world-class**: Progressive escalation prevents overwhelm. The user controls how immersive the experience gets.
+- **Applicable to**: Homepage loads as ambient globe (window mode). Focus on entity zooms in (volume mode). Seneca conversation goes full immersive (space mode). Entity hover = gaze response (subtle glow + rise).
+- **Adoption difficulty**: Low — mostly a conceptual framework for existing interactions
+
+#### Game HUD Four-Layer System — Diegetic / Non-diegetic / Spatial / Meta
+
+- **Source**: Game UI design theory — https://corporationpop.co.uk/thoughts/game-ui-design
+- **Discovered**: 2026-03-26 (explore-feature: globe command center)
+- **What they do**: Four simultaneous UI layers: diegetic (in-world), non-diegetic (overlay for player only), spatial (placed in 3D space), meta (screen effects conveying state). Dead Space's health bar on Isaac's suit is diegetic. Blood spatter = damage is meta.
+- **Why it's world-class**: Using ALL four layers simultaneously creates maximum information density without visual clutter. Each layer occupies a different attention channel.
+- **Applicable to**: Globe entities = diegetic. Header/rings/badges = non-diegetic. Floating labels/cards = spatial. Atmosphere color shift for governance state = meta. All four already partially exist — formalize and complete.
+- **Adoption difficulty**: Low — framework for organizing existing elements + adding meta layer
+
+#### Radial Menus — Direction as Action (Muscle Memory)
+
+- **Source**: Big Medium — https://bigmedium.com/ideas/radial-menus-for-touch-ui.html
+- **Discovered**: 2026-03-26 (explore-feature: globe command center)
+- **What they do**: Actions fan from center point in directions. Selection depends on direction, not distance — the brain uses muscle memory for direction, making repeated use nearly instantaneous. Maximum 6-12 items. Long-press trigger on touch.
+- **Why it's world-class**: Faster than linear menus after just 3 uses. Spatial metaphor (direction = action type) creates intuitive grouping without labels.
+- **Applicable to**: Right-click or long-press globe entity → radial menu: Delegate, Compare, Ask Seneca, Watch, Profile, Share. Top = primary action. The globe's polar coordinate system naturally supports radial interaction.
+- **Adoption difficulty**: Low — react-pie-menu or custom SVG overlay
+
 ---
 
 ## Update Protocol

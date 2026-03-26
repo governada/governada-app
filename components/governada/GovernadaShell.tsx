@@ -114,9 +114,10 @@ function BackgroundGlobe({
   isHomepage: boolean;
   governanceTint?: string;
 }) {
-  const { segment } = useSegment();
-  // Hide the background globe on homepage for anonymous/not-yet-loaded users
-  if (isHomepage && segment === 'anonymous') return null;
+  // Hide the background globe on homepage — anonymous users have their own hero globe
+  // in AnonymousLanding, and authenticated users have InhabitedConstellation which
+  // provides its own full-viewport globe that extends behind the header.
+  if (isHomepage) return null;
   return (
     <div
       className="force-dark fixed inset-0 pointer-events-none z-0 constellation-globe-container"
@@ -282,7 +283,13 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               )}
               <main
                 id="main-content"
-                className={cn('relative z-0 min-h-screen', isStudioMode ? '' : 'pb-16 lg:pb-0')}
+                className={cn(
+                  'relative z-0 min-h-screen',
+                  isStudioMode ? '' : 'pb-16 lg:pb-0',
+                  // On homepage, pull content up behind the transparent header so the
+                  // globe extends to the top of the viewport and peeks through
+                  isHomepage && '-mt-10',
+                )}
                 tabIndex={-1}
               >
                 {isStudioMode ? children : <SectionTransition>{children}</SectionTransition>}

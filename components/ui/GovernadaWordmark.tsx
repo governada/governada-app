@@ -42,7 +42,7 @@ export function GovernadaWordmark({
         priority
       />
       {size === 'default' && (
-        <span className="text-[15px] font-semibold tracking-tight bg-gradient-to-r from-[oklch(0.78_0.17_192)] via-[oklch(0.82_0.16_75)] to-[oklch(0.76_0.18_295)] bg-clip-text text-transparent">
+        <span className="text-[15px] font-semibold tracking-tight bg-gradient-to-r from-[oklch(0.75_0.20_192)] via-[oklch(0.80_0.18_65)] to-[oklch(0.72_0.22_295)] bg-clip-text text-transparent">
           overnada
         </span>
       )}

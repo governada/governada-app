@@ -274,7 +274,11 @@ export const GlobeConstellation = forwardRef<
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
     },
 
-    highlightMatches: (userAlignment: number[], threshold: number) => {
+    highlightMatches: (
+      userAlignment: number[],
+      threshold: number,
+      options?: { noZoom?: boolean; zoomToCluster?: boolean },
+    ) => {
       const matched = new Set<string>();
       const intensities = new Map<string, number>();
 
@@ -305,7 +309,54 @@ export const GlobeConstellation = forwardRef<
         scanProgress,
       }));
 
-      // Progressive camera zoom — closer as threshold narrows ("Xavier's room" convergence)
+      // Q1-Q2: highlight only, no camera movement. Slight rotation slowdown.
+      if (options?.noZoom) {
+        const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
+        rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * (1 - zoomFactor * 0.3);
+        return;
+      }
+
+      // Q3: rotate globe to face matching cluster and zoom moderately
+      if (options?.zoomToCluster && matched.size > 0 && cameraControlsRef.current) {
+        let cx = 0,
+          cy = 0,
+          cz = 0,
+          count = 0;
+        for (const node of sceneState.nodes) {
+          if (matched.has(node.id)) {
+            const [rx, ry, rz] = rotateAroundY(node.position, rotationAngleRef.current);
+            cx += rx;
+            cy += ry;
+            cz += rz;
+            count++;
+          }
+        }
+        if (count > 0) {
+          cx /= count;
+          cy /= count;
+          cz /= count;
+          const dir = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1;
+          const nx = cx / dir;
+          const ny = cy / dir;
+          const nz = cz / dir;
+
+          // Stop rotation, zoom to moderate distance
+          rotationSpeedRef.current = 0;
+          const camDist = 10;
+          cameraControlsRef.current.setLookAt(
+            nx * camDist,
+            ny * camDist + 1,
+            nz * camDist + 2,
+            cx * 0.5,
+            cy * 0.5,
+            cz * 0.5,
+            false,
+          );
+        }
+        return;
+      }
+
+      // Default fallback: progressive zoom (legacy behavior)
       if (matched.size > 0 && cameraControlsRef.current) {
         let cx = 0,
           cy = 0,
@@ -324,23 +375,14 @@ export const GlobeConstellation = forwardRef<
           cx /= count;
           cy /= count;
           cz /= count;
-
-          // Zoom level scales with threshold — tighter threshold = closer camera
-          // threshold 160 → camDist 13 (barely zoomed), threshold 35 → camDist 6 (very close)
           const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
-
-          // Slow rotation as we zoom in — creates "locking on" feeling
-          // Full speed at zoomFactor 0, near-stopped at zoomFactor 1
           rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * (1 - zoomFactor * 0.85);
-          const camDist = 13 - zoomFactor * 7; // 13 → 6
-          const lookWeight = 0.3 + zoomFactor * 0.4; // 0.3 → 0.7 (look more directly at cluster)
-
+          const camDist = 13 - zoomFactor * 7;
+          const lookWeight = 0.3 + zoomFactor * 0.4;
           const dir = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1;
           const nx = cx / dir;
           const ny = cy / dir;
           const nz = cz / dir;
-
-          // Smooth camera convergence (false = animate, not instant jump)
           cameraControlsRef.current.setLookAt(
             nx * camDist * lookWeight,
             ny * camDist * lookWeight + (3 - zoomFactor * 1.5),
@@ -446,6 +488,9 @@ export const GlobeConstellation = forwardRef<
       pointerDownTimeRef.current = Date.now();
       isDraggingRef.current = false;
 
+      // User interaction always breaks out of any animation lock
+      setSceneState((prev) => (prev.animating ? { ...prev, animating: false } : prev));
+
       // Pause auto-rotation while user is interacting
       rotationSpeedRef.current = 0;
       if (idleTimerRef.current) {
@@ -484,6 +529,7 @@ export const GlobeConstellation = forwardRef<
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(() => {
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
+      setSceneState((prev) => (prev.animating ? { ...prev, animating: false } : prev));
     }, 5000);
   }, [interactive]);
 
@@ -545,21 +591,13 @@ export const GlobeConstellation = forwardRef<
             breathing={breathing && !sceneState.dimmed}
             urgency={urgency}
           >
-            <InnerGlow />
+            {/* Subtle point light at center (no visible sphere) */}
+            <pointLight color="#4466aa" intensity={0.8} distance={10} decay={2} />
             <GlobeAtmosphere
               radius={8.1}
               color="#4488cc"
               warmColor="#cc8844"
-              intensity={0.8}
-              matchProgress={
-                sceneState.scanProgress > 0 ? sceneState.scanProgress : healthProgress * 0.5
-              }
-            />
-            <GlobeAtmosphere
-              radius={8.5}
-              color="#2244aa"
-              warmColor="#aa6622"
-              intensity={0.3}
+              intensity={0.4}
               matchProgress={
                 sceneState.scanProgress > 0 ? sceneState.scanProgress : healthProgress * 0.3
               }
@@ -611,15 +649,7 @@ export const GlobeConstellation = forwardRef<
             <FlyToParticles target={sceneState.flyToTarget} active={sceneState.flyToActive} />
           )}
 
-          {breathing && quality !== 'low' && !sceneState.dimmed && (
-            <HeartbeatPulse
-              urgency={urgency}
-              healthColor={new THREE.Color('#4488cc').lerp(
-                new THREE.Color('#cc8844'),
-                healthProgress * 0.5,
-              )}
-            />
-          )}
+          {/* HeartbeatPulse removed — the expanding ring was visually distracting */}
 
           {quality !== 'low' && (
             <EffectComposer>
@@ -1226,24 +1256,8 @@ function AmbientStarfield({ count }: { count: number }) {
 
 // --- Subtle inner glow (planet core visible through translucent surface) ---
 
-function InnerGlow() {
-  return (
-    <group>
-      <mesh>
-        <sphereGeometry args={[1.5, 16, 16]} />
-        <meshBasicMaterial
-          color="#334466"
-          transparent
-          opacity={0.08}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-      <pointLight color="#4466aa" intensity={1.5} distance={10} decay={2} />
-    </group>
-  );
-}
+// InnerGlow removed — the center opaque sphere was visually distracting.
+// Point light preserved inline in the scene tree.
 
 // --- Network pulse particles (light flowing along edges) ---
 
@@ -1633,78 +1647,7 @@ function TiltedGlobeGroup({
   return <group ref={groupRef}>{children}</group>;
 }
 
-// --- Heartbeat pulse ring (expanding ripple from globe center) ---
-
-const HEARTBEAT_VERT = /* glsl */ `
-varying float vAlpha;
-uniform float uProgress;
-uniform float uRadius;
-
-void main() {
-  // Ring expands outward from globe center
-  vec3 pos = position * (uRadius + uProgress * 4.0);
-  vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-  gl_Position = projectionMatrix * mvPosition;
-  // Fade out as ring expands
-  vAlpha = (1.0 - uProgress) * 0.4;
-}
-`;
-
-const HEARTBEAT_FRAG = /* glsl */ `
-varying float vAlpha;
-uniform vec3 uColor;
-
-void main() {
-  gl_FragColor = vec4(uColor, vAlpha);
-}
-`;
-
-function HeartbeatPulse({
-  urgency = 30,
-  healthColor,
-}: {
-  urgency?: number;
-  healthColor: THREE.Color;
-}) {
-  const matRef = useRef<THREE.ShaderMaterial>(null);
-  const progressRef = useRef(0);
-
-  const uniforms = useMemo(
-    () => ({
-      uProgress: { value: 0 },
-      uRadius: { value: 8.0 },
-      uColor: { value: healthColor },
-    }),
-    [healthColor],
-  );
-
-  useFrame((state, delta) => {
-    if (!matRef.current) return;
-    const bpm = 8 + (urgency / 100) * 8;
-    const period = 60 / bpm;
-    progressRef.current = (progressRef.current + delta) % period;
-    const t = progressRef.current / period;
-    matRef.current.uniforms.uProgress.value = t;
-    matRef.current.uniforms.uColor.value = healthColor;
-  });
-
-  return (
-    <mesh rotation-x={Math.PI / 2}>
-      <ringGeometry args={[0.98, 1.0, 64]} />
-      <shaderMaterial
-        ref={matRef}
-        vertexShader={HEARTBEAT_VERT}
-        fragmentShader={HEARTBEAT_FRAG}
-        uniforms={uniforms}
-        transparent
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        toneMapped={false}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
-}
+// HeartbeatPulse and InnerGlow removed — visually distracting
 
 // --- Helpers ---
 

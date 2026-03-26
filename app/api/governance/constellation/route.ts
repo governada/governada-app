@@ -67,6 +67,12 @@ export const GET = withRouteHandler(async () => {
       .eq('status', 'authorized'),
   ]);
 
+  // CC rationale name fallback (separate query to avoid TS Promise.all tuple limit)
+  const ccRationaleNamesResult = await supabase
+    .from('cc_rationales')
+    .select('cc_hot_id, author_name')
+    .not('author_name', 'is', null);
+
   const dreps = drepsResult.data || [];
   const votes = votesResult.data || [];
   const rationales = rationalesResult.data || [];
@@ -123,6 +129,14 @@ export const GET = withRouteHandler(async () => {
   const poolsData = spoVotesResult.data || [];
   const ccMembers = ccVotesResult.data || [];
 
+  // Build CC rationale name fallback map (first name found per cc_hot_id)
+  const ccNameMap = new Map<string, string>();
+  for (const r of ccRationaleNamesResult.data ?? []) {
+    if (r.author_name && !ccNameMap.has(r.cc_hot_id as string)) {
+      ccNameMap.set(r.cc_hot_id as string, r.author_name as string);
+    }
+  }
+
   const maxPoolVotes = Math.max(...poolsData.map((p) => p.vote_count || 0), 1);
   const spoNodes: ConstellationApiData['nodes'] = poolsData.map((p) => {
     const aligns = {
@@ -153,7 +167,7 @@ export const GET = withRouteHandler(async () => {
   const ccNodes: ConstellationApiData['nodes'] = ccMembers.map((m) => ({
     id: (m.cc_hot_id as string).slice(0, 16),
     fullId: m.cc_hot_id as string,
-    name: (m.author_name as string) || null,
+    name: (m.author_name as string) || ccNameMap.get(m.cc_hot_id as string) || null,
     power: 0.8,
     score: (m.fidelity_score as number) ?? 75,
     dominant: 'transparency' as AlignmentDimension,

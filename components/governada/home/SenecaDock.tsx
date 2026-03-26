@@ -103,7 +103,7 @@ export function SenecaDock({ onStartMatch, narrativePulse, activeProposals }: Se
       initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.6, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed bottom-4 left-4 right-4 sm:right-auto sm:left-4 lg:left-16 sm:w-[22rem] z-40 pointer-events-auto"
+      className="fixed bottom-4 left-4 right-4 sm:right-auto sm:left-4 lg:left-6 sm:w-[22rem] z-40 pointer-events-auto"
     >
       <div className="rounded-2xl border border-white/[0.08] bg-black/75 backdrop-blur-2xl shadow-2xl overflow-hidden">
         {/* Sigil + warm content */}

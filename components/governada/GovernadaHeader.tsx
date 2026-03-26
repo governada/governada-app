@@ -25,16 +25,20 @@ import {
   UserCog,
   Wallet,
   ChevronDown,
+  Briefcase,
+  Landmark,
+  CircleUser,
+  Link2,
 } from 'lucide-react';
 import { useQuickConnect } from '@/hooks/useQuickConnect';
-import { GovernadaLogo } from '@/components/ui/GovernadaLogo';
+import { GovernadaWordmark } from '@/components/ui/GovernadaWordmark';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
+import { getCurrentSection } from '@/lib/nav/config';
 
 import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPromptModal } from './DepthPromptModal';
 import { EpochStrip } from './EpochStrip';
 import { GovernancePulse } from './GovernancePulse';
-import { HeaderBreadcrumbs } from './HeaderBreadcrumbs';
 import { cn } from '@/lib/utils';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -566,6 +570,7 @@ export function GovernadaHeader() {
   // On the anonymous homepage, the globe fills the viewport — keep header always transparent
   const isAnonymousHomepage = pathname === '/' && segment === 'anonymous';
   const headerTransparent = isAnonymousHomepage || !scrolled;
+  const currentSection = getCurrentSection(pathname);
 
   // Mobile: scroll-direction-aware show/hide (X/Twitter pattern)
   const scrollDirection = useScrollDirection(10);
@@ -579,23 +584,46 @@ export function GovernadaHeader() {
         mobileHidden ? '-translate-y-full md:translate-y-0' : 'translate-y-0',
         headerTransparent
           ? 'bg-transparent'
-          : 'border-b border-border/20 bg-background/60 backdrop-blur-xl',
+          : 'border-b border-border/10 bg-background/40 backdrop-blur-xl',
       )}
     >
-      <div className="flex items-center justify-between h-10 px-4 lg:pl-14 lg:pr-4 pt-[env(safe-area-inset-top)] md:pt-0">
-        {/* Logo (mobile only) + breadcrumbs */}
-        <div className="flex items-center min-w-0">
-          <Link
-            href="/"
-            className={cn(
-              'lg:hidden flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0',
-              headerTransparent && 'nav-text-shadow',
+      <div className="flex items-center justify-between h-10 px-4 lg:px-5 pt-[env(safe-area-inset-top)] md:pt-0">
+        {/* Wordmark + navigation pills */}
+        <div className="flex items-center gap-1 sm:gap-3 min-w-0">
+          <GovernadaWordmark shadow={headerTransparent} />
+          {/* Two-world navigation: Workspace (authenticated) + Governance (always) */}
+          <nav className="hidden sm:flex items-center gap-0.5 ml-1" aria-label="Main navigation">
+            {segment !== 'anonymous' && (
+              <Link
+                href="/workspace"
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium transition-colors',
+                  currentSection === 'workspace'
+                    ? 'text-foreground bg-primary/10'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                  headerTransparent && 'nav-text-shadow',
+                )}
+                aria-current={currentSection === 'workspace' ? 'page' : undefined}
+              >
+                <Briefcase className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Workspace</span>
+              </Link>
             )}
-          >
-            <GovernadaLogo size={22} />
-            governada
-          </Link>
-          <HeaderBreadcrumbs />
+            <Link
+              href="/governance"
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium transition-colors',
+                currentSection === 'governance'
+                  ? 'text-foreground bg-primary/10'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                headerTransparent && 'nav-text-shadow',
+              )}
+              aria-current={currentSection === 'governance' ? 'page' : undefined}
+            >
+              <Landmark className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Governance</span>
+            </Link>
+          </nav>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -658,7 +686,37 @@ export function GovernadaHeader() {
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-52">
+                {/* You world links */}
+                <DropdownMenuItem asChild>
+                  <Link href="/you/identity">
+                    <CircleUser className="h-4 w-4" />
+                    {t('My Identity')}
+                  </Link>
+                </DropdownMenuItem>
+                {(segment === 'drep' || (realSegment === 'drep' && hasOverride)) && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/you/drep">
+                      <Users className="h-4 w-4" />
+                      {t('DRep Scorecard')}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {(segment === 'spo' || (realSegment === 'spo' && hasOverride)) && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/you/spo">
+                      <ShieldCheck className="h-4 w-4" />
+                      {t('Pool Scorecard')}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link href="/you/delegation">
+                    <Link2 className="h-4 w-4" />
+                    {t('Delegation')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => router.push('/you/settings')}>
                   <User className="h-4 w-4" />
                   {t('Profile & Settings')}

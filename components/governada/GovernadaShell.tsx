@@ -8,7 +8,6 @@ import { SegmentProvider, useSegment } from '@/components/providers/SegmentProvi
 import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
-import { NavigationRail } from './NavigationRail';
 import { EdgeSwipeMenu } from './EdgeSwipeMenu';
 import { ShortcutProvider } from './ShortcutProvider';
 import { ShortcutOverlay } from './ShortcutOverlay';
@@ -120,7 +119,7 @@ function BackgroundGlobe({
   if (isHomepage && segment === 'anonymous') return null;
   return (
     <div
-      className="force-dark fixed inset-0 pointer-events-none z-0 constellation-globe-container lg:left-12"
+      className="force-dark fixed inset-0 pointer-events-none z-0 constellation-globe-container"
       aria-hidden="true"
       style={
         governanceTint
@@ -265,8 +264,6 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           <SpotlightProvider>
             <DiscoveryHub currentPage={derivePageContext(pathname)}>
               {!isStudioMode && <GovernadaHeader />}
-              {!isStudioMode && <NavigationRail />}
-
               {/* Global constellation globe — subtle glassmorphic background */}
               {!isStudioMode && (
                 <BackgroundGlobe
@@ -276,11 +273,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               )}
               <main
                 id="main-content"
-                className={cn(
-                  'relative z-0 min-h-screen',
-                  isStudioMode ? '' : 'pb-16 lg:pb-0',
-                  isStudioMode ? '' : 'lg:pl-12',
-                )}
+                className={cn('relative z-0 min-h-screen', isStudioMode ? '' : 'pb-16 lg:pb-0')}
                 tabIndex={-1}
               >
                 {isStudioMode ? children : <SectionTransition>{children}</SectionTransition>}
@@ -293,7 +286,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           {showSeneca && <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />}
 
           {!isStudioMode && (
-            <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center lg:pl-12">
+            <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">
               <p className="text-xs text-muted-foreground/70">
                 {t(
                   'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',

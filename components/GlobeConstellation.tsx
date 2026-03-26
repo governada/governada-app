@@ -16,6 +16,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
 import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
+import { CCLattice } from '@/components/hub/three/CCLattice';
 import type {
   ConstellationApiData,
   FindMeTarget,
@@ -27,7 +28,7 @@ export type { ConstellationRef } from '@/components/GovernanceConstellation';
 
 const DREP_COLOR = '#2dd4bf';
 const SPO_COLOR = '#a78bfa'; // purple — visually distinct from teal DReps
-const CC_COLOR = '#fbbf24';
+// CC_COLOR moved to CCLattice.tsx
 const USER_COLOR = '#f0e6d0'; // warm white-gold — personal, clearly "you"
 const PROPOSAL_COLOR = '#e8dfd0'; // warm white — governance-neutral
 const MATCH_COLOR = '#f59e0b'; // Warm amber — distinct from teal, purple, gold
@@ -703,6 +704,13 @@ export const GlobeConstellation = forwardRef<
             {quality !== 'low' && (
               <NetworkPulses edges={sceneState.edges} dimmed={sceneState.dimmed} />
             )}
+
+            {/* CC Constitutional Lattice — golden arcs replacing point nodes */}
+            <CCLattice
+              ccNodes={sceneState.nodes.filter((n) => n.nodeType === 'cc')}
+              constitutionalActive={false}
+              dimmed={sceneState.dimmed}
+            />
           </TiltedGlobeGroup>
 
           {quality !== 'low' && (
@@ -885,20 +893,7 @@ void main() {
 }
 `;
 
-// Soft wide-glow shader for CC orbital nodes (warm diffused presence)
-const CC_FRAG = /* glsl */ `
-varying vec3 vColor;
-varying float vAlpha;
-
-void main() {
-  float dist = length(gl_PointCoord - vec2(0.5));
-  if (dist > 0.5) discard;
-  float glow = 1.0 - smoothstep(0.0, 0.5, dist);
-  float core = 1.0 - smoothstep(0.0, 0.2, dist);
-  vec3 col = vColor * (1.0 + core * 1.5);
-  gl_FragColor = vec4(col, glow * vAlpha);
-}
-`;
+// CC_FRAG removed — CC nodes now rendered via CCLattice (golden arcs) instead of point sprites
 
 // --- Scene sub-components ---
 
@@ -966,7 +961,7 @@ function ConstellationNodes({
 
   const getDrepColor = useCallback(() => DREP_COLOR, []);
   const getSpoColor = useCallback(() => SPO_COLOR, []);
-  const getCcColor = useCallback(() => CC_COLOR, []);
+  // getCcColor removed — CC nodes rendered via CCLattice
   const getUserColor = useCallback(() => USER_COLOR, []);
   const getProposalColor = useCallback(() => PROPOSAL_COLOR, []);
 
@@ -1006,23 +1001,7 @@ function ConstellationNodes({
           activityMap={activityMap}
         />
       )}
-      {groups.cc.length > 0 && (
-        <NodePoints
-          nodes={groups.cc}
-          highlightId={highlightId}
-          dimmed={dimmed}
-          pulseId={pulseId}
-          interactive={interactive}
-          onNodeClick={onNodeClick}
-          onNodeHover={onNodeHover}
-          getColor={getCcColor}
-          emissive={3.5}
-          fragmentShader={CC_FRAG}
-          matchedNodeIds={matchedNodeIds}
-          matchIntensities={matchIntensities}
-          activityMap={activityMap}
-        />
-      )}
+      {/* CC nodes rendered via CCLattice in the scene tree instead of point sprites */}
       {groups.user.length > 0 && (
         <NodePoints
           nodes={groups.user}

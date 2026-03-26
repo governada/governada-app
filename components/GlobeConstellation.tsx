@@ -63,6 +63,8 @@ interface GlobeConstellationProps {
     drepNodeId: string;
     driftScore: number;
   } | null;
+  /** When true, camera automatically flies to user node after layout computes */
+  flyToUserOnReady?: boolean;
 }
 
 interface SceneState {
@@ -106,12 +108,14 @@ export const GlobeConstellation = forwardRef<
     userNode,
     proposalNodes,
     delegationBond,
+    flyToUserOnReady = false,
   },
   ref,
 ) {
   const cameraControlsRef = useRef<CameraControls>(null);
   const rotationAngleRef = useRef(0);
   const rotationSpeedRef = useRef(DEFAULT_ROTATION_SPEED);
+  const userFlyInDone = useRef(false);
   const [ready, setReady] = useState(false);
 
   // Effective camera position/target — allow overrides from props
@@ -512,7 +516,22 @@ export const GlobeConstellation = forwardRef<
     }));
     setReady(true);
     onReady?.();
-  }, [apiData, onReady, userNode, proposalNodes]);
+
+    // Auto fly-in to user node (bypasses ref chain — uses cameraControls directly)
+    if (flyToUserOnReady && userNode && !userFlyInDone.current) {
+      userFlyInDone.current = true;
+      setTimeout(() => {
+        const controls = cameraControlsRef.current;
+        if (!controls) return;
+        const node = layout.nodeMap.get(userNode.id);
+        if (!node) return;
+        const [x, y, z] = node.position;
+        // Camera positioned at 1.5x distance from node, looking at it
+        controls.setLookAt(x * 1.5, y * 1.5, z * 1.5 + 3, x, y, z, true);
+        setSceneState((prev) => ({ ...prev, highlightId: node.id }));
+      }, 1200);
+    }
+  }, [apiData, onReady, userNode, proposalNodes, flyToUserOnReady]);
 
   const dpr =
     quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);

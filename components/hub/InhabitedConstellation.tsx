@@ -25,7 +25,8 @@ const MobileConstellationView = dynamic(
  * InhabitedConstellation — The globe-centric authenticated homepage.
  *
  * Globe fills the viewport. User node placed at alignment position.
- * Seneca thread auto-opens with a streamed briefing once per day.
+ * Camera flies in to user node automatically (handled inside GlobeConstellation).
+ * Seneca auto-opens after the globe loads.
  */
 export function InhabitedConstellation() {
   const globeRef = useRef<ConstellationRef>(null);
@@ -33,7 +34,6 @@ export function InhabitedConstellation() {
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const prefersReducedMotion = useReducedMotion();
-  const flyInAttempted = useRef(false);
 
   // Detect mobile
   useEffect(() => {
@@ -75,58 +75,13 @@ export function InhabitedConstellation() {
     refetchOnWindowFocus: false,
   });
 
-  // --- Auto-open Seneca thread via CustomEvent (same path as ] keyboard shortcut) ---
+  // Auto-open Seneca thread 3s after mount
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Open Seneca via the event the useSenecaThread hook listens for
-      // This uses the same path as the ] keyboard shortcut — known to work
       window.dispatchEvent(new CustomEvent('toggleIntelligencePanel'));
     }, 3000);
-
     return () => clearTimeout(timer);
   }, []);
-
-  // --- Fly-in: retry until globe has the user node and flyToNode succeeds ---
-  const onGlobeReady = useCallback(() => {
-    // Globe layout computed — try fly-in after a beat
-    if (flyInAttempted.current) return;
-    attemptFlyIn();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const attemptFlyIn = useCallback(() => {
-    if (flyInAttempted.current || !userNode) return;
-
-    const tryFly = async (attempt: number) => {
-      if (flyInAttempted.current || attempt > 5) return;
-      const globe = globeRef.current;
-      if (!globe) {
-        // Globe ref not ready — retry
-        setTimeout(() => tryFly(attempt + 1), 500 * attempt);
-        return;
-      }
-      try {
-        const found = await globe.flyToNode(userNode.id);
-        if (found) {
-          flyInAttempted.current = true;
-          return;
-        }
-      } catch {
-        // flyToNode failed
-      }
-      // Node not found yet — retry with increasing delay
-      setTimeout(() => tryFly(attempt + 1), 500 * attempt);
-    };
-
-    setTimeout(() => tryFly(1), 1000);
-  }, [userNode]);
-
-  // Also attempt fly-in when userNode arrives (may be after onGlobeReady)
-  useEffect(() => {
-    if (!userNode || flyInAttempted.current) return;
-    const timer = setTimeout(() => attemptFlyIn(), 500);
-    return () => clearTimeout(timer);
-  }, [userNode, attemptFlyIn]);
 
   const handleNodeHover = useCallback((node: ConstellationNode3D | null) => {
     setHoveredNode(node);
@@ -164,13 +119,13 @@ export function InhabitedConstellation() {
           healthScore={narrativeData?.healthScore ?? 75}
           urgency={narrativeData?.urgency ?? 30}
           initialCameraPosition={[0, 3, 22]}
-          onReady={onGlobeReady}
           onNodeSelect={handleNodeClick}
           onNodeHover={handleNodeHover}
           onNodeHoverScreen={handleNodeHoverScreen}
           userNode={userNode}
           proposalNodes={proposalNodes}
           delegationBond={delegationBond}
+          flyToUserOnReady
         />
       </div>
       <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} />

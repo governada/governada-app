@@ -1,11 +1,11 @@
 /**
  * CCLattice — Constitutional Committee as a golden great-circle lattice.
  *
- * Replaces the 7 individual CC point nodes with interconnected golden arcs
- * that form a constitutional framework above the globe surface.
+ * Each CC member gets a proper great-circle arc on the sphere surface at CC_RADIUS.
+ * Arcs are tilted at different angles to create an interweaving lattice pattern.
+ * Adjacent members are connected by slerped cross-arcs.
  *
- * Performance: All materials are shared (not cloned). Opacity is updated
- * via direct material reference — no scene graph traversal per frame.
+ * Performance: Shared materials, O(1) per-frame opacity updates.
  */
 
 import { useMemo, useRef } from 'react';
@@ -15,7 +15,7 @@ import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 const CC_COLOR = new THREE.Color('#fbbf24');
 const CC_RADIUS = 10.5;
-const ARC_POINTS = 48; // reduced from 64 — still smooth, fewer vertices
+const ARC_POINTS = 48;
 const BASE_OPACITY = 0.15;
 const GLOW_OPACITY = 0.7;
 
@@ -25,29 +25,51 @@ interface CCLatticeProps {
   dimmed?: boolean;
 }
 
+/**
+ * Generate a proper great-circle arc on the sphere.
+ * Each member's arc is a partial great circle tilted at a unique inclination.
+ * The arc spans ~240° (2/3 of a full circle) for visual interest.
+ */
 function generateArcWaypoints(memberIndex: number, totalMembers: number): THREE.Vector3[] {
   const points: THREE.Vector3[] = [];
-  const phaseOffset = (memberIndex / totalMembers) * Math.PI * 2;
-  const tiltAngle = Math.PI / 6 + (memberIndex / totalMembers) * (Math.PI / 3);
+
+  // Each member gets a unique ascending node (rotation around Y)
+  // and a unique inclination (tilt from equatorial plane)
+  const ascendingNode = (memberIndex / totalMembers) * Math.PI * 2;
+  // Inclinations spread between 30° and 75° — all above equator emphasis
+  const inclination = Math.PI / 6 + (memberIndex / totalMembers) * (Math.PI / 3.5);
+
+  // Arc spans 240° of the great circle
+  const arcSpan = (Math.PI * 4) / 3;
+  const arcStart = -arcSpan / 2;
 
   for (let i = 0; i <= ARC_POINTS; i++) {
-    const t = (i / ARC_POINTS) * Math.PI * 1.5;
-    const baseTheta = phaseOffset + t;
-    const x = CC_RADIUS * Math.cos(baseTheta) * Math.cos(tiltAngle);
-    const y = CC_RADIUS * Math.sin(tiltAngle) * Math.cos(t * 0.5) + CC_RADIUS * 0.3;
-    const z = CC_RADIUS * Math.sin(baseTheta) * Math.cos(tiltAngle);
-    const len = Math.sqrt(x * x + y * y + z * z);
-    points.push(
-      new THREE.Vector3(
-        (x / len) * CC_RADIUS,
-        Math.abs((y / len) * CC_RADIUS),
-        (z / len) * CC_RADIUS,
-      ),
-    );
+    const t = arcStart + (i / ARC_POINTS) * arcSpan;
+
+    // Point on the great circle: start in the XZ plane, then apply inclination and rotation
+    const x0 = Math.cos(t);
+    const z0 = Math.sin(t);
+
+    // Apply inclination (rotate around X axis to tilt the orbit)
+    const x1 = x0;
+    const y1 = z0 * Math.sin(inclination);
+    const z1 = z0 * Math.cos(inclination);
+
+    // Apply ascending node rotation (rotate around Y axis)
+    const x2 = x1 * Math.cos(ascendingNode) + z1 * Math.sin(ascendingNode);
+    const y2 = y1;
+    const z2 = -x1 * Math.sin(ascendingNode) + z1 * Math.cos(ascendingNode);
+
+    // Push to upper hemisphere only (abs y) and scale to radius
+    points.push(new THREE.Vector3(x2 * CC_RADIUS, Math.abs(y2) * CC_RADIUS, z2 * CC_RADIUS));
   }
+
   return points;
 }
 
+/**
+ * Generate slerped arcs between adjacent CC member positions.
+ */
 function generateCrossArcs(ccNodes: ConstellationNode3D[]): THREE.Vector3[][] {
   const arcs: THREE.Vector3[][] = [];
   const n = ccNodes.length;
@@ -55,16 +77,21 @@ function generateCrossArcs(ccNodes: ConstellationNode3D[]): THREE.Vector3[][] {
 
   for (let i = 0; i < n; i++) {
     const next = (i + 1) % n;
-    const vecA = new THREE.Vector3(...ccNodes[i].position);
-    const vecB = new THREE.Vector3(...ccNodes[next].position);
+    const vecA = new THREE.Vector3(...ccNodes[i].position).normalize();
+    const vecB = new THREE.Vector3(...ccNodes[next].position).normalize();
+
     const points: THREE.Vector3[] = [];
-    const crossPoints = 24; // reduced from 32
-    for (let j = 0; j <= crossPoints; j++) {
-      const t = j / crossPoints;
-      const interp = new THREE.Vector3().lerpVectors(vecA, vecB, t);
-      interp.normalize().multiplyScalar(CC_RADIUS);
-      interp.y = Math.abs(interp.y) + 0.5;
-      interp.normalize().multiplyScalar(CC_RADIUS);
+    const steps = 20;
+    for (let j = 0; j <= steps; j++) {
+      const t = j / steps;
+      // Proper spherical interpolation (slerp)
+      const interp = new THREE.Vector3()
+        .copy(vecA)
+        .lerp(vecB, t)
+        .normalize()
+        .multiplyScalar(CC_RADIUS);
+      // Keep in upper hemisphere
+      interp.y = Math.abs(interp.y);
       points.push(interp);
     }
     arcs.push(points);
@@ -104,7 +131,7 @@ export function CCLattice({
     return { arcMaterial: arc, crossMaterial: cross, dotMaterial: dot };
   }, []);
 
-  // Build line objects using shared materials (no .clone())
+  // Build line objects using shared materials
   const arcObjects = useMemo(() => {
     if (ccNodes.length === 0) return { lines: [], crosses: [] };
 
@@ -124,13 +151,13 @@ export function CCLattice({
   }, [ccNodes, arcMaterial, crossMaterial]);
 
   // Shared sphere geometry for CC member dots
-  const dotGeo = useMemo(() => new THREE.SphereGeometry(0.15, 6, 6), []);
+  const dotGeo = useMemo(() => new THREE.SphereGeometry(0.12, 6, 6), []);
 
-  // Animate opacity via direct material reference — O(1) per frame, no traverse
+  // Animate opacity via direct material reference — O(1) per frame
   useFrame((_, delta) => {
     const targetOpacity = dimmed ? 0.05 : constitutionalActive ? GLOW_OPACITY : BASE_OPACITY;
     const current = opacityRef.current;
-    if (Math.abs(current - targetOpacity) < 0.001) return; // skip if already at target
+    if (Math.abs(current - targetOpacity) < 0.001) return;
 
     opacityRef.current = THREE.MathUtils.lerp(current, targetOpacity, delta * 3);
     arcMaterial.opacity = opacityRef.current;

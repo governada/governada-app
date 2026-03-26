@@ -39,6 +39,8 @@ import { AdminViewAsPicker } from './AdminViewAsPicker';
 import { DepthPromptModal } from './DepthPromptModal';
 import { EpochStrip } from './EpochStrip';
 import { GovernancePulse } from './GovernancePulse';
+import { HeaderSenecaInput } from './HeaderSenecaInput';
+import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
 import { cn } from '@/lib/utils';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -367,6 +369,9 @@ export function GovernadaHeader() {
   const hasDimensionOverrides = Object.values(dimensionOverrides).some((v) => v != null);
   const presetsBySegment = getPresetsBySegment();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
+  const intelligencePanel = useIntelligencePanel();
+  /** When user is in active Seneca conversation, fade nav pills to reduce distraction */
+  const senecaFocused = intelligencePanel.isOpen && intelligencePanel.mode === 'conversation';
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [pickerPreset, setPickerPreset] = useState<SegmentPreset | null>(null);
   // For dual-role 2-step picker: stash the first pick while the second picker is open
@@ -559,18 +564,29 @@ export function GovernadaHeader() {
     setSandboxActionStatus(null);
   }, [exitSandbox]);
 
-  const [scrolled, setScrolled] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
+    const onScroll = () => setScrollY(window.scrollY);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+  const scrolled = scrollY > 16;
+  /** Compact mode: wordmark shrinks, nav pills lose labels, epoch hides */
+  const headerCompact = scrollY >= 60;
 
   // On the anonymous homepage, the globe fills the viewport — keep header always transparent
   const isAnonymousHomepage = pathname === '/' && segment === 'anonymous';
   const headerTransparent = isAnonymousHomepage || !scrolled;
   const currentSection = getCurrentSection(pathname);
+
+  // Route-aware ambient tint for glassmorphic header
+  const ambientTint =
+    currentSection === 'workspace'
+      ? 'shadow-[inset_0_-1px_0_oklch(0.78_0.12_75/0.06)]'
+      : currentSection === 'governance'
+        ? 'shadow-[inset_0_-1px_0_oklch(0.72_0.12_192/0.06)]'
+        : '';
 
   // Mobile: scroll-direction-aware show/hide (X/Twitter pattern)
   const scrollDirection = useScrollDirection(10);
@@ -584,20 +600,33 @@ export function GovernadaHeader() {
         mobileHidden ? '-translate-y-full md:translate-y-0' : 'translate-y-0',
         headerTransparent
           ? 'bg-transparent'
-          : 'border-b border-border/10 bg-background/40 backdrop-blur-xl',
+          : cn(
+              'border-b border-border/10 backdrop-blur-xl',
+              headerCompact ? 'bg-background/50' : 'bg-background/40',
+              ambientTint,
+            ),
       )}
     >
       <div className="flex items-center justify-between h-10 px-4 lg:px-5 pt-[env(safe-area-inset-top)] md:pt-0">
         {/* Wordmark + navigation pills */}
         <div className="flex items-center gap-1 sm:gap-3 min-w-0">
-          <GovernadaWordmark shadow={headerTransparent} />
+          <GovernadaWordmark
+            size={headerCompact ? 'compact' : 'default'}
+            shadow={headerTransparent}
+          />
           {/* Two-world navigation: Workspace (authenticated) + Governance (always) */}
-          <nav className="hidden sm:flex items-center gap-0.5 ml-1" aria-label="Main navigation">
+          <nav
+            className={cn(
+              'hidden sm:flex items-center gap-0.5 ml-1 transition-opacity duration-300',
+              senecaFocused && 'opacity-30 hover:opacity-100',
+            )}
+            aria-label="Main navigation"
+          >
             {segment !== 'anonymous' && (
               <Link
                 href="/workspace"
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium transition-colors',
+                  'flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium transition-all',
                   currentSection === 'workspace'
                     ? 'text-foreground bg-primary/10'
                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
@@ -606,13 +635,13 @@ export function GovernadaHeader() {
                 aria-current={currentSection === 'workspace' ? 'page' : undefined}
               >
                 <Briefcase className="h-3.5 w-3.5" />
-                <span className="hidden md:inline">Workspace</span>
+                {!headerCompact && <span className="hidden md:inline">Workspace</span>}
               </Link>
             )}
             <Link
               href="/governance"
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium transition-colors',
+                'flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium transition-all',
                 currentSection === 'governance'
                   ? 'text-foreground bg-primary/10'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
@@ -621,21 +650,24 @@ export function GovernadaHeader() {
               aria-current={currentSection === 'governance' ? 'page' : undefined}
             >
               <Landmark className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">Governance</span>
+              {!headerCompact && <span className="hidden md:inline">Governance</span>}
             </Link>
           </nav>
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Epoch strip + governance pulse (together) */}
-          <EpochStrip />
+          {/* Inline Seneca prompt — desktop only, replaces separate search + compass */}
+          <HeaderSenecaInput compact={headerCompact} />
+
+          {/* Epoch strip + governance pulse (hidden in compact mode) */}
+          {!headerCompact && <EpochStrip />}
           <GovernancePulse />
 
-          {/* Search / command palette */}
+          {/* Search / command palette — mobile fallback (Cmd+K still works on desktop) */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground lg:hidden"
             onClick={() =>
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
             }

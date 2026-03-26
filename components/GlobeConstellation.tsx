@@ -16,7 +16,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
 import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
-import { CCLattice } from '@/components/hub/three/CCLattice';
+import { CCCrownRing } from '@/components/hub/three/CCCrownRing';
 import type {
   ConstellationApiData,
   FindMeTarget,
@@ -28,7 +28,7 @@ export type { ConstellationRef } from '@/components/GovernanceConstellation';
 
 const DREP_COLOR = '#2dd4bf';
 const SPO_COLOR = '#a78bfa'; // purple — visually distinct from teal DReps
-// CC_COLOR moved to CCLattice.tsx
+// CC_COLOR moved to CCCrownRing.tsx
 const USER_COLOR = '#f0e6d0'; // warm white-gold — personal, clearly "you"
 const PROPOSAL_COLOR = '#e8dfd0'; // warm white — governance-neutral
 const MATCH_COLOR = '#f59e0b'; // Warm amber — distinct from teal, purple, gold
@@ -705,11 +705,29 @@ export const GlobeConstellation = forwardRef<
               <NetworkPulses edges={sceneState.edges} dimmed={sceneState.dimmed} />
             )}
 
-            {/* CC Constitutional Lattice — golden arcs replacing point nodes */}
-            <CCLattice
+            {/* CC Crown Ring — golden halo with hexagonal medallions */}
+            <CCCrownRing
               ccNodes={sceneState.nodes.filter((n) => n.nodeType === 'cc')}
-              constitutionalActive={false}
               dimmed={sceneState.dimmed}
+              onNodeClick={
+                interactive
+                  ? (node) => {
+                      if (isDraggingRef.current) return;
+                      flyToNodeImpl(node.id);
+                    }
+                  : undefined
+              }
+              onNodeHover={
+                interactive
+                  ? (node) => {
+                      onNodeHoverRef.current?.(node);
+                      onNodeHoverScreenRef.current?.(
+                        node,
+                        node ? { ...mouseScreenRef.current } : null,
+                      );
+                    }
+                  : undefined
+              }
             />
           </TiltedGlobeGroup>
 
@@ -893,7 +911,7 @@ void main() {
 }
 `;
 
-// CC_FRAG removed — CC nodes now rendered via CCLattice (golden arcs) instead of point sprites
+// CC_FRAG removed — CC nodes now rendered via CCCrownRing (golden crown) instead of point sprites
 
 // --- Scene sub-components ---
 
@@ -961,7 +979,7 @@ function ConstellationNodes({
 
   const getDrepColor = useCallback(() => DREP_COLOR, []);
   const getSpoColor = useCallback(() => SPO_COLOR, []);
-  // getCcColor removed — CC nodes rendered via CCLattice
+  // getCcColor removed — CC nodes rendered via CCCrownRing
   const getUserColor = useCallback(() => USER_COLOR, []);
   const getProposalColor = useCallback(() => PROPOSAL_COLOR, []);
 
@@ -1001,7 +1019,7 @@ function ConstellationNodes({
           activityMap={activityMap}
         />
       )}
-      {/* CC nodes rendered via CCLattice in the scene tree instead of point sprites */}
+      {/* CC nodes rendered via CCCrownRing in the scene tree instead of point sprites */}
       {groups.user.length > 0 && (
         <NodePoints
           nodes={groups.user}

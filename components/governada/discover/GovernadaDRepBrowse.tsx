@@ -164,10 +164,11 @@ interface FilterState {
   alignment: string;
 }
 
+// Show all registered DReps by default — not just epoch-active ones
 const DEFAULT_FILTERS: FilterState = {
   search: '',
   tier: 'All',
-  activeOnly: true,
+  activeOnly: false,
   alignment: 'all',
 };
 

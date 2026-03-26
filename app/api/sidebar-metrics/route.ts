@@ -77,7 +77,10 @@ export const GET = withRouteHandler(async (request: NextRequest) => {
       .is('dropped_epoch', null)
       .is('expired_epoch', null),
     supabase.from('proposals').select('tx_hash', { count: 'exact', head: true }),
-    supabase.from('dreps').select('id', { count: 'exact', head: true }),
+    supabase
+      .from('dreps')
+      .select('id', { count: 'exact', head: true })
+      .gt('info->>votingPower', '0'),
     supabase.from('pools').select('pool_id', { count: 'exact', head: true }).gt('vote_count', 0),
     supabase
       .from('ghi_snapshots')

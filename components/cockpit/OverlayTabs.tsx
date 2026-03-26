@@ -17,6 +17,7 @@ import { Zap, Network, ScrollText, Globe } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCockpitStore } from '@/stores/cockpitStore';
+import { useGovernadaSound } from '@/hooks/useGovernadaSound';
 import { OVERLAY_CONFIGS, OVERLAY_ORDER, SHORTCUT_TO_OVERLAY } from '@/lib/cockpit/overlayConfigs';
 import type { CockpitOverlay } from '@/lib/cockpit/types';
 
@@ -49,6 +50,7 @@ export function OverlayTabs({ bootDelay = 2000 }: OverlayTabsProps) {
   const bootPhase = useCockpitStore((s) => s.bootPhase);
   const setOverlay = useCockpitStore((s) => s.setOverlay);
   const prefersReducedMotion = useReducedMotion();
+  const { playWhoosh } = useGovernadaSound();
 
   // -------------------------------------------------------------------------
   // Keyboard shortcuts (1-4)
@@ -67,9 +69,10 @@ export function OverlayTabs({ bootDelay = 2000 }: OverlayTabsProps) {
       if (overlay) {
         e.preventDefault();
         setOverlay(overlay);
+        playWhoosh();
       }
     },
-    [setOverlay],
+    [setOverlay, playWhoosh],
   );
 
   useEffect(() => {
@@ -133,7 +136,10 @@ export function OverlayTabs({ bootDelay = 2000 }: OverlayTabsProps) {
                 shortcutKey={config.shortcutKey}
                 Icon={Icon}
                 isActive={isActive}
-                onClick={() => setOverlay(overlay)}
+                onClick={() => {
+                  setOverlay(overlay);
+                  playWhoosh();
+                }}
                 prefersReducedMotion={!!prefersReducedMotion}
               />
             );

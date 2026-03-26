@@ -100,6 +100,7 @@ export function useSenecaStrip(): SenecaStripState {
   const bootPhase = useCockpitStore((s) => s.bootPhase);
   const hoveredNodeId = useCockpitStore((s) => s.hoveredNodeId);
   const senecaMode = useCockpitStore((s) => s.senecaMode);
+  const temporalEpoch = useCockpitStore((s) => s.temporalEpoch);
   const { segment } = useSegment();
   const { epoch, day } = useEpochContext();
   const { data: actionData } = useActionQueue();
@@ -241,17 +242,41 @@ export function useSenecaStrip(): SenecaStripState {
       };
     }
 
-    // Hover-reactive mode
+    // Temporal scrubbing mode — acknowledge historical view
+    if (temporalEpoch !== null) {
+      return {
+        mode: 'rotation' as SenecaStripMode,
+        text: `Viewing Epoch ${temporalEpoch}. Scrub to explore governance history.`,
+        entityIds: [],
+      };
+    }
+
+    // Hover-reactive mode — show entity-contextual text
     if (hoveredNodeId) {
+      let hoverText: string;
+      if (hoveredNodeId.startsWith('proposal-')) {
+        hoverText = `Proposal in focus. Review alignment with your governance philosophy.`;
+      } else if (hoveredNodeId.startsWith('pool-') || hoveredNodeId.startsWith('pool1')) {
+        hoverText = `Stake pool governance profile. Check their voting record and delegation trends.`;
+      } else if (hoveredNodeId.startsWith('cc-')) {
+        hoverText = `Constitutional Committee member. Review their constitutional reasoning patterns.`;
+      } else {
+        // DRep or unknown
+        const shortId =
+          hoveredNodeId.length > 16
+            ? hoveredNodeId.slice(0, 8) + '...' + hoveredNodeId.slice(-6)
+            : hoveredNodeId;
+        hoverText = `DRep ${shortId}. Explore alignment, voting record, and delegation stats.`;
+      }
       return {
         mode: 'hover',
-        text: `Viewing node: ${hoveredNodeId}`,
+        text: hoverText,
         entityIds: [hoveredNodeId],
       };
     }
 
-    // Dead-time discovery mode (no urgent items)
-    if (isDeadTime && insights.length === 0) {
+    // Dead-time discovery mode — activates when no urgent/high items
+    if (isDeadTime) {
       const discoveryIndex =
         Math.floor(Date.now() / ROTATION_INTERVAL_MS) % DISCOVERY_PROMPTS.length;
       return {
@@ -277,7 +302,7 @@ export function useSenecaStrip(): SenecaStripState {
       text: 'Governance intelligence active. Monitoring the Cardano network.',
       entityIds: [],
     };
-  }, [bootPhase, hoveredNodeId, isDeadTime, insights, rotationIndex, bootNarration]);
+  }, [bootPhase, hoveredNodeId, isDeadTime, insights, rotationIndex, bootNarration, temporalEpoch]);
 
   const currentState = getState();
 

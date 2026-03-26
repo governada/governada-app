@@ -111,8 +111,7 @@ export async function GET() {
         },
       },
     );
-  } catch (error) {
-    console.error('[cockpit/network-edges] Error:', error);
+  } catch {
     return NextResponse.json({ edges: [] }, { status: 200 });
   }
 }

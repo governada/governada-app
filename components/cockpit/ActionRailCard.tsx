@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Check } from 'lucide-react';
 import { useCockpitStore } from '@/stores/cockpitStore';
+import { useGovernadaSound } from '@/hooks/useGovernadaSound';
 import { cn } from '@/lib/utils';
 import type { ActionRailItem } from '@/lib/cockpit/types';
 
@@ -32,6 +33,7 @@ interface ActionRailCardProps {
 export function ActionRailCard({ item, index, isCompleting = false }: ActionRailCardProps) {
   const router = useRouter();
   const setHoveredNode = useCockpitStore((s) => s.setHoveredNode);
+  const { playClick } = useGovernadaSound();
 
   const handleMouseEnter = useCallback(() => {
     if (item.globeNodeId) {
@@ -50,8 +52,9 @@ export function ActionRailCard({ item, index, isCompleting = false }: ActionRail
   }, [setHoveredNode]);
 
   const handleClick = useCallback(() => {
+    playClick();
     router.push(item.href);
-  }, [router, item.href]);
+  }, [router, item.href, playClick]);
 
   return (
     <AnimatePresence mode="popLayout">
@@ -73,6 +76,7 @@ export function ActionRailCard({ item, index, isCompleting = false }: ActionRail
           onClick={handleClick}
           role="button"
           tabIndex={0}
+          aria-label={`${item.priority} priority: ${item.title}. ${item.actionLabel}`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();

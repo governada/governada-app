@@ -75,14 +75,24 @@ function getProfileHref(node: ConstellationNode3D): string {
 // Simulated viewer count — stable per node.id
 // ---------------------------------------------------------------------------
 
+/** Deterministic hash from string — stable viewer count per node ID */
+function stableHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
 function useSimulatedViewers(node: ConstellationNode3D | null): number | null {
   return useMemo(() => {
     if (!node) return null;
+    const h = stableHash(node.id);
     if (node.nodeType === 'proposal') {
-      return Math.floor(Math.random() * 100) + 20;
+      return (h % 80) + 20; // 20-99 viewers, stable per proposal
     }
     if (node.nodeType === 'drep' && node.score > 60) {
-      return Math.floor(Math.random() * 50) + 5;
+      return (h % 45) + 5; // 5-49 viewers, stable per DRep
     }
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps

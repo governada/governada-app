@@ -8,12 +8,13 @@
  * ActionRail, OverlayTabs — all reactive via cockpitStore.
  */
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { useReducedMotion } from 'framer-motion';
 import { GlobeTooltip } from '@/components/governada/GlobeTooltip';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
+import { useGovernadaSound } from '@/hooks/useGovernadaSound';
 import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
 import { useConstellationProposals } from '@/hooks/useConstellationProposals';
 import { useCockpitStore } from '@/stores/cockpitStore';
@@ -48,37 +49,48 @@ export function CockpitHomePage() {
 
   // Cockpit store
   const bootPhase = useCockpitStore((s) => s.bootPhase);
+  const activeOverlay = useCockpitStore((s) => s.activeOverlay);
   const setBootPhase = useCockpitStore((s) => s.setBootPhase);
   const setDensityLevel = useCockpitStore((s) => s.setDensityLevel);
   const setStoreHoveredNode = useCockpitStore((s) => s.setHoveredNode);
   const markNodeVisited = useCockpitStore((s) => s.markNodeVisited);
 
-  // Track completed action node IDs for globe green flash
+  // Action queue — allItems for completion mapping, items for display
   const actionCompletions = useCockpitStore((s) => s.actionCompletions);
-  const { items: actionItems } = useCockpitActions();
+  const { allItems, urgentCount: realUrgentCount } = useCockpitActions();
   const [completedGlobeNodeIds, setCompletedGlobeNodeIds] = useState<Set<string>>(new Set());
 
-  // When actionCompletions includes 'animating' items, map them to globe node IDs
+  // SV-1: Compute urgentNodeIds from action items for globe coloring
+  const urgentNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of allItems) {
+      if (item.globeNodeId && (item.priority === 'urgent' || item.priority === 'high')) {
+        ids.add(item.globeNodeId);
+      }
+    }
+    return ids.size > 0 ? ids : undefined;
+  }, [allItems]);
+
+  // SV-5: Map completed actions to globe node IDs using allItems (not filtered items)
   useEffect(() => {
     const animatingIds = Object.entries(actionCompletions)
       .filter(([, status]) => status === 'animating')
       .map(([id]) => id);
     if (animatingIds.length === 0) {
       if (completedGlobeNodeIds.size > 0) {
-        // Clear after 2s to let green flash show
         const timer = setTimeout(() => setCompletedGlobeNodeIds(new Set()), 2000);
         return () => clearTimeout(timer);
       }
       return;
     }
-    // Find the globe node IDs for completed actions
     const nodeIds = new Set<string>();
     for (const id of animatingIds) {
-      const item = actionItems.find((i) => i.id === id);
+      // Search allItems (not filtered items) to find globe node ID
+      const item = allItems.find((i) => i.id === id);
       if (item?.globeNodeId) nodeIds.add(item.globeNodeId);
     }
     if (nodeIds.size > 0) setCompletedGlobeNodeIds(nodeIds);
-  }, [actionCompletions, actionItems, completedGlobeNodeIds.size]);
+  }, [actionCompletions, allItems, completedGlobeNodeIds.size]);
 
   // Detect mobile
   useEffect(() => {
@@ -136,12 +148,25 @@ export function CockpitHomePage() {
     staleTime: 2 * 60 * 1000,
   });
 
+  // SV-9: Use real urgentCount from action queue (not approximated from urgencyScore)
   useEffect(() => {
     if (!govState) return;
-    // Compute urgent count from action queue data — approximate from urgency score
-    const urgentCount = Math.round((govState.urgencyScore / 100) * 10);
-    setDensityLevel(computeDensityLevel(urgentCount, govState.temperatureScore));
-  }, [govState, setDensityLevel]);
+    setDensityLevel(computeDensityLevel(realUrgentCount, govState.temperatureScore));
+  }, [govState, realUrgentCount, setDensityLevel]);
+
+  // Sound — start ambient on boot completion, modulate by temperature
+  const { startAmbient, updateAmbientTemperature } = useGovernadaSound();
+  useEffect(() => {
+    if (bootPhase === 'ready') {
+      startAmbient(govState?.temperatureScore);
+    }
+  }, [bootPhase, startAmbient, govState?.temperatureScore]);
+
+  useEffect(() => {
+    if (govState?.temperatureScore != null) {
+      updateAmbientTemperature(govState.temperatureScore);
+    }
+  }, [govState?.temperatureScore, updateAmbientTemperature]);
 
   // Boot sequence
   useEffect(() => {
@@ -276,6 +301,8 @@ export function CockpitHomePage() {
           userNode={userNode}
           proposalNodes={proposalNodes}
           delegationBond={delegationBond}
+          overlayColorMode={activeOverlay}
+          urgentNodeIds={urgentNodeIds}
           completedNodeIds={completedGlobeNodeIds.size > 0 ? completedGlobeNodeIds : undefined}
         />
       </div>

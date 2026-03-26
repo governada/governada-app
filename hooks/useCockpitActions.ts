@@ -57,6 +57,7 @@ function mapToRailItem(item: ActionItem): ActionRailItem {
  */
 export function useCockpitActions(): {
   items: ActionRailItem[];
+  allItems: ActionRailItem[];
   isLoading: boolean;
   urgentCount: number;
 } {
@@ -131,5 +132,5 @@ export function useCockpitActions(): {
 
   const urgentCount = allItems.filter((i) => i.priority === 'urgent').length;
 
-  return { items, isLoading, urgentCount };
+  return { items, allItems, isLoading, urgentCount };
 }

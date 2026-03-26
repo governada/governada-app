@@ -16,6 +16,21 @@ interface HudData {
   isLoading: boolean;
 }
 
+// Same constants as lib/koios.ts — kept here to avoid importing server-only module
+const SHELLEY_GENESIS_TIMESTAMP = 1596491091;
+const EPOCH_LENGTH_SECONDS = 432000; // 5 days
+const SHELLEY_BASE_EPOCH = 208;
+
+function computeEpochInfo(): { epochNumber: number; epochProgress: number } {
+  const now = Math.floor(Date.now() / 1000);
+  const epochNumber =
+    Math.floor((now - SHELLEY_GENESIS_TIMESTAMP) / EPOCH_LENGTH_SECONDS) + SHELLEY_BASE_EPOCH;
+  const epochStart =
+    (epochNumber - SHELLEY_BASE_EPOCH) * EPOCH_LENGTH_SECONDS + SHELLEY_GENESIS_TIMESTAMP;
+  const epochProgress = (now - epochStart) / EPOCH_LENGTH_SECONDS;
+  return { epochNumber, epochProgress: Math.max(0, Math.min(1, epochProgress)) };
+}
+
 function parseGhiScore(raw: string | undefined): number | null {
   if (!raw) return null;
   const match = raw.match(/([\d.]+)/);
@@ -69,8 +84,6 @@ export function useHudData(): HudData {
       return res.json() as Promise<{
         healthScore?: number;
         urgency?: number;
-        epochNumber?: number;
-        epochProgress?: number;
         [key: string]: unknown;
       }>;
     },
@@ -91,8 +104,8 @@ export function useHudData(): HudData {
   const urgencyRaw = narrative?.urgency ?? 0;
   const urgencyLevel = toUrgencyLevel(urgencyRaw);
 
-  const epochNumber = narrative?.epochNumber ?? 0;
-  const epochProgress = narrative?.epochProgress ?? 0.5;
+  // Compute epoch from Shelley genesis constants (same formula as server-side)
+  const { epochNumber, epochProgress } = computeEpochInfo();
 
   return {
     urgencyLevel,

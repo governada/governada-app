@@ -23,6 +23,9 @@ import { SenecaStrip } from './SenecaStrip';
 import { ActionRail } from './ActionRail';
 import { OverlayTabs } from './OverlayTabs';
 import { CockpitDetailPanel } from './CockpitDetailPanel';
+import { CockpitMobile } from './CockpitMobile';
+import { CockpitTextMode } from './CockpitTextMode';
+import { NetworkEdges } from './NetworkEdges';
 import { computeDensityLevel } from '@/lib/cockpit/types';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
@@ -234,9 +237,21 @@ export function CockpitHomePage() {
     globeRef.current?.resetCamera();
   }, [setStoreHoveredNode]);
 
-  // TODO: Phase 8 — render CockpitMobile for mobile
+  // Mobile layout — compact globe + scrollable feed
   if (isMobile) {
-    // For now, render the same layout (mobile adaptation comes in Phase 8)
+    const temperature = govState?.temperatureScore ?? 50;
+    const mobileUrgentCount = govState ? Math.round((govState.urgencyScore / 100) * 10) : 0;
+    return (
+      <CockpitMobile
+        healthScore={narrativeData?.healthScore ?? 75}
+        urgency={narrativeData?.urgency ?? 30}
+        temperature={temperature}
+        urgentCount={mobileUrgentCount}
+        userNode={userNode}
+        proposalNodes={proposalNodes}
+        delegationBond={delegationBond}
+      />
+    );
   }
 
   const isReady = bootPhase === 'ready';
@@ -313,11 +328,17 @@ export function CockpitHomePage() {
         <OverlayTabs />
       </div>
 
+      {/* Network edges legend — only shows in network overlay */}
+      <NetworkEdges />
+
       {/* Globe tooltip — hide when detail panel is open */}
       {!selectedNode && <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} />}
 
       {/* Detail panel — slides in from right on node selection */}
       <CockpitDetailPanel node={selectedNode} onClose={handleDetailPanelClose} />
+
+      {/* Screen reader accessible text representation */}
+      <CockpitTextMode />
     </div>
   );
 }

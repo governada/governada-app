@@ -10,6 +10,7 @@
 import { Volume2, VolumeX, Zap } from 'lucide-react';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useCockpitStore } from '@/stores/cockpitStore';
+import { TemporalScrubber } from './TemporalScrubber';
 import type { DensityLevel } from '@/lib/cockpit/types';
 
 interface GovStateData {
@@ -111,7 +112,7 @@ export function StatusStrip({ govState }: StatusStripProps) {
 
         {/* Right: Sound toggle + temporal scrub placeholder */}
         <div className="flex items-center gap-2">
-          {/* Phase 7: TemporalScrubber will go here */}
+          <TemporalScrubber />
 
           <button
             onClick={toggleSound}

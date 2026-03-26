@@ -127,13 +127,22 @@ function BackgroundGlobe({
           : undefined
       }
     >
-      <div className="absolute inset-0 opacity-30">
+      {/* Higher opacity on homepage so the transparent header has visible stars behind it */}
+      <div className={cn('absolute inset-0', isHomepage ? 'opacity-50' : 'opacity-30')}>
         <ConstellationScene interactive={false} className="w-full h-full" />
       </div>
       {/* Governance temperature ambient tint overlay */}
       {governanceTint && <div className="governance-tint-overlay" />}
-      {/* Gradient fade — globe is most visible at top, fades toward bottom */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-60% to-background" />
+      {/* Gradient fade — globe is most visible at top, fades toward bottom.
+          On homepage the fade starts later so the header area shows stars clearly. */}
+      <div
+        className={cn(
+          'absolute inset-0 bg-gradient-to-b to-background',
+          isHomepage
+            ? 'from-transparent via-transparent via-70%'
+            : 'from-transparent via-transparent via-60%',
+        )}
+      />
     </div>
   );
 }

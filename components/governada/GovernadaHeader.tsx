@@ -580,12 +580,12 @@ export function GovernadaHeader() {
   const headerTransparent = isAnonymousHomepage || !scrolled;
   const currentSection = getCurrentSection(pathname);
 
-  // Route-aware ambient tint for glassmorphic header
+  // Route-aware ambient tint for glassmorphic header — subtle bottom glow per section
   const ambientTint =
     currentSection === 'workspace'
-      ? 'shadow-[inset_0_-1px_0_oklch(0.78_0.12_75/0.06)]'
+      ? 'shadow-[inset_0_-1px_0_oklch(0.78_0.14_75/0.12),0_1px_8px_oklch(0.78_0.14_75/0.04)]'
       : currentSection === 'governance'
-        ? 'shadow-[inset_0_-1px_0_oklch(0.72_0.12_192/0.06)]'
+        ? 'shadow-[inset_0_-1px_0_oklch(0.72_0.14_192/0.12),0_1px_8px_oklch(0.72_0.14_192/0.04)]'
         : '';
 
   // Mobile: scroll-direction-aware show/hide (X/Twitter pattern)
@@ -599,10 +599,10 @@ export function GovernadaHeader() {
         // Mobile: always rendered, slides up/down based on scroll direction
         mobileHidden ? '-translate-y-full md:translate-y-0' : 'translate-y-0',
         headerTransparent
-          ? 'bg-transparent'
+          ? 'bg-transparent backdrop-blur-[2px]'
           : cn(
-              'border-b border-border/10 backdrop-blur-xl',
-              headerCompact ? 'bg-background/50' : 'bg-background/40',
+              'border-b border-border/8 backdrop-blur-2xl',
+              headerCompact ? 'bg-background/35' : 'bg-background/25',
               ambientTint,
             ),
       )}

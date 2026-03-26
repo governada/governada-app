@@ -115,6 +115,8 @@ export const GlobeConstellation = forwardRef<
   const isDraggingRef = useRef(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mouseScreenRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  /** Timestamp of last user interaction — used by useFrame-based idle recovery */
+  const lastInteractionRef = useRef(0);
   const [sceneState, setSceneState] = useState<SceneState>({
     nodes: [],
     edges: [],
@@ -487,16 +489,10 @@ export const GlobeConstellation = forwardRef<
       pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
       pointerDownTimeRef.current = Date.now();
       isDraggingRef.current = false;
-
-      // User interaction always breaks out of any animation lock
-      setSceneState((prev) => (prev.animating ? { ...prev, animating: false } : prev));
+      lastInteractionRef.current = Date.now();
 
       // Pause auto-rotation while user is interacting
       rotationSpeedRef.current = 0;
-      if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
-        idleTimerRef.current = null;
-      }
     },
     [interactive],
   );
@@ -505,6 +501,7 @@ export const GlobeConstellation = forwardRef<
     (e: React.PointerEvent) => {
       if (!interactive) return;
       mouseScreenRef.current = { x: e.clientX, y: e.clientY };
+      lastInteractionRef.current = Date.now();
 
       // Detect drag: if moved more than 5px from pointer-down, mark as dragging
       const down = pointerDownPosRef.current;
@@ -521,27 +518,20 @@ export const GlobeConstellation = forwardRef<
 
   const handleCanvasPointerUp = useCallback(() => {
     if (!interactive) return;
-    // Only suppress click if actual dragging occurred (position moved >5px).
-    // Time-based suppression removed — slow clicks should still work.
     pointerDownPosRef.current = null;
-
-    // Resume auto-rotation after 5 seconds of inactivity
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = setTimeout(() => {
-      rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
-      setSceneState((prev) => (prev.animating ? { ...prev, animating: false } : prev));
-    }, 5000);
+    lastInteractionRef.current = Date.now();
   }, [interactive]);
 
   const handleCanvasDoubleClick = useCallback(() => {
     if (!interactive) return;
     const controls = cameraControlsRef.current;
     if (!controls) return;
+    lastInteractionRef.current = Date.now();
     const dist = controls.distance;
     if (dist < 12) {
       // Zoomed in — reset to default
       controls.setLookAt(...effectiveCamera, ...effectiveTarget, true);
-      setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false, animating: false }));
+      setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
     } else {
       // At default — zoom in
@@ -584,8 +574,12 @@ export const GlobeConstellation = forwardRef<
           <ambientLight intensity={0.05} />
 
           <AmbientStarfield count={quality === 'low' ? 200 : 400} />
+          <IdleRotationRecovery
+            speedRef={rotationSpeedRef}
+            lastInteractionRef={lastInteractionRef}
+            interactive={interactive}
+          />
           <TiltedGlobeGroup
-            enabled={!sceneState.animating}
             rotationRef={rotationAngleRef}
             speedRef={rotationSpeedRef}
             breathing={breathing && !sceneState.dimmed}
@@ -1598,15 +1592,42 @@ function FlyToParticles({
 
 // --- Globe rotation group: Y-axis with Earth-like axial tilt ---
 
+/**
+ * useFrame-based idle recovery: auto-restores rotation speed after 5 seconds
+ * of no user interaction. This runs inside the Three.js render loop so it
+ * can never be "lost" due to swallowed pointer events from CameraControls.
+ */
+function IdleRotationRecovery({
+  speedRef,
+  lastInteractionRef,
+  interactive,
+}: {
+  speedRef: React.RefObject<number>;
+  lastInteractionRef: React.RefObject<number>;
+  interactive?: boolean;
+}) {
+  useFrame(() => {
+    if (!interactive) return;
+    if (speedRef.current >= DEFAULT_ROTATION_SPEED) return;
+    const elapsed = Date.now() - lastInteractionRef.current;
+    if (elapsed > 5000) {
+      // Smoothly restore rotation speed
+      speedRef.current = Math.min(
+        DEFAULT_ROTATION_SPEED,
+        speedRef.current + DEFAULT_ROTATION_SPEED * 0.02,
+      );
+    }
+  });
+  return null;
+}
+
 function TiltedGlobeGroup({
-  enabled,
   rotationRef,
   speedRef,
   breathing,
   urgency,
   children,
 }: {
-  enabled: boolean;
   rotationRef: React.RefObject<number>;
   speedRef: React.RefObject<number>;
   breathing?: boolean;
@@ -1617,9 +1638,9 @@ function TiltedGlobeGroup({
 
   useFrame(({ clock }, delta) => {
     if (groupRef.current) {
-      if (enabled) {
-        rotationRef.current += delta * speedRef.current;
-      }
+      // Always advance rotation — speed is 0 during interaction, restored by idle recovery
+      rotationRef.current += delta * speedRef.current;
+
       // Apply axial tilt on X, then spin on Y (local)
       groupRef.current.rotation.x = AXIAL_TILT;
       groupRef.current.rotation.y = rotationRef.current;

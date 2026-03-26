@@ -14,6 +14,7 @@ import { SPOCockpit } from '@/components/workspace/SPOCockpit';
 import { ActionQueueCard } from '@/components/governada/ActionQueueCard';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { InhabitedConstellation } from './InhabitedConstellation';
+import { CockpitHomePage } from '@/components/cockpit/CockpitHomePage';
 
 interface PulseData {
   activeProposals: number;
@@ -55,9 +56,9 @@ export function HubHomePage({ pulseData }: HubHomePageProps) {
     return <AnonymousLanding pulseData={pulseData} />;
   }
 
-  // Inhabited Constellation: globe-centric homepage for authenticated users
+  // Cockpit: HUD-driven command center homepage for authenticated users
   if (globeHomepage) {
-    return <InhabitedConstellation />;
+    return <CockpitHomePage />;
   }
 
   // Citizens get the full Browse mode experience

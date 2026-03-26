@@ -1298,6 +1298,73 @@ _(Patterns for 3D interfaces, command centers, spatial computing, HUD overlays)_
 - **Applicable to**: Right-click or long-press globe entity → radial menu: Delegate, Compare, Ask Seneca, Watch, Profile, Share. Top = primary action. The globe's polar coordinate system naturally supports radial interaction.
 - **Adoption difficulty**: Low — react-pie-menu or custom SVG overlay
 
+#### Destiny Director — Spatial Navigation as Primary Interface
+
+- **Source**: Destiny (Bungie) — http://www.cand.land/destiny + GDC Talk: "Tenacious Design and The Interface of Destiny"
+- **Discovered**: 2026-03-26 (explore-feature: authenticated homepage)
+- **What they do**: The Director is a solar system map where players navigate with a free cursor over spatial nodes. Hovering reveals contextual tooltips. Every node is an actionable destination (not just decoration). Social presence indicators show friend counts per destination. Won AIGA and Graphis design awards.
+- **Why it's world-class**: Spatial layout encourages exploration and discovery — users find things they weren't looking for. The "Activity Omnivore" design goal prevents silo behavior. HUD reveals on demand, keeping the visual field clean until proximity/gaze triggers detail.
+- **Applicable to**: The constellation globe IS a Director screen. DReps, proposals, and governance bodies are "destinations." Hover-to-reveal contextual action cards. Free cursor exploration. Social proof (delegator counts per DRep).
+- **Adoption difficulty**: Medium — globe infrastructure exists, need hover card system + action affordances per node
+
+#### EVE Online Star Map — Data-Layer Switching on Spatial Map
+
+- **Source**: EVE Online — https://wiki.eveuniversity.org/Star_Map
+- **Discovered**: 2026-03-26 (explore-feature: authenticated homepage)
+- **What they do**: Same spatial map can be recolored to represent completely different data dimensions — security status, sovereignty, population, activity — with a single toggle. One map, many meanings.
+- **Why it's world-class**: Eliminates the need for multiple visualizations. Users learn one spatial layout and then toggle data dimensions without re-learning navigation. Dramatically increases information density without adding UI elements.
+- **Applicable to**: Constellation globe with overlay tabs: Alignment view (policy stance), Activity view (voting frequency), Power view (delegation weight), Health view (governance contribution). Same node positions, different color/size encoding.
+- **Adoption difficulty**: Low — node rendering already parameterized, need multiple color/size mapping functions
+
+#### Warframe Star Chart — Filter Tabs on Spatial Map
+
+- **Source**: Warframe — https://warframe.fandom.com/wiki/Star_Chart
+- **Discovered**: 2026-03-26 (explore-feature: authenticated homepage)
+- **What they do**: Floating category tabs (Events, Quests, Invasions, Syndicate) overlaid on the star chart filter visible content without leaving the spatial context. Dual-mode switching (Normal vs. Empyrean) shows completely different data on the same spatial structure.
+- **Why it's world-class**: Filters preserve spatial context. Users stay oriented while changing what they're looking at. The tabs are minimal — icons with tooltips, not full navigation bars.
+- **Applicable to**: Globe overlay tabs: `Urgent` | `Network` | `Proposals` | `Ecosystem`. Each shows/hides different node types and changes emphasis without leaving the globe.
+- **Adoption difficulty**: Low — UI overlay on existing globe, filtering logic on existing node data
+
+#### DyEgoVis — Temporal Proximity in Ego-Centric Networks
+
+- **Source**: DyEgoVis (Academic) — https://www.mdpi.com/2076-3417/11/5/2399
+- **Discovered**: 2026-03-26 (explore-feature: authenticated homepage)
+- **What they do**: Ego at center with alters (connections) arranged radially. Distance from center encodes recency/activity — closer = more recent interaction. Creates a living network that reflects relationship dynamics over time.
+- **Why it's world-class**: The spatial layout carries temporal meaning without labels. Users intuitively understand "close = active, far = dormant" without instruction.
+- **Applicable to**: User at constellation center. Delegated DRep closest. Explored entities at mid-distance. Broader ecosystem at edge. Engagement frequency modulates distance over time.
+- **Adoption difficulty**: Medium — requires client-side interaction tracking per entity + distance modulation in node positioning
+
+### AI-Native Interfaces
+
+_(Patterns for AI-first product design, conversational intelligence, ambient AI)_
+
+#### Perplexity — Structured Artifacts, Not Chat
+
+- **Source**: Perplexity — https://www.nngroup.com/articles/perplexity-henry-modisett/
+- **Discovered**: 2026-03-26 (explore-feature: authenticated homepage)
+- **What they do**: AI prompt looks like a search bar, not a chat window. Each query produces a standalone artifact (answer + sources + follow-ups), not a conversation thread. Sources appear before the answer for trust. Predicted follow-ups reduce cognitive load.
+- **Why it's world-class**: Lowers the barrier from "write a prompt" to "just type what you want." Results are verifiable and self-contained. The AI is an information delivery mechanism, not a personality.
+- **Applicable to**: Seneca briefings should be structured artifacts with sources (proposal links, vote records), not chat messages. Follow-up suggestions below each briefing. The header input bar already looks like a search bar — lean into that.
+- **Adoption difficulty**: Low — briefing infrastructure exists, need card-based rendering format instead of chat bubbles
+
+#### JARVIS/Iron Man HUD — AI Narrating Visual Context
+
+- **Source**: Iron Man UI (Hollywood) + real-world adaptations in AR/HUD design
+- **Discovered**: 2026-03-26 (explore-feature: authenticated homepage)
+- **What they do**: AI companion provides contextual narration overlaid on the visual field. As the user's focus shifts (eye tracking / cursor), the AI updates its commentary to describe what you're looking at. Data and interpretation are spatially co-located.
+- **Why it's world-class**: The AI doesn't compete for attention in a separate panel — it augments what you're already looking at. Information appears WHERE you need it, WHEN you need it.
+- **Applicable to**: Seneca strip that updates when user hovers over globe nodes. Appears in a HUD strip, not a chat panel.
+- **Adoption difficulty**: Medium — need hover-reactive AI with aggressive caching to avoid latency
+
+#### ARWES — Sci-Fi Component Lifecycle Animations
+
+- **Source**: ARWES Framework — https://arwes.dev/
+- **Discovered**: 2026-03-26 (explore-feature: authenticated homepage)
+- **What they do**: Every UI component has animated "appear/exit" states that cascade through children. When a panel opens, children animate in sequence, creating a "system booting up" feeling. Optional sound effects per component lifecycle.
+- **Why it's world-class**: Makes the interface feel ALIVE. Standard fade-in/slide-in feels flat compared to cascading activation sequences. The sequential boot-up creates the command center emotional response.
+- **Applicable to**: HUD layers on the Cockpit homepage should animate in sequentially: rings → status strip → Seneca strip → action rail → overlay tabs. Each layer "activates" ~300ms after the previous. Creates the starship-bridge-powering-on feeling.
+- **Adoption difficulty**: Low — CSS stagger animations on existing Framer Motion infrastructure
+
 ---
 
 ## Update Protocol

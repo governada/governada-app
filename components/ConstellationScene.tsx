@@ -44,6 +44,8 @@ interface ConstellationSceneProps {
     drepNodeId: string;
     driftScore: number;
   } | null;
+  /** Auto fly-in to user node after layout */
+  flyToUserOnReady?: boolean;
 }
 
 /**

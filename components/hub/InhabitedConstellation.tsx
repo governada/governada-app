@@ -9,6 +9,7 @@ import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
 import { useConstellationProposals } from '@/hooks/useConstellationProposals';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
+import { useAdvisor } from '@/hooks/useAdvisor';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
@@ -39,7 +40,7 @@ function shouldShowBriefing(): boolean {
  * InhabitedConstellation — The globe-centric authenticated homepage.
  *
  * Globe fills the viewport. User node placed at alignment position.
- * Seneca thread auto-opens and starts briefing once per day.
+ * Seneca thread auto-opens with a streamed briefing once per day.
  */
 export function InhabitedConstellation() {
   const globeRef = useRef<ConstellationRef>(null);
@@ -65,10 +66,14 @@ export function InhabitedConstellation() {
   // Proposal nodes
   const { proposalNodes } = useConstellationProposals(userAlignments ?? undefined);
 
-  // Seneca thread (Zustand store — the actual panel controller)
-  const senecaOpen = useSenecaThreadStore((s) => s.isOpen);
+  // Seneca thread store
   const senecaSetOpen = useSenecaThreadStore((s) => s.setOpen);
-  const senecaStartConversation = useSenecaThreadStore((s) => s.startConversation);
+  const senecaSetMode = useSenecaThreadStore((s) => s.setMode);
+  const senecaAddMessage = useSenecaThreadStore((s) => s.addMessage);
+  const senecaUpdateLastAssistant = useSenecaThreadStore((s) => s.updateLastAssistant);
+
+  // Advisor hook — handles actual streaming to the AI
+  const advisor = useAdvisor({ pageContext: 'homepage', visitorMode: 'authenticated' });
 
   // Bridge
   const { handleNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
@@ -95,25 +100,41 @@ export function InhabitedConstellation() {
     refetchOnWindowFocus: false,
   });
 
-  // --- Auto-open Seneca + briefing ---
+  // --- Auto-open Seneca + stream briefing ---
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!senecaOpen) senecaSetOpen(true);
-    }, 2500);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!senecaOpen || briefingTriggered.current) return;
+    if (briefingTriggered.current) return;
     if (!shouldShowBriefing()) return;
     briefingTriggered.current = true;
 
     const timer = setTimeout(() => {
-      senecaStartConversation('Brief me on governance');
-    }, 1000);
+      // Open the Seneca thread panel
+      senecaSetOpen(true);
+      senecaSetMode('conversation');
+
+      // Add user message to store
+      senecaAddMessage({
+        id: `briefing-${Date.now()}`,
+        role: 'user',
+        content: 'Brief me on governance',
+        ts: Date.now(),
+      });
+
+      // Send via useAdvisor which handles the actual streaming
+      advisor.sendMessage('Brief me on governance');
+    }, 3000);
+
     return () => clearTimeout(timer);
-  }, [senecaOpen, senecaStartConversation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync advisor messages into Seneca thread store
+  useEffect(() => {
+    if (advisor.messages.length === 0) return;
+    const lastMsg = advisor.messages[advisor.messages.length - 1];
+    if (lastMsg.role === 'assistant' && lastMsg.content) {
+      senecaUpdateLastAssistant(lastMsg.content);
+    }
+  }, [advisor.messages, senecaUpdateLastAssistant]);
 
   // --- Fly-in ---
   const onGlobeReady = useCallback(() => {

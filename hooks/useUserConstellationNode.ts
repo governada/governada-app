@@ -11,6 +11,7 @@ import {
 import { getDominantDimension, alignmentsToArray } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
+import { getStoredSession } from '@/lib/supabaseAuth';
 
 interface UserProfile {
   alignmentScores: AlignmentScores | null;
@@ -20,7 +21,11 @@ interface UserProfile {
 }
 
 function fetchProfile(): Promise<UserProfile | null> {
-  return fetch('/api/governance/my-profile')
+  const headers: Record<string, string> = {};
+  const token = getStoredSession();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  return fetch('/api/governance/my-profile', { headers })
     .then((r) => (r.ok ? r.json() : null))
     .catch(() => null);
 }
@@ -59,10 +64,11 @@ export function useUserConstellationNode(): {
   });
 
   const userNode = useMemo(() => {
-    if (!isAuthenticated || !profile) return null;
+    if (!isAuthenticated) return null;
 
-    const alignments = profile.alignmentScores ?? NEUTRAL_ALIGNMENTS;
-    const hasData = profile.votesUsed > 0 && profile.alignmentScores !== null;
+    // Cold-start: if profile hasn't loaded or has no alignment data, use neutral position
+    const alignments = profile?.alignmentScores ?? NEUTRAL_ALIGNMENTS;
+    const hasData = (profile?.votesUsed ?? 0) > 0 && profile?.alignmentScores !== null;
     const dominant = getDominantDimension(alignments);
     const alignmentArray = alignmentsToArray(alignments);
 
@@ -72,7 +78,7 @@ export function useUserConstellationNode(): {
       fullId: stakeAddress ?? 'self',
       name: null,
       power: 0.5, // moderate presence
-      score: profile.confidence,
+      score: profile?.confidence ?? 0,
       dominant,
       alignments: alignmentArray,
       nodeType: 'user' as const,

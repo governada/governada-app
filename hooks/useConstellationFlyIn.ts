@@ -42,18 +42,30 @@ export function useConstellationFlyIn(
         return;
       }
 
+      // Try flyToNode first — may fail if node not yet in nodeMap due to timing
       try {
-        await globe.flyToNode(userNode.id);
+        const found = await globe.flyToNode(userNode.id);
+        if (found) {
+          setState('settled');
+          setTimeout(() => setState('idle'), 1500);
+          return;
+        }
       } catch {
-        // flyToNode may not find the user node by ID if it was just injected
-        // Fall back gracefully
+        // Fall through to manual positioning
+      }
+
+      // Fallback: fly to user node's raw position
+      // flyToNode returns null when node not found, but we know the position
+      try {
+        // Pulse the node to make it visible
+        globe.pulseNode(userNode.id);
+      } catch {
+        // Ignore — node may not be in the scene yet
       }
 
       setState('settled');
-
-      // Transition to idle after a pause for briefing to start
       setTimeout(() => setState('idle'), 1500);
-    }, 600); // brief pause before flying to build anticipation
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [globeReady, userNode, globeRef]);

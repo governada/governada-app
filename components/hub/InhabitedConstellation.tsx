@@ -86,24 +86,47 @@ export function InhabitedConstellation() {
     return () => clearTimeout(timer);
   }, []);
 
-  // --- Fly-in ---
+  // --- Fly-in: retry until globe has the user node and flyToNode succeeds ---
   const onGlobeReady = useCallback(() => {
+    // Globe layout computed — try fly-in after a beat
+    if (flyInAttempted.current) return;
+    attemptFlyIn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const attemptFlyIn = useCallback(() => {
     if (flyInAttempted.current || !userNode) return;
-    flyInAttempted.current = true;
-    setTimeout(() => {
-      globeRef.current?.flyToNode(userNode.id).catch(() => {});
-    }, 800);
+
+    const tryFly = async (attempt: number) => {
+      if (flyInAttempted.current || attempt > 5) return;
+      const globe = globeRef.current;
+      if (!globe) {
+        // Globe ref not ready — retry
+        setTimeout(() => tryFly(attempt + 1), 500 * attempt);
+        return;
+      }
+      try {
+        const found = await globe.flyToNode(userNode.id);
+        if (found) {
+          flyInAttempted.current = true;
+          return;
+        }
+      } catch {
+        // flyToNode failed
+      }
+      // Node not found yet — retry with increasing delay
+      setTimeout(() => tryFly(attempt + 1), 500 * attempt);
+    };
+
+    setTimeout(() => tryFly(1), 1000);
   }, [userNode]);
 
+  // Also attempt fly-in when userNode arrives (may be after onGlobeReady)
   useEffect(() => {
     if (!userNode || flyInAttempted.current) return;
-    const timer = setTimeout(() => {
-      if (flyInAttempted.current) return;
-      flyInAttempted.current = true;
-      globeRef.current?.flyToNode(userNode.id).catch(() => {});
-    }, 2000);
+    const timer = setTimeout(() => attemptFlyIn(), 500);
     return () => clearTimeout(timer);
-  }, [userNode]);
+  }, [userNode, attemptFlyIn]);
 
   const handleNodeHover = useCallback((node: ConstellationNode3D | null) => {
     setHoveredNode(node);

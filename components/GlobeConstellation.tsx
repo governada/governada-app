@@ -1016,7 +1016,7 @@ function ConstellationNodes({
           onNodeClick={onNodeClick}
           onNodeHover={onNodeHover}
           getColor={getUserColor}
-          emissive={4.0}
+          emissive={6.0}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}

@@ -87,14 +87,14 @@ export function useUserConstellationNode(): {
     const [lon, lat] = computeSpherePosition(layoutInput);
     const position = sphereToCartesian(lat, lon, GLOBE_RADIUS);
 
-    // User node is slightly larger than average DRep to be visible
-    const scale = hasData ? 0.18 : 0.12;
+    // User node must be unmissable — larger than any DRep (max 0.25)
+    const scale = hasData ? 0.35 : 0.28;
 
     return {
       ...layoutInput,
       position,
       scale,
-      isAnchor: true, // camera will anchor to this
+      isAnchor: false, // must be false — flyToNode skips anchor nodes
     } satisfies ConstellationNode3D;
   }, [isAuthenticated, profile, stakeAddress]);
 

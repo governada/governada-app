@@ -1127,6 +1127,7 @@ function NodePoints({
     }
 
     return { positions, colors, sizes, dimmedArr };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tmpColor/matchColor are stable refs
   }, [
     nodes,
     highlightId,
@@ -1134,10 +1135,8 @@ function NodePoints({
     pulseId,
     getColor,
     emissive,
-    tmpColor,
     matchedNodeIds,
     matchIntensities,
-    matchColor,
     activityMap,
   ]);
 

@@ -35,6 +35,13 @@ export type PanelRoute =
 
 function detectPanelRoute(pathname: string): PanelRoute {
   if (pathname === '/' || pathname === '/hub') return 'hub';
+  // Globe entity routes: /g/proposal/..., /g/drep/..., /g/pool/..., /g/cc/...
+  if (/^\/g\/proposal\/[^/]+\/\d+/.test(pathname)) return 'proposal';
+  if (/^\/g\/drep\/[^/]+/.test(pathname)) return 'drep';
+  if (/^\/g\/pool\/[^/]+/.test(pathname)) return 'default';
+  if (/^\/g\/cc\/[^/]+/.test(pathname)) return 'default';
+  if (pathname === '/g') return 'hub';
+  // Legacy entity routes
   if (/^\/proposal\/[^/]+\/\d+/.test(pathname)) return 'proposal';
   if (/^\/drep\/[^/]+/.test(pathname)) return 'drep';
   if (pathname === '/governance/proposals' || pathname === '/proposals') return 'proposals-list';
@@ -47,11 +54,19 @@ function detectPanelRoute(pathname: string): PanelRoute {
 }
 
 function extractEntityId(pathname: string): string | undefined {
-  // /proposal/[hash]/[index]
+  // Globe routes: /g/proposal/[hash]/[index], /g/drep/[id]
+  const gProposalMatch = pathname.match(/^\/g\/proposal\/([a-f0-9]+)\/(\d+)/);
+  if (gProposalMatch) return gProposalMatch[1];
+  const gDrepMatch = pathname.match(/^\/g\/drep\/([^/]+)/);
+  if (gDrepMatch) return decodeURIComponent(gDrepMatch[1]);
+  const gPoolMatch = pathname.match(/^\/g\/pool\/([^/]+)/);
+  if (gPoolMatch) return decodeURIComponent(gPoolMatch[1]);
+  const gCcMatch = pathname.match(/^\/g\/cc\/([^/]+)/);
+  if (gCcMatch) return decodeURIComponent(gCcMatch[1]);
+
+  // Legacy routes: /proposal/[hash]/[index], /drep/[id]
   const proposalMatch = pathname.match(/^\/proposal\/([a-f0-9]+)\/(\d+)/);
   if (proposalMatch) return proposalMatch[1];
-
-  // /drep/[id]
   const drepMatch = pathname.match(/^\/drep\/([^/]+)/);
   if (drepMatch) return decodeURIComponent(drepMatch[1]);
 

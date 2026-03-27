@@ -232,6 +232,13 @@ function SenecaOrbAndThread({
 /** Derive a page context key from the pathname for Seneca's contextual awareness. */
 function derivePageContext(pathname: string): string | undefined {
   if (pathname === '/') return 'governance';
+  // Globe routes
+  if (pathname === '/g') return 'governance';
+  if (pathname.startsWith('/g/proposal/')) return 'proposals';
+  if (pathname.startsWith('/g/drep/')) return 'dreps';
+  if (pathname.startsWith('/g/pool/')) return 'spos';
+  if (pathname.startsWith('/g/cc/')) return 'governance';
+  // Legacy routes
   if (pathname.startsWith('/governance/proposals') || pathname.startsWith('/proposal/'))
     return 'proposals';
   if (pathname.startsWith('/governance/representatives') || pathname.startsWith('/drep/'))
@@ -252,6 +259,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useTranslation();
   const isHomepage = pathname === '/';
+  const isGlobeMode = pathname === '/g' || pathname.startsWith('/g/');
   const isStudioMode =
     pathname === '/workspace/review' ||
     /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
@@ -281,7 +289,8 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
             <DiscoveryHub currentPage={derivePageContext(pathname)}>
               {!isStudioMode && <GovernadaHeader />}
               {/* Global constellation globe — subtle glassmorphic background */}
-              {!isStudioMode && (
+              {/* Hidden on globe mode — GlobeLayout provides its own full-viewport globe */}
+              {!isStudioMode && !isGlobeMode && (
                 <BackgroundGlobe
                   isHomepage={isHomepage}
                   governanceTint={temporalAdaptation ? tintColor : undefined}
@@ -290,24 +299,41 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               <main
                 id="main-content"
                 className={cn(
-                  'relative z-0 min-h-screen',
-                  isStudioMode ? '' : 'pb-16 lg:pb-0',
+                  'relative z-0',
+                  isGlobeMode
+                    ? '' // Globe mode: no min-height/padding — GlobeLayout handles viewport
+                    : isStudioMode
+                      ? 'min-h-screen'
+                      : 'min-h-screen pb-16 lg:pb-0',
                   // On homepage, pull content up behind the transparent header so the
                   // globe extends to the top of the viewport and peeks through
                   isHomepage && '-mt-10',
+                  // Globe mode: pull up behind transparent header
+                  isGlobeMode && '-mt-16',
                 )}
                 tabIndex={-1}
               >
-                {isStudioMode ? children : <SectionTransition>{children}</SectionTransition>}
+                {isStudioMode || isGlobeMode ? (
+                  children
+                ) : (
+                  <SectionTransition>{children}</SectionTransition>
+                )}
               </main>
-              {!isStudioMode && <EngagementNudge />}
-              {!isStudioMode && <MilestoneTrigger />}
+              {!isStudioMode && !isGlobeMode && <EngagementNudge />}
+              {!isStudioMode && !isGlobeMode && <MilestoneTrigger />}
             </DiscoveryHub>
           </SpotlightProvider>
           {/* Seneca Orb + Thread — unified floating companion */}
-          <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} isHomepage={isHomepage} />
+          {/* Globe mode provides its own Seneca via GlobeLayout */}
+          {!isGlobeMode && (
+            <SenecaOrbAndThread
+              seneca={seneca}
+              isStudioMode={isStudioMode}
+              isHomepage={isHomepage}
+            />
+          )}
 
-          {!isStudioMode && (
+          {!isStudioMode && !isGlobeMode && (
             <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">
               <p className="text-xs text-muted-foreground/70">
                 {t(
@@ -316,8 +342,10 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               </p>
             </footer>
           )}
-          {!isStudioMode && <GovernadaBottomNav />}
-          {!isStudioMode && mobileGestures && <EdgeSwipeMenu enabled={mobileGestures} />}
+          {!isStudioMode && !isGlobeMode && <GovernadaBottomNav />}
+          {!isStudioMode && !isGlobeMode && mobileGestures && (
+            <EdgeSwipeMenu enabled={mobileGestures} />
+          )}
           <FeedbackWidget />
           <ShortcutOverlay />
         </ShortcutProvider>

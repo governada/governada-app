@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { PanelRoute } from '@/hooks/useIntelligencePanel';
+import type { PanelRoute } from '@/hooks/useSenecaThread';
 
 const GHOST_PROMPTS: Record<string, string> = {
   hub: 'What should I know about governance today?',

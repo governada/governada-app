@@ -159,9 +159,11 @@ function SentryContextSync() {
 function SenecaOrbAndThread({
   seneca,
   isStudioMode,
+  isHomepage,
 }: {
   seneca: ReturnType<typeof useSenecaThread>;
   isStudioMode: boolean;
+  isHomepage: boolean;
 }) {
   const { segment } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
@@ -186,6 +188,10 @@ function SenecaOrbAndThread({
         : seneca.mode === 'research'
           ? ('thinking' as const)
           : ('idle' as const);
+
+  // Homepage has its own Seneca surfaces: SynapticBriefPanel (auth) or the globe itself (anon).
+  // Don't render the floating thread there — it competes with purpose-built homepage UX.
+  if (isHomepage) return null;
 
   return (
     <>
@@ -298,8 +304,12 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               {!isStudioMode && <MilestoneTrigger />}
             </DiscoveryHub>
           </SpotlightProvider>
-          {/* Seneca Orb + Thread — unified floating companion (always available) */}
-          <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />
+          {/* Seneca Orb + Thread — unified floating companion */}
+          <SenecaOrbAndThread
+            seneca={seneca}
+            isStudioMode={isStudioMode}
+            isHomepage={isHomepage}
+          />
 
           {!isStudioMode && (
             <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">

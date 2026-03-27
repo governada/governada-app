@@ -11,7 +11,7 @@
 import { useCallback, type RefObject } from 'react';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
-import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { fetchVoteSplit } from '@/lib/constellation/fetchVoteSplit';
 
 // ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ export interface GlobeBridgeResult {
 export function useSenecaGlobeBridge(
   globeRef: RefObject<ConstellationRef | null>,
 ): GlobeBridgeResult {
-  const panel = useIntelligencePanel();
+  const panel = useSenecaThread();
 
   const handleNodeClick = useCallback(
     (node: ConstellationNode3D) => {

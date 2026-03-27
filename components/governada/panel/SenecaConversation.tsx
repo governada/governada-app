@@ -7,7 +7,7 @@ import { AIResponse } from '@/components/commandpalette/AIResponse';
 import { SenecaInput } from './SenecaInput';
 import { readAdvisorStream } from '@/lib/intelligence/streamAdvisor';
 import type { AdvisorMessage } from '@/lib/intelligence/streamAdvisor';
-import { useIntelligencePanel, type PanelRoute } from '@/hooks/useIntelligencePanel';
+import { useSenecaThread, type PanelRoute } from '@/hooks/useSenecaThread';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { cn } from '@/lib/utils';
@@ -49,7 +49,7 @@ export function SenecaConversation({
 
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
   const { segment } = useSegment();
-  const { startResearch } = useIntelligencePanel();
+  const { startResearch } = useSenecaThread();
   const daysRemaining = totalDays - day;
 
   useEffect(() => {

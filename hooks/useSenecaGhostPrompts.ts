@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getGhostPrompts } from '@/lib/intelligence/senecaPersonas';
-import type { PanelRoute } from '@/hooks/useIntelligencePanel';
+import type { PanelRoute } from '@/hooks/useSenecaThread';
 
 export interface SenecaGhostPromptsResult {
   /** The currently displayed ghost prompt */

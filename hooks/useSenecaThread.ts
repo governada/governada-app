@@ -2,7 +2,7 @@
 
 /**
  * useSenecaThread — Hook that wraps the Seneca Zustand store with route detection
- * and derived state. Replaces useIntelligencePanel for the unified Seneca Thread.
+ * and derived state. The canonical Seneca state hook for the unified Thread.
  *
  * Provides:
  * - Route detection (PanelRoute, entityId extraction)
@@ -19,7 +19,7 @@ import { getPersonaForRoute } from '@/lib/intelligence/senecaPersonas';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
 
 // ---------------------------------------------------------------------------
-// Route types (copied from useIntelligencePanel for deprecation independence)
+// Route types — canonical source for PanelRoute
 // ---------------------------------------------------------------------------
 
 export type PanelRoute =

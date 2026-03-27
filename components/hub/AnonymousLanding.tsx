@@ -8,7 +8,7 @@ import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { useQuery } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'framer-motion';
 import { GlobeTooltip } from '@/components/governada/GlobeTooltip';
-import { SenecaDock } from '@/components/governada/home/SenecaDock';
+// SenecaDock removed — globe IS Seneca's visual embodiment for anonymous users
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
@@ -114,12 +114,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
       {/* Cursor-following tooltip for globe nodes */}
       <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta />
 
-      {/* Seneca Dock — warm welcome + "Find my representative" CTA */}
-      <SenecaDock
-        onStartMatch={startMatch}
-        narrativePulse={narrativeData?.narrative}
-        activeProposals={pulseData?.activeProposals}
-      />
+      {/* Globe IS Seneca — the Seneca Orb + Thread handles entry from GovernadaShell on non-homepage pages */}
 
       {/* Subtle scroll escape hatch — bottom center */}
       <motion.button

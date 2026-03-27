@@ -2,7 +2,7 @@
  * Seneca Personas — Context-specific AI personality, ghost prompts, and accents.
  *
  * The AI companion adapts its persona based on what page the user is viewing.
- * Four personas map to PanelRoute values from useIntelligencePanel().
+ * Four personas map to PanelRoute values from useSenecaThread().
  *
  * Each persona defines:
  * - Visual accent (color + Tailwind class)
@@ -10,7 +10,7 @@
  * - Personality modifier (appended to Seneca's base system prompt)
  */
 
-import type { PanelRoute } from '@/hooks/useIntelligencePanel';
+import type { PanelRoute } from '@/hooks/useSenecaThread';
 
 // ---------------------------------------------------------------------------
 // Types

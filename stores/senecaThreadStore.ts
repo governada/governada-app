@@ -3,8 +3,7 @@
 /**
  * senecaThreadStore — Session-scoped Zustand store for Seneca conversation persistence.
  *
- * Unlike useIntelligencePanel (which resets on every route change), this store
- * maintains conversation messages across page navigation within a browser session.
+ * Maintains conversation messages across page navigation within a browser session.
  *
  * Key behaviors:
  * - Messages persist across route changes via sessionStorage

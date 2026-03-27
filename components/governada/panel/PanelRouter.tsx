@@ -7,7 +7,7 @@
  * Each route gets AI-synthesized briefing content from the intelligence API.
  */
 
-import type { PanelRoute } from '@/hooks/useIntelligencePanel';
+import type { PanelRoute } from '@/hooks/useSenecaThread';
 import { HubPanel } from './HubPanel';
 import { ProposalPanel } from './ProposalPanel';
 import { DRepPanel } from './DRepPanel';

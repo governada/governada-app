@@ -17,7 +17,7 @@ import type { ContextSynthesisResult } from '@/lib/intelligence/context';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import type { PanelRoute } from '@/hooks/useIntelligencePanel';
+import type { PanelRoute } from '@/hooks/useSenecaThread';
 
 interface GovernancePanelProps {
   panelRoute: PanelRoute;

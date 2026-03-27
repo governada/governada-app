@@ -40,7 +40,7 @@ import { DepthPromptModal } from './DepthPromptModal';
 import { EpochStrip } from './EpochStrip';
 import { GovernancePulse } from './GovernancePulse';
 import { HeaderSenecaInput } from './HeaderSenecaInput';
-import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { cn } from '@/lib/utils';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -369,9 +369,9 @@ export function GovernadaHeader() {
   const hasDimensionOverrides = Object.values(dimensionOverrides).some((v) => v != null);
   const presetsBySegment = getPresetsBySegment();
   const unreadCount = useUnreadNotifications(stakeAddress ?? null);
-  const intelligencePanel = useIntelligencePanel();
+  const senecaThread = useSenecaThread();
   /** When user is in active Seneca conversation, fade nav pills to reduce distraction */
-  const senecaFocused = intelligencePanel.isOpen && intelligencePanel.mode === 'conversation';
+  const senecaFocused = senecaThread.isOpen && senecaThread.mode === 'conversation';
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [pickerPreset, setPickerPreset] = useState<SegmentPreset | null>(null);
   // For dual-role 2-step picker: stash the first pick while the second picker is open
@@ -656,8 +656,8 @@ export function GovernadaHeader() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Inline Seneca prompt — desktop only, replaces separate search + compass */}
-          <HeaderSenecaInput compact={headerCompact} />
+          {/* Inline Seneca prompt — desktop only. Hidden on homepage (SynapticBriefPanel handles input). */}
+          {pathname !== '/' && <HeaderSenecaInput compact={headerCompact} />}
 
           {/* Epoch strip + governance pulse (hidden in compact mode) */}
           {!headerCompact && <EpochStrip />}

@@ -66,6 +66,12 @@ interface GlobeConstellationProps {
   } | null;
   /** When true, camera automatically flies to user node after layout computes */
   flyToUserOnReady?: boolean;
+  /** Cockpit overlay color mode — changes how nodes are colored */
+  overlayColorMode?: 'default' | 'urgent' | 'network' | 'proposals' | 'ecosystem';
+  /** Set of node IDs that have urgent actions (for urgency pulsing) */
+  urgentNodeIds?: Set<string>;
+  /** Set of node IDs that just completed (flash green briefly) */
+  completedNodeIds?: Set<string>;
 }
 
 interface SceneState {
@@ -110,6 +116,9 @@ export const GlobeConstellation = forwardRef<
     proposalNodes,
     delegationBond,
     flyToUserOnReady = false,
+    overlayColorMode = 'default',
+    urgentNodeIds,
+    completedNodeIds,
   },
   ref,
 ) {
@@ -656,6 +665,9 @@ export const GlobeConstellation = forwardRef<
               dimmed={sceneState.dimmed}
               pulseId={sceneState.pulseId}
               interactive={interactive}
+              overlayColorMode={overlayColorMode}
+              urgentNodeIds={urgentNodeIds}
+              completedNodeIds={completedNodeIds}
               onNodeClick={
                 interactive
                   ? (node) => {
@@ -935,6 +947,9 @@ function ConstellationNodes({
   matchedNodeIds,
   matchIntensities,
   activityMap,
+  overlayColorMode = 'default',
+  urgentNodeIds,
+  completedNodeIds,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -946,6 +961,9 @@ function ConstellationNodes({
   matchedNodeIds: Set<string>;
   matchIntensities: Map<string, number>;
   activityMap?: Map<string, number>;
+  overlayColorMode?: 'default' | 'urgent' | 'network' | 'proposals' | 'ecosystem';
+  urgentNodeIds?: Set<string>;
+  completedNodeIds?: Set<string>;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -977,11 +995,35 @@ function ConstellationNodes({
     return { drep, spo, cc, user, proposal };
   }, [nodes]);
 
-  const getDrepColor = useCallback(() => DREP_COLOR, []);
-  const getSpoColor = useCallback(() => SPO_COLOR, []);
+  // Overlay-aware color callbacks: dim non-relevant node types per overlay mode
+  const DIMMED_COLOR = '#333333';
+  const URGENT_DREP_COLOR = '#f87171'; // red for urgent DRep nodes
+  const COMPLETED_GREEN = '#22c55e'; // green flash for completed actions
+  const getDrepColor = useCallback(
+    (node: ConstellationNode3D) => {
+      // Completed nodes flash green (takes priority over all overlays)
+      if (completedNodeIds?.has(node.id)) return COMPLETED_GREEN;
+      if (overlayColorMode === 'proposals') return DIMMED_COLOR;
+      if (overlayColorMode === 'urgent' && urgentNodeIds && !urgentNodeIds.has(node.id))
+        return DIMMED_COLOR;
+      if (overlayColorMode === 'urgent' && urgentNodeIds?.has(node.id)) return URGENT_DREP_COLOR;
+      return DREP_COLOR;
+    },
+    [overlayColorMode, urgentNodeIds, completedNodeIds],
+  );
+  const getSpoColor = useCallback(
+    () => (overlayColorMode === 'proposals' ? DIMMED_COLOR : SPO_COLOR),
+    [overlayColorMode],
+  );
   // getCcColor removed — CC nodes rendered via CCCrownRing
   const getUserColor = useCallback(() => USER_COLOR, []);
-  const getProposalColor = useCallback(() => PROPOSAL_COLOR, []);
+  const getProposalColor = useCallback(
+    (node?: ConstellationNode3D) => {
+      if (node && completedNodeIds?.has(node.id)) return COMPLETED_GREEN;
+      return overlayColorMode === 'network' ? DIMMED_COLOR : PROPOSAL_COLOR;
+    },
+    [overlayColorMode, completedNodeIds],
+  );
 
   if (nodes.length === 0 || !frameReady) return null;
 

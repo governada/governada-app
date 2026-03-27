@@ -46,6 +46,12 @@ interface ConstellationSceneProps {
   } | null;
   /** Auto fly-in to user node after layout */
   flyToUserOnReady?: boolean;
+  /** Cockpit overlay color mode */
+  overlayColorMode?: 'default' | 'urgent' | 'network' | 'proposals' | 'ecosystem';
+  /** Node IDs with urgent actions */
+  urgentNodeIds?: Set<string>;
+  /** Node IDs that just completed (green flash) */
+  completedNodeIds?: Set<string>;
 }
 
 /**

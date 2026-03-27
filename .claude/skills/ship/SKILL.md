@@ -12,12 +12,12 @@ Execute the full Governada deploy pipeline. Do NOT pause between steps.
 5. Stage relevant files with `git add`, commit with conventional commit message
 6. `git push -u origin HEAD`
 7. Create PR: `gh pr create --title "<type>: <description>" --body "<summary>"`
-8. Poll CI: `gh pr checks <N> --watch` -- if fails, read logs, fix, push, re-check (max 3 attempts)
+8. Poll CI: `gh pr checks <N> --watch` in **background** (run_in_background: true). When notified, take a single snapshot with `gh pr checks <N>`. If fails, `gh run view <id> --log-failed 2>&1 | tail -50`, fix, push, re-check (max 3 attempts)
 9. Pre-merge check: `bash scripts/pre-merge-check.sh <PR#>`
 10. Merge: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
 11. Apply pending migrations via Supabase MCP `apply_migration`
 12. If migrations applied: `npm run gen:types`, commit and push updated `types/database.ts`
-13. **Verify production directly** — Railway auto-deploys from merge, do NOT watch CI on main or poll `railway logs`. Wait ~3 min, then `curl -s https://governada.io/api/health`. Use `deploy-verifier` subagent in background if preferred.
+13. **Verify production** — Railway auto-deploys from merge. **Always** launch `deploy-verifier` subagent in background (run_in_background: true). Do NOT wait for it — continue with cleanup or respond to the user. Report result when the notification arrives.
 14. If Inngest functions changed: `curl -X PUT https://governada.io/api/inngest` then `npm run inngest:status`
 15. Verify endpoints: `curl -s -o /dev/null -w "%{http_code}" https://governada.io/<path>` for each new/changed route
 16. `npm run smoke-test`

@@ -272,7 +272,8 @@ export function CockpitHomePage() {
   // Mobile layout — compact globe + scrollable feed
   if (isMobile) {
     const temperature = govState?.temperatureScore ?? 50;
-    const mobileUrgentCount = govState ? Math.round((govState.urgencyScore / 100) * 10) : 0;
+    // SV-7 fix: use real urgent count from action queue instead of approximated value
+    const mobileUrgentCount = realUrgentCount;
     return (
       <CockpitMobile
         healthScore={narrativeData?.healthScore ?? 75}
@@ -315,7 +316,8 @@ export function CockpitHomePage() {
       </div>
 
       {/* HUD overlay container — pointer-events-none by default, children opt in */}
-      <div className="absolute inset-0 z-10 pointer-events-none flex flex-col">
+      {/* SV-1 fix: pt-10 pushes HUD below the sticky GovernadaHeader (h-10, z-50) */}
+      <div className="absolute inset-0 z-10 pointer-events-none flex flex-col pt-10">
         {/* Layer 2: Status Strip */}
         <div
           className="pointer-events-auto transition-all duration-500"
@@ -330,7 +332,7 @@ export function CockpitHomePage() {
             transitionDelay: isCascading ? `${BOOT_DELAYS['status-strip']}ms` : '0ms',
           }}
         >
-          <StatusStrip govState={govState ?? undefined} />
+          <StatusStrip govState={govState ?? undefined} urgentCount={realUrgentCount} />
         </div>
 
         {/* Layer 3: Seneca Strip */}

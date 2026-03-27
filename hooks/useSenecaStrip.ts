@@ -16,6 +16,7 @@ import { useCockpitStore } from '@/stores/cockpitStore';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useActionQueue } from '@/hooks/useActionQueue';
 import { useSegment } from '@/components/providers/SegmentProvider';
+import { OVERLAY_CONFIGS } from '@/lib/cockpit/overlayConfigs';
 import type { ContextSynthesisResult } from '@/lib/intelligence/context';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
 
@@ -101,6 +102,7 @@ export function useSenecaStrip(): SenecaStripState {
   const hoveredNodeId = useCockpitStore((s) => s.hoveredNodeId);
   const senecaMode = useCockpitStore((s) => s.senecaMode);
   const temporalEpoch = useCockpitStore((s) => s.temporalEpoch);
+  const activeOverlay = useCockpitStore((s) => s.activeOverlay);
   const { segment } = useSegment();
   const { epoch, day } = useEpochContext();
   const { data: actionData } = useActionQueue();
@@ -286,23 +288,38 @@ export function useSenecaStrip(): SenecaStripState {
       };
     }
 
-    // Normal rotation
+    // Normal rotation — overlay-aware (SV-2 fix)
     if (insights.length > 0) {
       const idx = rotationIndex % insights.length;
+      const baseText = insights[idx].text;
+      // Prepend overlay context hint when not on the default 'urgent' tab
+      const overlayHint =
+        activeOverlay !== 'urgent' ? OVERLAY_CONFIGS[activeOverlay].senecaHint : '';
       return {
         mode: 'rotation',
-        text: insights[idx].text,
+        text: overlayHint ? `${overlayHint} ${baseText}` : baseText,
         entityIds: insights[idx].entityIds,
       };
     }
 
-    // Fallback
+    // Fallback — also overlay-aware
+    const fallbackHint =
+      activeOverlay !== 'urgent' ? OVERLAY_CONFIGS[activeOverlay].senecaHint : '';
     return {
       mode: 'rotation',
-      text: 'Governance intelligence active. Monitoring the Cardano network.',
+      text: fallbackHint || 'Governance intelligence active. Monitoring the Cardano network.',
       entityIds: [],
     };
-  }, [bootPhase, hoveredNodeId, isDeadTime, insights, rotationIndex, bootNarration, temporalEpoch]);
+  }, [
+    bootPhase,
+    hoveredNodeId,
+    isDeadTime,
+    insights,
+    rotationIndex,
+    bootNarration,
+    temporalEpoch,
+    activeOverlay,
+  ]);
 
   const currentState = getState();
 

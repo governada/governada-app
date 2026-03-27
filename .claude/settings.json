@@ -1,0 +1,75 @@
+{
+  "respectGitignore": true,
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Agent",
+      "Skill",
+      "TodoWrite",
+      "NotebookEdit",
+      "mcp__supabase__*",
+      "mcp__github__*",
+      "mcp__linear__*",
+      "mcp__claude_ai_Linear__*",
+      "mcp__sentry__*"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-gh-auth.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sync-worktree.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-branch.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-force-dynamic.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-inngest-registration.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-compact.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

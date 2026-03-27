@@ -12,6 +12,7 @@ import { useCallback, type RefObject } from 'react';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+import { fetchVoteSplit } from '@/lib/constellation/fetchVoteSplit';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,6 +28,7 @@ export type GlobeCommand =
       noZoom?: boolean;
       zoomToCluster?: boolean;
     }
+  | { type: 'voteSplit'; proposalRef: string }
   | { type: 'reset' }
   | { type: 'clear' };
 
@@ -80,6 +82,18 @@ export function useSenecaGlobeBridge(
             zoomToCluster: command.zoomToCluster,
           });
           break;
+        case 'voteSplit': {
+          // Parse "txHash_index" format and fetch vote data async
+          const lastUnderscore = command.proposalRef.lastIndexOf('_');
+          if (lastUnderscore === -1) break;
+          const txHash = command.proposalRef.slice(0, lastUnderscore);
+          const index = parseInt(command.proposalRef.slice(lastUnderscore + 1), 10);
+          if (!txHash || isNaN(index)) break;
+          void fetchVoteSplit(txHash, index).then((map) => {
+            if (map.size > 0) globe.setVoteSplit(map);
+          });
+          break;
+        }
         case 'reset':
           globe.resetCamera();
           break;

@@ -250,6 +250,7 @@ export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
       '- Lead with the most personally relevant item (based on their segment/delegation), not recency.',
       '- Mention specific entity names (DRep names, proposal titles) so the globe can react.',
       '- Use [[globe:flyTo:drep_<id>]] or [[globe:pulse:proposal_<hash>_<index>]] markers when referencing entities.',
+      '- When discussing a contentious proposal (close vote margin or strong opinions), use [[globe:voteSplit:<txHash>_<index>]] to show the vote divide on the globe. Follow with [[globe:reset]] when moving to a new topic.',
       '- End with exactly 3 follow-up suggestions as [[chip:text]] on separate lines.',
       '- Chips should be short (3-6 words), actionable, and persona-specific.',
       '- Do NOT say "Good morning" or use generic greetings. Start with substance.',

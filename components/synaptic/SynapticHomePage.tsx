@@ -19,10 +19,12 @@ import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
 import { useConstellationProposals } from '@/hooks/useConstellationProposals';
 import { useSenecaGlobeBridge, type GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 import { useSynapticStore } from '@/stores/synapticStore';
+import { fetchTemporalData, type TemporalEpochData } from '@/lib/constellation/fetchTemporalData';
 import type { GlobeStreamCommand } from '@/lib/intelligence/streamAdvisor';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { SynapticBriefPanel } from './SynapticBriefPanel';
+import { TemporalScrubber } from './TemporalScrubber';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
@@ -56,6 +58,9 @@ export function SynapticHomePage() {
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
 
+  // Temporal replay state
+  const [temporalData, setTemporalData] = useState<TemporalEpochData | null>(null);
+
   // -------------------------------------------------------------------------
   // Globe command handler — bridge stream commands to globe imperative API
   // -------------------------------------------------------------------------
@@ -74,14 +79,43 @@ export function SynapticHomePage() {
                   alignment: command.alignment,
                   threshold: command.threshold ?? 120,
                 }
-              : command.cmd === 'reset'
-                ? { type: 'reset' }
-                : { type: 'clear' };
+              : command.cmd === 'voteSplit' && command.target
+                ? { type: 'voteSplit', proposalRef: command.target }
+                : command.cmd === 'reset'
+                  ? { type: 'reset' }
+                  : { type: 'clear' };
+
+      // Handle temporal replay command — fetch epoch data and activate scrubber
+      if (command.cmd === 'temporal' && command.target) {
+        const epochMatch = command.target.match(/epoch_(\d+)/);
+        if (epochMatch) {
+          const epochNum = parseInt(epochMatch[1], 10);
+          void fetchTemporalData(epochNum).then((data) => {
+            if (data) setTemporalData(data);
+          });
+        }
+        return;
+      }
 
       bridge.executeGlobeCommand(bridgeCmd);
     },
     [bridge],
   );
+
+  // -------------------------------------------------------------------------
+  // Temporal replay handlers
+  // -------------------------------------------------------------------------
+  const handleTemporalProgress = useCallback(
+    (progress: number, voteMap: Map<string, 'Yes' | 'No' | 'Abstain'>) => {
+      globeRef.current?.setTemporalState(progress, voteMap);
+    },
+    [],
+  );
+
+  const handleTemporalClose = useCallback(() => {
+    setTemporalData(null);
+    globeRef.current?.clearTemporal();
+  }, []);
 
   // -------------------------------------------------------------------------
   // Hover handlers (globe tooltips)
@@ -116,6 +150,18 @@ export function SynapticHomePage() {
 
       {/* Cursor-following tooltip */}
       <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} />
+
+      {/* Temporal scrubber — shown when epoch replay is active */}
+      {temporalData && (
+        <TemporalScrubber
+          epoch={temporalData.epoch}
+          epochStart={temporalData.epochStart}
+          epochEnd={temporalData.epochEnd}
+          events={temporalData.events}
+          onProgressChange={handleTemporalProgress}
+          onClose={handleTemporalClose}
+        />
+      )}
 
       {/* Seneca briefing panel — bottom-left, responsive */}
       <SynapticBriefPanel onGlobeCommand={handleGlobeCommand} />

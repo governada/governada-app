@@ -20,6 +20,7 @@ export type GlobeCommand =
   | { cmd: 'flyTo'; target: string }
   | { cmd: 'pulse'; target: string }
   | { cmd: 'highlight'; alignment: number[]; threshold: number }
+  | { cmd: 'voteSplit'; target: string }
   | { cmd: 'reset' }
   | { cmd: 'clear' };
 

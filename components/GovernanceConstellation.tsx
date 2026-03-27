@@ -41,6 +41,8 @@ export interface ConstellationRef {
   ) => void;
   flyToMatch: (drepId: string) => Promise<void>;
   clearMatches: () => void;
+  /** Color DRep nodes by their vote on a proposal. Pass null to clear. */
+  setVoteSplit: (map: Map<string, 'Yes' | 'No' | 'Abstain'> | null) => void;
 }
 
 interface ConstellationProps {
@@ -271,6 +273,10 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
           dimmed: false,
         }));
         cameraControlsRef.current?.setLookAt(...INITIAL_CAMERA, ...INITIAL_TARGET, true);
+      },
+
+      setVoteSplit: () => {
+        // No-op in the legacy constellation — vote split only renders in GlobeConstellation
       },
     }));
 

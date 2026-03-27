@@ -90,6 +90,8 @@ interface SceneState {
   scanProgress: number; // 0-1, derived from matching threshold convergence
   flyToTarget: [number, number, number] | null;
   flyToActive: boolean;
+  /** When non-null, DRep nodes are colored by their vote on a specific proposal */
+  voteSplitMap: Map<string, 'Yes' | 'No' | 'Abstain'> | null;
 }
 
 // Earth-like axial tilt: 23.4 degrees
@@ -157,6 +159,7 @@ export const GlobeConstellation = forwardRef<
     scanProgress: 0,
     flyToTarget: null,
     flyToActive: false,
+    voteSplitMap: null,
   });
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -300,6 +303,7 @@ export const GlobeConstellation = forwardRef<
         highlightId: null,
         dimmed: false,
         animating: false,
+        voteSplitMap: null,
       }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
     },
@@ -488,9 +492,18 @@ export const GlobeConstellation = forwardRef<
         scanProgress: 0,
         flyToTarget: null,
         flyToActive: false,
+        voteSplitMap: null,
       }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
       cameraControlsRef.current?.setLookAt(...effectiveCamera, ...effectiveTarget, true);
+    },
+
+    setVoteSplit: (map: Map<string, 'Yes' | 'No' | 'Abstain'> | null) => {
+      setSceneState((prev) => ({
+        ...prev,
+        voteSplitMap: map,
+        dimmed: map !== null,
+      }));
     },
   }));
 
@@ -625,6 +638,7 @@ export const GlobeConstellation = forwardRef<
               overlayColorMode={overlayColorMode}
               urgentNodeIds={urgentNodeIds}
               completedNodeIds={completedNodeIds}
+              voteSplitMap={sceneState.voteSplitMap}
               onNodeHover={(node) => {
                 onNodeHoverRef.current?.(node);
                 onNodeHoverScreenRef.current?.(node, node ? { ...mouseScreenRef.current } : null);
@@ -963,6 +977,7 @@ function ConstellationNodes({
   completedNodeIds,
   hoveredNodeId,
   visitedNodeIds,
+  voteSplitMap,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -979,6 +994,7 @@ function ConstellationNodes({
   completedNodeIds?: Set<string>;
   hoveredNodeId?: string | null;
   visitedNodeIds?: Set<string>;
+  voteSplitMap?: Map<string, 'Yes' | 'No' | 'Abstain'> | null;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -1015,10 +1031,22 @@ function ConstellationNodes({
   const COMPLETED_GREEN = '#22c55e'; // green flash for completed actions
   const NETWORK_TEAL = '#5eead4'; // brighter teal for network overlay delegation nodes
   const PROPOSAL_BRIGHT = '#f5eedf'; // warm bright for proposal overlay emphasis
+  // Vote split colors — used when voteSplitMap is active
+  const VOTE_YES_COLOR = '#2dd4bf'; // teal — aligned with brand
+  const VOTE_NO_COLOR = '#ef4444'; // red — opposition
+  const VOTE_ABSTAIN_COLOR = '#9ca3af'; // gray — neutral
   const getDrepColor = useCallback(
     (node: ConstellationNode3D) => {
       // Completed nodes flash green (takes priority over all overlays)
       if (completedNodeIds?.has(node.id)) return COMPLETED_GREEN;
+      // Vote split: color by vote choice, dim non-voters
+      if (voteSplitMap) {
+        const vote = voteSplitMap.get(node.id) ?? voteSplitMap.get(node.fullId);
+        if (vote === 'Yes') return VOTE_YES_COLOR;
+        if (vote === 'No') return VOTE_NO_COLOR;
+        if (vote === 'Abstain') return VOTE_ABSTAIN_COLOR;
+        return DIMMED_COLOR;
+      }
       // Urgent overlay: non-urgent dim hard, urgent glow bright red
       if (overlayColorMode === 'urgent') {
         if (urgentNodeIds?.has(node.id)) return URGENT_DREP_BRIGHT;
@@ -1030,7 +1058,7 @@ function ConstellationNodes({
       if (overlayColorMode === 'network') return NETWORK_TEAL;
       return DREP_COLOR;
     },
-    [overlayColorMode, urgentNodeIds, completedNodeIds],
+    [overlayColorMode, urgentNodeIds, completedNodeIds, voteSplitMap],
   );
   const getSpoColor = useCallback(
     () => (overlayColorMode === 'proposals' ? DIMMED_COLOR : SPO_COLOR),

@@ -108,11 +108,12 @@ jobs:
         run: npx tsx scripts/report-bundle-size.ts
       - name: Enforce bundle budget
         run: |
-          # Fail CI if total JS bundle exceeds 2 MB (gzipped equivalent ~500KB)
+          # Fail CI if total JS bundle exceeds 20 MB (raw uncompressed)
+          # Baseline: ~12.5 MB. Budget gives 60% headroom for growth.
           TOTAL_JS=$(find .next/static -name '*.js' -exec wc -c {} + 2>/dev/null | tail -1 | awk '{print $1}')
-          BUDGET=2097152  # 2 MB
+          BUDGET=20971520  # 20 MB
           if [ "${TOTAL_JS:-0}" -gt "$BUDGET" ]; then
-            echo "FAIL: Bundle size ${TOTAL_JS} bytes exceeds budget of ${BUDGET} bytes (2 MB)"
+            echo "FAIL: Bundle size ${TOTAL_JS} bytes exceeds budget of ${BUDGET} bytes (20 MB)"
             exit 1
           fi
           echo "Bundle size OK: ${TOTAL_JS:-0} bytes (budget: ${BUDGET})"

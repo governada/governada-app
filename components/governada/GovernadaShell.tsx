@@ -305,11 +305,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
             </DiscoveryHub>
           </SpotlightProvider>
           {/* Seneca Orb + Thread — unified floating companion */}
-          <SenecaOrbAndThread
-            seneca={seneca}
-            isStudioMode={isStudioMode}
-            isHomepage={isHomepage}
-          />
+          <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} isHomepage={isHomepage} />
 
           {!isStudioMode && (
             <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">

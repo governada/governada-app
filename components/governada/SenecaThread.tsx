@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Trash2, Search, Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSenecaSearch } from '@/hooks/useSenecaSearch';
 import type { SearchResult } from '@/hooks/useSenecaSearch';
 import { CompassSigil } from '@/components/governada/CompassSigil';
@@ -308,6 +309,7 @@ export function SenecaThread({
   onEntityFocus,
   isAuthenticated,
 }: SenecaThreadProps) {
+  const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevRouteRef = useRef<PanelRoute>(panelRoute);
@@ -375,7 +377,8 @@ export function SenecaThread({
           break;
         case 'navigate':
           if (option.href) {
-            window.location.href = option.href;
+            router.push(option.href);
+            onClose();
           }
           break;
         case 'search':
@@ -385,7 +388,7 @@ export function SenecaThread({
           break;
       }
     },
-    [onStartConversation, onStartMatch, senecaSearch],
+    [onStartConversation, onStartMatch, onClose, router, senecaSearch],
   );
 
   // Determine persona label to show in header

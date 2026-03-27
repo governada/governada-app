@@ -10,7 +10,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import { validateSessionToken } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import {
@@ -124,21 +123,6 @@ async function buildGovernanceSnapshot(ctx: {
 
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    // --- Parse request early to check mode ---
-    const body = await request.json();
-    const parsed = AdvisorRequestSchema.parse(body);
-
-    // --- Feature flag check (briefing mode always allowed) ---
-    if (parsed.context?.mode !== 'briefing') {
-      const enabled = await getFeatureFlag('conversational_nav', false);
-      if (!enabled) {
-        return NextResponse.json(
-          { error: 'Conversational navigation is not enabled' },
-          { status: 403 },
-        );
-      }
-    }
-
     // --- Rate limit ---
     evictStaleEntries();
     const rateLimitKey =
@@ -149,6 +133,10 @@ export async function POST(request: NextRequest): Promise<Response> {
         { status: 429 },
       );
     }
+
+    // --- Parse request ---
+    const body = await request.json();
+    const parsed = AdvisorRequestSchema.parse(body);
 
     // --- Optional auth for personalization ---
     let personalContext: string | undefined;

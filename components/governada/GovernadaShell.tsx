@@ -209,8 +209,8 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
     pathname === '/workspace/review' ||
     /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
   const temporalAdaptation = useFeatureFlag('temporal_adaptation') === true;
-  const governanceCopilotFlag = useFeatureFlag('governance_copilot');
-  const showSeneca = governanceCopilotFlag === true;
+  // Seneca is always available — no feature flag gate. Individual features
+  // within Seneca (research mode, etc.) can be gated separately.
   const mobileGesturesFlag = useFeatureFlag('mobile_gestures');
   const mobileGestures = mobileGesturesFlag === true;
   const { tintColor } = useGovernanceTemperature();
@@ -257,8 +257,8 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               {!isStudioMode && <MilestoneTrigger />}
             </DiscoveryHub>
           </SpotlightProvider>
-          {/* Seneca Orb + Thread — unified floating companion */}
-          {showSeneca && <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />}
+          {/* Seneca Orb + Thread — unified floating companion (always available) */}
+          <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />
 
           {!isStudioMode && (
             <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">

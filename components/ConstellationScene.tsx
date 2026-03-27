@@ -52,6 +52,8 @@ interface ConstellationSceneProps {
   urgentNodeIds?: Set<string>;
   /** Node IDs that just completed (green flash) */
   completedNodeIds?: Set<string>;
+  /** Node IDs that have been visited/inspected this session */
+  visitedNodeIds?: Set<string>;
 }
 
 /**

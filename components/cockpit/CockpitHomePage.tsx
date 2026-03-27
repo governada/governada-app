@@ -60,6 +60,13 @@ export function CockpitHomePage() {
   const setDensityLevel = useCockpitStore((s) => s.setDensityLevel);
   const setStoreHoveredNode = useCockpitStore((s) => s.setHoveredNode);
   const markNodeVisited = useCockpitStore((s) => s.markNodeVisited);
+  const visitedNodeIds = useCockpitStore((s) => s.visitedNodeIds);
+
+  // Memoize visited set to avoid unnecessary re-renders in the globe
+  const visitedNodeIdSet = useMemo(
+    () => (visitedNodeIds.length > 0 ? new Set(visitedNodeIds) : undefined),
+    [visitedNodeIds],
+  );
 
   // Action queue — allItems for completion mapping, items for display
   const actionCompletions = useCockpitStore((s) => s.actionCompletions);
@@ -311,6 +318,7 @@ export function CockpitHomePage() {
           overlayColorMode={activeOverlay}
           urgentNodeIds={urgentNodeIds}
           completedNodeIds={completedGlobeNodeIds.size > 0 ? completedGlobeNodeIds : undefined}
+          visitedNodeIds={visitedNodeIdSet}
         />
       </div>
 

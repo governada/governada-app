@@ -161,6 +161,7 @@ C:\Users\dalto\governada\
 | `/launch-readiness [full\|technical\|business\|blocker-check]` | Pre-launch go/no-go: security blockers, journey regression, performance, brand, legal, monetization, community, SEO                  |
 | `/ship`                                                        | Full deploy pipeline for a single PR (preflight → CI → merge → deploy → verify)                                                      |
 | `/hotfix`                                                      | Single-commit fix directly on main                                                                                                   |
+| `/adversarial-review [scope]`                                  | Hostile post-build review: parallel code + UX adversaries via Preview, blocks ship on critical findings                              |
 
 ## Compaction Instructions
 

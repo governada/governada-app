@@ -16,7 +16,8 @@ Implementation is NOT complete until deployed and validated in production. Use `
 8. **Verify production** (Railway auto-deploys from merge — do NOT watch CI on main): wait ~3 min, then `curl -s https://governada.io/api/health` until healthy. Use `deploy-verifier` subagent in background if preferred.
 9. PUT `https://governada.io/api/inngest` if Inngest functions changed
 10. `npm run smoke-test`, verify changed endpoints on `governada.io`
-11. Clean up worktree if applicable
+11. **Visual verification** (REQUIRED for UI changes): Open production in Claude Chrome, screenshot changed routes at desktop + mobile, verify against build spec. See `.claude/rules/post-deploy-verification.md` for full protocol.
+12. Clean up worktree if applicable
 
 ## Hard Constraints
 

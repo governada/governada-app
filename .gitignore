@@ -33,8 +33,7 @@ response.json
 .cursor/
 .mcp.json
 
-# Claude Code - track commands, rules, agents, hooks, skills; ignore local settings
-.claude/settings.json
+# Claude Code - track commands, rules, agents, hooks, skills, settings; local overrides stay private
 .claude/settings.local.json
 
 # debug

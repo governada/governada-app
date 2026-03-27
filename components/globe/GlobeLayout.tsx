@@ -18,6 +18,7 @@ import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useWhisper } from '@/hooks/useWhisper';
+import { PanelOverlay } from './PanelOverlay';
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
   { ssr: false },
@@ -77,6 +78,11 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
     [router, bridgeNodeClick],
   );
 
+  // Panel close → restore globe to default camera position
+  const handlePanelClose = useCallback(() => {
+    globeRef.current?.resetCamera();
+  }, []);
+
   // Whisper system for the orb
   const { currentWhisper, dismissWhisper } = useWhisper('governance', {
     activeProposals: activeProposalCount ?? undefined,
@@ -128,8 +134,8 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
         {/* Placeholder for Phase 3 filter chips */}
       </div>
 
-      {/* Panel overlay area — z-30 (Phase 2 will add entity panels here) */}
-      {/* Phase 2: <PanelOverlay /> */}
+      {/* Panel overlay — z-30: entity detail panels over the globe */}
+      <PanelOverlay onClose={handlePanelClose} />
 
       {/* Seneca companion — z-40 */}
       {!seneca.isOpen && (

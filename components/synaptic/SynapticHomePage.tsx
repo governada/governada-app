@@ -7,6 +7,10 @@
  * Globe is non-interactive (Seneca controls camera). The briefing panel
  * auto-streams a personalized governance narrative on arrival, with
  * entity mentions triggering globe reactions (node pulses, camera drift).
+ *
+ * Globe-as-Seneca state machine: the globe's visual state reflects
+ * Seneca's activity — breathing when idle, heightened urgency when
+ * narrating, calm when complete.
  */
 
 import { useRef, useCallback, useState } from 'react';
@@ -14,6 +18,7 @@ import dynamic from 'next/dynamic';
 import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
 import { useConstellationProposals } from '@/hooks/useConstellationProposals';
 import { useSenecaGlobeBridge, type GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
+import { useSynapticStore } from '@/stores/synapticStore';
 import type { GlobeStreamCommand } from '@/lib/intelligence/streamAdvisor';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
@@ -37,6 +42,16 @@ export function SynapticHomePage() {
   const { userNode, delegationBond } = useUserConstellationNode();
   const { proposalNodes } = useConstellationProposals();
 
+  // Seneca state — drives globe visual state
+  const isStreaming = useSynapticStore((s) => s.isStreaming);
+  const phase = useSynapticStore((s) => s.phase);
+
+  // Globe visual state derived from Seneca activity:
+  // - idle/minimized: gentle breathing, low urgency
+  // - briefing/conversation streaming: heightened urgency = faster heartbeat
+  // - briefing done: calm, low urgency
+  const globeUrgency = isStreaming ? 65 : phase === 'briefing' ? 35 : 20;
+
   // Tooltip state
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
@@ -48,7 +63,6 @@ export function SynapticHomePage() {
     (command: GlobeStreamCommand) => {
       if (!command.cmd) return;
 
-      // Map stream command format to bridge command format
       const bridgeCmd: GlobeCommand =
         command.cmd === 'flyTo' && command.target
           ? { type: 'flyTo', nodeId: command.target }
@@ -91,6 +105,7 @@ export function SynapticHomePage() {
         ref={globeRef}
         interactive={false}
         breathing
+        urgency={globeUrgency}
         className="h-full"
         userNode={userNode}
         proposalNodes={proposalNodes}
@@ -102,7 +117,7 @@ export function SynapticHomePage() {
       {/* Cursor-following tooltip */}
       <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} />
 
-      {/* Seneca briefing panel — bottom-left */}
+      {/* Seneca briefing panel — bottom-left, responsive */}
       <SynapticBriefPanel onGlobeCommand={handleGlobeCommand} />
     </div>
   );

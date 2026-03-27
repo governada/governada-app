@@ -18,6 +18,159 @@ import { buildSenecaPrompt } from '@/lib/ai/senecaPersona';
 import { PERSONAS, type PersonaId } from '@/lib/intelligence/senecaPersonas';
 
 // ---------------------------------------------------------------------------
+// Globe intent detection — intercepts user queries BEFORE the AI call
+// ---------------------------------------------------------------------------
+
+/**
+ * Intent categories for Seneca → Globe routing.
+ * When detected, these trigger immediate globe state changes
+ * AND feed context into the AI response.
+ */
+export type GlobeIntentType =
+  | 'browse' // "show me proposals" → open list overlay, filter
+  | 'focus' // "show me drep_X" → flyTo node, open detail panel
+  | 'compare' // "compare X and Y" → highlight both
+  | 'filter' // "show tier 1 dreps" → filter list + globe
+  | 'match' // "find my match" → start match flow
+  | 'votesplit' // "how did people vote on X" → vote split viz
+  | 'temporal' // "show me epoch 620" → temporal replay
+  | 'reset'; // "reset" / "clear" / "start over" → reset globe
+
+export interface GlobeIntent {
+  type: GlobeIntentType;
+  /** Entity filter for browse/filter intents */
+  filter?: 'proposals' | 'dreps' | 'spos' | 'cc';
+  /** Entity ID for focus intents */
+  entityId?: string;
+  /** Entity type for focus/compare intents */
+  entityType?: 'drep' | 'proposal' | 'pool' | 'cc';
+  /** Second entity for compare intents */
+  compareWith?: { entityId: string; entityType: string };
+  /** Proposal reference for votesplit intents */
+  proposalRef?: string;
+  /** Epoch number for temporal intents */
+  epoch?: number;
+  /** Tier filter */
+  tier?: number;
+  /** The original query text (passed through to AI for response) */
+  query: string;
+}
+
+/**
+ * Detect if user input maps to a globe action BEFORE hitting the AI.
+ * Returns null if no intent is detected (query goes to AI as normal).
+ *
+ * Intent detection is fast keyword/pattern matching — no AI call needed.
+ * Complex/ambiguous queries always fall through to the AI.
+ */
+export function detectGlobeIntent(input: string): GlobeIntent | null {
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.length < 3) return null;
+
+  const lower = trimmed.toLowerCase();
+
+  // --- RESET ---
+  if (/^(reset|clear|start over|go back|home)\s*$/.test(lower)) {
+    return { type: 'reset', query: trimmed };
+  }
+
+  // --- MATCH ---
+  if (
+    /\b(find|start|begin|do)\b.*\b(match|matching|quiz)\b/i.test(lower) ||
+    /^match\s*me$/i.test(lower) ||
+    /^find\s+(my|a)\s+match$/i.test(lower)
+  ) {
+    return { type: 'match', query: trimmed };
+  }
+
+  // --- TEMPORAL ---
+  const epochMatch = lower.match(/\bepoch\s+(\d+)\b/);
+  if (epochMatch) {
+    return { type: 'temporal', epoch: parseInt(epochMatch[1], 10), query: trimmed };
+  }
+
+  // --- VOTESPLIT ---
+  if (
+    /\bhow\s+(did|do)\s+(people|dreps?|spos?|they|voters?)\s+vote/i.test(lower) ||
+    /\bvote\s*split\b/i.test(lower) ||
+    /\bvoting\s+(breakdown|results?|split)\b/i.test(lower)
+  ) {
+    // Try to extract a proposal reference from the query
+    const proposalRefMatch = lower.match(/\b([a-f0-9]{8,})[_#](\d+)\b/);
+    return {
+      type: 'votesplit',
+      proposalRef: proposalRefMatch ? `${proposalRefMatch[1]}_${proposalRefMatch[2]}` : undefined,
+      query: trimmed,
+    };
+  }
+
+  // --- FOCUS (specific entity) ---
+  // "show me drep drep1abc..." or "tell me about drep1..."
+  const drepFocusMatch = lower.match(
+    /\b(?:show|tell|about|focus|go\s+to)\b.*\b(drep[_\s]?\w{5,})/i,
+  );
+  if (drepFocusMatch) {
+    const id = drepFocusMatch[1].replace(/^drep[_\s]?/, '');
+    return { type: 'focus', entityId: id, entityType: 'drep', query: trimmed };
+  }
+
+  // "show me pool pool1abc..."
+  const poolFocusMatch = lower.match(
+    /\b(?:show|tell|about|focus|go\s+to)\b.*\b(pool[_\s]?\w{5,})/i,
+  );
+  if (poolFocusMatch) {
+    const id = poolFocusMatch[1].replace(/^pool[_\s]?/, '');
+    return { type: 'focus', entityId: id, entityType: 'pool', query: trimmed };
+  }
+
+  // --- COMPARE ---
+  if (/\bcompare\b/i.test(lower)) {
+    // We detect compare intent but entity extraction is complex — let AI handle the details
+    return { type: 'compare', query: trimmed };
+  }
+
+  // --- FILTER (with tier) ---
+  const tierMatch = lower.match(/\btier\s*(\d)\b/);
+  const tier = tierMatch ? parseInt(tierMatch[1], 10) : undefined;
+
+  // --- BROWSE / FILTER ---
+  if (
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(proposals?|actions?|gov\s*actions?)\b/i.test(
+      lower,
+    )
+  ) {
+    return { type: 'browse', filter: 'proposals', tier, query: trimmed };
+  }
+  if (
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(dreps?|representatives?|delegates?)\b/i.test(
+      lower,
+    )
+  ) {
+    return { type: 'browse', filter: 'dreps', tier, query: trimmed };
+  }
+  if (
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(spos?|pools?|stake\s*pools?)\b/i.test(
+      lower,
+    )
+  ) {
+    return { type: 'browse', filter: 'spos', tier, query: trimmed };
+  }
+  if (
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(cc|committee|constitutional\s*committee)\b/i.test(
+      lower,
+    )
+  ) {
+    return { type: 'browse', filter: 'cc', query: trimmed };
+  }
+  if (/\btreasury\b/i.test(lower) && /\b(show|list|browse|display|proposals?)\b/i.test(lower)) {
+    return { type: 'browse', filter: 'proposals', query: trimmed };
+  }
+
+  // No intent detected — fall through to AI
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Question / intent detection
 // ---------------------------------------------------------------------------
 

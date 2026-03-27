@@ -27,6 +27,7 @@ import { useEpochContext } from '@/hooks/useEpochContext';
 import { useWhisper } from '@/hooks/useWhisper';
 import type { GlobeFilter } from '@/lib/globe/urlState';
 import type { SortMode } from './FilterBar';
+import type { GlobeIntent } from '@/lib/intelligence/advisor';
 import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
@@ -62,7 +63,7 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const seneca = useSenecaThread();
-  const { handleNodeClick: bridgeNodeClick } = useSenecaGlobeBridge(globeRef);
+  const { handleNodeClick: bridgeNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
   const { segment } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
@@ -203,6 +204,81 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
   }, [handleToggleList, handleCycleFilter]);
 
   // ---------------------------------------------------------------------------
+  // Seneca intent → Globe dispatch
+  // ---------------------------------------------------------------------------
+
+  const consumeGlobeAction = seneca.consumeGlobeAction;
+
+  const dispatchIntent = useCallback(
+    (intent: GlobeIntent) => {
+      const globe = globeRef.current;
+
+      switch (intent.type) {
+        case 'browse':
+          // Open list overlay with the requested filter
+          if (intent.filter) {
+            handleFilterChange(intent.filter);
+            setListOpen(true);
+          }
+          break;
+
+        case 'focus':
+          // Fly to entity and navigate to its detail route
+          if (intent.entityId && intent.entityType) {
+            const nodeId = `${intent.entityType}_${intent.entityId}`;
+            globe?.flyToNode(nodeId);
+            // Navigate to the entity's /g/ route for the panel
+            const route = intentEntityRoute(intent.entityType, intent.entityId);
+            if (route) router.push(route);
+          }
+          break;
+
+        case 'compare':
+          // For now, open list with all entities visible — AI handles comparison in response
+          // Future: highlight two specific nodes
+          break;
+
+        case 'filter':
+          if (intent.filter) {
+            handleFilterChange(intent.filter);
+            setListOpen(true);
+          }
+          break;
+
+        case 'votesplit':
+          if (intent.proposalRef) {
+            executeGlobeCommand({ type: 'voteSplit', proposalRef: intent.proposalRef });
+          }
+          break;
+
+        case 'temporal':
+          if (intent.epoch != null) {
+            // Update URL with temporal epoch
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('t', String(intent.epoch));
+            params.set('view', 'temporal');
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+          }
+          break;
+
+        case 'reset':
+          handleResetGlobe();
+          break;
+      }
+    },
+    [handleFilterChange, handleResetGlobe, executeGlobeCommand, router, pathname, searchParams],
+  );
+
+  // Watch for pending globe actions from Seneca
+  useEffect(() => {
+    const action = seneca.pendingGlobeAction;
+    if (action) {
+      dispatchIntent(action);
+      consumeGlobeAction();
+    }
+  }, [seneca.pendingGlobeAction, dispatchIntent, consumeGlobeAction]);
+
+  // ---------------------------------------------------------------------------
   // Seneca whisper
   // ---------------------------------------------------------------------------
 
@@ -320,6 +396,30 @@ function deriveEntityFocusFromPath(pathname: string): string | null {
   if (ccMatch) return `cc_${decodeURIComponent(ccMatch[1])}`;
 
   return null;
+}
+
+/** Map an intent entity type + id to a /g/ route */
+function intentEntityRoute(entityType: string, entityId: string): string | null {
+  switch (entityType) {
+    case 'drep':
+      return `/g/drep/${encodeURIComponent(entityId)}`;
+    case 'pool':
+    case 'spo':
+      return `/g/pool/${encodeURIComponent(entityId)}`;
+    case 'cc':
+      return `/g/cc/${encodeURIComponent(entityId)}`;
+    case 'proposal':
+      // For proposals, entityId might be "txHash_index" or just "txHash"
+      if (entityId.includes('_')) {
+        const lastUnderscore = entityId.lastIndexOf('_');
+        const txHash = entityId.slice(0, lastUnderscore);
+        const index = entityId.slice(lastUnderscore + 1);
+        return `/g/proposal/${txHash}/${index}`;
+      }
+      return `/g/proposal/${entityId}/0`;
+    default:
+      return null;
+  }
 }
 
 /** Map a constellation node to its /g/ route */

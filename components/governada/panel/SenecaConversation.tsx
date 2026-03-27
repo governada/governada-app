@@ -49,7 +49,7 @@ export function SenecaConversation({
 
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
   const { segment } = useSegment();
-  const { startResearch } = useSenecaThread();
+  const { startResearch, executeIntent } = useSenecaThread();
   const daysRemaining = totalDays - day;
 
   useEffect(() => {
@@ -61,6 +61,34 @@ export function SenecaConversation({
   const sendMessage = useCallback(
     (text: string) => {
       if (!text.trim() || isStreaming) return;
+
+      // --- Intent detection: dispatch globe actions before/alongside AI ---
+      const intent = executeIntent(text.trim());
+
+      // For 'reset' intent, just acknowledge without AI call
+      if (intent?.type === 'reset') {
+        const resetUser: AdvisorMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: text.trim(),
+        };
+        const resetAssistant: AdvisorMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'Done — constellation reset to the full view.',
+        };
+        setMessages((prev) => [...prev, resetUser, resetAssistant]);
+        return;
+      }
+
+      // For 'match' intent, the hook already started the match flow — no AI needed
+      if (intent?.type === 'match') {
+        return;
+      }
+
+      // For other intents (browse, focus, filter, votesplit, temporal),
+      // the globe action is dispatched AND we still stream an AI response
+      // so Seneca can contextualize what the user is seeing.
 
       const userMsg: AdvisorMessage = {
         id: `user-${Date.now()}`,
@@ -128,6 +156,7 @@ export function SenecaConversation({
       segment,
       panelRoute,
       entityId,
+      executeIntent,
     ],
   );
 

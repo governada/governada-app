@@ -28,12 +28,18 @@ import { useWhisper } from '@/hooks/useWhisper';
 import type { GlobeFilter } from '@/lib/globe/urlState';
 import type { SortMode } from './FilterBar';
 import type { GlobeIntent } from '@/lib/intelligence/advisor';
+import { useDeviceCapability } from '@/hooks/useDeviceCapability';
 import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
+  { ssr: false },
+);
+
+const Constellation2D = dynamic(
+  () => import('./Constellation2D').then((m) => ({ default: m.Constellation2D })),
   { ssr: false },
 );
 
@@ -68,6 +74,7 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
   const isAuthenticated = segment !== 'anonymous';
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
   const daysRemaining = totalDays - day;
+  const { use2D } = useDeviceCapability();
 
   // ---------------------------------------------------------------------------
   // List overlay state
@@ -300,16 +307,27 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
 
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden">
-      {/* Full-viewport globe — z-0 */}
+      {/* Full-viewport constellation — z-0 */}
       <div className="absolute inset-0 z-0">
-        <ConstellationScene
-          ref={globeRef}
-          interactive
-          className="w-full h-full"
-          onReady={handleGlobeReady}
-          onNodeSelect={handleNodeSelect}
-          breathing
-        />
+        {use2D ? (
+          <Constellation2D
+            ref={globeRef}
+            interactive
+            className="w-full h-full"
+            onReady={handleGlobeReady}
+            onNodeSelect={handleNodeSelect}
+            breathing
+          />
+        ) : (
+          <ConstellationScene
+            ref={globeRef}
+            interactive
+            className="w-full h-full"
+            onReady={handleGlobeReady}
+            onNodeSelect={handleNodeSelect}
+            breathing
+          />
+        )}
       </div>
 
       {/* SSR content for SEO — hidden from visual users */}

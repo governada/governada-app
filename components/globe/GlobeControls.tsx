@@ -86,7 +86,9 @@ function ControlButton({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs transition-all duration-150',
+        'flex items-center gap-1.5 rounded-full text-xs transition-all duration-150',
+        // Larger touch targets on mobile (44px min), compact on desktop
+        'px-3 py-2.5 sm:px-2.5 sm:py-1.5',
         'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50',
         isActive
           ? 'bg-white/15 text-foreground'
@@ -94,7 +96,7 @@ function ControlButton({
       )}
       title={shortcut ? `${label} (${shortcut})` : label}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
       <span className="hidden sm:inline">{label}</span>
     </button>
   );

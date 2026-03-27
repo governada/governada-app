@@ -6,5 +6,5 @@ interface PageProps {
 
 export default async function CommitteeMemberLegacyRedirect({ params }: PageProps) {
   const { ccHotId } = await params;
-  redirect(`/governance/committee/${ccHotId}`);
+  redirect(`/g/cc/${ccHotId}`);
 }

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function CommitteeLegacyRedirect() {
-  redirect('/governance/committee');
+  redirect('/g?filter=cc');
 }

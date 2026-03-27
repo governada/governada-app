@@ -179,18 +179,18 @@ export const WORKSPACE_CITIZEN_ITEMS: NavItem[] = [
 
 export const GOVERNANCE_ITEMS: NavItem[] = [
   {
-    href: '/governance/proposals',
+    href: '/g?filter=proposals',
     label: 'Proposals',
     icon: FileText,
     sublabelKey: 'gov.activeProposals',
   },
   {
-    href: '/governance/representatives',
+    href: '/g?filter=dreps',
     label: 'Representatives',
     icon: Users,
     sublabelKey: 'gov.activeDreps',
   },
-  { href: '/governance/pools', label: 'Pools', icon: Building2, sublabelKey: 'gov.activePools' },
+  { href: '/g?filter=spos', label: 'Pools', icon: Building2, sublabelKey: 'gov.activePools' },
   {
     href: '/governance/observatory',
     label: 'Observatory',
@@ -398,12 +398,12 @@ export function getSidebarSections(
     }
   }
 
-  // ── World 3: Governance ───────────────────────────────────────────────
+  // ── World 3: Governance (The Constellation) ─────────────────────────
   sections.push({
     id: 'governance',
     label: 'Governance',
     icon: Globe,
-    href: '/governance',
+    href: '/g',
     items: filterByDepth(GOVERNANCE_ITEMS, depth),
   });
 
@@ -429,7 +429,7 @@ export function getSidebarSections(
 /** Anonymous: Home | Governance | Match */
 const BOTTOM_BAR_ANONYMOUS: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/governance', label: 'Governance', icon: Globe },
+  { href: '/g', label: 'Governance', icon: Globe },
   { href: '/match', label: 'Match', icon: Compass },
 ];
 
@@ -437,7 +437,7 @@ const BOTTOM_BAR_ANONYMOUS: NavItem[] = [
 const BOTTOM_BAR_CITIZEN: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/workspace/author', label: 'Workspace', icon: Briefcase },
-  { href: '/governance', label: 'Governance', icon: Globe },
+  { href: '/g', label: 'Governance', icon: Globe },
   { href: '/match', label: 'Match', icon: Compass },
 ];
 
@@ -445,7 +445,7 @@ const BOTTOM_BAR_CITIZEN: NavItem[] = [
 const BOTTOM_BAR_CITIZEN_DELEGATED: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/workspace/author', label: 'Workspace', icon: Briefcase },
-  { href: '/governance', label: 'Governance', icon: Globe },
+  { href: '/g', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
@@ -453,7 +453,7 @@ const BOTTOM_BAR_CITIZEN_DELEGATED: NavItem[] = [
 const BOTTOM_BAR_DREP: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/workspace', label: 'Workspace', icon: Briefcase, badge: 'actions' },
-  { href: '/governance', label: 'Governance', icon: Globe },
+  { href: '/g', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
@@ -461,7 +461,7 @@ const BOTTOM_BAR_DREP: NavItem[] = [
 const BOTTOM_BAR_SPO: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/workspace', label: 'Workspace', icon: Briefcase },
-  { href: '/governance', label: 'Governance', icon: Globe },
+  { href: '/g', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
@@ -469,7 +469,7 @@ const BOTTOM_BAR_SPO: NavItem[] = [
 const BOTTOM_BAR_CC: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/workspace/author', label: 'Workspace', icon: Briefcase },
-  { href: '/governance', label: 'Governance', icon: Globe },
+  { href: '/g', label: 'Governance', icon: Globe },
   { href: '/you', label: 'You', icon: User, badge: 'unread' },
 ];
 
@@ -508,7 +508,12 @@ export function getPillBarItems(
 ): NavItem[] | null {
   const depth = context?.depth;
 
-  if (pathname.startsWith('/governance')) {
+  if (
+    pathname === '/g' ||
+    pathname.startsWith('/g/') ||
+    pathname.startsWith('/g?') ||
+    pathname.startsWith('/governance')
+  ) {
     return filterByDepth(GOVERNANCE_ITEMS, depth);
   }
   // Workspace routes show workspace sub-items in the pill bar
@@ -545,6 +550,7 @@ export function getPillBarItems(
 export function getCurrentSection(pathname: string): string | null {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/workspace')) return 'workspace';
+  if (pathname === '/g' || pathname.startsWith('/g/')) return 'governance';
   if (pathname.startsWith('/governance')) return 'governance';
   if (pathname.startsWith('/you')) return 'you';
   if (pathname.startsWith('/match')) return 'match';

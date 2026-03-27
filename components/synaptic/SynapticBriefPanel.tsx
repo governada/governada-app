@@ -208,6 +208,7 @@ export function SynapticBriefPanel({ onGlobeCommand, className }: SynapticBriefP
           exit={{ y: 40, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className={cn(
+            // Desktop: fixed bottom-left panel
             'fixed bottom-6 left-6 z-50',
             'w-[min(440px,calc(100vw-3rem))]',
             store.phase === 'conversation' ? 'max-h-[60vh]' : 'max-h-[30vh]',
@@ -215,6 +216,10 @@ export function SynapticBriefPanel({ onGlobeCommand, className }: SynapticBriefP
             'rounded-2xl shadow-2xl shadow-black/40',
             'flex flex-col overflow-hidden',
             'transition-[max-height] duration-300',
+            // Mobile: full-width bottom card, no backdrop-blur for performance
+            'max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:w-full',
+            'max-md:rounded-b-none max-md:rounded-t-xl',
+            'max-md:max-h-[50vh] max-md:backdrop-blur-none max-md:bg-background/90',
             className,
           )}
         >
@@ -290,7 +295,8 @@ export function SynapticBriefPanel({ onGlobeCommand, className }: SynapticBriefP
             backdrop-blur-xl bg-background/50 border border-white/5
             rounded-full shadow-lg shadow-black/30
             text-xs text-muted-foreground hover:text-foreground
-            hover:bg-background/60 transition-colors"
+            hover:bg-background/60 transition-colors
+            max-md:bottom-4 max-md:left-4"
           aria-label="Open Seneca briefing"
         >
           <MessageSquare className="h-3.5 w-3.5" />

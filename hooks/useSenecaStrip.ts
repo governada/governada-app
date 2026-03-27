@@ -79,11 +79,16 @@ function timeOfDayGreeting(): string {
   return 'Evening';
 }
 
-const DISCOVERY_FALLBACKS: string[] = [
-  'Governance is quiet. Explore the constellation to discover DReps aligned with your values.',
-  'No urgent items. Browse the network overlay to see delegation relationships.',
-  'All clear. Try the proposals overlay to review active governance actions.',
-];
+// Honest generic prompts when no data-driven insights available.
+// Use epoch/day from context to stay factual.
+function getDiscoveryFallback(epoch: number, day: number, idx: number): string {
+  const prompts = [
+    `Epoch ${epoch}, day ${day}. No urgent governance actions. Explore the constellation to discover aligned DReps.`,
+    `All caught up. Switch to the Network overlay (press 2) to explore delegation relationships.`,
+    `Governance is steady. Try the Proposals overlay (press 3) to review active governance actions.`,
+  ];
+  return prompts[idx % prompts.length];
+}
 
 /** Extract entity-like IDs from text (drep1..., pool1..., stake1...) */
 function extractEntityIds(text: string): string[] {
@@ -98,6 +103,7 @@ function extractEntityIds(text: string): string[] {
 export function useSenecaStrip(): SenecaStripState {
   const bootPhase = useCockpitStore((s) => s.bootPhase);
   const hoveredNodeId = useCockpitStore((s) => s.hoveredNodeId);
+  const hoveredNodeData = useCockpitStore((s) => s.hoveredNodeData);
   const senecaMode = useCockpitStore((s) => s.senecaMode);
   const temporalEpoch = useCockpitStore((s) => s.temporalEpoch);
   const activeOverlay = useCockpitStore((s) => s.activeOverlay);
@@ -251,23 +257,55 @@ export function useSenecaStrip(): SenecaStripState {
       };
     }
 
-    // Hover-reactive mode — show entity-contextual text
+    // Hover-reactive mode — entity-specific narration using node data
     if (hoveredNodeId) {
+      const d = hoveredNodeData;
       let hoverText: string;
-      if (hoveredNodeId.startsWith('proposal-')) {
-        hoverText = `Proposal in focus. Review alignment with your governance philosophy.`;
-      } else if (hoveredNodeId.startsWith('pool-') || hoveredNodeId.startsWith('pool1')) {
-        hoverText = `Stake pool governance profile. Check their voting record and delegation trends.`;
-      } else if (hoveredNodeId.startsWith('cc-')) {
-        hoverText = `Constitutional Committee member. Review their constitutional reasoning patterns.`;
+
+      if (d?.nodeType === 'proposal') {
+        hoverText = 'Proposal in focus. Review alignment with your governance philosophy.';
+      } else if (d?.nodeType === 'spo') {
+        const name = d.name ?? 'Stake pool';
+        const parts = [name];
+        if (d.voteCount != null) parts.push(`${d.voteCount} governance votes`);
+        if (d.score > 0) parts.push(`score ${d.score}/100`);
+        hoverText = parts.join(' — ') + '.';
+      } else if (d?.nodeType === 'cc') {
+        const name = d.name ?? 'CC member';
+        const parts = [name];
+        if (d.fidelityGrade) parts.push(`fidelity grade ${d.fidelityGrade}`);
+        parts.push('constitutional guardian');
+        hoverText = parts.join(' — ') + '.';
+      } else if (d) {
+        // DRep with data
+        const name =
+          d.name ??
+          (hoveredNodeId.length > 16
+            ? hoveredNodeId.slice(0, 8) + '...' + hoveredNodeId.slice(-6)
+            : hoveredNodeId);
+        const parts = [name];
+        if (d.score > 0) parts.push(`score ${d.score}/100`);
+        if (d.delegatorCount != null) parts.push(`${d.delegatorCount} delegators`);
+        if (d.adaAmount != null && d.adaAmount > 0) {
+          const ada =
+            d.adaAmount >= 1_000_000
+              ? `${(d.adaAmount / 1_000_000).toFixed(1)}M`
+              : d.adaAmount >= 1_000
+                ? `${(d.adaAmount / 1_000).toFixed(0)}K`
+                : `${d.adaAmount}`;
+          parts.push(`${ada} ADA voting power`);
+        }
+        if (d.drepStatus && d.drepStatus !== 'Active') parts.push(d.drepStatus);
+        hoverText = parts.join(' — ') + '.';
       } else {
-        // DRep or unknown
+        // Fallback — no data available
         const shortId =
           hoveredNodeId.length > 16
             ? hoveredNodeId.slice(0, 8) + '...' + hoveredNodeId.slice(-6)
             : hoveredNodeId;
-        hoverText = `DRep ${shortId}. Explore alignment, voting record, and delegation stats.`;
+        hoverText = `${shortId}. Explore alignment, voting record, and delegation stats.`;
       }
+
       return {
         mode: 'hover',
         text: hoverText,
@@ -286,12 +324,11 @@ export function useSenecaStrip(): SenecaStripState {
           entityIds: insights[idx].entityIds,
         };
       }
-      // Fallback to honest generic prompts (no fake statistics)
-      const fallbackIdx =
-        Math.floor(Date.now() / ROTATION_INTERVAL_MS) % DISCOVERY_FALLBACKS.length;
+      // Fallback to honest generic prompts with real epoch data
+      const fallbackIdx = Math.floor(Date.now() / ROTATION_INTERVAL_MS) % 3;
       return {
         mode: 'discovery',
-        text: DISCOVERY_FALLBACKS[fallbackIdx],
+        text: getDiscoveryFallback(epoch, day, fallbackIdx),
         entityIds: [],
       };
     }
@@ -321,12 +358,12 @@ export function useSenecaStrip(): SenecaStripState {
   }, [
     bootPhase,
     hoveredNodeId,
+    hoveredNodeData,
     isDeadTime,
     insights,
     rotationIndex,
     bootNarration,
     temporalEpoch,
-    activeOverlay,
   ]);
 
   const currentState = getState();

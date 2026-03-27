@@ -178,7 +178,7 @@ function OverlayTab({
       type="button"
       role="tab"
       aria-selected={isActive}
-      aria-controls={`cockpit-overlay-${overlay}`}
+      aria-label={`${overlay} overlay`}
       className={cn(
         'relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-full',
         'transition-colors duration-150',

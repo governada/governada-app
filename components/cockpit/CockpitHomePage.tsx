@@ -59,6 +59,7 @@ export function CockpitHomePage() {
   const setBootPhase = useCockpitStore((s) => s.setBootPhase);
   const setDensityLevel = useCockpitStore((s) => s.setDensityLevel);
   const setStoreHoveredNode = useCockpitStore((s) => s.setHoveredNode);
+  const setStoreHoveredNodeData = useCockpitStore((s) => s.setHoveredNodeData);
   const markNodeVisited = useCockpitStore((s) => s.markNodeVisited);
   const visitedNodeIds = useCockpitStore((s) => s.visitedNodeIds);
 
@@ -169,7 +170,16 @@ export function CockpitHomePage() {
   }, [govState, realUrgentCount, setDensityLevel]);
 
   // Sound — start ambient on boot completion, modulate by temperature
-  const { startAmbient, updateAmbientTemperature } = useGovernadaSound();
+  const { startAmbient, updateAmbientTemperature, playPing } = useGovernadaSound();
+
+  // Sound: ping when urgent count increases (new urgent action arrived)
+  const prevUrgentCountRef = useRef(realUrgentCount);
+  useEffect(() => {
+    if (realUrgentCount > prevUrgentCountRef.current && bootPhase === 'ready') {
+      playPing();
+    }
+    prevUrgentCountRef.current = realUrgentCount;
+  }, [realUrgentCount, bootPhase, playPing]);
   useEffect(() => {
     if (bootPhase === 'ready') {
       startAmbient(govState?.temperatureScore);
@@ -244,17 +254,47 @@ export function CockpitHomePage() {
     (node: ConstellationNode3D | null) => {
       setLocalHoveredNode(node);
       setStoreHoveredNode(node?.id ?? null);
+      setStoreHoveredNodeData(
+        node
+          ? {
+              name: node.name,
+              nodeType: node.nodeType,
+              score: node.score,
+              delegatorCount: node.delegatorCount,
+              adaAmount: node.adaAmount,
+              drepStatus: node.drepStatus,
+              voteCount: node.voteCount,
+              fidelityGrade: node.fidelityGrade,
+              dominant: node.dominant,
+            }
+          : null,
+      );
     },
-    [setStoreHoveredNode],
+    [setStoreHoveredNode, setStoreHoveredNodeData],
   );
 
   const handleNodeHoverScreen = useCallback(
     (node: ConstellationNode3D | null, screenPos: { x: number; y: number } | null) => {
       setLocalHoveredNode(node);
       setStoreHoveredNode(node?.id ?? null);
+      setStoreHoveredNodeData(
+        node
+          ? {
+              name: node.name,
+              nodeType: node.nodeType,
+              score: node.score,
+              delegatorCount: node.delegatorCount,
+              adaAmount: node.adaAmount,
+              drepStatus: node.drepStatus,
+              voteCount: node.voteCount,
+              fidelityGrade: node.fidelityGrade,
+              dominant: node.dominant,
+            }
+          : null,
+      );
       setHoverScreenPos(screenPos);
     },
-    [setStoreHoveredNode],
+    [setStoreHoveredNode, setStoreHoveredNodeData],
   );
 
   const handleNodeSelect = useCallback(
@@ -279,17 +319,19 @@ export function CockpitHomePage() {
   // Mobile layout — compact globe + scrollable feed
   if (isMobile) {
     const temperature = govState?.temperatureScore ?? 50;
-    // SV-7 fix: use real urgent count from action queue instead of approximated value
-    const mobileUrgentCount = realUrgentCount;
     return (
       <CockpitMobile
         healthScore={narrativeData?.healthScore ?? 75}
         urgency={narrativeData?.urgency ?? 30}
         temperature={temperature}
-        urgentCount={mobileUrgentCount}
+        urgentCount={realUrgentCount}
         userNode={userNode}
         proposalNodes={proposalNodes}
         delegationBond={delegationBond}
+        overlayColorMode={activeOverlay}
+        urgentNodeIds={urgentNodeIds}
+        completedNodeIds={completedGlobeNodeIds.size > 0 ? completedGlobeNodeIds : undefined}
+        visitedNodeIds={visitedNodeIdSet}
       />
     );
   }
@@ -340,7 +382,7 @@ export function CockpitHomePage() {
             transitionDelay: isCascading ? `${BOOT_DELAYS['status-strip']}ms` : '0ms',
           }}
         >
-          <StatusStrip govState={govState ?? undefined} urgentCount={realUrgentCount} />
+          <StatusStrip govState={govState ?? undefined} realUrgentCount={realUrgentCount} />
         </div>
 
         {/* Layer 3: Seneca Strip */}

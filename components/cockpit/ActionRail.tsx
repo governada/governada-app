@@ -70,7 +70,7 @@ export function ActionRail() {
       initial={shouldAnimate ? 'hidden' : 'visible'}
       animate="visible"
       transition={shouldAnimate ? { duration: 0.5, ease: 'easeOut' } : { duration: 0 }}
-      className="pointer-events-auto fixed left-4 top-[120px] z-30 flex flex-col gap-2"
+      className="pointer-events-auto absolute left-4 top-[120px] z-30 flex flex-col gap-2"
     >
       <AnimatePresence mode="popLayout">
         {items.length === 0 ? (

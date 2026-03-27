@@ -3,11 +3,11 @@
 /**
  * TemporalScrubber — Range input for historical epoch navigation.
  *
- * Drag to see past epochs' constellation data. Releasing snaps back to live.
- * Shows "Epoch N" label while scrubbing, hidden when live.
+ * Drag to see past epochs' constellation data. Stays at the selected epoch
+ * until "Return to Live" is clicked. Shows "Epoch N" label while scrubbing.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useCockpitStore } from '@/stores/cockpitStore';
 import { useEpochContext } from '@/hooks/useEpochContext';
 
@@ -15,7 +15,6 @@ export function TemporalScrubber() {
   const { epoch } = useEpochContext();
   const temporalEpoch = useCockpitStore((s) => s.temporalEpoch);
   const setTemporalEpoch = useCockpitStore((s) => s.setTemporalEpoch);
-  const releaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const minEpoch = Math.max(1, epoch - 10);
   const maxEpoch = epoch;
@@ -30,29 +29,30 @@ export function TemporalScrubber() {
       } else {
         setTemporalEpoch(val);
       }
-      // Clear any pending release timer
-      if (releaseTimer.current) {
-        clearTimeout(releaseTimer.current);
-        releaseTimer.current = null;
-      }
     },
     [epoch, setTemporalEpoch],
   );
 
-  const handleRelease = useCallback(() => {
-    // Snap back to live after releasing
-    releaseTimer.current = setTimeout(() => {
-      setTemporalEpoch(null);
-      releaseTimer.current = null;
-    }, 300);
+  const handleReturnToLive = useCallback(() => {
+    setTemporalEpoch(null);
   }, [setTemporalEpoch]);
 
   return (
     <div className="flex items-center gap-2">
       {isScrubbing && (
-        <span className="text-[10px] font-mono text-amber-400 whitespace-nowrap">
-          Epoch {temporalEpoch}
-        </span>
+        <>
+          <span className="text-[10px] font-mono text-amber-400 whitespace-nowrap">
+            Epoch {temporalEpoch}
+          </span>
+          <button
+            type="button"
+            onClick={handleReturnToLive}
+            className="text-[9px] font-medium text-compass-teal hover:text-compass-teal/80 whitespace-nowrap transition-colors"
+            aria-label="Return to live epoch"
+          >
+            ← Live
+          </button>
+        </>
       )}
       <input
         type="range"
@@ -60,8 +60,6 @@ export function TemporalScrubber() {
         max={maxEpoch}
         value={currentValue}
         onChange={handleChange}
-        onMouseUp={handleRelease}
-        onTouchEnd={handleRelease}
         className="w-16 h-1 appearance-none bg-white/10 rounded-full cursor-pointer
           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2
           [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-compass-teal

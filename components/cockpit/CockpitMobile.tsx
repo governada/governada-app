@@ -196,6 +196,10 @@ interface CockpitMobileProps {
   userNode?: ConstellationNode3D | null;
   proposalNodes?: ConstellationNode3D[];
   delegationBond?: { drepNodeId: string; driftScore: number } | null;
+  overlayColorMode?: 'default' | 'urgent' | 'network' | 'proposals' | 'ecosystem';
+  urgentNodeIds?: Set<string>;
+  completedNodeIds?: Set<string>;
+  visitedNodeIds?: Set<string>;
 }
 
 export function CockpitMobile({
@@ -206,6 +210,10 @@ export function CockpitMobile({
   userNode,
   proposalNodes,
   delegationBond,
+  overlayColorMode,
+  urgentNodeIds,
+  completedNodeIds,
+  visitedNodeIds,
 }: CockpitMobileProps) {
   const globeRef = useRef<ConstellationRef>(null);
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
@@ -253,6 +261,10 @@ export function CockpitMobile({
           userNode={userNode}
           proposalNodes={proposalNodes}
           delegationBond={delegationBond}
+          overlayColorMode={overlayColorMode}
+          urgentNodeIds={urgentNodeIds}
+          completedNodeIds={completedNodeIds}
+          visitedNodeIds={visitedNodeIds}
         />
         <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} />
       </div>

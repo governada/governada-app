@@ -637,7 +637,18 @@ export const GlobeConstellation = forwardRef<
           role="img"
           aria-label="Interactive 3D globe visualization of Cardano governance"
         >
-          <color attach="background" args={['#0a0b14']} />
+          <color
+            attach="background"
+            args={[
+              overlayColorMode === 'urgent'
+                ? '#120a0a'
+                : overlayColorMode === 'network'
+                  ? '#0a1214'
+                  : overlayColorMode === 'proposals'
+                    ? '#12100a'
+                    : '#0a0b14',
+            ]}
+          />
           <ambientLight intensity={0.05} />
 
           <AmbientStarfield count={quality === 'low' ? 200 : 400} />
@@ -656,9 +667,23 @@ export const GlobeConstellation = forwardRef<
             <pointLight color="#4466aa" intensity={0.8} distance={10} decay={2} />
             <GlobeAtmosphere
               radius={8.1}
-              color="#4488cc"
+              color={
+                overlayColorMode === 'urgent'
+                  ? '#cc4444'
+                  : overlayColorMode === 'network'
+                    ? '#44bbcc'
+                    : overlayColorMode === 'proposals'
+                      ? '#ccaa44'
+                      : '#4488cc'
+              }
               warmColor="#cc8844"
-              intensity={0.4}
+              intensity={
+                overlayColorMode === 'urgent'
+                  ? 0.6
+                  : overlayColorMode === 'network' || overlayColorMode === 'proposals'
+                    ? 0.5
+                    : 0.4
+              }
               matchProgress={
                 sceneState.scanProgress > 0 ? sceneState.scanProgress : healthProgress * 0.3
               }
@@ -762,7 +787,15 @@ export const GlobeConstellation = forwardRef<
             <EffectComposer>
               <Bloom
                 mipmapBlur
-                intensity={1.6}
+                intensity={
+                  overlayColorMode === 'urgent'
+                    ? 2.2
+                    : overlayColorMode === 'proposals'
+                      ? 2.0
+                      : overlayColorMode === 'network'
+                        ? 1.8
+                        : 1.6
+                }
                 luminanceThreshold={0.15}
                 luminanceSmoothing={0.9}
                 radius={0.95}

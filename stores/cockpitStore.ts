@@ -42,6 +42,18 @@ export interface CockpitState {
   temporalEpoch: number | null;
   /** Currently hovered node ID (for cross-component reactivity) */
   hoveredNodeId: string | null;
+  /** Hovered node metadata for entity-specific Seneca narration */
+  hoveredNodeData: {
+    name: string | null;
+    nodeType: string;
+    score: number;
+    delegatorCount?: number;
+    adaAmount?: number;
+    drepStatus?: string;
+    voteCount?: number;
+    fidelityGrade?: string;
+    dominant?: string;
+  } | null;
 }
 
 export interface CockpitActions {
@@ -55,6 +67,7 @@ export interface CockpitActions {
   setDensityLevel: (level: DensityLevel) => void;
   setTemporalEpoch: (epoch: number | null) => void;
   setHoveredNode: (nodeId: string | null) => void;
+  setHoveredNodeData: (data: CockpitState['hoveredNodeData']) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +95,7 @@ export const useCockpitStore = create<CockpitState & CockpitActions>()(
       densityLevel: 'normal',
       temporalEpoch: null,
       hoveredNodeId: null,
+      hoveredNodeData: null,
 
       // -----------------------------------------------------------------------
       // Actions
@@ -119,6 +133,8 @@ export const useCockpitStore = create<CockpitState & CockpitActions>()(
       setTemporalEpoch: (epoch) => set({ temporalEpoch: epoch }),
 
       setHoveredNode: (nodeId) => set({ hoveredNodeId: nodeId }),
+
+      setHoveredNodeData: (data) => set({ hoveredNodeData: data }),
     }),
     {
       name: 'governada_cockpit',

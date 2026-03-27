@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Compass, Eye } from 'lucide-react';
+import { Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCockpitStore } from '@/stores/cockpitStore';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
@@ -72,33 +72,6 @@ function getProfileHref(node: ConstellationNode3D): string {
 }
 
 // ---------------------------------------------------------------------------
-// Simulated viewer count — stable per node.id
-// ---------------------------------------------------------------------------
-
-/** Deterministic hash from string — stable viewer count per node ID */
-function stableHash(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function useSimulatedViewers(node: ConstellationNode3D | null): number | null {
-  return useMemo(() => {
-    if (!node) return null;
-    const h = stableHash(node.id);
-    if (node.nodeType === 'proposal') {
-      return (h % 80) + 20; // 20-99 viewers, stable per proposal
-    }
-    if (node.nodeType === 'drep' && node.score > 60) {
-      return (h % 45) + 5; // 5-49 viewers, stable per DRep
-    }
-    return null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node?.id]);
-}
-
 /**
  * Cursor-following tooltip for globe node hover.
  * Shows entity-specific details for DReps, SPOs, and CC members.
@@ -112,8 +85,6 @@ export function GlobeTooltip({ node, screenPos, showMatchCta }: GlobeTooltipProp
   const visitedNodeIds = useCockpitStore((s) => s.visitedNodeIds);
   const setHoveredNode = useCockpitStore((s) => s.setHoveredNode);
   const markNodeVisited = useCockpitStore((s) => s.markNodeVisited);
-
-  const viewers = useSimulatedViewers(node);
 
   // -------------------------------------------------------------------------
   // Hovered node tracking
@@ -233,14 +204,6 @@ export function GlobeTooltip({ node, screenPos, showMatchCta }: GlobeTooltipProp
           {node.nodeType === 'spo' && <SPOTooltipContent node={node} />}
           {node.nodeType === 'cc' && <CCTooltipContent node={node} />}
           {node.nodeType === 'proposal' && <ProposalTooltipContent node={node} />}
-
-          {/* Social presence — simulated viewers */}
-          {viewers != null && (
-            <div className="flex items-center gap-1 mt-1.5 text-[9px] text-muted-foreground/30">
-              <Eye className="h-2.5 w-2.5" />
-              <span>{viewers} viewing</span>
-            </div>
-          )}
 
           {/* Action buttons */}
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">

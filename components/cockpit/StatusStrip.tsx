@@ -24,8 +24,8 @@ interface GovStateData {
 
 interface StatusStripProps {
   govState?: GovStateData;
-  /** Real urgent count from the action queue (overrides approximation from govState) */
-  urgentCount?: number;
+  /** Real urgent action count from the action queue (not approximated) */
+  realUrgentCount?: number;
 }
 
 function getTemperatureLabel(score: number): { label: string; colorClass: string } {
@@ -41,16 +41,14 @@ function getDensitySpacing(density: DensityLevel): string {
   return 'gap-3.5 px-4 py-2';
 }
 
-export function StatusStrip({ govState, urgentCount: urgentCountProp }: StatusStripProps) {
+export function StatusStrip({ govState, realUrgentCount }: StatusStripProps) {
   const { epoch, day, totalDays } = useEpochContext();
   const densityLevel = useCockpitStore((s) => s.densityLevel);
   const soundEnabled = useCockpitStore((s) => s.soundEnabled);
   const toggleSound = useCockpitStore((s) => s.toggleSound);
 
   const temperature = govState?.temperatureScore ?? 50;
-  // SV-6 fix: prefer real urgentCount from action queue over approximation
-  const urgentCount =
-    urgentCountProp ?? (govState ? Math.round((govState.urgencyScore / 100) * 10) : 0);
+  const urgentCount = realUrgentCount ?? 0;
   const tempInfo = getTemperatureLabel(temperature);
   const epochProgress = totalDays > 0 ? (day / totalDays) * 100 : 0;
   const remainingDays = totalDays - day;

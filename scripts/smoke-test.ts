@@ -2,6 +2,7 @@
  * Post-deploy smoke test — hits production endpoints, verifies status + response shape.
  * Usage: npx tsx scripts/smoke-test.ts [base-url]
  * Exit 0 = all pass, non-zero = failure details printed.
+ * Includes response time assertions per endpoint.
  */
 
 const BASE_URL = process.argv[2] || process.env.SMOKE_TEST_URL || 'https://governada.io';

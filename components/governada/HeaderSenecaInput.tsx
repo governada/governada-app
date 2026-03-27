@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { Compass, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIntelligencePanel } from '@/hooks/useIntelligencePanel';
+import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Route-aware placeholder text for the Seneca prompt. */
@@ -32,7 +32,7 @@ interface HeaderSenecaInputProps {
 export function HeaderSenecaInput({ compact = false, className }: HeaderSenecaInputProps) {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const panel = useIntelligencePanel();
+  const panel = useSenecaThread();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 

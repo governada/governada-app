@@ -22,8 +22,16 @@ import { useSentryContext } from '@/hooks/useSentryContext';
 import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
 import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
+import { useWhisper } from '@/hooks/useWhisper';
+import { useEpochContext } from '@/hooks/useEpochContext';
 
-// SenecaOrb removed — the globe IS Seneca's visual embodiment now
+const SenecaOrb = dynamic(
+  () =>
+    import('@/components/governada/SenecaOrb').then((m) => ({
+      default: m.SenecaOrb,
+    })),
+  { ssr: false },
+);
 
 const SenecaThread = dynamic(
   () =>
@@ -147,18 +155,51 @@ function SentryContextSync() {
   return null;
 }
 
-/** Seneca Thread wrapper — renders the conversation panel. Globe is Seneca's visual embodiment. */
+/** Seneca Orb + Thread wrapper — renders the floating orb and conversation panel. */
 function SenecaOrbAndThread({
   seneca,
+  isStudioMode,
 }: {
   seneca: ReturnType<typeof useSenecaThread>;
   isStudioMode: boolean;
 }) {
   const { segment } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
+  const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
+  const daysRemaining = totalDays - day;
+
+  // Whisper system — contextual one-liners from the orb
+  const pageContext = seneca.panelRoute === 'hub' ? 'homepage' : seneca.panelRoute;
+  const { currentWhisper, dismissWhisper } = useWhisper(pageContext, {
+    activeProposals: activeProposalCount ?? undefined,
+    epochProgress: epoch ? (day / totalDays) * 100 : undefined,
+    daysRemaining,
+    isAuthenticated,
+  });
+
+  // Sigil state based on mode
+  const sigilState =
+    seneca.mode === 'matching'
+      ? ('searching' as const)
+      : seneca.mode === 'conversation'
+        ? ('speaking' as const)
+        : seneca.mode === 'research'
+          ? ('thinking' as const)
+          : ('idle' as const);
 
   return (
     <>
+      {/* Floating Orb — always visible (except when Thread is open) */}
+      {!seneca.isOpen && (
+        <SenecaOrb
+          onClick={seneca.toggle}
+          sigilState={isStudioMode ? 'idle' : sigilState}
+          accentColor={seneca.persona.accentColor}
+          whisper={isStudioMode ? null : currentWhisper}
+          onWhisperDismiss={dismissWhisper}
+        />
+      )}
+
       {/* Floating Thread Panel */}
       <SenecaThread
         isOpen={seneca.isOpen}

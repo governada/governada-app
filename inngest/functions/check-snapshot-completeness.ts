@@ -377,21 +377,56 @@ export const checkSnapshotCompleteness = inngest.createFunction(
 
         if (eventsToSend.size > 0) {
           await step.run('self-heal-snapshots', async () => {
-            const healedNames = failures
-              .filter((f) => SNAPSHOT_HEAL_MAP[f.name])
-              .map((f) => f.name);
+            const supabase = getSupabaseAdmin();
+            const healedNames: string[] = [];
+            const skippedNames: string[] = [];
+            const eventsToFire: string[] = [];
 
-            await inngest.send([...eventsToSend].map((name) => ({ name })));
+            for (const event of eventsToSend) {
+              // Extract sync type from event name (e.g., 'drepscore/sync.treasury' -> 'treasury')
+              const syncType = event.split('.').pop() ?? '';
+
+              // Throttle: skip if 3+ failures in last 2 hours
+              const { count: recentFailCount } = await supabase
+                .from('sync_log')
+                .select('id', { count: 'exact', head: true })
+                .eq('sync_type', syncType)
+                .eq('success', false)
+                .gte('started_at', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString());
+
+              if ((recentFailCount ?? 0) >= 3) {
+                skippedNames.push(syncType);
+                continue;
+              }
+
+              eventsToFire.push(event);
+              healedNames.push(
+                ...failures.filter((f) => SNAPSHOT_HEAL_MAP[f.name] === event).map((f) => f.name),
+              );
+            }
+
+            if (eventsToFire.length > 0) {
+              await inngest.send(eventsToFire.map((name) => ({ name })));
+            }
 
             logger.info('[snapshot-completeness] Self-healing triggered', {
-              events: [...eventsToSend],
-              tables: healedNames,
+              healed: healedNames,
+              skipped: skippedNames,
             });
 
-            await alertDiscord(
-              'Snapshot Self-Heal Triggered',
-              `Retriggered ${eventsToSend.size} sync(s) for ${healedNames.length} missing snapshots: ${healedNames.join(', ')}`,
-            );
+            if (healedNames.length > 0) {
+              await alertDiscord(
+                'Snapshot Self-Heal Triggered',
+                `Retriggered ${eventsToFire.length} sync(s) for ${healedNames.length} missing snapshots: ${healedNames.join(', ')}${skippedNames.length > 0 ? `. Throttled: ${skippedNames.join(', ')}` : ''}`,
+              );
+            }
+
+            if (skippedNames.length > 0) {
+              await alertCritical(
+                'Snapshot Self-Heal Throttled',
+                `${skippedNames.join(', ')} have 3+ failures in 2h — not retriggering. Manual investigation needed.`,
+              );
+            }
           });
         }
       }

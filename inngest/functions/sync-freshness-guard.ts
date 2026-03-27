@@ -224,6 +224,45 @@ export const syncFreshnessGuard = inngest.createFunction(
 
     for (const gap of epochGaps) {
       await step.run(`recover-epoch-gap-${gap.syncType}`, async () => {
+        const supabase = getSupabaseAdmin();
+
+        // Throttle: skip if a recent failure exists (same logic as stale sync path)
+        const { data: recentFail } = await supabase
+          .from('sync_log')
+          .select('id')
+          .eq('sync_type', gap.syncType)
+          .eq('success', false)
+          .gte('started_at', new Date(Date.now() - RECENT_FAILURE_WINDOW_MS).toISOString())
+          .limit(1);
+
+        if ((recentFail?.length ?? 0) > 0) {
+          logger.info(
+            '[FreshnessGuard] Epoch gap detected but recent failure exists — skipping retrigger',
+            { syncType: gap.syncType, missingEpoch: gap.epoch },
+          );
+          return;
+        }
+
+        // Throttle: skip if too many recent triggers
+        const { count: recentTriggerCount } = await supabase
+          .from('sync_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('sync_type', gap.syncType)
+          .gte('started_at', new Date(Date.now() - SELF_HEAL_WINDOW_MS).toISOString());
+
+        if ((recentTriggerCount ?? 0) >= SELF_HEAL_MAX_TRIGGERS) {
+          logger.info('[FreshnessGuard] Epoch gap throttled — too many recent runs', {
+            syncType: gap.syncType,
+            missingEpoch: gap.epoch,
+            recentTriggerCount,
+          });
+          await alertCritical(
+            `Epoch Gap Throttled: ${gap.syncType}`,
+            `Epoch ${gap.epoch} still missing after ${recentTriggerCount} attempts in 2h. Possible persistent upstream failure.`,
+          );
+          return;
+        }
+
         logger.info('[FreshnessGuard] Epoch gap detected — triggering sync', {
           syncType: gap.syncType,
           missingEpoch: gap.epoch,

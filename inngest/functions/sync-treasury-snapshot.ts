@@ -38,11 +38,13 @@ export const syncTreasurySnapshot = inngest.createFunction(
     let snapshotEpoch = 0;
     let errorMessage: string | null = null;
 
-    // Idempotency guard: skip if another treasury sync is already in progress
-    const alreadyRunning = await step.run('check-idempotency', async () => {
+    // Idempotency guard: skip if another treasury sync is in progress OR recently failed
+    const skipReason = await step.run('check-idempotency', async () => {
       const sb = getSupabaseAdmin();
+
+      // Skip if another treasury sync is already in progress
       const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min window
-      const { data } = await sb
+      const { data: running } = await sb
         .from('sync_log')
         .select('id')
         .eq('sync_type', 'treasury')
@@ -50,12 +52,26 @@ export const syncTreasurySnapshot = inngest.createFunction(
         .is('finished_at', null)
         .gte('started_at', cutoff)
         .limit(1);
-      return (data?.length ?? 0) > 0;
+      if ((running?.length ?? 0) > 0) return 'concurrent_run';
+
+      // Skip if treasury sync failed in the last 30 minutes (back-off)
+      const failureCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: recentFail } = await sb
+        .from('sync_log')
+        .select('id')
+        .eq('sync_type', 'treasury')
+        .eq('success', false)
+        .not('finished_at', 'is', null)
+        .gte('started_at', failureCutoff)
+        .limit(1);
+      if ((recentFail?.length ?? 0) > 0) return 'recent_failure_cooldown';
+
+      return null;
     });
 
-    if (alreadyRunning) {
-      logger.info('[treasury] Skipping — another treasury sync is already in progress');
-      return { skipped: true, reason: 'concurrent run detected' };
+    if (skipReason) {
+      logger.info('[treasury] Skipping sync', { reason: skipReason });
+      return { skipped: true, reason: skipReason };
     }
 
     const logId = await step.run('init-sync-log', async () => {
@@ -111,14 +127,38 @@ export const syncTreasurySnapshot = inngest.createFunction(
         });
       } else {
         // Fetch fresh data from Koios
-        snapshot = await step.run('fetch-treasury-balance', async () => {
+        const treasuryResult = await step.run('fetch-treasury-balance', async () => {
           const treasury = await fetchTreasuryBalance();
+          if (!treasury) {
+            return { empty: true as const, epoch: 0, balanceLovelace: '', reservesLovelace: '' };
+          }
           return {
+            empty: false as const,
             epoch: treasury.epoch,
             balanceLovelace: treasury.balance.toString(),
             reservesLovelace: treasury.reserves.toString(),
           };
         });
+
+        if (treasuryResult.empty) {
+          // Koios returned no data — log as a soft skip, not a hard failure.
+          // This prevents the freshness guard from retriggering in a loop.
+          logger.warn('[treasury] Koios /totals returned empty — skipping this run');
+          await syncLog.finalize(true, null, {
+            skipped: true,
+            reason: 'koios_empty_response',
+          });
+          await emitPostHog(true, 'treasury', syncLog.elapsed, {
+            event_override: 'treasury_sync_koios_empty',
+          });
+          return { skipped: true, reason: 'koios_empty_response' };
+        }
+
+        snapshot = {
+          epoch: treasuryResult.epoch,
+          balanceLovelace: treasuryResult.balanceLovelace,
+          reservesLovelace: treasuryResult.reservesLovelace,
+        };
 
         snapshotEpoch = snapshot.epoch;
 

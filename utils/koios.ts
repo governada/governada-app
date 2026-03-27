@@ -755,10 +755,11 @@ export async function fetchTreasuryBalance(): Promise<{
   balance: bigint;
   reserves: bigint;
   circulation: bigint;
-}> {
+} | null> {
   const data = await koiosFetch<KoiosTotalsRow[]>('/totals?limit=1&order=epoch_no.desc');
   if (!data || data.length === 0) {
-    throw new Error('No treasury data returned from Koios /totals');
+    logger.warn('[koios] /totals returned empty data — Koios may be lagging');
+    return null;
   }
   const row = data[0];
   return {

@@ -17,6 +17,7 @@ import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import type { SenecaPersona } from '@/lib/intelligence/senecaPersonas';
 import { getPersonaForRoute } from '@/lib/intelligence/senecaPersonas';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
+import { detectGlobeIntent, type GlobeIntent } from '@/lib/intelligence/advisor';
 
 // ---------------------------------------------------------------------------
 // Route types — canonical source for PanelRoute
@@ -114,6 +115,7 @@ export interface UseSenecaThreadResult {
   entityId: string | undefined;
   persona: SenecaPersona;
   visitedPages: string[];
+  pendingGlobeAction: GlobeIntent | null;
 
   // Actions
   toggle: () => void;
@@ -126,6 +128,14 @@ export interface UseSenecaThreadResult {
   addMessage: (msg: ThreadMessage) => void;
   updateLastAssistant: (content: string) => void;
   clearConversation: () => void;
+
+  /**
+   * Detect & dispatch a globe intent from user text.
+   * Returns the detected intent (or null if no intent matched — query should go to AI).
+   */
+  executeIntent: (query: string) => GlobeIntent | null;
+  /** Clear the pending globe action after GlobeLayout consumes it */
+  consumeGlobeAction: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +152,8 @@ export function useSenecaThread(): UseSenecaThreadResult {
   const pendingQuery = useSenecaThreadStore((s) => s.pendingQuery);
   const visitedPages = useSenecaThreadStore((s) => s.visitedPages);
 
+  const pendingGlobeAction = useSenecaThreadStore((s) => s.pendingGlobeAction);
+
   const setOpen = useSenecaThreadStore((s) => s.setOpen);
   const navigateTo = useSenecaThreadStore((s) => s.navigateTo);
   const storeStartConversation = useSenecaThreadStore((s) => s.startConversation);
@@ -151,6 +163,8 @@ export function useSenecaThread(): UseSenecaThreadResult {
   const addMessage = useSenecaThreadStore((s) => s.addMessage);
   const updateLastAssistant = useSenecaThreadStore((s) => s.updateLastAssistant);
   const clearConversation = useSenecaThreadStore((s) => s.clearConversation);
+  const dispatchGlobeIntent = useSenecaThreadStore((s) => s.dispatchGlobeIntent);
+  const consumeGlobeAction = useSenecaThreadStore((s) => s.consumeGlobeAction);
 
   // Route derivation
   const panelRoute = useMemo(() => detectPanelRoute(pathname), [pathname]);
@@ -186,6 +200,24 @@ export function useSenecaThread(): UseSenecaThreadResult {
   const open = useCallback(() => setOpen(true), [setOpen]);
   const close = useCallback(() => setOpen(false), [setOpen]);
 
+  const executeIntent = useCallback(
+    (query: string): GlobeIntent | null => {
+      const intent = detectGlobeIntent(query);
+      if (!intent) return null;
+
+      // Special case: match intent triggers the match flow directly
+      if (intent.type === 'match') {
+        storeStartMatch();
+        return intent;
+      }
+
+      // Dispatch the intent to the store — GlobeLayout will pick it up
+      dispatchGlobeIntent(intent);
+      return intent;
+    },
+    [dispatchGlobeIntent, storeStartMatch],
+  );
+
   return {
     // State
     isOpen,
@@ -196,6 +228,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
     entityId,
     persona,
     visitedPages,
+    pendingGlobeAction,
 
     // Actions
     toggle,
@@ -208,5 +241,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
     addMessage,
     updateLastAssistant,
     clearConversation,
+    executeIntent,
+    consumeGlobeAction,
   };
 }

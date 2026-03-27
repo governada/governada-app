@@ -15,6 +15,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AdvisorMessage } from '@/lib/intelligence/streamAdvisor';
+import type { GlobeIntent } from '@/lib/intelligence/advisor';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -54,6 +55,8 @@ export interface SenecaThreadState {
   pendingQuery: string | undefined;
   currentPage: string;
   visitedPages: string[];
+  /** Intent detected from user query — consumed by GlobeLayout to dispatch globe commands */
+  pendingGlobeAction: GlobeIntent | null;
 }
 
 export interface SenecaThreadActions {
@@ -68,6 +71,10 @@ export interface SenecaThreadActions {
   startResearch: (query: string) => void;
   startMatch: () => void;
   returnToIdle: () => void;
+  /** Dispatch a globe intent (consumed once by GlobeLayout) */
+  dispatchGlobeIntent: (intent: GlobeIntent) => void;
+  /** Clear the pending globe action after consumption */
+  consumeGlobeAction: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +135,7 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
       pendingQuery: undefined,
       currentPage: '',
       visitedPages: [],
+      pendingGlobeAction: null,
 
       // ----- Actions -----
 
@@ -217,6 +225,10 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
           mode: 'idle',
           pendingQuery: undefined,
         }),
+
+      dispatchGlobeIntent: (intent) => set({ pendingGlobeAction: intent }),
+
+      consumeGlobeAction: () => set({ pendingGlobeAction: null }),
     }),
     {
       name: STORAGE_KEY,
@@ -232,6 +244,7 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
         return sessionStorage;
       }),
       // Only persist conversation-relevant state, not transient UI state
+      // Exclude pendingGlobeAction — it's consumed immediately by GlobeLayout
       partialize: (s) => ({
         messages: s.messages,
         isOpen: s.isOpen,

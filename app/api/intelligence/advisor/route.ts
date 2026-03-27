@@ -124,13 +124,19 @@ async function buildGovernanceSnapshot(ctx: {
 
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    // --- Feature flag check ---
-    const enabled = await getFeatureFlag('conversational_nav', false);
-    if (!enabled) {
-      return NextResponse.json(
-        { error: 'Conversational navigation is not enabled' },
-        { status: 403 },
-      );
+    // --- Parse request early to check mode ---
+    const body = await request.json();
+    const parsed = AdvisorRequestSchema.parse(body);
+
+    // --- Feature flag check (briefing mode always allowed) ---
+    if (parsed.context?.mode !== 'briefing') {
+      const enabled = await getFeatureFlag('conversational_nav', false);
+      if (!enabled) {
+        return NextResponse.json(
+          { error: 'Conversational navigation is not enabled' },
+          { status: 403 },
+        );
+      }
     }
 
     // --- Rate limit ---
@@ -143,10 +149,6 @@ export async function POST(request: NextRequest): Promise<Response> {
         { status: 429 },
       );
     }
-
-    // --- Parse request ---
-    const body = await request.json();
-    const parsed = AdvisorRequestSchema.parse(body);
 
     // --- Optional auth for personalization ---
     let personalContext: string | undefined;

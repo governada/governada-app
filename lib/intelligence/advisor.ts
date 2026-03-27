@@ -147,6 +147,8 @@ export interface AdvisorContext {
   walletState?: 'none_detected' | 'detected' | 'connected' | 'has_ada' | 'no_ada';
   /** Active Seneca persona (determines personality modifier) */
   persona?: PersonaId;
+  /** Briefing mode: concise, proactive, globe-synchronized */
+  mode?: 'conversation' | 'briefing';
 }
 
 export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
@@ -233,6 +235,36 @@ export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
           break;
       }
     }
+  }
+
+  // Briefing mode: concise, personality-driven, with globe commands and follow-up chips
+  if (ctx.mode === 'briefing') {
+    lines.push(
+      '',
+      '## Briefing Mode — Active',
+      'You are delivering a live governance briefing on the Governada homepage.',
+      'The user just arrived. Their constellation globe is visible behind your text panel.',
+      '',
+      'RULES:',
+      '- Keep the initial briefing to exactly 2-3 sentences. Be specific, not generic.',
+      '- Lead with the most personally relevant item (based on their segment/delegation), not recency.',
+      '- Mention specific entity names (DRep names, proposal titles) so the globe can react.',
+      '- Use [[globe:flyTo:drep_<id>]] or [[globe:pulse:proposal_<hash>_<index>]] markers when referencing entities.',
+      '- End with exactly 3 follow-up suggestions as [[chip:text]] on separate lines.',
+      '- Chips should be short (3-6 words), actionable, and persona-specific.',
+      '- Do NOT say "Good morning" or use generic greetings. Start with substance.',
+      '- Speak as a governance companion, not an assistant. You notice things, you have opinions (within bounds).',
+      '- If something is urgent or contentious, lead with that — create narrative tension.',
+      '',
+      'PERSONA-SPECIFIC BRIEFING FOCUS:',
+      ctx.segment === 'drep'
+        ? '- DRep: Lead with pending votes and deadline urgency. Mention delegation changes.'
+        : ctx.segment === 'spo'
+          ? '- SPO: Lead with governance score trend and any votes that need attention.'
+          : ctx.segment === 'cc'
+            ? '- CC: Lead with proposals requiring constitutional review.'
+            : '- Citizen: Lead with what their DRep has been doing, or suggest finding a match if undelegated.',
+    );
   }
 
   if (ctx.personalContext) {

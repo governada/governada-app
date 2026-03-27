@@ -84,7 +84,7 @@ function computeUrgency(expirationEpoch: number | null, currentEpoch: number): n
 
 const PROPOSAL_MIN_SCALE = 0.08;
 const PROPOSAL_MAX_SCALE = 0.2;
-const PROPOSAL_RADIUS = GLOBE_RADIUS + 0.5;
+const PROPOSAL_RADIUS = GLOBE_RADIUS * 0.55; // Inside the globe — inner active layer
 const CURRENT_EPOCH = 621;
 
 export function useConstellationProposals(_userAlignments?: number[]) {

@@ -37,7 +37,7 @@ export const GLOBE_RADIUS = 8; // sphere boundary — the constellation's edge
 const MIN_VISIBLE_SCALE = 0.06;
 const MAX_VISIBLE_SCALE = 0.25;
 const SPO_SCALE_FACTOR = 0.6;
-const CC_SCALE_FACTOR = 2.5; // sentinel presence — 2.5x DRep size
+const CC_SCALE_FACTOR = 1.0; // CC nodes render at standard DRep scale (symbology TBD)
 const SPO_LIMIT = 400;
 
 /**

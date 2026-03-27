@@ -31,7 +31,7 @@ const DREP_COLOR = '#2dd4bf';
 const SPO_COLOR = '#a78bfa'; // purple — visually distinct from teal DReps
 // CC_COLOR moved to CCCrownRing.tsx
 const USER_COLOR = '#f0e6d0'; // warm white-gold — personal, clearly "you"
-const PROPOSAL_COLOR = '#e8dfd0'; // warm white — governance-neutral
+const PROPOSAL_COLOR = '#d4a050'; // warm amber — active governance events within the constellation
 const MATCH_COLOR = '#f59e0b'; // Warm amber — distinct from teal, purple, gold
 
 interface GlobeConstellationProps {
@@ -634,6 +634,9 @@ export const GlobeConstellation = forwardRef<
               activityMap={activityMap}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            {quality !== 'low' && (
+              <NeuralMesh nodes={sceneState.nodes} dimmed={sceneState.dimmed} />
+            )}
             <NetworkEdgeLines nodes={sceneState.nodes} visible={overlayColorMode === 'network'} />
             {delegationBond &&
               userNode &&
@@ -839,21 +842,7 @@ void main() {
 }
 `;
 
-// Square-shaped glow for CC sentinel nodes — distinct from circular DReps and diamond SPOs
-const CC_SENTINEL_FRAG = /* glsl */ `
-varying vec3 vColor;
-varying float vAlpha;
-
-void main() {
-  vec2 p = gl_PointCoord - vec2(0.5);
-  float sq = max(abs(p.x), abs(p.y));
-  if (sq > 0.5) discard;
-  float glow = 1.0 - smoothstep(0.0, 0.5, sq);
-  float core = 1.0 - smoothstep(0.0, 0.12, sq);
-  vec3 col = vColor * (1.0 + core * 2.5);
-  gl_FragColor = vec4(col, glow * vAlpha);
-}
-`;
+// CC sentinel shader removed — CC symbology TBD, using standard node shader for now
 
 // CC_FRAG removed — CC nodes now rendered via CCCrownRing (golden crown) instead of point sprites
 
@@ -1107,7 +1096,7 @@ function ConstellationNodes({
           activityMap={activityMap}
         />
       )}
-      {/* CC sentinel nodes — distributed guardians with square-glow shader */}
+      {/* CC members — rendered as standard nodes (symbology TBD) */}
       {groups.cc.length > 0 && (
         <NodePoints
           nodes={groups.cc}
@@ -1116,8 +1105,7 @@ function ConstellationNodes({
           pulseId={pulseId}
           interactive={false}
           getColor={getCcColor}
-          emissive={3.5}
-          fragmentShader={CC_SENTINEL_FRAG}
+          emissive={2.0}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}
@@ -1412,6 +1400,70 @@ function ConstellationEdges({ edges, dimmed }: { edges: ConstellationEdge3D[]; d
       <EdgeLayer edges={layers.proximity} dimmed={dimmed} edgeType="proximity" />
       <EdgeLayer edges={layers.lastmile} dimmed={dimmed} edgeType="lastmile" />
     </>
+  );
+}
+
+// --- Neural mesh: gossamer threads connecting nearby nodes ---
+
+/**
+ * NeuralMesh — Very faint lines connecting nodes within proximity,
+ * creating a neural network / synapse visual throughout the constellation.
+ * Opacity is very low (0.03-0.06) so it reads as texture, not structure.
+ */
+function NeuralMesh({ nodes, dimmed }: { nodes: ConstellationNode3D[]; dimmed: boolean }) {
+  const geometry = useMemo(() => {
+    const positions: number[] = [];
+    const maxConnections = 600;
+    let count = 0;
+
+    // Connect each node to its 1-2 nearest neighbors within range
+    for (let i = 0; i < nodes.length && count < maxConnections; i++) {
+      const a = nodes[i];
+      if (a.nodeType === 'user') continue;
+
+      let nearest: { dist: number; pos: [number, number, number] } | null = null;
+
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        if (b.nodeType === 'user') continue;
+        const dx = a.position[0] - b.position[0];
+        const dy = a.position[1] - b.position[1];
+        const dz = a.position[2] - b.position[2];
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (dist < 2.5) {
+          positions.push(...a.position, ...b.position);
+          count++;
+          if (count >= maxConnections) break;
+        } else if (dist < 4 && (!nearest || dist < nearest.dist)) {
+          nearest = { dist, pos: b.position };
+        }
+      }
+
+      // Add the nearest neighbor connection if no close ones found
+      if (nearest && count < maxConnections) {
+        positions.push(...a.position, ...nearest.pos);
+        count++;
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    return geo;
+  }, [nodes]);
+
+  if (nodes.length === 0) return null;
+
+  return (
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial
+        color="#8ecae6"
+        transparent
+        opacity={dimmed ? 0.01 : 0.04}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </lineSegments>
   );
 }
 

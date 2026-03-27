@@ -79,12 +79,10 @@ function timeOfDayGreeting(): string {
   return 'Evening';
 }
 
-const DISCOVERY_PROMPTS: string[] = [
-  'Something interesting: delegation patterns shifted 12% this epoch.',
-  'Did you know? The most active proposal category this week is Treasury.',
-  'Insight: voter participation is trending upward across all segments.',
-  'Pattern detected: new DReps are claiming profiles 3x faster than last epoch.',
-  'Observation: constitutional alignment scores are converging across top DReps.',
+const DISCOVERY_FALLBACKS: string[] = [
+  'Governance is quiet. Explore the constellation to discover DReps aligned with your values.',
+  'No urgent items. Browse the network overlay to see delegation relationships.',
+  'All clear. Try the proposals overlay to review active governance actions.',
 ];
 
 /** Extract entity-like IDs from text (drep1..., pool1..., stake1...) */
@@ -279,11 +277,21 @@ export function useSenecaStrip(): SenecaStripState {
 
     // Dead-time discovery mode — activates when no urgent/high items
     if (isDeadTime) {
-      const discoveryIndex =
-        Math.floor(Date.now() / ROTATION_INTERVAL_MS) % DISCOVERY_PROMPTS.length;
+      // Prefer real data-driven insights from context endpoint
+      if (insights.length > 0) {
+        const idx = Math.floor(Date.now() / ROTATION_INTERVAL_MS) % insights.length;
+        return {
+          mode: 'discovery',
+          text: insights[idx].text,
+          entityIds: insights[idx].entityIds,
+        };
+      }
+      // Fallback to honest generic prompts (no fake statistics)
+      const fallbackIdx =
+        Math.floor(Date.now() / ROTATION_INTERVAL_MS) % DISCOVERY_FALLBACKS.length;
       return {
         mode: 'discovery',
-        text: DISCOVERY_PROMPTS[discoveryIndex],
+        text: DISCOVERY_FALLBACKS[fallbackIdx],
         entityIds: [],
       };
     }

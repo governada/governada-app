@@ -11,8 +11,9 @@ import {
 } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGovernanceConstellation } from '@/hooks/queries';
-import { CameraControls } from '@react-three/drei';
+import { CameraControls, Line } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { useQuery } from '@tanstack/react-query';
 import * as THREE from 'three';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
 import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
@@ -72,6 +73,8 @@ interface GlobeConstellationProps {
   urgentNodeIds?: Set<string>;
   /** Set of node IDs that just completed (flash green briefly) */
   completedNodeIds?: Set<string>;
+  /** Set of node IDs that have been visited/inspected this session */
+  visitedNodeIds?: Set<string>;
 }
 
 interface SceneState {
@@ -119,6 +122,7 @@ export const GlobeConstellation = forwardRef<
     overlayColorMode = 'default',
     urgentNodeIds,
     completedNodeIds,
+    visitedNodeIds,
   },
   ref,
 ) {
@@ -161,6 +165,7 @@ export const GlobeConstellation = forwardRef<
     flyToActive: false,
   });
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const { data: apiData } = useGovernanceConstellation();
 
@@ -668,6 +673,8 @@ export const GlobeConstellation = forwardRef<
               overlayColorMode={overlayColorMode}
               urgentNodeIds={urgentNodeIds}
               completedNodeIds={completedNodeIds}
+              hoveredNodeId={hoveredNodeId}
+              visitedNodeIds={visitedNodeIds}
               onNodeClick={
                 interactive
                   ? (node) => {
@@ -679,6 +686,7 @@ export const GlobeConstellation = forwardRef<
               onNodeHover={
                 interactive
                   ? (node) => {
+                      setHoveredNodeId(node?.id ?? null);
                       onNodeHoverRef.current?.(node);
                       onNodeHoverScreenRef.current?.(
                         node,
@@ -692,6 +700,7 @@ export const GlobeConstellation = forwardRef<
               activityMap={activityMap}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            <NetworkEdgeLines nodes={sceneState.nodes} visible={overlayColorMode === 'network'} />
             {delegationBond &&
               userNode &&
               (() => {
@@ -925,13 +934,103 @@ void main() {
 
 // CC_FRAG removed — CC nodes now rendered via CCCrownRing (golden crown) instead of point sprites
 
+// --- Network edge lines (rendered inside TiltedGlobeGroup) ---
+
+const NETWORK_EDGE_COLORS: Record<string, string> = {
+  delegation: '#2dd4bf',
+  alignment: '#fbbf24',
+  'cc-drep': '#a78bfa',
+};
+
+function NetworkEdgeLines({ nodes, visible }: { nodes: ConstellationNode3D[]; visible: boolean }) {
+  // Fetch edge data from API
+  const { data } = useQuery<{
+    edges: Array<{ from: string; to: string; type: string; weight: number }>;
+  }>({
+    queryKey: ['cockpit-network-edges-scene'],
+    queryFn: async () => {
+      const res = await fetch('/api/cockpit/network-edges');
+      if (!res.ok) return { edges: [] };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: visible,
+  });
+
+  const lines = useMemo(() => {
+    if (!visible || !data?.edges?.length || nodes.length === 0) return [];
+
+    // Build nodeMap for position lookup
+    const nodeMap = new Map<string, ConstellationNode3D>();
+    for (const n of nodes) {
+      nodeMap.set(n.id, n);
+      if (n.fullId) nodeMap.set(n.fullId, n);
+    }
+
+    const result: Array<{
+      points: [number, number, number][];
+      color: string;
+      type: string;
+    }> = [];
+
+    // Cap at 20 edges for performance
+    for (const edge of data.edges.slice(0, 20)) {
+      const fromNode = nodeMap.get(edge.from);
+      const toNode = nodeMap.get(edge.to);
+      if (!fromNode || !toNode) continue;
+
+      // Slightly offset lines above the globe surface to prevent z-fighting
+      const lift = 0.15;
+      const from = fromNode.position;
+      const to = toNode.position;
+      const fromLen = Math.sqrt(from[0] ** 2 + from[1] ** 2 + from[2] ** 2) || 1;
+      const toLen = Math.sqrt(to[0] ** 2 + to[1] ** 2 + to[2] ** 2) || 1;
+
+      result.push({
+        points: [
+          [
+            from[0] * (1 + lift / fromLen),
+            from[1] * (1 + lift / fromLen),
+            from[2] * (1 + lift / fromLen),
+          ],
+          [to[0] * (1 + lift / toLen), to[1] * (1 + lift / toLen), to[2] * (1 + lift / toLen)],
+        ],
+        color: NETWORK_EDGE_COLORS[edge.type] ?? '#ffffff',
+        type: edge.type,
+      });
+    }
+
+    return result;
+  }, [visible, data, nodes]);
+
+  if (!visible || lines.length === 0) return null;
+
+  return (
+    <group>
+      {lines.map((line, i) => (
+        <Line
+          key={i}
+          points={line.points}
+          color={line.color}
+          lineWidth={line.type === 'delegation' ? 1.5 : 1}
+          transparent
+          opacity={0.6}
+          dashed={line.type !== 'delegation'}
+          dashSize={line.type === 'alignment' ? 0.3 : 0.15}
+          gapSize={line.type === 'alignment' ? 0.15 : 0.2}
+        />
+      ))}
+    </group>
+  );
+}
+
 // --- Scene sub-components ---
 
 function RaycastConfig() {
   const raycaster = useThree((s) => s.raycaster);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/immutability -- Three.js raycaster params must be mutated directly
-    raycaster.params.Points = { threshold: 0.35 };
+    raycaster.params.Points = { threshold: 1.8 };
   }, [raycaster]);
   return null;
 }
@@ -950,6 +1049,8 @@ function ConstellationNodes({
   overlayColorMode = 'default',
   urgentNodeIds,
   completedNodeIds,
+  hoveredNodeId,
+  visitedNodeIds,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -964,6 +1065,8 @@ function ConstellationNodes({
   overlayColorMode?: 'default' | 'urgent' | 'network' | 'proposals' | 'ecosystem';
   urgentNodeIds?: Set<string>;
   completedNodeIds?: Set<string>;
+  hoveredNodeId?: string | null;
+  visitedNodeIds?: Set<string>;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -996,33 +1099,50 @@ function ConstellationNodes({
   }, [nodes]);
 
   // Overlay-aware color callbacks: dim non-relevant node types per overlay mode
-  const DIMMED_COLOR = '#333333';
-  const URGENT_DREP_COLOR = '#f87171'; // red for urgent DRep nodes
+  const DIMMED_COLOR = '#151515'; // near-black for non-relevant nodes — dramatic visual separation
+  const URGENT_DREP_BRIGHT = '#ff4444'; // bright red for urgent emphasis
   const COMPLETED_GREEN = '#22c55e'; // green flash for completed actions
+  const NETWORK_TEAL = '#5eead4'; // brighter teal for network overlay delegation nodes
+  const PROPOSAL_BRIGHT = '#f5eedf'; // warm bright for proposal overlay emphasis
   const getDrepColor = useCallback(
     (node: ConstellationNode3D) => {
       // Completed nodes flash green (takes priority over all overlays)
       if (completedNodeIds?.has(node.id)) return COMPLETED_GREEN;
-      if (overlayColorMode === 'proposals') return DIMMED_COLOR;
-      if (overlayColorMode === 'urgent' && urgentNodeIds && !urgentNodeIds.has(node.id))
+      // Urgent overlay: non-urgent dim hard, urgent glow bright red
+      if (overlayColorMode === 'urgent') {
+        if (urgentNodeIds?.has(node.id)) return URGENT_DREP_BRIGHT;
         return DIMMED_COLOR;
-      if (overlayColorMode === 'urgent' && urgentNodeIds?.has(node.id)) return URGENT_DREP_COLOR;
+      }
+      // Proposals overlay: DReps are not proposals, dim them
+      if (overlayColorMode === 'proposals') return DIMMED_COLOR;
+      // Network overlay: brighten DReps (they're delegation targets)
+      if (overlayColorMode === 'network') return NETWORK_TEAL;
       return DREP_COLOR;
     },
     [overlayColorMode, urgentNodeIds, completedNodeIds],
   );
-  const getSpoColor = useCallback(
-    () => (overlayColorMode === 'proposals' ? DIMMED_COLOR : SPO_COLOR),
-    [overlayColorMode],
-  );
+  const getSpoColor = useCallback(() => {
+    // SPOs dim in proposals and urgent overlays, visible in network/ecosystem
+    if (overlayColorMode === 'proposals' || overlayColorMode === 'urgent') return DIMMED_COLOR;
+    return SPO_COLOR;
+  }, [overlayColorMode]);
   // getCcColor removed — CC nodes rendered via CCCrownRing
   const getUserColor = useCallback(() => USER_COLOR, []);
   const getProposalColor = useCallback(
     (node?: ConstellationNode3D) => {
       if (node && completedNodeIds?.has(node.id)) return COMPLETED_GREEN;
-      return overlayColorMode === 'network' ? DIMMED_COLOR : PROPOSAL_COLOR;
+      // Proposals overlay: proposals glow bright
+      if (overlayColorMode === 'proposals') return PROPOSAL_BRIGHT;
+      // Network overlay: proposals are not delegation entities, dim them
+      if (overlayColorMode === 'network') return DIMMED_COLOR;
+      // Urgent overlay: proposals with urgent status keep color, others dim
+      if (overlayColorMode === 'urgent') {
+        if (node && urgentNodeIds?.has(node.id)) return PROPOSAL_BRIGHT;
+        return DIMMED_COLOR;
+      }
+      return PROPOSAL_COLOR;
     },
-    [overlayColorMode, completedNodeIds],
+    [overlayColorMode, completedNodeIds, urgentNodeIds],
   );
 
   if (nodes.length === 0 || !frameReady) return null;
@@ -1033,6 +1153,8 @@ function ConstellationNodes({
       <NodePoints
         nodes={groups.drep}
         highlightId={highlightId}
+        hoveredNodeId={hoveredNodeId}
+        visitedNodeIds={visitedNodeIds}
         dimmed={dimmed}
         pulseId={pulseId}
         interactive={interactive}
@@ -1048,6 +1170,8 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.spo}
           highlightId={highlightId}
+          hoveredNodeId={hoveredNodeId}
+          visitedNodeIds={visitedNodeIds}
           dimmed={dimmed}
           pulseId={pulseId}
           interactive={interactive}
@@ -1066,6 +1190,7 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.user}
           highlightId={highlightId}
+          hoveredNodeId={hoveredNodeId}
           dimmed={false}
           pulseId={pulseId}
           interactive={interactive}
@@ -1082,6 +1207,8 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.proposal}
           highlightId={highlightId}
+          hoveredNodeId={hoveredNodeId}
+          visitedNodeIds={visitedNodeIds}
           dimmed={dimmed}
           pulseId={pulseId}
           interactive={interactive}
@@ -1101,6 +1228,8 @@ function ConstellationNodes({
 function NodePoints({
   nodes,
   highlightId,
+  hoveredNodeId,
+  visitedNodeIds,
   dimmed,
   pulseId,
   interactive,
@@ -1115,6 +1244,8 @@ function NodePoints({
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
+  hoveredNodeId?: string | null;
+  visitedNodeIds?: Set<string>;
   dimmed: boolean;
   pulseId: string | null;
   interactive?: boolean;
@@ -1168,13 +1299,23 @@ function NodePoints({
         // Activity-based brightness: recently active nodes glow brighter
         const activity = activityMap?.get(node.id) ?? activityMap?.get(node.fullId) ?? 0;
         const activityBoost = 1 + activity * 0.8; // up to 1.8x brighter
-        colors[i * 3] = tmpColor.r * emissive * activityBoost;
-        colors[i * 3 + 1] = tmpColor.g * emissive * activityBoost;
-        colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost;
+        // Hovered nodes glow brighter, visited nodes dim slightly (explored → muted)
+        const hoverBoost = hoveredNodeId === node.id ? 1.5 : 1.0;
+        const visitedDim = visitedNodeIds?.has(node.id) ? 0.65 : 1.0;
+        colors[i * 3] = tmpColor.r * emissive * activityBoost * hoverBoost * visitedDim;
+        colors[i * 3 + 1] = tmpColor.g * emissive * activityBoost * hoverBoost * visitedDim;
+        colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost * hoverBoost * visitedDim;
       }
 
-      // SIZE: matched nodes grow more dramatically with intensity
-      const baseSize = isPulsing ? node.scale * 1.8 : isHighlighted ? node.scale * 1.5 : node.scale;
+      // SIZE: hovered nodes glow larger, matched nodes grow more dramatically with intensity
+      const isHovered = hoveredNodeId === node.id;
+      const baseSize = isPulsing
+        ? node.scale * 1.8
+        : isHighlighted
+          ? node.scale * 1.5
+          : isHovered
+            ? node.scale * 1.6
+            : node.scale;
       sizes[i] = (isMatched ? baseSize * (1 + 0.5 * matchIntensity) : baseSize) * POINT_SCALE;
 
       // DIMMED: non-matched dim when matching is active
@@ -1191,6 +1332,8 @@ function NodePoints({
   }, [
     nodes,
     highlightId,
+    hoveredNodeId,
+    visitedNodeIds,
     dimmed,
     pulseId,
     getColor,
@@ -1217,7 +1360,7 @@ function NodePoints({
   return (
     <points
       frustumCulled={false}
-      onPointerDown={
+      onClick={
         interactive
           ? (e: { stopPropagation: () => void; index?: number }) => {
               e.stopPropagation();

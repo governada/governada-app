@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useRef, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Compass, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
-import { getDominantDimension, getIdentityColor, alignmentsToArray } from '@/lib/drepIdentity';
+import { alignmentsToArray } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
@@ -17,8 +17,9 @@ import {
   buildRevealSequence,
   buildMatchCleanupSequence,
 } from '@/lib/globe/matchChoreography';
+import posthog from 'posthog-js';
 
-/* ─── Question definitions (mirrored from QuickMatchFlow) ─── */
+/* ─── Question definitions ─── */
 
 interface QuestionDef {
   id: string;
@@ -77,25 +78,20 @@ const MATCH_QUESTIONS: QuestionDef[] = [
 
 const TOTAL_QUESTIONS = MATCH_QUESTIONS.length;
 
-/** Progressive threshold narrowing: each answer tightens the globe filter */
-const THRESHOLDS = [160, 100, 60, 35];
+/** Progressive threshold narrowing — tighter values for visible DRep reduction */
+const THRESHOLDS = [120, 75, 45, 25];
 
-/* ─── Seneca acknowledgement messages ─── */
+/* ─── Seneca acknowledgement messages (evocative, matching globe visual) ─── */
 
 const ACKNOWLEDGEMENTS = [
-  'Interesting. That tells me a lot about your priorities.',
-  'Got it. Let me narrow the field...',
-  'Clear signal. One more dimension to map.',
-  'Perfect. I have a clear picture now. Computing your matches...',
+  'The field is shifting. I can see clusters forming around your priorities\u2026',
+  'Narrowing in. A pattern is emerging among the representatives\u2026',
+  'Almost there. I see a clear cluster of aligned representatives\u2026',
+  'Locking on to your best matches\u2026',
 ];
 
 /* ─── Globe command bridge via CustomEvent ─── */
 
-/**
- * Dispatch a globe command as a CustomEvent so the AnonymousLanding
- * (which owns the globe ref) can execute it. This avoids threading
- * the globe ref through the shell → panel → match component chain.
- */
 function dispatchGlobeCommand(cmd: GlobeCommand) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('senecaGlobeCommand', { detail: cmd }));
@@ -111,6 +107,13 @@ interface SenecaMatchProps {
 
 type MatchStep = 'intro' | number | 'loading' | 'results' | 'error';
 
+/* ─── Answer label lookup ─── */
+
+function getAnswerLabel(questionId: string, value: string): string {
+  const q = MATCH_QUESTIONS.find((q) => q.id === questionId);
+  return q?.options.find((o) => o.value === value)?.label ?? value;
+}
+
 /* ─── Component ─── */
 
 export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
@@ -120,10 +123,8 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
   const [result, setResult] = useState<QuickMatchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Send globe command via prop callback + CustomEvent bridge
   const sendGlobeCommand = useCallback(
     (cmd: GlobeCommand) => {
       onGlobeCommand?.(cmd);
@@ -132,20 +133,11 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     [onGlobeCommand],
   );
 
-  // Computed alignment from current answers (builds incrementally)
-  // Auto-scroll to bottom when step changes — double-rAF ensures DOM has updated
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-      });
-    });
-  }, [step]);
-
-  // Start the quiz with theatrical opening
+  // Start the quiz — "entering Cerebro" with theatrical opening
   const handleStart = useCallback(() => {
     setStep(0);
     sendGlobeCommand(buildMatchStartSequence());
+    posthog.capture('match_started', { source: 'seneca_panel' });
   }, [sendGlobeCommand]);
 
   // Handle answer selection
@@ -154,10 +146,16 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
       const newAnswers = { ...answers, [questionId]: value };
       setAnswers(newAnswers);
 
+      posthog.capture('match_answer_selected', {
+        round: questionIndex + 1,
+        question_id: questionId,
+        answer: value,
+      });
+
       // Theatrical choreography for this answer round
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
-      const threshold = THRESHOLDS[questionIndex] ?? 35;
+      const threshold = THRESHOLDS[questionIndex] ?? 25;
       sendGlobeCommand(buildAnswerSequence(questionIndex, vector, threshold));
 
       // Advance to next question or submit
@@ -200,6 +198,11 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         setResult(data);
         setStep('results');
 
+        posthog.capture('match_completed', {
+          top_match_score: data.matches[0]?.matchScore ?? 0,
+          match_count: data.matches.length,
+        });
+
         // Theatrical reveal: countdown 5→4→3→2→1, camera sweeps to #1
         if (data.matches.length > 0) {
           const alignment = buildAlignmentFromAnswers(finalAnswers);
@@ -229,7 +232,11 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     setExpandedMatch(null);
     setStep('intro');
     sendGlobeCommand(buildMatchCleanupSequence());
+    posthog.capture('match_restarted');
   }, [sendGlobeCommand]);
+
+  // Current question index
+  const currentQIndex = typeof step === 'number' ? step : -1;
 
   return (
     <div className="flex flex-col h-full">
@@ -251,17 +258,17 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
           <Sparkles className="h-3.5 w-3.5 text-primary/70" />
           <span className="text-xs font-semibold text-foreground/80">Find Your Match</span>
         </div>
-        {/* Progress indicator */}
-        {typeof step === 'number' && (
+        {/* Progress indicator — visible during questions and loading */}
+        {(typeof step === 'number' || step === 'loading') && (
           <div className="ml-auto flex items-center gap-1">
             {Array.from({ length: TOTAL_QUESTIONS }, (_, i) => (
               <div
                 key={i}
                 className={cn(
                   'h-1 rounded-full transition-all duration-300',
-                  i < step
+                  i < (step === 'loading' ? TOTAL_QUESTIONS : currentQIndex)
                     ? 'w-4 bg-primary'
-                    : i === step
+                    : i === currentQIndex
                       ? 'w-4 bg-primary/60'
                       : 'w-2 bg-white/10',
                 )}
@@ -271,148 +278,187 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         )}
       </div>
 
-      {/* Scrollable conversation area */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent px-3 py-3 space-y-3"
-      >
-        {/* Intro message */}
-        <SenecaBubble delay={0}>
-          I&apos;ll help you find a governance representative who shares your priorities. Four quick
-          questions &mdash; each one narrows the field on the globe.
-        </SenecaBubble>
-
-        {step === 'intro' && (
-          <motion.div
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <button
-              onClick={handleStart}
-              className={cn(
-                'w-full rounded-xl border border-primary/30 bg-primary/10',
-                'hover:bg-primary/20 px-4 py-3 text-sm font-medium text-primary',
-                'transition-colors text-center min-h-[44px]',
-              )}
-            >
-              Let&apos;s find my match
-            </button>
-          </motion.div>
+      {/* Single-card content area — no scroll, AnimatePresence between steps */}
+      <div className="flex-1 flex flex-col px-3 py-3 min-h-0">
+        {/* Past answer pills — compact strip above current question */}
+        {currentQIndex > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3 shrink-0">
+            {MATCH_QUESTIONS.slice(0, currentQIndex).map((q) => {
+              const answer = answers[q.id];
+              if (!answer) return null;
+              return (
+                <span
+                  key={q.id}
+                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/15 text-primary/80 border border-primary/20"
+                >
+                  {getAnswerLabel(q.id, answer)}
+                </span>
+              );
+            })}
+          </div>
         )}
 
-        {/* Questions */}
-        {MATCH_QUESTIONS.map((q, qIndex) => {
-          if (
-            typeof step !== 'number' &&
-            step !== 'loading' &&
-            step !== 'results' &&
-            step !== 'error'
-          )
-            return null;
-          const stepNum =
-            step === 'loading' || step === 'results' || step === 'error' ? TOTAL_QUESTIONS : step;
-          if (qIndex > stepNum) return null;
+        {/* Loading/results past answers strip */}
+        {(step === 'loading' || step === 'results' || step === 'error') &&
+          Object.keys(answers).length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3 shrink-0">
+              {MATCH_QUESTIONS.map((q) => {
+                const answer = answers[q.id];
+                if (!answer) return null;
+                return (
+                  <span
+                    key={q.id}
+                    className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/15 text-primary/80 border border-primary/20"
+                  >
+                    {getAnswerLabel(q.id, answer)}
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
-          const selectedValue = answers[q.id];
-          const isAnswered = Boolean(selectedValue);
-          const isCurrent = typeof step === 'number' && step === qIndex;
+        <AnimatePresence mode="wait">
+          {/* Intro */}
+          {step === 'intro' && (
+            <motion.div
+              key="intro"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+              className="flex flex-col flex-1 justify-center gap-4"
+            >
+              <SenecaBubble>
+                I&apos;ll help you find a governance representative who shares your priorities. Four
+                quick questions &mdash; each one narrows the field on the globe.
+              </SenecaBubble>
+              <button
+                onClick={handleStart}
+                className={cn(
+                  'w-full rounded-xl border border-primary/30 bg-primary/10',
+                  'hover:bg-primary/20 px-4 py-3 text-sm font-medium text-primary',
+                  'transition-colors text-center min-h-[44px]',
+                )}
+              >
+                Let&apos;s find my match
+              </button>
+            </motion.div>
+          )}
 
-          return (
-            <div key={q.id} className="space-y-2">
-              <SenecaBubble delay={isCurrent ? 0.2 : 0}>{q.senecaPrompt}</SenecaBubble>
+          {/* Question card — single card, no stacking */}
+          {typeof step === 'number' && MATCH_QUESTIONS[step] && (
+            <motion.div
+              key={`q-${step}`}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              className="flex flex-col flex-1 gap-3"
+            >
+              <SenecaBubble>{MATCH_QUESTIONS[step].senecaPrompt}</SenecaBubble>
 
-              {/* Answer pills */}
-              <div className="space-y-1.5 pl-2">
-                {q.options.map((opt) => {
-                  const isSelected = selectedValue === opt.value;
-                  return (
-                    <motion.button
-                      key={opt.value}
-                      initial={prefersReducedMotion || !isCurrent ? false : { opacity: 0, x: -8 }}
-                      animate={{ opacity: isAnswered && !isSelected ? 0.4 : 1, x: 0 }}
-                      transition={{ duration: 0.2 }}
-                      onClick={() => {
-                        if (!isAnswered) {
-                          handleAnswer(q.id, opt.value, qIndex);
-                        }
-                      }}
-                      disabled={isAnswered}
-                      className={cn(
-                        'w-full rounded-xl border px-4 py-2.5 text-left transition-all min-h-[44px]',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                        isSelected
-                          ? 'bg-primary/20 border-primary/30'
-                          : 'border-white/10 bg-white/5 hover:bg-white/10',
-                        isAnswered && !isSelected && 'opacity-40 cursor-default',
-                        !isAnswered && 'cursor-pointer',
-                      )}
-                      aria-pressed={isSelected}
-                    >
-                      <span className="text-sm font-medium text-foreground">{opt.label}</span>
-                      <span className="block text-xs text-muted-foreground mt-0.5">
-                        {opt.brief}
-                      </span>
-                    </motion.button>
-                  );
-                })}
+              <div className="space-y-1.5">
+                {MATCH_QUESTIONS[step].options.map((opt, i) => (
+                  <motion.button
+                    key={opt.value}
+                    initial={prefersReducedMotion ? false : { opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.06, duration: 0.2 }}
+                    onClick={() => handleAnswer(MATCH_QUESTIONS[step].id, opt.value, step)}
+                    className={cn(
+                      'w-full rounded-xl border px-4 py-2.5 text-left transition-all min-h-[44px]',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                      'border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer',
+                    )}
+                  >
+                    <span className="text-sm font-medium text-foreground">{opt.label}</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">{opt.brief}</span>
+                  </motion.button>
+                ))}
               </div>
 
-              {/* Seneca acknowledgement after answer */}
-              {isAnswered && qIndex < TOTAL_QUESTIONS - 1 && (
-                <SenecaBubble delay={0.3}>{ACKNOWLEDGEMENTS[qIndex]}</SenecaBubble>
+              {/* Acknowledgement from previous round fades in at top */}
+              {step > 0 && (
+                <motion.div
+                  initial={prefersReducedMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <SenecaBubble>{ACKNOWLEDGEMENTS[step - 1]}</SenecaBubble>
+                </motion.div>
               )}
-            </div>
-          );
-        })}
+            </motion.div>
+          )}
 
-        {/* Loading state */}
-        {step === 'loading' && (
-          <div className="space-y-2">
-            <SenecaBubble delay={0.2}>{ACKNOWLEDGEMENTS[TOTAL_QUESTIONS - 1]}</SenecaBubble>
+          {/* Loading */}
+          {step === 'loading' && (
             <motion.div
+              key="loading"
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              className="flex flex-col flex-1 items-center justify-center gap-3"
+            >
+              <SenecaBubble>{ACKNOWLEDGEMENTS[TOTAL_QUESTIONS - 1]}</SenecaBubble>
+              <div className="flex items-center gap-2 py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-primary/60" />
+                <span className="text-xs text-muted-foreground">
+                  Scanning the constellation for your matches...
+                </span>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Error */}
+          {step === 'error' && (
+            <motion.div
+              key="error"
               initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex items-center gap-2 px-3 py-4"
+              exit={{ opacity: 0 }}
+              className="flex flex-col flex-1 justify-center gap-3"
             >
-              <Loader2 className="h-4 w-4 animate-spin text-primary/60" />
-              <span className="text-xs text-muted-foreground">
-                Analyzing the governance landscape...
-              </span>
+              <SenecaBubble>
+                Something went wrong while computing your matches. {error ? `(${error})` : ''} Want
+                to try again?
+              </SenecaBubble>
+              <button
+                onClick={handleRestart}
+                className={cn(
+                  'w-full rounded-xl border border-white/10 bg-white/5',
+                  'hover:bg-white/10 px-4 py-2.5 text-sm text-foreground',
+                  'transition-colors min-h-[44px]',
+                )}
+              >
+                Start over
+              </button>
             </motion.div>
-          </div>
-        )}
+          )}
 
-        {/* Error state */}
-        {step === 'error' && (
-          <div className="space-y-2">
-            <SenecaBubble delay={0}>
-              Something went wrong while computing your matches. {error ? `(${error})` : ''} Want to
-              try again?
-            </SenecaBubble>
-            <button
-              onClick={handleRestart}
-              className={cn(
-                'w-full rounded-xl border border-white/10 bg-white/5',
-                'hover:bg-white/10 px-4 py-2.5 text-sm text-foreground',
-                'transition-colors min-h-[44px]',
-              )}
+          {/* Results */}
+          {step === 'results' && result && (
+            <motion.div
+              key="results"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              className="flex flex-col flex-1 min-h-0 gap-2"
             >
-              Start over
-            </button>
-          </div>
-        )}
-
-        {/* Results */}
-        {step === 'results' && result && (
-          <MatchResults
-            result={result}
-            expandedMatch={expandedMatch}
-            onExpandMatch={setExpandedMatch}
-            onGlobeCommand={sendGlobeCommand}
-            onRestart={handleRestart}
-          />
-        )}
+              <MatchResults
+                result={result}
+                expandedMatch={expandedMatch}
+                onExpandMatch={(id) => {
+                  setExpandedMatch(id);
+                  if (id) {
+                    posthog.capture('match_result_expanded', { drep_id: id });
+                  }
+                }}
+                onGlobeCommand={sendGlobeCommand}
+                onRestart={handleRestart}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -456,41 +502,40 @@ function MatchResults({
   onRestart,
 }: MatchResultsProps) {
   const prefersReducedMotion = useReducedMotion();
-  const dominant = getDominantDimension(result.userAlignments);
-  const _identityColor = getIdentityColor(dominant).hex;
 
   return (
-    <div className="space-y-3">
-      {/* Identity reveal */}
-      <SenecaBubble delay={0}>
-        Based on your answers, you&apos;re a{' '}
-        <strong style={{ color: result.identityColor }}>{result.personalityLabel}</strong>. Here are
-        the representatives who best align with your priorities.
-      </SenecaBubble>
+    <>
+      {/* Identity reveal — always visible */}
+      <div className="shrink-0 space-y-2">
+        <SenecaBubble>
+          Based on your answers, you&apos;re a{' '}
+          <strong style={{ color: result.identityColor }}>{result.personalityLabel}</strong>. Here
+          are the representatives who best align with your priorities.
+        </SenecaBubble>
 
-      {/* Compact identity card */}
-      <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 28 }}
-        className="rounded-xl border p-3"
-        style={{
-          borderColor: `${result.identityColor}40`,
-          background: `linear-gradient(135deg, ${result.identityColor}10, transparent)`,
-        }}
-      >
-        <div className="text-center space-y-1">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-            Your Governance Identity
-          </p>
-          <p className="text-lg font-display font-bold" style={{ color: result.identityColor }}>
-            {result.personalityLabel}
-          </p>
-        </div>
-      </motion.div>
+        <motion.div
+          initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 28 }}
+          className="rounded-xl border p-2.5"
+          style={{
+            borderColor: `${result.identityColor}40`,
+            background: `linear-gradient(135deg, ${result.identityColor}10, transparent)`,
+          }}
+        >
+          <div className="text-center space-y-0.5">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+              Your Governance Identity
+            </p>
+            <p className="text-base font-display font-bold" style={{ color: result.identityColor }}>
+              {result.personalityLabel}
+            </p>
+          </div>
+        </motion.div>
+      </div>
 
-      {/* Match cards */}
-      <div className="space-y-2">
+      {/* Match cards — scrollable if needed, but compact enough to fit */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent space-y-1.5">
         <p className="text-xs text-muted-foreground font-medium px-1">
           Top {result.matches.length} matches
         </p>
@@ -512,24 +557,20 @@ function MatchResults({
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="space-y-2 pt-1">
-        <SenecaBubble delay={0}>
-          Tap any match to learn more, or view their full profile. You can also start over with
-          different answers.
-        </SenecaBubble>
+      {/* Actions — always anchored at bottom */}
+      <div className="shrink-0 pt-1">
         <button
           onClick={onRestart}
           className={cn(
             'w-full rounded-xl border border-white/10 bg-white/5',
-            'hover:bg-white/10 px-4 py-2.5 text-xs text-muted-foreground',
-            'transition-colors min-h-[44px]',
+            'hover:bg-white/10 px-4 py-2 text-xs text-muted-foreground',
+            'transition-colors min-h-[36px]',
           )}
         >
           Try different answers
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -572,38 +613,32 @@ function CompactMatchCard({
       {/* Collapsed row */}
       <button
         onClick={onExpand}
-        className="w-full text-left px-3 py-2.5 min-h-[44px]"
+        className="w-full text-left px-3 py-2 min-h-[40px]"
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-2.5">
-          {/* Rank */}
           <span
-            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
             style={{ backgroundColor: match.identityColor }}
           >
             {rank}
           </span>
-
-          {/* Name + tier */}
           <div className="flex-1 min-w-0">
             <span className="font-medium text-sm text-foreground truncate block">
               {displayName}
             </span>
             {match.tier && <span className="text-[10px] text-muted-foreground">{match.tier}</span>}
           </div>
-
-          {/* Score */}
           <span
-            className="font-display text-xl font-bold tabular-nums shrink-0"
+            className="font-display text-lg font-bold tabular-nums shrink-0"
             style={{ color: match.identityColor }}
           >
             {scorePercent}%
           </span>
         </div>
 
-        {/* Agree/differ badges */}
         {(match.agreeDimensions.length > 0 || match.differDimensions.length > 0) && (
-          <div className="flex flex-wrap gap-1 mt-1.5 ml-8">
+          <div className="flex flex-wrap gap-1 mt-1 ml-7">
             {match.agreeDimensions.slice(0, 2).map((d) => (
               <span
                 key={d}
@@ -637,15 +672,10 @@ function CompactMatchCard({
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 space-y-3 border-t border-white/[0.06] pt-3">
-              {/* Per-dimension agreement */}
               <DimensionBars userAlignments={userAlignments} matchAlignments={match.alignments} />
-
-              {/* Signature insight */}
               {match.signatureInsight && (
                 <p className="text-xs text-muted-foreground italic">{match.signatureInsight}</p>
               )}
-
-              {/* CTAs */}
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" asChild className="flex-1 gap-1.5 h-9 text-xs">
                   <Link href={`/drep/${encodeURIComponent(match.drepId)}`}>

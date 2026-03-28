@@ -32,12 +32,17 @@ export type GlobeCommand =
       cameraAngle?: number;
       /** Camera elevation offset for dive variety (radians) */
       cameraElevation?: number;
+      drepOnly?: boolean;
     }
   | { type: 'voteSplit'; proposalRef: string }
   | { type: 'reset' }
   | { type: 'clear' }
   /** Dim all nodes — used before progressive reveal during tool execution */
   | { type: 'dim' }
+  /** Light up all DRep nodes, dim non-DReps — the "entering Cerebro" moment */
+  | { type: 'matchStart' }
+  /** Dramatic cinematic fly to a match result (3-second hold) */
+  | { type: 'matchFlyTo'; nodeId: string }
   /** Scanning sweep — highlight with wide threshold then narrow, simulating a search */
   | { type: 'scan'; alignment: number[]; durationMs?: number }
   /** Warm specific nodes by topic — subtle highlight without camera movement */
@@ -94,6 +99,7 @@ export function useSenecaGlobeBridge(
             nodeTypeFilter: command.nodeTypeFilter,
             cameraAngle: command.cameraAngle,
             cameraElevation: command.cameraElevation,
+            drepOnly: command.drepOnly,
           });
           break;
         case 'voteSplit': {
@@ -113,6 +119,16 @@ export function useSenecaGlobeBridge(
           break;
         case 'clear':
           globe.clearMatches();
+          break;
+
+        // --- Match flow commands ---
+
+        case 'matchStart':
+          globe.matchStart();
+          break;
+
+        case 'matchFlyTo':
+          globe.flyToMatch(command.nodeId);
           break;
 
         // --- Advanced choreography commands ---

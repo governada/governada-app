@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Compass, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -11,6 +12,7 @@ import { alignmentsToArray } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
+import { MatchResultOverlay } from '@/components/governada/MatchResultOverlay';
 import posthog from 'posthog-js';
 
 /* ─── Question definitions ─── */
@@ -119,6 +121,13 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
   const [, setExpandedMatch] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Overlay state for celebratory #1 match card (rendered via portal)
+  const [overlayState, setOverlayState] = useState<{
+    focusedMatch: MatchResult;
+    focusedRank: number;
+    isTopMatch: boolean;
+  } | null>(null);
+
   const sendGlobeCommand = useCallback(
     (cmd: GlobeCommand) => {
       onGlobeCommand?.(cmd);
@@ -211,13 +220,13 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         // Dramatic cinematic fly to #1 match (3-second hold)
         if (data.matches[0]) {
           sendGlobeCommand({ type: 'matchFlyTo', nodeId: data.matches[0].drepId });
-          // Dispatch overlay event after flyTo has time to settle
+          // Show celebratory overlay after flyTo settles
           setTimeout(() => {
-            window.dispatchEvent(
-              new CustomEvent('matchResultReady', {
-                detail: { result: data, topMatch: data.matches[0] },
-              }),
-            );
+            setOverlayState({
+              focusedMatch: data.matches[0],
+              focusedRank: 1,
+              isTopMatch: true,
+            });
           }, 3500);
         }
       } catch (err: unknown) {
@@ -454,11 +463,38 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
                 onExpandMatch={setExpandedMatch}
                 onGlobeCommand={sendGlobeCommand}
                 onRestart={handleRestart}
+                onFocusOverlay={(match, rank) =>
+                  setOverlayState({ focusedMatch: match, focusedRank: rank, isTopMatch: false })
+                }
               />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Celebratory match overlay — rendered via portal to escape panel bounds */}
+      {overlayState &&
+        result &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <MatchResultOverlay
+            result={result}
+            focusedMatch={overlayState.focusedMatch}
+            focusedRank={overlayState.focusedRank}
+            isTopMatch={overlayState.isTopMatch}
+            onBackToTop={() => {
+              const topMatch = result.matches[0];
+              if (topMatch) {
+                sendGlobeCommand({ type: 'matchFlyTo', nodeId: topMatch.drepId });
+                setTimeout(() => {
+                  setOverlayState({ focusedMatch: topMatch, focusedRank: 1, isTopMatch: true });
+                }, 3500);
+              }
+            }}
+            onDismiss={() => setOverlayState(null)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }
@@ -490,25 +526,25 @@ interface MatchResultsProps {
   onExpandMatch: (id: string | null) => void;
   onGlobeCommand: (cmd: GlobeCommand) => void;
   onRestart: () => void;
+  onFocusOverlay: (match: MatchResult, rank: number) => void;
 }
 
-function MatchResults({ result, onExpandMatch, onGlobeCommand, onRestart }: MatchResultsProps) {
-  // Focus a different match — fly globe + dispatch overlay event
+function MatchResults({
+  result,
+  onExpandMatch,
+  onGlobeCommand,
+  onRestart,
+  onFocusOverlay,
+}: MatchResultsProps) {
+  // Focus a different match — fly globe + show overlay after flyTo settles
   const handleFocusMatch = useCallback(
     (match: MatchResult, rank: number) => {
       onExpandMatch(match.drepId);
       onGlobeCommand({ type: 'matchFlyTo', nodeId: match.drepId });
       posthog.capture('match_result_expanded', { drep_id: match.drepId, rank });
-      // Dispatch overlay focus event after flyTo settles
-      setTimeout(() => {
-        window.dispatchEvent(
-          new CustomEvent('matchFocusChanged', {
-            detail: { result, match, rank },
-          }),
-        );
-      }, 3500);
+      setTimeout(() => onFocusOverlay(match, rank), 3500);
     },
-    [result, onExpandMatch, onGlobeCommand],
+    [onExpandMatch, onGlobeCommand, onFocusOverlay],
   );
 
   return (

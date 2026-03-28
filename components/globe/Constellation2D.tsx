@@ -378,6 +378,15 @@ export const Constellation2D = forwardRef(function Constellation2D(
       stateRef.current.cameraY = -node.position[1];
       stateRef.current.zoom = 2;
     },
+    matchStart: () => {
+      // Light up all DRep nodes, dim non-DReps (2D fallback)
+      const s = stateRef.current;
+      s.matchIds.clear();
+      for (const [id, node] of s.nodeMap) {
+        if (node.nodeType === 'drep') s.matchIds.add(id);
+      }
+      s.dimmed = true;
+    },
     clearMatches: () => {
       stateRef.current.matchIds.clear();
       stateRef.current.dimmed = false;

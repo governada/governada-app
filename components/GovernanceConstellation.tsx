@@ -43,9 +43,12 @@ export interface ConstellationRef {
       nodeTypeFilter?: string;
       cameraAngle?: number;
       cameraElevation?: number;
+      drepOnly?: boolean;
     },
   ) => void;
   flyToMatch: (drepId: string) => Promise<void>;
+  /** Light up all DRep nodes and dim non-DReps — the "entering Cerebro" moment */
+  matchStart: () => void;
   clearMatches: () => void;
   /** Color DRep nodes by their vote on a proposal. Pass null to clear. */
   setVoteSplit: (map: Map<string, 'Yes' | 'No' | 'Abstain'> | null) => void;
@@ -227,13 +230,14 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
       highlightMatches: (
         userAlignment: number[],
         threshold: number,
-        _options?: { noZoom?: boolean; zoomToCluster?: boolean },
+        _options?: { noZoom?: boolean; zoomToCluster?: boolean; drepOnly?: boolean },
       ) => {
         const matched = new Set<string>();
         const intensities = new Map<string, number>();
 
         for (const node of sceneState.nodes) {
           if (node.isAnchor) continue;
+          if (_options?.drepOnly && node.nodeType !== 'drep') continue;
           let sumSq = 0;
           for (let d = 0; d < 6; d++) {
             const diff = (userAlignment[d] ?? 50) - (node.alignments[d] ?? 50);
@@ -295,6 +299,25 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
         await cameraControlsRef.current.setLookAt(x, y, z + 5, x, y, z, true);
         await sleep(1500);
         setSceneState((prev) => ({ ...prev, pulseId: null, animating: false }));
+      },
+
+      matchStart: () => {
+        // "Entering Cerebro" — light up all DRep nodes, dim everything else
+        const drepIds = new Set<string>();
+        const intensities = new Map<string, number>();
+        for (const node of sceneState.nodes) {
+          if (node.nodeType === 'drep') {
+            drepIds.add(node.id);
+            intensities.set(node.id, 0.6);
+          }
+        }
+        setSceneState((prev) => ({
+          ...prev,
+          matchedNodeIds: drepIds,
+          matchIntensities: intensities,
+          dimmed: true,
+          highlightId: null,
+        }));
       },
 
       clearMatches: () => {

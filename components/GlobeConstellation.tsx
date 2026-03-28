@@ -344,6 +344,7 @@ export const GlobeConstellation = forwardRef<
         nodeTypeFilter?: string;
         cameraAngle?: number;
         cameraElevation?: number;
+        drepOnly?: boolean;
       },
     ) => {
       const matched = new Set<string>();
@@ -352,7 +353,7 @@ export const GlobeConstellation = forwardRef<
       for (const node of sceneState.nodes) {
         // Filter by node type if specified (e.g., 'drep' during DRep matching)
         if (options?.nodeTypeFilter && node.nodeType !== options.nodeTypeFilter) continue;
-
+        if (options?.drepOnly && node.nodeType !== 'drep') continue;
         // 6D Euclidean distance
         let sumSq = 0;
         for (let d = 0; d < 6; d++) {
@@ -440,7 +441,7 @@ export const GlobeConstellation = forwardRef<
             cx * lookWeight,
             cy * lookWeight,
             cz * lookWeight,
-            true, // SMOOTH transition (was false = snap)
+            true, // SMOOTH transition
           );
           // Restore default smoothTime after transition settles
           setTimeout(() => {
@@ -471,8 +472,8 @@ export const GlobeConstellation = forwardRef<
           cz /= count;
           const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
           rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * (1 - zoomFactor * 0.85);
-          const camDist = 13 - zoomFactor * 7;
-          const lookWeight = 0.3 + zoomFactor * 0.4;
+          const camDist = 14 - zoomFactor * 6;
+          const lookWeight = 0.4 + zoomFactor * 0.5;
           const dir = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1;
           const nx = cx / dir;
           const ny = cy / dir;
@@ -484,7 +485,7 @@ export const GlobeConstellation = forwardRef<
             cx * lookWeight,
             cy * lookWeight,
             cz * lookWeight,
-            false,
+            true, // animated smooth transition
           );
         }
       }
@@ -542,6 +543,37 @@ export const GlobeConstellation = forwardRef<
         // Keep flyToTarget set so the globe stays focused on the match
       }));
       // Don't restore rotation — let the globe stay locked during results
+    },
+
+    matchStart: () => {
+      // "Entering Cerebro" — light up all DRep nodes, dim everything else
+      const drepIds = new Set<string>();
+      const intensities = new Map<string, number>();
+      for (const node of sceneState.nodes) {
+        if (node.nodeType === 'drep') {
+          drepIds.add(node.id);
+          intensities.set(node.id, 0.6); // warm glow, not max intensity
+        }
+      }
+
+      setSceneState((prev) => ({
+        ...prev,
+        matchedNodeIds: drepIds,
+        matchIntensities: intensities,
+        dimmed: true, // dims non-DRep nodes to 0.12
+        highlightId: null,
+        scanProgress: 0,
+        flyToTarget: null,
+        flyToActive: false,
+      }));
+
+      // Slow rotation to "scanning" pace
+      rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * 0.6;
+
+      // Shift camera slightly left to make room for Seneca panel on right
+      if (cameraControlsRef.current) {
+        cameraControlsRef.current.setLookAt(-2, 1.5, 16, -1, 0, 0, true);
+      }
     },
 
     clearMatches: () => {

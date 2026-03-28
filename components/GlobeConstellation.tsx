@@ -418,10 +418,24 @@ export const GlobeConstellation = forwardRef<
           const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
           const camDist = 14 - zoomFactor * 6; // 14 → 8 (wide overview → close to cluster)
 
-          // Camera position: directly facing the centroid from outside the globe
-          const camX = nx * camDist;
-          const camY = ny * camDist + 1.5; // slight elevation for depth
-          const camZ = nz * camDist;
+          // Camera position: facing the centroid, offset by dive angle for variety
+          let camX = nx * camDist;
+          let camY = ny * camDist + 1.5; // slight elevation for depth
+          let camZ = nz * camDist;
+
+          // Apply dive angle (azimuth rotation around Y) — each question approaches differently
+          if (options?.cameraAngle) {
+            const cos = Math.cos(options.cameraAngle);
+            const sin = Math.sin(options.cameraAngle);
+            const rx = camX * cos - camZ * sin;
+            const rz = camX * sin + camZ * cos;
+            camX = rx;
+            camZ = rz;
+          }
+          // Apply elevation offset — vertical variety per question
+          if (options?.cameraElevation) {
+            camY += camDist * Math.sin(options.cameraElevation);
+          }
 
           // Look at the cluster centroid
           const controls = cameraControlsRef.current;
@@ -786,6 +800,7 @@ export const GlobeConstellation = forwardRef<
               matchIntensities={sceneState.matchIntensities}
               activityMap={activityMap}
               matchNodeTypeFilter={sceneState.matchNodeTypeFilter}
+              scanProgress={sceneState.scanProgress}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
             {quality !== 'low' && (
@@ -823,6 +838,7 @@ export const GlobeConstellation = forwardRef<
           {quality !== 'low' && (
             <FlyToParticles target={sceneState.flyToTarget} active={sceneState.flyToActive} />
           )}
+          <GloryRing target={sceneState.flyToTarget} active={sceneState.flyToActive} />
 
           {/* HeartbeatPulse removed — the expanding ring was visually distracting */}
 
@@ -1139,6 +1155,7 @@ function ConstellationNodes({
   voteSplitMap,
   temporalVoteMap,
   matchNodeTypeFilter,
+  scanProgress = 0,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -1158,6 +1175,8 @@ function ConstellationNodes({
   voteSplitMap?: Map<string, 'Yes' | 'No' | 'Abstain'> | null;
   temporalVoteMap?: Map<string, 'Yes' | 'No' | 'Abstain'>;
   matchNodeTypeFilter?: string | null;
+  /** 0-1 progress of match narrowing — drives progressive node disappearance */
+  scanProgress?: number;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -1268,6 +1287,7 @@ function ConstellationNodes({
         matchedNodeIds={matchedNodeIds}
         matchIntensities={matchIntensities}
         activityMap={activityMap}
+        scanProgress={scanProgress}
       />
       {groups.spo.length > 0 && (
         <NodePoints
@@ -1286,6 +1306,7 @@ function ConstellationNodes({
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}
+          scanProgress={scanProgress}
         />
       )}
       {/* CC members — rendered as standard nodes (symbology TBD) */}
@@ -1301,6 +1322,7 @@ function ConstellationNodes({
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}
+          scanProgress={scanProgress}
         />
       )}
       {groups.user.length > 0 && (
@@ -1318,6 +1340,7 @@ function ConstellationNodes({
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}
+          scanProgress={scanProgress}
         />
       )}
       {groups.proposal.length > 0 && (
@@ -1336,6 +1359,7 @@ function ConstellationNodes({
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}
+          scanProgress={scanProgress}
         />
       )}
     </>
@@ -1358,6 +1382,7 @@ function NodePoints({
   matchedNodeIds,
   matchIntensities,
   activityMap,
+  scanProgress = 0,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -1374,6 +1399,8 @@ function NodePoints({
   matchedNodeIds: Set<string>;
   matchIntensities: Map<string, number>;
   activityMap?: Map<string, number>;
+  /** 0-1 progress of match narrowing — drives progressive node disappearance */
+  scanProgress?: number;
 }) {
   const tmpColor = useMemo(() => new THREE.Color(), []);
   const matchColor = useMemo(() => new THREE.Color(MATCH_COLOR), []);
@@ -1424,7 +1451,7 @@ function NodePoints({
         colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost * hoverBoost * visitedDim;
       }
 
-      // SIZE: hovered nodes glow larger, matched nodes grow more dramatically with intensity
+      // SIZE: hovered nodes glow larger, matched nodes grow with scan progress
       const isHovered = hoveredNodeId === node.id;
       const baseSize = isPulsing
         ? node.scale * 1.8
@@ -1433,7 +1460,13 @@ function NodePoints({
           : isHovered
             ? node.scale * 1.6
             : node.scale;
-      sizes[i] = (isMatched ? baseSize * (1 + 0.5 * matchIntensity) : baseSize) * POINT_SCALE;
+      // Matched nodes grow as scan narrows; unmatched shrink progressively
+      const matchSizeBoost = isMatched ? 1 + 0.5 * matchIntensity + scanProgress * 0.3 : 1;
+      const dimSizeScale =
+        matchingActive && !isMatched && !isHighlighted && !isPulsing
+          ? 1 - scanProgress * 0.6 // shrink to 40% at full scan
+          : 1;
+      sizes[i] = baseSize * matchSizeBoost * dimSizeScale * POINT_SCALE;
 
       // DIMMED: non-matched dim when matching is active
       const shouldDim =
@@ -1442,11 +1475,12 @@ function NodePoints({
       dimmedArr[i] = shouldDim ? 1.0 : 0.0;
 
       // Override color to dark gray for dimmed nodes — bulletproof muting
-      // (shader desaturation alone isn't enough due to bloom post-processing)
+      // Progressive: dimmed nodes fade further as scan narrows (0.03 → 0.005)
       if (shouldDim) {
-        colors[i * 3] = 0.03;
-        colors[i * 3 + 1] = 0.03;
-        colors[i * 3 + 2] = 0.03;
+        const dimColor = matchingActive ? 0.03 - scanProgress * 0.025 : 0.03;
+        colors[i * 3] = Math.max(0.005, dimColor);
+        colors[i * 3 + 1] = Math.max(0.005, dimColor);
+        colors[i * 3 + 2] = Math.max(0.005, dimColor);
       }
     }
 
@@ -1464,6 +1498,7 @@ function NodePoints({
     matchedNodeIds,
     matchIntensities,
     activityMap,
+    scanProgress,
   ]);
 
   const geoRef = useRef<THREE.BufferGeometry>(null);
@@ -2150,6 +2185,67 @@ function FlyToParticles({
         toneMapped={false}
       />
     </points>
+  );
+}
+
+/**
+ * GloryRing — Golden torus ring that appears around the #1 match node during reveal.
+ * Fades in, gently pulses in scale, and emits golden light via additive blending.
+ */
+function GloryRing({
+  target,
+  active,
+}: {
+  target: [number, number, number] | null;
+  active: boolean;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const startTimeRef = useRef(0);
+
+  useEffect(() => {
+    if (active) startTimeRef.current = 0; // reset on activation
+  }, [active]);
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current || !materialRef.current || !target || !active) {
+      if (meshRef.current) meshRef.current.visible = false;
+      return;
+    }
+
+    const mesh = meshRef.current;
+    const mat = materialRef.current;
+
+    if (startTimeRef.current === 0) startTimeRef.current = clock.getElapsedTime();
+    const elapsed = clock.getElapsedTime() - startTimeRef.current;
+
+    // Fade in over 0.5s
+    const fadeIn = Math.min(elapsed / 0.5, 1);
+    // Gentle pulse (0.9-1.1 scale oscillation)
+    const pulse = 1 + Math.sin(elapsed * 3) * 0.1;
+
+    mesh.visible = true;
+    mesh.position.set(target[0], target[1], target[2]);
+    mesh.scale.setScalar(pulse * fadeIn);
+    // Rotate slowly for visual interest
+    mesh.rotation.x = Math.PI * 0.5 + Math.sin(elapsed * 0.8) * 0.15;
+    mesh.rotation.z = elapsed * 0.5;
+    mat.opacity = fadeIn * 0.7;
+  });
+
+  return (
+    <mesh ref={meshRef} visible={false} frustumCulled={false}>
+      <torusGeometry args={[0.8, 0.04, 16, 48]} />
+      <meshBasicMaterial
+        ref={materialRef}
+        color="#f5c542"
+        transparent
+        opacity={0}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
   );
 }
 

@@ -1,7 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { executeProposalsSync } from '@/lib/sync/proposals';
-import { pingHeartbeat, errMsg, capMsg } from '@/lib/sync-utils';
+import { pingHeartbeat, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import { logger } from '@/lib/logger';
 
@@ -32,6 +32,10 @@ export const syncProposals = inngest.createFunction(
         })
         .eq('sync_type', 'proposals')
         .is('finished_at', null);
+      await alertCritical(
+        'Proposals Sync Failed',
+        `Proposals sync failed after all retries.\nError: ${detail || msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '*/30 * * * *' }, { event: 'drepscore/sync.proposals' }],

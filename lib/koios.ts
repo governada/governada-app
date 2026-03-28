@@ -178,23 +178,35 @@ async function fetchVotesBatched(
   drepIds: string[],
 ): Promise<Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>>> {
   const votesMap: Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>> = {};
+  let failedCount = 0;
   for (let i = 0; i < drepIds.length; i += VOTE_CONCURRENCY) {
     const chunk = drepIds.slice(i, i + VOTE_CONCURRENCY);
     const results = await Promise.all(
       chunk.map(async (id) => {
         try {
           const votes = await fetchDRepVotes(id);
-          return { id, votes };
+          return { id, votes, ok: true };
         } catch (error) {
           logger.error('[DRepScore] Failed to fetch votes', { drepId: id, error });
-          return { id, votes: [] };
+          return { id, votes: [], ok: false };
         }
       }),
     );
-    for (const { id, votes } of results) {
+    for (const { id, votes, ok } of results) {
       votesMap[id] = votes;
+      if (!ok) failedCount++;
     }
   }
+
+  // Alert if >10% of vote fetches failed — likely a Koios issue, not individual DRep problems
+  if (drepIds.length >= 10 && failedCount / drepIds.length > 0.1) {
+    logger.warn('[DRepScore] High vote fetch failure rate', {
+      failed: failedCount,
+      total: drepIds.length,
+      rate: `${Math.round((failedCount / drepIds.length) * 100)}%`,
+    });
+  }
+
   return votesMap;
 }
 

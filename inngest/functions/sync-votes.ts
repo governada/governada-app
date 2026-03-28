@@ -1,7 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { executeVotesSync } from '@/lib/sync/votes';
-import { pingHeartbeat, errMsg, capMsg } from '@/lib/sync-utils';
+import { pingHeartbeat, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import { logger } from '@/lib/logger';
 
@@ -26,6 +26,10 @@ export const syncVotes = inngest.createFunction(
         })
         .eq('sync_type', 'votes')
         .is('finished_at', null);
+      await alertCritical(
+        'Votes Sync Failed',
+        `Votes sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.votes' }],

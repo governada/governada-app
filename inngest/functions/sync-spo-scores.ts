@@ -1,7 +1,15 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { SyncLogger, batchUpsert, fetchAll, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
+import {
+  SyncLogger,
+  batchUpsert,
+  fetchAll,
+  errMsg,
+  emitPostHog,
+  capMsg,
+  alertCritical,
+} from '@/lib/sync-utils';
 import {
   computeSpoScores,
   computeProposalMarginMultipliers,
@@ -126,6 +134,10 @@ export const syncSpoScores = inngest.createFunction(
         })
         .eq('sync_type', 'spo_scores')
         .is('finished_at', null);
+      await alertCritical(
+        'SPO Scoring Failed',
+        `SPO scoring failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ event: 'drepscore/sync.spo-scores' }, { cron: '0 3 * * *' }],

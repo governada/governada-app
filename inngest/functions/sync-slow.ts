@@ -1,7 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { executeSlowSync } from '@/lib/sync/slow';
-import { pingHeartbeat, errMsg, capMsg } from '@/lib/sync-utils';
+import { pingHeartbeat, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const syncSlow = inngest.createFunction(
@@ -22,6 +22,10 @@ export const syncSlow = inngest.createFunction(
         })
         .eq('sync_type', 'slow')
         .is('finished_at', null);
+      await alertCritical(
+        'Slow Sync Failed',
+        `Slow sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '0 4 * * *' }, { event: 'drepscore/sync.slow' }],

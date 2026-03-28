@@ -33,10 +33,14 @@ export async function GET() {
     const now = Date.now();
     const coreStatuses = CORE_SYNCS.map((syncType) => {
       const row = rows.find((r) => r.sync_type === syncType);
-      if (!row?.last_run) return { type: syncType, stale: true, staleMins: null };
+      if (!row?.last_run)
+        return { type: syncType, stale: true, staleMins: null, lastSuccess: null };
       const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60_000);
       const threshold = CRITICAL_THRESHOLDS_MINS[syncType] ?? 720;
-      return { type: syncType, stale: staleMins > threshold, staleMins };
+      const lastSuccess = row.last_success as boolean | null;
+      // A sync is unhealthy if it's stale OR if it ran recently but failed
+      const stale = staleMins > threshold || lastSuccess === false;
+      return { type: syncType, stale, staleMins, lastSuccess };
     });
 
     const criticalCount = coreStatuses.filter((s) => s.stale).length;

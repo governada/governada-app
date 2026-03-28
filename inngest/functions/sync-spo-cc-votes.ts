@@ -6,7 +6,14 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchAllSPOVotesBulk, fetchAllCCVotesBulk } from '@/utils/koios';
-import { SyncLogger, batchUpsert, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
+import {
+  SyncLogger,
+  batchUpsert,
+  errMsg,
+  emitPostHog,
+  capMsg,
+  alertCritical,
+} from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { computeAndCacheAlignment } from '@/lib/interBodyAlignment';
 
@@ -40,6 +47,10 @@ export const syncSpoAndCcVotes = inngest.createFunction(
           .eq('sync_type', 'cc_votes')
           .is('finished_at', null),
       ]);
+      await alertCritical(
+        'SPO/CC Votes Sync Failed',
+        `SPO/CC votes sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '45 */6 * * *' }, { event: 'drepscore/sync.spo-cc-votes' }],

@@ -303,7 +303,7 @@ Phase 3 (all independent):
 | 2B: Conversational memory           | SHIPPED | #650 | seneca_conversation_summaries table; Claude Haiku summary gen; useSenecaMemory hook; injected into advisor system prompt         |
 | 2C: Navigation-aware context        | SHIPPED | #653 | navigationEvent in AdvisorContext; auto-fire on route change during conversation; debounced 600ms; no visible user message       |
 | 2D: Ambient annotations             | SHIPPED | #654 | /api/intelligence/annotations endpoint; useSenecaAnnotations hook; SenecaAnnotation+Stack components; wired in DRepProfileClient |
-| 2E: Delegation coaching             | SHIPPED | —    | /api/intelligence/delegation-coaching; cohort alignment analysis; useDelegationCoaching hook; DelegationCoachingBadge component  |
+| 2E: Delegation coaching             | SHIPPED | #655 | /api/intelligence/delegation-coaching; cohort alignment analysis; useDelegationCoaching hook; DelegationCoachingBadge component  |
 | 3A: Advanced globe choreography     | PENDING | —    | —                                                                                                                                |
 | 3B: Voice deepening                 | PENDING | —    | —                                                                                                                                |
 | 3C: Shareable moments               | PENDING | —    | —                                                                                                                                |

@@ -103,11 +103,41 @@ export interface GHIComputeResult extends GHIResult {
     governanceOutcomesEnabled?: boolean;
     /** Components computed from carried-forward data due to stale sync */
     staleComponents?: StaleComponent[];
+    /** Cross-reference reconciliation alert — data discrepancy detected */
+    crossReferenceAlert?: {
+      status: string;
+      mismatchCount: number;
+      checkedAt: string;
+    };
   };
 }
 
 export async function computeGHI(): Promise<GHIComputeResult> {
   const supabase = createClient();
+
+  // Check cross-reference reconciliation status before computing
+  // If a mismatch was detected in the last 4 hours, flag it in meta
+  let crossReferenceAlert: { status: string; mismatchCount: number; checkedAt: string } | undefined;
+  const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+  const { data: reconcStatus } = await supabase
+    .from('reconciliation_log')
+    .select('overall_status, mismatches, checked_at')
+    .gte('checked_at', fourHoursAgo)
+    .eq('overall_status', 'mismatch')
+    .order('checked_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (reconcStatus) {
+    const mismatchCount = Array.isArray(reconcStatus.mismatches)
+      ? reconcStatus.mismatches.length
+      : 0;
+    crossReferenceAlert = {
+      status: reconcStatus.overall_status,
+      mismatchCount,
+      checkedAt: reconcStatus.checked_at,
+    };
+  }
 
   // Get current epoch
   const { data: stats } = await supabase
@@ -216,6 +246,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
       citizenEngagementEnabled,
       governanceOutcomesEnabled: governanceOutcomesHasData,
       ...(staleComponents.length > 0 ? { staleComponents } : {}),
+      ...(crossReferenceAlert ? { crossReferenceAlert } : {}),
     },
   };
 }

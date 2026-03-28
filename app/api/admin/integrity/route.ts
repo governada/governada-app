@@ -192,6 +192,30 @@ export const GET = withRouteHandler(async (request) => {
     };
   }
 
+  // Cross-reference reconciliation status
+  const { data: reconcLatest } = await supabase
+    .from('reconciliation_log')
+    .select('checked_at, source, overall_status, results, mismatches, duration_ms, tier_scope')
+    .order('checked_at', { ascending: false })
+    .limit(5);
+
+  const latestReconc = reconcLatest?.[0];
+  if (latestReconc?.overall_status === 'mismatch') {
+    alerts.push({
+      level: 'critical',
+      metric: 'Cross-reference mismatch',
+      value: `${Array.isArray(latestReconc.mismatches) ? latestReconc.mismatches.length : 0} data points diverge`,
+      threshold: '0 mismatches',
+    });
+  } else if (latestReconc?.overall_status === 'drift') {
+    alerts.push({
+      level: 'warning',
+      metric: 'Cross-reference drift',
+      value: `${Array.isArray(latestReconc.mismatches) ? latestReconc.mismatches.length : 0} data points drifting`,
+      threshold: '0 drift',
+    });
+  }
+
   return NextResponse.json({
     timestamp: now.toISOString(),
     vote_power: votePower.data,
@@ -204,5 +228,9 @@ export const GET = withRouteHandler(async (request) => {
     sync_history: syncHistory || [],
     alerts,
     comparison,
+    reconciliation: {
+      latest: latestReconc || null,
+      history: reconcLatest || [],
+    },
   });
 });

@@ -5358,6 +5358,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      reconciliation_log: {
+        Row: {
+          checked_at: string;
+          duration_ms: number | null;
+          id: string;
+          metadata: Json | null;
+          mismatches: Json | null;
+          overall_status: string;
+          results: Json;
+          source: string;
+          tier_scope: string;
+        };
+        Insert: {
+          checked_at?: string;
+          duration_ms?: number | null;
+          id?: string;
+          metadata?: Json | null;
+          mismatches?: Json | null;
+          overall_status: string;
+          results: Json;
+          source?: string;
+          tier_scope?: string;
+        };
+        Update: {
+          checked_at?: string;
+          duration_ms?: number | null;
+          id?: string;
+          metadata?: Json | null;
+          mismatches?: Json | null;
+          overall_status?: string;
+          results?: Json;
+          source?: string;
+          tier_scope?: string;
+        };
+        Relationships: [];
+      };
       research_conversations: {
         Row: {
           created_at: string;
@@ -6566,6 +6602,20 @@ export type Database = {
           drep_pending: number | null;
           drep_verified: number | null;
           drep_with_anchor_hash: number | null;
+        };
+        Relationships: [];
+      };
+      v_reconciliation_status: {
+        Row: {
+          checked_at: string | null;
+          duration_ms: number | null;
+          id: string | null;
+          metadata: Json | null;
+          mismatches: Json | null;
+          overall_status: string | null;
+          results: Json | null;
+          source: string | null;
+          tier_scope: string | null;
         };
         Relationships: [];
       };

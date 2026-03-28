@@ -56,6 +56,7 @@ import { extractMatchingTopics } from '@/inngest/functions/extract-matching-topi
 import { scoreProposers } from '@/inngest/functions/score-proposers';
 import { scoreAiQuality } from '@/inngest/functions/score-ai-quality';
 import { generateAiContent } from '@/inngest/functions/generateAiContent';
+import { reconcileData } from '@/inngest/functions/reconcile-data';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
@@ -113,5 +114,6 @@ export const { GET, POST, PUT } = serve({
     scoreProposers,
     scoreAiQuality,
     generateAiContent,
+    reconcileData,
   ],
 });

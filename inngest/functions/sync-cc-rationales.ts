@@ -17,7 +17,7 @@ import {
 import { computeFullConstitutionalFidelity } from '@/lib/scoring/ccTransparency';
 import type { CCMemberVoteData } from '@/lib/scoring/ccTransparency';
 import { logger } from '@/lib/logger';
-import { errMsg, capMsg } from '@/lib/sync-utils';
+import { errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { fetchCommitteeInfo } from '@/utils/koios';
 
 export const syncCcRationales = inngest.createFunction(
@@ -38,6 +38,10 @@ export const syncCcRationales = inngest.createFunction(
         })
         .eq('sync_type', 'cc_votes')
         .is('finished_at', null);
+      await alertCritical(
+        'CC Rationales Sync Failed',
+        `CC rationales sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.cc-rationales' }],

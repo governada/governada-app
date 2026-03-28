@@ -10,7 +10,14 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchTreasuryBalance } from '@/utils/koios';
 import { calculateTreasuryHealthScore } from '@/lib/treasury';
-import { SyncLogger, emitPostHog, errMsg, capMsg, pingHeartbeat } from '@/lib/sync-utils';
+import {
+  SyncLogger,
+  emitPostHog,
+  errMsg,
+  capMsg,
+  pingHeartbeat,
+  alertCritical,
+} from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const syncTreasurySnapshot = inngest.createFunction(
@@ -31,6 +38,10 @@ export const syncTreasurySnapshot = inngest.createFunction(
         })
         .eq('sync_type', 'treasury')
         .is('finished_at', null);
+      await alertCritical(
+        'Treasury Snapshot Failed',
+        `Treasury snapshot sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '30 22 * * *' }, { event: 'drepscore/sync.treasury' }],

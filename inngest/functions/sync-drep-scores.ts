@@ -25,7 +25,14 @@ import {
   type DRepProfileData,
   type DelegationSnapshotData,
 } from '@/lib/scoring';
-import { batchUpsert, SyncLogger, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
+import {
+  batchUpsert,
+  SyncLogger,
+  errMsg,
+  emitPostHog,
+  capMsg,
+  alertCritical,
+} from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 /** Maximum time for the scoring compute step before aborting (45 minutes). */
@@ -49,6 +56,10 @@ export const syncDrepScores = inngest.createFunction(
         })
         .eq('sync_type', 'scoring')
         .is('finished_at', null);
+      await alertCritical(
+        'DRep Scoring Failed',
+        `DRep scoring failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ event: 'drepscore/sync.scores' }, { cron: '0 2 * * *' }],

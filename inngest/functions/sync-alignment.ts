@@ -29,7 +29,14 @@ import { scoreRationalesBatch } from '@/lib/alignment/rationaleQuality';
 import { normalizeToPercentiles, type RawScoreRow } from '@/lib/alignment/normalize';
 import { computePCA, storePCAResults } from '@/lib/alignment/pca';
 import { validateDimensionIndependence } from '@/lib/alignment/validate';
-import { batchUpsert, errMsg, emitPostHog, capMsg, fetchAll } from '@/lib/sync-utils';
+import {
+  batchUpsert,
+  errMsg,
+  emitPostHog,
+  capMsg,
+  fetchAll,
+  alertCritical,
+} from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import type { ProposalInfo } from '@/types/koios';
 
@@ -128,6 +135,10 @@ export const syncAlignment = inngest.createFunction(
         })
         .eq('sync_type', 'alignment')
         .is('finished_at', null);
+      await alertCritical(
+        'Alignment Sync Failed',
+        `Alignment sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ event: 'drepscore/sync.alignment' }, { cron: '0 3 * * *' }],

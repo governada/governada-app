@@ -1,7 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { executeSecondarySync } from '@/lib/sync/secondary';
-import { pingHeartbeat, errMsg, capMsg } from '@/lib/sync-utils';
+import { pingHeartbeat, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 export const syncSecondary = inngest.createFunction(
@@ -22,6 +22,10 @@ export const syncSecondary = inngest.createFunction(
         })
         .eq('sync_type', 'secondary')
         .is('finished_at', null);
+      await alertCritical(
+        'Secondary Sync Failed',
+        `Secondary sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '30 */6 * * *' }, { event: 'drepscore/sync.secondary' }],

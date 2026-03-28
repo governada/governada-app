@@ -10,7 +10,7 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 import { generateText } from '@/lib/ai';
-import { SyncLogger, errMsg, capMsg } from '@/lib/sync-utils';
+import { SyncLogger, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import {
   fetchEthereumBenchmark,
@@ -37,6 +37,10 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
         })
         .eq('sync_type', 'benchmarks')
         .is('finished_at', null);
+      await alertCritical(
+        'Governance Benchmarks Sync Failed',
+        `Governance benchmarks sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
+      );
     },
   },
   [{ cron: '0 6 * * 0' }, { event: 'drepscore/sync.benchmarks' }],

@@ -514,15 +514,15 @@ export const GlobeConstellation = forwardRef<
         flyToActive: true,
       }));
 
-      // Fly to the node — position camera outside the globe looking at the node
-      // Camera at ~1.8x node distance, offset slightly above for drama
+      // Fly to the node — camera positioned directly along the node's outward direction
+      // so the node appears dead-center on screen. No Y/Z offsets that shift it off-axis.
       const camDist = Math.max(dist * 1.8, 8);
 
-      // Smooth cinematic fly-in (false = animate, not instant)
+      // Smooth cinematic fly-in — camera looks straight at the node
       await cameraControlsRef.current.setLookAt(
         nx * camDist,
-        ny * camDist + 1.5,
-        nz * camDist + 2,
+        ny * camDist,
+        nz * camDist,
         x,
         y,
         z,

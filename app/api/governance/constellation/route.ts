@@ -20,12 +20,14 @@ export const GET = withRouteHandler(async () => {
     spoVotesResult,
     ccVotesResult,
   ] = await Promise.all([
+    // Include all DReps with voting power > 0 (the isActive JSONB field is unreliable —
+    // only 6 of 1100+ rows have it set). Filter by voting power as the source of truth.
     supabase
       .from('dreps')
       .select(
         'id, score, info, size_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
       )
-      .eq('info->>isActive', 'true'),
+      .gt('info->>votingPowerLovelace', '0'),
 
     supabase
       .from('drep_votes')
@@ -52,7 +54,7 @@ export const GET = withRouteHandler(async () => {
     supabase
       .from('dreps')
       .select('score, info', { count: 'exact', head: false })
-      .eq('info->>isActive', 'true'),
+      .gt('info->>votingPowerLovelace', '0'),
 
     supabase
       .from('pools')

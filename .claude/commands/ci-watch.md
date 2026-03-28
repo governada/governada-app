@@ -1,51 +1,34 @@
-Monitor the CI pipeline and Railway deployment until fully validated.
+Monitor CI and verify deployment. Optimized for minimal context consumption.
 
 ## Branch CI (before merge)
 
-**IMPORTANT: Never stream `gh pr checks --watch` in the foreground.** It dumps the full table every 10 seconds and wastes thousands of context tokens.
-
-Instead:
+Use `gh run watch` — prints only status changes, not full table every 10s:
 
 ```bash
-# Run in background (set run_in_background: true)
-gh pr checks <pr-number> --watch
+RUN_ID=$(gh run list --branch $(git branch --show-current) --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch $RUN_ID --exit-status
 ```
 
-When the background task completes, take a single snapshot:
+If CI failed, read only the tail of failed logs:
 
 ```bash
-gh pr checks <pr-number>
+gh run view $RUN_ID --log-failed 2>&1 | tail -20
 ```
 
-If CI failed, read only the relevant logs:
-
-```bash
-gh run list --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'
-gh run view <run-id> --log-failed 2>&1 | tail -50
-```
-
-Branch protection requires ALL of: `type-check`, `lint`, `test`, `build`.
-If CI fails: read the error, fix, commit, push. Max 3 retries before escalating.
+Branch protection requires: `build` (which depends on `checks` + `test`).
+Max 3 retries before escalating.
 
 ## Post-Merge Verification
 
-Railway auto-deploys on push to main independently of CI. Do NOT watch CI on main or poll `railway logs` — verify production directly:
-
-**Always use the `deploy-verifier` subagent in the background after merge.** It handles all verification autonomously:
+**Always use the deploy-verifier subagent in background.** Do NOT block on this:
 
 ```
-Agent(subagent_type="deploy-verifier", run_in_background=true, prompt="PR #N merged. Verify health + changed routes.")
+Agent(subagent_type="deploy-verifier", run_in_background=true,
+  prompt="PR #N merged. Wait 180s, then: npm run smoke-test -- --quiet && bash scripts/uptime-check.sh deploy")
 ```
 
-If you must verify manually:
+The unified `smoke-test --quiet` subsumes health checks, response time assertions, and data integrity validation. Only failures are printed.
 
-1. Wait ~3 min after merge for Railway Docker build
-2. Health + response time check: `bash scripts/check-deploy-health.sh`
-3. Inngest sync: `curl -X PUT https://governada.io/api/inngest` (if functions changed)
-4. Smoke tests: `npm run smoke-test` (includes response time assertions)
-5. Feature-specific: hit the changed page/endpoint on `governada.io`
-6. Heartbeat: `bash scripts/uptime-check.sh deploy`
+The `post-deploy.yml` GitHub Action also runs automatically as a second safety net.
 
-The `post-deploy.yml` GitHub Action also runs automatically after CI on main succeeds — it verifies health, runs smoke tests, and notifies via Discord.
-
-If ANY check fails: investigate. If production is broken, run `bash scripts/rollback.sh` immediately. Never report "done" until all checks pass.
+If deploy-verifier reports failure: `bash scripts/rollback.sh`

@@ -1,11 +1,17 @@
 /**
- * Post-deploy smoke test — hits production endpoints, verifies status + response shape.
- * Usage: npx tsx scripts/smoke-test.ts [base-url]
+ * Unified post-deploy verification — health checks + smoke tests + response time assertions.
+ * Replaces the need to run check-deploy-health.sh separately.
+ *
+ * Usage: npx tsx scripts/smoke-test.ts [base-url] [--quiet]
  * Exit 0 = all pass, non-zero = failure details printed.
- * Includes response time assertions per endpoint.
+ *
+ * --quiet: Only print failures and the summary line (saves ~800 lines of agent context)
  */
 
-const BASE_URL = process.argv[2] || process.env.SMOKE_TEST_URL || 'https://governada.io';
+const args = process.argv.slice(2);
+const QUIET = args.includes('--quiet');
+const BASE_URL =
+  args.find((a) => !a.startsWith('--')) || process.env.SMOKE_TEST_URL || 'https://governada.io';
 
 interface Check {
   name: string;
@@ -17,8 +23,21 @@ interface Check {
 }
 
 const checks: Check[] = [
+  // --- Deploy health checks (subsumes check-deploy-health.sh) ---
   {
-    name: 'Health endpoint',
+    name: 'Health (readiness)',
+    path: '/api/health/ready',
+    expectedStatus: 200,
+    maxResponseMs: 1000,
+  },
+  {
+    name: 'Health (deep)',
+    path: '/api/health/deep',
+    expectedStatus: 200,
+    maxResponseMs: 3000,
+  },
+  {
+    name: 'Health (full)',
     path: '/api/health',
     expectedStatus: 200,
     maxResponseMs: 2000,
@@ -28,6 +47,7 @@ const checks: Check[] = [
       return null;
     },
   },
+  // --- Endpoint smoke tests ---
   {
     name: 'DReps list',
     path: '/api/dreps',
@@ -167,15 +187,18 @@ async function runCheck(check: Check): Promise<{ pass: boolean; name: string; de
 }
 
 async function main() {
-  console.log(`\nSmoke testing: ${BASE_URL}\n`);
+  console.log(`\nSmoke testing: ${BASE_URL}${QUIET ? ' (quiet mode)' : ''}\n`);
 
   const results = await Promise.all(checks.map(runCheck));
   let failed = 0;
 
   for (const r of results) {
-    const icon = r.pass ? 'PASS' : 'FAIL';
-    console.log(`  [${icon}] ${r.name} — ${r.detail}`);
-    if (!r.pass) failed++;
+    if (!r.pass) {
+      console.log(`  [FAIL] ${r.name} — ${r.detail}`);
+      failed++;
+    } else if (!QUIET) {
+      console.log(`  [PASS] ${r.name} — ${r.detail}`);
+    }
   }
 
   console.log(`\n${results.length - failed}/${results.length} checks passed.\n`);

@@ -25,8 +25,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Fast checks: format + lint + type-check in one job (saves 3 cache restores ~30s each)
-  checks:
+  # Single install, shared via cache. All downstream jobs restore instead of re-installing.
+  install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -39,20 +39,37 @@ jobs:
         with:
           path: node_modules
           key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run type-check
 
-  # Tests run in parallel with checks (separate job for isolation)
-  test:
+  # Format + lint + type-check in one job (sequential, shares single cache restore)
+  checks:
+    needs: install
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
+      - uses: actions/cache/restore@v5
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run type-check
+
+  # Tests run in parallel with checks
+  test:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: actions/cache/restore@v5
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm run test:coverage
       - name: Check coverage thresholds
         run: |

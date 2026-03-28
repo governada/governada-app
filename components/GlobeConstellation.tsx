@@ -413,9 +413,10 @@ export const GlobeConstellation = forwardRef<
           const angle = options.cameraAngle ?? 0;
           const elev = options.cameraElevation ?? 0;
 
-          // Compute camera offset distance — dramatic convergence toward cluster
+          // Camera stays at similar distance — orbiting the constellation, not zooming in
+          // The "search" feel comes from dramatic angle shifts, not progressive zoom
           const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
-          const camDist = 16 - zoomFactor * 11; // 16 → 5 as threshold narrows
+          const camDist = 12 - zoomFactor * 2; // 12 → 10 (subtle, not Google Earth zoom)
 
           // Apply angle rotation around the centroid direction
           const cosA = Math.cos(angle);
@@ -431,8 +432,8 @@ export const GlobeConstellation = forwardRef<
           // Stop rotation during match — globe locked on target cluster
           rotationSpeedRef.current = 0;
 
-          // Look at cluster centroid (weighted by zoom)
-          const lookWeight = 0.4 + zoomFactor * 0.4;
+          // Look at cluster centroid — moderate weight keeps the "orbiting" feel
+          const lookWeight = 0.3 + zoomFactor * 0.3;
 
           // Cinematic smooth flight — smoothTime 1.2s for weighted camera feel
           const controls = cameraControlsRef.current;

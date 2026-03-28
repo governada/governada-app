@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { poolId } = await params;
   const supabase = createClient();
   const { data: pool } = await supabase
-    .from('spo_governance_scores')
+    .from('pools')
     .select('pool_name, ticker, governance_score')
     .eq('pool_id', poolId)
     .maybeSingle();
@@ -48,8 +48,8 @@ export default async function GlobePoolPage({ params }: PageProps) {
   const supabase = createClient();
 
   const { data: pool } = await supabase
-    .from('spo_governance_scores')
-    .select('pool_id, pool_name, ticker, governance_score, vote_count, active_stake')
+    .from('pools')
+    .select('pool_id, pool_name, ticker, governance_score, vote_count, live_stake_lovelace')
     .eq('pool_id', poolId)
     .maybeSingle();
 
@@ -73,8 +73,8 @@ export default async function GlobePoolPage({ params }: PageProps) {
         <dd>{pool.vote_count ?? 0}</dd>
         <dt>Active Stake</dt>
         <dd>
-          {pool.active_stake
-            ? `${(Number(pool.active_stake) / 1_000_000).toFixed(0)} ADA`
+          {pool.live_stake_lovelace
+            ? `${(Number(pool.live_stake_lovelace) / 1_000_000).toFixed(0)} ADA`
             : 'Unknown'}
         </dd>
       </dl>

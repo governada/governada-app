@@ -19,11 +19,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const supabase = createClient();
   const { data: member } = await supabase
     .from('cc_members')
-    .select('name, fidelity_grade')
+    .select('author_name, fidelity_grade')
     .eq('cc_hot_id', ccHotId)
     .maybeSingle();
 
-  const name = member?.name || `CC Member ${ccHotId.slice(0, 12)}`;
+  const name = member?.author_name || `CC Member ${ccHotId.slice(0, 12)}`;
   const title = `${name} — Constellation — Governada`;
   const description = member
     ? `Constitutional Committee member ${name}. Fidelity grade: ${member.fidelity_grade || 'N/A'}.`
@@ -48,13 +48,13 @@ export default async function GlobeCCPage({ params }: PageProps) {
 
   const { data: member } = await supabase
     .from('cc_members')
-    .select('cc_hot_id, name, fidelity_grade, status, votes_cast, votes_total')
+    .select('cc_hot_id, author_name, fidelity_grade, status, votes_cast, eligible_proposals')
     .eq('cc_hot_id', ccHotId)
     .maybeSingle();
 
   if (!member) notFound();
 
-  const name = member.name || `CC Member ${ccHotId.slice(0, 12)}`;
+  const name = member.author_name || `CC Member ${ccHotId.slice(0, 12)}`;
 
   return (
     <article itemScope itemType="https://schema.org/Person">
@@ -70,7 +70,7 @@ export default async function GlobeCCPage({ params }: PageProps) {
         <dd>{member.status || 'Active'}</dd>
         <dt>Votes Cast</dt>
         <dd>
-          {member.votes_cast ?? 0} of {member.votes_total ?? 0}
+          {member.votes_cast ?? 0} of {member.eligible_proposals ?? 0}
         </dd>
       </dl>
       <a href={`/committee/${encodeURIComponent(ccHotId)}`}>View full CC member profile</a>

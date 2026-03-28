@@ -21,6 +21,28 @@ From the diff, identify:
 
 If `$ARGUMENTS` specifies a scope, filter to that scope only.
 
+## Phase 1.5: Integration Surface Discovery
+
+After identifying changed files, the agent MUST also identify **integration surfaces** — routes and components that CONSUME the changed code but weren't themselves changed.
+
+For each changed lib/hook/component:
+
+1. Grep for imports of the changed module across the codebase
+2. Trace those imports to the page routes that render them
+3. Add those routes to the UX agent's test list
+
+**Example**: If `lib/intelligence/streamAdvisor.ts` changed, grep for `streamAdvisor` → find `SenecaThread.tsx`, `SenecaConversation.tsx`, `SynapticBriefPanel.tsx` → trace to routes `/`, `/g`, `/workspace` → UX agent must test all three.
+
+This prevents the critical failure mode where changed code is correct in isolation but breaks at integration points.
+
+## Phase 1.6: Feature Journey Mapping
+
+When `$ARGUMENTS` names a feature (e.g., "Seneca", "matching", "globe"):
+
+1. Identify ALL routes where that feature appears (grep for component/hook names)
+2. Map the full user journey across surfaces (e.g., homepage → /g → click node → panel → Seneca)
+3. Add the full journey to the UX agent's test plan, not just individual pages
+
 ## Phase 2: Launch Two Parallel Adversarial Agents
 
 Launch BOTH simultaneously. They operate independently and must not pull punches.
@@ -233,3 +255,7 @@ If SHIP:
 - The UX agent MUST test auth-gated pages using `/api/auth/dev-mock`. Requires `DEV_MOCK_AUTH=true` in `.env.local`.
 - For auth-gated pages, test as the most relevant persona (e.g., `/workspace` as `drep`). Test at least 2 personas per auth-gated route if time permits.
 - This command does NOT deploy. It reviews what's ready to deploy. Use `/ship` after.
+- **Entity type coverage**: When reviewing any list/directory/discovery interface, the UX agent MUST test ALL entity types (DReps, proposals, pools, CC members), not just one. Entity types often have different code paths and data shapes. Bugs hide in the less-common types.
+- **Interaction depth minimum**: On every tested page, the UX agent MUST: (1) click at least 3 interactive elements, (2) test at least 2 entity types if the page shows a list, (3) verify that navigation links resolve (not 404), (4) test any cross-surface bridge (e.g., does Seneca affect the globe?).
+- **Production verification**: If the user specifies `--prod` or says to review in production, the UX agent should use Chrome MCP (`mcp__Claude_in_Chrome__*` tools) on the production URL instead of Preview tools. Adapt the test plan accordingly.
+- **Integration surface testing is mandatory**: The UX agent MUST test routes identified in Phase 1.5 (integration surfaces), not just routes that changed directly. Skipping integration surfaces is the #1 cause of missed bugs.

@@ -21,9 +21,13 @@ import { deriveEntityFromPath } from './panelUtils';
 interface PanelOverlayProps {
   /** Callback when panel requests globe camera restore */
   onClose?: () => void;
+  /** When true, collapse to a narrow strip (e.g., when Seneca is open) */
+  collapsed?: boolean;
+  /** Called when user clicks the collapsed strip to expand */
+  onExpand?: () => void;
 }
 
-export function PanelOverlay({ onClose }: PanelOverlayProps) {
+export function PanelOverlay({ onClose, collapsed, onExpand }: PanelOverlayProps) {
   const pathname = usePathname();
   const router = useRouter();
   const desktopRef = useRef<HTMLDivElement>(null);
@@ -55,6 +59,39 @@ export function PanelOverlay({ onClose }: PanelOverlayProps) {
   }, [entity]);
 
   if (!entity) return null;
+
+  // Collapsed mode: render narrow strip instead of full panel (desktop only)
+  if (collapsed) {
+    return (
+      <button
+        onClick={onExpand}
+        className={cn(
+          'fixed z-30 overflow-hidden',
+          'bg-black/60 backdrop-blur-xl',
+          'border border-white/[0.08]',
+          'shadow-lg shadow-black/30',
+          'hidden md:flex md:items-center md:gap-2',
+          'top-16 right-4',
+          'w-[52px] rounded-xl px-0 py-3',
+          'flex-col',
+          'hover:bg-black/70 hover:border-white/[0.12] transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        )}
+        aria-label={`Expand ${entity.type} panel`}
+        title="Expand panel"
+      >
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider [writing-mode:vertical-lr] rotate-180">
+          {entity.type === 'drep'
+            ? 'DRep'
+            : entity.type === 'proposal'
+              ? 'Proposal'
+              : entity.type === 'pool'
+                ? 'Pool'
+                : 'CC'}
+        </span>
+      </button>
+    );
+  }
 
   return (
     <>

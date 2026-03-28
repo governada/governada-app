@@ -12,11 +12,11 @@ import type { MatchResult, QuickMatchAnswers, QuickMatchResponse } from '@/hooks
 /* ─── Globe Command Types ─────────────────────────────────── */
 
 type GlobeCommand =
-  | { cmd: 'flyTo'; target: string }
-  | { cmd: 'pulse'; target: string }
-  | { cmd: 'highlight'; alignment: number[]; threshold: number }
-  | { cmd: 'reset' }
-  | { cmd: 'clear' };
+  | { type: 'flyTo'; nodeId: string }
+  | { type: 'pulse'; nodeId: string }
+  | { type: 'highlight'; alignment: number[]; threshold: number }
+  | { type: 'reset' }
+  | { type: 'clear' };
 
 /* ─── Props ───────────────────────────────────────────────── */
 
@@ -196,7 +196,7 @@ export function CerebroMatchFlow({
       // Emit tight highlight while computing
       const computingAlignment = buildAlignmentFromAnswers(finalAnswers as Record<string, string>);
       onGlobeCommand({
-        cmd: 'highlight',
+        type: 'highlight',
         alignment: alignmentToArray(computingAlignment),
         threshold: 60,
       });
@@ -224,12 +224,12 @@ export function CerebroMatchFlow({
 
         // Globe choreography: pulse each top match, then fly to best
         for (const match of topMatches) {
-          onGlobeCommand({ cmd: 'pulse', target: match.drepId });
+          onGlobeCommand({ type: 'pulse', nodeId: match.drepId });
         }
         if (topMatches.length > 0) {
           // Small delay before flyTo so pulses are visible
           setTimeout(() => {
-            onGlobeCommand({ cmd: 'flyTo', target: topMatches[0].drepId });
+            onGlobeCommand({ type: 'flyTo', nodeId: topMatches[0].drepId });
           }, 800);
         }
 
@@ -258,7 +258,7 @@ export function CerebroMatchFlow({
       // Emit highlight command with accumulated alignment
       const updatedAlignment = buildAlignmentFromAnswers(updated as Record<string, string>);
       onGlobeCommand({
-        cmd: 'highlight',
+        type: 'highlight',
         alignment: alignmentToArray(updatedAlignment),
         threshold: round.highlightThreshold,
       });
@@ -301,7 +301,7 @@ export function CerebroMatchFlow({
 
   /* ── Cancel ── */
   const handleCancel = useCallback(() => {
-    onGlobeCommand({ cmd: 'reset' });
+    onGlobeCommand({ type: 'reset' });
     setPhase('idle');
     setAnswers({});
     setResults([]);
@@ -310,7 +310,7 @@ export function CerebroMatchFlow({
 
   /* ── Start flow ── */
   const handleStart = useCallback(() => {
-    onGlobeCommand({ cmd: 'clear' });
+    onGlobeCommand({ type: 'clear' });
     setPhase('round1');
     setAnswers({});
     setResults([]);
@@ -558,7 +558,7 @@ export function CerebroMatchFlow({
                     'transition-all hover:border-teal-500/50 hover:text-teal-400',
                   )}
                   onClick={() => {
-                    onGlobeCommand({ cmd: 'flyTo', target: match.drepId });
+                    onGlobeCommand({ type: 'flyTo', nodeId: match.drepId });
                   }}
                 >
                   <User className="h-3 w-3" />

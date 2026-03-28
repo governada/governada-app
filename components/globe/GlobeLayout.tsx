@@ -285,6 +285,18 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
     }
   }, [seneca.pendingGlobeAction, dispatchIntent, consumeGlobeAction]);
 
+  // Listen for senecaGlobeCommand CustomEvents (from SenecaThread/SenecaConversation)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail === 'object' && 'type' in detail) {
+        executeGlobeCommand(detail);
+      }
+    };
+    window.addEventListener('senecaGlobeCommand', handler);
+    return () => window.removeEventListener('senecaGlobeCommand', handler);
+  }, [executeGlobeCommand]);
+
   // ---------------------------------------------------------------------------
   // Seneca whisper
   // ---------------------------------------------------------------------------
@@ -359,7 +371,11 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
       />
 
       {/* Panel overlay — z-30: entity detail panels over the globe */}
-      <PanelOverlay onClose={handlePanelClose} />
+      <PanelOverlay
+        onClose={handlePanelClose}
+        collapsed={seneca.isOpen}
+        onExpand={() => seneca.close()}
+      />
 
       {/* Seneca companion — z-40 */}
       {!seneca.isOpen && (

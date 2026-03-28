@@ -11,7 +11,6 @@
 import { useCallback, type RefObject } from 'react';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
-import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { fetchVoteSplit } from '@/lib/constellation/fetchVoteSplit';
 
 // ---------------------------------------------------------------------------
@@ -54,22 +53,12 @@ export interface GlobeBridgeResult {
 export function useSenecaGlobeBridge(
   globeRef: RefObject<ConstellationRef | null>,
 ): GlobeBridgeResult {
-  const panel = useSenecaThread();
-
   const handleNodeClick = useCallback(
     (node: ConstellationNode3D) => {
-      const typeLabel =
-        node.nodeType === 'drep' ? 'DRep' : node.nodeType === 'spo' ? 'SPO' : 'CC member';
-      const name = node.name || node.id.slice(0, 12);
-      const query = `Tell me about ${typeLabel} ${name}`;
-
-      // Fly to the node on the globe
+      // Fly to the node on the globe — panel opens via URL navigation in GlobeLayout
       globeRef.current?.flyToNode(node.id);
-
-      // Open Seneca with the entity context
-      panel.startConversation(query);
     },
-    [globeRef, panel],
+    [globeRef],
   );
 
   const executeGlobeCommand = useCallback(

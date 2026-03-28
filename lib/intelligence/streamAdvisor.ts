@@ -20,10 +20,14 @@ export interface AdvisorContext {
 }
 
 export interface GlobeStreamCommand {
-  cmd: string;
-  target?: string;
+  type: string;
+  nodeId?: string;
   alignment?: number[];
   threshold?: number;
+  /** @deprecated Use `type` instead — kept for backward compat with server SSE */
+  cmd?: string;
+  /** @deprecated Use `nodeId` instead */
+  target?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,16 +144,26 @@ export async function readAdvisorStream(
               while ((match = markerRe.exec(cleanText)) !== null) {
                 const [full, cmd, target] = match;
                 cleanText = cleanText.replace(full, '');
-                onGlobeCommand({ cmd, target: target || undefined });
+                onGlobeCommand({ type: cmd, nodeId: target || undefined });
               }
             }
 
             if (cleanText) onDelta(cleanText);
           } else if (data.type === 'globe_command') {
             // Direct globe commands injected by the server (from tool execution)
-            const cmdData = data as unknown as { type: string; command?: GlobeStreamCommand };
+            const cmdData = data as unknown as {
+              type: string;
+              command?: GlobeStreamCommand & { cmd?: string; target?: string };
+            };
             if (onGlobeCommand && cmdData.command) {
-              onGlobeCommand(cmdData.command);
+              // Normalize server-emitted commands to bridge format
+              const c = cmdData.command;
+              onGlobeCommand({
+                type: c.type ?? c.cmd ?? 'reset',
+                nodeId: c.nodeId ?? c.target,
+                alignment: c.alignment,
+                threshold: c.threshold,
+              });
             }
           } else if (data.type === 'tool_status' && data.content) {
             // Tool execution status indicator (e.g., "Searching representatives...")

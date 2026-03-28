@@ -334,12 +334,15 @@ export const GlobeConstellation = forwardRef<
     highlightMatches: (
       userAlignment: number[],
       threshold: number,
-      options?: { noZoom?: boolean; zoomToCluster?: boolean },
+      options?: { noZoom?: boolean; zoomToCluster?: boolean; nodeTypeFilter?: string },
     ) => {
       const matched = new Set<string>();
       const intensities = new Map<string, number>();
 
       for (const node of sceneState.nodes) {
+        // Filter by node type if specified (e.g., 'drep' during DRep matching)
+        if (options?.nodeTypeFilter && node.nodeType !== options.nodeTypeFilter) continue;
+
         // 6D Euclidean distance
         let sumSq = 0;
         for (let d = 0; d < 6; d++) {

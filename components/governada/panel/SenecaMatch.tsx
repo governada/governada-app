@@ -11,12 +11,6 @@ import { alignmentsToArray } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
-import {
-  buildMatchStartSequence,
-  buildAnswerSequence,
-  buildRevealSequence,
-  buildMatchCleanupSequence,
-} from '@/lib/globe/matchChoreography';
 import posthog from 'posthog-js';
 
 /* ─── Question definitions ─── */
@@ -133,10 +127,10 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     [onGlobeCommand],
   );
 
-  // Start the quiz — "entering Cerebro" with theatrical opening
+  // Start the quiz — "entering Cerebro": all DReps light up, non-DReps dim
   const handleStart = useCallback(() => {
     setStep(0);
-    sendGlobeCommand(buildMatchStartSequence());
+    sendGlobeCommand({ type: 'matchStart' });
     posthog.capture('match_started', { source: 'seneca_panel' });
   }, [sendGlobeCommand]);
 
@@ -152,11 +146,17 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         answer: value,
       });
 
-      // Theatrical choreography for this answer round
+      // Progressive globe highlight — every round gets camera movement + DRep-only filtering
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
       const threshold = THRESHOLDS[questionIndex] ?? 25;
-      sendGlobeCommand(buildAnswerSequence(questionIndex, vector, threshold));
+      sendGlobeCommand({
+        type: 'highlight',
+        alignment: vector,
+        threshold,
+        drepOnly: true,
+        zoomToCluster: true,
+      });
 
       // Advance to next question or submit
       if (questionIndex < TOTAL_QUESTIONS - 1) {
@@ -203,17 +203,9 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
           match_count: data.matches.length,
         });
 
-        // Theatrical reveal: countdown 5→4→3→2→1, camera sweeps to #1
-        if (data.matches.length > 0) {
-          const alignment = buildAlignmentFromAnswers(finalAnswers);
-          const vector = alignmentsToArray(alignment);
-          sendGlobeCommand(
-            buildRevealSequence(
-              data.matches.slice(0, 5).map((m) => ({ nodeId: m.drepId })),
-              vector,
-              35,
-            ),
-          );
+        // Dramatic cinematic fly to #1 match (3-second hold)
+        if (data.matches[0]) {
+          sendGlobeCommand({ type: 'matchFlyTo', nodeId: data.matches[0].drepId });
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
@@ -231,7 +223,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     setError(null);
     setExpandedMatch(null);
     setStep('intro');
-    sendGlobeCommand(buildMatchCleanupSequence());
+    sendGlobeCommand({ type: 'clear' });
     posthog.capture('match_restarted');
   }, [sendGlobeCommand]);
 
@@ -317,7 +309,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
             </div>
           )}
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {/* Intro */}
           {step === 'intro' && (
             <motion.div

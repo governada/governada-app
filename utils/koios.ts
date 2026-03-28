@@ -186,14 +186,51 @@ async function fetchAllDRepList(): Promise<DRepListResponse> {
   const all: DRepListResponse = [];
   let offset = 0;
   let page = 0;
+  let prevPageWasFull = false;
 
   while (true) {
     const url = `/drep_list?limit=${DREP_LIST_PAGE_SIZE}&offset=${offset}`;
-    const data = await koiosFetch<DRepListResponse>(url);
-    const pageData = data || [];
+
+    // Per-page retry: if koiosFetch succeeds at HTTP level but returns empty
+    // on a mid-pagination page, retry up to 3 times before accepting it.
+    let pageData: DRepListResponse = [];
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const data = await koiosFetch<DRepListResponse>(url);
+        pageData = data || [];
+        lastError = null;
+
+        // Suspicious: previous page was full but this one is empty — likely a transient Koios glitch
+        if (pageData.length === 0 && prevPageWasFull && attempt < 2) {
+          console.warn(
+            `[Koios] drep_list page ${page + 1} returned 0 results after a full page (attempt ${attempt + 1}/3, offset=${offset}, total so far=${all.length}). Retrying...`,
+          );
+          await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt + Math.random() * 1000));
+          continue;
+        }
+        break;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < 2) {
+          console.warn(
+            `[Koios] drep_list page ${page + 1} fetch failed (attempt ${attempt + 1}/3): ${lastError.message}. Retrying...`,
+          );
+          await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt + Math.random() * 1000));
+        }
+      }
+    }
+
+    if (lastError) {
+      throw new Error(
+        `drep_list page ${page + 1} failed after 3 attempts (offset=${offset}, total so far=${all.length}): ${lastError.message}`,
+      );
+    }
 
     all.push(...pageData);
     page++;
+    prevPageWasFull = pageData.length === DREP_LIST_PAGE_SIZE;
 
     if (isDev) {
       console.log(

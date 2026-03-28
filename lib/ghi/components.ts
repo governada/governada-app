@@ -38,9 +38,50 @@ export interface ComponentScore {
 // 2A. DRep Participation (20%)
 // ---------------------------------------------------------------------------
 
+/** Threshold in minutes — if dreps sync is older than this, carry forward last known-good GHI value */
+const DREP_STALE_THRESHOLD_MINS = 720; // 12 hours (matches health endpoint threshold)
+
 export async function computeDRepParticipation({
   supabase,
 }: ComponentInput): Promise<ComponentScore> {
+  // Staleness guard: check if dreps data is fresh before computing
+  const { data: syncHealth } = await supabase
+    .from('v_sync_health')
+    .select('last_run, last_success')
+    .eq('sync_type', 'dreps')
+    .maybeSingle();
+
+  if (syncHealth?.last_run) {
+    const staleMins = Math.round((Date.now() - new Date(syncHealth.last_run).getTime()) / 60_000);
+    const isStale = staleMins > DREP_STALE_THRESHOLD_MINS || syncHealth.last_success === false;
+
+    if (isStale) {
+      // Carry forward from last known-good GHI snapshot
+      const { data: lastSnapshot } = await supabase
+        .from('ghi_snapshots')
+        .select('components')
+        .order('epoch_no', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastSnapshot?.components) {
+        const comps = lastSnapshot.components as Array<{
+          name: string;
+          value: number;
+          weight: number;
+        }>;
+        const prev = comps.find((c) => c.name === 'DRep Participation');
+        if (prev) {
+          return {
+            raw: prev.value,
+            detail: { carriedForward: 1, staleMinutes: staleMins, originalValue: prev.value },
+          };
+        }
+      }
+      // No snapshot to carry forward — fall through to live computation (better than returning 0)
+    }
+  }
+
   const { data: dreps } = await supabase
     .from('dreps')
     .select('effective_participation, info')

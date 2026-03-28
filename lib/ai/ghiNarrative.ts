@@ -41,11 +41,17 @@ const NARRATIVE_SYSTEM = buildSenecaPrompt(
   'Write 2-4 sentences as continuous prose. Be specific about what changed and by how much. Focus on the "why" when the data supports it. Do not use emojis, markdown formatting, or bullet points.',
 );
 
+interface StaleComponentInfo {
+  name: string;
+  staleMinutes: number;
+}
+
 function buildNarrativePrompt(
   currentEpoch: number,
   currentScore: number,
   prevScore: number,
   changes: { name: string; current: number; previous: number; delta: number }[],
+  staleComponents?: StaleComponentInfo[],
 ): string {
   const significantChanges = changes
     .filter((c) => Math.abs(c.delta) >= 2)
@@ -59,12 +65,23 @@ function buildNarrativePrompt(
     .map((c) => `${c.name}: ${c.previous} → ${c.current} (${c.delta > 0 ? '+' : ''}${c.delta})`)
     .join('\n');
 
+  // Add staleness caveat if any significant changes overlap with stale components
+  let caveat = '';
+  if (staleComponents && staleComponents.length > 0) {
+    const staleSet = new Set(staleComponents.map((s) => s.name));
+    const staleChanges = significantChanges.filter((c) => staleSet.has(c.name));
+    if (staleChanges.length > 0) {
+      const staleNames = staleChanges.map((c) => c.name).join(', ');
+      caveat = `\n\nIMPORTANT: ${staleNames} ${staleChanges.length > 1 ? 'are' : 'is'} computed from delayed data (data sync temporarily unavailable). Mention this caveat — do NOT present the change as a confirmed governance event. Frame it as a possible data delay.`;
+    }
+  }
+
   return `Epoch ${currentEpoch}: GHI score changed from ${prevScore} to ${currentScore}.
 
 Component changes:
 ${changeDescriptions}
 
-Write a 2-4 sentence narrative explaining what changed and what it means for Cardano governance health. Be specific about which components moved and by how much. If the overall direction is positive, note what's improving. If negative, note what's declining.`;
+Write a 2-4 sentence narrative explaining what changed and what it means for Cardano governance health. Be specific about which components moved and by how much. If the overall direction is positive, note what's improving. If negative, note what's declining.${caveat}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,8 +94,28 @@ Write a 2-4 sentence narrative explaining what changed and what it means for Car
  *
  * Returns the narrative text, or null if insufficient data.
  */
-export async function generateGHINarrative(): Promise<EpochNarrative | null> {
+/** Threshold matching lib/ghi/components.ts DREP_STALE_THRESHOLD_MINS */
+const DREP_STALE_THRESHOLD_MINS = 720;
+
+export async function generateGHINarrative(
+  staleComponents?: StaleComponentInfo[],
+): Promise<EpochNarrative | null> {
   const supabase = getSupabaseAdmin();
+
+  // Auto-detect stale components if not explicitly provided
+  if (!staleComponents) {
+    const { data: syncHealth } = await supabase
+      .from('v_sync_health')
+      .select('last_run, last_success')
+      .eq('sync_type', 'dreps')
+      .maybeSingle();
+    if (syncHealth?.last_run) {
+      const staleMins = Math.round((Date.now() - new Date(syncHealth.last_run).getTime()) / 60_000);
+      if (staleMins > DREP_STALE_THRESHOLD_MINS || syncHealth.last_success === false) {
+        staleComponents = [{ name: 'DRep Participation', staleMinutes: staleMins }];
+      }
+    }
+  }
 
   // Fetch the two most recent snapshots
   const { data: snapshots } = await supabase
@@ -125,6 +162,7 @@ export async function generateGHINarrative(): Promise<EpochNarrative | null> {
     Number(current.score),
     Number(previous.score),
     changes,
+    staleComponents,
   );
 
   const narrative = await generateText(prompt, {

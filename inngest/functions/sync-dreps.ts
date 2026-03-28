@@ -22,7 +22,7 @@ import {
   type UpsertDRepsResult,
   type PostSyncResult,
 } from '@/lib/sync/dreps';
-import { pingHeartbeat, errMsg, capMsg } from '@/lib/sync-utils';
+import { pingHeartbeat, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import { logger } from '@/lib/logger';
 import { resetKoiosMetrics } from '@/utils/koios';
@@ -50,6 +50,32 @@ export const syncDreps = inngest.createFunction(
         })
         .eq('sync_type', 'dreps')
         .is('finished_at', null);
+
+      // Proactive alerting — notify immediately on any sync failure
+      await alertCritical(
+        'DRep Sync Failed',
+        `sync-dreps failed after all retries.\nError: ${detail}\nCheck Koios API status at https://api.koios.rest/\nStale DRep data may affect GHI scores.`,
+      );
+
+      // Escalate on consecutive failures — 3+ failures = 18+ hours stale
+      try {
+        const { data: recentLogs } = await sb
+          .from('sync_log')
+          .select('success')
+          .eq('sync_type', 'dreps')
+          .order('started_at', { ascending: false })
+          .limit(5);
+        const consecutiveFailures =
+          recentLogs?.findIndex((r) => r.success === true) ?? recentLogs?.length ?? 0;
+        if (consecutiveFailures >= 3) {
+          await alertCritical(
+            'CRITICAL: DRep Sync Down 18+ Hours',
+            `${consecutiveFailures} consecutive DRep sync failures.\nDRep data is ${consecutiveFailures * 6}+ hours stale.\nGHI DRep Participation component is reading stale data.\nImmediate investigation required:\n1) Koios API status\n2) sync_log error patterns\n3) GHI snapshot accuracy`,
+          );
+        }
+      } catch {
+        // Don't let escalation logic crash the onFailure handler
+      }
     },
   },
   [{ cron: '0 */6 * * *' }, { event: 'drepscore/sync.dreps' }],

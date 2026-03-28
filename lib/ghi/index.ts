@@ -86,6 +86,11 @@ function getWeights(enabledFlags: Record<string, boolean>): Record<ComponentName
 // Main computation
 // ---------------------------------------------------------------------------
 
+export interface StaleComponent {
+  name: string;
+  staleMinutes: number;
+}
+
 export interface GHIComputeResult extends GHIResult {
   edi?: EDIResult;
   meta?: {
@@ -96,6 +101,8 @@ export interface GHIComputeResult extends GHIResult {
     citizenEngagementEnabled?: boolean;
     /** Whether Governance Outcomes component is active */
     governanceOutcomesEnabled?: boolean;
+    /** Components computed from carried-forward data due to stale sync */
+    staleComponents?: StaleComponent[];
   };
 }
 
@@ -189,6 +196,15 @@ export async function computeGHI(): Promise<GHIComputeResult> {
     ),
   );
 
+  // Detect stale components (carried forward due to sync failure)
+  const staleComponents: StaleComponent[] = [];
+  if (participation.detail?.carriedForward) {
+    staleComponents.push({
+      name: 'DRep Participation',
+      staleMinutes: participation.detail.staleMinutes ?? 0,
+    });
+  }
+
   return {
     score,
     band: getBand(score),
@@ -199,6 +215,7 @@ export async function computeGHI(): Promise<GHIComputeResult> {
       calibrationVersion: CALIBRATION_VERSION.version,
       citizenEngagementEnabled,
       governanceOutcomesEnabled: governanceOutcomesHasData,
+      ...(staleComponents.length > 0 ? { staleComponents } : {}),
     },
   };
 }

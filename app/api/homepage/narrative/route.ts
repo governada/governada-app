@@ -48,6 +48,12 @@ function composeNarrative(govState: GovernanceStateResult, ghi: GHIComputeResult
   const epochDay = Math.ceil(epoch.progress * 5);
   const epochNum = epoch.currentEpoch;
 
+  // Stale data safety: if the low score is caused by sync failure, don't alarm users
+  const hasStaleData = ghi.meta?.staleComponents && ghi.meta.staleComponents.length > 0;
+  if ((ghi.band === 'fair' || ghi.band === 'critical') && hasStaleData) {
+    return `Governance health reads ${ghi.score}/100 but some data sources are temporarily delayed. ${proposalCount > 0 ? `${proposalCount} proposals open in epoch ${epochNum}.` : `Epoch ${epochNum} in progress.`}`;
+  }
+
   // High urgency — governance needs attention
   if (urgency > 70 && proposalCount > 0) {
     return `${proposalCount} proposal${proposalCount > 1 ? 's' : ''} ${proposalCount > 1 ? 'are' : 'is'} being decided right now. Epoch ${epochNum}, day ${epochDay} — governance needs your attention.`;

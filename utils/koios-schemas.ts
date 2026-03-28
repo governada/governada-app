@@ -8,7 +8,6 @@ import { z } from 'zod';
 export const KoiosDRepListItemSchema = z
   .object({
     drep_id: z.string(),
-    drep_hash: z.string(),
     hex: z.string(),
     has_script: z.boolean(),
     registered: z.boolean(),
@@ -144,6 +143,18 @@ export function validateArray<T>(
 
   if (invalidCount > 0) {
     console.warn(`[Koios] ${label}: ${invalidCount}/${data.length} records failed validation`);
+    if (errors.length > 0) {
+      console.warn(`[Koios] ${label} sample errors:`, errors.slice(0, 3).join(' | '));
+    }
+  }
+
+  // High validation failure: if >25% of records fail, the API schema likely
+  // changed — throw instead of silently returning degraded results.
+  // Legitimate data quirks affect a handful of records, not a quarter of them.
+  if (data.length >= 10 && invalidCount / data.length > 0.25) {
+    throw new Error(
+      `[Koios] ${label}: ${invalidCount}/${data.length} records failed validation (>${Math.round((invalidCount / data.length) * 100)}%). Possible API schema change. Sample: ${errors[0] ?? 'unknown'}`,
+    );
   }
 
   return { valid, invalidCount, errors };

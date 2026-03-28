@@ -9,7 +9,7 @@
  */
 
 import { useCallback, type RefObject } from 'react';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef, CinematicStateInput } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { fetchVoteSplit } from '@/lib/constellation/fetchVoteSplit';
 
@@ -43,7 +43,9 @@ export type GlobeCommand =
   /** Dolly camera to a specific distance from origin */
   | { type: 'zoomOut'; distance?: number }
   /** Brief emissive flash on a node (reveal moment) */
-  | { type: 'flash'; nodeId: string };
+  | { type: 'flash'; nodeId: string }
+  /** Cinematic state — smooth per-frame camera orbit + node transitions */
+  | { type: 'cinematic'; state: CinematicStateInput };
 
 export interface GlobeBridgeResult {
   /** Handle node click from globe — opens Seneca with entity context */
@@ -165,6 +167,10 @@ export function useSenecaGlobeBridge(
 
         case 'flash':
           globe.flashNode(command.nodeId);
+          break;
+
+        case 'cinematic':
+          globe.setCinematicState(command.state);
           break;
       }
     },

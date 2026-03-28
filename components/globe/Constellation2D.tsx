@@ -402,6 +402,9 @@ export const Constellation2D = forwardRef(function Constellation2D(
     flashNode: (_nodeId: string) => {
       // No flash effect in 2D — pulse is handled differently
     },
+    setCinematicState: () => {
+      // No cinematic animation in 2D fallback
+    },
   }));
 
   return (

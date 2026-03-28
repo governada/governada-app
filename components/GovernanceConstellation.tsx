@@ -55,6 +55,20 @@ export interface ConstellationRef {
   zoomToDistance: (distance: number) => void;
   /** Brief emissive flash on a node (300ms burst) */
   flashNode: (nodeId: string) => void;
+  /** Set cinematic animation state for smooth per-frame transitions */
+  setCinematicState: (state: CinematicStateInput) => void;
+}
+
+/** Input for continuous cinematic animation — partial updates merge with current state */
+export interface CinematicStateInput {
+  /** Camera orbit speed in radians/sec (0 = stopped, 0.3 = gentle, 0.8 = fast) */
+  orbitSpeed?: number;
+  /** Target camera distance from origin */
+  dollyTarget?: number;
+  /** Target dim level for non-matched nodes (0 = all visible, 1 = fully dimmed) */
+  dimTarget?: number;
+  /** How many seconds this transition should take (0.4 - 2.0) */
+  transitionDuration?: number;
 }
 
 interface ConstellationProps {
@@ -317,6 +331,9 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
         // Fallback: use pulse
         setSceneState((prev) => ({ ...prev, pulseId: nodeId }));
         setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 400);
+      },
+      setCinematicState: () => {
+        // No-op in legacy constellation
       },
     }));
 

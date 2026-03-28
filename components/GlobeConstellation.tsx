@@ -140,6 +140,17 @@ export const GlobeConstellation = forwardRef<
   const userFlyInDone = useRef(false);
   const [ready, setReady] = useState(false);
 
+  // Cinematic animation state — drives per-frame smooth transitions
+  const cinematicRef = useRef({
+    orbitSpeed: 0, // radians/sec (0 = use default rotation)
+    dollyTarget: 14, // camera distance target
+    dimTarget: 0, // target dim for non-matched nodes (0-1)
+    transitionDuration: 0.8,
+    active: false, // whether cinematic mode is engaged
+  });
+  const [cinematicOrbitSpeed, setCinematicOrbitSpeed] = useState(0);
+  const [cinematicDollyTarget, setCinematicDollyTarget] = useState(14);
+
   // Effective camera position/target — allow overrides from props
   const effectiveCamera = useMemo(
     () => initialCameraPosition ?? INITIAL_CAMERA,
@@ -562,6 +573,21 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({ ...prev, pulseId: nodeId }));
       setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 400);
     },
+
+    setCinematicState: (state) => {
+      const c = cinematicRef.current;
+      if (state.orbitSpeed !== undefined) {
+        c.orbitSpeed = state.orbitSpeed;
+        setCinematicOrbitSpeed(state.orbitSpeed);
+      }
+      if (state.dollyTarget !== undefined) {
+        c.dollyTarget = state.dollyTarget;
+        setCinematicDollyTarget(state.dollyTarget);
+      }
+      if (state.dimTarget !== undefined) c.dimTarget = state.dimTarget;
+      if (state.transitionDuration !== undefined) c.transitionDuration = state.transitionDuration;
+      c.active = true;
+    },
   }));
 
   useEffect(() => {
@@ -780,6 +806,11 @@ export const GlobeConstellation = forwardRef<
             maxDistance={22}
           />
           <IdleCameraWobble controlsRef={cameraControlsRef} />
+          <CinematicCamera
+            controlsRef={cameraControlsRef}
+            orbitSpeed={cinematicOrbitSpeed}
+            dollyTarget={cinematicDollyTarget}
+          />
         </Canvas>
       )}
     </div>
@@ -1359,15 +1390,90 @@ function NodePoints({
 
   const geoRef = useRef<THREE.BufferGeometry>(null);
 
+  // Per-frame smooth interpolation buffers (current = what's rendered, lerps toward target)
+  const currentColorsRef = useRef<Float32Array | null>(null);
+  const currentSizesRef = useRef<Float32Array | null>(null);
+  const currentDimmedRef = useRef<Float32Array | null>(null);
+  const isFirstRender = useRef(true);
+
+  // Initialize or update target buffers
   useEffect(() => {
     const geo = geoRef.current;
     if (!geo) return;
+
+    // Position attribute always snaps (nodes don't move)
     geo.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
-    geo.setAttribute('aNodeColor', new THREE.Float32BufferAttribute(buffers.colors, 3));
-    geo.setAttribute('aSize', new THREE.Float32BufferAttribute(buffers.sizes, 1));
-    geo.setAttribute('aDimmed', new THREE.Float32BufferAttribute(buffers.dimmedArr, 1));
+
+    if (isFirstRender.current) {
+      // First render: snap directly to target values (no lerp)
+      currentColorsRef.current = new Float32Array(buffers.colors);
+      currentSizesRef.current = new Float32Array(buffers.sizes);
+      currentDimmedRef.current = new Float32Array(buffers.dimmedArr);
+      geo.setAttribute('aNodeColor', new THREE.Float32BufferAttribute(currentColorsRef.current, 3));
+      geo.setAttribute('aSize', new THREE.Float32BufferAttribute(currentSizesRef.current, 1));
+      geo.setAttribute('aDimmed', new THREE.Float32BufferAttribute(currentDimmedRef.current, 1));
+      isFirstRender.current = false;
+    }
+    // After first render, the useFrame loop handles smooth transitions toward new target buffers
+
     geo.computeBoundingSphere();
   }, [buffers]);
+
+  // Smooth per-frame interpolation: current values → target values
+  useFrame((_, delta) => {
+    const geo = geoRef.current;
+    if (!geo || !currentColorsRef.current || !currentSizesRef.current || !currentDimmedRef.current)
+      return;
+
+    // Exponential smoothing factor (frame-rate independent, ~0.6s transition)
+    const factor = 1 - Math.pow(0.003, delta);
+    let changed = false;
+    const count = nodes.length;
+
+    const targetColors = buffers.colors;
+    const targetSizes = buffers.sizes;
+    const targetDimmed = buffers.dimmedArr;
+    const curColors = currentColorsRef.current;
+    const curSizes = currentSizesRef.current;
+    const curDimmed = currentDimmedRef.current;
+
+    // Lerp colors (RGB per node)
+    for (let i = 0; i < count * 3; i++) {
+      const diff = targetColors[i] - curColors[i];
+      if (Math.abs(diff) > 0.002) {
+        curColors[i] += diff * factor;
+        changed = true;
+      }
+    }
+
+    // Lerp sizes
+    for (let i = 0; i < count; i++) {
+      const diff = targetSizes[i] - curSizes[i];
+      if (Math.abs(diff) > 0.001) {
+        curSizes[i] += diff * factor;
+        changed = true;
+      }
+    }
+
+    // Lerp dimmed
+    for (let i = 0; i < count; i++) {
+      const diff = targetDimmed[i] - curDimmed[i];
+      if (Math.abs(diff) > 0.005) {
+        curDimmed[i] += diff * factor;
+        changed = true;
+      }
+    }
+
+    // Only push to GPU when something actually changed
+    if (changed) {
+      const colorAttr = geo.getAttribute('aNodeColor') as THREE.BufferAttribute;
+      const sizeAttr = geo.getAttribute('aSize') as THREE.BufferAttribute;
+      const dimAttr = geo.getAttribute('aDimmed') as THREE.BufferAttribute;
+      if (colorAttr) colorAttr.needsUpdate = true;
+      if (sizeAttr) sizeAttr.needsUpdate = true;
+      if (dimAttr) dimAttr.needsUpdate = true;
+    }
+  });
 
   if (nodes.length === 0) return null;
 
@@ -1977,6 +2083,44 @@ function IdleCameraWobble({
     // Gentle azimuth drift
     controlsRef.current.azimuthAngle += Math.sin(t * 0.52) * 0.0002;
   });
+  return null;
+}
+
+/**
+ * CinematicCamera — Per-frame smooth camera motion for theatrical choreography.
+ * Continuously orbits at configurable speed and smoothly dolly-zooms to target distance.
+ * Only active when orbitSpeed > 0 or dollyTarget differs from current.
+ */
+function CinematicCamera({
+  controlsRef,
+  orbitSpeed,
+  dollyTarget,
+}: {
+  controlsRef: React.RefObject<CameraControls | null>;
+  orbitSpeed: number;
+  dollyTarget: number;
+}) {
+  const currentDolly = useRef(14);
+
+  useFrame((_, delta) => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    // Smooth orbit: per-frame azimuth accumulation (cinematic takes over from idle wobble)
+    if (Math.abs(orbitSpeed) > 0.001) {
+      controls.azimuthAngle += orbitSpeed * delta;
+    }
+
+    // Smooth dolly: exponential smoothing toward target distance
+    const dollyDiff = dollyTarget - currentDolly.current;
+    if (Math.abs(dollyDiff) > 0.05) {
+      // Frame-rate independent exponential decay: approaches target smoothly
+      const factor = 1 - Math.pow(0.05, delta);
+      currentDolly.current += dollyDiff * factor;
+      controls.dollyTo(currentDolly.current, false);
+    }
+  });
+
   return null;
 }
 

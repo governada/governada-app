@@ -32,10 +32,7 @@ jobs:
           echo "Waiting 180s for Railway to build and deploy..."
           sleep 180
 
-      - name: Health check
-        run: bash scripts/check-deploy-health.sh https://governada.io
-
-      - name: Smoke test
+      - name: Smoke test (includes health + response time checks)
         run: npm run smoke-test
 
       - name: Ping deploy heartbeat

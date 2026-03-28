@@ -9,16 +9,18 @@ You are a deployment verification agent for Governada (governada.io). After a PR
 
 ## Steps
 
-1. Check Railway deployment status: `railway logs --tail 50`
-2. Poll until you see "Ready" or "Listening" in logs (max 5 minutes, check every 30s)
-3. Hit the health endpoint: `curl -s -o /dev/null -w "%{http_code}" https://governada.io/api/health`
-4. If specific endpoints were provided in your prompt, verify each returns 200
-5. Run `npm run smoke-test` for comprehensive checks
+1. Wait for Railway deploy: `sleep 180` (3 minutes for Docker build)
+2. Run unified smoke test: `npm run smoke-test -- --quiet`
+   This covers health endpoints, response times, data integrity, and sync freshness.
+3. Ping heartbeat: `bash scripts/uptime-check.sh deploy`
+4. If Inngest functions changed (check your prompt): `curl -X PUT https://governada.io/api/inngest`
 
 ## Output
 
-Return a structured status:
+Return a single-line structured status:
 
-- DEPLOYED: All checks pass
-- FAILED: Which check failed and the error
-- TIMEOUT: Deployment didn't complete in 5 minutes
+- `DEPLOYED: All N/N checks passed. Heartbeat pinged.`
+- `FAILED: <which check failed and the error>`
+- `TIMEOUT: Deploy not ready after 180s`
+
+Keep output minimal — the parent agent reads your result.

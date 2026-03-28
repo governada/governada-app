@@ -77,20 +77,49 @@ interface GlobeConstellationProps {
   visitedNodeIds?: Set<string>;
 }
 
+/**
+ * FocusState — Universal focus/unfocus abstraction for the globe.
+ *
+ * Every visual mode (match flow, single node flyTo, vote split, temporal replay,
+ * warm topic, overlay modes) writes to this single state. NodePoints reads ONLY
+ * this to decide how to render each node — producing consistent "Cerebro" visuals
+ * regardless of the trigger.
+ */
+export interface FocusState {
+  /** Whether any focus mode is active — when true, unfocused nodes dim */
+  active: boolean;
+  /** Set of node IDs that are "in focus" — these glow, everything else dims */
+  focusedIds: Set<string>;
+  /** Per-node intensity (0-1) for focused nodes — drives glow strength, size boost */
+  intensities: Map<string, number>;
+  /** 0-1 scan progress — drives progressive unfocused fade (match flow advances this) */
+  scanProgress: number;
+  /** Optional color override per node (vote split colors, overlay modes) */
+  colorOverrides: Map<string, string> | null;
+  /** When set, only this node type can be focused — others are always unfocused */
+  nodeTypeFilter: string | null;
+}
+
+const DEFAULT_FOCUS: FocusState = {
+  active: false,
+  focusedIds: new Set(),
+  intensities: new Map(),
+  scanProgress: 0,
+  colorOverrides: null,
+  nodeTypeFilter: null,
+};
+
 interface SceneState {
   nodes: ConstellationNode3D[];
   edges: ConstellationEdge3D[];
   nodeMap: Map<string, ConstellationNode3D>;
-  highlightId: string | null;
-  dimmed: boolean;
   pulseId: string | null;
   animating: boolean;
-  matchedNodeIds: Set<string>;
-  matchIntensities: Map<string, number>;
-  scanProgress: number; // 0-1, derived from matching threshold convergence
   flyToTarget: [number, number, number] | null;
   flyToActive: boolean;
-  /** When non-null, DRep nodes are colored by their vote on a specific proposal */
+  /** Universal focus state — the single source of truth for node visual treatment */
+  focus: FocusState;
+  /** Raw vote data — feeds into focus.colorOverrides but needed by temporal scrubber UI */
   voteSplitMap: Map<string, 'Yes' | 'No' | 'Abstain'> | null;
   /** Temporal replay: 0-1 progress through an epoch's governance events */
   temporalProgress: number;
@@ -98,8 +127,6 @@ interface SceneState {
   temporalVoteMap: Map<string, 'Yes' | 'No' | 'Abstain'>;
   /** Whether temporal replay mode is active */
   temporalActive: boolean;
-  /** When set, non-matching node types are aggressively dimmed (near invisible) */
-  matchNodeTypeFilter: string | null;
 }
 
 // Earth-like axial tilt: 23.4 degrees
@@ -169,20 +196,15 @@ export const GlobeConstellation = forwardRef<
     nodes: [],
     edges: [],
     nodeMap: new Map(),
-    highlightId: null,
-    dimmed: false,
     pulseId: null,
     animating: false,
-    matchedNodeIds: new Set(),
-    matchIntensities: new Map(),
-    scanProgress: 0,
     flyToTarget: null,
     flyToActive: false,
+    focus: { ...DEFAULT_FOCUS },
     voteSplitMap: null,
     temporalProgress: 0,
     temporalVoteMap: new Map(),
     temporalActive: false,
-    matchNodeTypeFilter: null,
   });
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -236,7 +258,16 @@ export const GlobeConstellation = forwardRef<
     const node = sceneState.nodes.find((n) => n.id === nodeId || n.fullId === nodeId);
     if (!node) return null;
 
-    setSceneState((prev) => ({ ...prev, animating: true, highlightId: node.id, dimmed: true }));
+    setSceneState((prev) => ({
+      ...prev,
+      animating: true,
+      focus: {
+        ...DEFAULT_FOCUS,
+        active: true,
+        focusedIds: new Set([node.id]),
+        intensities: new Map([[node.id, 1.0]]),
+      },
+    }));
 
     const [x, y, z] = rotateAroundY(node.position, rotationAngleRef.current);
     await controls.setLookAt(x * 1.5, y * 1.5, z * 1.5 + 3, x, y, z, true);
@@ -259,8 +290,12 @@ export const GlobeConstellation = forwardRef<
         const edgePos: [number, number, number] = [7, -4, 2];
         setSceneState((prev) => ({
           ...prev,
-          highlightId: '__user__',
-          dimmed: true,
+          focus: {
+            ...DEFAULT_FOCUS,
+            active: true,
+            focusedIds: new Set(['__user__']),
+            intensities: new Map([['__user__', 1.0]]),
+          },
           nodes: [
             ...prev.nodes,
             {
@@ -299,13 +334,21 @@ export const GlobeConstellation = forwardRef<
         return;
       }
 
-      setSceneState((prev) => ({ ...prev, highlightId: drepId, dimmed: true }));
+      setSceneState((prev) => ({
+        ...prev,
+        focus: {
+          ...DEFAULT_FOCUS,
+          active: true,
+          focusedIds: new Set([drepId]),
+          intensities: new Map([[drepId, 1.0]]),
+        },
+      }));
 
       const [x, y, z] = rotateAroundY(node.position, rotationAngleRef.current);
       await controls.setLookAt(x * 1.5, y * 1.5, z * 1.5 + 3, x, y, z, true);
       await sleep(2000);
 
-      setSceneState((prev) => ({ ...prev, highlightId: null, dimmed: false }));
+      setSceneState((prev) => ({ ...prev, focus: { ...DEFAULT_FOCUS } }));
       await controls.setLookAt(...effectiveCamera, ...effectiveTarget, true);
       await sleep(800);
       setSceneState((prev) => ({ ...prev, animating: false }));
@@ -323,14 +366,12 @@ export const GlobeConstellation = forwardRef<
       cameraControlsRef.current?.setLookAt(...effectiveCamera, ...effectiveTarget, true);
       setSceneState((prev) => ({
         ...prev,
-        highlightId: null,
-        dimmed: false,
+        focus: { ...DEFAULT_FOCUS },
         animating: false,
         voteSplitMap: null,
         temporalProgress: 0,
         temporalVoteMap: new Map(),
         temporalActive: false,
-        matchNodeTypeFilter: null,
       }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
     },
@@ -373,11 +414,16 @@ export const GlobeConstellation = forwardRef<
 
       setSceneState((prev) => ({
         ...prev,
-        matchedNodeIds: matched,
-        matchIntensities: intensities,
-        dimmed: matched.size > 0,
-        scanProgress,
-        matchNodeTypeFilter: options?.nodeTypeFilter ?? prev.matchNodeTypeFilter,
+        focus: {
+          active: matched.size > 0,
+          focusedIds: matched,
+          intensities,
+          scanProgress,
+          colorOverrides: null,
+          nodeTypeFilter: options?.drepOnly
+            ? 'drep'
+            : (options?.nodeTypeFilter ?? prev.focus.nodeTypeFilter),
+        },
       }));
 
       // Q1-Q2: highlight only, no camera movement.
@@ -555,11 +601,14 @@ export const GlobeConstellation = forwardRef<
 
       setSceneState((prev) => ({
         ...prev,
-        matchedNodeIds: drepIds,
-        matchIntensities: intensities,
-        dimmed: true, // dims non-DRep nodes to 0.12
-        highlightId: null,
-        scanProgress: 0,
+        focus: {
+          active: true,
+          focusedIds: drepIds,
+          intensities,
+          scanProgress: 0,
+          colorOverrides: null,
+          nodeTypeFilter: 'drep',
+        },
         flyToTarget: null,
         flyToActive: false,
       }));
@@ -576,37 +625,73 @@ export const GlobeConstellation = forwardRef<
     clearMatches: () => {
       setSceneState((prev) => ({
         ...prev,
-        matchedNodeIds: new Set(),
-        matchIntensities: new Map(),
-        dimmed: false,
-        scanProgress: 0,
+        focus: { ...DEFAULT_FOCUS },
         flyToTarget: null,
         flyToActive: false,
         voteSplitMap: null,
         temporalProgress: 0,
         temporalVoteMap: new Map(),
         temporalActive: false,
-        matchNodeTypeFilter: null,
       }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
       cameraControlsRef.current?.setLookAt(...effectiveCamera, ...effectiveTarget, true);
     },
 
     setVoteSplit: (map: Map<string, 'Yes' | 'No' | 'Abstain'> | null) => {
+      if (!map) {
+        setSceneState((prev) => ({
+          ...prev,
+          voteSplitMap: null,
+          focus: { ...DEFAULT_FOCUS },
+        }));
+        return;
+      }
+      const focusedIds = new Set<string>();
+      const intensities = new Map<string, number>();
+      const colorOverrides = new Map<string, string>();
+      const VOTE_COLORS = { Yes: '#2dd4bf', No: '#ef4444', Abstain: '#9ca3af' };
+      for (const [nodeId, vote] of map) {
+        focusedIds.add(nodeId);
+        intensities.set(nodeId, 1.0);
+        colorOverrides.set(nodeId, VOTE_COLORS[vote]);
+      }
       setSceneState((prev) => ({
         ...prev,
         voteSplitMap: map,
-        dimmed: map !== null,
+        focus: {
+          active: true,
+          focusedIds,
+          intensities,
+          scanProgress: 0,
+          colorOverrides,
+          nodeTypeFilter: null,
+        },
       }));
     },
 
     setTemporalState: (progress: number, voteMap: Map<string, 'Yes' | 'No' | 'Abstain'>) => {
+      const focusedIds = new Set<string>();
+      const intensities = new Map<string, number>();
+      const colorOverrides = new Map<string, string>();
+      const VOTE_COLORS = { Yes: '#2dd4bf', No: '#ef4444', Abstain: '#9ca3af' };
+      for (const [nodeId, vote] of voteMap) {
+        focusedIds.add(nodeId);
+        intensities.set(nodeId, 1.0);
+        colorOverrides.set(nodeId, VOTE_COLORS[vote]);
+      }
       setSceneState((prev) => ({
         ...prev,
         temporalProgress: progress,
         temporalVoteMap: voteMap,
         temporalActive: true,
-        dimmed: true,
+        focus: {
+          active: true,
+          focusedIds,
+          intensities,
+          scanProgress: 0,
+          colorOverrides,
+          nodeTypeFilter: null,
+        },
       }));
     },
 
@@ -616,16 +701,25 @@ export const GlobeConstellation = forwardRef<
         temporalProgress: 0,
         temporalVoteMap: new Map(),
         temporalActive: false,
-        matchNodeTypeFilter: null,
-        dimmed: false,
+        focus: { ...DEFAULT_FOCUS },
       }));
     },
 
     highlightNode: (nodeId: string | null) => {
+      if (!nodeId) {
+        setSceneState((prev) => ({ ...prev, focus: { ...DEFAULT_FOCUS } }));
+        return;
+      }
       setSceneState((prev) => ({
         ...prev,
-        highlightId: nodeId,
-        dimmed: nodeId != null,
+        focus: {
+          active: true,
+          focusedIds: new Set([nodeId]),
+          intensities: new Map([[nodeId, 1.0]]),
+          scanProgress: 0,
+          colorOverrides: null,
+          nodeTypeFilter: null,
+        },
       }));
     },
 
@@ -752,7 +846,7 @@ export const GlobeConstellation = forwardRef<
           <TiltedGlobeGroup
             rotationRef={rotationAngleRef}
             speedRef={rotationSpeedRef}
-            breathing={breathing && !sceneState.dimmed}
+            breathing={breathing && !sceneState.focus.active}
             urgency={urgency}
           >
             {/* Subtle point light at center (no visible sphere) */}
@@ -777,34 +871,29 @@ export const GlobeConstellation = forwardRef<
                     : 0.4
               }
               matchProgress={
-                sceneState.scanProgress > 0 ? sceneState.scanProgress : healthProgress * 0.3
+                sceneState.focus.scanProgress > 0
+                  ? sceneState.focus.scanProgress
+                  : healthProgress * 0.3
               }
             />
             {/* Wireframe removed — the latitude lines (especially equator) were visually distracting */}
             <ConstellationNodes
               nodes={sceneState.nodes}
-              highlightId={sceneState.highlightId}
-              dimmed={sceneState.dimmed}
+              focus={sceneState.focus}
               pulseId={sceneState.pulseId}
               interactive={interactive}
               overlayColorMode={overlayColorMode}
               urgentNodeIds={urgentNodeIds}
               completedNodeIds={completedNodeIds}
-              voteSplitMap={sceneState.voteSplitMap}
-              temporalVoteMap={sceneState.temporalActive ? sceneState.temporalVoteMap : undefined}
               onNodeHover={(node) => {
                 onNodeHoverRef.current?.(node);
                 onNodeHoverScreenRef.current?.(node, node ? { ...mouseScreenRef.current } : null);
               }}
-              matchedNodeIds={sceneState.matchedNodeIds}
-              matchIntensities={sceneState.matchIntensities}
               activityMap={activityMap}
-              matchNodeTypeFilter={sceneState.matchNodeTypeFilter}
-              scanProgress={sceneState.scanProgress}
             />
-            <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
+            <ConstellationEdges edges={sceneState.edges} focusActive={sceneState.focus.active} />
             {quality !== 'low' && (
-              <NeuralMesh nodes={sceneState.nodes} dimmed={sceneState.dimmed} />
+              <NeuralMesh nodes={sceneState.nodes} focusActive={sceneState.focus.active} />
             )}
             <NetworkEdgeLines nodes={sceneState.nodes} visible={overlayColorMode === 'network'} />
             {delegationBond &&
@@ -822,14 +911,10 @@ export const GlobeConstellation = forwardRef<
                 );
               })()}
             {quality !== 'low' && (
-              <MatchedEdgeGlow
-                nodes={sceneState.nodes}
-                matchedNodeIds={sceneState.matchedNodeIds}
-                matchIntensities={sceneState.matchIntensities}
-              />
+              <MatchedEdgeGlow nodes={sceneState.nodes} focus={sceneState.focus} />
             )}
             {quality !== 'low' && (
-              <NetworkPulses edges={sceneState.edges} dimmed={sceneState.dimmed} />
+              <NetworkPulses edges={sceneState.edges} focusActive={sceneState.focus.active} />
             )}
 
             {/* CC members rendered as sentinel nodes within the constellation (no crown ring) */}
@@ -1138,45 +1223,30 @@ function RaycastConfig() {
 
 function ConstellationNodes({
   nodes,
-  highlightId,
-  dimmed,
+  focus,
   pulseId,
   interactive,
   onNodeClick,
   onNodeHover,
-  matchedNodeIds,
-  matchIntensities,
   activityMap,
   overlayColorMode = 'default',
   urgentNodeIds,
   completedNodeIds,
   hoveredNodeId,
   visitedNodeIds,
-  voteSplitMap,
-  temporalVoteMap,
-  matchNodeTypeFilter,
-  scanProgress = 0,
 }: {
   nodes: ConstellationNode3D[];
-  highlightId: string | null;
-  dimmed: boolean;
+  focus: FocusState;
   pulseId: string | null;
   interactive?: boolean;
   onNodeClick?: (node: ConstellationNode3D) => void;
   onNodeHover?: (node: ConstellationNode3D | null) => void;
-  matchedNodeIds: Set<string>;
-  matchIntensities: Map<string, number>;
   activityMap?: Map<string, number>;
   overlayColorMode?: 'default' | 'urgent' | 'network' | 'proposals' | 'ecosystem';
   urgentNodeIds?: Set<string>;
   completedNodeIds?: Set<string>;
   hoveredNodeId?: string | null;
   visitedNodeIds?: Set<string>;
-  voteSplitMap?: Map<string, 'Yes' | 'No' | 'Abstain'> | null;
-  temporalVoteMap?: Map<string, 'Yes' | 'No' | 'Abstain'>;
-  matchNodeTypeFilter?: string | null;
-  /** 0-1 progress of match narrowing — drives progressive node disappearance */
-  scanProgress?: number;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -1213,23 +1283,11 @@ function ConstellationNodes({
   const COMPLETED_GREEN = '#22c55e'; // green flash for completed actions
   const NETWORK_TEAL = '#5eead4'; // brighter teal for network overlay delegation nodes
   const PROPOSAL_BRIGHT = '#f5eedf'; // warm bright for proposal overlay emphasis
-  // Vote split colors — used when voteSplitMap is active
-  const VOTE_YES_COLOR = '#2dd4bf'; // teal — aligned with brand
-  const VOTE_NO_COLOR = '#ef4444'; // red — opposition
-  const VOTE_ABSTAIN_COLOR = '#9ca3af'; // gray — neutral
   const getDrepColor = useCallback(
     (node: ConstellationNode3D) => {
       // Completed nodes flash green (takes priority over all overlays)
       if (completedNodeIds?.has(node.id)) return COMPLETED_GREEN;
-      // Vote split or temporal replay: color by vote choice, dim non-voters
-      const activeVoteMap = voteSplitMap ?? temporalVoteMap;
-      if (activeVoteMap && activeVoteMap.size > 0) {
-        const vote = activeVoteMap.get(node.id) ?? activeVoteMap.get(node.fullId);
-        if (vote === 'Yes') return VOTE_YES_COLOR;
-        if (vote === 'No') return VOTE_NO_COLOR;
-        if (vote === 'Abstain') return VOTE_ABSTAIN_COLOR;
-        return DIMMED_COLOR;
-      }
+      // Vote split / temporal colors now handled via focus.colorOverrides in NodePoints
       // Urgent overlay: non-urgent dim hard, urgent glow bright red
       if (overlayColorMode === 'urgent') {
         if (urgentNodeIds?.has(node.id)) return URGENT_DREP_BRIGHT;
@@ -1241,7 +1299,7 @@ function ConstellationNodes({
       if (overlayColorMode === 'network') return NETWORK_TEAL;
       return DREP_COLOR;
     },
-    [overlayColorMode, urgentNodeIds, completedNodeIds, voteSplitMap, temporalVoteMap],
+    [overlayColorMode, urgentNodeIds, completedNodeIds],
   );
   const getSpoColor = useCallback(
     () => (overlayColorMode === 'proposals' ? DIMMED_COLOR : SPO_COLOR),
@@ -1274,92 +1332,72 @@ function ConstellationNodes({
       {interactive && <RaycastConfig />}
       <NodePoints
         nodes={groups.drep}
-        highlightId={highlightId}
+        focus={focus}
         hoveredNodeId={hoveredNodeId}
         visitedNodeIds={visitedNodeIds}
-        dimmed={dimmed}
         pulseId={pulseId}
         interactive={interactive}
         onNodeClick={onNodeClick}
         onNodeHover={onNodeHover}
         getColor={getDrepColor}
         emissive={2.0}
-        matchedNodeIds={matchedNodeIds}
-        matchIntensities={matchIntensities}
         activityMap={activityMap}
-        scanProgress={scanProgress}
       />
       {groups.spo.length > 0 && (
         <NodePoints
           nodes={groups.spo}
-          highlightId={highlightId}
+          focus={focus}
           hoveredNodeId={hoveredNodeId}
           visitedNodeIds={visitedNodeIds}
-          dimmed={dimmed}
           pulseId={pulseId}
           interactive={interactive}
           onNodeClick={onNodeClick}
           onNodeHover={onNodeHover}
           getColor={getSpoColor}
-          emissive={matchNodeTypeFilter === 'drep' ? 0.1 : 2.0}
+          emissive={focus.nodeTypeFilter === 'drep' ? 0.1 : 2.0}
           fragmentShader={SPO_FRAG}
-          matchedNodeIds={matchedNodeIds}
-          matchIntensities={matchIntensities}
           activityMap={activityMap}
-          scanProgress={scanProgress}
         />
       )}
       {/* CC members — rendered as standard nodes (symbology TBD) */}
       {groups.cc.length > 0 && (
         <NodePoints
           nodes={groups.cc}
-          highlightId={highlightId}
-          dimmed={dimmed}
+          focus={focus}
           pulseId={pulseId}
           interactive={false}
           getColor={getCcColor}
-          emissive={matchNodeTypeFilter === 'drep' ? 0.1 : 2.0}
-          matchedNodeIds={matchedNodeIds}
-          matchIntensities={matchIntensities}
+          emissive={focus.nodeTypeFilter === 'drep' ? 0.1 : 2.0}
           activityMap={activityMap}
-          scanProgress={scanProgress}
         />
       )}
       {groups.user.length > 0 && (
         <NodePoints
           nodes={groups.user}
-          highlightId={highlightId}
+          focus={{ ...DEFAULT_FOCUS }}
           hoveredNodeId={hoveredNodeId}
-          dimmed={false}
           pulseId={pulseId}
           interactive={interactive}
           onNodeClick={onNodeClick}
           onNodeHover={onNodeHover}
           getColor={getUserColor}
           emissive={6.0}
-          matchedNodeIds={matchedNodeIds}
-          matchIntensities={matchIntensities}
           activityMap={activityMap}
-          scanProgress={scanProgress}
         />
       )}
       {groups.proposal.length > 0 && (
         <NodePoints
           nodes={groups.proposal}
-          highlightId={highlightId}
+          focus={focus}
           hoveredNodeId={hoveredNodeId}
           visitedNodeIds={visitedNodeIds}
-          dimmed={dimmed}
           pulseId={pulseId}
           interactive={interactive}
           onNodeClick={onNodeClick}
           onNodeHover={onNodeHover}
           getColor={getProposalColor}
-          emissive={matchNodeTypeFilter === 'drep' ? 0.1 : 2.5}
-          matchedNodeIds={matchedNodeIds}
-          matchIntensities={matchIntensities}
+          emissive={focus.nodeTypeFilter === 'drep' ? 0.1 : 2.5}
           activityMap={activityMap}
-          scanProgress={scanProgress}
         />
       )}
     </>
@@ -1368,10 +1406,9 @@ function ConstellationNodes({
 
 function NodePoints({
   nodes,
-  highlightId,
+  focus,
   hoveredNodeId,
   visitedNodeIds,
-  dimmed,
   pulseId,
   interactive,
   onNodeClick,
@@ -1379,16 +1416,12 @@ function NodePoints({
   getColor,
   emissive,
   fragmentShader,
-  matchedNodeIds,
-  matchIntensities,
   activityMap,
-  scanProgress = 0,
 }: {
   nodes: ConstellationNode3D[];
-  highlightId: string | null;
+  focus: FocusState;
   hoveredNodeId?: string | null;
   visitedNodeIds?: Set<string>;
-  dimmed: boolean;
   pulseId: string | null;
   interactive?: boolean;
   onNodeClick?: (node: ConstellationNode3D) => void;
@@ -1396,11 +1429,7 @@ function NodePoints({
   getColor: (node: ConstellationNode3D) => string;
   emissive: number;
   fragmentShader?: string;
-  matchedNodeIds: Set<string>;
-  matchIntensities: Map<string, number>;
   activityMap?: Map<string, number>;
-  /** 0-1 progress of match narrowing — drives progressive node disappearance */
-  scanProgress?: number;
 }) {
   const tmpColor = useMemo(() => new THREE.Color(), []);
   const matchColor = useMemo(() => new THREE.Color(MATCH_COLOR), []);
@@ -1411,7 +1440,6 @@ function NodePoints({
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const dimmedArr = new Float32Array(count);
-    const matchingActive = matchedNodeIds.size > 0;
 
     for (let i = 0; i < count; i++) {
       const node = nodes[i];
@@ -1419,31 +1447,40 @@ function NodePoints({
       positions[i * 3 + 1] = node.position[1];
       positions[i * 3 + 2] = node.position[2];
 
-      const isHighlighted = highlightId === node.id;
+      const isFocused = focus.focusedIds.has(node.id);
+      const intensity = focus.intensities.get(node.id) ?? 0;
       const isPulsing = pulseId === node.id;
-      const isMatched = matchedNodeIds.has(node.id);
-      const matchIntensity = matchIntensities.get(node.id) ?? 0;
+      const isUnfocused = focus.active && !isFocused && !isPulsing;
 
-      // COLOR: lerp toward MATCH_COLOR when matched, boost emissive for glow
-      tmpColor.set(getColor(node));
-      if (isMatched && matchingActive) {
-        const origR = tmpColor.r;
-        const origG = tmpColor.g;
-        const origB = tmpColor.b;
-        const blend = matchIntensity * 0.85;
-        const blendedR = origR + (matchColor.r - origR) * blend;
-        const blendedG = origG + (matchColor.g - origG) * blend;
-        const blendedB = origB + (matchColor.b - origB) * blend;
-        // Boost emissive for high-intensity matches — drives stronger bloom glow
-        const matchEmissive = emissive * (1 + matchIntensity * 1.2);
+      // COLOR
+      if (isUnfocused) {
+        // Universal dim: near-black, progressively darker during scan
+        const dimVal = 0.012 - focus.scanProgress * 0.007;
+        colors[i * 3] = Math.max(0.005, dimVal);
+        colors[i * 3 + 1] = Math.max(0.005, dimVal);
+        colors[i * 3 + 2] = Math.max(0.005, dimVal);
+      } else if (focus.colorOverrides?.has(node.id)) {
+        // Vote split / overlay: use override color
+        tmpColor.set(focus.colorOverrides.get(node.id)!);
+        colors[i * 3] = tmpColor.r * emissive;
+        colors[i * 3 + 1] = tmpColor.g * emissive;
+        colors[i * 3 + 2] = tmpColor.b * emissive;
+      } else if (isFocused && intensity > 0) {
+        // Matched/focused: blend toward amber, boost emissive
+        tmpColor.set(getColor(node));
+        const blend = intensity * 0.85;
+        const blendedR = tmpColor.r + (matchColor.r - tmpColor.r) * blend;
+        const blendedG = tmpColor.g + (matchColor.g - tmpColor.g) * blend;
+        const blendedB = tmpColor.b + (matchColor.b - tmpColor.b) * blend;
+        const matchEmissive = emissive * (1 + intensity * 1.2);
         colors[i * 3] = blendedR * matchEmissive;
         colors[i * 3 + 1] = blendedG * matchEmissive;
         colors[i * 3 + 2] = blendedB * matchEmissive;
       } else {
-        // Activity-based brightness: recently active nodes glow brighter
+        // Normal idle rendering
+        tmpColor.set(getColor(node));
         const activity = activityMap?.get(node.id) ?? activityMap?.get(node.fullId) ?? 0;
-        const activityBoost = 1 + activity * 0.8; // up to 1.8x brighter
-        // Hovered nodes glow brighter, visited nodes dim slightly (explored → muted)
+        const activityBoost = 1 + activity * 0.8;
         const hoverBoost = hoveredNodeId === node.id ? 1.5 : 1.0;
         const visitedDim = visitedNodeIds?.has(node.id) ? 0.65 : 1.0;
         colors[i * 3] = tmpColor.r * emissive * activityBoost * hoverBoost * visitedDim;
@@ -1451,55 +1488,26 @@ function NodePoints({
         colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost * hoverBoost * visitedDim;
       }
 
-      // SIZE: hovered nodes glow larger, matched nodes grow with scan progress
+      // SIZE
       const isHovered = hoveredNodeId === node.id;
-      const baseSize = isPulsing
-        ? node.scale * 1.8
-        : isHighlighted
-          ? node.scale * 1.5
-          : isHovered
-            ? node.scale * 1.6
-            : node.scale;
-      // Matched nodes grow as scan narrows; unmatched shrink progressively
-      const matchSizeBoost = isMatched ? 1 + 0.5 * matchIntensity + scanProgress * 0.3 : 1;
-      const dimSizeScale =
-        matchingActive && !isMatched && !isHighlighted && !isPulsing
-          ? 1 - scanProgress * 0.6 // shrink to 40% at full scan
-          : 1;
-      sizes[i] = baseSize * matchSizeBoost * dimSizeScale * POINT_SCALE;
-
-      // DIMMED: non-matched dim when matching is active
-      const shouldDim =
-        (matchingActive && !isMatched && !isHighlighted && !isPulsing) ||
-        (dimmed && !isHighlighted && !isPulsing);
-      dimmedArr[i] = shouldDim ? 1.0 : 0.0;
-
-      // Override color to dark gray for dimmed nodes — bulletproof muting
-      // Progressive: dimmed nodes fade further as scan narrows (0.03 → 0.005)
-      if (shouldDim) {
-        const dimColor = matchingActive ? 0.03 - scanProgress * 0.025 : 0.03;
-        colors[i * 3] = Math.max(0.005, dimColor);
-        colors[i * 3 + 1] = Math.max(0.005, dimColor);
-        colors[i * 3 + 2] = Math.max(0.005, dimColor);
+      const baseSize = isPulsing ? node.scale * 1.8 : isHovered ? node.scale * 1.6 : node.scale;
+      let finalSize: number;
+      if (isFocused) {
+        finalSize = baseSize * (1 + 0.5 * intensity + focus.scanProgress * 0.3);
+      } else if (isUnfocused) {
+        finalSize = baseSize * (0.5 - focus.scanProgress * 0.1);
+      } else {
+        finalSize = baseSize;
       }
+      sizes[i] = finalSize * POINT_SCALE;
+
+      // DIMMED attribute (for shader)
+      dimmedArr[i] = isUnfocused ? 1.0 : 0.0;
     }
 
     return { positions, colors, sizes, dimmedArr };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tmpColor/matchColor are stable refs
-  }, [
-    nodes,
-    highlightId,
-    hoveredNodeId,
-    visitedNodeIds,
-    dimmed,
-    pulseId,
-    getColor,
-    emissive,
-    matchedNodeIds,
-    matchIntensities,
-    activityMap,
-    scanProgress,
-  ]);
+  }, [nodes, focus, hoveredNodeId, visitedNodeIds, pulseId, getColor, emissive, activityMap]);
 
   const geoRef = useRef<THREE.BufferGeometry>(null);
 
@@ -1662,11 +1670,11 @@ const EDGE_STYLES = {
 
 function EdgeLayer({
   edges,
-  dimmed,
+  focusActive,
   edgeType,
 }: {
   edges: ConstellationEdge3D[];
-  dimmed: boolean;
+  focusActive: boolean;
   edgeType: keyof typeof EDGE_STYLES;
 }) {
   const geometry = useMemo(() => {
@@ -1688,7 +1696,7 @@ function EdgeLayer({
       <lineBasicMaterial
         color={style.color}
         transparent
-        opacity={dimmed ? style.dimOpacity : style.opacity}
+        opacity={focusActive ? style.dimOpacity : style.opacity}
         toneMapped={false}
         depthWrite={false}
       />
@@ -1696,7 +1704,13 @@ function EdgeLayer({
   );
 }
 
-function ConstellationEdges({ edges, dimmed }: { edges: ConstellationEdge3D[]; dimmed: boolean }) {
+function ConstellationEdges({
+  edges,
+  focusActive,
+}: {
+  edges: ConstellationEdge3D[];
+  focusActive: boolean;
+}) {
   const layers = useMemo(() => {
     const proximity: ConstellationEdge3D[] = [];
     const infrastructure: ConstellationEdge3D[] = [];
@@ -1715,8 +1729,8 @@ function ConstellationEdges({ edges, dimmed }: { edges: ConstellationEdge3D[]; d
 
   return (
     <>
-      <EdgeLayer edges={layers.proximity} dimmed={dimmed} edgeType="proximity" />
-      <EdgeLayer edges={layers.lastmile} dimmed={dimmed} edgeType="lastmile" />
+      <EdgeLayer edges={layers.proximity} focusActive={focusActive} edgeType="proximity" />
+      <EdgeLayer edges={layers.lastmile} focusActive={focusActive} edgeType="lastmile" />
     </>
   );
 }
@@ -1728,7 +1742,13 @@ function ConstellationEdges({ edges, dimmed }: { edges: ConstellationEdge3D[]; d
  * creating a neural network / synapse visual throughout the constellation.
  * Opacity is very low (0.03-0.06) so it reads as texture, not structure.
  */
-function NeuralMesh({ nodes, dimmed }: { nodes: ConstellationNode3D[]; dimmed: boolean }) {
+function NeuralMesh({
+  nodes,
+  focusActive,
+}: {
+  nodes: ConstellationNode3D[];
+  focusActive: boolean;
+}) {
   const geometry = useMemo(() => {
     const positions: number[] = [];
     const maxConnections = 600;
@@ -1777,7 +1797,7 @@ function NeuralMesh({ nodes, dimmed }: { nodes: ConstellationNode3D[]; dimmed: b
       <lineBasicMaterial
         color="#8ecae6"
         transparent
-        opacity={dimmed ? 0.01 : 0.04}
+        opacity={focusActive ? 0.01 : 0.04}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
@@ -1894,7 +1914,13 @@ const PULSE_COLORS: Record<string, [number, number, number]> = {
   lastmile: [0.3, 0.5, 0.6], // muted blue
 };
 
-function NetworkPulses({ edges, dimmed }: { edges: ConstellationEdge3D[]; dimmed: boolean }) {
+function NetworkPulses({
+  edges,
+  focusActive,
+}: {
+  edges: ConstellationEdge3D[];
+  focusActive: boolean;
+}) {
   const pulseEdges = useMemo(() => {
     if (edges.length === 0) return [];
     const infra = edges.filter((e) => e.edgeType === 'infrastructure');
@@ -1959,7 +1985,7 @@ function NetworkPulses({ edges, dimmed }: { edges: ConstellationEdge3D[]; dimmed
       );
 
       const fade = Math.sin(t * Math.PI);
-      alphas.setX(i, dimmed ? fade * 0.15 : fade * 0.85);
+      alphas.setX(i, focusActive ? fade * 0.15 : fade * 0.85);
 
       const c = PULSE_COLORS[edge.edgeType ?? 'proximity'] ?? PULSE_COLORS.proximity;
       colors.setXYZ(i, c[0], c[1], c[2]);
@@ -2002,21 +2028,13 @@ function NetworkPulses({ edges, dimmed }: { edges: ConstellationEdge3D[]; dimmed
 
 // --- Matched edge glow (amber energy between matched nodes) ---
 
-function MatchedEdgeGlow({
-  nodes,
-  matchedNodeIds,
-  matchIntensities,
-}: {
-  nodes: ConstellationNode3D[];
-  matchedNodeIds: Set<string>;
-  matchIntensities: Map<string, number>;
-}) {
+function MatchedEdgeGlow({ nodes, focus }: { nodes: ConstellationNode3D[]; focus: FocusState }) {
   const matRef = useRef<THREE.LineBasicMaterial>(null);
 
   const matchedEdges = useMemo(() => {
-    if (matchedNodeIds.size === 0) return null;
-    // Build edges between nearby matched nodes (within distance 4)
-    const matched = nodes.filter((n) => matchedNodeIds.has(n.id));
+    if (focus.focusedIds.size < 2) return null;
+    // Build edges between nearby focused nodes (within distance 4)
+    const matched = nodes.filter((n) => focus.focusedIds.has(n.id));
     if (matched.length < 2) return null;
 
     const positions: number[] = [];
@@ -2034,7 +2052,7 @@ function MatchedEdgeGlow({
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (dist > 4) continue;
         positions.push(...a.position, ...b.position);
-        const avg = ((matchIntensities.get(a.id) ?? 0) + (matchIntensities.get(b.id) ?? 0)) / 2;
+        const avg = ((focus.intensities.get(a.id) ?? 0) + (focus.intensities.get(b.id) ?? 0)) / 2;
         intensityArr.push(avg);
         count++;
       }
@@ -2046,7 +2064,7 @@ function MatchedEdgeGlow({
       geometry: geo,
       avgIntensity: intensityArr.reduce((a, b) => a + b, 0) / intensityArr.length,
     };
-  }, [nodes, matchedNodeIds, matchIntensities]);
+  }, [nodes, focus]);
 
   useFrame(({ clock }) => {
     if (!matRef.current || !matchedEdges) return;

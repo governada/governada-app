@@ -23,6 +23,7 @@ import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
 import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useWhisper } from '@/hooks/useWhisper';
+import { useSenecaProactiveWhispers } from '@/hooks/useSenecaProactiveWhispers';
 import { useEpochContext } from '@/hooks/useEpochContext';
 
 const SenecaOrb = dynamic(
@@ -172,12 +173,23 @@ function SenecaOrbAndThread({
 
   // Whisper system — contextual one-liners from the orb
   const pageContext = seneca.panelRoute === 'hub' ? 'homepage' : seneca.panelRoute;
-  const { currentWhisper, dismissWhisper } = useWhisper(pageContext, {
-    activeProposals: activeProposalCount ?? undefined,
-    epochProgress: epoch ? (day / totalDays) * 100 : undefined,
-    daysRemaining,
-    isAuthenticated,
-  });
+  const { currentWhisper: templateWhisper, dismissWhisper: dismissTemplate } = useWhisper(
+    pageContext,
+    {
+      activeProposals: activeProposalCount ?? undefined,
+      epochProgress: epoch ? (day / totalDays) * 100 : undefined,
+      daysRemaining,
+      isAuthenticated,
+    },
+  );
+
+  // Proactive data-driven whispers — take priority over templates
+  const { currentWhisper: proactiveWhisper, dismissWhisper: dismissProactive } =
+    useSenecaProactiveWhispers(isAuthenticated, !isStudioMode);
+
+  // Proactive whispers take priority when available
+  const currentWhisper = proactiveWhisper ?? templateWhisper;
+  const dismissWhisper = proactiveWhisper ? dismissProactive : dismissTemplate;
 
   // Sigil state based on mode
   const sigilState =

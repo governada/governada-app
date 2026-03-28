@@ -2,7 +2,7 @@
 
 **Status**: Phase 2 in progress
 **Created**: 2026-03-27
-**PR chain**: #643 (foundation shipped) → Phase 1 → Phase 2 → Phase 3
+**PR chain**: #643 (foundation) → #646 (Phase 1 complete) → #648 (2A whispers) → #650 (2B memory) → Phase 2 continues → Phase 3
 
 ## Context
 
@@ -300,7 +300,7 @@ Phase 3 (all independent):
 | 1E: Persona application             | SHIPPED | #646 | persona.id passed as AdvisorContext.persona to readAdvisorStream; AdvisorContext.persona field added to streamAdvisor.ts         |
 | 1F: Action handler expansion        | SHIPPED | #646 | startMatch / navigate / research actions parsed in streaming onAction callback; abort + mode switch on startMatch                |
 | 2A: Proactive whispers              | SHIPPED | #648 | /api/you/whispers endpoint + useSenecaProactiveWhispers hook; priority over templates; PostHog analytics; 8s display, 45s rotate |
-| 2B: Conversational memory           | SHIPPED | #649 | seneca_conversation_summaries table; Claude Haiku summary gen; useSenecaMemory hook; injected into advisor system prompt         |
+| 2B: Conversational memory           | SHIPPED | #650 | seneca_conversation_summaries table; Claude Haiku summary gen; useSenecaMemory hook; injected into advisor system prompt         |
 | 2C: Navigation-aware context        | PENDING | —    | —                                                                                                                                |
 | 2D: Ambient annotations             | PENDING | —    | —                                                                                                                                |
 | 2E: Delegation coaching             | PENDING | —    | —                                                                                                                                |

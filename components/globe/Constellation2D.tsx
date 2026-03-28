@@ -186,10 +186,10 @@ export const Constellation2D = forwardRef(function Constellation2D(
         }
       }
 
-      // Dimming for non-highlighted nodes — desaturate to dark gray
+      // Dimming for non-highlighted nodes — near-invisible dark gray
       if (s.dimmed && s.highlightId !== node.id && !s.matchIds.has(node.id)) {
-        alpha = 0.12;
-        color = '#2a2a2a'; // gray, blends into backdrop
+        alpha = 0.05;
+        color = '#1a1a1a';
       }
 
       // Match highlighting

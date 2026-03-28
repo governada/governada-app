@@ -77,9 +77,9 @@ export function MatchResultOverlay({
         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28 }}
         className={cn(
-          // Desktop: centered card
+          // Desktop: card positioned in lower half so node glows above it
           'fixed z-[45] w-full max-w-[420px]',
-          'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
+          'left-1/2 bottom-[8%] -translate-x-1/2',
           // Mobile: bottom sheet
           'max-lg:top-auto max-lg:bottom-0 max-lg:left-0 max-lg:right-0',
           'max-lg:max-w-none max-lg:translate-x-0 max-lg:translate-y-0',

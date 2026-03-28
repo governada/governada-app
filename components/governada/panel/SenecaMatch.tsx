@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Compass, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
@@ -13,6 +13,13 @@ import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
 import { MatchResultOverlay } from '@/components/governada/MatchResultOverlay';
+import {
+  buildMatchStartSequence,
+  buildAnswerSequence,
+  buildRevealSequence,
+  buildMatchCleanupSequence,
+  getRevealDurationMs,
+} from '@/lib/globe/matchChoreography';
 import posthog from 'posthog-js';
 
 /* ─── Question definitions ─── */
@@ -101,7 +108,7 @@ interface SenecaMatchProps {
   onGlobeCommand?: (cmd: GlobeCommand) => void;
 }
 
-type MatchStep = 'intro' | number | 'loading' | 'results' | 'error';
+type MatchStep = 'intro' | number | 'loading' | 'revealing' | 'results' | 'error';
 
 /* ─── Answer label lookup ─── */
 
@@ -120,6 +127,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
   const [error, setError] = useState<string | null>(null);
   const [, setExpandedMatch] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   // Overlay state for celebratory #1 match card (rendered via portal)
   const [overlayState, setOverlayState] = useState<{
@@ -127,6 +135,26 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     focusedRank: number;
     isTopMatch: boolean;
   } | null>(null);
+
+  // Track the last alignment vector for reveal sequence
+  const lastAlignmentRef = useRef<number[]>([50, 50, 50, 50, 50, 50]);
+
+  // Clean up timers on unmount or restart
+  const clearPendingTimers = useCallback(() => {
+    for (const id of pendingTimersRef.current) clearTimeout(id);
+    pendingTimersRef.current.clear();
+  }, []);
+
+  useEffect(() => clearPendingTimers, [clearPendingTimers]);
+
+  const scheduleTimer = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      pendingTimersRef.current.delete(id);
+      fn();
+    }, ms);
+    pendingTimersRef.current.add(id);
+    return id;
+  }, []);
 
   const sendGlobeCommand = useCallback(
     (cmd: GlobeCommand) => {
@@ -136,12 +164,16 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     [onGlobeCommand],
   );
 
-  // Start the quiz — "entering Cerebro": all DReps light up, non-DReps dim
+  // Start the quiz — "entering Cerebro": choreographed sequence
   const handleStart = useCallback(() => {
     setStep(0);
-    sendGlobeCommand({ type: 'matchStart' });
+    if (prefersReducedMotion) {
+      sendGlobeCommand({ type: 'matchStart' });
+    } else {
+      sendGlobeCommand(buildMatchStartSequence());
+    }
     posthog.capture('match_started', { source: 'seneca_panel' });
-  }, [sendGlobeCommand]);
+  }, [sendGlobeCommand, prefersReducedMotion]);
 
   // Handle answer selection
   const handleAnswer = useCallback(
@@ -155,30 +187,36 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         answer: value,
       });
 
-      // Data-driven globe highlight — camera follows the matching cluster's centroid
-      // No artificial angles: the centroid naturally shifts as the alignment vector changes
+      // Build alignment vector and dispatch choreographed sequence
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
       const threshold = THRESHOLDS[questionIndex] ?? 25;
-      sendGlobeCommand({
-        type: 'highlight',
-        alignment: vector,
-        threshold,
-        drepOnly: true,
-        zoomToCluster: true,
-      });
+      lastAlignmentRef.current = vector;
+
+      if (prefersReducedMotion) {
+        // Simplified: direct highlight without scan/dive theatrics
+        sendGlobeCommand({
+          type: 'highlight',
+          alignment: vector,
+          threshold,
+          drepOnly: true,
+          zoomToCluster: true,
+        });
+      } else {
+        sendGlobeCommand(buildAnswerSequence(questionIndex, vector, threshold));
+      }
 
       // Advance to next question or submit — snappy transitions
       if (questionIndex < TOTAL_QUESTIONS - 1) {
-        setTimeout(() => setStep(questionIndex + 1), 350);
+        scheduleTimer(() => setStep(questionIndex + 1), 350);
       } else {
-        setTimeout(() => {
+        scheduleTimer(() => {
           setStep('loading');
           submitMatch(newAnswers);
         }, 400);
       }
     },
-    [answers, sendGlobeCommand], // eslint-disable-line react-hooks/exhaustive-deps
+    [answers, sendGlobeCommand, prefersReducedMotion, scheduleTimer], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Submit answers to API
@@ -206,24 +244,49 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
 
         const data = (await res.json()) as QuickMatchResponse;
         setResult(data);
-        setStep('results');
 
         posthog.capture('match_completed', {
           top_match_score: data.matches[0]?.matchScore ?? 0,
           match_count: data.matches.length,
         });
 
-        // Dramatic cinematic fly to #1 match (3-second hold)
-        if (data.matches[0]) {
-          sendGlobeCommand({ type: 'matchFlyTo', nodeId: data.matches[0].drepId });
-          // Show celebratory overlay after flyTo settles
-          setTimeout(() => {
-            setOverlayState({
-              focusedMatch: data.matches[0],
-              focusedRank: 1,
-              isTopMatch: true,
-            });
-          }, 1500);
+        if (data.matches.length > 0) {
+          const topMatches = data.matches.slice(0, 5).map((m) => ({ nodeId: m.drepId }));
+
+          if (prefersReducedMotion) {
+            // Skip countdown — go straight to results
+            setStep('results');
+            sendGlobeCommand({ type: 'matchFlyTo', nodeId: data.matches[0].drepId });
+            scheduleTimer(() => {
+              setOverlayState({
+                focusedMatch: data.matches[0],
+                focusedRank: 1,
+                isTopMatch: true,
+              });
+            }, 1500);
+          } else {
+            // Theatrical reveal: countdown 5→1 then fly to #1
+            setStep('revealing');
+            posthog.capture('match_countdown_viewed');
+
+            const lastThreshold = THRESHOLDS[TOTAL_QUESTIONS - 1] ?? 25;
+            sendGlobeCommand(
+              buildRevealSequence(topMatches, lastAlignmentRef.current, lastThreshold),
+            );
+
+            // Sync overlay to appear after the full reveal sequence completes
+            const revealDuration = getRevealDurationMs(topMatches.length);
+            scheduleTimer(() => {
+              setStep('results');
+              setOverlayState({
+                focusedMatch: data.matches[0],
+                focusedRank: 1,
+                isTopMatch: true,
+              });
+            }, revealDuration);
+          }
+        } else {
+          setStep('results');
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
@@ -231,19 +294,26 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         setStep('error');
       }
     },
-    [sendGlobeCommand],
+    [sendGlobeCommand, prefersReducedMotion, scheduleTimer],
   );
 
   // Restart the quiz
   const handleRestart = useCallback(() => {
+    clearPendingTimers();
     setAnswers({});
     setResult(null);
     setError(null);
     setExpandedMatch(null);
+    setOverlayState(null);
     setStep('intro');
-    sendGlobeCommand({ type: 'clear' });
+    if (prefersReducedMotion) {
+      sendGlobeCommand({ type: 'clear' });
+      sendGlobeCommand({ type: 'reset' });
+    } else {
+      sendGlobeCommand(buildMatchCleanupSequence());
+    }
     posthog.capture('match_restarted');
-  }, [sendGlobeCommand]);
+  }, [sendGlobeCommand, clearPendingTimers, prefersReducedMotion]);
 
   // Current question index
   const currentQIndex = typeof step === 'number' ? step : -1;
@@ -268,15 +338,15 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
           <Sparkles className="h-3.5 w-3.5 text-primary/70" />
           <span className="text-xs font-semibold text-foreground/80">Find Your Match</span>
         </div>
-        {/* Progress indicator — visible during questions and loading */}
-        {(typeof step === 'number' || step === 'loading') && (
+        {/* Progress indicator — visible during questions, loading, and revealing */}
+        {(typeof step === 'number' || step === 'loading' || step === 'revealing') && (
           <div className="ml-auto flex items-center gap-1">
             {Array.from({ length: TOTAL_QUESTIONS }, (_, i) => (
               <div
                 key={i}
                 className={cn(
                   'h-1 rounded-full transition-all duration-300',
-                  i < (step === 'loading' ? TOTAL_QUESTIONS : currentQIndex)
+                  i < (step === 'loading' || step === 'revealing' ? TOTAL_QUESTIONS : currentQIndex)
                     ? 'w-4 bg-primary'
                     : i === currentQIndex
                       ? 'w-4 bg-primary/60'
@@ -308,8 +378,8 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
           </div>
         )}
 
-        {/* Loading/results past answers strip */}
-        {(step === 'loading' || step === 'results' || step === 'error') &&
+        {/* Loading/revealing/results past answers strip */}
+        {(step === 'loading' || step === 'revealing' || step === 'results' || step === 'error') &&
           Object.keys(answers).length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3 shrink-0">
               {MATCH_QUESTIONS.map((q) => {
@@ -399,7 +469,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
             </motion.div>
           )}
 
-          {/* Loading */}
+          {/* Loading — waiting for API */}
           {step === 'loading' && (
             <motion.div
               key="loading"
@@ -414,6 +484,29 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
                 <span className="text-xs text-muted-foreground">
                   Scanning the constellation for your matches...
                 </span>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Revealing — countdown sequence playing on the globe */}
+          {step === 'revealing' && (
+            <motion.div
+              key="revealing"
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              className="flex flex-col flex-1 items-center justify-center gap-3"
+            >
+              <SenecaBubble>
+                I&apos;ve found your matches. Watch the constellation&hellip;
+              </SenecaBubble>
+              <div className="flex items-center gap-2 py-4">
+                <motion.div
+                  animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="h-2 w-2 rounded-full bg-primary"
+                />
+                <span className="text-xs text-muted-foreground">Revealing your matches...</span>
               </div>
             </motion.div>
           )}
@@ -482,7 +575,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
               const topMatch = result.matches[0];
               if (topMatch) {
                 sendGlobeCommand({ type: 'matchFlyTo', nodeId: topMatch.drepId });
-                setTimeout(() => {
+                scheduleTimer(() => {
                   setOverlayState({ focusedMatch: topMatch, focusedRank: 1, isTopMatch: true });
                 }, 1500);
               }
@@ -532,13 +625,13 @@ function MatchResults({
   onRestart,
   onFocusOverlay,
 }: MatchResultsProps) {
-  // Focus a different match — fly globe + show overlay after flyTo settles
+  // Focus a different match — fly globe + show overlay after flyTo settles (snappy 800ms)
   const handleFocusMatch = useCallback(
     (match: MatchResult, rank: number) => {
       onExpandMatch(match.drepId);
       onGlobeCommand({ type: 'matchFlyTo', nodeId: match.drepId });
       posthog.capture('match_result_expanded', { drep_id: match.drepId, rank });
-      setTimeout(() => onFocusOverlay(match, rank), 1500);
+      setTimeout(() => onFocusOverlay(match, rank), 800);
     },
     [onExpandMatch, onGlobeCommand, onFocusOverlay],
   );

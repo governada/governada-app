@@ -141,17 +141,42 @@ export const syncTreasurySnapshot = inngest.createFunction(
         });
 
         if (treasuryResult.empty) {
-          // Koios returned no data — log as a soft skip, not a hard failure.
-          // This prevents the freshness guard from retriggering in a loop.
-          logger.warn('[treasury] Koios /totals returned empty — skipping this run');
-          await syncLog.finalize(true, null, {
-            skipped: true,
-            reason: 'koios_empty_response',
-          });
-          await emitPostHog(true, 'treasury', syncLog.elapsed, {
-            event_override: 'treasury_sync_koios_empty',
-          });
-          return { skipped: true, reason: 'koios_empty_response' };
+          // Koios returned no data — serve last-known-good snapshot instead of
+          // skipping entirely. This keeps the treasury surface fresh during outages.
+          const sb = getSupabaseAdmin();
+          const { data: lastGood } = await sb
+            .from('treasury_snapshots')
+            .select('epoch_no, balance_lovelace, reserves_lovelace')
+            .order('epoch_no', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (lastGood) {
+            logger.warn('[treasury] Koios /totals empty — using last-known-good snapshot', {
+              epoch: lastGood.epoch_no,
+            });
+            snapshot = {
+              epoch: lastGood.epoch_no,
+              balanceLovelace: lastGood.balance_lovelace,
+              reservesLovelace: lastGood.reserves_lovelace,
+            };
+            // Mark as degraded success — not a failure, not a skip
+            await syncLog.finalize(true, 'Koios empty — served last-known-good', {
+              degraded: true,
+              fallback_epoch: lastGood.epoch_no,
+            });
+            await emitPostHog(true, 'treasury', syncLog.elapsed, {
+              event_override: 'treasury_sync_degraded',
+            });
+            // Skip the full snapshot pipeline — we already have this epoch's data
+            return { degraded: true, fallbackEpoch: lastGood.epoch_no };
+          }
+
+          // No previous snapshot exists at all — genuine failure
+          logger.warn('[treasury] Koios /totals returned empty and no prior snapshot exists');
+          await syncLog.finalize(false, 'No treasury data returned from Koios /totals', {});
+          await emitPostHog(false, 'treasury', syncLog.elapsed, {});
+          return { skipped: true, reason: 'koios_empty_no_fallback' };
         }
 
         snapshot = {

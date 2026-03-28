@@ -5,6 +5,9 @@ import { pingHeartbeat, errMsg, capMsg } from '@/lib/sync-utils';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
 import { logger } from '@/lib/logger';
 
+/** Maximum time for the votes sync step before aborting (30 minutes). */
+const VOTES_SYNC_TIMEOUT_MS = 30 * 60 * 1000;
+
 export const syncVotes = inngest.createFunction(
   {
     id: 'sync-votes',
@@ -29,7 +32,17 @@ export const syncVotes = inngest.createFunction(
   async ({ step }) => {
     const checkInId = cronCheckIn('sync-votes', '15 */6 * * *');
     try {
-      const result = await step.run('execute-votes-sync', () => executeVotesSync());
+      const result = await step.run('execute-votes-sync', async () => {
+        // Guard against Koios hangs that cause 24h+ sync durations.
+        // Abort after 30 minutes — the next scheduled run will pick up.
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`Votes sync timed out after ${VOTES_SYNC_TIMEOUT_MS / 60000}m`)),
+            VOTES_SYNC_TIMEOUT_MS,
+          ),
+        );
+        return Promise.race([executeVotesSync(), timeout]);
+      });
       await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_BATCH'));
       cronCheckOut('sync-votes', checkInId, true);
       return result;

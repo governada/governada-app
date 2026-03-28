@@ -17,7 +17,14 @@ import {
   KoiosAccountInfo,
 } from '@/types/koios';
 import { logger } from '@/lib/logger';
-import { KoiosSPOVoteSchema, KoiosCCVoteSchema, validateArray } from '@/utils/koios-schemas';
+import {
+  KoiosDRepInfoSchema,
+  KoiosVoteSchema,
+  KoiosProposalSchema,
+  KoiosSPOVoteSchema,
+  KoiosCCVoteSchema,
+  validateArray,
+} from '@/utils/koios-schemas';
 import * as Sentry from '@sentry/nextjs';
 
 const KOIOS_BASE_URL = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
@@ -226,7 +233,15 @@ export async function fetchDRepInfo(drepIds: string[]): Promise<DRepInfoResponse
     method: 'POST',
     body: JSON.stringify({ _drep_ids: drepIds }),
   });
-  return data || [];
+  if (!data) return [];
+  const { valid, invalidCount } = validateArray(data, KoiosDRepInfoSchema, 'drep_info');
+  if (invalidCount > 0) {
+    logger.warn('[Koios] drep_info validation: skipped invalid records', {
+      invalidCount,
+      total: data.length,
+    });
+  }
+  return valid as unknown as DRepInfoResponse;
 }
 
 /**
@@ -356,7 +371,13 @@ export async function fetchDRepVotes(drepId: string): Promise<DRepVotesResponse>
     method: 'POST',
     body: JSON.stringify({ _drep_id: drepId }),
   });
-  return data || [];
+  if (!data) return [];
+  const { valid, invalidCount } = validateArray(data, KoiosVoteSchema, 'drep_votes');
+  if (invalidCount > 0) {
+    logger.warn('[Koios] drep_votes validation: skipped invalid records', { invalidCount, drepId });
+  }
+  // Zod .passthrough() preserves extra fields, but TS can't see them — cast through unknown
+  return valid as unknown as DRepVotesResponse;
 }
 
 /**
@@ -402,18 +423,30 @@ export async function fetchProposals(): Promise<ProposalListResponse> {
   while (true) {
     const url = `/proposal_list?limit=${PROPOSAL_LIST_PAGE_SIZE}&offset=${offset}`;
     const data = await koiosFetch<ProposalListResponse>(url);
-    const pageData = data || [];
+    const rawPage = data || [];
+    const { valid: pageData, invalidCount } = validateArray(
+      rawPage,
+      KoiosProposalSchema,
+      'proposal_list',
+    );
+    if (invalidCount > 0) {
+      logger.warn('[Koios] proposal_list validation: skipped invalid records', {
+        invalidCount,
+        page: page + 1,
+      });
+    }
 
-    all.push(...pageData);
+    all.push(...(pageData as unknown as ProposalListResponse));
     page++;
 
     if (isDev) {
       console.log(
-        `[Koios] proposal_list page ${page}: ${pageData.length} proposals (total: ${all.length})`,
+        `[Koios] proposal_list page ${page}: ${rawPage.length} proposals (${pageData.length} valid, total: ${all.length})`,
       );
     }
 
-    if (pageData.length < PROPOSAL_LIST_PAGE_SIZE) {
+    // Use raw page size for pagination (before validation filtering)
+    if (rawPage.length < PROPOSAL_LIST_PAGE_SIZE) {
       break;
     }
     offset += PROPOSAL_LIST_PAGE_SIZE;

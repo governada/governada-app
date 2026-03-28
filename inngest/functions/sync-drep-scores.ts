@@ -28,6 +28,9 @@ import {
 import { batchUpsert, SyncLogger, errMsg, emitPostHog, capMsg } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
+/** Maximum time for the scoring compute step before aborting (45 minutes). */
+const SCORING_TIMEOUT_MS = 45 * 60 * 1000;
+
 export const syncDrepScores = inngest.createFunction(
   {
     id: 'sync-drep-scores',
@@ -51,6 +54,16 @@ export const syncDrepScores = inngest.createFunction(
   [{ event: 'drepscore/sync.scores' }, { cron: '0 2 * * *' }],
   async ({ step }) => {
     const result = await step.run('compute-drep-scores', async () => {
+      // Guard against hangs that cause 24h+ scoring runs.
+      const scoringStartedAt = Date.now();
+      const checkTimeout = (phase: string) => {
+        const elapsed = Date.now() - scoringStartedAt;
+        if (elapsed > SCORING_TIMEOUT_MS) {
+          throw new Error(
+            `Scoring timed out in ${phase} after ${Math.round(elapsed / 60000)}m (limit: ${SCORING_TIMEOUT_MS / 60000}m)`,
+          );
+        }
+      };
       const supabase = getSupabaseAdmin();
       const syncLog = new SyncLogger(supabase, 'scoring');
       await syncLog.start();
@@ -120,6 +133,7 @@ export const syncDrepScores = inngest.createFunction(
         }
 
         timing.step1_load_ms = Date.now() - s1;
+        checkTimeout('after data load');
 
         // ── Step 2: Build lookup maps ──────────────────────────────────
         const s2 = Date.now();
@@ -315,6 +329,7 @@ export const syncDrepScores = inngest.createFunction(
         }
 
         timing.step2_build_maps_ms = Date.now() - s2;
+        checkTimeout('after build maps');
 
         // ── Step 2.5: Load rationale embeddings for semantic diversity ──
         let semanticDiversity: Map<string, number> | undefined;
@@ -442,6 +457,7 @@ export const syncDrepScores = inngest.createFunction(
         );
 
         timing.step5_composite_ms = Date.now() - s5;
+        checkTimeout('after composite computation');
 
         // ── Step 6: Load old tiers for change detection, then persist ──
         const s6 = Date.now();
@@ -598,6 +614,7 @@ export const syncDrepScores = inngest.createFunction(
         }
 
         timing.step6_persist_ms = Date.now() - s6;
+        checkTimeout('after persist');
 
         // ── Step 7: Tier change detection ────────────────────────────────
         const s7 = Date.now();

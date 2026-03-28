@@ -100,7 +100,6 @@ export function detectGlobeIntent(input: string): GlobeIntent | null {
     /\bvote\s*split\b/i.test(lower) ||
     /\bvoting\s+(breakdown|results?|split)\b/i.test(lower)
   ) {
-    // Try to extract a proposal reference from the query
     const proposalRefMatch = lower.match(/\b([a-f0-9]{8,})[_#](\d+)\b/);
     return {
       type: 'votesplit',
@@ -110,7 +109,6 @@ export function detectGlobeIntent(input: string): GlobeIntent | null {
   }
 
   // --- FOCUS (specific entity) ---
-  // "show me drep drep1abc..." or "tell me about drep1..."
   const drepFocusMatch = lower.match(
     /\b(?:show|tell|about|focus|go\s+to)\b.*\b(drep[_\s]?\w{5,})/i,
   );
@@ -119,7 +117,6 @@ export function detectGlobeIntent(input: string): GlobeIntent | null {
     return { type: 'focus', entityId: id, entityType: 'drep', query: trimmed };
   }
 
-  // "show me pool pool1abc..."
   const poolFocusMatch = lower.match(
     /\b(?:show|tell|about|focus|go\s+to)\b.*\b(pool[_\s]?\w{5,})/i,
   );
@@ -130,7 +127,6 @@ export function detectGlobeIntent(input: string): GlobeIntent | null {
 
   // --- COMPARE ---
   if (/\bcompare\b/i.test(lower)) {
-    // We detect compare intent but entity extraction is complex — let AI handle the details
     return { type: 'compare', query: trimmed };
   }
 
@@ -140,30 +136,22 @@ export function detectGlobeIntent(input: string): GlobeIntent | null {
 
   // --- BROWSE / FILTER ---
   if (
-    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(proposals?|actions?|gov\s*actions?)\b/i.test(
-      lower,
-    )
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(proposals?|actions?|gov\s*actions?)\b/i.test(lower)
   ) {
     return { type: 'browse', filter: 'proposals', tier, query: trimmed };
   }
   if (
-    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(dreps?|representatives?|delegates?)\b/i.test(
-      lower,
-    )
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(dreps?|representatives?|delegates?)\b/i.test(lower)
   ) {
     return { type: 'browse', filter: 'dreps', tier, query: trimmed };
   }
   if (
-    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(spos?|pools?|stake\s*pools?)\b/i.test(
-      lower,
-    )
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(spos?|pools?|stake\s*pools?)\b/i.test(lower)
   ) {
     return { type: 'browse', filter: 'spos', tier, query: trimmed };
   }
   if (
-    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(cc|committee|constitutional\s*committee)\b/i.test(
-      lower,
-    )
+    /\b(show|list|browse|display|view|see|find|get)\b.*\b(all\s+)?(cc|committee|constitutional\s*committee)\b/i.test(lower)
   ) {
     return { type: 'browse', filter: 'cc', query: trimmed };
   }
@@ -171,7 +159,6 @@ export function detectGlobeIntent(input: string): GlobeIntent | null {
     return { type: 'browse', filter: 'proposals', query: trimmed };
   }
 
-  // No intent detected — fall through to AI
   return null;
 }
 

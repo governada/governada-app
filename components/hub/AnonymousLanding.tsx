@@ -8,10 +8,12 @@ import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { useQuery } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'framer-motion';
 import { GlobeTooltip } from '@/components/governada/GlobeTooltip';
+import { MatchResultOverlay } from '@/components/governada/MatchResultOverlay';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
+import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
 
 const SenecaMatch = dynamic(
   () =>
@@ -98,6 +100,36 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
     return () => window.removeEventListener('startSenecaMatch', handleStartMatch);
   }, [startMatch]);
 
+  // Match result overlay state
+  const [matchOverlay, setMatchOverlay] = useState<{
+    result: QuickMatchResponse;
+    focusedMatch: MatchResult;
+    focusedRank: number;
+    isTopMatch: boolean;
+  } | null>(null);
+
+  // Listen for match result events from SenecaMatch
+  useEffect(() => {
+    function handleMatchReady(e: Event) {
+      const { result, topMatch } = (e as CustomEvent).detail;
+      if (result && topMatch) {
+        setMatchOverlay({ result, focusedMatch: topMatch, focusedRank: 1, isTopMatch: true });
+      }
+    }
+    function handleMatchFocusChanged(e: Event) {
+      const { result, match, rank } = (e as CustomEvent).detail;
+      if (result && match) {
+        setMatchOverlay({ result, focusedMatch: match, focusedRank: rank, isTopMatch: false });
+      }
+    }
+    window.addEventListener('matchResultReady', handleMatchReady);
+    window.addEventListener('matchFocusChanged', handleMatchFocusChanged);
+    return () => {
+      window.removeEventListener('matchResultReady', handleMatchReady);
+      window.removeEventListener('matchFocusChanged', handleMatchFocusChanged);
+    };
+  }, []);
+
   return (
     <div className="relative min-h-[100dvh]">
       {/* Living Globe — fills entire viewport */}
@@ -118,6 +150,30 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
 
       {/* Cursor-following tooltip for globe nodes */}
       <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta />
+
+      {/* Celebratory match result overlay — centered on globe */}
+      {matchOverlay && (
+        <MatchResultOverlay
+          result={matchOverlay.result}
+          focusedMatch={matchOverlay.focusedMatch}
+          focusedRank={matchOverlay.focusedRank}
+          isTopMatch={matchOverlay.isTopMatch}
+          onBackToTop={() => {
+            const topMatch = matchOverlay.result.matches[0];
+            if (topMatch) {
+              executeGlobeCommand({ type: 'matchFlyTo', nodeId: topMatch.drepId });
+              setTimeout(() => {
+                setMatchOverlay((prev) =>
+                  prev
+                    ? { ...prev, focusedMatch: topMatch, focusedRank: 1, isTopMatch: true }
+                    : null,
+                );
+              }, 3500);
+            }
+          }}
+          onDismiss={() => setMatchOverlay(null)}
+        />
+      )}
 
       {/* Globe IS Seneca — the Seneca Orb + Thread handles entry from GovernadaShell on non-homepage pages */}
 

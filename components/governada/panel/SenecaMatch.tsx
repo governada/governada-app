@@ -116,7 +116,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuickMatchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
+  const [, setExpandedMatch] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const sendGlobeCommand = useCallback(
@@ -146,16 +146,21 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         answer: value,
       });
 
-      // Progressive globe highlight — every round gets camera movement + DRep-only filtering
+      // Progressive globe highlight — each round orbits from a different angle
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
       const threshold = THRESHOLDS[questionIndex] ?? 25;
+      // Per-round camera approach angles for "searching" feel (not straight zoom)
+      const CAMERA_ANGLES = [0.5, -0.7, 0.3, -0.1];
+      const CAMERA_ELEVATIONS = [0.2, -0.15, 0.1, 0];
       sendGlobeCommand({
         type: 'highlight',
         alignment: vector,
         threshold,
         drepOnly: true,
         zoomToCluster: true,
+        cameraAngle: CAMERA_ANGLES[questionIndex],
+        cameraElevation: CAMERA_ELEVATIONS[questionIndex],
       });
 
       // Advance to next question or submit
@@ -206,6 +211,14 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         // Dramatic cinematic fly to #1 match (3-second hold)
         if (data.matches[0]) {
           sendGlobeCommand({ type: 'matchFlyTo', nodeId: data.matches[0].drepId });
+          // Dispatch overlay event after flyTo has time to settle
+          setTimeout(() => {
+            window.dispatchEvent(
+              new CustomEvent('matchResultReady', {
+                detail: { result: data, topMatch: data.matches[0] },
+              }),
+            );
+          }, 3500);
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
@@ -438,13 +451,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
             >
               <MatchResults
                 result={result}
-                expandedMatch={expandedMatch}
-                onExpandMatch={(id) => {
-                  setExpandedMatch(id);
-                  if (id) {
-                    posthog.capture('match_result_expanded', { drep_id: id });
-                  }
-                }}
+                onExpandMatch={setExpandedMatch}
                 onGlobeCommand={sendGlobeCommand}
                 onRestart={handleRestart}
               />
@@ -480,70 +487,49 @@ function SenecaBubble({ children, delay = 0 }: { children: ReactNode; delay?: nu
 
 interface MatchResultsProps {
   result: QuickMatchResponse;
-  expandedMatch: string | null;
   onExpandMatch: (id: string | null) => void;
   onGlobeCommand: (cmd: GlobeCommand) => void;
   onRestart: () => void;
 }
 
-function MatchResults({
-  result,
-  expandedMatch,
-  onExpandMatch,
-  onGlobeCommand,
-  onRestart,
-}: MatchResultsProps) {
-  const prefersReducedMotion = useReducedMotion();
+function MatchResults({ result, onExpandMatch, onGlobeCommand, onRestart }: MatchResultsProps) {
+  // Focus a different match — fly globe + dispatch overlay event
+  const handleFocusMatch = useCallback(
+    (match: MatchResult, rank: number) => {
+      onExpandMatch(match.drepId);
+      onGlobeCommand({ type: 'matchFlyTo', nodeId: match.drepId });
+      posthog.capture('match_result_expanded', { drep_id: match.drepId, rank });
+      // Dispatch overlay focus event after flyTo settles
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('matchFocusChanged', {
+            detail: { result, match, rank },
+          }),
+        );
+      }, 3500);
+    },
+    [result, onExpandMatch, onGlobeCommand],
+  );
 
   return (
     <>
-      {/* Identity reveal — always visible */}
-      <div className="shrink-0 space-y-2">
+      {/* Seneca message */}
+      <div className="shrink-0">
         <SenecaBubble>
-          Based on your answers, you&apos;re a{' '}
-          <strong style={{ color: result.identityColor }}>{result.personalityLabel}</strong>. Here
-          are the representatives who best align with your priorities.
+          Your #1 match is on the globe. Here are your other top matches &mdash; tap any to explore.
         </SenecaBubble>
-
-        <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 28 }}
-          className="rounded-xl border p-2.5"
-          style={{
-            borderColor: `${result.identityColor}40`,
-            background: `linear-gradient(135deg, ${result.identityColor}10, transparent)`,
-          }}
-        >
-          <div className="text-center space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-              Your Governance Identity
-            </p>
-            <p className="text-base font-display font-bold" style={{ color: result.identityColor }}>
-              {result.personalityLabel}
-            </p>
-          </div>
-        </motion.div>
       </div>
 
-      {/* Match cards — scrollable if needed, but compact enough to fit */}
+      {/* Remaining match cards (#2-5) — #1 is shown in the overlay */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent space-y-1.5">
-        <p className="text-xs text-muted-foreground font-medium px-1">
-          Top {result.matches.length} matches
-        </p>
-        {result.matches.slice(0, 5).map((match, idx) => (
+        <p className="text-xs text-muted-foreground font-medium px-1">Other matches</p>
+        {result.matches.slice(1, 5).map((match, idx) => (
           <CompactMatchCard
             key={match.drepId}
             match={match}
-            rank={idx + 1}
-            expanded={expandedMatch === match.drepId}
-            onExpand={() => {
-              const newId = expandedMatch === match.drepId ? null : match.drepId;
-              onExpandMatch(newId);
-              if (newId) {
-                onGlobeCommand({ type: 'flyTo', nodeId: match.drepId });
-              }
-            }}
+            rank={idx + 2}
+            expanded={false}
+            onExpand={() => handleFocusMatch(match, idx + 2)}
             userAlignments={result.userAlignments}
           />
         ))}

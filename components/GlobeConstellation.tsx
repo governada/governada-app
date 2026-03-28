@@ -976,13 +976,15 @@ attribute float aDimmed;
 attribute vec3 aNodeColor;
 varying vec3 vColor;
 varying float vAlpha;
+varying float vDimmed;
 
 void main() {
   vColor = aNodeColor;
+  vDimmed = aDimmed;
   vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = aSize * 600.0 / -mvPosition.z;
   gl_PointSize = clamp(gl_PointSize, 1.0, 128.0);
-  vAlpha = aDimmed < 0.5 ? 1.0 : 0.15;
+  vAlpha = aDimmed < 0.5 ? 1.0 : 0.12;
   gl_Position = projectionMatrix * mvPosition;
 }
 `;
@@ -990,6 +992,7 @@ void main() {
 const NODE_FRAG = /* glsl */ `
 varying vec3 vColor;
 varying float vAlpha;
+varying float vDimmed;
 
 void main() {
   float dist = length(gl_PointCoord - vec2(0.5));
@@ -997,6 +1000,11 @@ void main() {
   float glow = 1.0 - smoothstep(0.0, 0.5, dist);
   float core = 1.0 - smoothstep(0.0, 0.15, dist);
   vec3 col = vColor * (1.0 + core * 1.5);
+  // Desaturate dimmed nodes to dark gray — blends into backdrop
+  if (vDimmed > 0.5) {
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    col = vec3(lum * 0.35);
+  }
   gl_FragColor = vec4(col, glow * vAlpha);
 }
 `;
@@ -1005,6 +1013,7 @@ void main() {
 const SPO_FRAG = /* glsl */ `
 varying vec3 vColor;
 varying float vAlpha;
+varying float vDimmed;
 
 void main() {
   vec2 p = gl_PointCoord - vec2(0.5);
@@ -1014,6 +1023,11 @@ void main() {
   float glow = 1.0 - smoothstep(0.0, 0.5, diamond);
   float core = 1.0 - smoothstep(0.0, 0.15, diamond);
   vec3 col = vColor * (1.0 + core * 2.0);
+  // Desaturate dimmed nodes to dark gray
+  if (vDimmed > 0.5) {
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    col = vec3(lum * 0.35);
+  }
   gl_FragColor = vec4(col, glow * vAlpha);
 }
 `;

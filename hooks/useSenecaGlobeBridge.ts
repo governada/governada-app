@@ -30,7 +30,15 @@ export type GlobeCommand =
     }
   | { type: 'voteSplit'; proposalRef: string }
   | { type: 'reset' }
-  | { type: 'clear' };
+  | { type: 'clear' }
+  /** Dim all nodes — used before progressive reveal during tool execution */
+  | { type: 'dim' }
+  /** Scanning sweep — highlight with wide threshold then narrow, simulating a search */
+  | { type: 'scan'; alignment: number[]; durationMs?: number }
+  /** Warm specific nodes by topic — subtle highlight without camera movement */
+  | { type: 'warmTopic'; topic: 'treasury' | 'participation' | 'delegation' | 'proposals' }
+  /** Sequenced choreography — execute commands in order with delays */
+  | { type: 'sequence'; steps: Array<{ command: GlobeCommand; delayMs: number }> };
 
 export interface GlobeBridgeResult {
   /** Handle node click from globe — opens Seneca with entity context */
@@ -100,6 +108,55 @@ export function useSenecaGlobeBridge(
         case 'clear':
           globe.clearMatches();
           break;
+
+        // --- Advanced choreography commands ---
+
+        case 'dim':
+          // Dim all nodes by highlighting nothing (very high threshold = nothing matches)
+          globe.highlightMatches([0, 0, 0, 0, 0, 0], 9999, { noZoom: true });
+          break;
+
+        case 'scan': {
+          // Scanning sweep: start wide, narrow to target
+          const scanAlignment = command.alignment;
+          // Phase 1: wide glow (everything subtly lit)
+          globe.highlightMatches(scanAlignment, 300, { noZoom: true });
+          // Phase 2: narrow to matches after delay
+          const dur = command.durationMs ?? 800;
+          setTimeout(() => {
+            globe.highlightMatches(scanAlignment, 120, { noZoom: true, zoomToCluster: true });
+          }, dur);
+          break;
+        }
+
+        case 'warmTopic': {
+          // Topic-specific alignment vectors for subtle highlighting
+          const topicAlignments: Record<string, number[]> = {
+            treasury: [85, 20, 50, 50, 50, 50],
+            participation: [50, 80, 50, 50, 50, 50],
+            delegation: [50, 50, 80, 50, 50, 50],
+            proposals: [50, 50, 50, 80, 50, 50],
+          };
+          const align = topicAlignments[command.topic] ?? [50, 50, 50, 50, 50, 50];
+          globe.highlightMatches(align, 200, { noZoom: true });
+          break;
+        }
+
+        case 'sequence': {
+          // Execute commands in order with delays
+          let totalDelay = 0;
+          for (const step of command.steps) {
+            totalDelay += step.delayMs;
+            const cmd = step.command;
+            setTimeout(() => {
+              // Recursive — but sequences should not nest deeply
+              if (cmd.type !== 'sequence') {
+                executeGlobeCommand(cmd);
+              }
+            }, totalDelay);
+          }
+          break;
+        }
       }
     },
     [globeRef],

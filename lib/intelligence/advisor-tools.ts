@@ -174,46 +174,144 @@ export const ADVISOR_TOOLS = [
 // Globe choreography per tool (thinking/scanning phase)
 // ---------------------------------------------------------------------------
 
+/**
+ * Globe choreography during tool "thinking" phase.
+ *
+ * Returns commands that create a progressive reveal effect:
+ * 1. Initial: scan/sweep effect to show Seneca is searching
+ * 2. On result: the advisor.ts loop sends result-specific commands
+ *
+ * For sequenced effects, returns a single `sequence` command.
+ */
 export function getToolThinkingGlobeCommands(
   toolName: string,
   toolInput: Record<string, unknown>,
 ): GlobeCommand[] {
   switch (toolName) {
     case 'search_dreps':
-      // Soft glow across all DReps while searching
-      return [{ type: 'highlight', alignment: [50, 50, 50, 50, 50, 50], threshold: 200 }];
+      // Progressive scan: dim → scan across DRep space → reveal matches
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [50, 50, 50, 50, 50, 50], durationMs: 600 },
+              delayMs: 200,
+            },
+          ],
+        },
+      ];
+
     case 'get_drep_profile': {
       const id = toolInput.drep_id as string | undefined;
-      if (id) return [{ type: 'pulse', nodeId: `drep_${id}` }];
-      return [];
+      if (!id) return [];
+      // Dim everything, then pulse the target node
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            { command: { type: 'pulse', nodeId: `drep_${id}` }, delayMs: 300 },
+            { command: { type: 'flyTo', nodeId: `drep_${id}` }, delayMs: 100 },
+          ],
+        },
+      ];
     }
+
     case 'get_drep_votes': {
       const id = toolInput.drep_id as string | undefined;
-      if (id) return [{ type: 'pulse', nodeId: `drep_${id}` }];
-      return [];
+      if (!id) return [];
+      // Fly to the DRep and pulse while loading votes
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'flyTo', nodeId: `drep_${id}` }, delayMs: 0 },
+            { command: { type: 'pulse', nodeId: `drep_${id}` }, delayMs: 400 },
+          ],
+        },
+      ];
     }
+
     case 'get_leaderboard':
-      // Broad highlight across high-score DReps
-      return [{ type: 'highlight', alignment: [50, 50, 50, 50, 50, 50], threshold: 180 }];
+      // Scan across the constellation, then highlight top tier
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [80, 80, 80, 80, 80, 80], durationMs: 800 },
+              delayMs: 200,
+            },
+          ],
+        },
+      ];
+
     case 'get_proposal': {
       const hash = toolInput.tx_hash as string | undefined;
       const idx = toolInput.proposal_index as number | undefined;
-      if (hash) return [{ type: 'pulse', nodeId: `proposal_${hash}_${idx ?? 0}` }];
-      return [];
+      if (!hash) return [];
+      const nodeId = `proposal_${hash}_${idx ?? 0}`;
+      // Dim → fly to proposal → pulse
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            { command: { type: 'flyTo', nodeId }, delayMs: 200 },
+            { command: { type: 'pulse', nodeId }, delayMs: 400 },
+          ],
+        },
+      ];
     }
+
     case 'list_proposals':
+      // Warm the proposal space with a scan
       return [
-        { type: 'highlight', alignment: [50, 50, 50, 50, 50, 50], threshold: 200, noZoom: true },
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'warmTopic', topic: 'proposals' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [50, 50, 50, 80, 50, 50], durationMs: 600 },
+              delayMs: 300,
+            },
+          ],
+        },
       ];
+
     case 'get_treasury_status':
-      // Ambient warm glow — treasury affects everyone
+      // Treasury affects the whole constellation — warm glow then scan
       return [
-        { type: 'highlight', alignment: [85, 20, 50, 50, 50, 50], threshold: 200, noZoom: true },
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'warmTopic', topic: 'treasury' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [85, 20, 50, 50, 50, 50], durationMs: 1000 },
+              delayMs: 400,
+            },
+          ],
+        },
       ];
+
     case 'get_governance_health':
+      // Broad scan — governance health touches everything
       return [
-        { type: 'highlight', alignment: [50, 50, 50, 50, 50, 50], threshold: 250, noZoom: true },
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'warmTopic', topic: 'participation' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [50, 50, 50, 50, 50, 50], durationMs: 1200 },
+              delayMs: 300,
+            },
+          ],
+        },
       ];
+
     default:
       return [];
   }

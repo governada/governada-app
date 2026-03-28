@@ -15,7 +15,11 @@
 import { logger } from '@/lib/logger';
 import { createAnthropicStream } from '@/lib/ai';
 import { buildSenecaPrompt } from '@/lib/ai/senecaPersona';
-import { PERSONAS, type PersonaId } from '@/lib/intelligence/senecaPersonas';
+import {
+  PERSONAS,
+  type PersonaId,
+  getMetaphorsPromptBlock,
+} from '@/lib/intelligence/senecaPersonas';
 import {
   ADVISOR_TOOLS,
   executeAdvisorTool,
@@ -487,10 +491,33 @@ export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
     );
   }
 
-  // Append persona personality modifier if provided
+  // Append enriched persona: personality modifier + reasoning style + few-shot examples
   if (ctx.persona) {
     const persona = PERSONAS[ctx.persona];
     lines.push('', '## Seneca Persona Mode', persona.personalityModifier);
+
+    // Reasoning approach
+    lines.push('', `**Reasoning approach:** ${persona.reasoningStyle}`);
+
+    // Signature phrases — natural expressions to weave in
+    if (persona.signaturePhrases.length > 0) {
+      lines.push(
+        '',
+        '**Signature expressions** (use when they fit naturally, never force):',
+        ...persona.signaturePhrases.map((p) => `- "${p}"`),
+      );
+    }
+
+    // Few-shot examples — voice calibration
+    if (persona.fewShotExamples.length > 0) {
+      lines.push('', '## Voice Calibration Examples');
+      for (const ex of persona.fewShotExamples) {
+        lines.push('', `**User:** ${ex.user}`, `**Seneca:** ${ex.seneca}`);
+      }
+    }
+
+    // Governance metaphors library
+    lines.push('', getMetaphorsPromptBlock());
   }
 
   const additionalContext = [...contextParts, ...lines].join('\n');

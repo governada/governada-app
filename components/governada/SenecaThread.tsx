@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { X, Trash2, Search, Loader2, ArrowRight } from 'lucide-react';
+import { X, Trash2, Search, Loader2, ArrowRight, Share2, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSenecaSearch } from '@/hooks/useSenecaSearch';
@@ -24,7 +24,7 @@ import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import type { PanelRoute } from '@/hooks/useSenecaThread';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { readAdvisorStream } from '@/lib/intelligence/streamAdvisor';
+import { readAdvisorStream, detectStreamTopic } from '@/lib/intelligence/streamAdvisor';
 import { useSenecaMemory } from '@/hooks/useSenecaMemory';
 import { cn } from '@/lib/utils';
 import posthog from 'posthog-js';
@@ -446,6 +446,9 @@ export function SenecaThread({
     const abort = new AbortController();
     abortRef.current = abort;
 
+    // Track which topics have already warmed the globe this conversation turn
+    const warmedTopics = new Set<'treasury' | 'participation' | 'delegation' | 'proposals'>();
+
     readAdvisorStream(
       historyMessages,
       {
@@ -463,6 +466,18 @@ export function SenecaThread({
         streamContentRef.current += delta;
         setToolStatus(null); // clear tool status once text starts flowing
         onUpdateLastAssistant(streamContentRef.current);
+
+        // 3A: Topic-aware globe warming — detect governance topics in streaming text
+        // and subtly warm corresponding nodes on the globe
+        const topic = detectStreamTopic(delta, warmedTopics);
+        if (topic && typeof window !== 'undefined') {
+          warmedTopics.add(topic);
+          window.dispatchEvent(
+            new CustomEvent('senecaGlobeCommand', {
+              detail: { type: 'warmTopic', topic },
+            }),
+          );
+        }
       },
       (error) => {
         onUpdateLastAssistant(`_Error: ${error}. Please try again._`);
@@ -477,6 +492,15 @@ export function SenecaThread({
           .filter((m) => m.role === 'user' || m.role === 'assistant')
           .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
         saveConversation(conversationMessages);
+        // 3A: Clear globe highlights when streaming completes so the globe
+        // returns to its neutral state after the choreography sequence
+        if (warmedTopics.size > 0 && typeof window !== 'undefined') {
+          setTimeout(() => {
+            window.dispatchEvent(
+              new CustomEvent('senecaGlobeCommand', { detail: { type: 'clear' } }),
+            );
+          }, 2000); // Brief delay so the final warming is visible
+        }
       },
       abort.signal,
       // 1B: Globe commands — dispatch via CustomEvent so globe receives them
@@ -747,6 +771,7 @@ export function SenecaThread({
                   accentColor={persona.accentColor}
                   isStreaming={isStreaming}
                   toolStatus={toolStatus}
+                  personaId={persona.id}
                 />
               )}
 
@@ -904,6 +929,7 @@ function ConversationContent({
   accentColor,
   isStreaming,
   toolStatus,
+  personaId,
 }: {
   messages: ThreadMessage[];
   onEntityFocus?: (entityType: string, entityId: string) => void;
@@ -912,6 +938,7 @@ function ConversationContent({
   accentColor?: string;
   isStreaming: boolean;
   toolStatus: string | null;
+  personaId?: string;
 }) {
   return (
     <div className="flex flex-col">
@@ -945,9 +972,11 @@ function ConversationContent({
         // Assistant message — last one may be actively streaming
         const isLastMsg = idx === messages.length - 1;
         const msgIsStreaming = isLastMsg && isStreaming;
+        // Show share button on completed assistant messages with substantial content
+        const showShare = !msgIsStreaming && msg.content.length > 80;
 
         return (
-          <div key={msg.id} className="flex gap-2 items-start px-3 py-2">
+          <div key={msg.id} className="group flex gap-2 items-start px-3 py-2">
             <div className="shrink-0 mt-1">
               <CompassSigil
                 state={msgIsStreaming ? 'thinking' : 'idle'}
@@ -972,11 +1001,97 @@ function ConversationContent({
                   onEntityFocus={onEntityFocus}
                 />
               )}
+
+              {/* 3C: Share this insight */}
+              {showShare && (
+                <ShareInsightButton content={msg.content} personaId={personaId} msgId={msg.id} />
+              )}
             </div>
           </div>
         );
       })}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 3C: Share insight button — generates shareable link with OG card
+// ---------------------------------------------------------------------------
+
+function ShareInsightButton({
+  content,
+  personaId,
+  msgId,
+}: {
+  content: string;
+  personaId?: string;
+  msgId: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(() => {
+    // Extract the first meaningful sentence as the quote for the OG card
+    const quote = content
+      .replace(/\*\*/g, '') // strip markdown bold
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // strip links
+      .slice(0, 280);
+
+    // Detect topic from content
+    let topic = 'Governance Insight';
+    if (/treasury|withdrawal|funding|budget/i.test(content)) topic = 'Treasury Analysis';
+    else if (/proposal|governance action/i.test(content)) topic = 'Proposal Analysis';
+    else if (/drep|representative|delegation/i.test(content)) topic = 'Representative Analysis';
+    else if (/health|participation|quorum/i.test(content)) topic = 'Governance Health';
+
+    // Build share URL for X/Twitter
+    const shareText = `${quote.slice(0, 200)}${quote.length > 200 ? '...' : ''}\n\nvia @governada`;
+    const shareUrl = `${window.location.origin}/pulse`;
+    const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+
+    // Try native share API first (mobile), fallback to copy + open X
+    if (navigator.share) {
+      void navigator.share({ title: 'Seneca Insight', text: quote, url: shareUrl });
+    } else {
+      void navigator.clipboard?.writeText(`${quote}\n\n${shareUrl}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      window.open(twitterUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    // PostHog analytics
+    import('posthog-js')
+      .then((mod) => mod.default.capture('seneca_insight_shared', { topic, persona: personaId }))
+      .catch(() => {});
+  }, [content, personaId, msgId]);
+
+  return (
+    <motion.button
+      type="button"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.5 }}
+      onClick={handleShare}
+      className={cn(
+        'mt-1 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]',
+        'text-muted-foreground/30 hover:text-muted-foreground/60',
+        'hover:bg-white/[0.04] transition-colors',
+        'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40',
+      )}
+      aria-label="Share this insight"
+    >
+      {copied ? (
+        <>
+          <Check className="h-2.5 w-2.5" />
+          <span>Copied</span>
+        </>
+      ) : (
+        <>
+          <Share2 className="h-2.5 w-2.5" />
+          <span>Share insight</span>
+        </>
+      )}
+    </motion.button>
   );
 }
 

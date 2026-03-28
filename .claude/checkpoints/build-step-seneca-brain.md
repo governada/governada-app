@@ -304,8 +304,8 @@ Phase 3 (all independent):
 | 2C: Navigation-aware context        | SHIPPED | #653 | navigationEvent in AdvisorContext; auto-fire on route change during conversation; debounced 600ms; no visible user message       |
 | 2D: Ambient annotations             | SHIPPED | #654 | /api/intelligence/annotations endpoint; useSenecaAnnotations hook; SenecaAnnotation+Stack components; wired in DRepProfileClient |
 | 2E: Delegation coaching             | SHIPPED | —    | /api/intelligence/delegation-coaching; cohort alignment analysis; useDelegationCoaching hook; DelegationCoachingBadge component  |
-| 3A: Advanced globe choreography     | PENDING | —    | —                                                                                                                                |
-| 3B: Voice deepening                 | PENDING | —    | —                                                                                                                                |
-| 3C: Shareable moments               | PENDING | —    | —                                                                                                                                |
+| 3A: Advanced globe choreography     | SHIPPED | —    | Progressive reveal sequences, topic warming, scan effects, dim command, conversation-flow topic detection                        |
+| 3B: Voice deepening                 | SHIPPED | —    | Few-shot examples per persona, reasoning styles, signature phrases, governance metaphors library, tool narration instructions    |
+| 3C: Shareable moments               | SHIPPED | —    | OG route /api/og/seneca-insight/[id], share button on assistant messages, X/Twitter intent, native share API                     |
 | 3D: Streaming TTS                   | PENDING | —    | Stretch                                                                                                                          |
 | 3E: Real-time subscriptions         | PENDING | —    | Stretch                                                                                                                          |

@@ -26,6 +26,38 @@ export interface GlobeStreamCommand {
   threshold?: number;
 }
 
+// ---------------------------------------------------------------------------
+// Topic detection for conversation-aware globe choreography
+// ---------------------------------------------------------------------------
+
+type WarmTopic = 'treasury' | 'participation' | 'delegation' | 'proposals';
+
+const TOPIC_PATTERNS: Array<{ topic: WarmTopic; pattern: RegExp }> = [
+  { topic: 'treasury', pattern: /\b(treasury|withdrawal|funding|budget|ADA balance|spending)\b/i },
+  {
+    topic: 'participation',
+    pattern: /\b(participation|quorum|voter turnout|governance health|GHI)\b/i,
+  },
+  {
+    topic: 'delegation',
+    pattern: /\b(delegat(?:ion|ed|or|e)|represent(?:ative|ation)|your DRep)\b/i,
+  },
+  { topic: 'proposals', pattern: /\b(proposal|governance action|parameter change|hard fork)\b/i },
+];
+
+/**
+ * Detect the dominant governance topic in a text chunk.
+ * Returns the topic to warm on the globe, or null if no strong signal.
+ * Tracks which topics have already been warmed to avoid repetition.
+ */
+export function detectStreamTopic(text: string, warmedTopics: Set<WarmTopic>): WarmTopic | null {
+  for (const { topic, pattern } of TOPIC_PATTERNS) {
+    if (warmedTopics.has(topic)) continue;
+    if (pattern.test(text)) return topic;
+  }
+  return null;
+}
+
 export async function readAdvisorStream(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   context: AdvisorContext & { mode?: 'conversation' | 'briefing' },

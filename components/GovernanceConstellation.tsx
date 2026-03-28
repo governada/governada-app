@@ -37,7 +37,13 @@ export interface ConstellationRef {
   highlightMatches: (
     userAlignment: number[],
     threshold: number,
-    options?: { noZoom?: boolean; zoomToCluster?: boolean; nodeTypeFilter?: string },
+    options?: {
+      noZoom?: boolean;
+      zoomToCluster?: boolean;
+      nodeTypeFilter?: string;
+      cameraAngle?: number;
+      cameraElevation?: number;
+    },
   ) => void;
   flyToMatch: (drepId: string) => Promise<void>;
   clearMatches: () => void;

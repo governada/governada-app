@@ -98,6 +98,8 @@ interface SceneState {
   temporalVoteMap: Map<string, 'Yes' | 'No' | 'Abstain'>;
   /** Whether temporal replay mode is active */
   temporalActive: boolean;
+  /** When set, non-matching node types are aggressively dimmed (near invisible) */
+  matchNodeTypeFilter: string | null;
 }
 
 // Earth-like axial tilt: 23.4 degrees
@@ -180,6 +182,7 @@ export const GlobeConstellation = forwardRef<
     temporalProgress: 0,
     temporalVoteMap: new Map(),
     temporalActive: false,
+    matchNodeTypeFilter: null,
   });
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -327,6 +330,7 @@ export const GlobeConstellation = forwardRef<
         temporalProgress: 0,
         temporalVoteMap: new Map(),
         temporalActive: false,
+        matchNodeTypeFilter: null,
       }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
     },
@@ -334,7 +338,13 @@ export const GlobeConstellation = forwardRef<
     highlightMatches: (
       userAlignment: number[],
       threshold: number,
-      options?: { noZoom?: boolean; zoomToCluster?: boolean; nodeTypeFilter?: string },
+      options?: {
+        noZoom?: boolean;
+        zoomToCluster?: boolean;
+        nodeTypeFilter?: string;
+        cameraAngle?: number;
+        cameraElevation?: number;
+      },
     ) => {
       const matched = new Set<string>();
       const intensities = new Map<string, number>();
@@ -366,16 +376,15 @@ export const GlobeConstellation = forwardRef<
         matchIntensities: intensities,
         dimmed: matched.size > 0,
         scanProgress,
+        matchNodeTypeFilter: options?.nodeTypeFilter ?? prev.matchNodeTypeFilter,
       }));
 
-      // Q1-Q2: highlight only, no camera movement. Slight rotation slowdown.
+      // Q1-Q2: highlight only, no camera movement.
       if (options?.noZoom) {
-        const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
-        rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * (1 - zoomFactor * 0.3);
         return;
       }
 
-      // Q3: rotate globe to face matching cluster and zoom moderately
+      // Dive-through camera: smooth flight toward cluster centroid with angle variety
       if (options?.zoomToCluster && matched.size > 0 && cameraControlsRef.current) {
         let cx = 0,
           cy = 0,
@@ -399,18 +408,44 @@ export const GlobeConstellation = forwardRef<
           const ny = cy / dir;
           const nz = cz / dir;
 
-          // Stop rotation, zoom to moderate distance
-          rotationSpeedRef.current = 0;
-          const camDist = 10;
-          cameraControlsRef.current.setLookAt(
-            nx * camDist,
-            ny * camDist + 1,
-            nz * camDist + 2,
-            cx * 0.5,
-            cy * 0.5,
-            cz * 0.5,
-            false,
+          // Camera angle offsets for dive variety (weaving between angles)
+          const angle = options.cameraAngle ?? 0;
+          const elev = options.cameraElevation ?? 0;
+
+          // Compute camera offset distance based on threshold convergence
+          const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
+          const camDist = 14 - zoomFactor * 8; // 14 → 6 as threshold narrows
+
+          // Apply angle rotation around the centroid direction
+          const cosA = Math.cos(angle);
+          const sinA = Math.sin(angle);
+          // Rotate the normal vector around Y by the camera angle
+          const rnx = nx * cosA + nz * sinA;
+          const rnz = -nx * sinA + nz * cosA;
+
+          const camX = rnx * camDist;
+          const camY = ny * camDist + elev * camDist * 0.4;
+          const camZ = rnz * camDist;
+
+          // Look at cluster centroid (weighted by zoom)
+          const lookWeight = 0.4 + zoomFactor * 0.4;
+
+          // Cinematic smooth flight — smoothTime 1.2s for weighted camera feel
+          const controls = cameraControlsRef.current;
+          controls.smoothTime = 1.2;
+          controls.setLookAt(
+            camX,
+            camY,
+            camZ,
+            cx * lookWeight,
+            cy * lookWeight,
+            cz * lookWeight,
+            true, // SMOOTH transition (was false = snap)
           );
+          // Restore default smoothTime after transition settles
+          setTimeout(() => {
+            if (cameraControlsRef.current) cameraControlsRef.current.smoothTime = 0.8;
+          }, 1800);
         }
         return;
       }
@@ -522,6 +557,7 @@ export const GlobeConstellation = forwardRef<
         temporalProgress: 0,
         temporalVoteMap: new Map(),
         temporalActive: false,
+        matchNodeTypeFilter: null,
       }));
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED;
       cameraControlsRef.current?.setLookAt(...effectiveCamera, ...effectiveTarget, true);
@@ -551,6 +587,7 @@ export const GlobeConstellation = forwardRef<
         temporalProgress: 0,
         temporalVoteMap: new Map(),
         temporalActive: false,
+        matchNodeTypeFilter: null,
         dimmed: false,
       }));
     },
@@ -733,6 +770,7 @@ export const GlobeConstellation = forwardRef<
               matchedNodeIds={sceneState.matchedNodeIds}
               matchIntensities={sceneState.matchIntensities}
               activityMap={activityMap}
+              matchNodeTypeFilter={sceneState.matchNodeTypeFilter}
             />
             <ConstellationEdges edges={sceneState.edges} dimmed={sceneState.dimmed} />
             {quality !== 'low' && (
@@ -1071,6 +1109,7 @@ function ConstellationNodes({
   visitedNodeIds,
   voteSplitMap,
   temporalVoteMap,
+  matchNodeTypeFilter,
 }: {
   nodes: ConstellationNode3D[];
   highlightId: string | null;
@@ -1089,6 +1128,7 @@ function ConstellationNodes({
   visitedNodeIds?: Set<string>;
   voteSplitMap?: Map<string, 'Yes' | 'No' | 'Abstain'> | null;
   temporalVoteMap?: Map<string, 'Yes' | 'No' | 'Abstain'>;
+  matchNodeTypeFilter?: string | null;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -1212,7 +1252,7 @@ function ConstellationNodes({
           onNodeClick={onNodeClick}
           onNodeHover={onNodeHover}
           getColor={getSpoColor}
-          emissive={2.0}
+          emissive={matchNodeTypeFilter === 'drep' ? 0.1 : 2.0}
           fragmentShader={SPO_FRAG}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
@@ -1228,7 +1268,7 @@ function ConstellationNodes({
           pulseId={pulseId}
           interactive={false}
           getColor={getCcColor}
-          emissive={2.0}
+          emissive={matchNodeTypeFilter === 'drep' ? 0.1 : 2.0}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}
@@ -1263,7 +1303,7 @@ function ConstellationNodes({
           onNodeClick={onNodeClick}
           onNodeHover={onNodeHover}
           getColor={getProposalColor}
-          emissive={2.5}
+          emissive={matchNodeTypeFilter === 'drep' ? 0.1 : 2.5}
           matchedNodeIds={matchedNodeIds}
           matchIntensities={matchIntensities}
           activityMap={activityMap}

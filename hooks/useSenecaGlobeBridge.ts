@@ -28,6 +28,10 @@ export type GlobeCommand =
       zoomToCluster?: boolean;
       /** Filter to specific node type (e.g., 'drep') — others stay dimmed */
       nodeTypeFilter?: string;
+      /** Camera azimuth offset for dive variety (radians) */
+      cameraAngle?: number;
+      /** Camera elevation offset for dive variety (radians) */
+      cameraElevation?: number;
     }
   | { type: 'voteSplit'; proposalRef: string }
   | { type: 'reset' }
@@ -88,6 +92,8 @@ export function useSenecaGlobeBridge(
             noZoom: command.noZoom,
             zoomToCluster: command.zoomToCluster,
             nodeTypeFilter: command.nodeTypeFilter,
+            cameraAngle: command.cameraAngle,
+            cameraElevation: command.cameraElevation,
           });
           break;
         case 'voteSplit': {

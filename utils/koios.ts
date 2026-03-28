@@ -191,10 +191,12 @@ async function fetchAllDRepList(): Promise<DRepListResponse> {
   while (true) {
     const url = `/drep_list?limit=${DREP_LIST_PAGE_SIZE}&offset=${offset}`;
 
-    // Per-page retry: if koiosFetch succeeds at HTTP level but returns empty
-    // on a mid-pagination page, retry up to 3 times before accepting it.
+    // Per-page retry with empty-result protection.
+    // An empty first page is ALWAYS suspicious (Cardano has hundreds of DReps).
+    // An empty mid-pagination page after a full page is also suspicious.
     let pageData: DRepListResponse = [];
     let lastError: Error | null = null;
+    const isFirstPage = page === 0;
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -202,14 +204,23 @@ async function fetchAllDRepList(): Promise<DRepListResponse> {
         pageData = data || [];
         lastError = null;
 
-        // Suspicious: previous page was full but this one is empty — likely a transient Koios glitch
-        if (pageData.length === 0 && prevPageWasFull && attempt < 2) {
+        // Suspicious empty: first page empty (always wrong) or mid-pagination empty after full page
+        const suspiciousEmpty = pageData.length === 0 && (isFirstPage || prevPageWasFull);
+        if (suspiciousEmpty && attempt < 2) {
           console.warn(
-            `[Koios] drep_list page ${page + 1} returned 0 results after a full page (attempt ${attempt + 1}/3, offset=${offset}, total so far=${all.length}). Retrying...`,
+            `[Koios] drep_list page ${page + 1} returned 0 results unexpectedly (attempt ${attempt + 1}/3, offset=${offset}, total so far=${all.length}, firstPage=${isFirstPage}). Retrying...`,
           );
           await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt + Math.random() * 1000));
           continue;
         }
+
+        // If first page is STILL empty after all retries, throw explicitly
+        if (isFirstPage && pageData.length === 0) {
+          throw new Error(
+            'drep_list first page returned 0 results after 3 attempts — Koios API may be returning empty responses',
+          );
+        }
+
         break;
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));

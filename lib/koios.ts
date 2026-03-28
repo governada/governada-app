@@ -254,13 +254,15 @@ export async function getEnrichedDReps(
       drepList = await withRetry(
         async () => {
           const result = await fetchAllDReps();
-          if (!result || result.length === 0) throw new Error('Empty DRep list');
+          if (!result || result.length === 0) throw new Error('Empty DRep list from fetchAllDReps');
           return result;
         },
-        { maxRetries: 1, baseDelayMs: 3000, label: 'getEnrichedDReps' },
+        { maxRetries: 2, baseDelayMs: 5000, label: 'getEnrichedDReps' },
       );
-    } catch {
-      logger.error('[DRepScore] No DReps found after retry');
+    } catch (fetchErr) {
+      logger.error('[DRepScore] No DReps found after retry', {
+        error: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+      });
       return { dreps: [], allDReps: [], error: true, totalAvailable: 0 };
     }
 

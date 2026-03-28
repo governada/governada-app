@@ -203,7 +203,9 @@ export async function phaseFetchDReps(
   });
 
   if (result.error || !result.allDReps?.length) {
-    throw new Error('Koios DRep fetch returned no data');
+    throw new Error(
+      `Koios DRep fetch returned no data (error=${result.error}, allDReps=${result.allDReps?.length ?? 'null'}, totalAvailable=${result.totalAvailable})`,
+    );
   }
 
   const allDReps = result.allDReps;

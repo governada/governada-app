@@ -17,6 +17,7 @@ import { RecordSummaryCard } from './RecordSummaryCard';
 import { TrajectoryCard } from './TrajectoryCard';
 import { SenecaAnnotationStack } from '@/components/governada/annotations/SenecaAnnotation';
 import { useSenecaAnnotations } from '@/hooks/useSenecaAnnotations';
+import { DelegationCoachingBadge } from '@/components/governada/annotations/DelegationCoachingBadge';
 
 /* ─── Types ───────────────────────────────────────────── */
 
@@ -215,6 +216,9 @@ export function DRepProfileClient({
         onDismiss={dismissAnnotation}
         className="mb-2"
       />
+
+      {/* 2E: Delegation coaching — cohort-based comparative insights */}
+      <DelegationCoachingBadge isAuthenticated={!!delegatedDrep} />
 
       {/* ── Decision Engine or Discovery Mode ── */}
       {hasAlignment ? (

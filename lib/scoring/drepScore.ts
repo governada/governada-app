@@ -62,7 +62,8 @@ export function computeDRepScores(
     // the DRep has never participated in governance. Force calibrated scores
     // to 0 instead of the dampened median, so composite reflects actual inactivity.
     // GI (profile-based) is unaffected — it's legitimately earned from profile data.
-    if (eqRaw === 0 && epRaw === 0 && rlRaw === 0) {
+    const isZeroActivity = eqRaw === 0 && epRaw === 0 && rlRaw === 0;
+    if (isZeroActivity) {
       eqCal = 0;
       epCal = 0;
       rlCal = 0;
@@ -71,9 +72,13 @@ export function computeDRepScores(
     // Confidence dampening: pull pillar scores toward neutral (50) based on
     // confidence level. Low-data DReps get moderated scores instead of
     // potentially misleading extremes. Applied after calibration + zero-override.
-    const eqDampened = dampenPillarScore(eqCal, confidence);
-    const epDampened = dampenPillarScore(epCal, confidence);
-    const rlDampened = dampenPillarScore(rlCal, confidence);
+    //
+    // EXCEPTION: zero-activity DReps skip dampening on activity pillars.
+    // Without this, dampenPillarScore(0, 0) = 50, creating phantom scores
+    // for DReps that have never voted. Their activity pillars stay at 0.
+    const eqDampened = isZeroActivity ? 0 : dampenPillarScore(eqCal, confidence);
+    const epDampened = isZeroActivity ? 0 : dampenPillarScore(epCal, confidence);
+    const rlDampened = isZeroActivity ? 0 : dampenPillarScore(rlCal, confidence);
     const giDampened = dampenPillarScore(giCal, confidence);
 
     const composite = Math.round(

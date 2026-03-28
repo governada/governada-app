@@ -196,27 +196,31 @@ export async function getAllDReps(): Promise<{
     const supabase = createClient();
 
     // Query all DReps ordered by score (paginate to bypass PostgREST 1000-row default)
-    const { data: page1, error: supabaseError } = await supabase
-      .from('dreps')
-      .select('*')
-      .order('score', { ascending: false })
-      .range(0, 999)
-      .abortSignal(AbortSignal.timeout(10_000));
+    const PAGE_SIZE = 1000;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let rows: any[] = [];
+    let offset = 0;
 
-    if (supabaseError) {
-      logger.error('[Data] Supabase query failed', { error: supabaseError.message });
-      throw new Error('Supabase unavailable');
-    }
-
-    let rows = page1 || [];
-    if (rows.length === 1000) {
-      const { data: page2 } = await supabase
+    // Dynamic pagination: keep fetching until we get a partial page
+    // Handles any number of DReps (previously capped at 2000)
+    while (rows.length === offset) {
+      const { data: page, error: pageError } = await supabase
         .from('dreps')
         .select('*')
         .order('score', { ascending: false })
-        .range(1000, 1999)
+        .range(offset, offset + PAGE_SIZE - 1)
         .abortSignal(AbortSignal.timeout(10_000));
-      if (page2?.length) rows = [...rows, ...page2];
+
+      if (pageError) {
+        logger.error('[Data] Supabase query failed', { error: pageError.message });
+        throw new Error('Supabase unavailable');
+      }
+
+      const pageRows = page || [];
+      rows = [...rows, ...pageRows];
+
+      if (pageRows.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
     }
 
     if (!rows || rows.length === 0) {

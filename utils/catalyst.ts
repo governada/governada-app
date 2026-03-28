@@ -13,6 +13,12 @@ const BASE_URL = 'https://www.catalystexplorer.com/api/v1';
 const REQUEST_DELAY_MS = 300; // Be respectful to the API
 const MAX_PER_PAGE = 60; // API maximum
 
+// Circuit breaker: skip calls for 6 hours after 3 consecutive 503s
+const CIRCUIT_BREAKER_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+const CIRCUIT_BREAKER_THRESHOLD = 3;
+let _consecutive503s = 0;
+let _circuitOpenedAt = 0;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -115,6 +121,25 @@ interface PaginatedResponse<T> {
 // ---------------------------------------------------------------------------
 
 async function catalystFetch<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
+  // Circuit breaker: if Catalyst has been returning 503s, skip for 6 hours
+  if (
+    _consecutive503s >= CIRCUIT_BREAKER_THRESHOLD &&
+    Date.now() - _circuitOpenedAt < CIRCUIT_BREAKER_COOLDOWN_MS
+  ) {
+    const remainingMin = Math.round(
+      (CIRCUIT_BREAKER_COOLDOWN_MS - (Date.now() - _circuitOpenedAt)) / 60000,
+    );
+    throw new Error(
+      `Catalyst API circuit breaker open (${_consecutive503s} consecutive 503s, ${remainingMin}m remaining)`,
+    );
+  }
+
+  // Reset circuit breaker if cooldown has elapsed
+  if (_circuitOpenedAt && Date.now() - _circuitOpenedAt >= CIRCUIT_BREAKER_COOLDOWN_MS) {
+    _consecutive503s = 0;
+    _circuitOpenedAt = 0;
+  }
+
   const url = new URL(`${BASE_URL}${endpoint}`);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
@@ -126,8 +151,21 @@ async function catalystFetch<T>(endpoint: string, params: Record<string, string>
   });
 
   if (!res.ok) {
+    if (res.status === 503) {
+      _consecutive503s++;
+      if (_consecutive503s >= CIRCUIT_BREAKER_THRESHOLD && !_circuitOpenedAt) {
+        _circuitOpenedAt = Date.now();
+        logger.warn('[catalyst] Circuit breaker opened after consecutive 503s', {
+          count: _consecutive503s,
+          cooldownHours: CIRCUIT_BREAKER_COOLDOWN_MS / 3600000,
+        });
+      }
+    }
     throw new Error(`Catalyst API ${res.status}: ${endpoint}`);
   }
+
+  // Successful response — reset consecutive failure counter
+  _consecutive503s = 0;
 
   return res.json() as Promise<T>;
 }

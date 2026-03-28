@@ -155,21 +155,17 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         answer: value,
       });
 
-      // Progressive globe highlight — each round orbits from a different angle
+      // Data-driven globe highlight — camera follows the matching cluster's centroid
+      // No artificial angles: the centroid naturally shifts as the alignment vector changes
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
       const threshold = THRESHOLDS[questionIndex] ?? 25;
-      // Per-round camera approach angles — dramatic orbiting for "searching" feel
-      const CAMERA_ANGLES = [0.8, -1.2, 0.6, -0.3];
-      const CAMERA_ELEVATIONS = [0.35, -0.3, 0.2, 0];
       sendGlobeCommand({
         type: 'highlight',
         alignment: vector,
         threshold,
         drepOnly: true,
         zoomToCluster: true,
-        cameraAngle: CAMERA_ANGLES[questionIndex],
-        cameraElevation: CAMERA_ELEVATIONS[questionIndex],
       });
 
       // Advance to next question or submit — snappy transitions

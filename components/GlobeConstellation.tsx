@@ -385,7 +385,9 @@ export const GlobeConstellation = forwardRef<
         return;
       }
 
-      // Dive-through camera: smooth flight toward cluster centroid with angle variety
+      // Data-driven camera: fly to the centroid of matched nodes
+      // No artificial angles — the centroid naturally shifts as the alignment vector changes
+      // Each answer moves the centroid to a different sector of the globe (60° per dimension)
       if (options?.zoomToCluster && matched.size > 0 && cameraControlsRef.current) {
         let cx = 0,
           cy = 0,
@@ -409,48 +411,25 @@ export const GlobeConstellation = forwardRef<
           const ny = cy / dir;
           const nz = cz / dir;
 
-          // Camera angle offsets for dive variety (weaving between angles)
-          const angle = options.cameraAngle ?? 0;
-          const elev = options.cameraElevation ?? 0;
-
-          // Camera stays at similar distance — orbiting the constellation, not zooming in
-          // The "search" feel comes from dramatic angle shifts, not progressive zoom
-          const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
-          const camDist = 12 - zoomFactor * 2; // 12 → 10 (subtle, not Google Earth zoom)
-
-          // Apply angle rotation around the centroid direction
-          const cosA = Math.cos(angle);
-          const sinA = Math.sin(angle);
-          // Rotate the normal vector around Y by the camera angle
-          const rnx = nx * cosA + nz * sinA;
-          const rnz = -nx * sinA + nz * cosA;
-
-          const camX = rnx * camDist;
-          const camY = ny * camDist + elev * camDist * 0.4;
-          const camZ = rnz * camDist;
-
-          // Stop rotation during match — globe locked on target cluster
+          // Stop rotation — globe locked during search
           rotationSpeedRef.current = 0;
 
-          // Look directly at cluster centroid — camera faces the matching nodes
-          const lookWeight = 0.5 + zoomFactor * 0.4;
+          // Camera distance: roughly constant, slight pull-in as threshold narrows
+          const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
+          const camDist = 11 - zoomFactor * 2; // 11 → 9
 
-          // Cinematic smooth flight — smoothTime 1.2s for weighted camera feel
+          // Camera position: directly facing the centroid from outside the globe
+          const camX = nx * camDist;
+          const camY = ny * camDist + 1.5; // slight elevation for depth
+          const camZ = nz * camDist;
+
+          // Look at the cluster centroid
           const controls = cameraControlsRef.current;
-          controls.smoothTime = 1.2;
-          controls.setLookAt(
-            camX,
-            camY,
-            camZ,
-            cx * lookWeight,
-            cy * lookWeight,
-            cz * lookWeight,
-            true, // SMOOTH transition
-          );
-          // Restore default smoothTime after transition settles
+          controls.smoothTime = 1.0;
+          controls.setLookAt(camX, camY, camZ, cx * 0.7, cy * 0.7, cz * 0.7, true);
           setTimeout(() => {
             if (cameraControlsRef.current) cameraControlsRef.current.smoothTime = 0.8;
-          }, 1800);
+          }, 1500);
         }
         return;
       }

@@ -26,6 +26,8 @@ export type GlobeCommand =
       threshold: number;
       noZoom?: boolean;
       zoomToCluster?: boolean;
+      /** Filter to specific node type (e.g., 'drep') — others stay dimmed */
+      nodeTypeFilter?: string;
     }
   | { type: 'voteSplit'; proposalRef: string }
   | { type: 'reset' }
@@ -85,6 +87,7 @@ export function useSenecaGlobeBridge(
           globe.highlightMatches(command.alignment, command.threshold, {
             noZoom: command.noZoom,
             zoomToCluster: command.zoomToCluster,
+            nodeTypeFilter: command.nodeTypeFilter,
           });
           break;
         case 'voteSplit': {

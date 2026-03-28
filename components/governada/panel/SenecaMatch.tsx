@@ -11,6 +11,12 @@ import { getDominantDimension, getIdentityColor, alignmentsToArray } from '@/lib
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
+import {
+  buildMatchStartSequence,
+  buildAnswerSequence,
+  buildRevealSequence,
+  buildMatchCleanupSequence,
+} from '@/lib/globe/matchChoreography';
 
 /* ─── Question definitions (mirrored from QuickMatchFlow) ─── */
 
@@ -136,10 +142,10 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     });
   }, [step]);
 
-  // Start the quiz
+  // Start the quiz with theatrical opening
   const handleStart = useCallback(() => {
     setStep(0);
-    sendGlobeCommand({ type: 'reset' });
+    sendGlobeCommand(buildMatchStartSequence());
   }, [sendGlobeCommand]);
 
   // Handle answer selection
@@ -148,18 +154,11 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
       const newAnswers = { ...answers, [questionId]: value };
       setAnswers(newAnswers);
 
-      // Update globe with progressive alignment highlight
-      // Q1-Q2: highlight only (no zoom), Q3: zoom to cluster, Q4: handled by submitMatch flyTo
+      // Theatrical choreography for this answer round
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
       const threshold = THRESHOLDS[questionIndex] ?? 35;
-      sendGlobeCommand({
-        type: 'highlight',
-        alignment: vector,
-        threshold,
-        noZoom: questionIndex <= 1,
-        zoomToCluster: questionIndex === 2,
-      });
+      sendGlobeCommand(buildAnswerSequence(questionIndex, vector, threshold));
 
       // Advance to next question or submit
       if (questionIndex < TOTAL_QUESTIONS - 1) {
@@ -201,9 +200,17 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         setResult(data);
         setStep('results');
 
-        // Fly to top match on the globe
-        if (data.matches[0]) {
-          sendGlobeCommand({ type: 'flyTo', nodeId: data.matches[0].drepId });
+        // Theatrical reveal: countdown 5→4→3→2→1, camera sweeps to #1
+        if (data.matches.length > 0) {
+          const alignment = buildAlignmentFromAnswers(finalAnswers);
+          const vector = alignmentsToArray(alignment);
+          sendGlobeCommand(
+            buildRevealSequence(
+              data.matches.slice(0, 5).map((m) => ({ nodeId: m.drepId })),
+              vector,
+              35,
+            ),
+          );
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
@@ -221,7 +228,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
     setError(null);
     setExpandedMatch(null);
     setStep('intro');
-    sendGlobeCommand({ type: 'clear' });
+    sendGlobeCommand(buildMatchCleanupSequence());
   }, [sendGlobeCommand]);
 
   return (

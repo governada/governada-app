@@ -548,6 +548,20 @@ export const GlobeConstellation = forwardRef<
         dimmed: nodeId != null,
       }));
     },
+
+    setRotationSpeed: (multiplier: number) => {
+      rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * multiplier;
+    },
+
+    zoomToDistance: (distance: number) => {
+      cameraControlsRef.current?.dollyTo(distance, true);
+    },
+
+    flashNode: (nodeId: string) => {
+      // Flash uses the pulse mechanism with a shorter duration for a "pop" effect
+      setSceneState((prev) => ({ ...prev, pulseId: nodeId }));
+      setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 400);
+    },
   }));
 
   useEffect(() => {

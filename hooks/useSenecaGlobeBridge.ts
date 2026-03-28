@@ -37,7 +37,13 @@ export type GlobeCommand =
   /** Warm specific nodes by topic — subtle highlight without camera movement */
   | { type: 'warmTopic'; topic: 'treasury' | 'participation' | 'delegation' | 'proposals' }
   /** Sequenced choreography — execute commands in order with delays */
-  | { type: 'sequence'; steps: Array<{ command: GlobeCommand; delayMs: number }> };
+  | { type: 'sequence'; steps: Array<{ command: GlobeCommand; delayMs: number }> }
+  /** Set globe rotation speed multiplier (1=default, 0=stop, 3=fast) */
+  | { type: 'setRotation'; speed: number }
+  /** Dolly camera to a specific distance from origin */
+  | { type: 'zoomOut'; distance?: number }
+  /** Brief emissive flash on a node (reveal moment) */
+  | { type: 'flash'; nodeId: string };
 
 export interface GlobeBridgeResult {
   /** Handle node click from globe — opens Seneca with entity context */
@@ -146,6 +152,20 @@ export function useSenecaGlobeBridge(
           }
           break;
         }
+
+        // --- Theatrical match choreography commands ---
+
+        case 'setRotation':
+          globe.setRotationSpeed(command.speed);
+          break;
+
+        case 'zoomOut':
+          globe.zoomToDistance(command.distance ?? 20);
+          break;
+
+        case 'flash':
+          globe.flashNode(command.nodeId);
+          break;
       }
     },
     [globeRef],

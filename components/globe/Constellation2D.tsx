@@ -395,6 +395,13 @@ export const Constellation2D = forwardRef(function Constellation2D(
       stateRef.current.highlightId = nodeId;
       stateRef.current.dimmed = nodeId != null;
     },
+
+    // 2D fallback: rotation/zoom/flash degrade gracefully
+    setRotationSpeed: () => {}, // no rotation in 2D
+    zoomToDistance: () => {}, // no camera dolly in 2D
+    flashNode: (_nodeId: string) => {
+      // No flash effect in 2D — pulse is handled differently
+    },
   }));
 
   return (

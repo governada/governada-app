@@ -8,15 +8,16 @@ import { cn } from '@/lib/utils';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import type { MatchResult, QuickMatchAnswers, QuickMatchResponse } from '@/hooks/useQuickMatch';
+import {
+  buildMatchStartSequence,
+  buildAnswerSequence,
+  buildRevealSequence,
+  buildMatchCleanupSequence,
+} from '@/lib/globe/matchChoreography';
 
 /* ─── Globe Command Types ─────────────────────────────────── */
 
-type GlobeCommand =
-  | { type: 'flyTo'; nodeId: string }
-  | { type: 'pulse'; nodeId: string }
-  | { type: 'highlight'; alignment: number[]; threshold: number }
-  | { type: 'reset' }
-  | { type: 'clear' };
+import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
 
 /* ─── Props ───────────────────────────────────────────────── */
 
@@ -193,13 +194,8 @@ export function CerebroMatchFlow({
       setPhase('computing');
       setError(null);
 
-      // Emit tight highlight while computing
-      const computingAlignment = buildAlignmentFromAnswers(finalAnswers as Record<string, string>);
-      onGlobeCommand({
-        type: 'highlight',
-        alignment: alignmentToArray(computingAlignment),
-        threshold: 60,
-      });
+      // Dramatic dimming while computing
+      onGlobeCommand({ type: 'dim' });
 
       try {
         const res = await fetch('/api/governance/quick-match', {
@@ -222,16 +218,15 @@ export function CerebroMatchFlow({
         setResults(topMatches);
         setPhase('results');
 
-        // Globe choreography: pulse each top match, then fly to best
-        for (const match of topMatches) {
-          onGlobeCommand({ type: 'pulse', nodeId: match.drepId });
-        }
-        if (topMatches.length > 0) {
-          // Small delay before flyTo so pulses are visible
-          setTimeout(() => {
-            onGlobeCommand({ type: 'flyTo', nodeId: topMatches[0].drepId });
-          }, 800);
-        }
+        // Theatrical reveal: countdown 5→4→3→2→1, camera sweeps to #1
+        const finalAlignment = buildAlignmentFromAnswers(finalAnswers as Record<string, string>);
+        onGlobeCommand(
+          buildRevealSequence(
+            topMatches.map((m) => ({ nodeId: m.drepId })),
+            alignmentToArray(finalAlignment),
+            60,
+          ),
+        );
 
         onMatchComplete?.(topMatches);
       } catch (err) {
@@ -255,13 +250,11 @@ export function CerebroMatchFlow({
 
       const round = ROUNDS[roundIdx];
 
-      // Emit highlight command with accumulated alignment
+      // Theatrical choreography for this answer round
       const updatedAlignment = buildAlignmentFromAnswers(updated as Record<string, string>);
-      onGlobeCommand({
-        type: 'highlight',
-        alignment: alignmentToArray(updatedAlignment),
-        threshold: round.highlightThreshold,
-      });
+      onGlobeCommand(
+        buildAnswerSequence(roundIdx, alignmentToArray(updatedAlignment), round.highlightThreshold),
+      );
 
       // Advance to next round after a brief pause for the globe animation
       setTimeout(() => {
@@ -301,7 +294,7 @@ export function CerebroMatchFlow({
 
   /* ── Cancel ── */
   const handleCancel = useCallback(() => {
-    onGlobeCommand({ type: 'reset' });
+    onGlobeCommand(buildMatchCleanupSequence());
     setPhase('idle');
     setAnswers({});
     setResults([]);
@@ -310,7 +303,7 @@ export function CerebroMatchFlow({
 
   /* ── Start flow ── */
   const handleStart = useCallback(() => {
-    onGlobeCommand({ type: 'clear' });
+    onGlobeCommand(buildMatchStartSequence());
     setPhase('round1');
     setAnswers({});
     setResults([]);

@@ -49,6 +49,12 @@ export interface ConstellationRef {
   clearTemporal: () => void;
   /** Highlight a single node (no camera move). Pass null to clear. */
   highlightNode: (nodeId: string | null) => void;
+  /** Set globe rotation speed multiplier (1 = default, 0 = stopped, 3 = fast spin) */
+  setRotationSpeed: (multiplier: number) => void;
+  /** Dolly camera to a specific distance from origin */
+  zoomToDistance: (distance: number) => void;
+  /** Brief emissive flash on a node (300ms burst) */
+  flashNode: (nodeId: string) => void;
 }
 
 interface ConstellationProps {
@@ -299,6 +305,18 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
           highlightId: nodeId,
           dimmed: nodeId != null,
         }));
+      },
+
+      setRotationSpeed: () => {
+        // No-op in legacy constellation
+      },
+      zoomToDistance: () => {
+        // No-op in legacy constellation
+      },
+      flashNode: (nodeId: string) => {
+        // Fallback: use pulse
+        setSceneState((prev) => ({ ...prev, pulseId: nodeId }));
+        setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 400);
       },
     }));
 

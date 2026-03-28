@@ -413,9 +413,9 @@ export const GlobeConstellation = forwardRef<
           const angle = options.cameraAngle ?? 0;
           const elev = options.cameraElevation ?? 0;
 
-          // Compute camera offset distance based on threshold convergence
+          // Compute camera offset distance — dramatic convergence toward cluster
           const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
-          const camDist = 14 - zoomFactor * 8; // 14 → 6 as threshold narrows
+          const camDist = 16 - zoomFactor * 11; // 16 → 5 as threshold narrows
 
           // Apply angle rotation around the centroid direction
           const cosA = Math.cos(angle);
@@ -427,6 +427,9 @@ export const GlobeConstellation = forwardRef<
           const camX = rnx * camDist;
           const camY = ny * camDist + elev * camDist * 0.4;
           const camZ = rnz * camDist;
+
+          // Stop rotation during match — globe locked on target cluster
+          rotationSpeedRef.current = 0;
 
           // Look at cluster centroid (weighted by zoom)
           const lookWeight = 0.4 + zoomFactor * 0.4;
@@ -984,7 +987,7 @@ void main() {
   vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = aSize * 600.0 / -mvPosition.z;
   gl_PointSize = clamp(gl_PointSize, 1.0, 128.0);
-  vAlpha = aDimmed < 0.5 ? 1.0 : 0.12;
+  vAlpha = aDimmed < 0.5 ? 1.0 : 0.06;
   gl_Position = projectionMatrix * mvPosition;
 }
 `;
@@ -1000,10 +1003,10 @@ void main() {
   float glow = 1.0 - smoothstep(0.0, 0.5, dist);
   float core = 1.0 - smoothstep(0.0, 0.15, dist);
   vec3 col = vColor * (1.0 + core * 1.5);
-  // Desaturate dimmed nodes to dark gray — blends into backdrop
+  // Desaturate dimmed nodes to near-invisible dark gray
   if (vDimmed > 0.5) {
     float lum = dot(col, vec3(0.299, 0.587, 0.114));
-    col = vec3(lum * 0.35);
+    col = vec3(lum * 0.15);
   }
   gl_FragColor = vec4(col, glow * vAlpha);
 }
@@ -1023,10 +1026,10 @@ void main() {
   float glow = 1.0 - smoothstep(0.0, 0.5, diamond);
   float core = 1.0 - smoothstep(0.0, 0.15, diamond);
   vec3 col = vColor * (1.0 + core * 2.0);
-  // Desaturate dimmed nodes to dark gray
+  // Desaturate dimmed nodes to near-invisible dark gray
   if (vDimmed > 0.5) {
     float lum = dot(col, vec3(0.299, 0.587, 0.114));
-    col = vec3(lum * 0.35);
+    col = vec3(lum * 0.15);
   }
   gl_FragColor = vec4(col, glow * vAlpha);
 }

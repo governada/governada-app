@@ -159,9 +159,9 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
       const threshold = THRESHOLDS[questionIndex] ?? 25;
-      // Per-round camera approach angles for "searching" feel (not straight zoom)
-      const CAMERA_ANGLES = [0.5, -0.7, 0.3, -0.1];
-      const CAMERA_ELEVATIONS = [0.2, -0.15, 0.1, 0];
+      // Per-round camera approach angles — dramatic orbiting for "searching" feel
+      const CAMERA_ANGLES = [0.8, -1.2, 0.6, -0.3];
+      const CAMERA_ELEVATIONS = [0.35, -0.3, 0.2, 0];
       sendGlobeCommand({
         type: 'highlight',
         alignment: vector,
@@ -172,14 +172,14 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         cameraElevation: CAMERA_ELEVATIONS[questionIndex],
       });
 
-      // Advance to next question or submit
+      // Advance to next question or submit — snappy transitions
       if (questionIndex < TOTAL_QUESTIONS - 1) {
-        setTimeout(() => setStep(questionIndex + 1), 600);
+        setTimeout(() => setStep(questionIndex + 1), 350);
       } else {
         setTimeout(() => {
           setStep('loading');
           submitMatch(newAnswers);
-        }, 800);
+        }, 400);
       }
     },
     [answers, sendGlobeCommand], // eslint-disable-line react-hooks/exhaustive-deps
@@ -227,7 +227,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
               focusedRank: 1,
               isTopMatch: true,
             });
-          }, 3500);
+          }, 1500);
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
@@ -488,7 +488,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
                 sendGlobeCommand({ type: 'matchFlyTo', nodeId: topMatch.drepId });
                 setTimeout(() => {
                   setOverlayState({ focusedMatch: topMatch, focusedRank: 1, isTopMatch: true });
-                }, 3500);
+                }, 1500);
               }
             }}
             onDismiss={() => setOverlayState(null)}
@@ -542,7 +542,7 @@ function MatchResults({
       onExpandMatch(match.drepId);
       onGlobeCommand({ type: 'matchFlyTo', nodeId: match.drepId });
       posthog.capture('match_result_expanded', { drep_id: match.drepId, rank });
-      setTimeout(() => onFocusOverlay(match, rank), 3500);
+      setTimeout(() => onFocusOverlay(match, rank), 1500);
     },
     [onExpandMatch, onGlobeCommand, onFocusOverlay],
   );

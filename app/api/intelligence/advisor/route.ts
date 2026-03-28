@@ -43,6 +43,7 @@ const AdvisorRequestSchema = z.object({
     walletState: z.enum(['none_detected', 'detected', 'connected', 'has_ada', 'no_ada']).optional(),
     persona: z.enum(['navigator', 'analyst', 'partner', 'guide']).optional(),
     mode: z.enum(['conversation', 'briefing']).optional(),
+    conversationMemory: z.string().optional(),
   }),
 });
 
@@ -334,6 +335,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       matchState: parsed.context.matchState,
       walletState: parsed.context.walletState,
       persona: parsed.context.persona,
+      conversationMemory: parsed.context.conversationMemory,
     };
 
     // --- Stream response ---

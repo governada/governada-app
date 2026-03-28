@@ -5507,6 +5507,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      seneca_conversation_summaries: {
+        Row: {
+          created_at: string;
+          epoch: number | null;
+          id: string;
+          message_count: number;
+          summary: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          epoch?: number | null;
+          id?: string;
+          message_count?: number;
+          summary: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          epoch?: number | null;
+          id?: string;
+          message_count?: number;
+          summary?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       snapshot_completeness_log: {
         Row: {
           coverage_pct: number | null;

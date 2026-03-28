@@ -14,6 +14,7 @@ export interface AdvisorContext {
   pageContext?: string;
   entityId?: string;
   persona?: 'navigator' | 'analyst' | 'partner' | 'guide';
+  conversationMemory?: string;
 }
 
 export interface GlobeStreamCommand {

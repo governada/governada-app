@@ -25,6 +25,7 @@ import type { PanelRoute } from '@/hooks/useSenecaThread';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { readAdvisorStream } from '@/lib/intelligence/streamAdvisor';
+import { useSenecaMemory } from '@/hooks/useSenecaMemory';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -324,6 +325,9 @@ export function SenecaThread({
   const daysRemaining = totalDays - day;
   const setPendingQuery = useSenecaThreadStore((s) => s.setPendingQuery);
 
+  // 2B: Conversation memory — fetch prior summaries, save after conversations
+  const { memoryContext, saveConversation } = useSenecaMemory(isAuthenticated ?? false);
+
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
   const isStreamingRef = useRef(false);
@@ -392,6 +396,7 @@ export function SenecaThread({
         pageContext: panelRoute,
         entityId,
         persona: persona.id as 'navigator' | 'analyst' | 'partner' | 'guide',
+        conversationMemory: memoryContext,
       },
       (delta) => {
         streamContentRef.current += delta;
@@ -406,6 +411,11 @@ export function SenecaThread({
       () => {
         isStreamingRef.current = false;
         setIsStreaming(false);
+        // 2B: Save conversation summary for memory continuity
+        const conversationMessages = messagesRef.current
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+        saveConversation(conversationMessages);
       },
       abort.signal,
       // 1B: Globe commands — dispatch via CustomEvent so globe receives them

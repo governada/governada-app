@@ -302,6 +302,8 @@ export interface AdvisorContext {
   persona?: PersonaId;
   /** Briefing mode: concise, proactive, globe-synchronized */
   mode?: 'conversation' | 'briefing';
+  /** Recent conversation summaries for continuity */
+  conversationMemory?: string;
 }
 
 export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
@@ -457,6 +459,15 @@ export function buildAdvisorSystemPrompt(ctx: AdvisorContext): string {
 
   if (ctx.governanceSnapshot) {
     lines.push('', '## Current Governance Data', ctx.governanceSnapshot);
+  }
+
+  if (ctx.conversationMemory) {
+    lines.push(
+      '',
+      '## Recent Conversations',
+      'You have spoken with this user before. Reference these naturally when relevant, but do not repeat them verbatim:',
+      ctx.conversationMemory,
+    );
   }
 
   // Append persona personality modifier if provided

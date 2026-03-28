@@ -290,22 +290,22 @@ Phase 3 (all independent):
 
 ## Shipped Chunks
 
-| Chunk                               | Status  | PR   | Notes                                                                                                                    |
-| ----------------------------------- | ------- | ---- | ------------------------------------------------------------------------------------------------------------------------ |
-| Foundation (tools, context, prompt) | SHIPPED | #643 | 8 tools, enriched snapshot, tool-use loop, globe choreography architecture                                               |
-| 1A: Conversation streaming          | SHIPPED | #646 | pendingQuery effect → readAdvisorStream in SenecaThread; isStreaming state; abort on mode exit/unmount                   |
-| 1B: Globe command wiring            | SHIPPED | #646 | CustomEvent dispatch in streaming effect + GovernadaShell handleGlobeCommand; also added persona to AdvisorContext type  |
-| 1C: Tool status UI                  | SHIPPED | #646 | toolStatus state; shown in ConversationContent when streaming + empty content; cleared on first text delta               |
-| 1D: Entity linking                  | SHIPPED | #646 | handleEntityFocus navigates to /drep/:id or /proposal/:id; falls back to onEntityFocus prop if provided                  |
-| 1E: Persona application             | SHIPPED | #646 | persona.id passed as AdvisorContext.persona to readAdvisorStream; AdvisorContext.persona field added to streamAdvisor.ts |
-| 1F: Action handler expansion        | SHIPPED | #646 | startMatch / navigate / research actions parsed in streaming onAction callback; abort + mode switch on startMatch        |
-| 2A: Proactive whispers              | PENDING | —    | —                                                                                                                        |
-| 2B: Conversational memory           | PENDING | —    | —                                                                                                                        |
-| 2C: Navigation-aware context        | PENDING | —    | —                                                                                                                        |
-| 2D: Ambient annotations             | PENDING | —    | —                                                                                                                        |
-| 2E: Delegation coaching             | PENDING | —    | —                                                                                                                        |
-| 3A: Advanced globe choreography     | PENDING | —    | —                                                                                                                        |
-| 3B: Voice deepening                 | PENDING | —    | —                                                                                                                        |
-| 3C: Shareable moments               | PENDING | —    | —                                                                                                                        |
-| 3D: Streaming TTS                   | PENDING | —    | Stretch                                                                                                                  |
-| 3E: Real-time subscriptions         | PENDING | —    | Stretch                                                                                                                  |
+| Chunk                               | Status  | PR   | Notes                                                                                                                            |
+| ----------------------------------- | ------- | ---- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Foundation (tools, context, prompt) | SHIPPED | #643 | 8 tools, enriched snapshot, tool-use loop, globe choreography architecture                                                       |
+| 1A: Conversation streaming          | SHIPPED | #646 | pendingQuery effect → readAdvisorStream in SenecaThread; isStreaming state; abort on mode exit/unmount                           |
+| 1B: Globe command wiring            | SHIPPED | #646 | CustomEvent dispatch in streaming effect + GovernadaShell handleGlobeCommand; also added persona to AdvisorContext type          |
+| 1C: Tool status UI                  | SHIPPED | #646 | toolStatus state; shown in ConversationContent when streaming + empty content; cleared on first text delta                       |
+| 1D: Entity linking                  | SHIPPED | #646 | handleEntityFocus navigates to /drep/:id or /proposal/:id; falls back to onEntityFocus prop if provided                          |
+| 1E: Persona application             | SHIPPED | #646 | persona.id passed as AdvisorContext.persona to readAdvisorStream; AdvisorContext.persona field added to streamAdvisor.ts         |
+| 1F: Action handler expansion        | SHIPPED | #646 | startMatch / navigate / research actions parsed in streaming onAction callback; abort + mode switch on startMatch                |
+| 2A: Proactive whispers              | SHIPPED | #648 | /api/you/whispers endpoint + useSenecaProactiveWhispers hook; priority over templates; PostHog analytics; 8s display, 45s rotate |
+| 2B: Conversational memory           | SHIPPED | #649 | seneca_conversation_summaries table; Claude Haiku summary gen; useSenecaMemory hook; injected into advisor system prompt         |
+| 2C: Navigation-aware context        | PENDING | —    | —                                                                                                                                |
+| 2D: Ambient annotations             | PENDING | —    | —                                                                                                                                |
+| 2E: Delegation coaching             | PENDING | —    | —                                                                                                                                |
+| 3A: Advanced globe choreography     | PENDING | —    | —                                                                                                                                |
+| 3B: Voice deepening                 | PENDING | —    | —                                                                                                                                |
+| 3C: Shareable moments               | PENDING | —    | —                                                                                                                                |
+| 3D: Streaming TTS                   | PENDING | —    | Stretch                                                                                                                          |
+| 3E: Real-time subscriptions         | PENDING | —    | Stretch                                                                                                                          |

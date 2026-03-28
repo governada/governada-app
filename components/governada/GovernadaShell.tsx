@@ -243,6 +243,9 @@ function SenecaOrbAndThread({
         onUpdateLastAssistant={seneca.updateLastAssistant}
         onClearConversation={seneca.clearConversation}
         onGlobeCommand={handleGlobeCommand}
+        onEntityFocus={(entityType, entityId) => {
+          handleGlobeCommand({ cmd: 'flyTo', target: `${entityType}:${entityId}` });
+        }}
         isAuthenticated={isAuthenticated}
       />
     </>

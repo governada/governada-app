@@ -148,7 +148,12 @@ export function SenecaConversation({
           setIsStreaming(false);
         },
         abort.signal,
-        undefined, // onGlobeCommand
+        // Globe commands — dispatch via CustomEvent so globe listeners receive them
+        (cmd) => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('senecaGlobeCommand', { detail: cmd }));
+          }
+        },
         (actionPayload) => {
           // Parse parameterized actions: "startMatch", "navigate:/path", "research:query"
           const colonIdx = actionPayload.indexOf(':');

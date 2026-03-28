@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { X, Trash2, Search, Loader2, ArrowRight, Share2, Check } from 'lucide-react';
+import { X, Trash2, Search, Loader2, ArrowRight, Share2, Check, Microscope } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSenecaSearch } from '@/hooks/useSenecaSearch';
@@ -674,10 +674,10 @@ export function SenecaThread({
           {/* Panel */}
           <motion.div
             key="seneca-thread-panel"
-            variants={prefersReducedMotion ? undefined : undefined}
-            initial={prefersReducedMotion ? { opacity: 0 } : undefined}
-            animate={prefersReducedMotion ? { opacity: 1 } : undefined}
-            exit={prefersReducedMotion ? { opacity: 0 } : undefined}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             className={cn(
               // Shared
               'fixed z-40 flex flex-col overflow-hidden',
@@ -772,6 +772,7 @@ export function SenecaThread({
                   isStreaming={isStreaming}
                   toolStatus={toolStatus}
                   personaId={persona.id}
+                  onStartResearch={onStartResearch}
                 />
               )}
 
@@ -921,6 +922,12 @@ function IdleContent({
 // Conversation content
 // ---------------------------------------------------------------------------
 
+/** Heuristic: show "Go deeper" if response is substantive and query implies analysis. */
+const DEEP_QUERY_RE = /\b(compare|analyz|research|explain|how|why|detail|assess)\b/i;
+function shouldShowGoDeeper(content: string, query: string): boolean {
+  return content.length >= 200 && !!query && DEEP_QUERY_RE.test(query);
+}
+
 function ConversationContent({
   messages,
   onEntityFocus,
@@ -930,6 +937,7 @@ function ConversationContent({
   isStreaming,
   toolStatus,
   personaId,
+  onStartResearch,
 }: {
   messages: ThreadMessage[];
   onEntityFocus?: (entityType: string, entityId: string) => void;
@@ -939,6 +947,7 @@ function ConversationContent({
   isStreaming: boolean;
   toolStatus: string | null;
   personaId?: string;
+  onStartResearch?: (query: string) => void;
 }) {
   return (
     <div className="flex flex-col">
@@ -974,39 +983,67 @@ function ConversationContent({
         const msgIsStreaming = isLastMsg && isStreaming;
         // Show share button on completed assistant messages with substantial content
         const showShare = !msgIsStreaming && msg.content.length > 80;
+        // "Go deeper" — only on last completed assistant message
+        const precedingUser = idx > 0 ? messages[idx - 1] : undefined;
+        const userQuery = precedingUser?.role === 'user' ? precedingUser.content : '';
+        const showGoDeeper =
+          isLastMsg &&
+          !isStreaming &&
+          onStartResearch &&
+          shouldShowGoDeeper(msg.content, userQuery);
 
         return (
-          <div key={msg.id} className="group flex gap-2 items-start px-3 py-2">
-            <div className="shrink-0 mt-1">
-              <CompassSigil
-                state={msgIsStreaming ? 'thinking' : 'idle'}
-                size={14}
-                accentColor={accentColor}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              {/* 1C: Tool status — shown when tool executes before text arrives */}
-              {msgIsStreaming && toolStatus && msg.content === '' ? (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-[11px] text-muted-foreground/50 animate-pulse"
-                >
-                  {toolStatus}
-                </motion.span>
-              ) : (
-                <AIResponse
-                  content={msg.content}
-                  isStreaming={msgIsStreaming}
-                  onEntityFocus={onEntityFocus}
+          <div key={msg.id}>
+            <div className="group flex gap-2 items-start px-3 py-2">
+              <div className="shrink-0 mt-1">
+                <CompassSigil
+                  state={msgIsStreaming ? 'thinking' : 'idle'}
+                  size={14}
+                  accentColor={accentColor}
                 />
-              )}
+              </div>
+              <div className="flex-1 min-w-0">
+                {/* 1C: Tool status — shown when tool executes before text arrives */}
+                {msgIsStreaming && toolStatus && msg.content === '' ? (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-[11px] text-muted-foreground/50 animate-pulse"
+                  >
+                    {toolStatus}
+                  </motion.span>
+                ) : (
+                  <AIResponse
+                    content={msg.content}
+                    isStreaming={msgIsStreaming}
+                    onEntityFocus={onEntityFocus}
+                  />
+                )}
 
-              {/* 3C: Share this insight */}
-              {showShare && (
-                <ShareInsightButton content={msg.content} personaId={personaId} msgId={msg.id} />
-              )}
+                {/* 3C: Share this insight */}
+                {showShare && (
+                  <ShareInsightButton content={msg.content} personaId={personaId} msgId={msg.id} />
+                )}
+              </div>
             </div>
+            {showGoDeeper && (
+              <div className="px-3 pb-2 pl-8">
+                <button
+                  type="button"
+                  onClick={() => onStartResearch!(userQuery)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-2.5 py-1 rounded-md',
+                    'text-[11px] font-medium text-primary/80',
+                    'bg-primary/5 hover:bg-primary/10 border border-primary/15 hover:border-primary/25',
+                    'transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  )}
+                >
+                  <Microscope className="h-3 w-3" />
+                  Go deeper
+                </button>
+              </div>
+            )}
           </div>
         );
       })}

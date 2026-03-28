@@ -221,8 +221,17 @@ export const AIResponse = memo(function AIResponse({
 
   if (!content) return null;
 
+  // Strip any leaked internal markers before rendering
+  const cleaned = content
+    .replace(/\[\[action:[^\]]*\]\]/g, '')
+    .replace(/\[\[globe:[^\]]*\]\]/g, '')
+    .replace(/\[\[chip:[^\]]*\]\]/g, '')
+    .trim();
+
+  if (!cleaned) return null;
+
   // Split content into lines for rendering
-  const lines = content.split('\n');
+  const lines = cleaned.split('\n');
 
   return (
     <div className="px-3 py-3 space-y-1.5">

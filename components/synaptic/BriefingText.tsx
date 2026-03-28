@@ -68,8 +68,13 @@ export const BriefingText = memo(function BriefingText({
     if (content.length === 0) setRevealedCount(0);
   }, [content.length === 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const visibleText = content.slice(0, revealedCount);
-  const isRevealing = revealedCount < content.length;
+  // Strip leaked internal markers before rendering
+  const sanitized = content
+    .replace(/\[\[action:[^\]]*\]\]/g, '')
+    .replace(/\[\[globe:[^\]]*\]\]/g, '')
+    .replace(/\[\[chip:[^\]]*\]\]/g, '');
+  const visibleText = sanitized.slice(0, Math.min(revealedCount, sanitized.length));
+  const isRevealing = revealedCount < sanitized.length;
   const rendered = useMemo(
     () => renderBriefingMarkdown(visibleText, router),
     [visibleText, router],

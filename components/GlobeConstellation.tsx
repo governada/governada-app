@@ -432,8 +432,8 @@ export const GlobeConstellation = forwardRef<
           // Stop rotation during match — globe locked on target cluster
           rotationSpeedRef.current = 0;
 
-          // Look at cluster centroid — moderate weight keeps the "orbiting" feel
-          const lookWeight = 0.3 + zoomFactor * 0.3;
+          // Look directly at cluster centroid — camera faces the matching nodes
+          const lookWeight = 0.5 + zoomFactor * 0.4;
 
           // Cinematic smooth flight — smoothTime 1.2s for weighted camera feel
           const controls = cameraControlsRef.current;
@@ -1457,12 +1457,18 @@ function NodePoints({
       sizes[i] = (isMatched ? baseSize * (1 + 0.5 * matchIntensity) : baseSize) * POINT_SCALE;
 
       // DIMMED: non-matched dim when matching is active
-      dimmedArr[i] =
-        matchingActive && !isMatched && !isHighlighted && !isPulsing
-          ? 1.0
-          : dimmed && !isHighlighted && !isPulsing
-            ? 1.0
-            : 0.0;
+      const shouldDim =
+        (matchingActive && !isMatched && !isHighlighted && !isPulsing) ||
+        (dimmed && !isHighlighted && !isPulsing);
+      dimmedArr[i] = shouldDim ? 1.0 : 0.0;
+
+      // Override color to dark gray for dimmed nodes — bulletproof muting
+      // (shader desaturation alone isn't enough due to bloom post-processing)
+      if (shouldDim) {
+        colors[i * 3] = 0.03;
+        colors[i * 3 + 1] = 0.03;
+        colors[i * 3 + 2] = 0.03;
+      }
     }
 
     return { positions, colors, sizes, dimmedArr };

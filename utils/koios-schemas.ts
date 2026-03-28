@@ -18,15 +18,13 @@ export const KoiosDRepListItemSchema = z
 export const KoiosDRepInfoSchema = z
   .object({
     drep_id: z.string(),
-    drep_hash: z.string(),
     hex: z.string(),
     has_script: z.boolean(),
-    registered: z.boolean(),
     deposit: z.string().nullable(),
-    anchor_url: z.string().nullable(),
-    anchor_hash: z.string().nullable(),
     amount: z.string(),
-    active_epoch: z.number().nullable(),
+    // Fields renamed in Koios API update (2026-03):
+    // drep_hash → removed (use hex), registered → drep_status,
+    // anchor_url → meta_url, anchor_hash → meta_hash, active_epoch → expires_epoch_no
   })
   .passthrough();
 

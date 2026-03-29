@@ -20,20 +20,22 @@ export async function generateAndStoreEmbeddings(documents: ComposedDocument[]):
   // Fetch existing embeddings for these entities to check content hashes
   const { data: existing } = await supabase
     .from('embeddings')
-    .select('entity_type, entity_id, secondary_id, content_hash')
+    .select('entity_type, entity_id, content_hash')
     .in('entity_type', [...new Set(documents.map((d) => d.entityType))])
     .in('entity_id', [...new Set(documents.map((d) => d.entityId))]);
 
   const existingMap = new Map(
-    (existing ?? []).map((e) => [
-      `${e.entity_type}:${e.entity_id}:${e.secondary_id ?? ''}`,
-      e.content_hash,
-    ]),
+    (existing ?? []).map(
+      (e: { entity_type: string; entity_id: string; content_hash: string | null }) => [
+        `${e.entity_type}:${e.entity_id}`,
+        e.content_hash,
+      ],
+    ),
   );
 
   // Filter to only stale/new documents
   const staleDocuments = documents.filter((d) => {
-    const key = `${d.entityType}:${d.entityId}:${d.secondaryId ?? ''}`;
+    const key = `${d.entityType}:${d.entityId}`;
     return existingMap.get(key) !== d.contentHash;
   });
 
@@ -54,38 +56,23 @@ export async function generateAndStoreEmbeddings(documents: ComposedDocument[]):
     const texts = batch.map((d) => d.text);
     const embeddings = await generateEmbeddings(texts);
 
-    // Upsert each embedding
+    // Upsert each embedding (delete + insert for reliable upserts)
     for (let j = 0; j < batch.length; j++) {
       const doc = batch[j];
       const row = {
         entity_type: doc.entityType,
         entity_id: doc.entityId,
-        secondary_id: doc.secondaryId ?? null,
         embedding: JSON.stringify(embeddings[j]),
         content_hash: doc.contentHash,
-        model: 'text-embedding-3-large',
-        dimensions: 3072,
-        metadata: doc.metadata ?? {},
+        model_used: 'text-embedding-3-large',
         updated_at: new Date().toISOString(),
       };
 
-      // Partial unique indexes can't be used with onConflict in Supabase,
-      // so we use delete + insert for reliable upserts.
-      if (row.secondary_id) {
-        await supabase
-          .from('embeddings')
-          .delete()
-          .eq('entity_type', row.entity_type)
-          .eq('entity_id', row.entity_id)
-          .eq('secondary_id', row.secondary_id);
-      } else {
-        await supabase
-          .from('embeddings')
-          .delete()
-          .eq('entity_type', row.entity_type)
-          .eq('entity_id', row.entity_id)
-          .is('secondary_id', null);
-      }
+      await supabase
+        .from('embeddings')
+        .delete()
+        .eq('entity_type', row.entity_type)
+        .eq('entity_id', row.entity_id);
 
       const { error } = await supabase.from('embeddings').insert(row);
       if (error) {

@@ -84,7 +84,7 @@ export function useReviewSession(total: number, voterId: string | undefined): Re
     }
   }, [isComplete, reviewed, total]);
 
-  // Persist on unmount via beforeunload
+  // Persist on unmount via beforeunload + visibilitychange
   useEffect(() => {
     if (!voterId) return;
 
@@ -94,15 +94,18 @@ export function useReviewSession(total: number, voterId: string | undefined): Re
       }
     };
 
-    window.addEventListener('beforeunload', handleUnload);
-    document.addEventListener('visibilitychange', () => {
+    const handleVisibility = () => {
       if (document.visibilityState === 'hidden' && reviewed > 0) {
         persistSession(voterId, startedAtRef.current, reviewed, total);
       }
-    });
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
       handleUnload();
     };
   }, [voterId, reviewed, total]);
@@ -137,7 +140,10 @@ function persistSession(voterId: string, startedAt: Date, reviewed: number, tota
   });
 
   if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/workspace/review-session', body);
+    navigator.sendBeacon(
+      '/api/workspace/review-session',
+      new Blob([body], { type: 'application/json' }),
+    );
   } else {
     fetch('/api/workspace/review-session', {
       method: 'POST',

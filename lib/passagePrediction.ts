@@ -177,10 +177,8 @@ export function computePassagePrediction(input: PassagePredictionInput): Passage
   // 6. Citizen sentiment
   let sentimentValue = 0.5;
   if (input.citizenSentiment && input.citizenSentiment.total > 0) {
-    const sentimentRatio =
-      input.citizenSentiment.support /
-      (input.citizenSentiment.support + input.citizenSentiment.oppose || 1);
-    sentimentValue = sentimentRatio;
+    const denom = input.citizenSentiment.support + input.citizenSentiment.oppose;
+    sentimentValue = denom > 0 ? input.citizenSentiment.support / denom : 0.5;
   }
   factors.push({
     name: 'Citizen sentiment',

@@ -21,6 +21,20 @@ export const updatePassagePredictions = inngest.createFunction(
     name: 'Update Passage Predictions',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"passage-predictions"' },
+    onFailure: async ({ error }) => {
+      const sb = getSupabaseAdmin();
+      const detail = error instanceof Error ? error.message : String(error);
+      logger.error('[passage-predictions] Function failed permanently', { error: detail });
+      await sb
+        .from('sync_log')
+        .update({
+          finished_at: new Date().toISOString(),
+          success: false,
+          error_message: detail.slice(0, 250),
+        })
+        .eq('sync_type', 'passage_predictions')
+        .is('finished_at', null);
+    },
   },
   [{ cron: '0 */6 * * *' }, { event: 'drepscore/sync.votes' }, { event: 'cc/votes.synced' }],
   async ({ step }) => {

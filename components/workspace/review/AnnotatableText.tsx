@@ -42,6 +42,11 @@ const TYPE_COLORS: Record<AnnotationType, { bg: string; text: string; border: st
     text: 'text-red-800 dark:text-red-200',
     border: 'border-red-400 dark:border-red-600',
   },
+  suggestion: {
+    bg: 'bg-sky-200/60 dark:bg-sky-900/40',
+    text: 'text-sky-800 dark:text-sky-200',
+    border: 'border-sky-400 dark:border-sky-600',
+  },
 };
 
 const TYPE_ICONS: Record<AnnotationType, typeof MessageSquare> = {
@@ -49,6 +54,7 @@ const TYPE_ICONS: Record<AnnotationType, typeof MessageSquare> = {
   highlight: Highlighter,
   citation: BookOpen,
   concern: AlertTriangle,
+  suggestion: Brain,
 };
 
 const TYPE_LABELS: Record<AnnotationType, string> = {
@@ -56,6 +62,7 @@ const TYPE_LABELS: Record<AnnotationType, string> = {
   highlight: 'Highlight',
   citation: 'Citation',
   concern: 'Concern',
+  suggestion: 'Suggestion',
 };
 
 /** Priority for overlapping annotations (higher = shown on top) */
@@ -64,6 +71,7 @@ const TYPE_PRIORITY: Record<AnnotationType, number> = {
   note: 2,
   citation: 3,
   concern: 4,
+  suggestion: 5,
 };
 
 // ---------------------------------------------------------------------------

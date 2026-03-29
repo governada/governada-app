@@ -99,8 +99,16 @@ export interface ProposalReference {
 }
 
 /** Annotation types */
-export type AnnotationType = 'note' | 'highlight' | 'citation' | 'concern';
+export type AnnotationType = 'note' | 'highlight' | 'citation' | 'concern' | 'suggestion';
 export type AnnotationField = 'abstract' | 'motivation' | 'rationale';
+export type AnnotationStatus = 'active' | 'accepted' | 'rejected';
+
+/** Suggested text payload for suggestion annotations (tracked changes) */
+export interface SuggestedText {
+  original: string;
+  proposed: string;
+  explanation: string;
+}
 
 /** Engagement event types */
 export type EngagementEventType = 'view' | 'section_read' | 'annotation_created';
@@ -119,6 +127,8 @@ export interface ProposalAnnotation {
   color: string | null;
   isPublic: boolean;
   upvoteCount: number;
+  suggestedText: SuggestedText | null;
+  status: AnnotationStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -627,6 +637,31 @@ export interface DecisionTableItem {
   status: DecisionTableStatus;
   /** Vote choice if voted */
   voteChoice: string | null;
+  /** Navigation href */
+  href: string;
+}
+
+// ---------------------------------------------------------------------------
+// Author Decision Table (Author Portfolio v2)
+// ---------------------------------------------------------------------------
+
+export type AuthorTablePhase = 'draft' | 'in_review' | 'on_chain' | 'archived';
+
+export interface AuthorDecisionTableItem {
+  id: string;
+  phase: AuthorTablePhase;
+  title: string;
+  proposalType: string;
+  constitutionalRisk: ConstitutionalRiskLevel | null;
+  /** Field completeness 0-100 */
+  fieldCompleteness: number;
+  /** Number of community reviews (null if not in review) */
+  feedbackCount: number | null;
+  /** Days in current phase */
+  daysInPhase: number;
+  updatedAt: string;
+  /** AI-determined next step */
+  nextAction: string;
   /** Navigation href */
   href: string;
 }

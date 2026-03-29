@@ -6,6 +6,7 @@ import {
   Highlighter,
   AlertTriangle,
   BookOpen,
+  Brain,
   Globe,
   Lock,
   Trash2,
@@ -27,6 +28,7 @@ const TYPE_COLORS: Record<AnnotationType, { bg: string; text: string }> = {
   },
   citation: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-200' },
   concern: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-200' },
+  suggestion: { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-800 dark:text-sky-200' },
 };
 
 const TYPE_ICONS: Record<AnnotationType, typeof MessageSquare> = {
@@ -34,6 +36,7 @@ const TYPE_ICONS: Record<AnnotationType, typeof MessageSquare> = {
   highlight: Highlighter,
   citation: BookOpen,
   concern: AlertTriangle,
+  suggestion: Brain,
 };
 
 const TYPE_LABELS: Record<AnnotationType, string> = {
@@ -41,6 +44,7 @@ const TYPE_LABELS: Record<AnnotationType, string> = {
   highlight: 'Highlight',
   citation: 'Citation',
   concern: 'Concern',
+  suggestion: 'Suggestion',
 };
 
 const FIELD_LABELS: Record<string, string> = {

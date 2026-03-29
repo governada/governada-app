@@ -94,9 +94,27 @@ export async function computeDRepParticipation({
 
   const active = dreps ?? [];
   if (active.length === 0) {
-    logger.warn('[ghi:drep-participation] No active DReps returned', {
-      drepsError: drepsError?.message,
-    });
+    try {
+      const diagSb = getSupabaseAdmin();
+      await diagSb.from('sync_log').insert({
+        sync_type: 'ghi',
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        success: true,
+        metrics: {
+          _diagnostic: true,
+          _branch: 'active_empty',
+          drepsNull: dreps === null,
+          drepsUndefined: dreps === undefined,
+          drepsError: drepsError?.message ?? null,
+          drepsErrorCode: drepsError?.code ?? null,
+          drepsErrorHint: drepsError?.hint ?? null,
+          drepsLength: dreps?.length ?? -1,
+        },
+      });
+    } catch {
+      /* non-critical */
+    }
     return { raw: 0 };
   }
 

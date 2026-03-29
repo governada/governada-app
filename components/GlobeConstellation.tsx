@@ -255,7 +255,7 @@ export const GlobeConstellation = forwardRef<
     const map = new Map<string, number>();
     const typedData = apiData as ConstellationApiData | undefined;
     if (!typedData?.recentEvents) return map;
-    const now = Date.now();  
+    const now = Date.now();
     for (const event of typedData.recentEvents) {
       const id = event.drepId;
       if (!id) continue;

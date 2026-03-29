@@ -1778,12 +1778,49 @@ function NodePoints({
       geo.setAttribute('aSize', new THREE.Float32BufferAttribute(currentSizesRef.current, 1));
       geo.setAttribute('aDimmed', new THREE.Float32BufferAttribute(currentDimmedRef.current, 1));
       geo.computeBoundingSphere();
+    } else {
+      // Focus or other visual props changed: update lerp targets so useFrame can transition.
+      // This is a defensive backup to the window-globals mechanism in useFrame — ensures
+      // targets are always set from the React prop path regardless of timing.
+      targetBuffersRef.current = buffers;
+
+      // When match mode activates (nodeTypeFilter='drep'), snap non-DRep nodes to invisible
+      // immediately rather than waiting for the lerp to converge. Non-DRep nodes (SPO, CC,
+      // proposal) should disappear the instant the match flow starts — no fade-in lag.
+      if (
+        focus.active &&
+        focus.nodeTypeFilter === 'drep' &&
+        currentDimmedRef.current &&
+        currentColorsRef.current &&
+        currentSizesRef.current
+      ) {
+        let anySnapped = false;
+        for (let i = 0; i < nodes.length; i++) {
+          const nodeType = (nodes[i] as { nodeType?: string }).nodeType;
+          if (nodeType && nodeType !== 'drep' && currentDimmedRef.current[i] < 0.99) {
+            currentDimmedRef.current[i] = 1.0;
+            currentColorsRef.current[i * 3] = 0.005;
+            currentColorsRef.current[i * 3 + 1] = 0.005;
+            currentColorsRef.current[i * 3 + 2] = 0.005;
+            currentSizesRef.current[i] = (nodes[i].scale ?? 1) * 0.15 * POINT_SCALE;
+            anySnapped = true;
+          }
+        }
+        if (anySnapped) {
+          const colorAttr = geo.getAttribute('aNodeColor') as THREE.BufferAttribute;
+          const dimAttr = geo.getAttribute('aDimmed') as THREE.BufferAttribute;
+          const sizeAttr = geo.getAttribute('aSize') as THREE.BufferAttribute;
+          if (colorAttr) colorAttr.needsUpdate = true;
+          if (dimAttr) dimAttr.needsUpdate = true;
+          if (sizeAttr) sizeAttr.needsUpdate = true;
+        }
+      }
     }
     // After first render, useFrame handles smooth transitions toward new target buffers
     // NOTE: No cleanup return here — cleanup runs in the unmount-only effect below.
     // If we returned cleanup here, it would run on every buffers change (focus changes),
     // deleting GPU attributes that useFrame then can't find — making nodes invisible.
-  }, [buffers]);
+  }, [buffers]); // eslint-disable-line react-hooks/exhaustive-deps -- focus/nodes accessed via closure from buffers dep
 
   // GPU attribute cleanup on unmount only — MUST be separate from the [buffers] effect.
   // Returning cleanup from [buffers] would delete attributes on every focus change.

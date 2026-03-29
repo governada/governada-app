@@ -109,12 +109,29 @@ const DEFAULT_FOCUS: FocusState = {
   nodeTypeFilter: null,
 };
 
-// Module-level shared focus state — bridges React outer tree ↔ R3F Canvas tree.
+// Window-level shared focus state — bridges React outer tree ↔ R3F Canvas tree.
 // R3F's reconciler doesn't re-render components inside <Canvas> when parent state
-// changes, and ref props passed through the boundary aren't readable in useFrame.
-// Module-level variables are accessible from both trees via JS module scope.
-let _sharedFocus: FocusState = DEFAULT_FOCUS;
-let _sharedFocusVersion = 0;
+// changes. Module-level variables can be duplicated by bundler chunk splitting.
+// Window globals are truly shared — no boundary issues possible.
+const FOCUS_KEY = '__globeFocusState' as const;
+const FOCUS_VER_KEY = '__globeFocusVersion' as const;
+
+function getSharedFocus(): FocusState {
+  if (typeof window === 'undefined') return DEFAULT_FOCUS;
+  return ((window as unknown as Record<string, unknown>)[FOCUS_KEY] as FocusState) ?? DEFAULT_FOCUS;
+}
+
+function setSharedFocus(focus: FocusState): void {
+  if (typeof window === 'undefined') return;
+  const w = window as unknown as Record<string, unknown>;
+  w[FOCUS_KEY] = focus;
+  w[FOCUS_VER_KEY] = ((w[FOCUS_VER_KEY] as number) ?? 0) + 1;
+}
+
+function getSharedFocusVersion(): number {
+  if (typeof window === 'undefined') return 0;
+  return ((window as unknown as Record<string, unknown>)[FOCUS_VER_KEY] as number) ?? 0;
+}
 
 interface SceneState {
   nodes: ConstellationNode3D[];
@@ -222,9 +239,8 @@ export const GlobeConstellation = forwardRef<
   // components read in useFrame, and increment a version counter so useFrame
   // can detect changes without depending on React re-renders.
   // Sync focus to module-level shared state (readable by R3F useFrame)
-  if (_sharedFocus !== sceneState.focus) {
-    _sharedFocus = sceneState.focus;
-    _sharedFocusVersion++;
+  if (getSharedFocus() !== sceneState.focus) {
+    setSharedFocus(sceneState.focus);
   }
 
   const { data: apiData } = useGovernanceConstellation();
@@ -1614,12 +1630,12 @@ function NodePoints({
     if (!geo || !currentColorsRef.current || !currentSizesRef.current || !currentDimmedRef.current)
       return;
 
-    // Detect focus state changes via module-level shared variable.
-    // No React props or refs — pure JS module scope, always readable from useFrame.
-    const currentVersion = _sharedFocusVersion;
+    // Detect focus state changes via window-level shared variable.
+    // No React props or refs — window globals, always readable from useFrame.
+    const currentVersion = getSharedFocusVersion();
     if (currentVersion !== lastFocusVersionRef.current) {
       lastFocusVersionRef.current = currentVersion;
-      const newTargets = computeBuffers(_sharedFocus);
+      const newTargets = computeBuffers(getSharedFocus());
       targetBuffersRef.current = newTargets;
       geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));
       geo.computeBoundingSphere();

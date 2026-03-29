@@ -65,75 +65,93 @@ export const generateEmbeddings = inngest.createFunction(
       return { generated, total: documents.length };
     });
 
-    // Step 3: Generate rationale embeddings
-    // vote_rationales has proposal_tx_hash, proposal_index, drep_id directly — no FK join needed
-    const rationaleResult = await step.run('embed-rationales', async () => {
-      const supabase = getSupabaseAdmin();
+    // Step 3: Generate rationale embeddings — chunked to avoid Railway timeout.
+    // 3,567 rationales split into chunks of 700 (~30s per chunk max).
+    const RATIONALE_CHUNK = 700;
+    const rationaleChunkResults: { generated: number; total: number }[] = [];
 
-      // Fetch all rationales (may exceed PostgREST default limit of 1000)
-      const { data: rationales } = await supabase
-        .from('vote_rationales')
-        .select('vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, rationale_text')
-        .not('rationale_text', 'is', null)
-        .range(0, 9999);
+    for (let chunk = 0; chunk * RATIONALE_CHUNK < 4200; chunk++) {
+      const from = chunk * RATIONALE_CHUNK;
+      const to = from + RATIONALE_CHUNK - 1;
 
-      if (!rationales?.length) {
-        logger.warn('[generate-embeddings] embed-rationales: query returned 0 rows');
-        return { generated: 0, total: 0 };
-      }
+      const chunkResult = await step.run(`embed-rationales-${chunk}`, async () => {
+        const supabase = getSupabaseAdmin();
 
-      // Get proposal titles/types for context
-      const proposalKeys = [...new Set(rationales.map((r) => r.proposal_tx_hash))];
-      const { data: proposals } = await supabase
-        .from('proposals')
-        .select('tx_hash, proposal_index, title, proposal_type')
-        .in('tx_hash', proposalKeys);
+        const { data: rationales } = await supabase
+          .from('vote_rationales')
+          .select('vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, rationale_text')
+          .not('rationale_text', 'is', null)
+          .range(from, to);
 
-      const proposalMap = new Map(
-        (proposals ?? []).map((p) => [`${p.tx_hash}:${p.proposal_index}`, p]),
-      );
+        if (!rationales?.length) return { generated: 0, total: 0 };
 
-      // Get vote directions from drep_votes
-      const { data: votes } = await supabase
-        .from('drep_votes')
-        .select('drep_id, proposal_tx_hash, proposal_index, vote')
-        .in('proposal_tx_hash', proposalKeys);
+        // Get proposal titles/types for context
+        const proposalKeys = [...new Set(rationales.map((r) => r.proposal_tx_hash))];
+        const { data: proposals } = await supabase
+          .from('proposals')
+          .select('tx_hash, proposal_index, title, proposal_type')
+          .in('tx_hash', proposalKeys);
 
-      const voteMap = new Map(
-        (votes ?? []).map((v) => [
-          `${v.drep_id}:${v.proposal_tx_hash}:${v.proposal_index}`,
-          v.vote as string,
-        ]),
-      );
+        const proposalMap = new Map<
+          string,
+          {
+            tx_hash: string;
+            proposal_index: number;
+            title: string | null;
+            proposal_type: string | null;
+          }
+        >((proposals ?? []).map((p) => [`${p.tx_hash}:${p.proposal_index}`, p]));
 
-      // Get DRep names for context
-      const voterIds = [...new Set(rationales.map((r) => r.drep_id))];
-      const { data: dreps } = await supabase.from('dreps').select('id, name').in('id', voterIds);
-      const drepNameMap = new Map((dreps ?? []).map((d) => [d.id, d.name]));
+        const { data: votes } = await supabase
+          .from('drep_votes')
+          .select('drep_id, proposal_tx_hash, proposal_index, vote')
+          .in('proposal_tx_hash', proposalKeys);
 
-      const documents = rationales
-        .map((r) => {
-          const proposal = proposalMap.get(`${r.proposal_tx_hash}:${r.proposal_index}`);
-          const voteDirection = voteMap.get(
-            `${r.drep_id}:${r.proposal_tx_hash}:${r.proposal_index}`,
-          );
+        const voteMap = new Map<string, string>(
+          (votes ?? []).map((v) => [
+            `${v.drep_id}:${v.proposal_tx_hash}:${v.proposal_index}`,
+            v.vote as string,
+          ]),
+        );
 
-          return composeRationale({
-            tx_hash: r.vote_tx_hash,
-            index: r.proposal_index ?? 0,
-            voter_id: r.drep_id,
-            rationale_text: r.rationale_text,
-            vote_direction: voteDirection ?? null,
-            proposal_title: proposal?.title ?? null,
-            proposal_type: proposal?.proposal_type ?? null,
-            drep_name: drepNameMap.get(r.drep_id) ?? null,
-          });
-        })
-        .filter((d): d is NonNullable<typeof d> => d !== null && d.text.length > 20);
+        const voterIds = [...new Set(rationales.map((r) => r.drep_id))];
+        const { data: dreps } = await supabase.from('dreps').select('id, name').in('id', voterIds);
+        const drepNameMap = new Map<string, string | null>(
+          (dreps ?? []).map((d) => [d.id, d.name]),
+        );
 
-      const generated = await generateAndStoreEmbeddings(documents);
-      return { generated, total: documents.length };
-    });
+        const documents = rationales
+          .map((r) => {
+            const proposal = proposalMap.get(`${r.proposal_tx_hash}:${r.proposal_index}`);
+            const voteDirection = voteMap.get(
+              `${r.drep_id}:${r.proposal_tx_hash}:${r.proposal_index}`,
+            );
+            return composeRationale({
+              tx_hash: r.vote_tx_hash,
+              index: r.proposal_index ?? 0,
+              voter_id: r.drep_id,
+              rationale_text: r.rationale_text,
+              vote_direction: voteDirection ?? null,
+              proposal_title: proposal?.title ?? null,
+              proposal_type: proposal?.proposal_type ?? null,
+              drep_name: drepNameMap.get(r.drep_id) ?? null,
+            });
+          })
+          .filter((d): d is NonNullable<typeof d> => d !== null && d.text.length > 20);
+
+        const generated = await generateAndStoreEmbeddings(documents);
+        return { generated, total: documents.length };
+      });
+
+      rationaleChunkResults.push(chunkResult);
+      // Stop early if chunk returned fewer rows than requested (end of table)
+      if (chunkResult.total < RATIONALE_CHUNK) break;
+    }
+
+    const rationaleResult = rationaleChunkResults.reduce(
+      (acc, r) => ({ generated: acc.generated + r.generated, total: acc.total + r.total }),
+      { generated: 0, total: 0 },
+    );
 
     // Step 4: Generate DRep profile embeddings
     // DRep objectives/motivations live in metadata JSONB (CIP-100), not top-level columns

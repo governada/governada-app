@@ -644,6 +644,7 @@ function StudioReviewInner({
                   epochsRemaining={selectedItem.epochsRemaining}
                   isUrgent={selectedItem.isUrgent}
                   voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+                  onCCAccept={(text) => setRationaleText(text)}
                 />
               }
             />

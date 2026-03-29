@@ -27,7 +27,8 @@ export type SectionId =
   | 'quick-assessment'
   | 'stakeholder-landscape'
   | 'proposer-profile'
-  | 'key-questions';
+  | 'key-questions'
+  | 'cc-express';
 
 /** Configuration for a single section in the brief. */
 export interface SectionConfig {

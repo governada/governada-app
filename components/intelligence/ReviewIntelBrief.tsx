@@ -18,6 +18,7 @@ import { StakeholderLandscape } from './sections/StakeholderLandscape';
 import { SimilarProposalsSection } from './sections/SimilarProposalsSection';
 import { ProposerProfileSection } from './sections/ProposerProfileSection';
 import { KeyQuestionsSection } from './sections/KeyQuestionsSection';
+import { CCExpressPanel } from '@/components/workspace/review/CCExpressPanel';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -50,6 +51,8 @@ interface ReviewIntelBriefProps {
   epochsRemaining?: number | null;
   isUrgent?: boolean;
   voterRole: string;
+  /** Callback when CC member accepts constitutional assessment (populates rationale) */
+  onCCAccept?: (rationaleText: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +72,7 @@ export function ReviewIntelBrief({
   epochsRemaining,
   isUrgent,
   voterRole,
+  onCCAccept,
 }: ReviewIntelBriefProps) {
   const sections = useMemo(() => getReviewSections(voterRole), [voterRole]);
 
@@ -79,7 +83,15 @@ export function ReviewIntelBrief({
   const renderSection = (config: SectionConfig) => {
     switch (config.id) {
       case 'executive-summary':
-        return <ExecutiveSummary summary={aiSummary ?? null} />;
+        return (
+          <ExecutiveSummary
+            summary={aiSummary ?? null}
+            proposalContent={proposalContent}
+            proposalType={proposalType}
+            interBodyVotes={interBodyVotes}
+            withdrawalAmount={withdrawalAmount ?? undefined}
+          />
+        );
       case 'quick-assessment':
         return (
           <QuickAssessment
@@ -111,6 +123,14 @@ export function ReviewIntelBrief({
       case 'key-questions':
         return (
           <KeyQuestionsSection proposalContent={proposalContent} proposalType={proposalType} />
+        );
+      case 'cc-express':
+        return (
+          <CCExpressPanel
+            proposalContent={proposalContent}
+            proposalType={proposalType}
+            onAcceptAll={(text) => onCCAccept?.(text)}
+          />
         );
       default:
         return null;

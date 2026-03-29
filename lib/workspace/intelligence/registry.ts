@@ -118,6 +118,14 @@ const KEY_QUESTIONS: SectionConfig = {
   icon: 'HelpCircle',
 };
 
+const CC_EXPRESS: SectionConfig = {
+  id: 'cc-express',
+  title: 'Constitutional Assessment',
+  priority: 3,
+  defaultExpanded: true,
+  icon: 'Shield',
+};
+
 // ---------------------------------------------------------------------------
 // Author brief registry
 // ---------------------------------------------------------------------------
@@ -158,10 +166,12 @@ export function getAuthorSections(stage: BriefStage): SectionConfig[] {
 /** Get ordered sections for a review brief, optionally adjusted for role. */
 export function getReviewSections(voterRole?: string): SectionConfig[] {
   const sections = [...REVIEW_BRIEF_SECTIONS];
-  // CC members: constitutional expanded by default
+  // CC members: constitutional expanded by default + CC Express section
   if (voterRole === 'cc_member' || voterRole === 'CC') {
     const constIdx = sections.findIndex((s) => s.id === 'constitutional');
     if (constIdx >= 0) sections[constIdx] = { ...sections[constIdx], defaultExpanded: true };
+    // Add CC Express Lane section at the top (priority 3)
+    sections.unshift(CC_EXPRESS);
   }
   // SPO: stakeholder landscape expanded
   if (voterRole === 'SPO' || voterRole === 'spo') {

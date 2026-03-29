@@ -24,7 +24,7 @@ export const generateEmbeddings = inngest.createFunction(
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"embeddings"' },
   },
-  { cron: '0 */6 * * *' },
+  [{ cron: '0 */6 * * *' }, { event: 'app/generate-embeddings' }],
   async ({ step }) => {
     // Step 1: Check feature flag
     const enabled = await step.run('check-flag', async () => {

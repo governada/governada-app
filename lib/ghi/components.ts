@@ -85,9 +85,10 @@ export async function computeDRepParticipation({
   const { data: dreps } = await supabase
     .from('dreps')
     .select('effective_participation, info')
-    .not('info->isActive', 'is', null);
+    .not('info', 'is', null)
+    .gt('info->votingPowerLovelace', '0');
 
-  const active = (dreps ?? []).filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
+  const active = dreps ?? [];
   if (active.length === 0) return { raw: 0 };
 
   // Participation-weighted median: weight each DRep's participation by their
@@ -160,10 +161,9 @@ export async function computeCitizenEngagement({
     const { data: dreps } = await supabase
       .from('dreps')
       .select('info')
-      .not('info->isActive', 'is', null);
-    const activeDreps = (dreps ?? []).filter(
-      (d) => (d.info as Record<string, unknown> | null)?.isActive,
-    );
+      .not('info', 'is', null)
+      .gt('info->votingPowerLovelace', '0');
+    const activeDreps = dreps ?? [];
     const totalDelegatedLovelace = activeDreps.reduce(
       (sum, d) =>
         sum +
@@ -288,7 +288,8 @@ export async function computeDeliberationQuality({
   const { data: topDreps } = await supabase
     .from('dreps')
     .select('id, info')
-    .not('info->isActive', 'is', null)
+    .not('info', 'is', null)
+    .gt('info->votingPowerLovelace', '0')
     .order('info->votingPowerLovelace', { ascending: false })
     .limit(10);
 
@@ -557,11 +558,10 @@ export async function computePowerDistribution({
   const { data: dreps } = await supabase
     .from('dreps')
     .select('id, info, score')
-    .not('info->isActive', 'is', null);
+    .not('info', 'is', null)
+    .gt('info->votingPowerLovelace', '0');
 
-  const activeDreps = (dreps ?? []).filter(
-    (d) => (d.info as Record<string, unknown> | null)?.isActive,
-  );
+  const activeDreps = dreps ?? [];
   const votingPowers = activeDreps
     .map((d) =>
       parseInt(String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'), 10),

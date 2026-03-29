@@ -63,8 +63,8 @@ export function MobileVoteBar({ onVoteSelect, hasVoted, currentVote }: MobileVot
             onVoteSelect(choice);
           }}
           className={cn(
-            'flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium transition-colors',
-            'hover:bg-muted/50 active:scale-95 transition-transform',
+            'flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium',
+            'hover:bg-muted/50 active:scale-95 transition-all duration-150',
             color,
             currentVote === choice && activeColor,
           )}

@@ -47,11 +47,9 @@ export function buildMatchStartSequence(): GlobeCommand {
   return {
     type: 'sequence',
     steps: [
-      // Phase 1: Brief total darkness — the "powering down" before powering up
-      { command: { type: 'dim' }, delayMs: 0 },
-      // Phase 2: DReps illuminate outward as expanding shockwave (delays computed in matchStart)
-      { command: { type: 'matchStart' }, delayMs: 200 },
-      // Phase 3: Cinematic pullback — slow orbit, camera retreats for panoramic view
+      // Phase 1: DReps illuminate immediately — nodeTypeFilter='drep' set at frame 0, edges hidden
+      { command: { type: 'matchStart' }, delayMs: 0 },
+      // Phase 2: Cinematic pullback — slow orbit, camera retreats for panoramic view
       {
         command: {
           type: 'cinematic',
@@ -62,7 +60,7 @@ export function buildMatchStartSequence(): GlobeCommand {
             transitionDuration: 1.5,
           },
         },
-        delayMs: 200,
+        delayMs: 400,
       },
     ],
   };

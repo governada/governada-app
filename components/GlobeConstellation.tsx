@@ -1078,7 +1078,7 @@ export const GlobeConstellation = forwardRef<
                   />
                 );
               })()}
-            {quality !== 'low' && (
+            {quality !== 'low' && sceneState.focus.nodeTypeFilter !== 'drep' && (
               <MatchedEdgeGlow nodes={sceneState.nodes} focus={sceneState.focus} />
             )}
             {quality !== 'low' && sceneState.focus.nodeTypeFilter !== 'drep' && (

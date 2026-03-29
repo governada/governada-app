@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useRef, type ReactNode } from 'react';
-import { CheckCircle2, XCircle, MinusCircle, Loader2, Sparkles } from 'lucide-react';
+import { CheckCircle2, XCircle, MinusCircle, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { posthog } from '@/lib/posthog';
 import { RationaleCitations } from './RationaleCitations';
+import type { VotePhase } from '@/hooks/useVote';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,6 +39,8 @@ interface DecisionPanelProps {
   intelContent?: ReactNode;
   /** Optional citations generated alongside the rationale co-draft */
   rationaleCitations?: RationaleCitationData | null;
+  /** Vote transaction phase — shows inline submission progress */
+  votePhase?: VotePhase;
 }
 
 // ---------------------------------------------------------------------------
@@ -103,6 +106,7 @@ export function DecisionPanel({
   voterRole,
   intelContent,
   rationaleCitations,
+  votePhase,
 }: DecisionPanelProps) {
   const charCount = rationale.length;
   const rationaleRef = useRef<HTMLTextAreaElement>(null);
@@ -233,27 +237,65 @@ export function DecisionPanel({
             </span>
           </div>
 
-          {/* Submit */}
-          <button
-            onClick={onSubmit}
-            disabled={isSubmitting || !selectedVote}
-            className={cn(
-              'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer mt-1',
-              selectedVote
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-muted text-muted-foreground cursor-not-allowed',
-              isSubmitting && 'opacity-60 cursor-not-allowed',
-            )}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              'Submit Vote'
-            )}
-          </button>
+          {/* Submit + Phase Progress */}
+          {votePhase?.status === 'success' ? (
+            <div className="space-y-1.5 mt-1">
+              <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Vote submitted!
+                {votePhase.confirmed ? ' Confirmed.' : ' Awaiting confirmation...'}
+              </div>
+              <a
+                href={`https://cardanoscan.io/transaction/${votePhase.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+              >
+                View on CardanoScan
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          ) : votePhase?.status === 'error' ? (
+            <div className="space-y-1.5 mt-1">
+              <p className="text-xs text-red-400">{votePhase.message}</p>
+              {votePhase.hint && (
+                <p className="text-[10px] text-muted-foreground">{votePhase.hint}</p>
+              )}
+              <button
+                onClick={onSubmit}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onSubmit}
+              disabled={isSubmitting || !selectedVote}
+              className={cn(
+                'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer mt-1',
+                selectedVote
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed',
+                isSubmitting && 'opacity-60 cursor-not-allowed',
+              )}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {votePhase?.status === 'signing'
+                    ? 'Check your wallet...'
+                    : votePhase?.status === 'building'
+                      ? 'Building transaction...'
+                      : votePhase?.status === 'submitting'
+                        ? 'Submitting to chain...'
+                        : 'Processing...'}
+                </>
+              ) : (
+                'Submit Vote'
+              )}
+            </button>
+          )}
         </div>
       )}
 

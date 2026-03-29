@@ -113,7 +113,7 @@ export function BriefShell({ sections, renderSection, stage, className }: BriefS
   return (
     <div className={cn('space-y-2 overflow-y-auto', className)}>
       {sections.map((config) => (
-        <BriefSection key={config.id} config={config} stage={stage}>
+        <BriefSection key={`${config.id}-${config.defaultExpanded}`} config={config} stage={stage}>
           {renderSection(config)}
         </BriefSection>
       ))}

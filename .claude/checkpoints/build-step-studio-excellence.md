@@ -1,106 +1,175 @@
 # Build Step: Studio Excellence — World-Class Author & Review (Layer 2)
 
-**Status:** PHASE_4_COMPLETE
+**Status:** PHASE_2_COMPLETE
 **Started:** 2026-03-29
-**Current Phase:** 4 of 6 (Agent Evolution) — COMPLETE
-**PR chain:** #700 (Phase 1) → #704 (Phase 2) → #708 (Phase 3) → #715 (Phase 4A) → #717 (Phase 4B) → #721 (Phase 4C)
+**Current Phase:** 3 of 6 (Tracked Changes + Reviewer Suggestions)
+**PR chain:** #700 (Phase 1 — Editor Foundation), #704 (Phase 2 — Intelligence Architecture)
 **Predecessor:** `.claude/checkpoints/workspace-studio-upgrade.md` (Phases 1-5 DEPLOYED)
 
 ---
 
-## What's Complete
+## Context: What Already Shipped (Don't Rebuild)
 
-| Phase    | Description                                                        | PRs  | Status      |
-| -------- | ------------------------------------------------------------------ | ---- | ----------- |
-| Phase 1  | Editor Foundation — Wire Tiptap to All Proposals                   | #700 | DEPLOYED    |
-| Phase 2  | Intelligence Architecture — Persistent Brief + Decision Panel      | #704 | DEPLOYED    |
-| Phase 3  | Living Document Substrate — Tracked Changes + Reviewer Suggestions | #708 | DEPLOYED    |
-| Phase 4A | Proposal Plan Generator + Rationale Co-draft                       | #715 | DEPLOYED    |
-| Phase 4B | Personalized Briefing + Feedback Synthesis + CC Express Lane       | #717 | DEPLOYED    |
-| Phase 4C | Proactive Insight Stack                                            | #721 | DEPLOYED    |
-| Phase 5  | Pre-Computation Pipeline + Batch Processing                        | —    | NOT STARTED |
-| Phase 6  | Polish, Mobile, and Role Adaptation                                | —    | NOT STARTED |
+The `workspace-studio-upgrade.md` build shipped Phases 1-5 of the original plan. Before starting, you MUST read that checkpoint to understand what's already built. Here's the summary:
 
----
+### Already deployed to production:
 
-## Phase 4 Summary — What Was Built
+- **QualityPulse + ambient constitutional check** (PR #685) — `useAmbientConstitutionalCheck` hook, margin indicators
+- **Review DecisionTable** replacing kanban (PR #688) — 8 cell components, sort/filter/search, keyboard nav
+- **DecisionPanel** replacing Vote tab (PR #690) — always-visible right column, IntelligenceStrip, SenecaSummary
+- **Reviewer suggestion annotations** (PR #690) — Supabase migration `069_annotation_suggestions.sql`, `suggested_text` JSONB + `status` column, `useSuggestionAnnotations` hook, `SelectionToolbar` "Suggest Change" button
+- **Author DecisionTable** (PR #690) — `AuthorDecisionTable`, `useAuthorTableItems`, phase/quality/feedback cells
+- **ProposalEditor extensions** (PR #685) — `AIDiffMark` extended for reviewer-sourced diffs, `SelectionToolbar` extended with suggest-change flow
+- **Globe → Workspace bridge** (PR #695) — workspace pills on Seneca, WorkspaceCards overlay
+- **Phase 6 (Design Language & Mobile) NOT YET DONE** — see workspace-studio-upgrade.md for scope
 
-### 6 New AI Skills (all flag-gated)
+### What this means for our plan:
 
-| Skill                     | Category  | Model                                | Flag                      | File                                       |
-| ------------------------- | --------- | ------------------------------------ | ------------------------- | ------------------------------------------ |
-| `proposal-plan-generator` | authoring | DRAFT (8192 tokens)                  | `proposal_plan`           | `lib/ai/skills/proposal-plan-generator.ts` |
-| `rationale-draft`         | review    | FAST (2048 tokens) + validation pass | `rationale_codraft`       | `lib/ai/skills/rationale-draft.ts`         |
-| `personalized-briefing`   | review    | FAST (1536 tokens)                   | `personalized_briefing`   | `lib/ai/skills/personalized-briefing.ts`   |
-| `feedback-synthesis`      | authoring | FAST (2048 tokens)                   | `feedback_synthesis`      | `lib/ai/skills/feedback-synthesis.ts`      |
-| `cc-article-assessment`   | review    | FAST (3072 tokens) + validation pass | `cc_express_lane`         | `lib/ai/skills/cc-article-assessment.ts`   |
-| `proactive-analysis`      | authoring | FAST (1024 tokens)                   | `proactive_interventions` | `lib/ai/skills/proactive-analysis.ts`      |
+Several items from our 6-phase plan are **already partially or fully built**. The agent must read the current code before implementing to avoid duplication. Specifically:
 
-### New Components
-
-| Component               | Purpose                                                                 | File                                                       |
-| ----------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `ProposalPlan`          | Multi-section plan review (constitutional, risk, similar, improvements) | `components/workspace/author/ProposalPlan.tsx`             |
-| `RationaleCitations`    | Clickable citation chips for rationale editor                           | `components/workspace/review/RationaleCitations.tsx`       |
-| `PersonalizedSummary`   | AI-personalized executive summary with alignment signals                | `components/intelligence/sections/PersonalizedSummary.tsx` |
-| `SynthesizedFeedback`   | Severity-ranked feedback clusters with "Apply Edit"                     | `components/intelligence/sections/SynthesizedFeedback.tsx` |
-| `CCExpressPanel`        | Article-by-article constitutional assessment for CC members             | `components/workspace/review/CCExpressPanel.tsx`           |
-| `CCArticleRow`          | Individual article verdict row with override controls                   | `components/workspace/review/CCArticleRow.tsx`             |
-| `ProactiveInsightStack` | Multi-insight stack replacing single ProactiveInsight                   | `components/workspace/author/ProactiveInsightStack.tsx`    |
-
-### New Hooks
-
-| Hook                   | Purpose                                        | File                            |
-| ---------------------- | ---------------------------------------------- | ------------------------------- |
-| `useProactiveAnalysis` | 30s debounced proactive skill calls with dedup | `hooks/useProactiveAnalysis.ts` |
-
-### Key Architecture Decisions (Phase 4)
-
-1. **Skills over agent extensions** — All 6 features use the declarative skill pattern (`POST /api/ai/skill`) rather than extending the agent SSE protocol. Simpler, testable, no new event types needed.
-2. **No database migrations** — All features are stateless or use existing tables. CC assessments are generated on-demand, not cached.
-3. **No new Inngest functions** — All features are on-demand skill calls. Feedback synthesis consumes existing `consolidate-feedback` output.
-4. **Graceful degradation everywhere** — Every skill falls back cleanly: personalized briefing → static summary, rationale co-draft → legacy endpoint, proactive insights → original single insight.
-5. **Validation passes on citation-heavy skills** — `rationale-draft` and `cc-article-assessment` use second AI calls to verify constitutional article references are real.
-6. **CC Express Lane in review registry** — Added `cc-express` SectionId at priority 3 (top of brief) for CC members. Section registry pattern makes this a one-line change.
-7. **ProactiveInsightStack is flag-toggled** — Editor page renders either `ProactiveInsightStack` (flag on) or original `ProactiveInsight` (flag off), not both.
-
-### Phase 4 Deferred Items (→ Phase 6 Polish)
-
-- Interactive margin decorations (clickable callouts with "Fix" buttons in gutter)
-- Agent-initiated proactive SSE events (server push without user message)
-- Competing proposal detection ("A competing proposal was just submitted")
-- Batch tracked-change application (apply all suggested edits at once)
-- Rationale quality scoring + community comparison
-- "What if everyone voted like you?" counterfactual in personalized briefing
-- Inter-CC consensus view in express lane
+| Our Plan Item                                   | Status                                                                          | What Remains                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Phase 1: Wire Tiptap to all proposals           | **DONE** — PR #700 merged 2026-03-29                                            | None — type fields, scaffold, lifecycle, team roles, margins all wired                                                      |
+| Phase 2: Persistent Intelligence Brief          | **PARTIALLY DONE** — IntelligenceStrip + SenecaSummary + DecisionPanel deployed | Need: scrollable brief replacing tabbed sidebar, stage-driven transformation, Feedback Triage Board, role-adaptive ordering |
+| Phase 3: Tracked changes + reviewer suggestions | **PARTIALLY DONE** — suggestion annotations, AIDiffMark extensions deployed     | Need: lifecycle-driven editor modes, author suggestion resolution UI, version diff on return, ambient margin updates        |
+| Phase 4: Agent evolution                        | **NOT DONE**                                                                    | Full implementation needed                                                                                                  |
+| Phase 5: Pre-computation pipeline               | **NOT DONE**                                                                    | Full implementation needed                                                                                                  |
+| Phase 6: Mobile + polish                        | **NOT DONE** (also not done in predecessor build)                               | Full implementation needed                                                                                                  |
 
 ---
 
-## What Remains: Phase 5 + Phase 6
+## Plan Location
 
-### Phase 5: Pre-Computation Pipeline + Batch Processing
+Full plan with all 6 phases, design philosophy, end-to-end lifecycle, and three-layer architecture:
+`C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md`
 
-From the plan (lines 288-325 of `C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md`):
+---
 
-- **Pre-computation pipeline** (Inngest functions): On new proposal → run constitutional check, compute embeddings, generate summaries. On draft save → update quality pulse. On vote cast → update inter-body tallies. Serve from cache.
-- **Batch processing** for DReps reviewing 10-30 proposals: `]` keyboard shortcut → next proposal, pre-computed brief loads instantly, progress bar, session continuity.
-- **Passage prediction**: Simple model using historical patterns → passage probability.
-- **Reviewer attention heatmaps**: Aggregate `section_read` durations → margin heat indicators.
+## Phase 1: Editor Foundation — Wire Tiptap to All Proposals
 
-**Key files to read:**
+**This remains the single highest-ROI change and the foundation for everything else.**
 
-- `inngest/functions/` — existing functions (add new pre-computation functions here)
-- `app/api/inngest/route.ts` — register new functions
-- `hooks/useReviewQueue.ts` — cache management for pre-computed data
-- `components/workspace/review/ReviewWorkspace.tsx` — batch processing keyboard shortcuts
+### Goal
 
-### Phase 6: Polish, Mobile, and Role Adaptation
+Replace `DraftForm.tsx` textareas with `ProposalEditor.tsx` (Tiptap) for all standard proposal types (InfoAction, TreasuryWithdrawals, ParameterChange, HardForkInitiation, NoConfidence, NewCommittee). NewConstitution already uses the amendment editor — no change needed there.
 
-- Mobile author/review studios (single-column, bottom sheets)
-- Role adaptation polish (per-segment brief fine-tuning)
-- Compass design language enforcement (Fraunces/Space Grotesk, color tokens)
-- Motion/transitions (lifecycle stage animations, tracked change micro-animations)
-- Keyboard mastery (complete shortcut coverage)
+### Why First
+
+The Tiptap editor infrastructure is fully built (ProposalEditor.tsx, all extensions). But standard proposals bypass all of it, using plain `<Textarea>` elements. Every Phase 2-6 feature (tracked changes between author/reviewer, agent edits as inline diffs, ghost text completions, margin decorations, slash commands, Cmd+K) depends on Tiptap being the editing substrate.
+
+### Architecture Decision
+
+`DraftEditor.tsx` currently:
+
+1. Loads draft via `useDraft(draftId)` hook
+2. For empty drafts with AI: shows `ScaffoldForm`
+3. For NewConstitution + flag: redirects to amendment editor
+4. **For everything else: renders `DraftForm` (textareas)** ← REPLACE THIS
+
+Replace step 4 with rendering `ProposalEditor` wrapped in the `StudioProvider` shell:
+
+- `content` prop from draft data `{ title, abstract, motivation, rationale }`
+- `onContentChange` → `useUpdateDraft` mutation (debounced auto-save, same pattern as DraftForm)
+- `mode` driven by `draft.status`: 'edit' for draft/response_revision, 'review' for community_review/final_comment
+- Type-specific fields (TreasuryFields, ParameterChangeFields) render as form section beside/below editor
+- Slash commands → existing AI skills
+- Cmd+K → agent via `useAgent` hook
+- Agent edits → `injectProposedEdit(editor, edit)` (same pattern as ReviewWorkspace)
+
+### Key Files To Read FIRST
+
+1. `.claude/checkpoints/workspace-studio-upgrade.md` — what's already been built (CRITICAL)
+2. `components/workspace/author/DraftEditor.tsx` — THE file you're modifying
+3. `components/workspace/editor/ProposalEditor.tsx` — the Tiptap editor you're wiring in
+4. `components/workspace/author/DraftForm.tsx` — reference for auto-save, type-specific fields, provenance
+5. `components/workspace/review/ReviewWorkspace.tsx` — BLUEPRINT for how ProposalEditor + useAgent are already wired together
+6. `hooks/useDrafts.ts` — useUpdateDraft mutation
+7. `hooks/useAgent.ts` — agent SSE hook
+8. `hooks/useAmbientConstitutionalCheck.ts` — already built, wire to margin indicators
+9. `components/workspace/author/QualityPulse.tsx` — already built, keep working
+
+### Key Type Signatures
+
+```typescript
+// ProposalEditor props (components/workspace/editor/ProposalEditor.tsx)
+interface ProposalEditorProps {
+  content: { title?: string; abstract?: string; motivation?: string; rationale?: string };
+  mode: EditorMode; // 'edit' | 'review' | 'diff'
+  readOnly?: boolean;
+  onContentChange?: (content: {
+    title: string;
+    abstract: string;
+    motivation: string;
+    rationale: string;
+  }) => void;
+  onSlashCommand?: (command: SlashCommandType, section: ProposalField) => void;
+  onCommand?: (instruction: string, selectedText: string, section: ProposalField) => void;
+  onCommentCreate?: (comment: InlineCommentData, from: number, to: number) => void;
+  onCommentDelete?: (commentId: string) => void;
+  onDiffAccept?: (editId: string) => void;
+  onDiffReject?: (editId: string) => void;
+  onCompletionAccept?: (text: string) => void;
+  onEditorReady?: (editor: Editor) => void;
+  currentUserId?: string;
+  marginIndicators?: MarginIndicator[];
+  excludeFields?: ProposalField[];
+}
+
+// ProposedEdit (lib/workspace/editor/types.ts)
+interface ProposedEdit {
+  field: ProposalField;
+  anchorStart: number;
+  anchorEnd: number;
+  originalText: string;
+  proposedText: string;
+  explanation: string;
+}
+```
+
+### Patterns To Follow
+
+**ReviewWorkspace.tsx is the blueprint.** It already wires ProposalEditor + useAgent:
+
+- Captures editor instance via `onEditorReady`
+- Watches `useAgent.lastEdit` → `injectProposedEdit(editor, edit)`
+- Watches `useAgent.lastComment` → `injectInlineComment`
+- Passes `onSlashCommand`, `onCommand` callbacks
+
+### What NOT To Change
+
+- ScaffoldForm flow — keep as-is, it feeds into the editor
+- Amendment editor routing — keep as-is
+- Submission ceremony, Monitor, Debrief pages — untouched in Phase 1
+- Review side — untouched in Phase 1
+- QualityPulse, ProactiveInsight — already built, keep working
+- AuthorDecisionTable — already built, keep working
+
+### Phase 1 Verification (COMPLETE — PR #700)
+
+- [x] InfoAction draft → Tiptap editor loads with 4 section blocks
+- [x] Auto-save works (500ms debounce)
+- [x] Slash commands + Cmd+K → agent integration
+- [x] Treasury draft → type-specific fields render below editor
+- [x] ParameterChange draft → parameter select + value fields render
+- [x] community_review/final_comment/submitted → read-only for all
+- [x] response_revision → editable for owner/lead/editor
+- [x] Team editor/lead roles can edit (via useTeam integration)
+- [x] ScaffoldForm shows for empty drafts with author_ai_draft flag
+- [x] Amendment draft → still routes to ConstitutionEditor (no regression)
+- [x] Constitutional check → colored margin indicators
+- [x] `npm run preflight` passes (842/842 tests)
+
+### Phase 1 Key Decisions
+
+- **ProposalEditor was already wired** via `app/workspace/editor/[draftId]/page.tsx`. The old `DraftEditor.tsx` + `DraftForm.tsx` were dead code — the author route already routed to the Tiptap workspace page.
+- **Phase 1 scope was closing 5 gaps** vs building from scratch: type-specific fields, scaffold, lifecycle mode, team roles, margin indicators.
+- **TypeSpecificFields extracted** to `components/workspace/editor/TypeSpecificFields.tsx` as a standalone component (not inline in the page).
+- **Margin indicators map constitutional flags to sections** by keyword matching in flag concern text (abstract→1, motivation→2, rationale→3, default→2).
+
+### Phase 1 Files Modified
+
+- `components/workspace/editor/TypeSpecificFields.tsx` (NEW — 156 lines)
+- `app/workspace/editor/[draftId]/page.tsx` (modified — added ~100 lines)
 
 ---
 
@@ -126,51 +195,31 @@ If your context window is filling up:
 ## Next Agent Prompt
 
 ```
-You are building Phase 5 of the Studio Excellence build for Governada — Pre-Computation Pipeline + Batch Processing.
+You are building Phase 2 of the Studio Excellence build for Governada — Intelligence Architecture (persistent brief + decision panel improvements).
 
-## FIRST: Read the checkpoint (CRITICAL — it's on main, not in your worktree)
+FIRST: Read both checkpoint files (in your worktree, committed to main):
+  cat .claude/checkpoints/build-step-studio-excellence.md
+  cat .claude/checkpoints/workspace-studio-upgrade.md
+  (If not found: git fetch origin main && git checkout origin/main -- .claude/checkpoints/)
 
-Your worktree was created from a branch. The checkpoint is on main. To access it:
-
-  HASH=$(git rev-parse origin/main) && git cat-file -p "$HASH:.claude/checkpoints/build-step-studio-excellence.md"
-
-This checkpoint contains:
-- Full inventory of what's already built (Phases 1-4 complete)
-- 6 AI skills deployed, 7 new components, 1 new hook
-- Architecture decisions made in prior phases
-- What Phase 5 needs to build
-
-## THEN: Read the full 6-phase plan
-
+THEN: Read the full 6-phase plan:
   cat "C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md"
 
-Phase 5 starts at line ~288 in the plan ("Phase 5: Pre-Computation Pipeline + Batch Processing").
+Phase 1 (PR #700) is COMPLETE. ProposalEditor is fully wired for all standard proposal types with type-specific fields, ScaffoldForm, lifecycle-aware mode/readOnly, team role permissions, and margin indicators.
 
-## What's Already Deployed (DON'T REBUILD)
+Phase 2 goal: Replace the tabbed right panel with a persistent scrollable Intelligence Brief. Several components are ALREADY PARTIALLY BUILT from the workspace-studio-upgrade build:
+- IntelligenceStrip (deployed PR #690) — compact intelligence bar above editor
+- SenecaSummary (deployed PR #690) — AI summary card
+- DecisionPanel (deployed PR #690) — always-visible right column replacing Vote tab
 
-Phase 1 (PR #700): Tiptap wired to all proposal types
-Phase 2 (PR #704): Stage-driven Intelligence Brief in both author + review studios
-Phase 3 (PR #708): Living document substrate — suggestion resolution, version diff
-Phase 4A (PR #715): Proposal Plan generator + rationale co-draft skills
-Phase 4B (PR #717): Personalized briefing + feedback synthesis + CC express lane
-Phase 4C (PR #721): Proactive insight stack with AI analysis
+What REMAINS for Phase 2 (per the plan):
+- Scrollable brief replacing tabbed sidebar with stage-driven transformation
+- Feedback Triage Board (response_revision stage → review items as cards)
+- Role-adaptive ordering (CC sees constitutional expanded, SPO sees network impact)
+- Submission Readiness Checklist (final_comment stage → explicit gates)
+- Monitoring Dashboard transformation (submitted stage → vote tallies, countdown)
 
-## What Phase 5 NEEDS TO BUILD
+CRITICAL: Draft a full plan BEFORE building. Phase 2 has significant overlap with already-shipped components. You MUST read the current code (especially ReviewWorkspace.tsx, StudioPanel.tsx, DecisionPanel.tsx, IntelligenceStrip.tsx) to understand what exists and what actually needs to change. Use EnterPlanMode to design the approach, get user approval, then build.
 
-1. Pre-computation Inngest functions (on new proposal, on draft save, on vote cast)
-2. Cache layer in Supabase for pre-computed intelligence
-3. Batch processing support (] keyboard shortcut, progress bar, session continuity)
-4. Passage prediction model
-5. Reviewer attention heatmaps
-
-## Key Files
-
-- `inngest/functions/` — add new pre-computation functions
-- `app/api/inngest/route.ts` — register new functions (SAME COMMIT)
-- `hooks/useReviewQueue.ts` — enhance for pre-computed cache serving
-- `components/workspace/review/ReviewWorkspace.tsx` — batch processing UI
-- `lib/workspace/intelligence/` — section registry and types
-
-Continue from where Phase 4 left off. The studio now has the full AI skill layer —
-Phase 5 makes it fast via pre-computation and batch-efficient via keyboard-driven review.
+If you run low on context, follow the checkpoint protocol documented in the checkpoint file.
 ```

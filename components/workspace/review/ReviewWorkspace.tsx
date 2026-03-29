@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
 import { extractAmendmentChanges } from '@/lib/constitution/utils';
 import type { ProposalDraft, ProposalType, ReviewQueueItem } from '@/lib/workspace/types';
+import { useVote, type VotePhase } from '@/hooks/useVote';
 import type { VoteChoice } from '@/lib/voting';
 import type { ProposedEdit, ProposedComment } from '@/lib/workspace/editor/types';
 import type { Editor } from '@tiptap/core';
@@ -351,6 +352,82 @@ function StudioReviewInner({
   } | null>(null);
   const rationaleCoderaftEnabled = useFeatureFlag('rationale_codraft');
 
+  // Vote submission — useVote handles the full wallet TX flow
+  const {
+    phase: votePhase,
+    startVote,
+    confirmVote,
+    reset: resetVote,
+    isProcessing: isVoteProcessing,
+  } = useVote();
+
+  // Reset vote state when switching proposals
+  useEffect(() => {
+    resetVote();
+    setSelectedVote(null);
+    setRationaleText('');
+  }, [selectedItem.txHash, selectedItem.proposalIndex, resetVote]);
+
+  // When vote succeeds, notify parent (triggers toast + auto-advance)
+  useEffect(() => {
+    if (votePhase.status === 'success') {
+      _handleVoteSuccess(votePhase.vote);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once on success
+  }, [votePhase.status]);
+
+  // Submit handler: publish rationale, then start the vote TX flow
+  const handleVoteSubmit = useCallback(async () => {
+    if (!selectedVote || !voterId) return;
+
+    let anchorUrl: string | undefined;
+    let anchorHash: string | undefined;
+
+    // Publish CIP-100 rationale if provided
+    if (rationaleText.trim()) {
+      try {
+        const res = await fetch('/api/rationale', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            drepId: voterId,
+            proposalTxHash: selectedItem.txHash,
+            proposalIndex: selectedItem.proposalIndex,
+            rationaleText: rationaleText.trim(),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          anchorUrl = data.anchorUrl;
+          anchorHash = data.anchorHash;
+          posthog.capture('review_rationale_submitted', {
+            proposal_tx_hash: selectedItem.txHash,
+            proposal_index: selectedItem.proposalIndex,
+            rationale_length: rationaleText.trim().length,
+          });
+        }
+      } catch {
+        // Continue without anchor — vote is still valuable
+      }
+    }
+
+    // Start the wallet vote flow: preflight → build → sign → submit
+    const voterRole = segment === 'spo' ? 'spo' : 'drep';
+    await startVote(
+      {
+        txHash: selectedItem.txHash,
+        txIndex: selectedItem.proposalIndex,
+        title: selectedItem.title,
+      },
+      voterRole as 'drep' | 'spo',
+      voterId,
+    );
+
+    // After preflight succeeds, confirm the vote (startVote moves to 'confirming')
+    // We auto-confirm since DecisionPanel already collected the user's intent
+    await confirmVote(selectedVote as VoteChoice, anchorUrl, anchorHash);
+  }, [selectedVote, voterId, rationaleText, selectedItem, segment, startVote, confirmVote]);
+
   // Search state
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -618,8 +695,9 @@ function StudioReviewInner({
             <DecisionPanel
               selectedVote={selectedVote}
               onVoteChange={handleVoteSelect}
-              onSubmit={() => {}}
-              isSubmitting={false}
+              onSubmit={handleVoteSubmit}
+              isSubmitting={isVoteProcessing}
+              votePhase={votePhase}
               hasVoted={currentVoted}
               currentVoteChoice={currentVoteChoice}
               rationale={rationaleText}
@@ -653,6 +731,9 @@ function StudioReviewInner({
         statusBar={
           <StudioActionBar
             mode="review"
+            currentVote={isFullWidth ? selectedVote : undefined}
+            onVoteSelect={isFullWidth && !currentVoted ? handleVoteSelect : undefined}
+            voteDisabled={currentVoted}
             statusInfo={
               <span className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
                 <span>
@@ -698,10 +779,9 @@ function StudioReviewInner({
           <DecisionPanel
             selectedVote={selectedVote}
             onVoteChange={handleVoteSelect}
-            onSubmit={() => {
-              setMobileVoteOpen(false);
-            }}
-            isSubmitting={false}
+            onSubmit={handleVoteSubmit}
+            isSubmitting={isVoteProcessing}
+            votePhase={votePhase}
             hasVoted={currentVoted}
             currentVoteChoice={currentVoteChoice}
             rationale={rationaleText}

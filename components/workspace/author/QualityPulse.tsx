@@ -80,11 +80,11 @@ function deriveSectionHealth(
 function SectionIndicator({ label, health }: { label: string; health: SectionHealth }) {
   const icon =
     health === 'strong' ? (
-      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+      <CheckCircle2 className="h-3 w-3 text-[var(--compass-teal)]" />
     ) : health === 'adequate' ? (
       <CheckCircle2 className="h-3 w-3 text-muted-foreground/50" />
     ) : health === 'needs_work' ? (
-      <AlertTriangle className="h-3 w-3 text-amber-400" />
+      <AlertTriangle className="h-3 w-3 text-[var(--wayfinder-amber)]" />
     ) : health === 'loading' ? (
       <Circle className="h-3 w-3 text-muted-foreground/30 animate-pulse" />
     ) : (
@@ -98,9 +98,9 @@ function SectionIndicator({ label, health }: { label: string; health: SectionHea
         className={cn(
           'text-[10px]',
           health === 'strong'
-            ? 'text-emerald-400'
+            ? 'text-[var(--compass-teal)]'
             : health === 'needs_work'
-              ? 'text-amber-400'
+              ? 'text-[var(--wayfinder-amber)]'
               : health === 'empty'
                 ? 'text-muted-foreground/30'
                 : 'text-muted-foreground/60',
@@ -159,9 +159,9 @@ function ConstitutionalBadge({
       className={cn(
         'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer',
         score === 'pass'
-          ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+          ? 'bg-[color-mix(in_oklch,var(--compass-teal),transparent_90%)] text-[var(--compass-teal)] hover:bg-[color-mix(in_oklch,var(--compass-teal),transparent_80%)]'
           : score === 'warning'
-            ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+            ? 'bg-[color-mix(in_oklch,var(--wayfinder-amber),transparent_90%)] text-[var(--wayfinder-amber)] hover:bg-[color-mix(in_oklch,var(--wayfinder-amber),transparent_80%)]'
             : 'bg-destructive/10 text-destructive hover:bg-destructive/20',
       )}
       title={
@@ -240,7 +240,7 @@ export function QualityPulse({
   const hasFeedback = feedbackThemeCount > 0 || reviewerCount > 0;
 
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border bg-background/80 shrink-0 overflow-x-auto">
+    <div className="flex items-center gap-[var(--space-sm)] px-[var(--space-sm)] py-[var(--space-xs)] border-b border-border bg-background/80 shrink-0 overflow-x-auto">
       {/* Section indicators */}
       <div className="flex items-center gap-2">
         {sections.map((s) => (

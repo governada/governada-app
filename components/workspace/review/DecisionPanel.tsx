@@ -56,22 +56,25 @@ const VOTE_OPTIONS: Array<{
     value: 'Yes',
     label: 'Yes',
     Icon: CheckCircle2,
-    activeColor: 'text-teal-400 border-teal-500/50 bg-teal-500/10',
-    hoverColor: 'hover:border-teal-500/30',
+    activeColor:
+      'text-[var(--vote-affirm)] border-[var(--vote-affirm)]/50 bg-[var(--vote-affirm)]/10',
+    hoverColor: 'hover:border-[var(--vote-affirm)]/30',
   },
   {
     value: 'No',
     label: 'No',
     Icon: XCircle,
-    activeColor: 'text-amber-500 border-amber-600/50 bg-amber-600/10',
-    hoverColor: 'hover:border-amber-600/30',
+    activeColor:
+      'text-[var(--vote-oppose)] border-[var(--vote-oppose)]/50 bg-[var(--vote-oppose)]/10',
+    hoverColor: 'hover:border-[var(--vote-oppose)]/30',
   },
   {
     value: 'Abstain',
     label: 'Abstain',
     Icon: MinusCircle,
-    activeColor: 'text-zinc-400 border-zinc-500/50 bg-zinc-500/10',
-    hoverColor: 'hover:border-zinc-500/30',
+    activeColor:
+      'text-[var(--vote-reserve)] border-[var(--vote-reserve)]/50 bg-[var(--vote-reserve)]/10',
+    hoverColor: 'hover:border-[var(--vote-reserve)]/30',
   },
 ];
 
@@ -147,7 +150,7 @@ export function DecisionPanel({
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
-      <div className="shrink-0 px-3 pt-3 pb-2 border-b border-border/30">
+      <div className="shrink-0 px-[var(--space-md)] pt-[var(--space-md)] pb-[var(--space-sm)] border-b border-border/30">
         <h3 className="text-xs font-semibold text-foreground">Your Decision</h3>
         <p className="text-[10px] text-muted-foreground truncate mt-0.5">{proposalTitle}</p>
         <p className="text-[10px] text-muted-foreground/60">
@@ -157,10 +160,12 @@ export function DecisionPanel({
 
       {/* Already voted banner */}
       {hasVoted && currentVoteChoice && (
-        <div className="shrink-0 mx-3 mt-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+        <div className="shrink-0 mx-3 mt-2 rounded-md border border-[var(--compass-teal)]/30 bg-[var(--compass-teal)]/10 px-3 py-2">
           <div className="flex items-center gap-2 text-xs">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="font-medium text-emerald-400">Voted: {currentVoteChoice}</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-[var(--compass-teal)]" />
+            <span className="font-medium text-[var(--compass-teal)]">
+              Voted: {currentVoteChoice}
+            </span>
           </div>
         </div>
       )}
@@ -177,7 +182,7 @@ export function DecisionPanel({
                 key={value}
                 onClick={() => handleVoteSelect(value)}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded border transition-colors cursor-pointer',
+                  'flex-1 flex items-center justify-center gap-1.5 px-2 py-2 min-h-[var(--min-tap-target)] text-xs rounded border transition-colors cursor-pointer',
                   selectedVote === value
                     ? activeColor
                     : `text-muted-foreground border-border ${hoverColor}`,
@@ -228,7 +233,7 @@ export function DecisionPanel({
             <span
               className={cn(
                 'tabular-nums',
-                charCount > MAX_RATIONALE ? 'text-red-400' : 'text-muted-foreground/50',
+                charCount > MAX_RATIONALE ? 'text-destructive' : 'text-muted-foreground/50',
               )}
             >
               {charCount.toLocaleString()}/{MAX_RATIONALE.toLocaleString()}

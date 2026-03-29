@@ -27,6 +27,7 @@ import {
 import { IntelligenceStrip } from '@/components/workspace/review/IntelligenceStrip';
 import { SenecaSummary } from '@/components/workspace/review/SenecaSummary';
 import { DecisionPanel } from '@/components/workspace/review/DecisionPanel';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { IntelPanel } from '@/components/studio/IntelPanel';
 import { NotesPanel } from '@/components/studio/NotesPanel';
@@ -338,6 +339,7 @@ function StudioReviewInner({
   const [selectedVote, setSelectedVote] = useState<'Yes' | 'No' | 'Abstain' | null>(null);
   const [rationaleText, setRationaleText] = useState('');
   const [isDraftingRationale, setIsDraftingRationale] = useState(false);
+  const [mobileVoteOpen, setMobileVoteOpen] = useState(false);
 
   // Search state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -585,14 +587,14 @@ function StudioReviewInner({
                   {progress.reviewed} of {progress.total} reviewed
                 </span>
                 {currentVoted && (
-                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-[var(--compass-teal)]">
                     <CheckCircle2 className="h-3 w-3" />
                     <span className="hidden sm:inline">Voted: {currentVoteChoice}</span>
                   </span>
                 )}
                 {selectedItem.isUrgent && !currentVoted && (
-                  <span className="inline-flex items-center gap-1 text-amber-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="inline-flex items-center gap-1 text-[var(--wayfinder-amber)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--wayfinder-amber)] animate-pulse" />
                     <span className="hidden sm:inline">Urgent</span>
                   </span>
                 )}
@@ -602,9 +604,48 @@ function StudioReviewInner({
         }
       />
 
+      {/* Mobile: DecisionPanel as bottom sheet (context panel is hidden lg:block) */}
+      {!currentVoted && (
+        <button
+          type="button"
+          onClick={() => {
+            setMobileVoteOpen(true);
+            posthog.capture('workspace_mobile_vote_opened');
+          }}
+          className="fixed bottom-20 right-4 z-40 lg:hidden flex items-center justify-center h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+          aria-label="Open vote panel"
+        >
+          <Vote className="h-5 w-5" />
+        </button>
+      )}
+      <Sheet open={mobileVoteOpen} onOpenChange={setMobileVoteOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto lg:hidden">
+          <SheetHeader>
+            <SheetTitle className="text-sm">Your Decision</SheetTitle>
+          </SheetHeader>
+          <DecisionPanel
+            selectedVote={selectedVote}
+            onVoteChange={handleVoteSelect}
+            onSubmit={() => {
+              setMobileVoteOpen(false);
+            }}
+            isSubmitting={false}
+            hasVoted={currentVoted}
+            currentVoteChoice={currentVoteChoice}
+            rationale={rationaleText}
+            onRationaleChange={setRationaleText}
+            onAIDraft={handleAIDraft}
+            isDraftingRationale={isDraftingRationale}
+            proposalTitle={selectedItem.title || 'Untitled'}
+            voterId={voterId ?? ''}
+            voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+          />
+        </SheetContent>
+      </Sheet>
+
       {/* Vote success toast */}
       {voteToast?.visible && (
-        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/90 text-white text-sm font-medium shadow-lg animate-in slide-in-from-bottom-2 fade-in">
+        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--compass-teal)] text-primary-foreground text-sm font-medium shadow-lg animate-in slide-in-from-bottom-2 fade-in">
           <CheckCircle2 className="h-4 w-4" />
           Vote recorded — {voteToast.vote}
         </div>

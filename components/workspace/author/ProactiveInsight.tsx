@@ -148,7 +148,7 @@ export function ProactiveInsight({
 
   return (
     <div className="flex items-start gap-2 px-3 py-1.5 border-b border-border bg-muted/30">
-      <Lightbulb className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+      <Lightbulb className="h-3.5 w-3.5 text-[var(--wayfinder-amber)] shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <p className="text-[10px] text-muted-foreground leading-relaxed">
           <span className="font-medium text-foreground/80">
@@ -162,7 +162,7 @@ export function ProactiveInsight({
             onClick={handleApply}
             className={cn(
               'mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]',
-              'text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer',
+              'text-[var(--wayfinder-amber)] hover:bg-[color-mix(in_oklch,var(--wayfinder-amber),transparent_90%)] transition-colors cursor-pointer',
             )}
           >
             <Sparkles className="h-3 w-3" />
@@ -172,7 +172,7 @@ export function ProactiveInsight({
       </div>
       <button
         onClick={() => setDismissed(true)}
-        className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-pointer shrink-0"
+        className="p-0.5 min-h-[var(--min-tap-target)] min-w-[var(--min-tap-target)] flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-pointer shrink-0"
         title="Dismiss"
       >
         <X className="h-3 w-3" />

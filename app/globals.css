@@ -133,6 +133,15 @@
   --text-body-size: 1rem;
   --text-body-leading: 1.6;
   --min-tap-target: 44px;
+
+  /* ── Typography scale (Browse) ── */
+  --text-hero: 3rem;
+  --text-h1: 2rem;
+  --text-h2: 1.5rem;
+  --text-h3: 1.25rem;
+  --text-small: 0.875rem;
+  --text-caption: 0.75rem;
+  --text-data: 0.875rem;
 }
 
 .dark {
@@ -219,6 +228,13 @@
   --text-body-size: 0.875rem;
   --text-body-leading: 1.5;
   --min-tap-target: 32px;
+  --text-hero: 2.25rem;
+  --text-h1: 1.5rem;
+  --text-h2: 1.25rem;
+  --text-h3: 1rem;
+  --text-small: 0.75rem;
+  --text-caption: 0.6875rem;
+  --text-data: 0.8125rem;
 }
 
 /* ============================================================
@@ -239,6 +255,13 @@
   --text-body-size: 0.8125rem;
   --text-body-leading: 1.4;
   --min-tap-target: 28px;
+  --text-hero: 2rem;
+  --text-h1: 1.375rem;
+  --text-h2: 1.125rem;
+  --text-h3: 0.9375rem;
+  --text-small: 0.75rem;
+  --text-caption: 0.6875rem;
+  --text-data: 0.75rem;
 }
 
 /* ============================================================

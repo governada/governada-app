@@ -23,7 +23,12 @@ function VoteTallyChip({
   const total = tally.yes + tally.no + tally.abstain;
   if (total === 0) return null;
   const pct = Math.round((tally.yes / total) * 100);
-  const color = pct >= 67 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 'text-red-400';
+  const color =
+    pct >= 67
+      ? 'text-[var(--compass-teal)]'
+      : pct >= 50
+        ? 'text-[var(--wayfinder-amber)]'
+        : 'text-destructive';
   return (
     <span className="text-xs text-muted-foreground">
       {label} <span className={`font-medium ${color}`}>{pct}%</span>
@@ -60,20 +65,25 @@ export function IntelligenceStrip({
   if (hasSentiment) {
     const pct = Math.round((citizenSentiment.support / citizenSentiment.total) * 100);
     sentimentLabel = `${pct}% support`;
-    sentimentColor = pct >= 60 ? 'text-emerald-400' : pct <= 40 ? 'text-red-400' : 'text-amber-400';
+    sentimentColor =
+      pct >= 60
+        ? 'text-[var(--compass-teal)]'
+        : pct <= 40
+          ? 'text-destructive'
+          : 'text-[var(--wayfinder-amber)]';
   }
 
   // Urgency
   const urgencyColor = !epochsRemaining
     ? ''
     : epochsRemaining <= 1
-      ? 'text-red-400'
+      ? 'text-destructive'
       : epochsRemaining <= 3
-        ? 'text-amber-400'
+        ? 'text-[var(--wayfinder-amber)]'
         : 'text-muted-foreground';
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border/50 bg-muted/20 px-4 py-2.5 mb-4">
+    <div className="flex flex-wrap items-center gap-x-[var(--space-md)] gap-y-[var(--space-sm)] rounded-lg border border-border/50 bg-muted/20 px-[var(--space-md)] py-[var(--space-sm)] mb-4">
       {/* Constitutional risk — placeholder */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Shield className="h-3.5 w-3.5" />
@@ -83,7 +93,7 @@ export function IntelligenceStrip({
       {/* Treasury impact */}
       {hasTreasury && (
         <div className="flex items-center gap-1.5 text-xs">
-          <Coins className="h-3.5 w-3.5 text-amber-400" />
+          <Coins className="h-3.5 w-3.5 text-[var(--wayfinder-amber)]" />
           <span className="font-medium text-foreground">{treasuryLabel}</span>
           {treasuryTier && <span className="text-muted-foreground/60">{treasuryTier}</span>}
         </div>
@@ -115,7 +125,10 @@ export function IntelligenceStrip({
         <div className={`flex items-center gap-1 text-xs font-medium ml-auto ${urgencyColor}`}>
           {epochsRemaining}e left
           {isUrgent && (
-            <Badge variant="outline" className="text-[10px] border-red-500/40 text-red-400 ml-1">
+            <Badge
+              variant="outline"
+              className="text-[10px] border-destructive/40 text-destructive ml-1"
+            >
               Urgent
             </Badge>
           )}

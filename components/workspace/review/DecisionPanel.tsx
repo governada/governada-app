@@ -1,13 +1,20 @@
 'use client';
 
-import { useCallback, type ReactNode } from 'react';
+import { useCallback, useRef, type ReactNode } from 'react';
 import { CheckCircle2, XCircle, MinusCircle, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { posthog } from '@/lib/posthog';
+import { RationaleCitations } from './RationaleCitations';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+interface RationaleCitationData {
+  citations: Array<{ article: string; section?: string; relevance: string }>;
+  precedentRefs: Array<{ title: string; outcome: string; relevance: string }>;
+  keyQuotes: Array<{ text: string; field: string }>;
+}
 
 interface DecisionPanelProps {
   /** Current user's selected vote */
@@ -29,6 +36,8 @@ interface DecisionPanelProps {
   voterRole: string;
   /** Intelligence content (rendered as accordion sections) */
   intelContent?: ReactNode;
+  /** Optional citations generated alongside the rationale co-draft */
+  rationaleCitations?: RationaleCitationData | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,8 +102,10 @@ export function DecisionPanel({
   voterId,
   voterRole,
   intelContent,
+  rationaleCitations,
 }: DecisionPanelProps) {
   const charCount = rationale.length;
+  const rationaleRef = useRef<HTMLTextAreaElement>(null);
 
   const handleVoteSelect = useCallback(
     (vote: 'Yes' | 'No' | 'Abstain') => {
@@ -179,12 +190,37 @@ export function DecisionPanel({
             </button>
           </div>
           <textarea
+            ref={rationaleRef}
             value={rationale}
             onChange={(e) => onRationaleChange(e.target.value)}
-            placeholder="Explain your reasoning..."
+            placeholder={
+              selectedVote
+                ? 'Type bullet points — AI will expand into a structured rationale...'
+                : 'Explain your reasoning...'
+            }
             rows={4}
             className="w-full rounded-md border border-border bg-muted/20 px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
           />
+          {rationaleCitations && (
+            <RationaleCitations
+              citations={rationaleCitations.citations}
+              precedentRefs={rationaleCitations.precedentRefs}
+              keyQuotes={rationaleCitations.keyQuotes}
+              onInsertCitation={(text) => {
+                // Insert citation at cursor position or append
+                const el = rationaleRef.current;
+                if (el) {
+                  const start = el.selectionStart ?? rationale.length;
+                  const before = rationale.slice(0, start);
+                  const after = rationale.slice(start);
+                  const newText = `${before} ${text} ${after}`.replace(/  +/g, ' ');
+                  onRationaleChange(newText);
+                } else {
+                  onRationaleChange(`${rationale} ${text}`.trim());
+                }
+              }}
+            />
+          )}
           <div className="flex items-center justify-between text-[10px]">
             <span className="text-muted-foreground/50">Published on-chain (CIP-100)</span>
             <span

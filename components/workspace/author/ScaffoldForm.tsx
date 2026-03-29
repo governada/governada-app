@@ -16,9 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Loader2, Sparkles, SkipForward } from 'lucide-react';
 import { useAISkill } from '@/hooks/useAISkill';
 import { useUpdateDraft } from '@/hooks/useDrafts';
+import { useFeatureFlag } from '@/components/FeatureGate';
 import { SCAFFOLD_DEFINITIONS } from '@/lib/workspace/scaffolds';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
+import { ProposalPlan } from './ProposalPlan';
+import { posthog } from '@/lib/posthog';
 import type { ProposalDraft, DraftAIMeta } from '@/lib/workspace/types';
+import type { ProposalPlanOutput } from '@/lib/ai/skills/proposal-plan-generator';
 
 interface ScaffoldFormProps {
   draft: ProposalDraft;
@@ -34,14 +38,28 @@ interface DraftGeneratorOutput {
   typeSpecific?: Record<string, unknown>;
 }
 
+/** Steps shown during plan generation for progressive loading */
+const PLAN_STEPS = [
+  'Analyzing constitution...',
+  'Finding precedent...',
+  'Assessing risks...',
+  'Generating draft...',
+  'Building improvement recommendations...',
+];
+
 export function ScaffoldForm({ draft, onComplete }: ScaffoldFormProps) {
   const scaffold = SCAFFOLD_DEFINITIONS[draft.proposalType];
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [planResult, setPlanResult] = useState<ProposalPlanOutput | null>(null);
+  const [planStep, setPlanStep] = useState(0);
+
+  const planFlagEnabled = useFeatureFlag('proposal_plan');
 
   const skill = useAISkill<DraftGeneratorOutput>();
+  const planSkill = useAISkill<ProposalPlanOutput>();
   const updateDraft = useUpdateDraft(draft.id);
-  const isGenerating = skill.isPending || updateDraft.isPending;
+  const isGenerating = skill.isPending || planSkill.isPending || updateDraft.isPending;
 
   const requiredPrompts = scaffold.prompts.filter((p) => p.required);
   const allRequiredFilled = requiredPrompts.every((p) => (answers[p.key] ?? '').trim().length > 0);
@@ -51,67 +69,144 @@ export function ScaffoldForm({ draft, onComplete }: ScaffoldFormProps) {
     setError(null);
   }, []);
 
+  /** Save draft content from a plan or legacy output, then continue */
+  const saveDraftAndContinue = useCallback(
+    async (
+      output: {
+        title: string;
+        abstract: string;
+        motivation: string;
+        rationale: string;
+        typeSpecific?: Record<string, unknown>;
+      },
+      _skillName: string,
+      provenance: {
+        executedAt: string;
+        model: string;
+        keySource: 'platform' | 'byok';
+        skillName: string;
+      },
+    ) => {
+      const aiMeta: DraftAIMeta = {
+        generatedAt: provenance.executedAt,
+        model: provenance.model,
+        keySource: provenance.keySource,
+        skillName: provenance.skillName,
+        fieldsGenerated: ['title', 'abstract', 'motivation', 'rationale'],
+        scaffoldAnswers: answers,
+        originalText: {
+          title: output.title,
+          abstract: output.abstract,
+          motivation: output.motivation,
+          rationale: output.rationale,
+        },
+      };
+
+      const mergedTypeSpecific = {
+        ...(draft.typeSpecific ?? {}),
+        ...(output.typeSpecific ?? {}),
+        _aiMeta: aiMeta,
+      };
+
+      try {
+        await updateDraft.mutateAsync({
+          title: output.title,
+          abstract: output.abstract,
+          motivation: output.motivation,
+          rationale: output.rationale,
+          typeSpecific: mergedTypeSpecific,
+        });
+        onComplete();
+      } catch {
+        setError('Draft generated but failed to save. Please try again.');
+      }
+    },
+    [answers, draft, updateDraft, onComplete],
+  );
+
   const handleGenerate = useCallback(async () => {
     if (!allRequiredFilled) return;
     setError(null);
 
-    skill.mutate(
-      {
-        skill: 'proposal-draft-generator',
-        input: {
-          proposalType: draft.proposalType,
-          scaffoldAnswers: answers,
-        },
-        draftId: draft.id,
-      },
-      {
-        onSuccess: async (data) => {
-          const { output, provenance } = data;
+    // Use plan generator if flag is on, otherwise legacy draft generator
+    if (planFlagEnabled) {
+      setPlanStep(0);
+      // Animate through plan steps for progressive feedback
+      const stepInterval = setInterval(() => {
+        setPlanStep((s) => (s < PLAN_STEPS.length - 1 ? s + 1 : s));
+      }, 3000);
 
-          // Build AI provenance metadata
-          const aiMeta: DraftAIMeta = {
-            generatedAt: provenance.executedAt,
-            model: provenance.model,
-            keySource: provenance.keySource,
-            skillName: provenance.skillName,
-            fieldsGenerated: ['title', 'abstract', 'motivation', 'rationale'],
+      planSkill.mutate(
+        {
+          skill: 'proposal-plan-generator',
+          input: {
+            proposalType: draft.proposalType,
             scaffoldAnswers: answers,
-            originalText: {
-              title: output.title,
-              abstract: output.abstract,
-              motivation: output.motivation,
-              rationale: output.rationale,
-            },
-          };
-
-          // Merge AI output + provenance into draft
-          const mergedTypeSpecific = {
-            ...(draft.typeSpecific ?? {}),
-            ...(output.typeSpecific ?? {}),
-            _aiMeta: aiMeta,
-          };
-
-          try {
-            await updateDraft.mutateAsync({
-              title: output.title,
-              abstract: output.abstract,
-              motivation: output.motivation,
-              rationale: output.rationale,
-              typeSpecific: mergedTypeSpecific,
+          },
+          draftId: draft.id,
+        },
+        {
+          onSuccess: (data) => {
+            clearInterval(stepInterval);
+            posthog.capture('proposal_plan_generated', {
+              proposalType: draft.proposalType,
+              constitutionalScore: data.output.constitutionalAssessment.score,
+              riskLevel: data.output.riskAnalysis.overallRisk,
+              improvementCount: data.output.improvements.length,
             });
-            onComplete();
-          } catch {
-            setError('Draft generated but failed to save. Please try again.');
-          }
+            setPlanResult(data.output);
+          },
+          onError: (err) => {
+            clearInterval(stepInterval);
+            setError(err.message || 'Plan generation failed. Please try again.');
+          },
         },
-        onError: (err) => {
-          setError(err.message || 'Draft generation failed. Please try again.');
+      );
+    } else {
+      // Legacy: generate draft directly
+      skill.mutate(
+        {
+          skill: 'proposal-draft-generator',
+          input: {
+            proposalType: draft.proposalType,
+            scaffoldAnswers: answers,
+          },
+          draftId: draft.id,
         },
-      },
+        {
+          onSuccess: async (data) => {
+            await saveDraftAndContinue(data.output, 'proposal-draft-generator', data.provenance);
+          },
+          onError: (err) => {
+            setError(err.message || 'Draft generation failed. Please try again.');
+          },
+        },
+      );
+    }
+  }, [allRequiredFilled, answers, draft, planFlagEnabled, skill, planSkill, saveDraftAndContinue]);
+
+  /** Accept the plan and save draft to DB */
+  const handlePlanAccept = useCallback(async () => {
+    if (!planResult || !planSkill.data) return;
+    await saveDraftAndContinue(
+      planResult.draft,
+      'proposal-plan-generator',
+      planSkill.data.provenance,
     );
-  }, [allRequiredFilled, answers, draft, skill, updateDraft, onComplete]);
+  }, [planResult, planSkill.data, saveDraftAndContinue]);
 
   const typeLabel = PROPOSAL_TYPE_LABELS[draft.proposalType] ?? draft.proposalType;
+
+  // If plan was generated, show the plan review view
+  if (planResult) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <ProposalPlan plan={planResult} onAccept={handlePlanAccept} />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -132,8 +227,11 @@ export function ScaffoldForm({ draft, onComplete }: ScaffoldFormProps) {
       </CardHeader>
       <CardContent className="space-y-5">
         <p className="text-sm text-muted-foreground">
-          Answer the questions below and we&apos;ll generate a CIP-108 compliant first draft. You
-          can edit everything afterward.
+          Answer the questions below and we&apos;ll generate{' '}
+          {planFlagEnabled
+            ? 'a comprehensive Proposal Plan with constitutional analysis, risk assessment, and a first draft'
+            : 'a CIP-108 compliant first draft'}
+          . You can edit everything afterward.
         </p>
 
         {scaffold.prompts.map((prompt) => (
@@ -164,12 +262,12 @@ export function ScaffoldForm({ draft, onComplete }: ScaffoldFormProps) {
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generating your draft...
+                {planFlagEnabled ? PLAN_STEPS[planStep] : 'Generating your draft...'}
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4 mr-2" />
-                Generate Draft
+                {planFlagEnabled ? 'Generate Proposal Plan' : 'Generate Draft'}
               </>
             )}
           </Button>

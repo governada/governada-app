@@ -42,6 +42,8 @@
  * governance_observatory             — Unified Observatory page replacing Treasury/Committee/Health tabs
  * globe_homepage_v2                  — Inhabited Constellation: globe-centric authenticated homepage with user node, bonds, Seneca DJ
  * workspace_decision_table            — AI-enriched decision table replacing kanban in review workspace (Phase 2 studio upgrade)
+ * proposal_plan                        — Comprehensive Proposal Plan (constitutional assessment + risk analysis + similar proposals + improvements) instead of plain draft (Phase 4 studio excellence)
+ * rationale_codraft                    — Structured rationale co-generation from bullet points with constitutional citations (Phase 4 studio excellence)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

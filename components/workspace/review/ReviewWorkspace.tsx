@@ -10,6 +10,8 @@ import { useReviewableDrafts } from '@/hooks/useReviewableDrafts';
 import { useRegisterReviewCommands } from '@/hooks/useRegisterReviewCommands';
 import { useRevisionNotifications } from '@/hooks/useRevisionNotifications';
 import { useAgent } from '@/hooks/useAgent';
+import { useAISkill } from '@/hooks/useAISkill';
+import { useFeatureFlag } from '@/components/FeatureGate';
 import { trackProposalView } from '@/lib/workspace/engagement';
 import { StudioProvider, useStudio } from '@/components/studio/StudioProvider';
 import { StudioHeader } from '@/components/studio/StudioHeader';
@@ -342,6 +344,12 @@ function StudioReviewInner({
   const [rationaleText, setRationaleText] = useState('');
   const [isDraftingRationale, setIsDraftingRationale] = useState(false);
   const [mobileVoteOpen, setMobileVoteOpen] = useState(false);
+  const [rationaleCitations, setRationaleCitations] = useState<{
+    citations: Array<{ article: string; section?: string; relevance: string }>;
+    precedentRefs: Array<{ title: string; outcome: string; relevance: string }>;
+    keyQuotes: Array<{ text: string; field: string }>;
+  } | null>(null);
+  const rationaleCoderaftEnabled = useFeatureFlag('rationale_codraft');
 
   // Search state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -373,10 +381,55 @@ function StudioReviewInner({
     return null;
   }, [selectedItem.existingVote]);
 
-  // AI rationale draft handler
+  // AI rationale draft handler — uses structured co-generation skill when flag is on
+  const rationaleSkill = useAISkill<{
+    structuredRationale: string;
+    citations: Array<{ article: string; section?: string; relevance: string }>;
+    precedentRefs: Array<{ title: string; outcome: string; relevance: string }>;
+    keyQuotes: Array<{ text: string; field: string }>;
+  }>();
+
   const handleAIDraft = useCallback(async () => {
     if (!voterId) return;
     setIsDraftingRationale(true);
+    setRationaleCitations(null);
+
+    // Enhanced: use rationale-draft skill with bullet points when flag is on
+    if (rationaleCoderaftEnabled && selectedVote && rationaleText.length > 10) {
+      rationaleSkill.mutate(
+        {
+          skill: 'rationale-draft',
+          input: {
+            vote: selectedVote,
+            bulletPoints: rationaleText,
+            proposalContent: itemContent,
+            proposalType: selectedItem.proposalType || 'InfoAction',
+          },
+        },
+        {
+          onSuccess: (data) => {
+            setRationaleText(data.output.structuredRationale);
+            setRationaleCitations({
+              citations: data.output.citations,
+              precedentRefs: data.output.precedentRefs,
+              keyQuotes: data.output.keyQuotes,
+            });
+            posthog.capture('rationale_codraft_generated', {
+              vote: selectedVote,
+              citationCount: data.output.citations.length,
+              precedentCount: data.output.precedentRefs.length,
+            });
+            setIsDraftingRationale(false);
+          },
+          onError: () => {
+            setIsDraftingRationale(false);
+          },
+        },
+      );
+      return;
+    }
+
+    // Legacy: use the old /api/rationale/draft endpoint
     try {
       const res = await fetch('/api/rationale/draft', {
         method: 'POST',
@@ -397,7 +450,16 @@ function StudioReviewInner({
     } finally {
       setIsDraftingRationale(false);
     }
-  }, [voterId, segment, selectedItem]);
+  }, [
+    voterId,
+    segment,
+    selectedItem,
+    rationaleCoderaftEnabled,
+    selectedVote,
+    rationaleText,
+    itemContent,
+    rationaleSkill,
+  ]);
 
   const handleVoteSelect = useCallback(
     (vote: 'Yes' | 'No' | 'Abstain') => {
@@ -567,6 +629,7 @@ function StudioReviewInner({
               proposalTitle={selectedItem.title || 'Untitled'}
               voterId={voterId ?? ''}
               voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+              rationaleCitations={rationaleCitations}
               intelContent={
                 <ReviewIntelBrief
                   proposalId={selectedItem.txHash}
@@ -647,6 +710,7 @@ function StudioReviewInner({
             proposalTitle={selectedItem.title || 'Untitled'}
             voterId={voterId ?? ''}
             voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+            rationaleCitations={rationaleCitations}
           />
         </SheetContent>
       </Sheet>

@@ -1,9 +1,9 @@
 # Workspace Studio Upgrade — Handoff Document
 
-> **Status**: Phases 1-3a DEPLOYED. Phase 3b + Phase 4 CODE COMPLETE (this PR). Phases 5-6 remain.
-> **Branch**: `claude/nostalgic-shannon`
+> **Status**: Phases 1-5 DEPLOYED. Phase 6 (Design Language & Mobile) remains.
+> **Branch**: Start a new worktree — `claude/nostalgic-shannon` was used for Phases 3b-5
 > **Plan**: `C:\Users\dalto\.claude-personal\plans\glimmering-discovering-crescent.md`
-> **Updated**: 2026-03-28
+> **Updated**: 2026-03-29
 
 ## CRITICAL: Handoff Instructions for Next Agent
 
@@ -270,15 +270,48 @@ interface WorkspacePanelsProps {
 
 ---
 
-## Phases 5-6 (Remaining)
+## Phase 5 (PR #695 — merged to main)
 
-### Phase 5: Globe-Workspace Bridge (M effort)
+- **Workspace pills** on hub Seneca: "Proposals to review" + "My drafts" with `navigate` action type
+- **`workspace` intent** in GlobeIntentType with detection patterns for review/drafts/attention queries
+- **GlobeLayout** handles workspace intent: warms proposals topic + shows WorkspaceCards overlay
+- **WorkspaceCards** (`components/globe/WorkspaceCards.tsx`): glassmorphic overlay at z-28 with review queue + drafts sections
+- PostHog: `globe_workspace_pill_clicked`, `globe_workspace_card_clicked`
 
-Seneca-mediated navigation from globe to workspace. Globe is NOT directly clickable. Key files: `hooks/useSenecaGlobeBridge.ts`, `components/governada/panel/SenecaConversation.tsx`.
+## Phase 6: Design Language & Mobile — READY TO BUILD
 
-### Phase 6: Design Language & Mobile (M effort)
+### Scope
 
-Full Compass enforcement + mobile optimization. Bottom sheet panels, touch targets, reduced motion.
+Full Compass design language enforcement + mobile optimization across the workspace studio surfaces built in Phases 1-5.
+
+### What needs work
+
+1. **Mobile-optimized review experience**: Bottom sheet panels for DecisionPanel on mobile, touch-friendly targets (min 44px), swipe gestures for queue navigation
+2. **Mobile-optimized author experience**: Simplified form layout, expandable sections, responsive decision table (already has `hidden md:table-cell` responsive columns)
+3. **Compass token enforcement**: Verify all workspace components use Compass CSS variables (`--compass-teal`, `--compass-gold`, etc.) and Compass typography (Fraunces for headings, Space Grotesk for body). See `docs/strategy/design-language.md` and `app/globals.css`
+4. **Reduced motion support**: `useReducedMotion()` from framer-motion to disable animations for users with `prefers-reduced-motion`
+5. **WorkspaceCards mobile**: The globe overlay cards should adapt to bottom sheet on mobile
+6. **Three density modes**: Verify workspace surfaces respect ModeProvider density (focus/default/scan). See `components/providers/ModeProvider.tsx`
+
+### Key files to read
+
+| File                                                  | Purpose                                                                |
+| ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| `docs/strategy/design-language.md`                    | Full Compass spec (~590 lines)                                         |
+| `app/globals.css`                                     | Compass palette, mode spacing CSS variables                            |
+| `components/providers/ModeProvider.tsx`               | Density mode context                                                   |
+| `components/workspace/review/ReviewWorkspace.tsx`     | Review studio layout (DecisionPanel, IntelligenceStrip, SenecaSummary) |
+| `components/workspace/review/DecisionPanel.tsx`       | Vote panel — needs mobile bottom sheet                                 |
+| `components/workspace/author/AuthorDecisionTable.tsx` | Author table — already responsive                                      |
+| `components/workspace/author/AuthorWorkspace.tsx`     | Author portfolio — layout                                              |
+| `components/globe/WorkspaceCards.tsx`                 | Globe overlay cards — needs mobile adaptation                          |
+
+### Design language reference
+
+- **Palette**: `--compass-teal` (primary action), `--compass-gold` (warning/emphasis), `--compass-coral` (danger), `--compass-navy` (background depth)
+- **Typography**: Fraunces (serif, headings), Space Grotesk (sans, body/UI)
+- **Density modes**: Focus (spacious), Default (balanced), Scan (compact)
+- **Dark-only**: No light mode. Ever.
 
 ---
 

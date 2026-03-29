@@ -229,7 +229,7 @@ function AuthorWorkspaceInner() {
         </div>
       )}
 
-      {!decisionTableFlag && (
+      {decisionTableFlag === false && (
         <PortfolioSearch
           filter={authorFilter}
           onFilterChange={setAuthorFilter}
@@ -246,7 +246,7 @@ function AuthorWorkspaceInner() {
 
       <TriageSummary insights={triageInsights} />
 
-      {decisionTableFlag ? (
+      {decisionTableFlag !== false ? (
         <AuthorDecisionTable items={authorTableItems} isLoading={isLoading} />
       ) : (
         <PortfolioView

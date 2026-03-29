@@ -1626,6 +1626,18 @@ function NodePoints({
     if (!geo || !currentColorsRef.current || !currentSizesRef.current || !currentDimmedRef.current)
       return;
 
+    // Diagnostic: expose raw version values for debugging from console
+    const w = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : null;
+    if (w && !w.__focusVersionTrace) {
+      w.__focusVersionTrace = {
+        hasRef: !!focusVersionRef,
+        hasFocusRef: !!focusRef,
+        initialVersion: focusVersionRef?.current ?? 'undefined',
+        lastVersion: lastFocusVersionRef.current,
+        nodeCount: nodes.length,
+      };
+    }
+
     // Detect focus state changes via version counter (bridges React→R3F boundary)
     const currentVersion = focusVersionRef?.current ?? 0;
     if (currentVersion !== lastFocusVersionRef.current && focusRef?.current) {
@@ -1635,6 +1647,18 @@ function NodePoints({
       // Also update position attribute if node count changed
       geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));
       geo.computeBoundingSphere();
+      // Diagnostic: expose to window so we can verify from console
+      const w =
+        typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : null;
+      if (w) {
+        w.__focusDebug = {
+          version: currentVersion,
+          active: focusRef.current.active,
+          focusedCount: focusRef.current.focusedIds.size,
+          nodeCount: nodes.length,
+          dimmedCount: Array.from(newTargets.dimmedArr).filter((v) => v > 0.5).length,
+        };
+      }
     }
 
     // Use ref-based targets if available (focus changed), otherwise fall back to initial buffers

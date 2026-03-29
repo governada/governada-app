@@ -51,7 +51,7 @@ export function MobileVoteBar({ onVoteSelect, hasVoted, currentVote }: MobileVot
 
   return (
     <div
-      className="fixed bottom-14 left-0 right-0 z-40 lg:hidden flex items-center justify-center gap-3 px-4 py-2 bg-background/95 backdrop-blur-sm border-t border-border animate-[slide-up-enter_var(--duration-enter,300ms)_var(--ease-out-spring,cubic-bezier(0.22,1,0.36,1))]"
+      className="fixed bottom-14 left-0 right-0 z-40 lg:hidden flex items-center justify-center gap-3 px-4 py-2 bg-background/95 backdrop-blur-sm border-t border-border animate-slide-up-enter"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 8px)' }}
     >
       {VOTE_OPTIONS.map(({ choice, label, icon: Icon, color, activeColor }) => (

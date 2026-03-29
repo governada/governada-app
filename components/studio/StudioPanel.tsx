@@ -135,7 +135,7 @@ export function StudioPanel({
       ref={panelRef}
       className={cn(
         'hidden lg:flex flex-col relative border-l border-border bg-background shrink-0 overflow-hidden',
-        'transition-[width,opacity] duration-200 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]',
+        'transition-[width,opacity] duration-[var(--duration-enter,300ms)] [transition-timing-function:var(--ease-out-spring,cubic-bezier(0.22,1,0.36,1))]',
       )}
       style={{ width: isOpen ? clampedWidth : 0 }}
     >

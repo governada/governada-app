@@ -123,7 +123,9 @@ export function DecisionPanel({
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="shrink-0 px-[var(--space-md)] pt-[var(--space-md)] pb-[var(--space-sm)] border-b border-border/30">
-        <h3 className="text-xs font-semibold text-foreground">Your Decision</h3>
+        <h3 className="text-xs font-semibold text-foreground font-[family-name:var(--font-governada-display)]">
+          Your Decision
+        </h3>
         <p className="text-[10px] text-muted-foreground truncate mt-0.5">{proposalTitle}</p>
         <p className="text-[10px] text-muted-foreground/60">
           {voterRole} &middot; {voterId.slice(0, 12)}...
@@ -154,9 +156,9 @@ export function DecisionPanel({
                 key={value}
                 onClick={() => handleVoteSelect(value)}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 px-2 py-2 min-h-[var(--min-tap-target)] text-xs rounded border transition-colors cursor-pointer',
+                  'flex-1 flex items-center justify-center gap-1.5 px-2 py-2 min-h-[var(--min-tap-target)] text-xs rounded border transition-colors cursor-pointer font-[family-name:var(--font-governada-body)]',
                   selectedVote === value
-                    ? activeColor
+                    ? `${activeColor} animate-vote-celebrate`
                     : `text-muted-foreground border-border ${hoverColor}`,
                 )}
               >

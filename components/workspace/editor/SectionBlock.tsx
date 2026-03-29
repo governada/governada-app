@@ -73,7 +73,7 @@ function SectionBlockView({ node, editor }: SectionBlockViewProps) {
       {/* Section header */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/20 border-b border-border/30 select-none">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground font-[family-name:var(--font-governada-display)]">
             {config.label}
           </span>
           {/* Health badge slot — rendered by parent via extension storage */}

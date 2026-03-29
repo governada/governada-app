@@ -143,7 +143,7 @@ export function StudioHeader({
       {title && (
         <div className="hidden lg:flex items-center gap-2 min-w-0 flex-1">
           <h1
-            className="text-sm font-semibold truncate min-w-0"
+            className="text-sm font-semibold truncate min-w-0 font-[family-name:var(--font-governada-display)]"
             style={titleTransitionName ? { viewTransitionName: titleTransitionName } : undefined}
           >
             {title}

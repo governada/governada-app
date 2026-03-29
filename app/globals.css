@@ -1311,3 +1311,92 @@ button:not(:disabled):active,
     animation: none;
   }
 }
+
+/* --- Studio micro-animations (Phase 6B) --- */
+
+@keyframes diff-accept {
+  0% {
+    opacity: 1;
+    background: transparent;
+  }
+  30% {
+    background: oklch(0.62 0.12 245 / 0.2);
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+}
+
+@keyframes diff-reject {
+  0% {
+    opacity: 1;
+    background: transparent;
+  }
+  30% {
+    background: oklch(0.62 0.1 50 / 0.2);
+    text-decoration: line-through;
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+}
+
+@keyframes vote-celebrate {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up-enter {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-diff-accept {
+  animation: diff-accept var(--duration-normal, 250ms)
+    var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+}
+
+.animate-diff-reject {
+  animation: diff-reject var(--duration-normal, 250ms)
+    var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+}
+
+.animate-vote-celebrate {
+  animation: vote-celebrate var(--duration-celebration, 600ms)
+    var(--ease-out-spring, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.animate-slide-up-enter {
+  animation: slide-up-enter var(--duration-enter, 300ms)
+    var(--ease-out-spring, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-diff-accept,
+  .animate-diff-reject,
+  .animate-vote-celebrate,
+  .animate-slide-up-enter {
+    animation: none;
+  }
+}

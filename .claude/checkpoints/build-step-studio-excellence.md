@@ -1,9 +1,9 @@
 # Build Step: Studio Excellence — World-Class Author & Review (Layer 2)
 
-**Status:** PHASE_2_COMPLETE
+**Status:** PHASE_5_COMPLETE
 **Started:** 2026-03-29
-**Current Phase:** 3 of 6 (Tracked Changes + Reviewer Suggestions)
-**PR chain:** #700 (Phase 1 — Editor Foundation), #704 (Phase 2 — Intelligence Architecture)
+**Current Phase:** 6 of 6 (Polish, Mobile, Role Adaptation)
+**PR chain:** #700 (Phase 1), #704 (Phase 2), #708 (Phase 3), #715/#717/#721 (Phase 4A/B/C), #729/#732/#733 (Phase 5A/B/C)
 **Predecessor:** `.claude/checkpoints/workspace-studio-upgrade.md` (Phases 1-5 DEPLOYED)
 
 ---
@@ -192,34 +192,97 @@ If your context window is filling up:
 
 ---
 
+## Phase 5 Complete (2026-03-29)
+
+### What shipped:
+
+**PR #729 — Pre-Computation Pipeline (Backend)**
+
+- Migration 070: `proposal_intelligence_cache`, `reviewer_briefing_cache`, `review_sessions` tables
+- Feature flags: `intelligence_precompute`, `batch_review_mode`, `passage_prediction` (all enabled)
+- Passage prediction model: `lib/passagePrediction.ts` — rules-based, CIP-1694 thresholds, 8 weighted factors
+- Shared AI functions: `lib/ai/shared/constitutionalAnalysis.ts`, `lib/ai/shared/researchPrecedent.ts`
+- Inngest: `precompute-proposal-intelligence` (4h + on-demand), `update-passage-predictions` (after vote sync)
+- APIs: `GET /api/workspace/intelligence-cache`, `GET/POST /api/workspace/reviewer-cache`
+- Fixed engagement analytics API (real queries vs TODO placeholder)
+
+**PR #732 — Cache-First Intelligence + Passage Prediction UI**
+
+- `hooks/useIntelligenceCache.ts`, `hooks/useReviewerCache.ts` — TanStack Query wrappers
+- `components/intelligence/sections/PassagePrediction.tsx` — probability gauge with factor breakdown
+- `ConstitutionalSection` + `KeyQuestionsSection` — serve from cache, skip AI calls
+- `ReviewIntelBrief` — orchestrates cache loading, tracks cache hit/miss analytics
+- Added `passage-prediction` to section registry (`lib/workspace/intelligence/registry.ts` + `types.ts`)
+
+**PR #733 — Batch Review UX**
+
+- `]` keyboard shortcut in `useRegisterReviewCommands.ts` — next unreviewed (wraps around)
+- `components/workspace/review/BatchProgressBar.tsx` — progress + time estimate
+- `hooks/useReviewSession.ts` — session tracking + sendBeacon persistence
+- `app/api/workspace/review-session/route.ts` — session persistence endpoint
+- Wired into `ReviewWorkspace.tsx` — goNextUnreviewed callback, markReviewed on vote success
+
+### Key decisions:
+
+- Shared sections (constitutional, key questions) pre-computed in background; personalized briefing cached after first view (write-through)
+- Passage prediction is deterministic (no AI) — uses CIP-1694 governance thresholds per proposal type
+- `]` is "next unreviewed" distinct from `j` which is "next in list"
+- `review_sessions` table has UNIQUE on `(voter_id, started_at)` for upsert support
+
+---
+
 ## Next Agent Prompt
 
 ```
-You are building Phase 2 of the Studio Excellence build for Governada — Intelligence Architecture (persistent brief + decision panel improvements).
+You are building Phase 6 of the Studio Excellence build for Governada — Polish, Mobile, and Role Adaptation.
 
-FIRST: Read both checkpoint files (in your worktree, committed to main):
-  cat .claude/checkpoints/build-step-studio-excellence.md
-  cat .claude/checkpoints/workspace-studio-upgrade.md
-  (If not found: git fetch origin main && git checkout origin/main -- .claude/checkpoints/)
+## FIRST: Read the checkpoint
 
-THEN: Read the full 6-phase plan:
+The checkpoint is on main. From your worktree:
+
+  git fetch origin main
+  HASH=$(git rev-parse origin/main) && git cat-file -p "$HASH:.claude/checkpoints/build-step-studio-excellence.md"
+
+## THEN: Read the full 6-phase plan
+
   cat "C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md"
 
-Phase 1 (PR #700) is COMPLETE. ProposalEditor is fully wired for all standard proposal types with type-specific fields, ScaffoldForm, lifecycle-aware mode/readOnly, team role permissions, and margin indicators.
+Phase 6 starts at line ~328 ("Phase 6: Polish, Mobile, and Role Adaptation").
 
-Phase 2 goal: Replace the tabbed right panel with a persistent scrollable Intelligence Brief. Several components are ALREADY PARTIALLY BUILT from the workspace-studio-upgrade build:
-- IntelligenceStrip (deployed PR #690) — compact intelligence bar above editor
-- SenecaSummary (deployed PR #690) — AI summary card
-- DecisionPanel (deployed PR #690) — always-visible right column replacing Vote tab
+## What's Already Deployed (DON'T REBUILD)
 
-What REMAINS for Phase 2 (per the plan):
-- Scrollable brief replacing tabbed sidebar with stage-driven transformation
-- Feedback Triage Board (response_revision stage → review items as cards)
-- Role-adaptive ordering (CC sees constitutional expanded, SPO sees network impact)
-- Submission Readiness Checklist (final_comment stage → explicit gates)
-- Monitoring Dashboard transformation (submitted stage → vote tallies, countdown)
+Phase 1 (PR #700): Tiptap wired to all proposal types
+Phase 2 (PR #704): Stage-driven Intelligence Brief in both studios
+Phase 3 (PR #708): Living document substrate — suggestion resolution, version diff
+Phase 4A (PR #715): Proposal Plan generator + rationale co-draft skills
+Phase 4B (PR #717): Personalized briefing + feedback synthesis + CC express lane
+Phase 4C (PR #721): Proactive insight stack with AI analysis
+Phase 5A (PR #729): Pre-computation pipeline + passage prediction model
+Phase 5B (PR #732): Cache-first intelligence sections + PassagePrediction UI
+Phase 5C (PR #733): Batch review UX (] shortcut, progress bar, session tracking)
 
-CRITICAL: Draft a full plan BEFORE building. Phase 2 has significant overlap with already-shipped components. You MUST read the current code (especially ReviewWorkspace.tsx, StudioPanel.tsx, DecisionPanel.tsx, IntelligenceStrip.tsx) to understand what exists and what actually needs to change. Use EnterPlanMode to design the approach, get user approval, then build.
+## Phase 6 Scope
 
-If you run low on context, follow the checkpoint protocol documented in the checkpoint file.
+This is the final polish phase. Scope from the plan:
+
+1. **Mobile author studio**: Editor in single-column, Intelligence Brief as bottom sheet. Type-specific fields in collapsible section. Full Tiptap mobile support.
+2. **Mobile review studio**: Brief as primary view, swipe to reveal full proposal. Decision Panel as fixed bottom bar. Annotation via long-press.
+3. **Role adaptation polish**: Fine-tune brief sections per persona segment. SPO-specific network impact section. Community reviewer feedback rubric.
+4. **Compass design language**: Enforce Fraunces/Space Grotesk typography, color tokens, spacing tokens, Governance Rings integration.
+5. **Motion**: Smooth transitions between lifecycle stages. Tracked change accept/reject micro-animations. Decision Panel spring physics.
+6. **Keyboard mastery**: Complete shortcut coverage — s (save version), c (constitutional check), p (CIP-108 preview), r (respond to review), d (diff mode), [ (previous unreviewed). Note: y/n/a (vote) and ] (next unreviewed) already shipped in Phase 5C.
+
+## CRITICAL: Plan FIRST, then build
+
+Use EnterPlanMode immediately after reading the checkpoint and plan. This phase touches many surfaces (mobile layouts, design language, animations). Plan the chunking carefully — likely 2-3 PRs.
+
+Key files to explore:
+- `components/workspace/review/ReviewWorkspace.tsx` — review layout to make responsive
+- `app/workspace/editor/[draftId]/page.tsx` — author layout to make responsive
+- `docs/strategy/design-language.md` — Compass design language spec
+- `app/globals.css` — existing design tokens
+- `hooks/useRegisterReviewCommands.ts` — add remaining keyboard shortcuts
+- `components/studio/StudioPanel.tsx` — panel behavior on mobile
+
+After plan approval, chunk into 2-3 shippable PRs and execute the full deploy pipeline per CLAUDE.md.
 ```

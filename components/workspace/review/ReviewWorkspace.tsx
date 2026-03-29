@@ -786,7 +786,8 @@ function StudioReviewInner({
       {/* Mobile: persistent vote bar + DecisionPanel as bottom sheet */}
       <MobileVoteBar
         onVoteSelect={(choice) => {
-          handleVoteSelect(choice);
+          // Set vote directly without togglePanel (avoids double bottom sheet)
+          setSelectedVote(choice);
           setMobileVoteOpen(true);
         }}
         hasVoted={currentVoted}

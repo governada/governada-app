@@ -49,6 +49,12 @@ const SPO_IMPACT_PARAMS: Record<
   },
 };
 
+const SEVERITY_COLORS = {
+  high: 'text-red-400 bg-red-400/10',
+  medium: 'text-[var(--wayfinder-amber)] bg-[var(--wayfinder-amber)]/10',
+  low: 'text-muted-foreground bg-muted/50',
+} as const;
+
 interface NetworkImpactSectionProps {
   proposalType: string;
   typeSpecific?: Record<string, unknown>;
@@ -83,7 +89,8 @@ export function NetworkImpactSection({ proposalType, typeSpecific }: NetworkImpa
   }
 
   // ParameterChange — identify affected SPO parameters
-  const paramName = (typeSpecific?.parameterName as string) ?? null;
+  const rawParam = typeSpecific?.parameterName;
+  const paramName = typeof rawParam === 'string' ? rawParam : null;
   const proposedValue = (typeSpecific?.proposedValue as string) ?? null;
   const impactInfo = paramName ? SPO_IMPACT_PARAMS[paramName] : null;
 
@@ -96,19 +103,13 @@ export function NetworkImpactSection({ proposalType, typeSpecific }: NetworkImpa
     );
   }
 
-  const severityColors = {
-    high: 'text-red-400 bg-red-400/10',
-    medium: 'text-[var(--wayfinder-amber)] bg-[var(--wayfinder-amber)]/10',
-    low: 'text-muted-foreground bg-muted/50',
-  };
-
   return (
     <div className="space-y-3">
       {impactInfo ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span
-              className={`text-xs px-2 py-0.5 rounded-full font-medium ${severityColors[impactInfo.severity]}`}
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${SEVERITY_COLORS[impactInfo.severity]}`}
             >
               {impactInfo.severity} impact
             </span>

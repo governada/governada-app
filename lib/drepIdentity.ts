@@ -35,7 +35,7 @@ const DIMENSION_LABELS: Record<AlignmentDimension, string> = {
   transparency: 'Transparency',
 };
 
-const DIMENSION_ORDER: AlignmentDimension[] = [
+export const DIMENSION_ORDER: AlignmentDimension[] = [
   'treasuryConservative',
   'treasuryGrowth',
   'decentralization',

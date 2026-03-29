@@ -18,8 +18,9 @@ import {
   getDimensionLabel,
   alignmentsToArray,
   getDimensionOrder,
+  DIMENSION_ORDER,
 } from '@/lib/drepIdentity';
-import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
+import type { AlignmentScores } from '@/lib/drepIdentity';
 import { computeDimensionAgreement } from '@/lib/matching/dimensionAgreement';
 import { calculateProgressiveConfidence } from '@/lib/matching/confidence';
 import { ANSWER_VECTORS } from '@/lib/matching/answerVectors';
@@ -31,18 +32,9 @@ export const dynamic = 'force-dynamic';
 const MIN_MATCH_SCORE = 40;
 const MIN_ENTITY_SCORE = 60;
 
-const DIMENSIONS: AlignmentDimension[] = [
-  'treasuryConservative',
-  'treasuryGrowth',
-  'decentralization',
-  'security',
-  'innovation',
-  'transparency',
-];
-
 function euclideanDistance(a: AlignmentScores, b: AlignmentScores): number {
   let sum = 0;
-  for (const dim of DIMENSIONS) {
+  for (const dim of DIMENSION_ORDER) {
     const diff = (a[dim] ?? 50) - (b[dim] ?? 50);
     sum += diff * diff;
   }
@@ -183,7 +175,7 @@ export const POST = withRouteHandler(async (request) => {
   }
 
   for (const [, dimScores] of answerPairs) {
-    for (const dim of DIMENSIONS) {
+    for (const dim of DIMENSION_ORDER) {
       if (dimScores[dim] !== undefined) {
         userAlignments[dim] = dimScores[dim]!;
       }
@@ -195,12 +187,14 @@ export const POST = withRouteHandler(async (request) => {
 
   if (match_type === 'spo') {
     // SPO matching — query pools table with behavioral data
+    // Filter mirrors /api/governance/constellation: only SPOs with votes appear on the globe
     const { data: pools } = await supabase
       .from('pools')
       .select(
         'pool_id, ticker, pool_name, governance_score, vote_count, participation_pct, delegator_count, current_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
       )
-      .not('alignment_treasury_conservative', 'is', null);
+      .not('alignment_treasury_conservative', 'is', null)
+      .gt('vote_count', 0);
 
     if (!pools?.length) {
       return NextResponse.json({
@@ -296,12 +290,14 @@ export const POST = withRouteHandler(async (request) => {
   }
 
   // DRep matching (default) — include behavioral data for card differentiation
+  // Filter mirrors /api/governance/constellation: only active DReps appear on the globe
   const { data: dreps } = await supabase
     .from('dreps')
     .select(
       'id, info, score, effective_participation_v3, rationale_rate, current_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
     )
-    .not('alignment_treasury_conservative', 'is', null);
+    .not('alignment_treasury_conservative', 'is', null)
+    .eq('info->>isActive', 'true');
 
   if (!dreps?.length) {
     return NextResponse.json({

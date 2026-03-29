@@ -391,7 +391,7 @@ export function useGovernanceConstellation() {
   return useQuery({
     queryKey: ['governance-constellation'],
     queryFn: () => fetchJson('/api/governance/constellation'),
-    staleTime: 10 * 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 

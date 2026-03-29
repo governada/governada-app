@@ -222,7 +222,10 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
       flyToNode: flyToNodeImpl,
 
       pulseNode: (drepId: string) => {
-        setSceneState((prev) => ({ ...prev, pulseId: drepId }));
+        // Resolve to truncated node.id so rendering comparison works
+        const node = sceneState.nodes.find((n) => n.id === drepId || n.fullId === drepId);
+        const resolvedId = node?.id ?? drepId;
+        setSceneState((prev) => ({ ...prev, pulseId: resolvedId }));
         setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 1200);
       },
 
@@ -298,7 +301,8 @@ export const GovernanceConstellation = forwardRef<ConstellationRef, Constellatio
       flyToMatch: async (drepId: string) => {
         const node = sceneState.nodes.find((n) => n.id === drepId || n.fullId === drepId);
         if (!node || !cameraControlsRef.current) return;
-        setSceneState((prev) => ({ ...prev, pulseId: drepId, animating: true }));
+        // Use resolved node.id so rendering comparison (pulseId === node.id) works
+        setSceneState((prev) => ({ ...prev, pulseId: node.id, animating: true }));
         const [x, y, z] = rotateAroundZ(node.position, rotationAngleRef.current);
         await cameraControlsRef.current.setLookAt(x, y, z + 5, x, y, z, true);
         await sleep(1500);

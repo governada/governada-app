@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { FeatureGate, useFeatureFlag } from '@/components/FeatureGate';
 import { useDrafts, useCreateDraft, useTeamDrafts } from '@/hooks/useDrafts';
+import { useAuthorTableItems } from '@/hooks/useAuthorTableItems';
 import { useRegisterDraftListCommands } from '@/hooks/useRegisterDraftListCommands';
 import { commandRegistry } from '@/lib/workspace/commands';
 import { useWorkspaceStore } from '@/lib/workspace/store';
@@ -19,6 +21,11 @@ import { AmendmentEntryDialog } from './AmendmentEntryDialog';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import type { ProposalType, DraftStatus } from '@/lib/workspace/types';
+
+const AuthorDecisionTable = dynamic(
+  () => import('./AuthorDecisionTable').then((m) => ({ default: m.AuthorDecisionTable })),
+  { ssr: false },
+);
 
 const AUTHOR_REVIEW_STATUSES: DraftStatus[] = [
   'community_review',
@@ -52,6 +59,8 @@ function AuthorWorkspaceInner() {
   );
 
   const constitutionEditorFlag = useFeatureFlag('author_constitution_editor');
+  const decisionTableFlag = useFeatureFlag('workspace_decision_table');
+  const authorTableItems = useAuthorTableItems(data);
   const authorFilter = useWorkspaceStore((s) => s.authorFilter);
   const setAuthorFilter = useWorkspaceStore((s) => s.setAuthorFilter);
   const authorViewMode = useWorkspaceStore((s) => s.authorViewMode);
@@ -220,26 +229,32 @@ function AuthorWorkspaceInner() {
         </div>
       )}
 
-      <PortfolioSearch
-        filter={authorFilter}
-        onFilterChange={setAuthorFilter}
-        viewMode={authorViewMode}
-        onViewModeChange={setAuthorViewMode}
-        showArchiveToggle
-        showArchived={showArchived}
-        onShowArchivedChange={setShowArchived}
-        placeholder="Search drafts..."
-      />
+      {!decisionTableFlag && (
+        <PortfolioSearch
+          filter={authorFilter}
+          onFilterChange={setAuthorFilter}
+          viewMode={authorViewMode}
+          onViewModeChange={setAuthorViewMode}
+          showArchiveToggle
+          showArchived={showArchived}
+          onShowArchivedChange={setShowArchived}
+          placeholder="Search drafts..."
+        />
+      )}
 
       <PortfolioStats stats={authorStats} />
 
       <TriageSummary insights={triageInsights} />
 
-      <PortfolioView
-        drafts={data?.drafts ?? []}
-        isLoading={isLoading}
-        showArchived={showArchived}
-      />
+      {decisionTableFlag ? (
+        <AuthorDecisionTable items={authorTableItems} isLoading={isLoading} />
+      ) : (
+        <PortfolioView
+          drafts={data?.drafts ?? []}
+          isLoading={isLoading}
+          showArchived={showArchived}
+        />
+      )}
 
       <TeamProposalsSection drafts={teamData?.drafts ?? []} isLoading={teamLoading} />
 

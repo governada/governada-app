@@ -33,6 +33,8 @@ function rowToAnnotation(row: Record<string, unknown>): ProposalAnnotation {
     color: (row.color as string) ?? null,
     isPublic: row.is_public as boolean,
     upvoteCount: (row.upvote_count as number) ?? 0,
+    suggestedText: (row.suggested_text as ProposalAnnotation['suggestedText']) ?? null,
+    status: (row.status as ProposalAnnotation['status']) ?? 'active',
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -113,20 +115,30 @@ export const POST = withRouteHandler(
     const parsed = CreateAnnotationSchema.parse(body);
 
     const admin = getSupabaseAdmin();
+
+    // Suggestion annotations default to public (visible to proposer)
+    const isPublic = parsed.isPublic ?? (parsed.annotationType === 'suggestion' ? true : false);
+
+    const insertRow: Record<string, unknown> = {
+      user_id: userId,
+      proposal_tx_hash: parsed.proposalTxHash,
+      proposal_index: parsed.proposalIndex,
+      anchor_start: parsed.anchorStart,
+      anchor_end: parsed.anchorEnd,
+      anchor_field: parsed.anchorField,
+      annotation_text: parsed.annotationText,
+      annotation_type: parsed.annotationType,
+      color: parsed.color ?? null,
+      is_public: isPublic,
+    };
+
+    if (parsed.suggestedText) {
+      insertRow.suggested_text = parsed.suggestedText;
+    }
+
     const { data, error } = await admin
       .from('proposal_annotations')
-      .insert({
-        user_id: userId,
-        proposal_tx_hash: parsed.proposalTxHash,
-        proposal_index: parsed.proposalIndex,
-        anchor_start: parsed.anchorStart,
-        anchor_end: parsed.anchorEnd,
-        anchor_field: parsed.anchorField,
-        annotation_text: parsed.annotationText,
-        annotation_type: parsed.annotationType,
-        color: parsed.color ?? null,
-        is_public: parsed.isPublic ?? false,
-      })
+      .insert(insertRow)
       .select('*')
       .single();
 
@@ -157,6 +169,7 @@ export const PATCH = withRouteHandler(
     if (parsed.annotationText !== undefined) updates.annotation_text = parsed.annotationText;
     if (parsed.isPublic !== undefined) updates.is_public = parsed.isPublic;
     if (parsed.color !== undefined) updates.color = parsed.color;
+    if (parsed.status !== undefined) updates.status = parsed.status;
 
     const admin = getSupabaseAdmin();
     const { data, error } = await admin

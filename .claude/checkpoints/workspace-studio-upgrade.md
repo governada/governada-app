@@ -1,7 +1,7 @@
 # Workspace Studio Upgrade — Handoff Document
 
-> **Status**: Phase 1 + Phase 2 COMPLETE and deployed. Phase 3 designed, ready to build.
-> **Branch**: `claude/stupefied-raman`
+> **Status**: Phases 1-3a DEPLOYED. Phase 3b + Phase 4 CODE COMPLETE (this PR). Phases 5-6 remain.
+> **Branch**: `claude/nostalgic-shannon`
 > **Plan**: `C:\Users\dalto\.claude-personal\plans\glimmering-discovering-crescent.md`
 > **Updated**: 2026-03-28
 
@@ -42,6 +42,35 @@
 - Keyboard navigation (J/K/Enter) via existing focus system
 - Feature flag `workspace_decision_table` enabled globally
 - PostHog: `review_table_viewed` event
+
+### Phase 3a (PR #690 — merged to main)
+
+- **DecisionPanel** replaces Vote tab (always-visible right column)
+- **IntelligenceStrip** replaces metadata strip (compact intelligence bar)
+- **SenecaSummary** card above editor (AI-framed proposal summary)
+
+### Phase 3b (this PR — code complete)
+
+- **Supabase migration** (`069_annotation_suggestions.sql`): `suggested_text` JSONB column + `status` column on `proposal_annotations`
+- **Type updates**: `'suggestion'` added to `AnnotationType`, `SuggestedText` interface, `AnnotationStatus` type
+- **Schema updates**: Zod schemas extended for `suggestedText` and `status` fields
+- **API route**: `rowToAnnotation()` maps new columns, POST supports `suggested_text`, PATCH supports `status`
+- **Hook updates**: `useAnnotations` hooks support `suggestedText` and `status` fields
+- **`useSuggestionAnnotations`** (NEW): specialized hook filtering/creating/accepting/rejecting suggestion annotations
+- **Annotation component fixes**: `suggestion` type added to all `Record<AnnotationType, ...>` maps in AnnotatableText, AnnotationSidebar, PublicFeedbackSummary
+
+### Phase 4 (this PR — code complete)
+
+- **`AuthorDecisionTableItem`** type + `AuthorTablePhase` type
+- **`useAuthorTableItems`** hook: normalizes `ProposalDraft[]` into `AuthorDecisionTableItem[]` with computed `fieldCompleteness`, `constitutionalRisk`, `nextAction`, `daysInPhase`
+- **`useAuthorTableState`** hook: sort/filter/search state for author table (8 sort columns)
+- **`AuthorDecisionTable`** component: full decision table with sortable columns, phase filter tabs, search, keyboard nav (J/K/Enter), PostHog tracking (`author_table_viewed`)
+- **`AuthorDecisionTableRow`**: responsive row (4 mobile / 8 desktop columns)
+- **`AuthorTableFilters`**: phase tabs (All/Drafts/In Review/On-Chain) + search
+- **Cell components**: `QualityCell` (4-dot completeness), `NextActionCell` (AI-determined action with arrow), `FeedbackCell` (review count), `AuthorPhaseCell` (phase badge), `UpdatedCell` (relative time)
+- **Reused from review**: `TypeBadgeCell`, `ConstitutionalRiskCell` (imported directly)
+- **Feature-flagged**: `workspace_decision_table` gates table vs kanban fallback in AuthorWorkspace
+- **AuthorWorkspace** wired with dynamic import, hides PortfolioSearch when table active
 
 ---
 
@@ -241,19 +270,15 @@ interface WorkspacePanelsProps {
 
 ---
 
-## Phases 4-6 (Future)
-
-### Phase 4: Author Decision Table (M effort)
-
-Same pattern as Phase 2 but for `/workspace/author`. Replace author kanban with intelligent portfolio table. Columns: Draft, Status, Quality Signal, Community Feedback, Constitutional, Next Action.
+## Phases 5-6 (Remaining)
 
 ### Phase 5: Globe-Workspace Bridge (M effort)
 
-Seneca-mediated navigation from globe to workspace. Globe is NOT directly clickable.
+Seneca-mediated navigation from globe to workspace. Globe is NOT directly clickable. Key files: `hooks/useSenecaGlobeBridge.ts`, `components/governada/panel/SenecaConversation.tsx`.
 
 ### Phase 6: Design Language & Mobile (M effort)
 
-Full Compass enforcement + mobile optimization.
+Full Compass enforcement + mobile optimization. Bottom sheet panels, touch targets, reduced motion.
 
 ---
 

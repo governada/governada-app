@@ -1,7 +1,13 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ProposalAnnotation, AnnotationType, AnnotationField } from '@/lib/workspace/types';
+import type {
+  ProposalAnnotation,
+  AnnotationType,
+  AnnotationField,
+  AnnotationStatus,
+  SuggestedText,
+} from '@/lib/workspace/types';
 
 // ---------------------------------------------------------------------------
 // Auth header helper (reused pattern from useProposalNotes)
@@ -61,6 +67,7 @@ interface CreateAnnotationInput {
   annotationType: AnnotationType;
   color?: string;
   isPublic?: boolean;
+  suggestedText?: SuggestedText;
 }
 
 export function useCreateAnnotation() {
@@ -95,8 +102,10 @@ export function useCreateAnnotation() {
         annotationText: input.annotationText,
         annotationType: input.annotationType,
         color: input.color ?? null,
-        isPublic: input.isPublic ?? false,
+        isPublic: input.isPublic ?? (input.annotationType === 'suggestion' ? true : false),
         upvoteCount: 0,
+        suggestedText: input.suggestedText ?? null,
+        status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -129,6 +138,7 @@ interface UpdateAnnotationInput {
   annotationText?: string;
   isPublic?: boolean;
   color?: string;
+  status?: AnnotationStatus;
 }
 
 export function useUpdateAnnotation() {
@@ -145,6 +155,7 @@ export function useUpdateAnnotation() {
           annotationText: input.annotationText,
           isPublic: input.isPublic,
           color: input.color,
+          status: input.status,
         }),
       });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);

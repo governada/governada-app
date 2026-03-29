@@ -245,9 +245,16 @@ export const CreateAnnotationSchema = z.object({
       'Invalid anchor field',
     ),
   annotationText: z.string().min(1).max(2000),
-  annotationType: z.enum(['note', 'highlight', 'citation', 'concern']),
+  annotationType: z.enum(['note', 'highlight', 'citation', 'concern', 'suggestion']),
   color: z.string().max(20).optional(),
   isPublic: z.boolean().optional(),
+  suggestedText: z
+    .object({
+      original: z.string(),
+      proposed: z.string(),
+      explanation: z.string().max(1000),
+    })
+    .optional(),
 });
 
 export const UpdateAnnotationSchema = z.object({
@@ -255,6 +262,7 @@ export const UpdateAnnotationSchema = z.object({
   annotationText: z.string().min(1).max(2000).optional(),
   isPublic: z.boolean().optional(),
   color: z.string().max(20).optional(),
+  status: z.enum(['active', 'accepted', 'rejected']).optional(),
 });
 
 // ---------------------------------------------------------------------------

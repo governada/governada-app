@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { MessageSquare, Highlighter, AlertTriangle, BookOpen, Users } from 'lucide-react';
+import { MessageSquare, Highlighter, AlertTriangle, BookOpen, Brain, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAnnotations } from '@/hooks/useAnnotations';
@@ -34,6 +34,11 @@ const TYPE_STYLES: Record<
     icon: Highlighter,
     label: 'Highlights',
     color: 'text-emerald-600 dark:text-emerald-400',
+  },
+  suggestion: {
+    icon: Brain,
+    label: 'Suggestions',
+    color: 'text-sky-600 dark:text-sky-400',
   },
 };
 
@@ -102,6 +107,7 @@ export function PublicFeedbackSummary({
       note: 0,
       citation: 0,
       highlight: 0,
+      suggestion: 0,
     };
     for (const a of publicAnnotations) {
       counts[a.annotationType]++;

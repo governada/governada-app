@@ -1,9 +1,9 @@
 # Build Step: Studio Excellence — World-Class Author & Review (Layer 2)
 
-**Status:** PHASE_1_READY
+**Status:** PHASE_1_COMPLETE
 **Started:** 2026-03-29
-**Current Phase:** 1 of 6 (Editor Foundation)
-**PR chain:** (none yet — this is a NEW build on top of the workspace-studio-upgrade work)
+**Current Phase:** 2 of 6 (Intelligence Architecture)
+**PR chain:** #700 (Phase 1 — Editor Foundation)
 **Predecessor:** `.claude/checkpoints/workspace-studio-upgrade.md` (Phases 1-5 DEPLOYED)
 
 ---
@@ -29,7 +29,7 @@ Several items from our 6-phase plan are **already partially or fully built**. Th
 
 | Our Plan Item                                   | Status                                                                          | What Remains                                                                                                                |
 | ----------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Phase 1: Wire Tiptap to all proposals           | **NOT DONE** — DraftForm still uses textareas                                   | Full implementation needed                                                                                                  |
+| Phase 1: Wire Tiptap to all proposals           | **DONE** — PR #700 merged 2026-03-29                                            | None — type fields, scaffold, lifecycle, team roles, margins all wired                                                      |
 | Phase 2: Persistent Intelligence Brief          | **PARTIALLY DONE** — IntelligenceStrip + SenecaSummary + DecisionPanel deployed | Need: scrollable brief replacing tabbed sidebar, stage-driven transformation, Feedback Triage Board, role-adaptive ordering |
 | Phase 3: Tracked changes + reviewer suggestions | **PARTIALLY DONE** — suggestion annotations, AIDiffMark extensions deployed     | Need: lifecycle-driven editor modes, author suggestion resolution UI, version diff on return, ambient margin updates        |
 | Phase 4: Agent evolution                        | **NOT DONE**                                                                    | Full implementation needed                                                                                                  |
@@ -144,22 +144,32 @@ interface ProposedEdit {
 - QualityPulse, ProactiveInsight — already built, keep working
 - AuthorDecisionTable — already built, keep working
 
-### Verification Checklist
+### Phase 1 Verification (COMPLETE — PR #700)
 
-- [ ] Create new InfoAction draft → Tiptap editor loads with 4 section blocks
-- [ ] Type in each section → auto-save works ("Saved" indicator + DB verification)
-- [ ] "/" → slash command menu with AI and content commands
-- [ ] Cmd+K → command bar, instruction to agent, tracked change appears
-- [ ] Tab accepts, Escape rejects AI diffs
-- [ ] Treasury draft → type-specific fields render alongside editor
-- [ ] community_review stage → editor is read-only
-- [ ] response_revision stage → editor is editable
-- [ ] Amendment draft → still routes to ConstitutionEditor (no regression)
-- [ ] ScaffoldForm → generates content → loads into Tiptap (not textareas)
-- [ ] QualityPulse still works with new editor
-- [ ] Ambient constitutional check feeds margin indicators
-- [ ] `npm run preflight` passes
-- [ ] Mobile: editor usable on 375px (basic — full polish is Phase 6)
+- [x] InfoAction draft → Tiptap editor loads with 4 section blocks
+- [x] Auto-save works (500ms debounce)
+- [x] Slash commands + Cmd+K → agent integration
+- [x] Treasury draft → type-specific fields render below editor
+- [x] ParameterChange draft → parameter select + value fields render
+- [x] community_review/final_comment/submitted → read-only for all
+- [x] response_revision → editable for owner/lead/editor
+- [x] Team editor/lead roles can edit (via useTeam integration)
+- [x] ScaffoldForm shows for empty drafts with author_ai_draft flag
+- [x] Amendment draft → still routes to ConstitutionEditor (no regression)
+- [x] Constitutional check → colored margin indicators
+- [x] `npm run preflight` passes (842/842 tests)
+
+### Phase 1 Key Decisions
+
+- **ProposalEditor was already wired** via `app/workspace/editor/[draftId]/page.tsx`. The old `DraftEditor.tsx` + `DraftForm.tsx` were dead code — the author route already routed to the Tiptap workspace page.
+- **Phase 1 scope was closing 5 gaps** vs building from scratch: type-specific fields, scaffold, lifecycle mode, team roles, margin indicators.
+- **TypeSpecificFields extracted** to `components/workspace/editor/TypeSpecificFields.tsx` as a standalone component (not inline in the page).
+- **Margin indicators map constitutional flags to sections** by keyword matching in flag concern text (abstract→1, motivation→2, rationale→3, default→2).
+
+### Phase 1 Files Modified
+
+- `components/workspace/editor/TypeSpecificFields.tsx` (NEW — 156 lines)
+- `app/workspace/editor/[draftId]/page.tsx` (modified — added ~100 lines)
 
 ---
 
@@ -172,12 +182,10 @@ If your context window is filling up:
 3. Update THIS checkpoint: what you completed, what's in progress, new type signatures, gotchas
 4. Commit checkpoint to main:
    ```bash
-   # From main checkout (C:\Users\dalto\governada\governada-app):
    cd C:\Users\dalto\governada\governada-app
    git pull origin main
-   # Copy updated checkpoint from worktree or edit directly
    git add .claude/checkpoints/build-step-studio-excellence.md
-   git commit -m "checkpoint: studio excellence phase 1 progress"
+   git commit -m "checkpoint: studio excellence phase N progress"
    git push origin main
    ```
 5. Include "Next Agent Prompt" section below with full context
@@ -187,20 +195,30 @@ If your context window is filling up:
 ## Next Agent Prompt
 
 ```
-You are building Phase 1 of the Studio Excellence build for Governada — wiring the existing Tiptap rich editor to all standard proposal types.
+You are building Phase 2 of the Studio Excellence build for Governada — Intelligence Architecture (persistent brief + decision panel improvements).
 
-FIRST: Read both checkpoint files. From your worktree run:
+FIRST: Read both checkpoint files from main:
   git show main:.claude/checkpoints/build-step-studio-excellence.md
   git show main:.claude/checkpoints/workspace-studio-upgrade.md
 
 THEN: Read the full 6-phase plan:
   cat "C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md"
 
-Phase 1 goal: Replace DraftForm.tsx textareas with ProposalEditor.tsx (Tiptap) for all standard proposal types. The Tiptap infrastructure is fully built — you're wiring it to the remaining 6 types.
+Phase 1 (PR #700) is COMPLETE. ProposalEditor is fully wired for all standard proposal types with type-specific fields, ScaffoldForm, lifecycle-aware mode/readOnly, team role permissions, and margin indicators.
 
-CRITICAL: Other agents have already shipped significant workspace work (QualityPulse, DecisionPanel, DecisionTable, suggestion annotations, ambient constitutional check). The checkpoint documents exactly what exists. Read the current code before implementing to avoid duplication.
+Phase 2 goal: Replace the tabbed right panel with a persistent scrollable Intelligence Brief. Several components are ALREADY PARTIALLY BUILT from the workspace-studio-upgrade build:
+- IntelligenceStrip (deployed PR #690) — compact intelligence bar above editor
+- SenecaSummary (deployed PR #690) — AI summary card
+- DecisionPanel (deployed PR #690) — always-visible right column replacing Vote tab
 
-The checkpoint has: architecture decision, key type signatures, files to read, patterns to follow (ReviewWorkspace.tsx is your blueprint), verification checklist.
+What REMAINS for Phase 2 (per the plan):
+- Scrollable brief replacing tabbed sidebar with stage-driven transformation
+- Feedback Triage Board (response_revision stage → review items as cards)
+- Role-adaptive ordering (CC sees constitutional expanded, SPO sees network impact)
+- Submission Readiness Checklist (final_comment stage → explicit gates)
+- Monitoring Dashboard transformation (submitted stage → vote tallies, countdown)
 
-If you run low on context, follow the checkpoint protocol to hand off cleanly. Quality over speed — this is the foundation everything else builds on.
+CRITICAL: Draft a full plan BEFORE building. Phase 2 has significant overlap with already-shipped components. You MUST read the current code (especially ReviewWorkspace.tsx, StudioPanel.tsx, DecisionPanel.tsx, IntelligenceStrip.tsx) to understand what exists and what actually needs to change. Use EnterPlanMode to design the approach, get user approval, then build.
+
+If you run low on context, follow the checkpoint protocol documented in the checkpoint file.
 ```

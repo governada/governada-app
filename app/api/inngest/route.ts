@@ -57,6 +57,8 @@ import { scoreProposers } from '@/inngest/functions/score-proposers';
 import { scoreAiQuality } from '@/inngest/functions/score-ai-quality';
 import { generateAiContent } from '@/inngest/functions/generateAiContent';
 import { reconcileData } from '@/inngest/functions/reconcile-data';
+import { precomputeProposalIntelligence } from '@/inngest/functions/precompute-proposal-intelligence';
+import { updatePassagePredictions } from '@/inngest/functions/update-passage-predictions';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
@@ -115,5 +117,7 @@ export const { GET, POST, PUT } = serve({
     scoreAiQuality,
     generateAiContent,
     reconcileData,
+    precomputeProposalIntelligence,
+    updatePassagePredictions,
   ],
 });

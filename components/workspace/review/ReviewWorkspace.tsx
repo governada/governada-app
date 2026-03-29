@@ -30,6 +30,7 @@ import { DecisionPanel } from '@/components/workspace/review/DecisionPanel';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { IntelPanel } from '@/components/studio/IntelPanel';
+import { ReviewIntelBrief } from '@/components/intelligence/ReviewIntelBrief';
 import { NotesPanel } from '@/components/studio/NotesPanel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PROPOSAL_TYPE_LABELS } from '@/lib/workspace/types';
@@ -254,13 +255,14 @@ function StudioPanelWrapper({
             amendments={extractAmendmentChanges(amendmentDraft.typeSpecific)}
           />
         ) : (
-          <IntelPanel
+          <ReviewIntelBrief
             proposalId={proposalId}
+            proposalIndex={proposalIndex}
             proposalType={proposalType}
             proposalContent={content}
             interBodyVotes={interBodyVotes}
             citizenSentiment={citizenSentiment}
-            votingPowerSummary={votingPowerSummary}
+            voterRole={userRole}
           />
         )
       }
@@ -566,13 +568,19 @@ function StudioReviewInner({
               voterId={voterId ?? ''}
               voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
               intelContent={
-                <IntelPanel
+                <ReviewIntelBrief
                   proposalId={selectedItem.txHash}
+                  proposalIndex={selectedItem.proposalIndex}
                   proposalType={selectedItem.proposalType}
                   proposalContent={itemContent}
                   interBodyVotes={selectedItem.interBodyVotes}
                   citizenSentiment={selectedItem.citizenSentiment}
-                  votingPowerSummary={estimatedVotingPower}
+                  aiSummary={selectedItem.aiSummary}
+                  withdrawalAmount={selectedItem.withdrawalAmount}
+                  treasuryTier={selectedItem.treasuryTier}
+                  epochsRemaining={selectedItem.epochsRemaining}
+                  isUrgent={selectedItem.isUrgent}
+                  voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
                 />
               }
             />

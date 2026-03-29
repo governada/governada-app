@@ -1,17 +1,7 @@
 'use client';
 
-import { useState, useCallback, type ReactNode } from 'react';
-import {
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-  Loader2,
-  Sparkles,
-  ChevronDown,
-  ChevronRight,
-  Shield,
-  FileSearch,
-} from 'lucide-react';
+import { useCallback, type ReactNode } from 'react';
+import { CheckCircle2, XCircle, MinusCircle, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { posthog } from '@/lib/posthog';
 
@@ -83,39 +73,6 @@ const MAX_RATIONALE = 5000;
 // ---------------------------------------------------------------------------
 // Collapsible section for intelligence
 // ---------------------------------------------------------------------------
-
-function IntelSection({
-  title,
-  icon: Icon,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  icon: typeof Shield;
-  children: ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border-t border-border/30">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <Icon className="h-3.5 w-3.5" />
-        <span className="font-medium">{title}</span>
-        {open ? (
-          <ChevronDown className="h-3 w-3 ml-auto" />
-        ) : (
-          <ChevronRight className="h-3 w-3 ml-auto" />
-        )}
-      </button>
-      {open && <div className="px-3 pb-3">{children}</div>}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // DecisionPanel — always-visible right panel for vote decisions
@@ -264,14 +221,8 @@ export function DecisionPanel({
         </div>
       )}
 
-      {/* Intelligence accordion — scrollable area */}
-      <div className="flex-1 mt-3 overflow-y-auto">
-        {intelContent && (
-          <IntelSection title="Intelligence" icon={FileSearch} defaultOpen>
-            {intelContent}
-          </IntelSection>
-        )}
-      </div>
+      {/* Intelligence brief — scrollable area */}
+      {intelContent && <div className="flex-1 mt-3 overflow-y-auto min-h-0">{intelContent}</div>}
     </div>
   );
 }

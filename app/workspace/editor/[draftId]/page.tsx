@@ -44,6 +44,7 @@ import { QualityPulse } from '@/components/workspace/author/QualityPulse';
 import { ProactiveInsight } from '@/components/workspace/author/ProactiveInsight';
 import { ProposalAlignmentCard } from '@/components/intelligence/ProposalAlignmentCard';
 import { VersionCompareDialog } from '@/components/workspace/author/VersionCompareDialog';
+import { AuthorBrief } from '@/components/intelligence/AuthorBrief';
 import { useAmbientConstitutionalCheck } from '@/hooks/useAmbientConstitutionalCheck';
 import { useSectionAnalysis } from '@/hooks/useSectionAnalysis';
 import { useTeam } from '@/hooks/useTeam';
@@ -125,10 +126,12 @@ function LineageBanner({ supersedesId }: { supersedesId: string }) {
 
 function AuthorPanelWrapper({
   agentContent,
+  intelContent,
   readinessContent,
   headerContent,
 }: {
   agentContent: ReactNode;
+  intelContent?: ReactNode;
   readinessContent?: ReactNode;
   headerContent?: ReactNode;
 }) {
@@ -144,6 +147,7 @@ function AuthorPanelWrapper({
       width={panelWidth}
       onWidthChange={setPanelWidth}
       agentContent={agentContent}
+      intelContent={intelContent}
       readinessContent={readinessContent}
       headerContent={headerContent}
     />
@@ -722,6 +726,16 @@ function WorkspaceEditorPage() {
           context={
             <AuthorPanelWrapper
               agentContent={agentChatNode}
+              intelContent={
+                draft ? (
+                  <AuthorBrief
+                    draft={draft}
+                    draftId={draftId ?? ''}
+                    constitutionalResult={constitutionalResult}
+                    canEdit={canEdit}
+                  />
+                ) : undefined
+              }
               readinessContent={
                 draftId ? (
                   <>

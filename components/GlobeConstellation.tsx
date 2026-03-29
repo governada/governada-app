@@ -109,6 +109,12 @@ const DEFAULT_FOCUS: FocusState = {
   nodeTypeFilter: null,
 };
 
+// Module-level shared focus state — bridges React outer tree ↔ R3F Canvas tree.
+// R3F's reconciler doesn't re-render components inside <Canvas> when parent state
+// changes. This module-level variable is readable from useFrame without React props.
+let _sharedFocus: FocusState = DEFAULT_FOCUS;
+let _sharedFocusVersion = 0;
+
 interface SceneState {
   nodes: ConstellationNode3D[];
   edges: ConstellationEdge3D[];
@@ -209,16 +215,12 @@ export const GlobeConstellation = forwardRef<
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
-  // Bridge focus state into R3F's separate fiber tree.
-  // R3F's <Canvas> creates an independent React root — children don't re-render
-  // when parent state changes via useState. We store focus in a ref that R3F
-  // components read in useFrame, and increment a version counter so useFrame
-  // can detect changes without depending on React re-renders.
-  const focusRef = useRef<FocusState>(sceneState.focus);
-  const focusVersionRef = useRef(0);
-  if (focusRef.current !== sceneState.focus) {
-    focusRef.current = sceneState.focus;
-    focusVersionRef.current++;
+  // Sync focus state to module-level variable on every render.
+  // This bridges React outer tree → R3F Canvas tree (which doesn't re-render).
+  // NodePoints' useFrame reads _sharedFocus/_sharedFocusVersion directly.
+  if (_sharedFocus !== sceneState.focus) {
+    _sharedFocus = sceneState.focus;
+    _sharedFocusVersion++;
   }
 
   const { data: apiData } = useGovernanceConstellation();
@@ -249,7 +251,7 @@ export const GlobeConstellation = forwardRef<
     const map = new Map<string, number>();
     const typedData = apiData as ConstellationApiData | undefined;
     if (!typedData?.recentEvents) return map;
-    const now = Date.now(); // eslint-disable-line react-hooks/purity -- timestamp for freshness calc
+    const now = Date.now();  
     for (const event of typedData.recentEvents) {
       const id = event.drepId;
       if (!id) continue;
@@ -927,8 +929,6 @@ export const GlobeConstellation = forwardRef<
             <ConstellationNodes
               nodes={sceneState.nodes}
               focus={sceneState.focus}
-              focusRef={focusRef}
-              focusVersionRef={focusVersionRef}
               pulseId={sceneState.pulseId}
               interactive={interactive}
               overlayColorMode={overlayColorMode}
@@ -1273,8 +1273,6 @@ function RaycastConfig() {
 function ConstellationNodes({
   nodes,
   focus,
-  focusRef,
-  focusVersionRef,
   pulseId,
   interactive,
   onNodeClick,
@@ -1288,8 +1286,6 @@ function ConstellationNodes({
 }: {
   nodes: ConstellationNode3D[];
   focus: FocusState;
-  focusRef: React.RefObject<FocusState>;
-  focusVersionRef: React.RefObject<number>;
   pulseId: string | null;
   interactive?: boolean;
   onNodeClick?: (node: ConstellationNode3D) => void;
@@ -1386,8 +1382,6 @@ function ConstellationNodes({
       <NodePoints
         nodes={groups.drep}
         focus={focus}
-        focusRef={focusRef}
-        focusVersionRef={focusVersionRef}
         hoveredNodeId={hoveredNodeId}
         visitedNodeIds={visitedNodeIds}
         pulseId={pulseId}
@@ -1402,8 +1396,6 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.spo}
           focus={focus}
-          focusRef={focusRef}
-          focusVersionRef={focusVersionRef}
           hoveredNodeId={hoveredNodeId}
           visitedNodeIds={visitedNodeIds}
           pulseId={pulseId}
@@ -1421,8 +1413,6 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.cc}
           focus={focus}
-          focusRef={focusRef}
-          focusVersionRef={focusVersionRef}
           pulseId={pulseId}
           interactive={false}
           getColor={getCcColor}
@@ -1448,8 +1438,6 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.proposal}
           focus={focus}
-          focusRef={focusRef}
-          focusVersionRef={focusVersionRef}
           hoveredNodeId={hoveredNodeId}
           visitedNodeIds={visitedNodeIds}
           pulseId={pulseId}
@@ -1468,8 +1456,6 @@ function ConstellationNodes({
 function NodePoints({
   nodes,
   focus,
-  focusRef,
-  focusVersionRef,
   hoveredNodeId,
   visitedNodeIds,
   pulseId,
@@ -1483,8 +1469,6 @@ function NodePoints({
 }: {
   nodes: ConstellationNode3D[];
   focus: FocusState;
-  focusRef?: React.RefObject<FocusState>;
-  focusVersionRef?: React.RefObject<number>;
   hoveredNodeId?: string | null;
   visitedNodeIds?: Set<string>;
   pulseId: string | null;
@@ -1574,7 +1558,7 @@ function NodePoints({
     [nodes, hoveredNodeId, visitedNodeIds, pulseId, getColor, emissive, activityMap],
   );
 
-  // Target buffers ref — updated by useFrame when focus changes via focusVersionRef
+  // Target buffers ref — updated by useFrame when focus changes via _sharedFocusVersion
   const targetBuffersRef = useRef<{
     positions: Float32Array;
     colors: Float32Array;
@@ -1584,7 +1568,7 @@ function NodePoints({
   const lastFocusVersionRef = useRef(-1);
 
   // Initial buffer computation uses the focus prop (works on first mount).
-  // Subsequent focus changes are detected in useFrame via focusVersionRef.
+  // Subsequent focus changes are detected in useFrame via _sharedFocusVersion.
   const buffers = useMemo(() => computeBuffers(focus), [computeBuffers, focus]);
 
   const geoRef = useRef<THREE.BufferGeometry>(null);
@@ -1619,49 +1603,25 @@ function NodePoints({
   }, [buffers]);
 
   // Smooth per-frame interpolation: current values → target values.
-  // Focus state is read from focusRef (a ref bridging the React/R3F boundary)
+  // Focus state is read from module-level _sharedFocus/_sharedFocusVersion
   // because R3F Canvas children don't re-render when parent state changes.
   useFrame((_, delta) => {
     const geo = geoRef.current;
     if (!geo || !currentColorsRef.current || !currentSizesRef.current || !currentDimmedRef.current)
       return;
 
-    // Diagnostic: expose raw version values for debugging from console
-    const w = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : null;
-    if (w && !w.__focusVersionTrace) {
-      w.__focusVersionTrace = {
-        hasRef: !!focusVersionRef,
-        hasFocusRef: !!focusRef,
-        initialVersion: focusVersionRef?.current ?? 'undefined',
-        lastVersion: lastFocusVersionRef.current,
-        nodeCount: nodes.length,
-      };
-    }
-
-    // Detect focus state changes via version counter (bridges React→R3F boundary)
-    const currentVersion = focusVersionRef?.current ?? 0;
-    if (currentVersion !== lastFocusVersionRef.current && focusRef?.current) {
+    // Detect focus state changes via module-level shared variable.
+    // No React props or refs — pure JS module scope, always readable.
+    const currentVersion = _sharedFocusVersion;
+    if (currentVersion !== lastFocusVersionRef.current) {
       lastFocusVersionRef.current = currentVersion;
-      const newTargets = computeBuffers(focusRef.current);
+      const newTargets = computeBuffers(_sharedFocus);
       targetBuffersRef.current = newTargets;
-      // Also update position attribute if node count changed
       geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));
       geo.computeBoundingSphere();
-      // Diagnostic: expose to window so we can verify from console
-      const w =
-        typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : null;
-      if (w) {
-        w.__focusDebug = {
-          version: currentVersion,
-          active: focusRef.current.active,
-          focusedCount: focusRef.current.focusedIds.size,
-          nodeCount: nodes.length,
-          dimmedCount: Array.from(newTargets.dimmedArr).filter((v) => v > 0.5).length,
-        };
-      }
     }
 
-    // Use ref-based targets if available (focus changed), otherwise fall back to initial buffers
+    // Use shared targets if available (focus changed), otherwise fall back to initial buffers
     const targets = targetBuffersRef.current ?? buffers;
 
     // Exponential smoothing factor (frame-rate independent, ~0.6s transition)

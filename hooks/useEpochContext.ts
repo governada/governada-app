@@ -38,7 +38,8 @@ export function useEpochContext(): EpochContext {
       return res.json();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    select: (d: { proposals?: unknown[] }) => d?.proposals?.length ?? null,
+    select: (d: { proposals?: Array<{ status: string }> }) =>
+      d?.proposals?.filter((p) => p.status === 'Open').length ?? null,
   });
 
   return {

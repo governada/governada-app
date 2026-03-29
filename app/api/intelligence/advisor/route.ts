@@ -104,9 +104,12 @@ async function buildGovernanceSnapshot(ctx: {
       (async () => {
         const { data } = await supabase
           .from('proposals')
-          .select('title, type, status, tx_hash, index')
-          .in('status', ['active', 'voting'])
-          .order('created_at', { ascending: false })
+          .select('title, proposal_type, tx_hash, proposal_index')
+          .is('ratified_epoch', null)
+          .is('enacted_epoch', null)
+          .is('dropped_epoch', null)
+          .is('expired_epoch', null)
+          .order('block_time', { ascending: false })
           .limit(20);
         return data;
       })().catch(() => null),
@@ -116,7 +119,8 @@ async function buildGovernanceSnapshot(ctx: {
         const { data } = await supabase
           .from('dreps')
           .select('drep_id, info, score, participation_rate')
-          .not('info->isActive', 'eq', false)
+          .not('info', 'is', null)
+          .gt('info->votingPowerLovelace', '0')
           .order('score', { ascending: false })
           .limit(500);
         return data;
@@ -160,7 +164,7 @@ async function buildGovernanceSnapshot(ctx: {
       lines.push(`Active proposals (${proposalsResult.length}):`);
       for (const p of proposalsResult) {
         lines.push(
-          `- [${p.type}] "${p.title}" (${p.status}) — /governance/proposals/${p.tx_hash}#${p.index}`,
+          `- [${p.proposal_type}] "${p.title}" — /governance/proposals/${p.tx_hash}#${p.proposal_index}`,
         );
       }
     } else {
@@ -180,10 +184,18 @@ async function buildGovernanceSnapshot(ctx: {
         activeDreps.reduce((sum: number, d: DRepRow) => sum + (d.score ?? 0), 0) /
           activeDreps.length,
       );
-      const avgParticipation = Math.round(
-        activeDreps.reduce((sum: number, d: DRepRow) => sum + (d.participation_rate ?? 0), 0) /
-          activeDreps.length,
+      const drepsWithParticipation = activeDreps.filter(
+        (d: DRepRow) => d.participation_rate != null,
       );
+      const avgParticipation =
+        drepsWithParticipation.length > 0
+          ? Math.round(
+              drepsWithParticipation.reduce(
+                (sum: number, d: DRepRow) => sum + (d.participation_rate ?? 0),
+                0,
+              ) / drepsWithParticipation.length,
+            )
+          : 0;
 
       // Tier distribution by score bands
       const diamond = activeDreps.filter((d: DRepRow) => (d.score ?? 0) >= 85).length;
@@ -225,18 +237,16 @@ async function buildGovernanceSnapshot(ctx: {
             ? `${(balanceAda / 1_000_000).toFixed(1)}M`
             : balanceAda.toLocaleString();
 
-      // Count pending treasury proposals from the proposals we already fetched
+      // Count pending treasury proposals from the active proposals we already fetched
       type ProposalRow = {
-        title: string;
-        type: string;
-        status: string;
+        title: string | null;
+        proposal_type: string | null;
         tx_hash: string;
-        index: number;
+        proposal_index: number;
       };
       const pendingTreasury =
         (proposalsResult as ProposalRow[] | null)?.filter(
-          (p: ProposalRow) =>
-            p.type === 'TreasuryWithdrawals' && ['active', 'voting'].includes(p.status),
+          (p: ProposalRow) => p.proposal_type === 'TreasuryWithdrawals',
         ).length ?? 0;
 
       lines.push('');

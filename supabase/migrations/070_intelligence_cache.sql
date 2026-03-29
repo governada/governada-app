@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS review_sessions (
   total_time_seconds INTEGER DEFAULT 0,
   avg_seconds_per_proposal REAL,
   session_data JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT uq_review_sessions_voter_started UNIQUE (voter_id, started_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_review_sessions_voter

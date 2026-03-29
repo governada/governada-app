@@ -8,6 +8,8 @@ import { useWallet } from '@/utils/wallet';
 import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
 import { useReviewableDrafts } from '@/hooks/useReviewableDrafts';
 import { useRegisterReviewCommands } from '@/hooks/useRegisterReviewCommands';
+import { useReviewSession } from '@/hooks/useReviewSession';
+import { BatchProgressBar } from '@/components/workspace/review/BatchProgressBar';
 import { useRevisionNotifications } from '@/hooks/useRevisionNotifications';
 import { useAgent } from '@/hooks/useAgent';
 import { useAISkill } from '@/hooks/useAISkill';
@@ -313,6 +315,14 @@ interface StudioReviewInnerProps {
   onSelectIndex: (index: number) => void;
   /** If the selected item is a draft, provides the full draft object (for NewConstitution). */
   currentDraft?: ProposalDraft;
+  /** Batch review session state */
+  reviewSession: {
+    reviewed: number;
+    total: number;
+    avgSecondsPerProposal: number | null;
+    estimatedRemaining: number | null;
+    isComplete: boolean;
+  };
 }
 
 function StudioReviewInner({
@@ -337,6 +347,7 @@ function StudioReviewInner({
   segment,
   onSelectIndex,
   currentDraft,
+  reviewSession,
 }: StudioReviewInnerProps) {
   const { panelOpen, activePanel, togglePanel, isFullWidth, toggleFullWidth } = useStudio();
 
@@ -621,6 +632,15 @@ function StudioReviewInner({
               onFullWidthToggle={toggleFullWidth}
               onSearchToggle={() => setSearchOpen(!searchOpen)}
               searchOpen={searchOpen}
+            />
+
+            {/* Batch progress bar */}
+            <BatchProgressBar
+              reviewed={reviewSession.reviewed}
+              total={reviewSession.total}
+              avgSeconds={reviewSession.avgSecondsPerProposal}
+              estimatedRemaining={reviewSession.estimatedRemaining}
+              isComplete={reviewSession.isComplete}
             />
 
             {/* Search popover */}
@@ -927,11 +947,38 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     setSelectedIndex((prev) => Math.max(prev - 1, 0));
   }, []);
 
+  // Skip to next unreviewed proposal (] shortcut)
+  const goNextUnreviewed = useCallback(() => {
+    setSelectedIndex((prev) => {
+      // Search forward from current position
+      for (let i = prev + 1; i < items.length; i++) {
+        if (
+          getStatus(items[i].txHash, items[i].proposalIndex) !== 'voted' &&
+          !items[i].existingVote
+        ) {
+          return i;
+        }
+      }
+      // Wrap around: search from start
+      for (let i = 0; i < prev; i++) {
+        if (
+          getStatus(items[i].txHash, items[i].proposalIndex) !== 'voted' &&
+          !items[i].existingVote
+        ) {
+          return i;
+        }
+      }
+      // No unreviewed found — stay
+      return prev;
+    });
+  }, [items, getStatus]);
+
   // Vote success handler — auto-advances to next unreviewed proposal after 1.5s
   const handleVoteSuccess = useCallback(
     (vote: VoteChoice) => {
       if (!selectedItem) return;
       setStatus(selectedItem.txHash, selectedItem.proposalIndex, 'voted', vote);
+      reviewSession.markReviewed();
 
       // Show toast
       setVoteToast({ vote, visible: true });
@@ -957,11 +1004,15 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
     [selectedItem, setStatus, items, getStatus],
   );
 
-  // Register review navigation shortcuts via command registry (j/k + arrows)
+  // Batch review session tracking
+  const reviewSession = useReviewSession(items.length, voterId ?? undefined);
+
+  // Register review navigation shortcuts via command registry (j/k + arrows + ])
   // Vote shortcuts (y/n/a) are registered in StudioReviewInner where handleVoteSelect is available
   useRegisterReviewCommands({
     onNext: goNext,
     onPrev: goPrev,
+    onNextUnreviewed: goNextUnreviewed,
   });
 
   // Derive the agent userRole from segment
@@ -1143,6 +1194,7 @@ export function ReviewWorkspace({ initialProposalKey }: ReviewWorkspaceProps = {
         segment={segment}
         onSelectIndex={setSelectedIndex}
         currentDraft={currentDraft}
+        reviewSession={reviewSession}
       />
     </StudioProvider>
   );

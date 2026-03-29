@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { ThumbsUp, ThumbsDown, MinusCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import {
+  ThumbsUp,
+  ThumbsDown,
+  MinusCircle,
+  ChevronRight,
+  ChevronLeft,
+  SkipForward,
+} from 'lucide-react';
 import { commandRegistry } from '@/lib/workspace/commands';
 
 interface ReviewCommandHandlers {
@@ -10,6 +17,8 @@ interface ReviewCommandHandlers {
   onAbstain?: () => void;
   onNext?: () => void;
   onPrev?: () => void;
+  /** Skip to the next unreviewed proposal (skips voted/snoozed) */
+  onNextUnreviewed?: () => void;
 }
 
 /**
@@ -35,6 +44,7 @@ export function useRegisterReviewCommands(handlers: ReviewCommandHandlers) {
   const hasAbstain = !!handlers.onAbstain;
   const hasNext = !!handlers.onNext;
   const hasPrev = !!handlers.onPrev;
+  const hasNextUnreviewed = !!handlers.onNextUnreviewed;
 
   useEffect(() => {
     const unregisters: Array<() => void> = [];
@@ -124,10 +134,23 @@ export function useRegisterReviewCommands(handlers: ReviewCommandHandlers) {
       );
     }
 
+    if (hasNextUnreviewed) {
+      unregisters.push(
+        commandRegistry.register({
+          id: 'review.next-unreviewed',
+          label: 'Next Unreviewed',
+          shortcut: ']',
+          icon: SkipForward,
+          section: 'actions',
+          execute: () => handlersRef.current.onNextUnreviewed?.(),
+        }),
+      );
+    }
+
     return () => {
       for (const unregister of unregisters) {
         unregister();
       }
     };
-  }, [hasYes, hasNo, hasAbstain, hasNext, hasPrev]);
+  }, [hasYes, hasNo, hasAbstain, hasNext, hasPrev, hasNextUnreviewed]);
 }

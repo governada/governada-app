@@ -39,17 +39,20 @@ export const generateEmbeddings = inngest.createFunction(
 
       const { data: proposals } = await supabase
         .from('proposals')
-        .select('tx_hash, index, title, abstract, proposal_type, ai_summary')
+        .select('tx_hash, proposal_index, title, abstract, proposal_type, ai_summary')
         .not('title', 'is', null)
         .limit(500);
 
-      if (!proposals?.length) return { generated: 0, total: 0 };
+      if (!proposals?.length) {
+        logger.warn('[generate-embeddings] embed-proposals: query returned 0 rows');
+        return { generated: 0, total: 0 };
+      }
 
       const documents = proposals
         .map((p) =>
           composeProposal({
             tx_hash: p.tx_hash,
-            index: p.index,
+            index: p.proposal_index,
             title: p.title,
             abstract: p.abstract,
             proposal_type: p.proposal_type,
@@ -63,53 +66,67 @@ export const generateEmbeddings = inngest.createFunction(
     });
 
     // Step 3: Generate rationale embeddings
+    // vote_rationales has proposal_tx_hash, proposal_index, drep_id directly — no FK join needed
     const rationaleResult = await step.run('embed-rationales', async () => {
       const supabase = getSupabaseAdmin();
 
-      // Get rationales with their vote context
+      // Fetch all rationales (may exceed PostgREST default limit of 1000)
       const { data: rationales } = await supabase
         .from('vote_rationales')
-        .select(
-          `
-          vote_tx_hash,
-          voter_id,
-          rationale_text,
-          drep_votes!inner(
-            proposal_tx_hash,
-            proposal_index,
-            vote,
-            proposals!inner(title, proposal_type)
-          )
-        `,
-        )
+        .select('vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, rationale_text')
         .not('rationale_text', 'is', null)
-        .limit(1000);
+        .range(0, 9999);
 
-      if (!rationales?.length) return { generated: 0, total: 0 };
+      if (!rationales?.length) {
+        logger.warn('[generate-embeddings] embed-rationales: query returned 0 rows');
+        return { generated: 0, total: 0 };
+      }
+
+      // Get proposal titles/types for context
+      const proposalKeys = [...new Set(rationales.map((r) => r.proposal_tx_hash))];
+      const { data: proposals } = await supabase
+        .from('proposals')
+        .select('tx_hash, proposal_index, title, proposal_type')
+        .in('tx_hash', proposalKeys);
+
+      const proposalMap = new Map(
+        (proposals ?? []).map((p) => [`${p.tx_hash}:${p.proposal_index}`, p]),
+      );
+
+      // Get vote directions from drep_votes
+      const { data: votes } = await supabase
+        .from('drep_votes')
+        .select('drep_id, proposal_tx_hash, proposal_index, vote')
+        .in('proposal_tx_hash', proposalKeys);
+
+      const voteMap = new Map(
+        (votes ?? []).map((v) => [
+          `${v.drep_id}:${v.proposal_tx_hash}:${v.proposal_index}`,
+          v.vote as string,
+        ]),
+      );
 
       // Get DRep names for context
-      const voterIds = [...new Set(rationales.map((r) => r.voter_id))];
+      const voterIds = [...new Set(rationales.map((r) => r.drep_id))];
       const { data: dreps } = await supabase.from('dreps').select('id, name').in('id', voterIds);
-
       const drepNameMap = new Map((dreps ?? []).map((d) => [d.id, d.name]));
 
       const documents = rationales
         .map((r) => {
-          // drep_votes is returned as an array from the join
-          const vote = Array.isArray(r.drep_votes) ? r.drep_votes[0] : r.drep_votes;
-          if (!vote) return null;
-
-          const proposal = Array.isArray(vote.proposals) ? vote.proposals[0] : vote.proposals;
+          const proposal = proposalMap.get(`${r.proposal_tx_hash}:${r.proposal_index}`);
+          const voteDirection = voteMap.get(
+            `${r.drep_id}:${r.proposal_tx_hash}:${r.proposal_index}`,
+          );
 
           return composeRationale({
             tx_hash: r.vote_tx_hash,
-            index: vote.proposal_index ?? 0,
-            voter_id: r.voter_id,
+            index: r.proposal_index ?? 0,
+            voter_id: r.drep_id,
             rationale_text: r.rationale_text,
-            vote_direction: vote.vote,
+            vote_direction: voteDirection ?? null,
             proposal_title: proposal?.title ?? null,
             proposal_type: proposal?.proposal_type ?? null,
-            drep_name: drepNameMap.get(r.voter_id) ?? null,
+            drep_name: drepNameMap.get(r.drep_id) ?? null,
           });
         })
         .filter((d): d is NonNullable<typeof d> => d !== null && d.text.length > 20);
@@ -119,29 +136,45 @@ export const generateEmbeddings = inngest.createFunction(
     });
 
     // Step 4: Generate DRep profile embeddings
+    // DRep objectives/motivations live in metadata JSONB (CIP-100), not top-level columns
     const drepResult = await step.run('embed-drep-profiles', async () => {
       const supabase = getSupabaseAdmin();
 
       const { data: dreps } = await supabase
         .from('dreps')
-        .select('id, name, objectives, motivations, alignment_narrative, personality_label')
-        .or('objectives.not.is.null,motivations.not.is.null')
+        .select('id, name, metadata')
+        .not('metadata', 'is', null)
         .limit(500);
 
-      if (!dreps?.length) return { generated: 0, total: 0 };
+      if (!dreps?.length) {
+        logger.warn('[generate-embeddings] embed-drep-profiles: query returned 0 rows');
+        return { generated: 0, total: 0 };
+      }
 
       const documents = dreps
-        .map((d) =>
-          composeDrepProfile({
+        .map((d) => {
+          const meta = d.metadata as Record<string, unknown> | null;
+          const objectives = (meta?.objectives as string) ?? null;
+          const motivations = (meta?.motivations as string) ?? null;
+          if (!objectives && !motivations) return null;
+
+          return composeDrepProfile({
             drep_id: d.id,
             name: d.name,
-            objectives: d.objectives,
-            motivations: d.motivations,
-            alignment_narrative: d.alignment_narrative,
-            personality_label: d.personality_label,
-          }),
-        )
-        .filter((d) => d.text.length > 20);
+            objectives,
+            motivations,
+            alignment_narrative: null,
+            personality_label: null,
+          });
+        })
+        .filter((d): d is NonNullable<typeof d> => d !== null && d.text.length > 20);
+
+      if (!documents.length) {
+        logger.warn(
+          '[generate-embeddings] embed-drep-profiles: no DReps with objectives/motivations',
+        );
+        return { generated: 0, total: 0 };
+      }
 
       const generated = await generateAndStoreEmbeddings(documents);
       return { generated, total: documents.length };

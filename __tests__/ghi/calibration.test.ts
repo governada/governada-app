@@ -49,9 +49,11 @@ describe('calibrate', () => {
 
   // ── Above ceiling ──
 
-  it('caps at 95 for values above ceiling', () => {
-    expect(calibrate(100, testCurve)).toBe(95);
-    expect(calibrate(200, testCurve)).toBe(95);
+  it('scales 95-100 for values above ceiling, capping at 100', () => {
+    // ceiling=90, so raw=100 → excess=10, maxExcess=10 → 95 + 5 = 100
+    expect(calibrate(100, testCurve)).toBe(100);
+    // Far above ceiling still caps at 100
+    expect(calibrate(200, testCurve)).toBe(100);
   });
 
   // ── Linear interpolation between breakpoints ──
@@ -88,12 +90,12 @@ describe('calibrate', () => {
     const curveNames = Object.keys(CALIBRATION) as Array<keyof typeof CALIBRATION>;
 
     for (const name of curveNames) {
-      it(`${name}: produces values in 0-95 range`, () => {
+      it(`${name}: produces values in 0-100 range`, () => {
         const curve = CALIBRATION[name];
         for (let raw = 0; raw <= 100; raw += 5) {
           const result = calibrate(raw, curve);
           expect(result).toBeGreaterThanOrEqual(0);
-          expect(result).toBeLessThanOrEqual(95);
+          expect(result).toBeLessThanOrEqual(100);
         }
       });
 

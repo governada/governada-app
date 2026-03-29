@@ -646,29 +646,55 @@ export async function computePowerDistribution({
 export async function computeSPOParticipation({
   supabase,
 }: ComponentInput): Promise<ComponentScore> {
-  // Get SPO governance votes and total eligible proposals
+  // SPOs can only vote on 4 of 6 proposal types (not TreasuryWithdrawals or NewConstitution).
+  // Only count closed proposals that actually received SPO votes — excludes pre-SPO-era
+  // proposals and still-open ones that haven't concluded.
+  const SPO_ELIGIBLE_TYPES = [
+    'HardForkInitiation',
+    'ParameterChange',
+    'NewCommittee',
+    'InfoAction',
+  ];
+
+  // Get proposals SPOs are eligible to vote on that have concluded
+  const { data: eligibleProposals } = await supabase
+    .from('proposals')
+    .select('tx_hash, proposal_index')
+    .in('proposal_type', SPO_ELIGIBLE_TYPES)
+    .or(
+      'ratified_epoch.not.is.null,enacted_epoch.not.is.null,dropped_epoch.not.is.null,expired_epoch.not.is.null',
+    );
+
+  if (!eligibleProposals?.length) return { raw: 0 };
+
+  const eligibleSet = new Set(eligibleProposals.map((p) => `${p.tx_hash}:${p.proposal_index}`));
+
+  // Get all SPO votes
   const { data: spoVotes } = await supabase
     .from('spo_votes')
     .select('pool_id, proposal_tx_hash, proposal_index');
 
-  const { data: proposals } = await supabase.from('proposals').select('tx_hash, proposal_index');
-
-  if (!proposals?.length) return { raw: 0 };
-
-  const totalProposals = new Set(proposals.map((p) => `${p.tx_hash}:${p.proposal_index}`)).size;
-
   if (!spoVotes?.length) return { raw: 0, detail: { activeSpos: 0, medianParticipation: 0 } };
 
-  // Group by SPO and compute participation rate per pool
+  // Only count votes on eligible proposals, then find which eligible proposals got any votes
+  const votedProposalKeys = new Set<string>();
   const poolVotes = new Map<string, Set<string>>();
   for (const v of spoVotes) {
+    const key = `${v.proposal_tx_hash}:${v.proposal_index}`;
+    if (!eligibleSet.has(key)) continue;
+    votedProposalKeys.add(key);
     const set = poolVotes.get(v.pool_id) ?? new Set();
-    set.add(`${v.proposal_tx_hash}:${v.proposal_index}`);
+    set.add(key);
     poolVotes.set(v.pool_id, set);
   }
 
+  // Denominator: eligible proposals that received at least 1 SPO vote
+  const denominatorProposals = votedProposalKeys.size;
+  if (denominatorProposals === 0)
+    return { raw: 0, detail: { activeSpos: 0, medianParticipation: 0 } };
+
   const rates = Array.from(poolVotes.values())
-    .map((voted) => (voted.size / totalProposals) * 100)
+    .map((voted) => (voted.size / denominatorProposals) * 100)
     .sort((a, b) => a - b);
 
   const mid = Math.floor(rates.length / 2);
@@ -680,7 +706,8 @@ export async function computeSPOParticipation({
     detail: {
       activeSpos: poolVotes.size,
       medianParticipation: Math.round(medianParticipation),
-      totalProposals,
+      eligibleProposals: eligibleSet.size,
+      votedProposals: denominatorProposals,
     },
   };
 }
@@ -700,8 +727,8 @@ export async function computeCCConstitutionalFidelity({
 
   if (!members?.length) return { raw: 0 };
 
-  // Only score active members
-  const active = members.filter((m) => m.status === 'active' || m.status === 'Active');
+  // Only score authorized (active) members — Koios stores status as 'authorized', not 'active'
+  const active = members.filter((m) => m.status === 'authorized');
   const scored = active.length > 0 ? active : members;
 
   const scores = scored
@@ -771,74 +798,68 @@ export async function computeSystemStability({
   currentEpoch,
 }: ComponentInput): Promise<ComponentScore> {
   // --- Sub-signal 1: DRep Retention (50%) ---
-  const { data: ghiSnaps } = await supabase
-    .from('ghi_snapshots')
-    .select('epoch_no, components')
-    .order('epoch_no', { ascending: false })
-    .limit(2);
-
+  // Uses drep_power_snapshots directly — no circular dependency on ghi_snapshots.
+  // Data available from epoch 508, so this works for full historical backfill.
   let retentionScore = 70; // neutral-healthy default
-  if (ghiSnaps?.length === 2) {
-    interface GHIComponentSnapshot {
-      name: string;
-      detail?: Record<string, number>;
-      [key: string]: unknown;
-    }
-    const currentComps = ghiSnaps[0].components as GHIComponentSnapshot[];
-    const prevComps = ghiSnaps[1].components as GHIComponentSnapshot[];
-    const getCurrent = currentComps?.find((c) => c.name === 'DRep Participation');
-    const getPrev = prevComps?.find((c) => c.name === 'DRep Participation');
-    if (getCurrent && getPrev && (getPrev.detail?.activeDreps ?? 0) > 0) {
-      const ratio = (getCurrent.detail?.activeDreps ?? 0) / (getPrev.detail?.activeDreps ?? 1);
-      retentionScore = Math.min(100, Math.round(ratio * 80));
-    }
-  } else {
-    // Fallback: use current active vs total
-    const { data: dreps } = await supabase.from('dreps').select('info');
-    const all = dreps ?? [];
-    const active = all.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
-    retentionScore = all.length > 0 ? Math.round((active.length / all.length) * 100) : 50;
+
+  const { count: currentActive } = await supabase
+    .from('drep_power_snapshots')
+    .select('drep_id', { count: 'exact', head: true })
+    .eq('epoch_no', currentEpoch)
+    .gt('amount_lovelace', 0);
+
+  const { count: previousActive } = await supabase
+    .from('drep_power_snapshots')
+    .select('drep_id', { count: 'exact', head: true })
+    .eq('epoch_no', currentEpoch - 1)
+    .gt('amount_lovelace', 0);
+
+  if (previousActive && previousActive > 0 && currentActive !== null) {
+    const retentionRatio = currentActive / previousActive;
+    // Perfect retention (ratio=1) → 80. Growth → up to 100. Decline → down toward 0.
+    retentionScore = Math.min(100, Math.max(0, Math.round(retentionRatio * 80)));
   }
 
-  // --- Sub-signal 2: Score Volatility (30%) ---
+  // --- Sub-signal 2: Delegation Volatility (30%) ---
+  // Measures epoch-over-epoch stability of voting power distribution.
+  // Uses drep_power_snapshots (available from epoch 508) instead of drep_score_history (epoch 608+).
   let volatilityScore = 70; // neutral
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
 
-  const { data: recentScores } = await supabase
-    .from('drep_score_history')
-    .select('drep_id, score, snapshot_date')
-    .in('snapshot_date', [weekAgo, today]);
+  const { data: currentPowers } = await supabase
+    .from('drep_power_snapshots')
+    .select('drep_id, amount_lovelace')
+    .eq('epoch_no', currentEpoch)
+    .gt('amount_lovelace', 0);
 
-  if (recentScores?.length) {
-    const byDrep = new Map<string, { old?: number; current?: number }>();
-    for (const row of recentScores) {
-      const entry = byDrep.get(row.drep_id) ?? {};
-      if (row.snapshot_date === weekAgo) entry.old = row.score;
-      if (row.snapshot_date === today) entry.current = row.score;
-      byDrep.set(row.drep_id, entry);
-    }
+  const { data: prevPowers } = await supabase
+    .from('drep_power_snapshots')
+    .select('drep_id, amount_lovelace')
+    .eq('epoch_no', currentEpoch - 1)
+    .gt('amount_lovelace', 0);
 
-    let totalAbsDelta = 0;
+  if (currentPowers?.length && prevPowers?.length) {
+    const prevMap = new Map(prevPowers.map((s) => [s.drep_id, Number(s.amount_lovelace)]));
+    let totalPctChange = 0;
     let count = 0;
-    for (const { old, current } of byDrep.values()) {
-      if (old !== undefined && current !== undefined) {
-        totalAbsDelta += Math.abs(current - old);
+
+    for (const snap of currentPowers) {
+      const prev = prevMap.get(snap.drep_id);
+      if (prev && prev > 0) {
+        const pctChange = Math.abs(Number(snap.amount_lovelace) - prev) / prev;
+        totalPctChange += pctChange;
         count++;
       }
     }
 
     if (count > 0) {
-      const meanAbsDelta = totalAbsDelta / count;
-      volatilityScore = Math.min(100, Math.max(0, Math.round((1 - meanAbsDelta / 20) * 100)));
+      const meanPctChange = totalPctChange / count;
+      // Threshold: 20% mean change = score 0 (very volatile)
+      volatilityScore = Math.min(100, Math.max(0, Math.round((1 - meanPctChange / 0.2) * 100)));
     }
   }
 
   // --- Sub-signal 3: Governance Throughput Stability (20%) ---
   // Coefficient of variation (CV) of votes-per-epoch over a 5-epoch window.
-  // CV = 0 → perfectly stable (score 100)
-  // CV ≥ 1.5 → highly volatile (score 0)
-  // Sweet spot: CV < 0.3 = very stable, 0.3-0.7 = moderate, > 1.0 = unstable
   let throughputStabilityScore = 50; // neutral default
   const epochWindow = 5;
   const epochMin = currentEpoch - epochWindow;
@@ -875,8 +896,10 @@ export async function computeSystemStability({
     raw: Math.min(100, Math.max(0, Math.round(raw))),
     detail: {
       drepRetention: Math.round(retentionScore),
-      scoreVolatility: Math.round(volatilityScore),
+      delegationVolatility: Math.round(volatilityScore),
       throughputStability: Math.round(throughputStabilityScore),
+      currentActiveDreps: currentActive ?? 0,
+      previousActiveDreps: previousActive ?? 0,
     },
   };
 }

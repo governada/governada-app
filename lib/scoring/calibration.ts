@@ -1169,14 +1169,14 @@ export interface CalibrationCurve {
 }
 
 /**
- * Piecewise linear calibration: maps a raw 0-100 score to a calibrated 0-95 score.
+ * Piecewise linear calibration: maps a raw 0-100 score to a calibrated 0-100 score.
  * Used by both GHI components and individual pillar scoring (DRep/SPO).
  *
- * Below floor    → 0-20  (critical)
- * Floor→targetLow  → 20-50 (fair)
+ * Below floor       → 0-20  (critical)
+ * Floor→targetLow   → 20-50 (fair)
  * TargetLow→targetHigh → 50-80 (good)
- * TargetHigh→ceiling  → 80-95 (strong)
- * Above ceiling   → cap at 95
+ * TargetHigh→ceiling → 80-95 (strong)
+ * Above ceiling      → 95-100 (excellent)
  */
 export function calibrate(raw: number, curve: CalibrationCurve): number {
   if (raw <= curve.floor) {
@@ -1191,7 +1191,10 @@ export function calibrate(raw: number, curve: CalibrationCurve): number {
   if (raw <= curve.ceiling) {
     return 80 + ((raw - curve.targetHigh) / (curve.ceiling - curve.targetHigh)) * 15;
   }
-  return 95;
+  // Above ceiling: scale 95-100 based on how far above ceiling (cap at 100)
+  const excess = raw - curve.ceiling;
+  const maxExcess = 100 - curve.ceiling;
+  return maxExcess > 0 ? Math.min(100, 95 + (excess / maxExcess) * 5) : 100;
 }
 
 // ---------------------------------------------------------------------------

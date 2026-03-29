@@ -386,31 +386,50 @@ export const GlobeConstellation = forwardRef<
         cameraAngle?: number;
         cameraElevation?: number;
         drepOnly?: boolean;
+        /** When set, ignore threshold and take the N closest nodes instead.
+         *  This guarantees visible progressive narrowing regardless of data distribution. */
+        topN?: number;
+        /** 0-1 scan progress override (used when topN replaces threshold-based progress) */
+        scanProgressOverride?: number;
       },
     ) => {
       const matched = new Set<string>();
       const intensities = new Map<string, number>();
 
+      // Compute distances for all eligible nodes
+      const scored: Array<{ id: string; distance: number }> = [];
       for (const node of sceneState.nodes) {
-        // Filter by node type if specified (e.g., 'drep' during DRep matching)
         if (options?.nodeTypeFilter && node.nodeType !== options.nodeTypeFilter) continue;
         if (options?.drepOnly && node.nodeType !== 'drep') continue;
-        // 6D Euclidean distance
         let sumSq = 0;
         for (let d = 0; d < 6; d++) {
           const diff = (userAlignment[d] ?? 50) - (node.alignments[d] ?? 50);
           sumSq += diff * diff;
         }
-        const distance = Math.sqrt(sumSq);
+        scored.push({ id: node.id, distance: Math.sqrt(sumSq) });
+      }
 
-        if (distance < threshold) {
-          matched.add(node.id);
-          intensities.set(node.id, Math.max(0, Math.min(1, 1 - distance / threshold)));
+      if (options?.topN && options.topN > 0) {
+        // Top-N mode: rank by distance, take the closest N
+        scored.sort((a, b) => a.distance - b.distance);
+        const maxDist = scored[Math.min(options.topN, scored.length) - 1]?.distance ?? 1;
+        for (let i = 0; i < Math.min(options.topN, scored.length); i++) {
+          matched.add(scored[i].id);
+          intensities.set(scored[i].id, Math.max(0.2, 1 - scored[i].distance / (maxDist * 1.2)));
+        }
+      } else {
+        // Threshold mode: include all within distance
+        for (const s of scored) {
+          if (s.distance < threshold) {
+            matched.add(s.id);
+            intensities.set(s.id, Math.max(0, Math.min(1, 1 - s.distance / threshold)));
+          }
         }
       }
 
-      // Compute scanning progress from threshold (160=start, 35=end)
-      const scanProgress = Math.max(0, Math.min(1, (160 - threshold) / 125));
+      // Compute scanning progress
+      const scanProgress =
+        options?.scanProgressOverride ?? Math.max(0, Math.min(1, (160 - threshold) / 125));
 
       setSceneState((prev) => ({
         ...prev,

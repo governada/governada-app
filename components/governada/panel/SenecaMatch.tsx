@@ -81,8 +81,8 @@ const MATCH_QUESTIONS: QuestionDef[] = [
 
 const TOTAL_QUESTIONS = MATCH_QUESTIONS.length;
 
-/** Progressive threshold narrowing — tighter values for visible DRep reduction */
-const THRESHOLDS = [120, 75, 45, 25];
+/** Progressive narrowing — top N closest DReps per round (used in reduced-motion fallback) */
+const TOP_N_PER_ROUND = [200, 50, 10, 5];
 
 /* ─── Seneca acknowledgement messages (evocative, matching globe visual) ─── */
 
@@ -190,7 +190,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
       // Build alignment vector and dispatch choreographed sequence
       const alignment = buildAlignmentFromAnswers(newAnswers);
       const vector = alignmentsToArray(alignment);
-      const threshold = THRESHOLDS[questionIndex] ?? 25;
+      const topN = TOP_N_PER_ROUND[questionIndex] ?? 5;
       lastAlignmentRef.current = vector;
 
       if (prefersReducedMotion) {
@@ -198,12 +198,14 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
         sendGlobeCommand({
           type: 'highlight',
           alignment: vector,
-          threshold,
+          threshold: 9999,
           drepOnly: true,
           zoomToCluster: true,
+          topN,
+          scanProgressOverride: [0.15, 0.4, 0.7, 0.95][questionIndex] ?? 0.95,
         });
       } else {
-        sendGlobeCommand(buildAnswerSequence(questionIndex, vector, threshold));
+        sendGlobeCommand(buildAnswerSequence(questionIndex, vector, 0));
       }
 
       // Advance to next question or submit — snappy transitions
@@ -269,10 +271,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
             setStep('revealing');
             posthog.capture('match_countdown_viewed');
 
-            const lastThreshold = THRESHOLDS[TOTAL_QUESTIONS - 1] ?? 25;
-            sendGlobeCommand(
-              buildRevealSequence(topMatches, lastAlignmentRef.current, lastThreshold),
-            );
+            sendGlobeCommand(buildRevealSequence(topMatches, lastAlignmentRef.current, 0));
 
             // Sync overlay to appear after the full reveal sequence completes
             const revealDuration = getRevealDurationMs(topMatches.length);

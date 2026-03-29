@@ -68,37 +68,34 @@ export function buildMatchStartSequence(): GlobeCommand {
 // Stages 1-4: Dive-through camera — weaving toward DRep cluster
 // ---------------------------------------------------------------------------
 
+/** Progressive narrowing: how many DRep nodes to highlight per round.
+ *  Q1: wide field (200). Q2: focused cluster (50). Q3: tight group (10). Q4: finalists (5). */
+const TOP_N_PER_ROUND = [200, 50, 10, 5];
+
+/** Scan progress per round (0-1): drives unfocused node fade intensity */
+const SCAN_PROGRESS_PER_ROUND = [0.15, 0.4, 0.7, 0.95];
+
 export function buildAnswerSequence(
   roundIndex: number,
   alignment: number[],
-  threshold: number,
+  _threshold: number,
 ): GlobeCommand {
-  const steps: SequenceStep[] = [];
+  const topN = TOP_N_PER_ROUND[roundIndex] ?? 5;
+  const scanProgress = SCAN_PROGRESS_PER_ROUND[roundIndex] ?? 0.95;
 
-  // Q1 only: initial scan sweep to establish the visual language
-  if (roundIndex === 0) {
-    steps.push({
-      command: { type: 'scan', alignment, durationMs: 800 },
-      delayMs: 0,
-    });
-  }
-
-  // Highlight DReps only, with camera dive angle for this round
-  // The camera angle + zoomToCluster drives the smooth dive-through motion
-  steps.push({
-    command: {
-      type: 'highlight',
-      alignment,
-      threshold,
-      drepOnly: true,
-      zoomToCluster: true,
-      cameraAngle: DIVE_ANGLES[roundIndex] ?? 0,
-      cameraElevation: DIVE_ELEVATIONS[roundIndex] ?? 0,
-    },
-    delayMs: roundIndex === 0 ? 900 : 200,
-  });
-
-  return { type: 'sequence', steps };
+  // Single highlight command with topN — the globe computes the closest N DReps
+  // and flies the camera to their centroid. Each round approaches from a different angle.
+  return {
+    type: 'highlight',
+    alignment,
+    threshold: 9999, // ignored when topN is set, but required by type
+    drepOnly: true,
+    zoomToCluster: true,
+    cameraAngle: DIVE_ANGLES[roundIndex] ?? 0,
+    cameraElevation: DIVE_ELEVATIONS[roundIndex] ?? 0,
+    topN,
+    scanProgressOverride: scanProgress,
+  };
 }
 
 // ---------------------------------------------------------------------------

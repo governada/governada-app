@@ -44,6 +44,8 @@ export interface ConstellationRef {
       cameraAngle?: number;
       cameraElevation?: number;
       drepOnly?: boolean;
+      topN?: number;
+      scanProgressOverride?: number;
     },
   ) => void;
   flyToMatch: (drepId: string) => Promise<void>;

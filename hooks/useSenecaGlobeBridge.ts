@@ -33,6 +33,10 @@ export type GlobeCommand =
       /** Camera elevation offset for dive variety (radians) */
       cameraElevation?: number;
       drepOnly?: boolean;
+      /** Take top N closest nodes instead of threshold — guarantees progressive narrowing */
+      topN?: number;
+      /** Override scan progress (0-1) when using topN instead of threshold */
+      scanProgressOverride?: number;
     }
   | { type: 'voteSplit'; proposalRef: string }
   | { type: 'reset' }
@@ -100,6 +104,8 @@ export function useSenecaGlobeBridge(
             cameraAngle: command.cameraAngle,
             cameraElevation: command.cameraElevation,
             drepOnly: command.drepOnly,
+            topN: command.topN,
+            scanProgressOverride: command.scanProgressOverride,
           });
           break;
         case 'voteSplit': {

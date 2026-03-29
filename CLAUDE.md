@@ -14,7 +14,7 @@ Implementation is NOT complete until deployed and validated in production. Use `
 6. Merge: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
 7. Apply migrations via Supabase MCP (test on branch first per `.claude/rules/migration-safety.md`) -> `npm run gen:types` if needed
 8. **Verify production**: wait ~3 min, then `bash scripts/check-deploy-health.sh` (includes response time assertions). Use `deploy-verifier` subagent in background if preferred.
-9. PUT `https://governada.io/api/inngest` if Inngest functions changed
+9. PUT `https://governada.io/api/inngest` if Inngest functions changed (registers with self-hosted Inngest at `inngest-server.railway.internal:8288`)
 10. `npm run smoke-test`, verify changed endpoints on `governada.io`
 11. `bash scripts/uptime-check.sh deploy` -- ping BetterStack heartbeat
 12. **Visual verification** (REQUIRED for UI changes): Open production in Claude Chrome, screenshot changed routes at desktop + mobile, verify against build spec. See `.claude/rules/post-deploy-verification.md` for full protocol.
@@ -46,7 +46,7 @@ Build failures or production bugs if violated:
 - **Client data**: TanStack Query (provider: `components/Providers.tsx`)
 - **Wallet**: MeshJS. Connection optional -- show value first
 - **Hosting**: Railway (Docker, auto-deploy from `main`). CDN: Cloudflare
-- **Jobs**: Inngest Cloud (22 functions). Caching: Upstash Redis
+- **Jobs**: Inngest self-hosted on Railway (22+ functions, `inngest-server` service). Caching: Upstash Redis
 - **Monitoring**: Sentry (errors), PostHog (analytics, `noun_verb` events)
 - **Testing**: Vitest + Playwright. Quality: Prettier + ESLint + lint-staged
 - **AI**: Anthropic Claude (narratives, classification, rationale analysis)

@@ -117,13 +117,48 @@ export async function computeDRepParticipation({
     .sort((a, b) => a.participation - b.participation);
 
   if (entries.length === 0) {
-    logger.warn('[ghi:drep-participation] No entries after weight filter', {
-      activeCount: active.length,
-      sampleInfo: active.slice(0, 3).map((d) => ({
+    // Diagnostic: capture WHY all entries were filtered out
+    const sample = active.slice(0, 5).map((d) => {
+      const info = d.info as Record<string, unknown> | null;
+      const vpRaw = info?.votingPowerLovelace;
+      const vpStr = String(vpRaw || '0');
+      const vpParsed = parseInt(vpStr, 10);
+      return {
         ep: d.effective_participation,
-        vpRaw: (d.info as Record<string, unknown> | null)?.votingPowerLovelace,
-      })),
+        vpRaw,
+        vpType: typeof vpRaw,
+        vpStr,
+        vpParsed,
+        infoType: typeof d.info,
+        infoKeys: info ? Object.keys(info).slice(0, 5) : [],
+      };
     });
+    try {
+      const diagSb = getSupabaseAdmin();
+      await diagSb.from('sync_log').insert({
+        sync_type: 'ghi',
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        success: true,
+        metrics: {
+          _diagnostic: true,
+          _branch: 'entries_empty',
+          activeCount: active.length,
+          entriesBeforeFilter: active
+            .map((d) => ({
+              p: (d.effective_participation as number) ?? 0,
+              w: parseInt(
+                String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'),
+                10,
+              ),
+            }))
+            .slice(0, 10),
+          sample,
+        },
+      });
+    } catch {
+      /* non-critical */
+    }
     return { raw: 0 };
   }
 

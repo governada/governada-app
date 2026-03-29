@@ -173,6 +173,7 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
       sendGlobeCommand(buildMatchStartSequence());
     }
     posthog.capture('match_started', { source: 'seneca_panel' });
+    posthog.capture('match_cerebro_entered');
   }, [sendGlobeCommand, prefersReducedMotion]);
 
   // Handle answer selection
@@ -192,6 +193,11 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
       const vector = alignmentsToArray(alignment);
       const topN = TOP_N_PER_ROUND[questionIndex] ?? 5;
       lastAlignmentRef.current = vector;
+
+      posthog.capture('match_narrowing_round', {
+        round: questionIndex + 1,
+        remaining_count: topN,
+      });
 
       if (prefersReducedMotion) {
         // Simplified: direct highlight without scan/dive theatrics
@@ -281,6 +287,10 @@ export function SenecaMatch({ onBack, onGlobeCommand }: SenecaMatchProps) {
                 focusedMatch: data.matches[0],
                 focusedRank: 1,
                 isTopMatch: true,
+              });
+              posthog.capture('match_reveal_completed', {
+                match_count: topMatches.length,
+                top_match_score: data.matches[0]?.matchScore ?? 0,
               });
             }, revealDuration);
           }

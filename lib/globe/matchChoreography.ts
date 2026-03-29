@@ -27,14 +27,16 @@ const DIVE_ELEVATIONS = [0.3, 0, -0.25, 0]; // vertical offset (radians)
  * Total duration from the start of the reveal sequence to when the overlay
  * should appear. Depends on match count (up to 5 flash steps).
  *
- * Sequence: dim(0ms) → flash non-top(350ms each) → flash top(600ms) → matchFlyTo(400ms) + 3s hold
+ * Sequence: dim(0ms) → pause(800ms) → flash runners-up(500ms each) → flash #2(600ms)
+ *   → flash #1(900ms) → flyTo delay(600ms) + 3s hold
  */
 export function getRevealDurationMs(matchCount: number): number {
   const clampedCount = Math.min(matchCount, 5);
   if (clampedCount === 0) return 0;
-  // Non-top flashes + top flash + flyTo delay + 3s hold for the flyToMatch lock
-  const flashMs = (clampedCount - 1) * 350 + 600;
-  return flashMs + 400 + 3000;
+  // 800ms tension pause + runner-up flashes + #2 flash + #1 flash + flyTo delay + 3s hold
+  const runnerUpCount = Math.max(0, clampedCount - 2); // 5th, 4th, 3rd place
+  const flashMs = runnerUpCount * 500 + (clampedCount >= 2 ? 600 : 0) + 900;
+  return 800 + flashMs + 600 + 3000;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,17 +47,19 @@ export function buildMatchStartSequence(): GlobeCommand {
   return {
     type: 'sequence',
     steps: [
-      // Light all DRep nodes, dim non-DReps — the "entering Cerebro" moment
-      { command: { type: 'matchStart' }, delayMs: 0 },
-      // Cinematic ambient: slow orbit, camera pulls back for panoramic view
+      // Phase 1: Brief total darkness — the "powering down" before powering up
+      { command: { type: 'dim' }, delayMs: 0 },
+      // Phase 2: DReps illuminate outward as expanding shockwave (delays computed in matchStart)
+      { command: { type: 'matchStart' }, delayMs: 400 },
+      // Phase 3: Cinematic pullback — slow orbit, camera retreats for panoramic view
       {
         command: {
           type: 'cinematic',
           state: {
-            orbitSpeed: 0.02, // ~5 min/revolution — subtle ambient life
+            orbitSpeed: 0.015, // slower, more deliberate scanning feel
             dollyTarget: 20,
             dimTarget: 0.7,
-            transitionDuration: 1.5,
+            transitionDuration: 2.0, // longer transition for smooth pullback
           },
         },
         delayMs: 200,
@@ -113,22 +117,45 @@ export function buildRevealSequence(
     return { type: 'sequence', steps };
   }
 
-  // Phase 1: Dim everything except matches — stay where the camera is (no pullback)
+  // Phase 1: Tension build — dim everything, slow cinematic orbit
   steps.push({ command: { type: 'dim' }, delayMs: 0 });
+  steps.push({
+    command: {
+      type: 'cinematic',
+      state: { orbitSpeed: 0.008, dollyTarget: 14, dimTarget: 1, transitionDuration: 0.5 },
+    },
+    delayMs: 0,
+  });
 
-  // Phase 2: Brief pause for the dimming to register, then flash top 5 matches
-  // Flashes happen quickly — no long countdown, just a rapid "here they are" reveal
+  // Phase 2: Dramatic pause — darkness builds anticipation (800ms of nothing)
+  // The first flash carries the 800ms delay
+
+  // Phase 3: Sequential illumination — top 5 in reverse (5th→4th→3rd→2nd→1st)
+  // Escalating delays: 500ms for runners-up, 600ms for #2, 900ms for #1
   const reversed = [...topMatches].reverse().slice(0, 5);
   for (let i = 0; i < reversed.length; i++) {
     const match = reversed[i];
-    const isTopMatch = i === reversed.length - 1;
-    steps.push({
-      command: { type: 'flash', nodeId: match.nodeId },
-      delayMs: isTopMatch ? 600 : 350,
-    });
+    const isTop = i === reversed.length - 1; // #1 match
+    const isSecond = i === reversed.length - 2; // #2 match
+    const isFirst = i === 0; // first flash (carries the dramatic pause)
+    let delayMs: number;
+    if (isFirst)
+      delayMs = 800; // includes dramatic pause
+    else if (isTop)
+      delayMs = 900; // longest anticipation for #1
+    else if (isSecond) delayMs = 600;
+    else delayMs = 500;
+    steps.push({ command: { type: 'flash', nodeId: match.nodeId }, delayMs });
   }
 
-  // Phase 3: Graceful fly to #1 match from current camera position — no jarring reset
+  // Phase 4: Lock-on — stop orbit, then dramatic fly to #1
+  steps.push({
+    command: {
+      type: 'cinematic',
+      state: { orbitSpeed: 0, dollyTarget: 14, dimTarget: 1, transitionDuration: 0.3 },
+    },
+    delayMs: 200,
+  });
   steps.push({
     command: { type: 'matchFlyTo', nodeId: topMatches[0].nodeId },
     delayMs: 400,

@@ -98,6 +98,10 @@ export interface FocusState {
   colorOverrides: Map<string, string> | null;
   /** When set, only this node type can be focused — others are always unfocused */
   nodeTypeFilter: string | null;
+  /** Staggered activation delays (seconds) per node — enables shockwave/sweep effects */
+  activationDelays: Map<string, number> | null;
+  /** Intermediate-brightness nodes ("maybes") with brightness level 0-1 */
+  intermediateIds: Map<string, number> | null;
 }
 
 const DEFAULT_FOCUS: FocusState = {
@@ -107,6 +111,8 @@ const DEFAULT_FOCUS: FocusState = {
   scanProgress: 0,
   colorOverrides: null,
   nodeTypeFilter: null,
+  activationDelays: null,
+  intermediateIds: null,
 };
 
 // Window-level shared focus state — bridges React outer tree ↔ R3F Canvas tree.
@@ -443,6 +449,10 @@ export const GlobeConstellation = forwardRef<
         scored.push({ id: node.id, distance: Math.sqrt(sumSq) });
       }
 
+      // Intermediate "maybe" nodes and scanning sweep activation delays
+      const intermediateIds = new Map<string, number>();
+      const activationDelays = new Map<string, number>();
+
       if (options?.topN && options.topN > 0) {
         // Top-N mode: rank by distance, take the closest N
         scored.sort((a, b) => a.distance - b.distance);
@@ -450,6 +460,19 @@ export const GlobeConstellation = forwardRef<
         for (let i = 0; i < Math.min(options.topN, scored.length); i++) {
           matched.add(scored[i].id);
           intensities.set(scored[i].id, Math.max(0.2, 1 - scored[i].distance / (maxDist * 1.2)));
+        }
+
+        // "Maybe" nodes: ranked topN+1 through topN*2 glow faintly
+        const maybeEnd = Math.min(options.topN * 2, scored.length);
+        for (let i = options.topN; i < maybeEnd; i++) {
+          const level = 0.1 + 0.4 * (1 - (i - options.topN) / (maybeEnd - options.topN));
+          intermediateIds.set(scored[i].id, level);
+        }
+
+        // Scanning sweep: nodes activate by rank — best matches first
+        const SWEEP_DURATION = 0.6; // seconds for the entire sweep
+        for (let i = 0; i < scored.length; i++) {
+          activationDelays.set(scored[i].id, (i / scored.length) * SWEEP_DURATION);
         }
       } else {
         // Threshold mode: include all within distance
@@ -477,6 +500,8 @@ export const GlobeConstellation = forwardRef<
           nodeTypeFilter: options?.drepOnly
             ? 'drep'
             : (options?.nodeTypeFilter ?? prev.focus.nodeTypeFilter),
+          activationDelays: activationDelays.size > 0 ? activationDelays : null,
+          intermediateIds: intermediateIds.size > 0 ? intermediateIds : null,
         },
       }));
 
@@ -511,8 +536,9 @@ export const GlobeConstellation = forwardRef<
           const ny = cy / dir;
           const nz = cz / dir;
 
-          // Stop rotation — globe locked during search
-          rotationSpeedRef.current = 0;
+          // Progressive orbit slowing — nearly stops by final round
+          const sp = options?.scanProgressOverride ?? 0;
+          rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * Math.max(0.05, 0.4 - sp * 0.35);
 
           // Camera pulls closer as the cluster narrows — funneling toward the match
           const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
@@ -537,9 +563,10 @@ export const GlobeConstellation = forwardRef<
             camY += camDist * Math.sin(options.cameraElevation);
           }
 
-          // Look at the cluster centroid
+          // Progressive camera smoothTime: slower approach early, faster convergence later
+          // Round 0 (sp≈0.15): 1.5s, Round 1 (sp≈0.4): 1.2s, Round 2 (sp≈0.7): 0.9s, Round 3 (sp≈0.95): 0.8s
           const controls = cameraControlsRef.current;
-          controls.smoothTime = 1.0;
+          controls.smoothTime = Math.max(0.8, 1.5 - sp * 0.8);
           controls.setLookAt(camX, camY, camZ, cx * 0.7, cy * 0.7, cz * 0.7, true);
           setTimeout(() => {
             if (cameraControlsRef.current) cameraControlsRef.current.smoothTime = 0.8;
@@ -589,7 +616,7 @@ export const GlobeConstellation = forwardRef<
     },
 
     flyToMatch: async (drepId: string) => {
-      // Final "locking on" — fly to the top match node dramatically
+      // Final "locking on" — fly to the top match node cinematically
       const node = sceneState.nodes.find((n) => n.id === drepId || n.fullId === drepId);
       if (!node || !cameraControlsRef.current) return;
 
@@ -605,33 +632,55 @@ export const GlobeConstellation = forwardRef<
       const ny = dist > 0 ? y / dist : 0;
       const nz = dist > 0 ? z / dist : 1;
 
-      // Pulse the node and activate fly-to particles
-      setSceneState((prev) => ({
-        ...prev,
-        pulseId: drepId,
-        animating: true,
-        flyToTarget: [x, y, z],
-        flyToActive: true,
-      }));
+      // Set #1 match to gold + max intensity
+      setSceneState((prev) => {
+        const newFocusedIds = new Set(prev.focus.focusedIds);
+        newFocusedIds.add(drepId);
+        const newIntensities = new Map(prev.focus.intensities);
+        newIntensities.set(drepId, 1.0);
+        const newColors = new Map(prev.focus.colorOverrides ?? []);
+        newColors.set(drepId, '#fbbf24'); // gold
+        return {
+          ...prev,
+          pulseId: drepId,
+          animating: true,
+          flyToTarget: [x, y, z],
+          flyToActive: true,
+          focus: {
+            ...prev.focus,
+            focusedIds: newFocusedIds,
+            intensities: newIntensities,
+            colorOverrides: newColors,
+          },
+        };
+      });
 
-      // Fly to the node — camera positioned directly along the node's outward direction
-      // so the node appears dead-center on screen. No Y/Z offsets that shift it off-axis.
+      // Camera positioned along node's outward normal — dead center on screen
       const camDist = Math.max(dist * 1.8, 8);
 
-      // Smooth cinematic fly-in — camera looks straight at the node
-      await cameraControlsRef.current.setLookAt(
-        nx * camDist,
-        ny * camDist,
-        nz * camDist,
-        x,
-        y,
-        z,
-        false,
-      );
+      // Slow cinematic approach: smoothTime 1.5 = slow start, accelerating, smooth arrival
+      const controls = cameraControlsRef.current;
+      controls.smoothTime = 1.5;
+      await controls.setLookAt(nx * camDist, ny * camDist, nz * camDist, x, y, z, true);
+
+      // Lock-on tightening: responsive micro-corrections during hold
+      controls.smoothTime = 0.4;
+
+      // Micro-orbit during 3-second hold — scene feels alive, not frozen
+      if (cinematicRef.current) {
+        cinematicRef.current.orbitSpeed = 0.003;
+        cinematicRef.current.active = true;
+      }
 
       // Hold the dramatic lock — the "Cerebro found you" moment
-      // Keep the node highlighted and rotation stopped — results will render over this
       await sleep(3000);
+
+      // End micro-orbit
+      if (cinematicRef.current) {
+        cinematicRef.current.orbitSpeed = 0;
+        cinematicRef.current.active = false;
+      }
+
       setSceneState((prev) => ({
         ...prev,
         pulseId: null,
@@ -643,14 +692,31 @@ export const GlobeConstellation = forwardRef<
     },
 
     matchStart: () => {
-      // "Entering Cerebro" — light up all DRep nodes, dim everything else
+      // "Entering Cerebro" — light up all DRep nodes with shockwave propagation
       const drepIds = new Set<string>();
       const intensities = new Map<string, number>();
+      const activationDelays = new Map<string, number>();
+
+      // Compute radial distances for shockwave effect
+      let maxDist = 0;
+      const drepDistances: Array<{ id: string; dist: number }> = [];
       for (const node of sceneState.nodes) {
         if (node.nodeType === 'drep') {
           drepIds.add(node.id);
-          intensities.set(node.id, 0.9); // bright warm glow — all DReps clearly visible
+          intensities.set(node.id, 0.6); // warm glow, not max intensity
+          const [x, y, z] = node.position;
+          const dist = Math.sqrt(x * x + y * y + z * z);
+          drepDistances.push({ id: node.id, dist });
+          if (dist > maxDist) maxDist = dist;
         }
+      }
+
+      // Map radial distance to activation delay: inner nodes first, outer nodes last
+      // 1.0s total wave propagation creates expanding sphere of light
+      const WAVE_DURATION = 1.0;
+      for (const { id, dist } of drepDistances) {
+        const normalizedDist = maxDist > 0 ? dist / maxDist : 0;
+        activationDelays.set(id, normalizedDist * WAVE_DURATION);
       }
 
       setSceneState((prev) => ({
@@ -662,6 +728,8 @@ export const GlobeConstellation = forwardRef<
           scanProgress: 0,
           colorOverrides: null,
           nodeTypeFilter: 'drep',
+          activationDelays,
+          intermediateIds: null,
         },
         flyToTarget: null,
         flyToActive: false,
@@ -719,6 +787,8 @@ export const GlobeConstellation = forwardRef<
           scanProgress: 0,
           colorOverrides,
           nodeTypeFilter: null,
+          activationDelays: null,
+          intermediateIds: null,
         },
       }));
     },
@@ -745,6 +815,8 @@ export const GlobeConstellation = forwardRef<
           scanProgress: 0,
           colorOverrides,
           nodeTypeFilter: null,
+          activationDelays: null,
+          intermediateIds: null,
         },
       }));
     },
@@ -770,6 +842,8 @@ export const GlobeConstellation = forwardRef<
           scanProgress: 0,
           colorOverrides: null,
           nodeTypeFilter: null,
+          activationDelays: null,
+          intermediateIds: null,
         },
       }));
     },
@@ -788,6 +862,8 @@ export const GlobeConstellation = forwardRef<
           scanProgress: 0,
           colorOverrides: null,
           nodeTypeFilter: null,
+          activationDelays: null,
+          intermediateIds: null,
         },
       }));
     },
@@ -801,9 +877,26 @@ export const GlobeConstellation = forwardRef<
     },
 
     flashNode: (nodeId: string) => {
-      // Flash uses the pulse mechanism with a shorter duration for a "pop" effect
-      setSceneState((prev) => ({ ...prev, pulseId: nodeId }));
-      setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 400);
+      // Flash: pulse scale + illuminate the node with gold color override + full intensity
+      setSceneState((prev) => {
+        const newFocusedIds = new Set(prev.focus.focusedIds);
+        newFocusedIds.add(nodeId);
+        const newIntensities = new Map(prev.focus.intensities);
+        newIntensities.set(nodeId, 1.0);
+        const newColors = new Map(prev.focus.colorOverrides ?? []);
+        newColors.set(nodeId, '#fbbf24'); // gold flash
+        return {
+          ...prev,
+          pulseId: nodeId,
+          focus: {
+            ...prev.focus,
+            focusedIds: newFocusedIds,
+            intensities: newIntensities,
+            colorOverrides: newColors,
+          },
+        };
+      });
+      setTimeout(() => setSceneState((prev) => ({ ...prev, pulseId: null })), 600);
     },
 
     setCinematicState: (state) => {
@@ -1137,7 +1230,7 @@ void main() {
   vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = aSize * 600.0 / -mvPosition.z;
   gl_PointSize = clamp(gl_PointSize, 1.0, 128.0);
-  vAlpha = aDimmed < 0.5 ? 1.0 : 0.06;
+  vAlpha = mix(1.0, 0.06, smoothstep(0.0, 1.0, aDimmed));
   gl_Position = projectionMatrix * mvPosition;
 }
 `;
@@ -1153,11 +1246,10 @@ void main() {
   float glow = 1.0 - smoothstep(0.0, 0.5, dist);
   float core = 1.0 - smoothstep(0.0, 0.15, dist);
   vec3 col = vColor * (1.0 + core * 1.5);
-  // Desaturate dimmed nodes to near-invisible dark gray
-  if (vDimmed > 0.5) {
-    float lum = dot(col, vec3(0.299, 0.587, 0.114));
-    col = vec3(lum * 0.15);
-  }
+  // Continuous desaturation — supports intermediate "maybe" states
+  float dimAmount = smoothstep(0.3, 0.8, vDimmed);
+  float lum = dot(col, vec3(0.299, 0.587, 0.114));
+  col = mix(col, vec3(lum * 0.15), dimAmount);
   gl_FragColor = vec4(col, glow * vAlpha);
 }
 `;
@@ -1176,11 +1268,10 @@ void main() {
   float glow = 1.0 - smoothstep(0.0, 0.5, diamond);
   float core = 1.0 - smoothstep(0.0, 0.15, diamond);
   vec3 col = vColor * (1.0 + core * 2.0);
-  // Desaturate dimmed nodes to near-invisible dark gray
-  if (vDimmed > 0.5) {
-    float lum = dot(col, vec3(0.299, 0.587, 0.114));
-    col = vec3(lum * 0.15);
-  }
+  // Continuous desaturation — supports intermediate "maybe" states
+  float dimAmount = smoothstep(0.3, 0.8, vDimmed);
+  float lum = dot(col, vec3(0.299, 0.587, 0.114));
+  col = mix(col, vec3(lum * 0.15), dimAmount);
   gl_FragColor = vec4(col, glow * vAlpha);
 }
 `;
@@ -1522,13 +1613,30 @@ function NodePoints({
         const intensity = focusState.intensities.get(node.id) ?? 0;
         const isPulsing = pulseId === node.id;
         const isUnfocused = focusState.active && !isFocused && !isPulsing;
+        // Intermediate "maybe" nodes — partially visible, not full match glow
+        const intermediateLevel =
+          !isFocused && focusState.intermediateIds
+            ? (focusState.intermediateIds.get(node.id) ?? -1)
+            : -1;
+        const isIntermediate = intermediateLevel >= 0;
+        // Non-DRep nodes shrink aggressively during match nodeTypeFilter
+        const isFilteredType =
+          focusState.nodeTypeFilter != null &&
+          (node as { nodeType?: string }).nodeType !== focusState.nodeTypeFilter;
 
         // COLOR
-        if (isUnfocused) {
+        if (isUnfocused && !isIntermediate) {
           const dimVal = 0.012 - focusState.scanProgress * 0.007;
           colors[i * 3] = Math.max(0.005, dimVal);
           colors[i * 3 + 1] = Math.max(0.005, dimVal);
           colors[i * 3 + 2] = Math.max(0.005, dimVal);
+        } else if (isIntermediate) {
+          // "Maybe" nodes: base color at reduced brightness
+          tmpColor.set(getColor(node));
+          const intEmissive = emissive * 0.3 * intermediateLevel;
+          colors[i * 3] = tmpColor.r * intEmissive;
+          colors[i * 3 + 1] = tmpColor.g * intEmissive;
+          colors[i * 3 + 2] = tmpColor.b * intEmissive;
         } else if (focusState.colorOverrides?.has(node.id)) {
           tmpColor.set(focusState.colorOverrides.get(node.id)!);
           colors[i * 3] = tmpColor.r * emissive;
@@ -1561,15 +1669,28 @@ function NodePoints({
         let finalSize: number;
         if (isFocused) {
           finalSize = baseSize * (1 + 0.5 * intensity + focusState.scanProgress * 0.3);
+        } else if (isIntermediate) {
+          // "Maybe" nodes: partially shrunk based on brightness level
+          finalSize = baseSize * (0.3 + intermediateLevel * 0.2);
         } else if (isUnfocused) {
-          finalSize = baseSize * (0.5 - focusState.scanProgress * 0.1);
+          // Non-DRep filtered types shrink aggressively during match
+          finalSize = isFilteredType
+            ? baseSize * 0.15
+            : baseSize * (0.5 - focusState.scanProgress * 0.1);
         } else {
           finalSize = baseSize;
         }
         sizes[i] = finalSize * POINT_SCALE;
 
-        // DIMMED attribute (for shader)
-        dimmedArr[i] = isUnfocused ? 1.0 : 0.0;
+        // DIMMED attribute (continuous for shader — 0=bright, 0.5-0.8=intermediate, 1=fully dim)
+        if (isUnfocused && !isIntermediate) {
+          dimmedArr[i] = 1.0;
+        } else if (isIntermediate) {
+          // Higher intermediateLevel = brighter → less dimmed
+          dimmedArr[i] = 0.5 + (1 - intermediateLevel) * 0.3;
+        } else {
+          dimmedArr[i] = 0.0;
+        }
       }
 
       return { positions, colors, sizes, dimmedArr };
@@ -1586,6 +1707,10 @@ function NodePoints({
     dimmedArr: Float32Array;
   } | null>(null);
   const lastFocusVersionRef = useRef(-1);
+  // Tracks when the last focus change occurred — used for activation wave delays
+  const focusChangedAtRef = useRef(0);
+  // Snapshot of activationDelays at the time of the last focus change
+  const activeDelaysRef = useRef<Map<string, number> | null>(null);
 
   // Initial buffer computation uses the focus prop (works on first mount).
   // Subsequent focus changes are detected in useFrame via _sharedFocusVersion.
@@ -1650,7 +1775,7 @@ function NodePoints({
   // Smooth per-frame interpolation: current values → target values.
   // Focus state is read from module-level _sharedFocus/_sharedFocusVersion
   // because R3F Canvas children don't re-render when parent state changes.
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const geo = geoRef.current;
     if (!geo || !currentColorsRef.current || !currentSizesRef.current || !currentDimmedRef.current)
       return;
@@ -1661,7 +1786,14 @@ function NodePoints({
     const currentVersion = getSharedFocusVersion();
     if (currentVersion !== lastFocusVersionRef.current) {
       lastFocusVersionRef.current = currentVersion;
-      targetBuffersRef.current = computeBuffers(getSharedFocus());
+      const newFocus = getSharedFocus();
+      const newTargets = computeBuffers(newFocus);
+      targetBuffersRef.current = newTargets;
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));
+      geo.computeBoundingSphere();
+      // Capture activation time + delays for wave animation
+      focusChangedAtRef.current = clock.getElapsedTime();
+      activeDelaysRef.current = newFocus.activationDelays ?? null;
     }
 
     // Use shared targets if available (focus changed), otherwise fall back to initial buffers
@@ -1682,13 +1814,24 @@ function NodePoints({
     // Faster factor for dimming transitions (nodes fade out quickly)
     const fastFactor = 1 - Math.pow(0.0001, delta); // ~3x faster than normal lerp
 
+    // Activation wave: elapsed time since last focus change
+    const delays = activeDelaysRef.current;
+    const elapsed = delays ? clock.getElapsedTime() - focusChangedAtRef.current : 0;
+
     // Lerp colors (RGB per node) — use fast factor when dimming
+    // Activation wave: nodes with a delay that hasn't elapsed yet lerp toward "unfocused" targets
     for (let i = 0; i < count; i++) {
       const isDimming = targetDimmed[i] > 0.5;
       const f = isDimming ? fastFactor : factor;
+
+      // Wave delay: if node hasn't activated yet, override effective target to dimmed state
+      const nodeDelay = delays?.get(nodes[i].id) ?? 0;
+      const isDelayed = delays != null && elapsed < nodeDelay;
+
       for (let c = 0; c < 3; c++) {
         const idx = i * 3 + c;
-        const diff = targetColors[idx] - curColors[idx];
+        const effectiveTarget = isDelayed ? 0.005 : targetColors[idx];
+        const diff = effectiveTarget - curColors[idx];
         if (Math.abs(diff) > 0.002) {
           curColors[idx] += diff * f;
           changed = true;
@@ -1700,7 +1843,12 @@ function NodePoints({
     for (let i = 0; i < count; i++) {
       const isDimming = targetDimmed[i] > 0.5;
       const f = isDimming ? fastFactor : factor;
-      const diff = targetSizes[i] - curSizes[i];
+
+      const nodeDelay = delays?.get(nodes[i].id) ?? 0;
+      const isDelayed = delays != null && elapsed < nodeDelay;
+      const effectiveTarget = isDelayed ? nodes[i].scale * 0.15 * POINT_SCALE : targetSizes[i];
+
+      const diff = effectiveTarget - curSizes[i];
       if (Math.abs(diff) > 0.001) {
         curSizes[i] += diff * f;
         changed = true;
@@ -1709,11 +1857,22 @@ function NodePoints({
 
     // Lerp dimmed — fast transition so nodes fade out visibly
     for (let i = 0; i < count; i++) {
-      const diff = targetDimmed[i] - curDimmed[i];
+      const nodeDelay = delays?.get(nodes[i].id) ?? 0;
+      const isDelayed = delays != null && elapsed < nodeDelay;
+      const effectiveTarget = isDelayed ? 1.0 : targetDimmed[i];
+
+      const diff = effectiveTarget - curDimmed[i];
       if (Math.abs(diff) > 0.005) {
         curDimmed[i] += diff * fastFactor;
         changed = true;
       }
+    }
+
+    // Clear delays once all have elapsed (avoid per-frame Map lookups indefinitely)
+    if (delays != null) {
+      let maxDelay = 0;
+      for (const d of delays.values()) if (d > maxDelay) maxDelay = d;
+      if (elapsed > maxDelay + 0.5) activeDelaysRef.current = null;
     }
 
     // Only push to GPU when something actually changed
@@ -2360,8 +2519,8 @@ function GloryRing({
 
     // Fade in over 0.5s
     const fadeIn = Math.min(elapsed / 0.5, 1);
-    // Gentle pulse (0.9-1.1 scale oscillation)
-    const pulse = 1 + Math.sin(elapsed * 3) * 0.1;
+    // Pronounced pulse (0.85-1.15 scale oscillation)
+    const pulse = 1 + Math.sin(elapsed * 3) * 0.15;
 
     mesh.visible = true;
     mesh.position.set(target[0], target[1], target[2]);
@@ -2369,12 +2528,12 @@ function GloryRing({
     // Face the camera by rotating to be perpendicular to the view direction
     mesh.rotation.x = Math.PI * 0.5 + Math.sin(elapsed * 0.8) * 0.08;
     mesh.rotation.z = elapsed * 0.3;
-    mat.opacity = fadeIn * 0.35; // subtle, not overpowering
+    mat.opacity = fadeIn * 0.5; // more prominent celebration ring
   });
 
   return (
     <mesh ref={meshRef} visible={false} frustumCulled={false}>
-      <torusGeometry args={[0.4, 0.015, 12, 36]} />
+      <torusGeometry args={[0.5, 0.02, 12, 36]} />
       <meshBasicMaterial
         ref={materialRef}
         color="#f5c542"
@@ -2461,11 +2620,15 @@ function TiltedGlobeGroup({
   children: React.ReactNode;
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const currentSpeedRef = useRef(0);
 
   useFrame(({ clock }, delta) => {
     if (groupRef.current) {
-      // Always advance rotation — speed is 0 during interaction, restored by idle recovery
-      rotationRef.current += delta * speedRef.current;
+      // Smooth rotation speed transitions — eased start/stop instead of abrupt
+      const targetSpeed = speedRef.current;
+      currentSpeedRef.current +=
+        (targetSpeed - currentSpeedRef.current) * (1 - Math.pow(0.01, delta));
+      rotationRef.current += delta * currentSpeedRef.current;
 
       // Apply axial tilt on X, then spin on Y (local)
       groupRef.current.rotation.x = AXIAL_TILT;

@@ -65,8 +65,12 @@ async function getGovernancePulse() {
   };
 }
 
-export default async function HomePage() {
-  const pulseData = await getGovernancePulse();
+interface HomePageProps {
+  searchParams: Promise<{ filter?: string; entity?: string; match?: string; sort?: string }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const [pulseData, params] = await Promise.all([getGovernancePulse(), searchParams]);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -97,7 +101,13 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PageViewTracker event="homepage_viewed" />
-      <HubHomePage pulseData={pulseData} />
+      <HubHomePage
+        pulseData={pulseData}
+        filter={params.filter}
+        entity={params.entity}
+        match={params.match === 'true'}
+        sort={params.sort}
+      />
     </>
   );
 }

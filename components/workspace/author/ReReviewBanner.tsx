@@ -31,7 +31,7 @@ export function ReReviewBanner({ draft, viewerStakeAddress, onShowChanges }: ReR
   }, [data, viewerStakeAddress]);
 
   const handleToggleChanges = useCallback(() => {
-    if (!staleReview?.reviewedAtVersion) return;
+    if (staleReview?.reviewedAtVersion == null) return;
     const next = !showingChanges;
     setShowingChanges(next);
     onShowChanges?.(staleReview.reviewedAtVersion, next);
@@ -60,7 +60,7 @@ export function ReReviewBanner({ draft, viewerStakeAddress, onShowChanges }: ReR
             Re-review
             <ArrowRight className="h-3 w-3" />
           </a>
-          {staleReview.reviewedAtVersion && onShowChanges && (
+          {staleReview.reviewedAtVersion != null && onShowChanges && (
             <button
               onClick={handleToggleChanges}
               className="inline-flex items-center gap-1 text-xs text-amber-400/70 hover:text-amber-300 transition-colors cursor-pointer"

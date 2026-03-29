@@ -356,17 +356,17 @@ function findTextPosition(editor: Editor, field: ProposalField, charOffset: numb
 }
 
 /**
- * Accept all pending diffs in the editor.
+ * Accept the first pending diff in the editor (nearest to cursor).
  */
-export function acceptAllDiffs(editor: Editor): void {
+export function acceptFirstDiff(editor: Editor): void {
   const editId = findActiveEditId(editor);
   if (editId) acceptDiff(editor, editId);
 }
 
 /**
- * Reject all pending diffs in the editor.
+ * Reject the first pending diff in the editor (nearest to cursor).
  */
-export function rejectAllDiffs(editor: Editor): void {
+export function rejectFirstDiff(editor: Editor): void {
   const editId = findActiveEditId(editor);
   if (editId) rejectDiff(editor, editId);
 }

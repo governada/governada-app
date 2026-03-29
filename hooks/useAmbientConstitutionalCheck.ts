@@ -127,7 +127,9 @@ export function useAmbientConstitutionalCheck(
     }, 2000);
 
     return () => clearTimeout(timerRef.current);
-  }, [draft?.title, draft?.abstract, draft?.motivation, draft?.rationale, draft, runCheck]);
+     
+    // `draft` object ref changes on every TanStack refetch causing unnecessary timer resets
+  }, [draft?.title, draft?.abstract, draft?.motivation, draft?.rationale, runCheck]);
 
   return {
     result: localResult,

@@ -104,12 +104,10 @@ export function SuggestionResolutionBar({
     });
   }, [onRejectAll, proposalId, activeCount]);
 
-  // Summary line
+  // Summary line (always a string — the 0/0 case is handled by the early return below)
   const summary = useMemo(() => {
-    const totalAll = activeCount + resolvedCount;
-    if (totalAll === 0) return null;
     if (activeCount === 0) return `All ${resolvedCount} suggestions resolved`;
-    return `${resolvedCount} of ${totalAll} resolved`;
+    return `${resolvedCount} of ${activeCount + resolvedCount} resolved`;
   }, [activeCount, resolvedCount]);
 
   if (activeCount === 0 && resolvedCount === 0) return null;

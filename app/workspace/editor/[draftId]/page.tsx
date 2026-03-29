@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 /**
  * Workspace Editor — Tiptap-based proposal workspace using Studio shell.
  *

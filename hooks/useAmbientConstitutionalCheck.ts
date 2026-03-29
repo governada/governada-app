@@ -3,7 +3,7 @@
 /**
  * useAmbientConstitutionalCheck — Auto-runs constitutional check when draft content changes.
  *
- * Debounces 5 seconds after the last content change to avoid flooding during active editing.
+ * Debounces 2 seconds after the last content change to avoid flooding during active editing.
  * Uses content hash to skip re-checks when content hasn't actually changed.
  * Stores result on the draft via updateDraft mutation.
  */
@@ -107,7 +107,7 @@ export function useAmbientConstitutionalCheck(
     );
   }, [draft, skill, updateDraft]);
 
-  // Auto-trigger on content changes (debounced 5s)
+  // Auto-trigger on content changes (debounced 2s for responsive margin traffic lights)
   useEffect(() => {
     if (!draft) return;
 
@@ -124,7 +124,7 @@ export function useAmbientConstitutionalCheck(
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       runCheck();
-    }, 5000);
+    }, 2000);
 
     return () => clearTimeout(timerRef.current);
   }, [draft?.title, draft?.abstract, draft?.motivation, draft?.rationale, draft, runCheck]);

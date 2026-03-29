@@ -138,7 +138,7 @@ function findMarkRanges(editor: Editor, markName: string, editId: string) {
 /**
  * Accept the current AI diff: remove the `aiDiffRemoved` text and unmark the `aiDiffAdded` text.
  */
-function acceptDiff(editor: Editor, editId: string): boolean {
+export function acceptDiff(editor: Editor, editId: string): boolean {
   const removedRanges = findMarkRanges(editor, 'aiDiffRemoved', editId);
   const addedRanges = findMarkRanges(editor, 'aiDiffAdded', editId);
 
@@ -170,7 +170,7 @@ function acceptDiff(editor: Editor, editId: string): boolean {
 /**
  * Reject the current AI diff: remove the `aiDiffAdded` text and unmark the `aiDiffRemoved` text.
  */
-function rejectDiff(editor: Editor, editId: string): boolean {
+export function rejectDiff(editor: Editor, editId: string): boolean {
   const removedRanges = findMarkRanges(editor, 'aiDiffRemoved', editId);
   const addedRanges = findMarkRanges(editor, 'aiDiffAdded', editId);
 

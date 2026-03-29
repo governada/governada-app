@@ -33,6 +33,17 @@ import {
 } from '@/components/studio/studioEditorHelpers';
 import { WorkspacePanels } from '@/components/workspace/layout/WorkspacePanels';
 import { ProposalEditor, injectProposedEdit } from '@/components/workspace/editor/ProposalEditor';
+import {
+  applyProposedEdit,
+  acceptDiff,
+  rejectDiff,
+} from '@/components/workspace/editor/AIDiffMark';
+import { SuggestionResolutionBar } from '@/components/workspace/editor/SuggestionResolutionBar';
+import {
+  ChangeSinceBadge,
+  computeChangedFields,
+} from '@/components/workspace/editor/ChangeSinceBadge';
+import { ReReviewBanner } from '@/components/workspace/author/ReReviewBanner';
 import { TypeSpecificFieldsPanel } from '@/components/workspace/editor/TypeSpecificFields';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
 import { StatusBar } from '@/components/workspace/layout/StatusBar';
@@ -46,6 +57,7 @@ import { ProposalAlignmentCard } from '@/components/intelligence/ProposalAlignme
 import { VersionCompareDialog } from '@/components/workspace/author/VersionCompareDialog';
 import { AuthorBrief } from '@/components/intelligence/AuthorBrief';
 import { useAmbientConstitutionalCheck } from '@/hooks/useAmbientConstitutionalCheck';
+import { useSuggestionAnnotations } from '@/hooks/useSuggestionAnnotations';
 import { useSectionAnalysis } from '@/hooks/useSectionAnalysis';
 import { useTeam } from '@/hooks/useTeam';
 import { useFeatureFlag } from '@/components/FeatureGate';
@@ -339,6 +351,153 @@ function WorkspaceEditorPage() {
     if (draft.motivation && draft.motivation.length >= 20) analyzeSection('motivation');
     if (draft.rationale && draft.rationale.length >= 20) analyzeSection('rationale');
   }, [draft?.abstract, draft?.motivation, draft?.rationale, draft, readOnly, analyzeSection]);
+
+  // ---------------------------------------------------------------------------
+  // Suggestion resolution (response_revision stage)
+  // ---------------------------------------------------------------------------
+  const isResponseRevision = draft?.status === 'response_revision' && isOwner;
+  const {
+    suggestions: activeSuggestions,
+    allSuggestions,
+    acceptSuggestion,
+    rejectSuggestion,
+  } = useSuggestionAnnotations(draft?.submittedTxHash ?? null, draft?.submittedTxHash ? 0 : null);
+
+  // Map of editId -> annotationId (populated when suggestions are injected into editor)
+  const suggestionMapRef = useRef<Map<string, string>>(new Map());
+  // Track which suggestions have been injected already
+  const injectedSuggestionsRef = useRef<Set<string>>(new Set());
+
+  // Inject active suggestions as inline tracked changes when editor is ready
+  useEffect(() => {
+    if (!isResponseRevision || !editorRef.current || activeSuggestions.length === 0) return;
+
+    for (const suggestion of activeSuggestions) {
+      if (injectedSuggestionsRef.current.has(suggestion.id)) continue;
+
+      const editId = `review-sug-${suggestion.id}`;
+      const edit = {
+        field: suggestion.anchorField as import('@/lib/workspace/editor/types').ProposalField,
+        anchorStart: suggestion.anchorStart,
+        anchorEnd: suggestion.anchorEnd,
+        originalText: suggestion.suggestedText.original,
+        proposedText: suggestion.suggestedText.proposed,
+        explanation: suggestion.suggestedText.explanation,
+      };
+
+      applyProposedEdit(editorRef.current, edit, editId);
+      suggestionMapRef.current.set(editId, suggestion.id);
+      injectedSuggestionsRef.current.add(suggestion.id);
+    }
+  }, [isResponseRevision, activeSuggestions]);
+
+  // Build mappings for SuggestionResolutionBar
+  const suggestionMappings = useMemo(() => {
+    return activeSuggestions
+      .filter((s) => injectedSuggestionsRef.current.has(s.id))
+      .map((s) => ({
+        editId: `review-sug-${s.id}`,
+        annotationId: s.id,
+        suggestion: s,
+      }));
+  }, [activeSuggestions]);
+
+  const resolvedCount = useMemo(
+    () => allSuggestions.filter((s) => s.status !== 'active').length,
+    [allSuggestions],
+  );
+
+  // Accept a suggestion: apply the text change in editor + update annotation status
+  const handleSuggestionAccept = useCallback(
+    (annotationId: string, editId: string) => {
+      if (editorRef.current) {
+        acceptDiff(editorRef.current, editId);
+      }
+      acceptSuggestion(annotationId);
+      suggestionMapRef.current.delete(editId);
+    },
+    [acceptSuggestion],
+  );
+
+  // Reject a suggestion: revert the tracked change in editor + update annotation status
+  const handleSuggestionReject = useCallback(
+    (annotationId: string, editId: string) => {
+      if (editorRef.current) {
+        rejectDiff(editorRef.current, editId);
+      }
+      rejectSuggestion(annotationId);
+      suggestionMapRef.current.delete(editId);
+    },
+    [rejectSuggestion],
+  );
+
+  // Batch accept all
+  const handleSuggestionAcceptAll = useCallback(() => {
+    for (const mapping of suggestionMappings) {
+      handleSuggestionAccept(mapping.annotationId, mapping.editId);
+    }
+  }, [suggestionMappings, handleSuggestionAccept]);
+
+  // Batch reject all
+  const handleSuggestionRejectAll = useCallback(() => {
+    for (const mapping of suggestionMappings) {
+      handleSuggestionReject(mapping.annotationId, mapping.editId);
+    }
+  }, [suggestionMappings, handleSuggestionReject]);
+
+  // ---------------------------------------------------------------------------
+  // Version diff on return (reviewer sees what changed since their review)
+  // ---------------------------------------------------------------------------
+  const [showVersionDiff, setShowVersionDiff] = useState(false);
+  const [versionDiffVersion, setVersionDiffVersion] = useState<number | null>(null);
+
+  const { data: versionContentData } = useQuery<{
+    version: {
+      content: { title?: string; abstract?: string; motivation?: string; rationale?: string };
+    };
+  }>({
+    queryKey: ['draft-version-content', draftId, versionDiffVersion],
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+      try {
+        const { getStoredSession } = await import('@/lib/supabaseAuth');
+        const token = getStoredSession();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      } catch {
+        /* no session */
+      }
+      const res = await fetch(
+        `/api/workspace/drafts/${encodeURIComponent(draftId!)}/version?versionNumber=${versionDiffVersion}`,
+        { headers },
+      );
+      if (!res.ok) throw new Error('Version not found');
+      return res.json();
+    },
+    enabled: !!draftId && !!versionDiffVersion && showVersionDiff,
+    staleTime: 300_000,
+  });
+
+  const handleShowChanges = useCallback((reviewedAtVersion: number, show: boolean) => {
+    setShowVersionDiff(show);
+    setVersionDiffVersion(show ? reviewedAtVersion : null);
+  }, []);
+
+  const changedFields = useMemo(() => {
+    if (!showVersionDiff || !versionContentData?.version?.content) return [];
+    return computeChangedFields(versionContentData.version.content, {
+      title: draft?.title ?? '',
+      abstract: draft?.abstract ?? '',
+      motivation: draft?.motivation ?? '',
+      rationale: draft?.rationale ?? '',
+    });
+  }, [
+    showVersionDiff,
+    versionContentData,
+    draft?.title,
+    draft?.abstract,
+    draft?.motivation,
+    draft?.rationale,
+  ]);
 
   // --- Content ---
   const content = useMemo(
@@ -676,11 +835,37 @@ function WorkspaceEditorPage() {
           main={
             <div className="max-w-3xl mx-auto px-6 py-6 transition-opacity duration-150">
               {draft.supersedesId && <LineageBanner supersedesId={draft.supersedesId} />}
+              {!isOwner && stakeAddress && (
+                <ReReviewBanner
+                  draft={draft}
+                  viewerStakeAddress={stakeAddress}
+                  onShowChanges={handleShowChanges}
+                />
+              )}
+              {showVersionDiff && changedFields.length > 0 && versionDiffVersion && (
+                <ChangeSinceBadge
+                  changedFields={changedFields}
+                  reviewedAtVersion={versionDiffVersion}
+                  currentVersion={draft.currentVersion ?? 0}
+                />
+              )}
               <SaveErrorBanner onRetry={handleSaveRetry} />
               {showScaffold ? (
                 <ScaffoldForm draft={draft} onComplete={() => setScaffoldDismissed(true)} />
               ) : (
                 <>
+                  {isResponseRevision && (suggestionMappings.length > 0 || resolvedCount > 0) && (
+                    <SuggestionResolutionBar
+                      mappings={suggestionMappings}
+                      activeCount={suggestionMappings.length}
+                      resolvedCount={resolvedCount}
+                      onAccept={handleSuggestionAccept}
+                      onReject={handleSuggestionReject}
+                      onAcceptAll={handleSuggestionAcceptAll}
+                      onRejectAll={handleSuggestionRejectAll}
+                      proposalId={draftId ?? undefined}
+                    />
+                  )}
                   <ProposalEditor
                     content={content}
                     mode={mode}
@@ -693,12 +878,24 @@ function WorkspaceEditorPage() {
                         proposal_id: draftId,
                         edit_id: editId,
                       });
+                      // Sync suggestion status if this was a reviewer suggestion
+                      const annotationId = suggestionMapRef.current.get(editId);
+                      if (annotationId) {
+                        acceptSuggestion(annotationId);
+                        suggestionMapRef.current.delete(editId);
+                      }
                     }}
                     onDiffReject={(editId) => {
                       posthog.capture('workspace_inline_edit_rejected', {
                         proposal_id: draftId,
                         edit_id: editId,
                       });
+                      // Sync suggestion status if this was a reviewer suggestion
+                      const annotationId = suggestionMapRef.current.get(editId);
+                      if (annotationId) {
+                        rejectSuggestion(annotationId);
+                        suggestionMapRef.current.delete(editId);
+                      }
                     }}
                     showSuggestEdit={!isOwner && mode === 'review'}
                     onSuggestEdit={(editId, _proposedText, explanation) => {

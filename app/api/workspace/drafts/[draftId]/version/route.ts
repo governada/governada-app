@@ -1,5 +1,5 @@
 /**
- * Draft Version API — save a named version snapshot.
+ * Draft Version API — save and retrieve version snapshots.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,20 +11,28 @@ import type { DraftVersion } from '@/lib/workspace/types';
 
 export const dynamic = 'force-dynamic';
 
+/** Extract draftId from URL: /api/workspace/drafts/{draftId}/version */
+function extractDraftId(pathname: string): string | null {
+  const segments = pathname.split('/');
+  const versionIdx = segments.indexOf('version');
+  return versionIdx > 0 ? segments[versionIdx - 1] : null;
+}
+
 /** GET /api/workspace/drafts/[draftId]/version?versionNumber=N — fetch version content */
 export const GET = withRouteHandler(
   async (request: NextRequest) => {
-    const segments = request.nextUrl.pathname.split('/');
-    const versionIdx = segments.indexOf('version');
-    const draftId = versionIdx > 0 ? segments[versionIdx - 1] : null;
-
+    const draftId = extractDraftId(request.nextUrl.pathname);
     if (!draftId) {
       return NextResponse.json({ error: 'Missing draftId' }, { status: 400 });
     }
 
     const versionNumber = request.nextUrl.searchParams.get('versionNumber');
-    if (!versionNumber) {
-      return NextResponse.json({ error: 'Missing versionNumber query param' }, { status: 400 });
+    const vn = Number(versionNumber);
+    if (!versionNumber || !Number.isInteger(vn) || vn < 1) {
+      return NextResponse.json(
+        { error: 'Invalid versionNumber — must be a positive integer' },
+        { status: 400 },
+      );
     }
 
     const admin = getSupabaseAdmin();
@@ -33,7 +41,7 @@ export const GET = withRouteHandler(
       .from('proposal_draft_versions')
       .select('*')
       .eq('draft_id', draftId)
-      .eq('version_number', Number(versionNumber))
+      .eq('version_number', vn)
       .single();
 
     if (versionError || !version) {
@@ -52,17 +60,13 @@ export const GET = withRouteHandler(
 
     return NextResponse.json({ version: mapped });
   },
-  { auth: 'none', rateLimit: { max: 30, window: 60 } },
+  { auth: 'required', rateLimit: { max: 30, window: 60 } },
 );
 
 /** POST /api/workspace/drafts/[draftId]/version — save a named version */
 export const POST = withRouteHandler(
   async (request: NextRequest) => {
-    // Extract draftId from URL: /api/workspace/drafts/{draftId}/version
-    const segments = request.nextUrl.pathname.split('/');
-    const versionIdx = segments.indexOf('version');
-    const draftId = versionIdx > 0 ? segments[versionIdx - 1] : null;
-
+    const draftId = extractDraftId(request.nextUrl.pathname);
     if (!draftId) {
       return NextResponse.json({ error: 'Missing draftId' }, { status: 400 });
     }
@@ -142,5 +146,5 @@ export const POST = withRouteHandler(
 
     return NextResponse.json({ version: mapped }, { status: 201 });
   },
-  { auth: 'none', rateLimit: { max: 20, window: 60 } },
+  { auth: 'required', rateLimit: { max: 20, window: 60 } },
 );

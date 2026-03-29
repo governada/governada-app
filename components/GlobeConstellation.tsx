@@ -209,6 +209,18 @@ export const GlobeConstellation = forwardRef<
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
+  // Bridge focus state into R3F's separate fiber tree.
+  // R3F's <Canvas> creates an independent React root — children don't re-render
+  // when parent state changes via useState. We store focus in a ref that R3F
+  // components read in useFrame, and increment a version counter so useFrame
+  // can detect changes without depending on React re-renders.
+  const focusRef = useRef<FocusState>(sceneState.focus);
+  const focusVersionRef = useRef(0);
+  if (focusRef.current !== sceneState.focus) {
+    focusRef.current = sceneState.focus;
+    focusVersionRef.current++;
+  }
+
   const { data: apiData } = useGovernanceConstellation();
 
   const onNodeSelectRef = useRef(onNodeSelect);
@@ -915,6 +927,8 @@ export const GlobeConstellation = forwardRef<
             <ConstellationNodes
               nodes={sceneState.nodes}
               focus={sceneState.focus}
+              focusRef={focusRef}
+              focusVersionRef={focusVersionRef}
               pulseId={sceneState.pulseId}
               interactive={interactive}
               overlayColorMode={overlayColorMode}
@@ -1259,6 +1273,8 @@ function RaycastConfig() {
 function ConstellationNodes({
   nodes,
   focus,
+  focusRef,
+  focusVersionRef,
   pulseId,
   interactive,
   onNodeClick,
@@ -1272,6 +1288,8 @@ function ConstellationNodes({
 }: {
   nodes: ConstellationNode3D[];
   focus: FocusState;
+  focusRef: React.RefObject<FocusState>;
+  focusVersionRef: React.RefObject<number>;
   pulseId: string | null;
   interactive?: boolean;
   onNodeClick?: (node: ConstellationNode3D) => void;
@@ -1368,6 +1386,8 @@ function ConstellationNodes({
       <NodePoints
         nodes={groups.drep}
         focus={focus}
+        focusRef={focusRef}
+        focusVersionRef={focusVersionRef}
         hoveredNodeId={hoveredNodeId}
         visitedNodeIds={visitedNodeIds}
         pulseId={pulseId}
@@ -1382,6 +1402,8 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.spo}
           focus={focus}
+          focusRef={focusRef}
+          focusVersionRef={focusVersionRef}
           hoveredNodeId={hoveredNodeId}
           visitedNodeIds={visitedNodeIds}
           pulseId={pulseId}
@@ -1399,6 +1421,8 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.cc}
           focus={focus}
+          focusRef={focusRef}
+          focusVersionRef={focusVersionRef}
           pulseId={pulseId}
           interactive={false}
           getColor={getCcColor}
@@ -1424,6 +1448,8 @@ function ConstellationNodes({
         <NodePoints
           nodes={groups.proposal}
           focus={focus}
+          focusRef={focusRef}
+          focusVersionRef={focusVersionRef}
           hoveredNodeId={hoveredNodeId}
           visitedNodeIds={visitedNodeIds}
           pulseId={pulseId}
@@ -1442,6 +1468,8 @@ function ConstellationNodes({
 function NodePoints({
   nodes,
   focus,
+  focusRef,
+  focusVersionRef,
   hoveredNodeId,
   visitedNodeIds,
   pulseId,
@@ -1455,6 +1483,8 @@ function NodePoints({
 }: {
   nodes: ConstellationNode3D[];
   focus: FocusState;
+  focusRef?: React.RefObject<FocusState>;
+  focusVersionRef?: React.RefObject<number>;
   hoveredNodeId?: string | null;
   visitedNodeIds?: Set<string>;
   pulseId: string | null;
@@ -1469,97 +1499,93 @@ function NodePoints({
   const tmpColor = useMemo(() => new THREE.Color(), []);
   const matchColor = useMemo(() => new THREE.Color(MATCH_COLOR), []);
 
-  const buffers = useMemo(() => {
-    const count = nodes.length;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const dimmedArr = new Float32Array(count);
+  // Reusable buffer computation function — used by both useMemo (initial) and useFrame (focus updates)
+  const computeBuffers = useCallback(
+    (focusState: FocusState) => {
+      const count = nodes.length;
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      const sizes = new Float32Array(count);
+      const dimmedArr = new Float32Array(count);
 
-    for (let i = 0; i < count; i++) {
-      const node = nodes[i];
-      positions[i * 3] = node.position[0];
-      positions[i * 3 + 1] = node.position[1];
-      positions[i * 3 + 2] = node.position[2];
+      for (let i = 0; i < count; i++) {
+        const node = nodes[i];
+        positions[i * 3] = node.position[0];
+        positions[i * 3 + 1] = node.position[1];
+        positions[i * 3 + 2] = node.position[2];
 
-      const isFocused = focus.focusedIds.has(node.id);
-      const intensity = focus.intensities.get(node.id) ?? 0;
-      const isPulsing = pulseId === node.id;
-      const isUnfocused = focus.active && !isFocused && !isPulsing;
+        const isFocused = focusState.focusedIds.has(node.id);
+        const intensity = focusState.intensities.get(node.id) ?? 0;
+        const isPulsing = pulseId === node.id;
+        const isUnfocused = focusState.active && !isFocused && !isPulsing;
 
-      // COLOR
-      if (isUnfocused) {
-        // Universal dim: near-black, progressively darker during scan
-        const dimVal = 0.012 - focus.scanProgress * 0.007;
-        colors[i * 3] = Math.max(0.005, dimVal);
-        colors[i * 3 + 1] = Math.max(0.005, dimVal);
-        colors[i * 3 + 2] = Math.max(0.005, dimVal);
-      } else if (focus.colorOverrides?.has(node.id)) {
-        // Vote split / overlay: use override color
-        tmpColor.set(focus.colorOverrides.get(node.id)!);
-        colors[i * 3] = tmpColor.r * emissive;
-        colors[i * 3 + 1] = tmpColor.g * emissive;
-        colors[i * 3 + 2] = tmpColor.b * emissive;
-      } else if (isFocused && intensity > 0) {
-        // Matched/focused: blend toward amber, boost emissive
-        tmpColor.set(getColor(node));
-        const blend = intensity * 0.85;
-        const blendedR = tmpColor.r + (matchColor.r - tmpColor.r) * blend;
-        const blendedG = tmpColor.g + (matchColor.g - tmpColor.g) * blend;
-        const blendedB = tmpColor.b + (matchColor.b - tmpColor.b) * blend;
-        const matchEmissive = emissive * (1 + intensity * 1.2);
-        colors[i * 3] = blendedR * matchEmissive;
-        colors[i * 3 + 1] = blendedG * matchEmissive;
-        colors[i * 3 + 2] = blendedB * matchEmissive;
-      } else {
-        // Normal idle rendering
-        tmpColor.set(getColor(node));
-        const activity = activityMap?.get(node.id) ?? activityMap?.get(node.fullId) ?? 0;
-        const activityBoost = 1 + activity * 0.8;
-        const hoverBoost = hoveredNodeId === node.id ? 1.5 : 1.0;
-        const visitedDim = visitedNodeIds?.has(node.id) ? 0.65 : 1.0;
-        colors[i * 3] = tmpColor.r * emissive * activityBoost * hoverBoost * visitedDim;
-        colors[i * 3 + 1] = tmpColor.g * emissive * activityBoost * hoverBoost * visitedDim;
-        colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost * hoverBoost * visitedDim;
+        // COLOR
+        if (isUnfocused) {
+          const dimVal = 0.012 - focusState.scanProgress * 0.007;
+          colors[i * 3] = Math.max(0.005, dimVal);
+          colors[i * 3 + 1] = Math.max(0.005, dimVal);
+          colors[i * 3 + 2] = Math.max(0.005, dimVal);
+        } else if (focusState.colorOverrides?.has(node.id)) {
+          tmpColor.set(focusState.colorOverrides.get(node.id)!);
+          colors[i * 3] = tmpColor.r * emissive;
+          colors[i * 3 + 1] = tmpColor.g * emissive;
+          colors[i * 3 + 2] = tmpColor.b * emissive;
+        } else if (isFocused && intensity > 0) {
+          tmpColor.set(getColor(node));
+          const blend = intensity * 0.85;
+          const blendedR = tmpColor.r + (matchColor.r - tmpColor.r) * blend;
+          const blendedG = tmpColor.g + (matchColor.g - tmpColor.g) * blend;
+          const blendedB = tmpColor.b + (matchColor.b - tmpColor.b) * blend;
+          const matchEmissive = emissive * (1 + intensity * 1.2);
+          colors[i * 3] = blendedR * matchEmissive;
+          colors[i * 3 + 1] = blendedG * matchEmissive;
+          colors[i * 3 + 2] = blendedB * matchEmissive;
+        } else {
+          tmpColor.set(getColor(node));
+          const activity = activityMap?.get(node.id) ?? activityMap?.get(node.fullId) ?? 0;
+          const activityBoost = 1 + activity * 0.8;
+          const hoverBoost = hoveredNodeId === node.id ? 1.5 : 1.0;
+          const visitedDim = visitedNodeIds?.has(node.id) ? 0.65 : 1.0;
+          colors[i * 3] = tmpColor.r * emissive * activityBoost * hoverBoost * visitedDim;
+          colors[i * 3 + 1] = tmpColor.g * emissive * activityBoost * hoverBoost * visitedDim;
+          colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost * hoverBoost * visitedDim;
+        }
+
+        // SIZE
+        const isHovered = hoveredNodeId === node.id;
+        const baseSize = isPulsing ? node.scale * 1.8 : isHovered ? node.scale * 1.6 : node.scale;
+        let finalSize: number;
+        if (isFocused) {
+          finalSize = baseSize * (1 + 0.5 * intensity + focusState.scanProgress * 0.3);
+        } else if (isUnfocused) {
+          finalSize = baseSize * (0.5 - focusState.scanProgress * 0.1);
+        } else {
+          finalSize = baseSize;
+        }
+        sizes[i] = finalSize * POINT_SCALE;
+
+        // DIMMED attribute (for shader)
+        dimmedArr[i] = isUnfocused ? 1.0 : 0.0;
       }
 
-      // SIZE
-      const isHovered = hoveredNodeId === node.id;
-      const baseSize = isPulsing ? node.scale * 1.8 : isHovered ? node.scale * 1.6 : node.scale;
-      let finalSize: number;
-      if (isFocused) {
-        finalSize = baseSize * (1 + 0.5 * intensity + focus.scanProgress * 0.3);
-      } else if (isUnfocused) {
-        finalSize = baseSize * (0.5 - focus.scanProgress * 0.1);
-      } else {
-        finalSize = baseSize;
-      }
-      sizes[i] = finalSize * POINT_SCALE;
-
-      // DIMMED attribute (for shader)
-      dimmedArr[i] = isUnfocused ? 1.0 : 0.0;
-    }
-
-    return { positions, colors, sizes, dimmedArr };
-    // Deps use primitive/identity values to ensure useMemo fires on focus changes.
-    // focus.focusedIds and focus.intensities are new refs each setSceneState call,
-    // but we also include focus.active and focus.scanProgress as primitives for safety.
+      return { positions, colors, sizes, dimmedArr };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tmpColor/matchColor are stable refs
-  }, [
-    nodes,
-    focus.active,
-    focus.focusedIds,
-    focus.intensities,
-    focus.scanProgress,
-    focus.colorOverrides,
-    focus.nodeTypeFilter,
-    hoveredNodeId,
-    visitedNodeIds,
-    pulseId,
-    getColor,
-    emissive,
-    activityMap,
-  ]);
+    [nodes, hoveredNodeId, visitedNodeIds, pulseId, getColor, emissive, activityMap],
+  );
+
+  // Target buffers ref — updated by useFrame when focus changes via focusVersionRef
+  const targetBuffersRef = useRef<{
+    positions: Float32Array;
+    colors: Float32Array;
+    sizes: Float32Array;
+    dimmedArr: Float32Array;
+  } | null>(null);
+  const lastFocusVersionRef = useRef(-1);
+
+  // Initial buffer computation uses the focus prop (works on first mount).
+  // Subsequent focus changes are detected in useFrame via focusVersionRef.
+  const buffers = useMemo(() => computeBuffers(focus), [computeBuffers, focus]);
 
   const geoRef = useRef<THREE.BufferGeometry>(null);
 
@@ -1592,20 +1618,36 @@ function NodePoints({
     geo.computeBoundingSphere();
   }, [buffers]);
 
-  // Smooth per-frame interpolation: current values → target values
+  // Smooth per-frame interpolation: current values → target values.
+  // Focus state is read from focusRef (a ref bridging the React/R3F boundary)
+  // because R3F Canvas children don't re-render when parent state changes.
   useFrame((_, delta) => {
     const geo = geoRef.current;
     if (!geo || !currentColorsRef.current || !currentSizesRef.current || !currentDimmedRef.current)
       return;
+
+    // Detect focus state changes via version counter (bridges React→R3F boundary)
+    const currentVersion = focusVersionRef?.current ?? 0;
+    if (currentVersion !== lastFocusVersionRef.current && focusRef?.current) {
+      lastFocusVersionRef.current = currentVersion;
+      const newTargets = computeBuffers(focusRef.current);
+      targetBuffersRef.current = newTargets;
+      // Also update position attribute if node count changed
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));
+      geo.computeBoundingSphere();
+    }
+
+    // Use ref-based targets if available (focus changed), otherwise fall back to initial buffers
+    const targets = targetBuffersRef.current ?? buffers;
 
     // Exponential smoothing factor (frame-rate independent, ~0.6s transition)
     const factor = 1 - Math.pow(0.003, delta);
     let changed = false;
     const count = nodes.length;
 
-    const targetColors = buffers.colors;
-    const targetSizes = buffers.sizes;
-    const targetDimmed = buffers.dimmedArr;
+    const targetColors = targets.colors;
+    const targetSizes = targets.sizes;
+    const targetDimmed = targets.dimmedArr;
     const curColors = currentColorsRef.current;
     const curSizes = currentSizesRef.current;
     const curDimmed = currentDimmedRef.current;

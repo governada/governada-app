@@ -41,6 +41,7 @@
  * community_intelligence            — Community Pulse dashboard (aggregate preference intelligence from matching)
  * governance_observatory             — Unified Observatory page replacing Treasury/Committee/Health tabs
  * globe_homepage_v2                  — Inhabited Constellation: globe-centric authenticated homepage with user node, bonds, Seneca DJ
+ * workspace_decision_table            — AI-enriched decision table replacing kanban in review workspace (Phase 2 studio upgrade)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

@@ -593,3 +593,40 @@ export interface ScoreImpactEstimate {
   rationaleBoost: number;
   estimatedScoreGain: number;
 }
+
+// ---------------------------------------------------------------------------
+// Decision Table (Review Portfolio v2)
+// ---------------------------------------------------------------------------
+
+export type DecisionTablePhase = 'feedback' | 'voting' | 'completed';
+export type DecisionTableStatus = 'unreviewed' | 'voted' | 'snoozed' | 'feedback_given';
+
+export type ConstitutionalRiskLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface DecisionTableItem {
+  /** Unique key: `draft-{id}` or `vote-{txHash}-{index}` */
+  id: string;
+  phase: DecisionTablePhase;
+  title: string;
+  proposalType: string;
+  /** Epochs remaining (on-chain) or null */
+  epochsRemaining: number | null;
+  /** Whether urgency threshold is met */
+  isUrgent: boolean;
+  /** Days in community review (drafts only) */
+  daysInReview: number | null;
+  /** Treasury withdrawal amount in ADA (null for non-treasury) */
+  treasuryAmount: number | null;
+  /** Treasury tier label */
+  treasuryTier: string | null;
+  /** Citizen sentiment data */
+  communitySignal: CitizenSentiment | null;
+  /** Constitutional risk level (null = not yet computed) */
+  constitutionalRisk: ConstitutionalRiskLevel | null;
+  /** User's current status for this item */
+  status: DecisionTableStatus;
+  /** Vote choice if voted */
+  voteChoice: string | null;
+  /** Navigation href */
+  href: string;
+}

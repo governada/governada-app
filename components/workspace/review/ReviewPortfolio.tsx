@@ -1,16 +1,19 @@
 'use client';
 
 import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useWallet } from '@/utils/wallet';
-import { useReviewQueue } from '@/hooks/useReviewQueue';
+import { useReviewQueue, useQueueState } from '@/hooks/useReviewQueue';
 import { useReviewableDrafts } from '@/hooks/useReviewableDrafts';
 import { useWorkspaceStore } from '@/lib/workspace/store';
 import { useFocusableList } from '@/hooks/useFocusableList';
 import { useColumnJumpShortcuts } from '@/hooks/useColumnJumpShortcuts';
 import { useFocusStore } from '@/lib/workspace/focus';
 import { commandRegistry } from '@/lib/workspace/commands';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { useDecisionTableItems } from '@/hooks/useDecisionTableItems';
 import { PortfolioSearch } from '@/components/workspace/shared/PortfolioSearch';
 import { PortfolioStats } from '@/components/workspace/shared/PortfolioStats';
 import { TriageSummary } from '@/components/workspace/shared/TriageSummary';
@@ -29,6 +32,11 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import type { ProposalDraft, ReviewQueueItem } from '@/lib/workspace/types';
+
+const DecisionTable = dynamic(
+  () => import('./DecisionTable').then((m) => ({ default: m.DecisionTable })),
+  { ssr: false },
+);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,6 +111,9 @@ export function ReviewPortfolio() {
   const voterRole = segment === 'spo' ? 'spo' : 'drep';
   const voterId = segment === 'spo' ? poolId : ownDRepId || drepId;
 
+  // Feature flag for decision table
+  const decisionTableEnabled = useFeatureFlag('workspace_decision_table');
+
   // Store state
   const reviewViewMode = useWorkspaceStore((s) => s.reviewViewMode);
   const setReviewViewMode = useWorkspaceStore((s) => s.setReviewViewMode);
@@ -116,6 +127,12 @@ export function ReviewPortfolio() {
     error: queueError,
   } = useReviewQueue(voterId, voterRole);
   const { data: draftsData, isLoading: draftsLoading } = useReviewableDrafts();
+
+  // Queue state for decision table normalization
+  const { getStatus: getQueueStatus } = useQueueState(voterId);
+
+  // Decision table items (normalized from both hooks)
+  const decisionItems = useDecisionTableItems(queueData, draftsData, getQueueStatus);
 
   const isLoading = queueLoading || draftsLoading;
 
@@ -447,6 +464,18 @@ export function ReviewPortfolio() {
   }
 
   const listProps = getListProps();
+
+  // Decision Table mode (feature-flagged)
+  if (decisionTableEnabled) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
+        <PortfolioHeader />
+        <PortfolioStats stats={reviewStats} />
+        <TriageSummary insights={reviewTriageInsights} />
+        <DecisionTable items={decisionItems} isLoading={isLoading} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">

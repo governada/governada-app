@@ -1,7 +1,7 @@
 # Workspace Studio Upgrade — Handoff Document
 
-> **Status**: Phase 1 COMPLETE. Phases 2-6 remain.
-> **Branch**: `claude/pedantic-dhawan`
+> **Status**: Phase 1 + Phase 2 COMPLETE. Phases 3-6 remain.
+> **Branch**: `claude/stupefied-raman`
 > **Plan**: `C:\Users\dalto\.claude-personal\plans\glimmering-discovering-crescent.md`
 > **Updated**: 2026-03-28
 
@@ -23,103 +23,52 @@
    - Legal-grade tracked changes are required (reviewer suggestions, version diffs, revision narratives)
    - AI feedback aggregation (theme clustering, endorsement, sealed period) must stay prominent
    - AI should BE the workspace — intelligence as annotations, columns, structured analysis, not a sidebar chatbot
+   - Feature-flag Phases 2-4 behind `workspace_decision_table` for safe rollout
 
 ---
 
-## What Was Completed (Phase 1 — All Subphases)
+## What Was Completed
 
-### Phase 1a: QualityPulse + Ambient Constitutional Check
+### Phase 1 (PR #685 — merged to main)
 
-**Files created**:
+- QualityPulse + ambient constitutional check
+- Tracked changes for all proposal types (reviewer suggestions as blue-tinted marks)
+- Proactive Seneca insights in author editor
+- Version diff from editor
 
-- `components/workspace/author/QualityPulse.tsx` — Always-visible quality strip above panel tabs with per-section indicators, constitutional badge, feedback count
-- `hooks/useAmbientConstitutionalCheck.ts` — Auto-runs constitutional check on content change (5s debounce, FNV-1a hash dedup)
+### Phase 2 (this commit — on branch)
 
-**Files modified**:
-
-- `components/studio/StudioPanel.tsx` — Added `headerContent?: ReactNode` prop for persistent above-tab content
-- `app/workspace/editor/[draftId]/page.tsx` — Wired QualityPulse, ambient constitutional check, section analysis hooks
-
-### Phase 1b: Tracked Changes for All Proposal Types
-
-**Architecture decision**: Reuses existing `AIDiffAdded`/`AIDiffRemoved` marks (not a new mark system). Reviewer tracked changes use `review-` editId prefix for visual distinction (blue tint vs green for AI).
-
-**Files modified**:
-
-- `components/workspace/editor/AIDiffMark.tsx`:
-  - Extended `AIDiffAdded` and `AIDiffRemoved` marks with `explanation` and `authorName` attributes
-  - Reviewer changes render with blue highlighting (vs green for AI suggestions)
-  - Added `applyReviewerEdit(editor, proposedText, explanation, authorName)` — applies tracked change at current selection
-  - Added `scanAllTrackedChanges(editor)` — extracts all pending changes with metadata
-- `components/workspace/editor/SelectionToolbar.tsx`:
-  - Added `showSuggestEdit` and `onSuggestEdit` props
-  - New "Suggest Edit" button (blue-themed, PenLine icon) appears for reviewers
-  - Expanding shows replacement text input + explanation field + submit
-  - Pre-fills with selected text for convenience
-- `components/workspace/editor/ProposalEditor.tsx`:
-  - Added `showSuggestEdit` and `onSuggestEdit` props, passed through to SelectionToolbar
-  - Added `handleSuggestEdit` callback that applies `applyReviewerEdit`
-- `app/workspace/editor/[draftId]/page.tsx`:
-  - `showSuggestEdit={!isOwner && mode === 'review'}` enables for reviewers only
-  - PostHog: `tracked_change_proposed` event
-
-### Phase 1c: Proactive Seneca Insights
+- **DecisionTable** component replacing kanban in ReviewPortfolio
+- **8 cell components**: ProposalCell, TypeBadgeCell, PhaseCell, UrgencyCell, ConstitutionalRiskCell, TreasuryImpactCell, CommunitySignalCell, StatusCell
+- **DecisionTableFilters**: phase tabs (All/Feedback/Voting/Done) + urgency toggle + search
+- **SortableColumnHeader**: clickable sort headers with direction indicators
+- **DecisionTableRow**: responsive row with 4 mobile / 8 desktop columns
+- **useDecisionTableItems**: normalizes ReviewQueueItem + ProposalDraft into unified DecisionTableItem[]
+- **useDecisionTableState**: sort/filter/search local state
+- Keyboard navigation (J/K/Enter) via existing focus system
+- Feature-flagged behind `workspace_decision_table` (off by default)
+- PostHog: `review_table_viewed` event
+- Supabase migration applied for feature flag
 
 **Files created**:
 
-- `components/workspace/author/ProactiveInsight.tsx` — Ambient AI insight card below QualityPulse
-  - Surfaces top completeness gap or vagueness issue from section analysis
-  - 3s typing idle timer (hides while typing)
-  - 30s auto-dismiss
-  - "Improve this section" CTA triggers AI agent via existing `agentSendMessage`
+- `components/workspace/review/DecisionTable.tsx`
+- `components/workspace/review/DecisionTableFilters.tsx`
+- `components/workspace/review/DecisionTableRow.tsx`
+- `components/workspace/review/SortableColumnHeader.tsx`
+- `components/workspace/review/cells/` (8 files)
+- `hooks/useDecisionTableItems.ts`
+- `hooks/useDecisionTableState.ts`
 
 **Files modified**:
 
-- `app/workspace/editor/[draftId]/page.tsx`:
-  - Added ProactiveInsight below QualityPulse in headerContent (owners only)
-  - `handleInsightApply` sends section improvement prompt to agent
-  - PostHog: `proactive_insight_applied` event
-
-### Phase 1e: Version Diff from Editor
-
-**Files modified**:
-
-- `app/workspace/editor/[draftId]/page.tsx`:
-  - Added `VersionCompareDialog` next to "Save Version" button in editor toolbar
-  - Shows when versions array has 2+ entries
+- `components/workspace/review/ReviewPortfolio.tsx` — Added feature-flag branch
+- `lib/workspace/types.ts` — Added DecisionTableItem, DecisionTablePhase, DecisionTableStatus, ConstitutionalRiskLevel
+- `lib/featureFlags.ts` — Added workspace_decision_table to active flags docs
 
 ---
 
 ## What Remains
-
-### Phase 2: Review Decision Table (L effort)
-
-Replace the review queue kanban with an AI-enriched analytical decision table.
-
-**Key files to modify**:
-
-- `components/workspace/review/ReviewWorkspace.tsx` — Main review page layout
-- `components/workspace/review/ReviewQueue.tsx` — Current kanban queue (replace with table)
-- `components/workspace/review/ReviewQueueList.tsx` — Current list items
-- `app/api/workspace/review-queue/route.ts` — API needs constitutional risk, alignment columns
-
-**Key files to reference**:
-
-- `hooks/useReviewQueue.ts` — Data source, returns `ReviewQueueItem[]`
-- `lib/workspace/types.ts` — `ReviewQueueItem` type (has interBodyVotes, citizenSentiment, epochsRemaining)
-
-**What the API currently returns**: Proposals with inter-body vote tallies, citizen sentiment, epochs remaining, existing vote. Does NOT yet include constitutional check data, alignment scores, or risk levels.
-
-**Implementation**:
-
-1. Create `DecisionTable` component with sortable/filterable columns
-2. Columns: Proposal, Type, Urgency, Constitutional Risk, Treasury Impact, Alignment, Community Signal, Your Status
-3. Enhance review-queue API to include pre-computed constitutional checks and alignment scores
-4. Inline expansion for each cell (click to see detail without leaving table)
-5. Unify pre-chain (feedback) and post-chain (voting) into one table with phase filter
-6. Use `@tanstack/react-table` (already in deps) for sorting/filtering
-7. Feature-flag behind `workspace_decision_table`
-8. PostHog: `review_table_sorted`, `review_table_filtered`, `review_cell_expanded`
 
 ### Phase 3: Review Studio Intelligence (L effort)
 
@@ -155,19 +104,48 @@ Seneca-mediated navigation from globe to workspace.
 
 **Key constraint**: Globe is NOT directly clickable. Seneca choreographs globe via intents. Cards overlay focused nodes and ARE clickable.
 
-**Files**:
-
-- `hooks/useSenecaGlobeBridge.ts` — Add workspace intent types
-- `components/governada/panel/SenecaConversation.tsx` — Add workspace quick-action pills
-- Create `components/globe/WorkspaceOverlayCards.tsx` — Contextual cards on focused nodes
-
 ### Phase 6: Design Language & Mobile (M effort)
 
-Full Compass enforcement + mobile optimization. Bottom sheet panels, simplified mobile editor, touch targets, reduced motion.
+Full Compass enforcement + mobile optimization.
 
 ---
 
 ## Key Type Signatures for Next Agent
+
+### DecisionTableItem (from lib/workspace/types.ts)
+
+```typescript
+interface DecisionTableItem {
+  id: string;
+  phase: DecisionTablePhase;
+  title: string;
+  proposalType: string;
+  epochsRemaining: number | null;
+  isUrgent: boolean;
+  daysInReview: number | null;
+  treasuryAmount: number | null;
+  treasuryTier: string | null;
+  communitySignal: CitizenSentiment | null;
+  constitutionalRisk: ConstitutionalRiskLevel | null;
+  status: DecisionTableStatus;
+  voteChoice: string | null;
+  href: string;
+}
+```
+
+### SortColumn type (from hooks/useDecisionTableState.ts)
+
+```typescript
+type SortColumn =
+  | 'title'
+  | 'type'
+  | 'phase'
+  | 'urgency'
+  | 'risk'
+  | 'treasury'
+  | 'signal'
+  | 'status';
+```
 
 ### ReviewQueueItem (from lib/workspace/types.ts)
 
@@ -183,7 +161,7 @@ interface ReviewQueueItem {
   treasuryTier: string | null;
   epochsRemaining: number | null;
   isUrgent: boolean;
-  interBodyVotes: InterBodyVotes; // { drep, spo, cc: { yes, no, abstain } }
+  interBodyVotes: InterBodyVotes;
   citizenSentiment: CitizenSentiment | null;
   existingVote: string | null;
   sealedUntil: string | null;
@@ -192,81 +170,19 @@ interface ReviewQueueItem {
 }
 ```
 
-### ProposalDraft (from lib/workspace/types.ts)
-
-```typescript
-interface ProposalDraft {
-  id: string;
-  ownerStakeAddress: string;
-  title: string;
-  abstract: string;
-  motivation: string;
-  rationale: string;
-  proposalType: ProposalType;
-  typeSpecific: Record<string, unknown>;
-  status: DraftStatus; // 'draft' | 'community_review' | 'response_revision' | 'final_comment' | 'submitted' | 'archived'
-  currentVersion: number;
-  supersedesId: string | null;
-  lastConstitutionalCheck: ConstitutionalCheckResult | null;
-  communityReviewStartedAt: string | null;
-  submittedTxHash: string | null;
-}
-```
-
-### AIDiffMark Extended Attributes
+### AIDiffMark Extended Attributes (from Phase 1)
 
 ```typescript
 // Both AIDiffAdded and AIDiffRemoved now support:
 {
   editId: string | null; // 'ai-*' for AI, 'review-*' for reviewer tracked changes
-  explanation: string | null; // Why this change was suggested
-  authorName: string | null; // Who suggested it
-}
-```
-
-### New Public APIs in AIDiffMark.tsx
-
-```typescript
-// Apply a reviewer's tracked change at the current selection
-applyReviewerEdit(editor, proposedText, explanation, authorName): string | null  // returns editId
-
-// Scan document for all tracked changes (AI + reviewer)
-scanAllTrackedChanges(editor): Array<{
-  editId: string;
-  originalText: string;
-  proposedText: string;
   explanation: string | null;
   authorName: string | null;
-  isReviewer: boolean;  // true if editId starts with 'review-'
-}>
-```
-
-### SectionAnalysisOutput (from lib/ai/skills/section-analysis.ts)
-
-```typescript
-interface SectionAnalysisOutput {
-  constitutionalFlags: Array<{ article: string; concern: string; severity: string }>;
-  completenessGaps: Array<{ label: string; suggestion: string }>;
-  vaguenessIssues: Array<{ text: string; suggestion: string }>;
-  overallQuality: 'strong' | 'adequate' | 'needs_work';
-  summary: string;
 }
-```
 
-### FeedbackTheme (from lib/workspace/feedback/types.ts)
-
-```typescript
-interface FeedbackTheme {
-  id: string;
-  summary: string;
-  category: 'concern' | 'support' | 'question' | 'suggestion';
-  endorsementCount: number;
-  keyVoices: Array<{ reviewerId; text; timestamp }>;
-  novelContributions: Array<{ reviewerId; text; timestamp }>;
-  addressedStatus: 'open' | 'addressed' | 'deferred' | 'dismissed';
-  addressedReason?: string;
-  linkedAnnotationIds: string[];
-}
+// Public APIs:
+applyReviewerEdit(editor, proposedText, explanation, authorName): string | null
+scanAllTrackedChanges(editor): Array<{ editId, originalText, proposedText, explanation, authorName, isReviewer }>
 ```
 
 ---

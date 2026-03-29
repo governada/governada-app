@@ -28,7 +28,8 @@ export type SectionId =
   | 'stakeholder-landscape'
   | 'proposer-profile'
   | 'key-questions'
-  | 'cc-express';
+  | 'cc-express'
+  | 'passage-prediction';
 
 /** Configuration for a single section in the brief. */
 export interface SectionConfig {

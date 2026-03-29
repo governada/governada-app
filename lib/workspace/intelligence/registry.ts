@@ -110,6 +110,14 @@ const PROPOSER_PROFILE: SectionConfig = {
   icon: 'UserCheck',
 };
 
+const PASSAGE_PREDICTION: SectionConfig = {
+  id: 'passage-prediction',
+  title: 'Passage Prediction',
+  priority: 15,
+  defaultExpanded: true,
+  icon: 'TrendingUp',
+};
+
 const KEY_QUESTIONS: SectionConfig = {
   id: 'key-questions',
   title: 'Key Questions',
@@ -146,6 +154,7 @@ export const AUTHOR_BRIEF_REGISTRY: Record<BriefStage, SectionConfig[]> = {
 export const REVIEW_BRIEF_SECTIONS: SectionConfig[] = [
   EXECUTIVE_SUMMARY,
   QUICK_ASSESSMENT,
+  PASSAGE_PREDICTION,
   CONSTITUTIONAL,
   STAKEHOLDER_LANDSCAPE,
   SIMILAR_PROPOSALS,

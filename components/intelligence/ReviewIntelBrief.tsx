@@ -5,6 +5,9 @@
  *
  * Replaces the tabbed IntelPanel with a continuous, scrollable document.
  * Sections are ordered by the review brief registry with role-adaptive defaults.
+ *
+ * Phase 5B: Orchestrates cache loading from the pre-computation pipeline.
+ * Cached sections render instantly; uncached fall back to on-demand AI.
  */
 
 import { useEffect, useMemo } from 'react';
@@ -18,7 +21,9 @@ import { StakeholderLandscape } from './sections/StakeholderLandscape';
 import { SimilarProposalsSection } from './sections/SimilarProposalsSection';
 import { ProposerProfileSection } from './sections/ProposerProfileSection';
 import { KeyQuestionsSection } from './sections/KeyQuestionsSection';
+import { PassagePrediction } from './sections/PassagePrediction';
 import { CCExpressPanel } from '@/components/workspace/review/CCExpressPanel';
+import { useIntelligenceCache } from '@/hooks/useIntelligenceCache';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -76,9 +81,24 @@ export function ReviewIntelBrief({
 }: ReviewIntelBriefProps) {
   const sections = useMemo(() => getReviewSections(voterRole), [voterRole]);
 
+  // Pre-computed intelligence cache
+  const { data: cache } = useIntelligenceCache(proposalId, proposalIndex);
+
   useEffect(() => {
     posthog.capture('intelligence_brief_viewed', { stage: 'review', side: 'review', voterRole });
   }, [voterRole]);
+
+  // Track cache hits/misses for analytics
+  useEffect(() => {
+    if (cache) {
+      if (cache.constitutional)
+        posthog.capture('intelligence_cache_hit', { section: 'constitutional' });
+      else posthog.capture('intelligence_cache_miss', { section: 'constitutional' });
+      if (cache.key_questions)
+        posthog.capture('intelligence_cache_hit', { section: 'key_questions' });
+      else posthog.capture('intelligence_cache_miss', { section: 'key_questions' });
+    }
+  }, [cache]);
 
   const renderSection = (config: SectionConfig) => {
     switch (config.id) {
@@ -102,9 +122,24 @@ export function ReviewIntelBrief({
             interBodyVotes={interBodyVotes}
           />
         );
+      case 'passage-prediction':
+        return <PassagePrediction prediction={cache?.passage_prediction ?? null} />;
       case 'constitutional':
         return (
-          <ConstitutionalSection proposalContent={proposalContent} proposalType={proposalType} />
+          <ConstitutionalSection
+            proposalContent={proposalContent}
+            proposalType={proposalType}
+            cachedResult={
+              cache?.constitutional
+                ? {
+                    flags: cache.constitutional.flags,
+                    score: cache.constitutional.score,
+                    checkedAt: cache.constitutional.cachedAt,
+                    model: 'precomputed',
+                  }
+                : undefined
+            }
+          />
         );
       case 'stakeholder-landscape':
         return (
@@ -122,7 +157,12 @@ export function ReviewIntelBrief({
         return <ProposerProfileSection proposalId={proposalId} proposalIndex={proposalIndex} />;
       case 'key-questions':
         return (
-          <KeyQuestionsSection proposalContent={proposalContent} proposalType={proposalType} />
+          <KeyQuestionsSection
+            proposalContent={proposalContent}
+            proposalType={proposalType}
+            cachedQuestions={cache?.key_questions?.questionsToConsider ?? null}
+            cachedPrecedentSummary={cache?.key_questions?.precedentSummary ?? null}
+          />
         );
       case 'cc-express':
         return (

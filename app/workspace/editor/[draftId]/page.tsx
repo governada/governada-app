@@ -375,15 +375,19 @@ function WorkspaceEditorPage() {
 
   // Map of editId -> annotationId (populated when suggestions are injected into editor)
   const suggestionMapRef = useRef<Map<string, string>>(new Map());
-  // Track which suggestions have been injected already
-  const injectedSuggestionsRef = useRef<Set<string>>(new Set());
+  // Track which suggestions have been injected — state (not ref) so mutations trigger re-render
+  const [injectedSuggestionIds, setInjectedSuggestionIds] = useState<Set<string>>(new Set());
+  // Track editor readiness as state so suggestion injection retriggers when editor mounts
+  const [editorReady, setEditorReady] = useState(false);
 
   // Inject active suggestions as inline tracked changes when editor is ready
   useEffect(() => {
-    if (!isResponseRevision || !editorRef.current || activeSuggestions.length === 0) return;
+    if (!isResponseRevision || !editorReady || !editorRef.current || activeSuggestions.length === 0)
+      return;
 
+    const newlyInjected: string[] = [];
     for (const suggestion of activeSuggestions) {
-      if (injectedSuggestionsRef.current.has(suggestion.id)) continue;
+      if (injectedSuggestionIds.has(suggestion.id)) continue;
 
       const editId = `review-sug-${suggestion.id}`;
       const edit = {
@@ -397,20 +401,28 @@ function WorkspaceEditorPage() {
 
       applyProposedEdit(editorRef.current, edit, editId);
       suggestionMapRef.current.set(editId, suggestion.id);
-      injectedSuggestionsRef.current.add(suggestion.id);
+      newlyInjected.push(suggestion.id);
     }
-  }, [isResponseRevision, activeSuggestions]);
+
+    if (newlyInjected.length > 0) {
+      setInjectedSuggestionIds((prev) => {
+        const next = new Set(prev);
+        for (const id of newlyInjected) next.add(id);
+        return next;
+      });
+    }
+  }, [isResponseRevision, editorReady, activeSuggestions, injectedSuggestionIds]);
 
   // Build mappings for SuggestionResolutionBar
   const suggestionMappings = useMemo(() => {
     return activeSuggestions
-      .filter((s) => injectedSuggestionsRef.current.has(s.id))
+      .filter((s) => injectedSuggestionIds.has(s.id))
       .map((s) => ({
         editId: `review-sug-${s.id}`,
         annotationId: s.id,
         suggestion: s,
       }));
-  }, [activeSuggestions]);
+  }, [activeSuggestions, injectedSuggestionIds]);
 
   const resolvedCount = useMemo(
     () => allSuggestions.filter((s) => s.status !== 'active').length,
@@ -608,6 +620,7 @@ function WorkspaceEditorPage() {
   // --- Capture editor instance ---
   const handleEditorReady = useCallback((editor: Editor) => {
     editorRef.current = editor;
+    setEditorReady(true);
   }, []);
 
   // --- Agent lastEdit -> inject into editor ---

@@ -1599,27 +1599,52 @@ function NodePoints({
   const currentDimmedRef = useRef<Float32Array | null>(null);
   const isFirstRender = useRef(true);
 
-  // Initialize or update target buffers
+  // Initialize GPU buffer attributes. Created once on first render.
+  // Positions are static (nodes don't move on the globe sphere).
+  // Colors/sizes/dimmed are lerped in-place by useFrame — no GPU reallocation needed.
   useEffect(() => {
     const geo = geoRef.current;
     if (!geo) return;
 
-    // Position attribute always snaps (nodes don't move)
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
-
     if (isFirstRender.current) {
-      // First render: snap directly to target values (no lerp)
+      // First render: create all 4 GPU buffer attributes once
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
       currentColorsRef.current = new Float32Array(buffers.colors);
       currentSizesRef.current = new Float32Array(buffers.sizes);
       currentDimmedRef.current = new Float32Array(buffers.dimmedArr);
       geo.setAttribute('aNodeColor', new THREE.Float32BufferAttribute(currentColorsRef.current, 3));
       geo.setAttribute('aSize', new THREE.Float32BufferAttribute(currentSizesRef.current, 1));
       geo.setAttribute('aDimmed', new THREE.Float32BufferAttribute(currentDimmedRef.current, 1));
+      geo.computeBoundingSphere();
       isFirstRender.current = false;
+    } else if (
+      currentColorsRef.current &&
+      currentColorsRef.current.length !== buffers.colors.length
+    ) {
+      // Node count changed (rare: data reload, user node injection) — recreate all attributes
+      // Delete old attributes (Three.js handles GPU cleanup via deleteAttribute)
+      for (const name of ['position', 'aNodeColor', 'aSize', 'aDimmed']) {
+        geo.deleteAttribute(name);
+      }
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
+      currentColorsRef.current = new Float32Array(buffers.colors);
+      currentSizesRef.current = new Float32Array(buffers.sizes);
+      currentDimmedRef.current = new Float32Array(buffers.dimmedArr);
+      geo.setAttribute('aNodeColor', new THREE.Float32BufferAttribute(currentColorsRef.current, 3));
+      geo.setAttribute('aSize', new THREE.Float32BufferAttribute(currentSizesRef.current, 1));
+      geo.setAttribute('aDimmed', new THREE.Float32BufferAttribute(currentDimmedRef.current, 1));
+      geo.computeBoundingSphere();
     }
-    // After first render, the useFrame loop handles smooth transitions toward new target buffers
+    // After first render, useFrame handles smooth transitions toward new target buffers
 
-    geo.computeBoundingSphere();
+    return () => {
+      // Clean up GPU attributes on unmount
+      const g = geoRef.current;
+      if (!g) return;
+      for (const name of ['position', 'aNodeColor', 'aSize', 'aDimmed']) {
+        if (g.hasAttribute(name)) g.deleteAttribute(name);
+      }
+    };
   }, [buffers]);
 
   // Smooth per-frame interpolation: current values → target values.
@@ -1632,13 +1657,11 @@ function NodePoints({
 
     // Detect focus state changes via window-level shared variable.
     // No React props or refs — window globals, always readable from useFrame.
+    // Only updates target color/size/dimmed arrays — positions are static (nodes don't move).
     const currentVersion = getSharedFocusVersion();
     if (currentVersion !== lastFocusVersionRef.current) {
       lastFocusVersionRef.current = currentVersion;
-      const newTargets = computeBuffers(getSharedFocus());
-      targetBuffersRef.current = newTargets;
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));
-      geo.computeBoundingSphere();
+      targetBuffersRef.current = computeBuffers(getSharedFocus());
     }
 
     // Use shared targets if available (focus changed), otherwise fall back to initial buffers

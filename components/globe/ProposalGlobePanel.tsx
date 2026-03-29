@@ -130,7 +130,7 @@ export function ProposalGlobePanel({ txHash, index }: ProposalGlobePanelProps) {
           </span>
           {delegatedDrepId && (
             <Link
-              href={`/g/drep/${delegatedDrepId}`}
+              href={`/drep/${delegatedDrepId}`}
               className="text-[10px] text-primary hover:underline ml-auto"
             >
               View DRep

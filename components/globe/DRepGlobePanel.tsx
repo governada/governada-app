@@ -116,7 +116,7 @@ export function DRepGlobePanel({ drepId }: DRepGlobePanelProps) {
             const title = v.proposalTitle || `Proposal ${v.proposalTxHash?.slice(0, 12)}...`;
             const proposalLink =
               v.proposalTxHash != null
-                ? `/g/proposal/${v.proposalTxHash}/${v.proposalIndex ?? 0}`
+                ? `/proposal/${v.proposalTxHash}/${v.proposalIndex ?? 0}`
                 : null;
             return (
               <div key={i} className="flex items-center gap-2 text-xs group">

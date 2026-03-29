@@ -8,5 +8,5 @@ interface PageProps {
 
 export default async function CCMemberPage({ params }: PageProps) {
   const { ccHotId } = await params;
-  redirect(`/g/cc/${ccHotId}`);
+  redirect(`/committee/${ccHotId}`);
 }

@@ -134,8 +134,8 @@ export function useSenecaGlobeBridge(
         // --- Advanced choreography commands ---
 
         case 'dim':
-          // Dim all nodes by highlighting nothing (very high threshold = nothing matches)
-          globe.highlightMatches([0, 0, 0, 0, 0, 0], 9999, { noZoom: true });
+          // Dim everything — focus active with no focused nodes = all unfocused
+          globe.dimAll();
           break;
 
         case 'scan': {

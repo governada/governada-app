@@ -415,7 +415,8 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({
         ...prev,
         focus: {
-          active: matched.size > 0,
+          // Stay active if already in a focus mode (e.g., matchStart set it) or if we have matches
+          active: matched.size > 0 || prev.focus.active,
           focusedIds: matched,
           intensities,
           scanProgress,
@@ -702,6 +703,21 @@ export const GlobeConstellation = forwardRef<
         temporalVoteMap: new Map(),
         temporalActive: false,
         focus: { ...DEFAULT_FOCUS },
+      }));
+    },
+
+    /** Dim all nodes — focus active with empty focusedIds = everything unfocused */
+    dimAll: () => {
+      setSceneState((prev) => ({
+        ...prev,
+        focus: {
+          active: true,
+          focusedIds: new Set(),
+          intensities: new Map(),
+          scanProgress: 0,
+          colorOverrides: null,
+          nodeTypeFilter: null,
+        },
       }));
     },
 
@@ -2245,15 +2261,15 @@ function GloryRing({
     mesh.visible = true;
     mesh.position.set(target[0], target[1], target[2]);
     mesh.scale.setScalar(pulse * fadeIn);
-    // Rotate slowly for visual interest
-    mesh.rotation.x = Math.PI * 0.5 + Math.sin(elapsed * 0.8) * 0.15;
-    mesh.rotation.z = elapsed * 0.5;
-    mat.opacity = fadeIn * 0.7;
+    // Face the camera by rotating to be perpendicular to the view direction
+    mesh.rotation.x = Math.PI * 0.5 + Math.sin(elapsed * 0.8) * 0.08;
+    mesh.rotation.z = elapsed * 0.3;
+    mat.opacity = fadeIn * 0.35; // subtle, not overpowering
   });
 
   return (
     <mesh ref={meshRef} visible={false} frustumCulled={false}>
-      <torusGeometry args={[0.8, 0.04, 16, 48]} />
+      <torusGeometry args={[0.4, 0.015, 12, 36]} />
       <meshBasicMaterial
         ref={materialRef}
         color="#f5c542"

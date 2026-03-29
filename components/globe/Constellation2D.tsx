@@ -392,6 +392,9 @@ export const Constellation2D = forwardRef(function Constellation2D(
       stateRef.current.matchIds.clear();
       stateRef.current.dimmed = false;
     },
+    dimAll: () => {
+      stateRef.current.dimmed = true;
+    },
     setVoteSplit: (map) => {
       stateRef.current.voteSplitMap = map;
     },

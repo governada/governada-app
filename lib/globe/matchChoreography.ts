@@ -23,24 +23,18 @@ const DIVE_ELEVATIONS = [0.3, 0, -0.25, 0]; // vertical offset (radians)
 // Reveal timing — exported so SenecaMatch can sync overlay/countdown UI
 // ---------------------------------------------------------------------------
 
-/** Delay per countdown flash step (non-top matches) */
-const COUNTDOWN_STEP_MS = 650; // 450 pause + 200 flash
-/** Delay for the top match reveal (longer pause for drama) */
-const COUNTDOWN_TOP_MS = 1000; // 800 pause + 200 flash
-/** Post-countdown camera fly + re-illuminate */
-const POST_COUNTDOWN_MS = 1600; // cinematic 500 + flyTo 300 + cinematic 600 + highlight 200
-
 /**
  * Total duration from the start of the reveal sequence to when the overlay
- * should appear. Depends on match count (up to 5 countdown steps).
+ * should appear. Depends on match count (up to 5 flash steps).
+ *
+ * Sequence: dim(0ms) → flash non-top(350ms each) → flash top(600ms) → matchFlyTo(400ms) + 3s hold
  */
 export function getRevealDurationMs(matchCount: number): number {
   const clampedCount = Math.min(matchCount, 5);
   if (clampedCount === 0) return 0;
-  // 100ms initial dim + countdown steps + post-countdown
-  const countdownMs =
-    100 + (clampedCount - 1) * COUNTDOWN_STEP_MS + COUNTDOWN_TOP_MS + POST_COUNTDOWN_MS;
-  return countdownMs;
+  // Non-top flashes + top flash + flyTo delay + 3s hold for the flyToMatch lock
+  const flashMs = (clampedCount - 1) * 350 + 600;
+  return flashMs + 400 + 3000;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,53 +107,34 @@ export function buildAnswerSequence(
 
 export function buildRevealSequence(
   topMatches: Array<{ nodeId: string }>,
-  alignment: number[],
-  threshold: number,
+  _alignment: number[],
+  _threshold: number,
 ): GlobeCommand {
   const steps: SequenceStep[] = [];
 
-  // Phase 1: Total darkness — camera near-stopped
-  steps.push({
-    command: {
-      type: 'cinematic',
-      state: { orbitSpeed: 0.01, dollyTarget: 12, dimTarget: 1.0, transitionDuration: 1.0 },
-    },
-    delayMs: 0,
-  });
-  steps.push({ command: { type: 'dim' }, delayMs: 100 });
+  if (topMatches.length === 0) {
+    return { type: 'sequence', steps };
+  }
 
-  // Phase 2: Countdown reveal — matches emerge one by one (5→1)
+  // Phase 1: Dim everything except matches — stay where the camera is (no pullback)
+  steps.push({ command: { type: 'dim' }, delayMs: 0 });
+
+  // Phase 2: Brief pause for the dimming to register, then flash top 5 matches
+  // Flashes happen quickly — no long countdown, just a rapid "here they are" reveal
   const reversed = [...topMatches].reverse().slice(0, 5);
-
   for (let i = 0; i < reversed.length; i++) {
     const match = reversed[i];
     const isTopMatch = i === reversed.length - 1;
-    const pauseBefore = isTopMatch ? 800 : 450;
-
-    steps.push({ command: { type: 'flash', nodeId: match.nodeId }, delayMs: pauseBefore });
-    steps.push({ command: { type: 'pulse', nodeId: match.nodeId }, delayMs: 200 });
-  }
-
-  // Phase 3: Dramatic fly to top match (uses matchFlyTo for the 3-second cinematic lock)
-  if (topMatches.length > 0) {
     steps.push({
-      command: {
-        type: 'cinematic',
-        state: { dollyTarget: 10, orbitSpeed: 0.015, transitionDuration: 1.5 },
-      },
-      delayMs: 500,
+      command: { type: 'flash', nodeId: match.nodeId },
+      delayMs: isTopMatch ? 600 : 350,
     });
-    steps.push({ command: { type: 'matchFlyTo', nodeId: topMatches[0].nodeId }, delayMs: 300 });
   }
 
-  // Phase 4: All matches re-illuminate (DReps only)
+  // Phase 3: Graceful fly to #1 match from current camera position — no jarring reset
   steps.push({
-    command: { type: 'cinematic', state: { orbitSpeed: 0.02, transitionDuration: 1.0 } },
-    delayMs: 600,
-  });
-  steps.push({
-    command: { type: 'highlight', alignment, threshold, noZoom: true, drepOnly: true },
-    delayMs: 200,
+    command: { type: 'matchFlyTo', nodeId: topMatches[0].nodeId },
+    delayMs: 400,
   });
 
   return { type: 'sequence', steps };

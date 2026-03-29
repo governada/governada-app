@@ -1,9 +1,9 @@
 # Build Step: Studio Excellence — World-Class Author & Review (Layer 2)
 
-**Status:** PHASE_2_COMPLETE
+**Status:** PHASE_3_COMPLETE
 **Started:** 2026-03-29
-**Current Phase:** 2 of 6 (Intelligence Architecture)
-**PR chain:** #700 (Phase 1 — Editor Foundation)
+**Current Phase:** 3 of 6 (Living Document Substrate)
+**PR chain:** #700 (Phase 1) → #704 (Phase 2) → #708 (Phase 3)
 **Predecessor:** `.claude/checkpoints/workspace-studio-upgrade.md` (Phases 1-5 DEPLOYED)
 
 ---
@@ -295,30 +295,42 @@ Before building Phase 3, the next agent MUST understand these already-deployed c
 
 6. **Lifecycle-driven mode** — already implemented in editor page (lines 267-277): draft→edit, response_revision→edit, community_review/final_comment/submitted→review.
 
-### What Phase 3 Still Needs
+### Phase 3 Is Now COMPLETE (PR #708)
 
-- **Author suggestion resolution UI**: During `response_revision`, author sees reviewer suggestions as inline tracked changes. Accept (apply text), Reject (mark considered), Modify. This UI does NOT exist yet — the existing `useSuggestionAnnotations.acceptSuggestion()` mutation exists but no component renders these for the author to act on.
-- **Version diff on return**: When reviewer returns after revision, show "Changes Since Your Review". `reviewedAtVersion` is on `DraftReview` type. Need visual diff or highlight for changed sections.
-- **Ambient margin refinements**: Constitutional check runs on debounced content change (~2s), not just on save. Current implementation triggers on save via `useAmbientConstitutionalCheck`. Could be tightened.
+All three gaps have been closed:
+
+1. **Author suggestion resolution UI** — `SuggestionResolutionBar` component with prev/next nav, accept/reject/batch actions. Suggestions loaded via `useSuggestionAnnotations` and injected as inline blue tracked changes using `applyProposedEdit` with `review-sug-{annotationId}` editIds. Tab/Escape keyboard shortcuts also sync annotation status via `suggestionMapRef` mapping.
+
+2. **Version diff on return** — `ReReviewBanner` extended with "Show Changes" toggle. New GET endpoint `/api/workspace/drafts/[draftId]/version?versionNumber=N`. `ChangeSinceBadge` component shows field-level "Modified since your review" indicators by comparing previous version content with current.
+
+3. **Ambient margin refinement** — Constitutional check debounce tightened from 5s to 2s. Hash dedup prevents redundant API calls.
+
+### Phase 3 Files
+
+**New:**
+
+- `components/workspace/editor/SuggestionResolutionBar.tsx` (~190 lines)
+- `components/workspace/editor/ChangeSinceBadge.tsx` (~60 lines)
+
+**Modified:**
+
+- `app/workspace/editor/[draftId]/page.tsx` — suggestion wiring (~100 lines added), version diff state + fetch (~30 lines), ReReviewBanner + ChangeSinceBadge rendering
+- `components/workspace/editor/AIDiffMark.tsx` — exported `acceptDiff()` and `rejectDiff()` (were file-private)
+- `components/workspace/author/ReReviewBanner.tsx` — added `onShowChanges` prop + "Show Changes" toggle button
+- `app/api/workspace/drafts/[draftId]/version/route.ts` — added GET handler for version content by number
+- `hooks/useAmbientConstitutionalCheck.ts` — debounce 5000ms → 2000ms
+
+### Phase 3 Key Architecture Decisions
+
+- **Used `applyProposedEdit` (field-relative offsets) not `applyReviewerEdit` (selection-based)** — because suggestion annotations store `anchorField`+`anchorStart`+`anchorEnd`, which maps directly to `applyProposedEdit`'s `ProposedEdit` interface.
+- **editId format `review-sug-{annotationId}`** — the `review-` prefix triggers blue highlighting in AIDiffMark. The suffix is the annotation ID for Supabase mapping.
+- **`suggestionMapRef` (Map<editId, annotationId>)** — bridges editor-level diffs to Supabase annotation mutations. Used by both SuggestionResolutionBar explicit actions AND Tab/Escape keyboard interception in `onDiffAccept`/`onDiffReject`.
+- **Version diff is lazy-fetched** — only when reviewer clicks "Show Changes". Uses TanStack Query with 5-minute staleTime.
+- **No new migrations** — all schema already deployed from predecessor build (migration 069).
 
 ---
 
 ## Context Window Protocol
-
-If your context window is filling up:
-
-1. Commit all work to feature branch, push
-2. Create PR if ready, or note branch name
-3. Update THIS checkpoint: what you completed, what's in progress, new type signatures, gotchas
-4. Commit checkpoint to main:
-   ```bash
-   cd C:\Users\dalto\governada\governada-app
-   git pull origin main
-   git add .claude/checkpoints/build-step-studio-excellence.md
-   git commit -m "checkpoint: studio excellence phase N progress"
-   git push origin main
-   ```
-5. Include "Next Agent Prompt" section below with full context
 
 If your context window is filling up:
 
@@ -340,7 +352,7 @@ If your context window is filling up:
 ## Next Agent Prompt
 
 ```
-You are building Phase 3 of the Studio Excellence build for Governada — Living Document Substrate (tracked changes + reviewer suggestions flywheel).
+You are building Phase 4 of the Studio Excellence build for Governada — Agent Evolution (intent-to-draft, feedback synthesis, rationale co-generation).
 
 ## FIRST: Read the checkpoint (CRITICAL — it's on main, not in your worktree)
 
@@ -351,53 +363,61 @@ Your worktree was created from a branch. The checkpoint is on main. To access it
   cat /tmp/checkpoint.md
 
 This checkpoint contains:
-- Full inventory of what's already built (Phases 1-2 + predecessor build)
-- Key type signatures you'll need (ProposalEditor props, SectionConfig, annotation types)
-- What's already deployed for Phase 3 (suggestion annotations, useSuggestionAnnotations hook, SelectionToolbar "Suggest Change", AIDiffMark extensions, lifecycle-driven editor modes)
-- What Phase 3 still needs to build (the gaps listed below)
+- Full inventory of what's already built (Phases 1-3 + predecessor build)
+- Key type signatures you'll need
+- Architecture decisions made in prior phases
 
 ## THEN: Read the full 6-phase plan
 
   cat "C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md"
 
-Phase 3 starts at line ~201 in the plan ("Phase 3: Living Document Substrate").
+Phase 4 starts at line ~245 in the plan ("Phase 4: Agent Evolution").
 
 ## What's Already Deployed (DON'T REBUILD)
 
 Phase 1 (PR #700): Tiptap wired to all proposal types
 Phase 2 (PR #704): Stage-driven Intelligence Brief in both author + review studios
+Phase 3 (PR #708): Living document substrate — suggestion resolution, version diff, responsive margins
 
-For Phase 3 specifically, these are ALREADY BUILT from the predecessor workspace-studio-upgrade:
-- Supabase migration 069: `suggested_text` JSONB + `status` on proposal_annotations
-- `useSuggestionAnnotations` hook (hooks/useSuggestionAnnotations.ts)
-- SelectionToolbar "Suggest Change" button (already visible in review mode)
-- AIDiffMark extended for reviewer-sourced diffs
-- Lifecycle-driven editor modes (draft→edit, community_review→review, etc.)
+## What Phase 4 NEEDS TO BUILD
 
-## What Phase 3 NEEDS TO BUILD
+From the plan (lines 245-284):
 
-1. **Author suggestion resolution UI** — During `response_revision`, the author needs to see reviewer suggestions as inline tracked changes and act on them (Accept/Reject/Modify). The mutation (`acceptSuggestion`, `rejectSuggestion`) exists in `useSuggestionAnnotations` but no component renders these for the author to interact with.
+### Author side:
+1. **Intent-to-Proposal-Plan** — Evolve ScaffoldForm into full Proposal Plan generator. Author describes idea → agent produces structured plan (draft, constitutional assessment, risk analysis, similar proposals, recommended improvements). Plan is structured with confidence scores and source citations.
 
-2. **Version diff on return** — When a reviewer returns after the proposer revised, show "Changes Since Your Review" indicator. `DraftReview.reviewedAtVersion` field exists. Need visual diff highlighting for changed sections.
+2. **Proactive agent interventions** — Background analysis triggers margin notifications:
+   - "Your motivation doesn't address treasury sustainability"
+   - "A competing proposal was just submitted"
+   - "Your revision improved compliance from Amber to Green"
+   Implemented as margin decorations with expandable callout + "Fix" button triggering tracked change.
 
-3. **Ambient margin refinement** — Currently constitutional check runs on save. Tighten to run on debounced content change (~2s) for real-time margin traffic lights.
+3. **Agent-synthesized feedback** — During `response_revision`, agent clusters reviews into themes. Presents as Critical/Important/Minor with pre-drafted tracked changes. Feeds the FeedbackTriageBoard from Phase 2.
+
+### Review side:
+4. **Personalized briefing narrative** — Executive Summary and "Your Quick Assessment" personalized to reviewer's voting history and governance philosophy.
+
+5. **Structured rationale co-generation** — In Decision Panel, after reviewer selects vote and types bullet points, agent generates structured rationale with constitutional citations, precedent refs, proposal quotes.
+
+6. **CC Member express lane** — Constitutional-only mode: article-by-article PASS/ADVISORY/FAIL. One-click accept with provenance (AI-assisted vs. human-judgment).
 
 ## Key Files to Read
 
-- `hooks/useSuggestionAnnotations.ts` — the mutation API for accepting/rejecting suggestions
-- `components/workspace/editor/extensions/AIDiffMark.tsx` — how diffs render inline
-- `components/workspace/editor/SelectionToolbar.tsx` — the "Suggest Change" flow
-- `components/workspace/editor/ProposalEditor.tsx` — where modes, diffs, and margins all wire together
-- `app/workspace/editor/[draftId]/page.tsx` — the author workspace (integration point)
-- `components/workspace/review/ReviewWorkspace.tsx` — the review workspace
-- `lib/workspace/types.ts` — DraftReview (has reviewedAtVersion), AnnotationType, SuggestedText, AnnotationStatus
-- `hooks/useAmbientConstitutionalCheck.ts` — current trigger pattern
+- `lib/ai/skills/` — existing skills and skill engine
+- `app/api/ai/skill/route.ts` — skill API
+- `hooks/useAgent.ts` — SSE streaming, ProposedEdit/ProposedComment parsing
+- `components/workspace/author/ScaffoldForm.tsx` — evolve into Proposal Plan generator
+- `components/workspace/editor/ProposalEditor.tsx` — margin decorations, Tiptap extensions
+- `components/workspace/editor/extensions/MarginDecorations.tsx` — extend for proactive notifications
+- `components/intelligence/sections/FeedbackTriageBoard.tsx` — wire to agent synthesis
+- `components/workspace/review/DecisionPanel.tsx` — rationale co-generation UI
 
 ## CRITICAL: Plan before building
 
-Phase 3 has deep overlap with already-shipped components. You MUST read the current code to understand what exists before proposing changes. Use EnterPlanMode to design the approach, get user approval, then build.
+Phase 4 is the most ambitious phase — 6 distinct features. Use EnterPlanMode to prioritize and scope. Consider:
+- Which features have the highest standalone value?
+- Which features share infrastructure (e.g., new AI skills)?
+- What's the minimum viable version of each?
 
-The biggest risk is duplicating or conflicting with the existing suggestion infrastructure. The mutations and storage are DONE — the gap is purely the author-facing resolution UI and the reviewer return-visit diff experience.
-
-If you run low on context, follow the checkpoint protocol documented in the checkpoint file (commit checkpoint to main before stopping).
+If you run low on context, follow the checkpoint protocol documented in the checkpoint file.
 ```

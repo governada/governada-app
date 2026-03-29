@@ -95,21 +95,26 @@ export function ProactiveInsightStack({
   useEffect(() => {
     if (isTyping) return;
 
+    const currentIds = new Set(insights.map((i) => i.id));
+
+    // Clear timers for insights that have been removed
+    for (const [id, timer] of autoDismissTimersRef.current.entries()) {
+      if (!currentIds.has(id)) {
+        clearTimeout(timer);
+        autoDismissTimersRef.current.delete(id);
+      }
+    }
+
+    // Set timers for new insights only
     for (const [i, insight] of insights.entries()) {
       if (autoDismissTimersRef.current.has(insight.id)) continue;
-      const staggerMs = AUTO_DISMISS_MS + i * 5000; // Stagger by 5s per card
+      const staggerMs = AUTO_DISMISS_MS + i * 5000;
       const timer = setTimeout(() => {
         onDismiss(insight.id);
         autoDismissTimersRef.current.delete(insight.id);
       }, staggerMs);
       autoDismissTimersRef.current.set(insight.id, timer);
     }
-
-    return () => {
-      for (const timer of autoDismissTimersRef.current.values()) {
-        clearTimeout(timer);
-      }
-    };
   }, [insights, isTyping, onDismiss]);
 
   const handleApply = useCallback(
@@ -138,6 +143,21 @@ export function ProactiveInsightStack({
     [onDismiss],
   );
 
+  // Track which insights have been captured for analytics (avoid re-firing on re-render)
+  const capturedInsightsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const insight of insights) {
+      if (!capturedInsightsRef.current.has(insight.id)) {
+        capturedInsightsRef.current.add(insight.id);
+        posthog.capture('proactive_insight_shown', {
+          insightId: insight.id,
+          category: insight.category,
+          severity: insight.severity,
+        });
+      }
+    }
+  }, [insights]);
+
   // Don't render while typing or if no insights
   if (isTyping || (insights.length === 0 && !isAnalyzing)) return null;
 
@@ -146,12 +166,6 @@ export function ProactiveInsightStack({
       {insights.map((insight) => {
         const config = SEVERITY_CONFIG[insight.severity];
         const SeverityIcon = config.icon;
-
-        posthog.capture('proactive_insight_shown', {
-          insightId: insight.id,
-          category: insight.category,
-          severity: insight.severity,
-        });
 
         return (
           <div

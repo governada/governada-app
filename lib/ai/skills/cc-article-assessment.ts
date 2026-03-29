@@ -12,6 +12,8 @@
 
 import { z } from 'zod';
 import { registerSkill } from './registry';
+import { parseJsonSafe, safeParseArray, safeEnum } from './parse-helpers';
+import { filterValidArticles } from './constitution-articles';
 import type { SkillContext } from './types';
 
 const inputSchema = z.object({
@@ -104,98 +106,45 @@ Guidelines:
   },
 
   parseOutput: (raw: string): CCArticleAssessmentOutput => {
-    try {
-      const cleaned = raw
-        .replace(/^```json\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      const parsed = JSON.parse(cleaned);
-
-      const articles = Array.isArray(parsed.articles)
-        ? parsed.articles.map((a: Record<string, unknown>) => ({
-            article: String(a.article ?? ''),
-            verdict: (['PASS', 'ADVISORY', 'FAIL'].includes(a.verdict as string)
-              ? a.verdict
-              : 'ADVISORY') as 'PASS' | 'ADVISORY' | 'FAIL',
-            reasoning: String(a.reasoning ?? ''),
-            confidence: typeof a.confidence === 'number' ? a.confidence : 0.5,
-            keyQuote: a.keyQuote ? String(a.keyQuote) : undefined,
-          }))
-        : [];
-
-      return {
-        articles,
-        overallVerdict: (['PASS', 'ADVISORY', 'FAIL'].includes(parsed.overallVerdict)
-          ? parsed.overallVerdict
-          : articles.some((a: ArticleAssessment) => a.verdict === 'FAIL')
-            ? 'FAIL'
-            : articles.some((a: ArticleAssessment) => a.verdict === 'ADVISORY')
-              ? 'ADVISORY'
-              : 'PASS') as 'PASS' | 'ADVISORY' | 'FAIL',
-        summary: String(parsed.summary ?? ''),
-      };
-    } catch {
+    const parsed = parseJsonSafe(raw);
+    if (!parsed) {
       return {
         articles: [],
         overallVerdict: 'ADVISORY',
         summary: 'Assessment could not be parsed.',
       };
     }
+
+    // Parse articles and filter to only real constitutional articles
+    const articles = filterValidArticles(
+      safeParseArray(parsed.articles, (a) => ({
+        article: String(a.article ?? ''),
+        verdict: safeEnum(a.verdict as string, ['PASS', 'ADVISORY', 'FAIL'], 'ADVISORY'),
+        reasoning: String(a.reasoning ?? ''),
+        confidence: typeof a.confidence === 'number' ? a.confidence : 0.5,
+        keyQuote: a.keyQuote ? String(a.keyQuote) : undefined,
+      })),
+    );
+
+    // Derive overall verdict from filtered articles
+    const hasExplicitVerdict = ['PASS', 'ADVISORY', 'FAIL'].includes(
+      parsed.overallVerdict as string,
+    );
+    const overallVerdict = hasExplicitVerdict
+      ? (parsed.overallVerdict as 'PASS' | 'ADVISORY' | 'FAIL')
+      : articles.some((a) => a.verdict === 'FAIL')
+        ? 'FAIL'
+        : articles.some((a) => a.verdict === 'ADVISORY')
+          ? 'ADVISORY'
+          : 'PASS';
+
+    return {
+      articles,
+      overallVerdict,
+      summary: String(parsed.summary ?? ''),
+    };
   },
 
-  // Validation pass: verify constitutional article references
-  validationPass: {
-    systemPrompt:
-      'You are a Cardano Constitution reference validator. Verify that all cited constitutional articles are real articles from the Cardano Constitution. Remove any fabricated articles.',
-    maxTokens: 2048,
-
-    buildPrompt: (_input: Input, output: CCArticleAssessmentOutput) => {
-      if (output.articles.length === 0) {
-        return `No articles to validate. Return: ${JSON.stringify(output)}`;
-      }
-      return `Validate these constitutional article assessments:
-
-${JSON.stringify(output.articles.map((a) => ({ article: a.article, verdict: a.verdict })))}
-
-Remove any articles that don't exist in the Cardano Constitution. Keep all valid articles with their original verdicts and reasoning.
-
-Return ONLY valid JSON with the same structure:
-{"articles": [...validated articles...], "overallVerdict": "...", "summary": "..."}`;
-    },
-
-    parseValidation: (
-      raw: string,
-      original: CCArticleAssessmentOutput,
-    ): CCArticleAssessmentOutput => {
-      try {
-        const cleaned = raw
-          .replace(/^```json\s*/, '')
-          .replace(/\s*```$/, '')
-          .trim();
-        const parsed = JSON.parse(cleaned);
-
-        if (!Array.isArray(parsed.articles)) return original;
-
-        const validatedArticles = parsed.articles.map((a: Record<string, unknown>) => ({
-          article: String(a.article ?? ''),
-          verdict: (['PASS', 'ADVISORY', 'FAIL'].includes(a.verdict as string)
-            ? a.verdict
-            : 'ADVISORY') as 'PASS' | 'ADVISORY' | 'FAIL',
-          reasoning: String(a.reasoning ?? ''),
-          confidence: typeof a.confidence === 'number' ? a.confidence : 0.5,
-          keyQuote: a.keyQuote ? String(a.keyQuote) : undefined,
-        }));
-
-        return {
-          articles: validatedArticles,
-          overallVerdict: (['PASS', 'ADVISORY', 'FAIL'].includes(parsed.overallVerdict)
-            ? parsed.overallVerdict
-            : original.overallVerdict) as 'PASS' | 'ADVISORY' | 'FAIL',
-          summary: String(parsed.summary ?? original.summary),
-        };
-      } catch {
-        return original;
-      }
-    },
-  },
+  // Articles are validated deterministically in parseOutput via filterValidArticles
+  // (no LLM validation pass needed — static lookup against real constitution articles)
 });

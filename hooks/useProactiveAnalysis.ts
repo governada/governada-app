@@ -42,14 +42,14 @@ export function useProactiveAnalysis({
   enabled,
 }: UseProactiveAnalysisOptions): UseProactiveAnalysisReturn {
   const [insights, setInsights] = useState<ProactiveInsight[]>([]);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const dismissedIdsRef = useRef<Set<string>>(new Set());
   const shownIdsRef = useRef<string[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const contentHashRef = useRef('');
   const skill = useAISkill<ProactiveAnalysisOutput>();
 
-  // Hash content to detect real changes
-  const contentHash = `${proposalContent.title}|${proposalContent.abstract}|${proposalContent.motivation}|${proposalContent.rationale}`;
+  // Hash content to detect real changes (null byte separator can't appear in text content)
+  const contentHash = `${proposalContent.title}\0${proposalContent.abstract}\0${proposalContent.motivation}\0${proposalContent.rationale}`;
 
   // Debounced analysis trigger on content change
   useEffect(() => {
@@ -87,7 +87,7 @@ export function useProactiveAnalysis({
 
             // Merge with existing (keep undismissed, add new)
             setInsights((prev) => {
-              const undismissed = prev.filter((i) => !dismissedIds.has(i.id));
+              const undismissed = prev.filter((i) => !dismissedIdsRef.current.has(i.id));
               const combined = [...undismissed, ...newInsights];
               // Deduplicate by ID, keep latest
               const seen = new Set<string>();
@@ -110,13 +110,13 @@ export function useProactiveAnalysis({
   }, [contentHash, enabled]);
 
   const dismissInsight = useCallback((id: string) => {
-    setDismissedIds((prev) => new Set(prev).add(id));
+    dismissedIdsRef.current.add(id);
     setInsights((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
   // Filter out dismissed and limit to MAX_DISPLAYED
   const visibleInsights = insights
-    .filter((i) => !dismissedIds.has(i.id))
+    .filter((i) => !dismissedIdsRef.current.has(i.id))
     .sort((a, b) => {
       const severityOrder = { critical: 0, warning: 1, info: 2 };
       return severityOrder[a.severity] - severityOrder[b.severity];

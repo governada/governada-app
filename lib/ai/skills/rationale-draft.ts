@@ -14,6 +14,8 @@
 
 import { z } from 'zod';
 import { registerSkill } from './registry';
+import { parseJsonSafe, safeParseArray } from './parse-helpers';
+import { filterValidArticles } from './constitution-articles';
 import type { SkillContext } from './types';
 
 const inputSchema = z.object({
@@ -108,38 +110,8 @@ Guidelines:
   },
 
   parseOutput: (raw: string): RationaleDraftOutput => {
-    try {
-      const cleaned = raw
-        .replace(/^```json\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      const parsed = JSON.parse(cleaned);
-
-      return {
-        structuredRationale: String(parsed.structuredRationale ?? '').slice(0, 5000),
-        citations: Array.isArray(parsed.citations)
-          ? parsed.citations.map((c: Record<string, unknown>) => ({
-              article: String(c.article ?? ''),
-              section: c.section ? String(c.section) : undefined,
-              relevance: String(c.relevance ?? ''),
-            }))
-          : [],
-        precedentRefs: Array.isArray(parsed.precedentRefs)
-          ? parsed.precedentRefs.map((p: Record<string, unknown>) => ({
-              title: String(p.title ?? ''),
-              outcome: String(p.outcome ?? ''),
-              relevance: String(p.relevance ?? ''),
-            }))
-          : [],
-        keyQuotes: Array.isArray(parsed.keyQuotes)
-          ? parsed.keyQuotes.map((q: Record<string, unknown>) => ({
-              text: String(q.text ?? ''),
-              field: String(q.field ?? ''),
-            }))
-          : [],
-      };
-    } catch {
-      // Fallback: treat entire output as a rationale
+    const parsed = parseJsonSafe(raw);
+    if (!parsed) {
       return {
         structuredRationale: raw.slice(0, 5000),
         citations: [],
@@ -147,51 +119,27 @@ Guidelines:
         keyQuotes: [],
       };
     }
+    return {
+      structuredRationale: String(parsed.structuredRationale ?? '').slice(0, 5000),
+      citations: filterValidArticles(
+        safeParseArray(parsed.citations, (c) => ({
+          article: String(c.article ?? ''),
+          section: c.section ? String(c.section) : undefined,
+          relevance: String(c.relevance ?? ''),
+        })),
+      ),
+      precedentRefs: safeParseArray(parsed.precedentRefs, (p) => ({
+        title: String(p.title ?? ''),
+        outcome: String(p.outcome ?? ''),
+        relevance: String(p.relevance ?? ''),
+      })),
+      keyQuotes: safeParseArray(parsed.keyQuotes, (q) => ({
+        text: String(q.text ?? ''),
+        field: String(q.field ?? ''),
+      })),
+    };
   },
 
-  // Validation pass: verify constitutional citations are grounded
-  validationPass: {
-    systemPrompt:
-      'You are a constitutional reference validator. Check that cited constitutional articles are real Cardano Constitution articles. Remove any fabricated references.',
-    maxTokens: 1024,
-
-    buildPrompt: (_input: Input, output: RationaleDraftOutput) => {
-      if (output.citations.length === 0) {
-        return `No citations to validate. Return: {"validatedCitations": [], "validatedRationale": ${JSON.stringify(output.structuredRationale)}}`;
-      }
-      return `Validate these constitutional citations from a vote rationale:
-
-Citations: ${JSON.stringify(output.citations)}
-
-Rationale text: ${output.structuredRationale}
-
-For each citation, verify the article reference is a real Cardano Constitution article. Remove any fabricated articles. Return ONLY valid JSON:
-{"validatedCitations": [{"article": "...", "section": "...", "relevance": "..."}], "validatedRationale": "rationale with only valid citations"}`;
-    },
-
-    parseValidation: (raw: string, original: RationaleDraftOutput): RationaleDraftOutput => {
-      try {
-        const cleaned = raw
-          .replace(/^```json\s*/, '')
-          .replace(/\s*```$/, '')
-          .trim();
-        const parsed = JSON.parse(cleaned);
-        return {
-          ...original,
-          structuredRationale: String(
-            parsed.validatedRationale ?? original.structuredRationale,
-          ).slice(0, 5000),
-          citations: Array.isArray(parsed.validatedCitations)
-            ? parsed.validatedCitations.map((c: Record<string, unknown>) => ({
-                article: String(c.article ?? ''),
-                section: c.section ? String(c.section) : undefined,
-                relevance: String(c.relevance ?? ''),
-              }))
-            : original.citations,
-        };
-      } catch {
-        return original;
-      }
-    },
-  },
+  // Citations are validated deterministically in parseOutput via filterValidArticles
+  // (no LLM validation pass needed — static lookup against real constitution articles)
 });

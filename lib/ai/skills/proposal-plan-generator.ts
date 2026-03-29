@@ -14,6 +14,7 @@
 
 import { z } from 'zod';
 import { registerSkill } from './registry';
+import { parseJsonSafe, safeParseArray, safeEnum } from './parse-helpers';
 import type { SkillContext } from './types';
 
 const inputSchema = z.object({
@@ -143,92 +144,9 @@ Guidelines:
     const fallbackRisk = { risks: [], overallRisk: 'low' as const };
     const fallbackSimilar = { proposals: [], precedentSummary: '' };
 
-    try {
-      const cleaned = raw
-        .replace(/^```json\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      const parsed = JSON.parse(cleaned);
-
-      // Extract draft with length limits
-      const draft = parsed.draft ?? parsed;
-      const planDraft = {
-        title: String(draft.title ?? '').slice(0, 200),
-        abstract: String(draft.abstract ?? '').slice(0, 2000),
-        motivation: String(draft.motivation ?? '').slice(0, 10000),
-        rationale: String(draft.rationale ?? '').slice(0, 10000),
-        typeSpecific: draft.typeSpecific ?? undefined,
-      };
-
-      // Extract constitutional assessment
-      const ca = parsed.constitutionalAssessment ?? fallbackAssessment;
-      const constitutionalAssessment = {
-        score: (['pass', 'warning', 'fail'].includes(ca.score) ? ca.score : 'pass') as
-          | 'pass'
-          | 'warning'
-          | 'fail',
-        flags: Array.isArray(ca.flags)
-          ? ca.flags.map((f: Record<string, unknown>) => ({
-              article: String(f.article ?? ''),
-              concern: String(f.concern ?? ''),
-              severity: (['info', 'warning', 'critical'].includes(f.severity as string)
-                ? f.severity
-                : 'info') as 'info' | 'warning' | 'critical',
-            }))
-          : [],
-        summary: String(ca.summary ?? ''),
-      };
-
-      // Extract risk analysis
-      const ra = parsed.riskAnalysis ?? fallbackRisk;
-      const riskAnalysis = {
-        risks: Array.isArray(ra.risks)
-          ? ra.risks.map((r: Record<string, unknown>) => ({
-              label: String(r.label ?? ''),
-              severity: (['low', 'medium', 'high'].includes(r.severity as string)
-                ? r.severity
-                : 'low') as 'low' | 'medium' | 'high',
-              mitigation: String(r.mitigation ?? ''),
-            }))
-          : [],
-        overallRisk: (['low', 'medium', 'high'].includes(ra.overallRisk)
-          ? ra.overallRisk
-          : 'low') as 'low' | 'medium' | 'high',
-      };
-
-      // Extract similar proposals
-      const sp = parsed.similarProposals ?? fallbackSimilar;
-      const similarProposals = {
-        proposals: Array.isArray(sp.proposals)
-          ? sp.proposals.map((p: Record<string, unknown>) => ({
-              title: String(p.title ?? ''),
-              type: String(p.type ?? ''),
-              outcome: String(p.outcome ?? ''),
-              relevance: String(p.relevance ?? ''),
-            }))
-          : [],
-        precedentSummary: String(sp.precedentSummary ?? ''),
-      };
-
-      // Extract improvements
-      const improvements = Array.isArray(parsed.improvements)
-        ? parsed.improvements.map((i: Record<string, unknown>) => ({
-            field: String(i.field ?? ''),
-            suggestion: String(i.suggestion ?? ''),
-            confidence: typeof i.confidence === 'number' ? i.confidence : 0.5,
-            source: String(i.source ?? ''),
-          }))
-        : [];
-
-      return {
-        draft: planDraft,
-        constitutionalAssessment,
-        riskAnalysis,
-        similarProposals,
-        improvements,
-      };
-    } catch {
-      // Fallback: attempt to extract just the draft fields
+    const parsed = parseJsonSafe(raw);
+    if (!parsed) {
+      // Fallback: attempt to extract just the draft fields via regex
       const extractField = (name: string): string => {
         const regex = new RegExp(`"${name}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 's');
         const match = raw.match(regex);
@@ -247,5 +165,52 @@ Guidelines:
         improvements: [],
       };
     }
+
+    const draft = (parsed.draft ?? parsed) as Record<string, unknown>;
+    const ca = (parsed.constitutionalAssessment ?? fallbackAssessment) as Record<string, unknown>;
+    const ra = (parsed.riskAnalysis ?? fallbackRisk) as Record<string, unknown>;
+    const sp = (parsed.similarProposals ?? fallbackSimilar) as Record<string, unknown>;
+
+    return {
+      draft: {
+        title: String(draft.title ?? '').slice(0, 200),
+        abstract: String(draft.abstract ?? '').slice(0, 2000),
+        motivation: String(draft.motivation ?? '').slice(0, 10000),
+        rationale: String(draft.rationale ?? '').slice(0, 10000),
+        typeSpecific: (draft.typeSpecific as Record<string, unknown>) ?? undefined,
+      },
+      constitutionalAssessment: {
+        score: safeEnum(ca.score, ['pass', 'warning', 'fail'], 'pass'),
+        flags: safeParseArray(ca.flags, (f) => ({
+          article: String(f.article ?? ''),
+          concern: String(f.concern ?? ''),
+          severity: safeEnum(f.severity as string, ['info', 'warning', 'critical'], 'info'),
+        })),
+        summary: String(ca.summary ?? ''),
+      },
+      riskAnalysis: {
+        risks: safeParseArray(ra.risks, (r) => ({
+          label: String(r.label ?? ''),
+          severity: safeEnum(r.severity as string, ['low', 'medium', 'high'], 'low'),
+          mitigation: String(r.mitigation ?? ''),
+        })),
+        overallRisk: safeEnum(ra.overallRisk as string, ['low', 'medium', 'high'], 'low'),
+      },
+      similarProposals: {
+        proposals: safeParseArray(sp.proposals, (p) => ({
+          title: String(p.title ?? ''),
+          type: String(p.type ?? ''),
+          outcome: String(p.outcome ?? ''),
+          relevance: String(p.relevance ?? ''),
+        })),
+        precedentSummary: String(sp.precedentSummary ?? ''),
+      },
+      improvements: safeParseArray(parsed.improvements, (i) => ({
+        field: String(i.field ?? ''),
+        suggestion: String(i.suggestion ?? ''),
+        confidence: typeof i.confidence === 'number' ? i.confidence : 0.5,
+        source: String(i.source ?? ''),
+      })),
+    };
   },
 });

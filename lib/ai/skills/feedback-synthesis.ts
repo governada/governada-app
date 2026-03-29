@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import { registerSkill } from './registry';
+import { parseJsonSafe, safeParseArray, safeEnum } from './parse-helpers';
 import type { SkillContext } from './types';
 
 const inputSchema = z.object({
@@ -123,47 +124,31 @@ Guidelines:
   },
 
   parseOutput: (raw: string): FeedbackSynthesisOutput => {
-    try {
-      const cleaned = raw
-        .replace(/^```json\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      const parsed = JSON.parse(cleaned);
+    const parsed = parseJsonSafe(raw);
+    if (!parsed) return { clusters: [], overallAssessment: '', unaddressedRiskSummary: '' };
 
-      return {
-        clusters: Array.isArray(parsed.clusters)
-          ? parsed.clusters.map((c: Record<string, unknown>) => ({
-              severity: (['critical', 'important', 'minor'].includes(c.severity as string)
-                ? c.severity
-                : 'minor') as 'critical' | 'important' | 'minor',
-              label: String(c.label ?? ''),
-              themeIds: Array.isArray(c.themeIds)
-                ? c.themeIds.map((id: unknown) => String(id))
-                : [],
-              suggestedResponse: String(c.suggestedResponse ?? ''),
-              suggestedEdit: c.suggestedEdit
-                ? {
-                    field: (['title', 'abstract', 'motivation', 'rationale'].includes(
-                      (c.suggestedEdit as Record<string, unknown>)?.field as string,
-                    )
-                      ? (c.suggestedEdit as Record<string, unknown>).field
-                      : 'rationale') as 'title' | 'abstract' | 'motivation' | 'rationale',
-                    instruction: String(
-                      (c.suggestedEdit as Record<string, unknown>)?.instruction ?? '',
-                    ),
-                  }
-                : undefined,
-            }))
-          : [],
-        overallAssessment: String(parsed.overallAssessment ?? ''),
-        unaddressedRiskSummary: String(parsed.unaddressedRiskSummary ?? ''),
-      };
-    } catch {
-      return {
-        clusters: [],
-        overallAssessment: '',
-        unaddressedRiskSummary: '',
-      };
-    }
+    return {
+      clusters: safeParseArray(parsed.clusters, (c) => {
+        const edit = c.suggestedEdit as Record<string, unknown> | undefined;
+        return {
+          severity: safeEnum(c.severity as string, ['critical', 'important', 'minor'], 'minor'),
+          label: String(c.label ?? ''),
+          themeIds: Array.isArray(c.themeIds) ? c.themeIds.map((id: unknown) => String(id)) : [],
+          suggestedResponse: String(c.suggestedResponse ?? ''),
+          suggestedEdit: edit
+            ? {
+                field: safeEnum(
+                  edit.field as string,
+                  ['title', 'abstract', 'motivation', 'rationale'],
+                  'rationale',
+                ),
+                instruction: String(edit.instruction ?? ''),
+              }
+            : undefined,
+        };
+      }),
+      overallAssessment: String(parsed.overallAssessment ?? ''),
+      unaddressedRiskSummary: String(parsed.unaddressedRiskSummary ?? ''),
+    };
   },
 });

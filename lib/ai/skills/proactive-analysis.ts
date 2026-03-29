@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import { registerSkill } from './registry';
+import { parseJsonSafe, safeEnum } from './parse-helpers';
 import type { SkillContext } from './types';
 
 const inputSchema = z.object({
@@ -104,35 +105,26 @@ Guidelines:
   },
 
   parseOutput: (raw: string): ProactiveAnalysisOutput => {
-    try {
-      const cleaned = raw
-        .replace(/^```json\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      const parsed = JSON.parse(cleaned);
+    const parsed = parseJsonSafe(raw);
+    if (!parsed) return { insights: [] };
 
-      const insights = Array.isArray(parsed.insights)
-        ? parsed.insights.slice(0, 3).map((i: Record<string, unknown>) => ({
-            id: String(i.id ?? `insight-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`),
-            category: (['compliance', 'completeness', 'competition', 'improvement'].includes(
-              i.category as string,
-            )
-              ? i.category
-              : 'improvement') as ProactiveInsight['category'],
-            severity: (['info', 'warning', 'critical'].includes(i.severity as string)
-              ? i.severity
-              : 'info') as ProactiveInsight['severity'],
-            message: String(i.message ?? '').slice(0, 300),
-            field: ['title', 'abstract', 'motivation', 'rationale'].includes(i.field as string)
-              ? (i.field as ProactiveInsight['field'])
-              : undefined,
-            suggestion: i.suggestion ? String(i.suggestion).slice(0, 300) : undefined,
-          }))
-        : [];
+    const insights = Array.isArray(parsed.insights)
+      ? parsed.insights.slice(0, 3).map((i: Record<string, unknown>) => ({
+          id: String(i.id ?? `insight-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`),
+          category: safeEnum(
+            i.category as string,
+            ['compliance', 'completeness', 'competition', 'improvement'],
+            'improvement',
+          ),
+          severity: safeEnum(i.severity as string, ['info', 'warning', 'critical'], 'info'),
+          message: String(i.message ?? '').slice(0, 300),
+          field: ['title', 'abstract', 'motivation', 'rationale'].includes(i.field as string)
+            ? (i.field as ProactiveInsight['field'])
+            : undefined,
+          suggestion: i.suggestion ? String(i.suggestion).slice(0, 300) : undefined,
+        }))
+      : [];
 
-      return { insights };
-    } catch {
-      return { insights: [] };
-    }
+    return { insights };
   },
 });

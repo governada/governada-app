@@ -277,7 +277,7 @@ export function ProposalPlan({ plan, onAccept }: ProposalPlanProps) {
       {plan.improvements.length > 0 && (
         <PlanSection title="Recommended Improvements" icon={Lightbulb} defaultOpen>
           <div className="space-y-1.5">
-            {plan.improvements
+            {[...plan.improvements]
               .sort((a, b) => b.confidence - a.confidence)
               .map((imp, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">

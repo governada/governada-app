@@ -139,10 +139,15 @@ export function CCArticleRow({
                       key={v}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (overrideReason.trim() || v !== assessment.verdict) {
-                          onOverride(assessment.article, v, overrideReason || `Overridden to ${v}`);
-                          setOverrideOpen(false);
-                        }
+                        onOverride(
+                          assessment.article,
+                          v,
+                          overrideReason.trim() ||
+                            (v === assessment.verdict
+                              ? 'Confirmed AI assessment'
+                              : `Overridden to ${v}`),
+                        );
+                        setOverrideOpen(false);
                       }}
                       className={cn(
                         'flex-1 px-1.5 py-1 text-[9px] font-medium rounded border transition-colors cursor-pointer',

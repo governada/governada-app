@@ -8,7 +8,7 @@
  * constitutional opinion for the rationale field.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Loader2, Shield, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISkill } from '@/hooks/useAISkill';
@@ -68,8 +68,11 @@ export function CCExpressPanel({
     Map<string, { verdict: 'PASS' | 'ADVISORY' | 'FAIL'; reason: string }>
   >(new Map());
 
+  const initiatedRef = useRef(false);
+
   useEffect(() => {
-    if (result || skill.isPending) return;
+    if (initiatedRef.current || result) return;
+    initiatedRef.current = true;
 
     skill.mutate(
       {

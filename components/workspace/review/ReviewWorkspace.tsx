@@ -706,7 +706,7 @@ function StudioReviewInner({
               isDraftingRationale={isDraftingRationale}
               proposalTitle={selectedItem.title || 'Untitled'}
               voterId={voterId ?? ''}
-              voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+              voterRole={segment === 'cc' ? 'cc_member' : segment === 'spo' ? 'SPO' : 'DRep'}
               rationaleCitations={rationaleCitations}
               intelContent={
                 <ReviewIntelBrief
@@ -721,7 +721,7 @@ function StudioReviewInner({
                   treasuryTier={selectedItem.treasuryTier}
                   epochsRemaining={selectedItem.epochsRemaining}
                   isUrgent={selectedItem.isUrgent}
-                  voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+                  voterRole={segment === 'cc' ? 'cc_member' : segment === 'spo' ? 'SPO' : 'DRep'}
                   onCCAccept={(text) => setRationaleText(text)}
                 />
               }
@@ -790,7 +790,7 @@ function StudioReviewInner({
             isDraftingRationale={isDraftingRationale}
             proposalTitle={selectedItem.title || 'Untitled'}
             voterId={voterId ?? ''}
-            voterRole={segment === 'spo' ? 'SPO' : 'DRep'}
+            voterRole={segment === 'cc' ? 'cc_member' : segment === 'spo' ? 'SPO' : 'DRep'}
             rationaleCitations={rationaleCitations}
           />
         </SheetContent>

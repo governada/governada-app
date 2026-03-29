@@ -8,7 +8,7 @@
  * with suggested responses and "Apply Edit" buttons.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, AlertTriangle, AlertCircle, Info, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISkill } from '@/hooks/useAISkill';
@@ -64,9 +64,11 @@ export function SynthesizedFeedback({
 }: SynthesizedFeedbackProps) {
   const skill = useAISkill<FeedbackSynthesisOutput>();
   const [result, setResult] = useState<FeedbackSynthesisOutput | null>(null);
+  const initiatedRef = useRef(false);
 
   useEffect(() => {
-    if (result || skill.isPending || themes.length === 0) return;
+    if (initiatedRef.current || result || themes.length === 0) return;
+    initiatedRef.current = true;
 
     skill.mutate(
       {

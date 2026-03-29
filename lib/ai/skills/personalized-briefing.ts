@@ -13,6 +13,7 @@
 
 import { z } from 'zod';
 import { registerSkill } from './registry';
+import { parseJsonSafe, safeEnum } from './parse-helpers';
 import type { SkillContext } from './types';
 
 const inputSchema = z.object({
@@ -105,34 +106,8 @@ Guidelines:
   },
 
   parseOutput: (raw: string): PersonalizedBriefingOutput => {
-    try {
-      const cleaned = raw
-        .replace(/^```json\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      const parsed = JSON.parse(cleaned);
-
-      return {
-        personalizedSummary: String(parsed.personalizedSummary ?? '').slice(0, 1500),
-        alignmentSignal: {
-          label: String(parsed.alignmentSignal?.label ?? 'Review pending'),
-          explanation: String(parsed.alignmentSignal?.explanation ?? ''),
-          direction: (['aligned', 'misaligned', 'neutral'].includes(
-            parsed.alignmentSignal?.direction,
-          )
-            ? parsed.alignmentSignal.direction
-            : 'neutral') as 'aligned' | 'misaligned' | 'neutral',
-        },
-        quickTakeaway: String(parsed.quickTakeaway ?? '').slice(0, 300),
-        keyTensions: Array.isArray(parsed.keyTensions)
-          ? parsed.keyTensions.slice(0, 3).map((t: Record<string, unknown>) => ({
-              aspect: String(t.aspect ?? ''),
-              yourPosition: String(t.yourPosition ?? ''),
-              proposalPosition: String(t.proposalPosition ?? ''),
-            }))
-          : [],
-      };
-    } catch {
+    const parsed = parseJsonSafe(raw);
+    if (!parsed) {
       return {
         personalizedSummary: raw.slice(0, 1500),
         alignmentSignal: { label: 'Analysis pending', explanation: '', direction: 'neutral' },
@@ -140,5 +115,26 @@ Guidelines:
         keyTensions: [],
       };
     }
+    const signal = (parsed.alignmentSignal ?? {}) as Record<string, unknown>;
+    return {
+      personalizedSummary: String(parsed.personalizedSummary ?? '').slice(0, 1500),
+      alignmentSignal: {
+        label: String(signal.label ?? 'Review pending'),
+        explanation: String(signal.explanation ?? ''),
+        direction: safeEnum(
+          signal.direction as string,
+          ['aligned', 'misaligned', 'neutral'],
+          'neutral',
+        ),
+      },
+      quickTakeaway: String(parsed.quickTakeaway ?? '').slice(0, 300),
+      keyTensions: Array.isArray(parsed.keyTensions)
+        ? parsed.keyTensions.slice(0, 3).map((t: Record<string, unknown>) => ({
+            aspect: String(t.aspect ?? ''),
+            yourPosition: String(t.yourPosition ?? ''),
+            proposalPosition: String(t.proposalPosition ?? ''),
+          }))
+        : [],
+    };
   },
 });

@@ -8,7 +8,7 @@
  * on error or when personal context is empty.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISkill } from '@/hooks/useAISkill';
@@ -57,9 +57,11 @@ export function PersonalizedSummary({
   const skill = useAISkill<PersonalizedBriefingOutput>();
   const [result, setResult] = useState<PersonalizedBriefingOutput | null>(null);
   const [failed, setFailed] = useState(false);
+  const initiatedRef = useRef(false);
 
   useEffect(() => {
-    if (result || failed || skill.isPending) return;
+    if (initiatedRef.current || result || failed) return;
+    initiatedRef.current = true;
 
     skill.mutate(
       {

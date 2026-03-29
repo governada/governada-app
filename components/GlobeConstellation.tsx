@@ -1780,16 +1780,22 @@ function NodePoints({
       geo.computeBoundingSphere();
     }
     // After first render, useFrame handles smooth transitions toward new target buffers
+    // NOTE: No cleanup return here — cleanup runs in the unmount-only effect below.
+    // If we returned cleanup here, it would run on every buffers change (focus changes),
+    // deleting GPU attributes that useFrame then can't find — making nodes invisible.
+  }, [buffers]);
 
+  // GPU attribute cleanup on unmount only — MUST be separate from the [buffers] effect.
+  // Returning cleanup from [buffers] would delete attributes on every focus change.
+  useEffect(() => {
     return () => {
-      // Clean up GPU attributes on unmount
       const g = geoRef.current;
       if (!g) return;
       for (const name of ['position', 'aNodeColor', 'aSize', 'aDimmed']) {
         if (g.hasAttribute(name)) g.deleteAttribute(name);
       }
     };
-  }, [buffers]);
+  }, []);
 
   // Smooth per-frame interpolation: current values → target values.
   // Focus state is read from module-level _sharedFocus/_sharedFocusVersion

@@ -13,6 +13,8 @@ import { Loader2, CheckCircle2, Clock, XCircle, AlertCircle, ChevronDown } from 
 import { cn } from '@/lib/utils';
 import { posthog } from '@/lib/posthog';
 import { useFeedbackThemes, useAddressTheme } from '@/hooks/useFeedbackThemes';
+import { useFeatureFlag } from '@/components/FeatureGate';
+import { SynthesizedFeedback } from './SynthesizedFeedback';
 import type { FeedbackTheme } from '@/lib/workspace/feedback/types';
 
 // ---------------------------------------------------------------------------
@@ -24,6 +26,16 @@ interface FeedbackTriageBoardProps {
   proposalIndex: number | null;
   /** Whether the current user can address themes (proposer/lead/editor) */
   canAddress: boolean;
+  /** Proposal content for feedback synthesis (optional) */
+  proposalContent?: {
+    title: string;
+    abstract: string;
+    motivation: string;
+    rationale: string;
+  };
+  proposalType?: string;
+  /** Callback when synthesis suggests an edit — triggers agent */
+  onApplyEdit?: (field: string, instruction: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,9 +186,13 @@ export function FeedbackTriageBoard({
   proposalTxHash,
   proposalIndex,
   canAddress,
+  proposalContent,
+  proposalType,
+  onApplyEdit,
 }: FeedbackTriageBoardProps) {
   const { themes, isLoading } = useFeedbackThemes(proposalTxHash, proposalIndex);
   const [activeFilter, setActiveFilter] = useState<StatusGroup | 'all'>('all');
+  const feedbackSynthesisEnabled = useFeatureFlag('feedback_synthesis');
 
   if (isLoading) {
     return (
@@ -211,6 +227,22 @@ export function FeedbackTriageBoard({
 
   return (
     <div className="space-y-3 text-xs">
+      {/* AI synthesis header */}
+      {feedbackSynthesisEnabled && proposalContent && proposalType && themes.length > 0 && (
+        <SynthesizedFeedback
+          themes={themes.map((t) => ({
+            id: t.id,
+            summary: t.summary,
+            category: t.category,
+            endorsementCount: t.endorsementCount,
+            keyVoices: t.keyVoices.map((v) => ({ text: v.text })),
+          }))}
+          proposalContent={proposalContent}
+          proposalType={proposalType}
+          onApplyEdit={onApplyEdit ?? (() => {})}
+        />
+      )}
+
       {/* Progress bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-[10px]">

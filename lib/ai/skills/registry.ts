@@ -52,4 +52,7 @@ export async function loadBuiltinSkills(): Promise<void> {
   await import('./readiness-narrative');
   await import('./proposal-plan-generator');
   await import('./rationale-draft');
+  await import('./personalized-briefing');
+  await import('./feedback-synthesis');
+  await import('./cc-article-assessment');
 }

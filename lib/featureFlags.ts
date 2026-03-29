@@ -44,6 +44,9 @@
  * workspace_decision_table            — AI-enriched decision table replacing kanban in review workspace (Phase 2 studio upgrade)
  * proposal_plan                        — Comprehensive Proposal Plan (constitutional assessment + risk analysis + similar proposals + improvements) instead of plain draft (Phase 4 studio excellence)
  * rationale_codraft                    — Structured rationale co-generation from bullet points with constitutional citations (Phase 4 studio excellence)
+ * personalized_briefing                — Personalized executive summary for reviewers based on voting history/philosophy (Phase 4 studio excellence)
+ * feedback_synthesis                   — AI severity-ranked feedback synthesis with suggested edits during response_revision (Phase 4 studio excellence)
+ * cc_express_lane                      — Article-by-article constitutional assessment for CC members with one-click accept (Phase 4 studio excellence)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

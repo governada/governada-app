@@ -143,6 +143,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [balanceAda, setBalanceAda] = useState<number | null>(null);
   const [error, setError] = useState<WalletError | null>(null);
   const [availableWallets, setAvailableWallets] = useState<string[]>([]);
+  const [connectMethod, setConnectMethod] = useState<'extension' | 'peer' | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -180,6 +181,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     const payload = parseSessionToken(token);
     if (!payload || isSessionExpired(payload)) return;
+
+    // Peer connect sessions use WebRTC which doesn't survive page reloads.
+    // Keep the auth session (userId/sessionAddress) but don't attempt wallet reconnect.
+    if (localStorage.getItem('governada_connect_method') === 'peer') {
+      localStorage.removeItem(WALLET_NAME_KEY);
+      return;
+    }
 
     let cancelled = false;
     setReconnecting(true);
@@ -289,6 +297,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setConnected(true);
         localStorage.setItem(WALLET_NAME_KEY, name);
 
+        // Detect if this was a peer connect (wallet wasn't in detected extensions)
+        const wasPeerConnect = !availableWallets.includes(name);
+        setConnectMethod(wasPeerConnect ? 'peer' : 'extension');
+        if (wasPeerConnect) {
+          localStorage.setItem('governada_connect_method', 'peer');
+        } else {
+          localStorage.removeItem('governada_connect_method');
+        }
+
         // Non-blocking: fetch wallet balance
         browserWallet
           .getLovelace()
@@ -356,7 +373,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setOwnDRepId(null);
     setBalanceAda(null);
     setError(null);
+    setConnectMethod(null);
     localStorage.removeItem(WALLET_NAME_KEY);
+    localStorage.removeItem('governada_connect_method');
   };
 
   const signMessage = useCallback(
@@ -492,6 +511,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         balanceAda,
         error,
         availableWallets,
+        connectMethod,
         connect,
         disconnect,
         signMessage,

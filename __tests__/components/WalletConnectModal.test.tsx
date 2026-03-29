@@ -1,6 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { WalletConnectModal } from '@/components/WalletConnectModal';
+
+// Mock wallet-context FIRST (before any imports that depend on it)
+vi.mock('@/utils/wallet-context', () => ({
+  useWallet: () => ({
+    address: null,
+    stakeAddress: null,
+    connected: false,
+    connecting: false,
+  }),
+  WalletContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => children,
+  },
+}));
 
 vi.mock('@/utils/wallet', () => ({
   useWallet: () => ({
@@ -30,6 +42,16 @@ vi.mock('@/lib/posthog', () => ({
   posthog: { capture: vi.fn() },
 }));
 
+vi.mock('@/hooks/usePeerConnect', () => ({
+  usePeerConnect: () => ({
+    qrCode: null,
+    status: 'idle',
+    error: null,
+    start: vi.fn(),
+    stop: vi.fn(),
+  }),
+}));
+
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
@@ -48,6 +70,9 @@ vi.mock('@/components/ui/button', () => ({
 vi.mock('@/components/ui/badge', () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
+
+// Import AFTER all mocks
+const { WalletConnectModal } = await import('@/components/WalletConnectModal');
 
 describe('WalletConnectModal', () => {
   afterEach(() => {

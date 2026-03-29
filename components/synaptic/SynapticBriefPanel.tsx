@@ -53,10 +53,15 @@ function extractChips(text: string): { cleanText: string; chips: string[] } {
 
 interface SynapticBriefPanelProps {
   onGlobeCommand?: (command: GlobeStreamCommand) => void;
+  onFilterChange?: (filter: string | null) => void;
   className?: string;
 }
 
-export function SynapticBriefPanel({ onGlobeCommand, className }: SynapticBriefPanelProps) {
+export function SynapticBriefPanel({
+  onGlobeCommand,
+  onFilterChange,
+  className,
+}: SynapticBriefPanelProps) {
   const { segment } = useSegment();
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
   const daysRemaining = totalDays - day;
@@ -301,6 +306,33 @@ export function SynapticBriefPanel({ onGlobeCommand, className }: SynapticBriefP
               isStreaming={store.isStreaming}
               error={store.error}
             />
+
+            {/* Discovery chips — always visible after briefing completes */}
+            {!store.isStreaming && store.phase === 'briefing' && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[
+                  { label: 'Browse Proposals', filter: 'proposals' },
+                  { label: 'Find a DRep', filter: 'dreps' },
+                  { label: 'Pool Rankings', filter: 'spos' },
+                ].map((item) => (
+                  <button
+                    key={item.filter}
+                    onClick={() => onFilterChange?.(item.filter)}
+                    className="px-2.5 py-1 text-xs rounded-full border border-compass-teal/20 text-compass-teal/80 hover:bg-compass-teal/10 hover:text-compass-teal transition-colors"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    useSenecaThreadStore.getState().startMatch();
+                  }}
+                  className="px-2.5 py-1 text-xs rounded-full border border-amber-500/20 text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-400 transition-colors"
+                >
+                  Find my match
+                </button>
+              </div>
+            )}
 
             {/* Follow-up chips (shown after briefing completes) */}
             {!store.isStreaming && store.phase === 'briefing' && (

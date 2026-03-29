@@ -30,6 +30,9 @@ interface AnonymousLandingProps {
     activeDReps: number;
     totalDelegators: number;
   };
+  filter?: string;
+  entity?: string;
+  match?: boolean;
 }
 
 /**
@@ -142,7 +145,7 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
         animate={{ opacity: 0.5, y: 0 }}
         transition={{ delay: 2, duration: 0.6 }}
         whileHover={{ opacity: 0.8 }}
-        onClick={() => router.push('/governance')}
+        onClick={() => router.push('/?filter=proposals')}
         className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-0.5 text-white/40 hover:text-white/70 transition-colors pointer-events-auto"
       >
         <span className="text-[10px] tracking-wider uppercase">Explore governance</span>

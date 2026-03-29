@@ -125,8 +125,9 @@ const IDLE_BRIEFINGS: Record<PanelRoute, string> = {
 
 interface QuickAction {
   label: string;
-  action: 'conversation' | 'research' | 'match';
+  action: 'conversation' | 'research' | 'match' | 'navigate';
   query?: string;
+  href?: string;
 }
 
 function getQuickActions(route: PanelRoute): QuickAction[] {
@@ -139,6 +140,8 @@ function getQuickActions(route: PanelRoute): QuickAction[] {
           query: "What's happening in governance today?",
         },
         { label: 'Find my match', action: 'match' },
+        { label: 'Proposals to review', action: 'navigate', href: '/workspace/review' },
+        { label: 'My drafts', action: 'navigate', href: '/workspace/author' },
       ];
     case 'proposal':
       return [
@@ -603,9 +606,22 @@ export function SenecaThread({
         case 'match':
           onStartMatch();
           break;
+        case 'navigate':
+          if (action.href) {
+            posthog.capture('globe_workspace_pill_clicked', { destination: action.href });
+            // Warm the globe with proposals topic before navigating
+            window.dispatchEvent(
+              new CustomEvent('senecaGlobeCommand', {
+                detail: { type: 'warmTopic', topic: 'proposals' },
+              }),
+            );
+            router.push(action.href);
+            onClose();
+          }
+          break;
       }
     },
-    [onStartConversation, onStartResearch, onStartMatch],
+    [onStartConversation, onStartResearch, onStartMatch, router, onClose],
   );
 
   // Semantic search

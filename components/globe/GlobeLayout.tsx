@@ -33,6 +33,11 @@ import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 
+const WorkspaceCards = dynamic(
+  () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
+  { ssr: false },
+);
+
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),
   { ssr: false },
@@ -96,6 +101,7 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
   const [filter, setFilter] = useState<GlobeFilter | null>(urlFilter);
   const [sort, setSort] = useState<SortMode>('score');
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const [workspaceCardsVisible, setWorkspaceCardsVisible] = useState(false);
 
   // Sync filter from URL on navigation
   useEffect(() => {
@@ -281,6 +287,13 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
 
         case 'reset':
           handleResetGlobe();
+          setWorkspaceCardsVisible(false);
+          break;
+
+        case 'workspace':
+          // Choreograph globe: warm proposals topic + show workspace cards
+          executeGlobeCommand({ type: 'warmTopic', topic: 'proposals' });
+          setWorkspaceCardsVisible(true);
           break;
       }
     },
@@ -380,6 +393,9 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
         highlightedNodeId={highlightedNodeId}
         onNodeHover={handleNodeHover}
       />
+
+      {/* Workspace cards overlay — z-28 */}
+      {workspaceCardsVisible && <WorkspaceCards onClose={() => setWorkspaceCardsVisible(false)} />}
 
       {/* Panel overlay — z-30: entity detail panels over the globe */}
       <PanelOverlay

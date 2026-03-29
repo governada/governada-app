@@ -43,7 +43,8 @@ export type GlobeIntentType =
   | 'match' // "find my match" → start match flow
   | 'votesplit' // "how did people vote on X" → vote split viz
   | 'temporal' // "show me epoch 620" → temporal replay
-  | 'reset'; // "reset" / "clear" / "start over" → reset globe
+  | 'reset' // "reset" / "clear" / "start over" → reset globe
+  | 'workspace'; // "proposals to review" / "my drafts" → workspace cards overlay
 
 export interface GlobeIntent {
   type: GlobeIntentType;
@@ -169,6 +170,19 @@ export function detectGlobeIntent(input: string): GlobeIntent | null {
   }
   if (/\btreasury\b/i.test(lower) && /\b(show|list|browse|display|proposals?)\b/i.test(lower)) {
     return { type: 'browse', filter: 'proposals', query: trimmed };
+  }
+
+  // --- WORKSPACE ---
+  if (
+    /\b(proposals?\s+to\s+review|review\s+queue|my\s+reviews?|needs?\s+my\s+vote)\b/i.test(lower)
+  ) {
+    return { type: 'workspace', filter: 'proposals', query: trimmed };
+  }
+  if (/\b(my\s+drafts?|drafts?\s+with\s+feedback|my\s+proposals?)\b/i.test(lower)) {
+    return { type: 'workspace', filter: 'dreps', query: trimmed };
+  }
+  if (/\b(what\s+needs?\s+(my\s+)?attention|open\s+workspace|go\s+to\s+workspace)\b/i.test(lower)) {
+    return { type: 'workspace', query: trimmed };
   }
 
   return null;

@@ -53,6 +53,8 @@ import { ScaffoldForm } from '@/components/workspace/author/ScaffoldForm';
 import { ReadinessPanel } from '@/components/workspace/author/ReadinessPanel';
 import { QualityPulse } from '@/components/workspace/author/QualityPulse';
 import { ProactiveInsight } from '@/components/workspace/author/ProactiveInsight';
+import { ProactiveInsightStack } from '@/components/workspace/author/ProactiveInsightStack';
+import { useProactiveAnalysis } from '@/hooks/useProactiveAnalysis';
 import { ProposalAlignmentCard } from '@/components/intelligence/ProposalAlignmentCard';
 import { VersionCompareDialog } from '@/components/workspace/author/VersionCompareDialog';
 import { AuthorBrief } from '@/components/intelligence/AuthorBrief';
@@ -518,6 +520,15 @@ function WorkspaceEditorPage() {
     [draft?.title, draft?.abstract, draft?.motivation, draft?.rationale],
   );
 
+  // --- Proactive insight analysis (flag-gated) ---
+  const proactiveFlag = useFeatureFlag('proactive_interventions');
+  const proactiveAnalysis = useProactiveAnalysis({
+    proposalContent: content,
+    proposalType: draft?.proposalType ?? 'InfoAction',
+    constitutionalScore: constitutionalResult?.score,
+    enabled: !!proactiveFlag && canEdit && !readOnly,
+  });
+
   // --- Content change handler (auto-save with debounce) ---
   const handleContentChange = useCallback(
     (field: ProposalField, value: string) => {
@@ -740,14 +751,22 @@ function WorkspaceEditorPage() {
           // Could toggle readiness panel for detail
         }}
       />
-      {canEdit && (
+      {canEdit && proactiveFlag ? (
+        <ProactiveInsightStack
+          insights={proactiveAnalysis.insights}
+          isAnalyzing={proactiveAnalysis.isAnalyzing}
+          fields={content}
+          onApply={(_insightId, field, suggestion) => handleInsightApply(field, suggestion)}
+          onDismiss={proactiveAnalysis.dismissInsight}
+        />
+      ) : canEdit ? (
         <ProactiveInsight
           sectionResults={sectionResults}
           isAnalyzing={Object.values(sectionLoading).some(Boolean)}
           fields={content}
           onApply={handleInsightApply}
         />
-      )}
+      ) : null}
     </>
   ) : null;
 

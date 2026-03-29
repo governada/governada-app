@@ -47,6 +47,7 @@
  * personalized_briefing                — Personalized executive summary for reviewers based on voting history/philosophy (Phase 4 studio excellence)
  * feedback_synthesis                   — AI severity-ranked feedback synthesis with suggested edits during response_revision (Phase 4 studio excellence)
  * cc_express_lane                      — Article-by-article constitutional assessment for CC members with one-click accept (Phase 4 studio excellence)
+ * proactive_interventions              — Multi-insight proactive analysis stack replacing single ProactiveInsight (Phase 4 studio excellence)
  *
  * ---------------------------------------------------------------------------
  * RETIRED FLAGS (code checks removed or hardcoded)

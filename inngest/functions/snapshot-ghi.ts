@@ -55,6 +55,7 @@ export const snapshotGhi = inngest.createFunction(
             score: result.score,
             band: result.band,
             components: result.components,
+            computed_at: new Date().toISOString(),
           },
           { onConflict: 'epoch_no' },
         );

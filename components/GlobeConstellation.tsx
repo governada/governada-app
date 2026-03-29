@@ -541,8 +541,8 @@ export const GlobeConstellation = forwardRef<
           rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * Math.max(0.05, 0.4 - sp * 0.35);
 
           // Camera pulls closer as the cluster narrows — funneling toward the match
-          const zoomFactor = Math.max(0, Math.min(1, (160 - threshold) / 125));
-          const camDist = 14 - zoomFactor * 6; // 14 → 8 (wide overview → close to cluster)
+          // Uses scanProgress (0.15→0.95) not threshold, which is always 9999 in topN mode
+          const camDist = 13 - sp * 5; // 12.25 (Q1) → 11 (Q2) → 9.5 (Q3) → 8.25 (Q4)
 
           // Camera position: facing the centroid, offset by dive angle for variety
           let camX = nx * camDist;
@@ -568,6 +568,8 @@ export const GlobeConstellation = forwardRef<
           const controls = cameraControlsRef.current;
           controls.smoothTime = Math.max(0.8, 1.5 - sp * 0.8);
           controls.setLookAt(camX, camY, camZ, cx * 0.7, cy * 0.7, cz * 0.7, true);
+          // Sync dolly rig to match setLookAt distance — prevents CinematicCamera fighting setLookAt
+          setCinematicDollyTarget(camDist);
           setTimeout(() => {
             if (cameraControlsRef.current) cameraControlsRef.current.smoothTime = 0.8;
           }, 1500);
@@ -738,10 +740,11 @@ export const GlobeConstellation = forwardRef<
       // Slow rotation to "scanning" pace
       rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * 0.6;
 
-      // Shift camera slightly left to make room for Seneca panel on right
+      // Shift camera left for Seneca panel, close enough to see DRep nodes
       if (cameraControlsRef.current) {
-        cameraControlsRef.current.setLookAt(-2, 1.5, 16, -1, 0, 0, true);
+        cameraControlsRef.current.setLookAt(-2, 1.5, 13, -1, 0, 0, true);
       }
+      setCinematicDollyTarget(13);
     },
 
     clearMatches: () => {

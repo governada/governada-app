@@ -57,9 +57,9 @@ export function buildMatchStartSequence(): GlobeCommand {
           type: 'cinematic',
           state: {
             orbitSpeed: 0.015, // slower, more deliberate scanning feel
-            dollyTarget: 20,
+            dollyTarget: 13,
             dimTarget: 0.7,
-            transitionDuration: 2.0, // longer transition for smooth pullback
+            transitionDuration: 1.5,
           },
         },
         delayMs: 200,

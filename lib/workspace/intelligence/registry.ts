@@ -128,7 +128,7 @@ export const AUTHOR_BRIEF_REGISTRY: Record<BriefStage, SectionConfig[]> = {
   response_revision: [FEEDBACK_TRIAGE, CONSTITUTIONAL, READINESS],
   final_comment: [SUBMISSION_CHECKLIST, CONSTITUTIONAL, READINESS],
   submitted: [MONITOR_EMBED],
-  archived: [CONSTITUTIONAL, READINESS],
+  archived: [READINESS],
 };
 
 // ---------------------------------------------------------------------------

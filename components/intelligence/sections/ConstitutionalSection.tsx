@@ -8,7 +8,7 @@
  * Lazy-loads: only fires the AI skill when the section is first expanded.
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Loader2, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISkill } from '@/hooks/useAISkill';
@@ -69,9 +69,9 @@ export function ConstitutionalSection({
     : skillOutput;
   const isLoading = !cachedResult && skill.isPending;
 
-  // Auto-fetch on mount if no cached result
-  const fetchIfNeeded = useCallback(() => {
-    if (cachedResult || hasFetched.current || skill.isPending) return;
+  // Fire AI check on mount if no cached result (one-shot via ref guard)
+  useEffect(() => {
+    if (cachedResult || hasFetched.current) return;
     hasFetched.current = true;
     skill.mutate({
       skill: 'constitutional-check',
@@ -83,12 +83,8 @@ export function ConstitutionalSection({
         rationale: proposalContent.rationale,
       },
     });
-  }, [cachedResult, skill, proposalContent, proposalType]);
-
-  // Fire on mount if no cached result
-  useEffect(() => {
-    fetchIfNeeded();
-  }, [fetchIfNeeded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot fetch guarded by ref
+  }, []);
 
   const scoreIcon =
     result?.score === 'pass' ? (

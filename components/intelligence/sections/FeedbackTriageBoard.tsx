@@ -134,8 +134,8 @@ function ThemeCard({
             </div>
           )}
 
-          {/* Action buttons (proposer only) */}
-          {canAddress && theme.addressedStatus === 'open' && (
+          {/* Action buttons (proposer only, requires valid txHash) */}
+          {canAddress && theme.addressedStatus === 'open' && txHash && (
             <div className="flex items-center gap-1.5 pt-1">
               <button
                 onClick={() => handleAction('addressed')}

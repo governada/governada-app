@@ -225,9 +225,16 @@ function WorkspaceEditorPage() {
   const updateDraft = useUpdateDraft(draftId ?? '');
   const { setSaving } = useSaveStatus();
 
-  // --- Debounced auto-save: show "Saving..." immediately but delay the mutation ---
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
+  // --- Debounced auto-save: separate timers for content and type-specific fields ---
+  const contentDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const typeSpecificDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(
+    () => () => {
+      clearTimeout(contentDebounceRef.current);
+      clearTimeout(typeSpecificDebounceRef.current);
+    },
+    [],
+  );
 
   // --- Mode change with analytics ---
   const setMode = useCallback(
@@ -279,18 +286,19 @@ function WorkspaceEditorPage() {
     }
   }, [draft?.typeSpecific]);
 
-  // Set initial mode based on lifecycle stage
+  // Set initial mode based on lifecycle stage (only when status or permissions change,
+  // NOT on every background TanStack refetch which would create a new draft object ref)
+  const lifecycleStatus = draft?.status;
   useEffect(() => {
-    if (!draft) return;
-    const status = draft.status;
-    if (status === 'draft' && canEdit) {
+    if (!lifecycleStatus) return;
+    if (lifecycleStatus === 'draft' && canEdit) {
       setModeRaw('edit');
-    } else if (status === 'response_revision' && canEdit) {
+    } else if (lifecycleStatus === 'response_revision' && canEdit) {
       setModeRaw('edit');
     } else {
       setModeRaw('review');
     }
-  }, [draft?.status, canEdit, draft]);
+  }, [lifecycleStatus, canEdit]);
 
   // --- Agent hook (lifted to page level so slash commands + Cmd+K can call it) ---
   const {
@@ -343,7 +351,7 @@ function WorkspaceEditorPage() {
   const prevContentHashRef = useRef<string>('');
   useEffect(() => {
     if (!draft || readOnly) return;
-    const sig = `${draft.abstract?.length}|${draft.motivation?.length}|${draft.rationale?.length}`;
+    const sig = `${draft.abstract?.slice(0, 50)}|${draft.abstract?.length}|${draft.motivation?.slice(0, 50)}|${draft.motivation?.length}|${draft.rationale?.slice(0, 50)}|${draft.rationale?.length}`;
     if (sig === prevContentHashRef.current) return;
     prevContentHashRef.current = sig;
     // The hook internally debounces 1.5s and deduplicates by content hash
@@ -516,8 +524,8 @@ function WorkspaceEditorPage() {
       // Show "Saving..." immediately for responsiveness
       setSaving();
       // Debounce the actual mutation to avoid flooding during fast typing
-      clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
+      clearTimeout(contentDebounceRef.current);
+      contentDebounceRef.current = setTimeout(() => {
         updateDraft.mutate({ [field]: value });
       }, 500);
     },
@@ -529,8 +537,8 @@ function WorkspaceEditorPage() {
     (ts: Record<string, unknown>) => {
       setTypeSpecific(ts);
       setSaving();
-      clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
+      clearTimeout(typeSpecificDebounceRef.current);
+      typeSpecificDebounceRef.current = setTimeout(() => {
         updateDraft.mutate({ typeSpecific: ts });
       }, 500);
     },
@@ -538,8 +546,8 @@ function WorkspaceEditorPage() {
   );
 
   const handleTypeSpecificBlur = useCallback(() => {
-    // Force immediate save on blur (clear any pending debounce)
-    clearTimeout(debounceRef.current);
+    // Force immediate save on blur (clear any pending type-specific debounce)
+    clearTimeout(typeSpecificDebounceRef.current);
     setSaving();
     updateDraft.mutate({ typeSpecific });
   }, [updateDraft, setSaving, typeSpecific]);

@@ -34,8 +34,8 @@ interface RiskItem {
 
 interface RiskRegisterSectionProps {
   constitutionalFlags?: ConstitutionalFlag[];
-  /** Withdrawal amount in lovelace (for treasury proposals) */
-  withdrawalAmount?: number | null;
+  /** Withdrawal amount in ADA (for treasury proposals) */
+  withdrawalAmountAda?: number | null;
   /** Number of community concern annotations */
   concernCount?: number;
   proposalType?: string;
@@ -62,8 +62,8 @@ function deriveRisks(props: RiskRegisterSectionProps): RiskItem[] {
   }
 
   // Financial risk for treasury proposals
-  if (props.withdrawalAmount && props.withdrawalAmount > 0) {
-    const ada = props.withdrawalAmount / 1_000_000;
+  if (props.withdrawalAmountAda && props.withdrawalAmountAda > 0) {
+    const ada = props.withdrawalAmountAda;
     const severity = ada > 10_000_000 ? 'high' : ada > 1_000_000 ? 'medium' : 'low';
     risks.push({
       category: 'financial',

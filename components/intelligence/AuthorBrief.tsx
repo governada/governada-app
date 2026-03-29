@@ -96,8 +96,8 @@ export function AuthorBrief({ draft, draftId, constitutionalResult, canEdit }: A
         return (
           <RiskRegisterSection
             constitutionalFlags={constitutionalResult?.flags}
-            withdrawalAmount={
-              (draft.typeSpecific as Record<string, unknown> | null)?.withdrawalAmount as
+            withdrawalAmountAda={
+              (draft.typeSpecific as Record<string, unknown> | null)?.withdrawalAmountAda as
                 | number
                 | undefined
             }

@@ -7,7 +7,7 @@
  * SimilarProposalsCard. Lazy-loads on mount (section expand handled by BriefShell).
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAISkill } from '@/hooks/useAISkill';
@@ -54,8 +54,9 @@ export function SimilarProposalsSection({
   const skill = useAISkill<ResearchPrecedentOutput>();
   const hasFetched = useRef(false);
 
-  const fetchIfNeeded = useCallback(() => {
-    if (hasFetched.current || skill.isPending) return;
+  // Auto-fetch on mount (one-shot via ref guard)
+  useEffect(() => {
+    if (hasFetched.current) return;
     hasFetched.current = true;
     skill.mutate({
       skill: 'research-precedent',
@@ -65,12 +66,8 @@ export function SimilarProposalsSection({
         proposalType,
       },
     });
-  }, [skill, proposalContent, proposalType]);
-
-  // Auto-fetch when section is rendered (i.e., expanded)
-  useEffect(() => {
-    fetchIfNeeded();
-  }, [fetchIfNeeded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot fetch guarded by ref
+  }, []);
 
   if (skill.isPending) {
     return (

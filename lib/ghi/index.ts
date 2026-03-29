@@ -4,7 +4,7 @@
  * Re-exports types/constants for backward compatibility so no consumer changes are needed.
  */
 
-import { createClient } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { getFeatureFlag } from '@/lib/featureFlags';
 import { calibrate, CALIBRATION } from './calibration';
 import {
@@ -113,7 +113,7 @@ export interface GHIComputeResult extends GHIResult {
 }
 
 export async function computeGHI(): Promise<GHIComputeResult> {
-  const supabase = createClient();
+  const supabase = getSupabaseAdmin();
 
   // Check cross-reference reconciliation status before computing
   // If a mismatch was detected in the last 4 hours, flag it in meta

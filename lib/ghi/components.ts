@@ -13,19 +13,19 @@
  * are included. This ensures GHI is defensible under public scrutiny.
  */
 
-import { createClient } from '@/lib/supabase';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { calculateTreasuryHealthScore } from '@/lib/treasury';
 import { computeEDI, type EDIResult } from './ediMetrics';
 import { computePairwiseDiversity } from '@/lib/embeddings/quality';
 import { cosineSimilarity } from '@/lib/embeddings/query';
+import { logger } from '@/lib/logger';
 
 // ---------------------------------------------------------------------------
 // Shared types
 // ---------------------------------------------------------------------------
 
 export interface ComponentInput {
-  supabase: ReturnType<typeof createClient>;
+  supabase: ReturnType<typeof getSupabaseAdmin>;
   currentEpoch: number;
 }
 
@@ -82,14 +82,23 @@ export async function computeDRepParticipation({
     }
   }
 
-  const { data: dreps } = await supabase
+  const { data: dreps, error: drepsError } = await supabase
     .from('dreps')
     .select('effective_participation, info')
     .not('info', 'is', null)
     .gt('info->votingPowerLovelace', '0');
 
+  if (drepsError) {
+    logger.error('[ghi:drep-participation] Query failed', { error: drepsError.message });
+  }
+
   const active = dreps ?? [];
-  if (active.length === 0) return { raw: 0 };
+  if (active.length === 0) {
+    logger.warn('[ghi:drep-participation] No active DReps returned', {
+      drepsError: drepsError?.message,
+    });
+    return { raw: 0 };
+  }
 
   // Participation-weighted median: weight each DRep's participation by their
   // voting power so that DReps with more delegation carry proportionally more
@@ -107,10 +116,28 @@ export async function computeDRepParticipation({
     .filter((e) => e.weight > 0)
     .sort((a, b) => a.participation - b.participation);
 
-  if (entries.length === 0) return { raw: 0 };
+  if (entries.length === 0) {
+    logger.warn('[ghi:drep-participation] No entries after weight filter', {
+      activeCount: active.length,
+      sampleInfo: active.slice(0, 3).map((d) => ({
+        ep: d.effective_participation,
+        vpRaw: (d.info as Record<string, unknown> | null)?.votingPowerLovelace,
+      })),
+    });
+    return { raw: 0 };
+  }
 
   const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
   const halfWeight = totalWeight / 2;
+
+  logger.info('[ghi:drep-participation] Computing weighted median', {
+    activeCount: active.length,
+    entriesCount: entries.length,
+    totalWeight,
+    halfWeight,
+    firstEntry: entries[0],
+    lastEntry: entries[entries.length - 1],
+  });
 
   let cumulativeWeight = 0;
   let weightedMedian = entries[0].participation;

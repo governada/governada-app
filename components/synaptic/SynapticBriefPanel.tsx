@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { useSynapticStore } from '@/stores/synapticStore';
-import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
+import { useSenecaThreadStore, isMatchIntent } from '@/stores/senecaThreadStore';
 import { readAdvisorStream } from '@/lib/intelligence/streamAdvisor';
 import type { GlobeStreamCommand } from '@/lib/intelligence/streamAdvisor';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -148,6 +148,12 @@ export function SynapticBriefPanel({ onGlobeCommand, className }: SynapticBriefP
   // -------------------------------------------------------------------------
   const handleFollowUp = useCallback(
     (query: string) => {
+      // Intercept match intents — launch the quiz directly instead of hitting the AI
+      if (isMatchIntent(query)) {
+        useSenecaThreadStore.getState().startMatch();
+        return;
+      }
+
       store.startConversation();
       abortRef.current?.abort();
       const controller = new AbortController();

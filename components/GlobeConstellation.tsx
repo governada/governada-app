@@ -649,7 +649,7 @@ export const GlobeConstellation = forwardRef<
       for (const node of sceneState.nodes) {
         if (node.nodeType === 'drep') {
           drepIds.add(node.id);
-          intensities.set(node.id, 0.6); // warm glow, not max intensity
+          intensities.set(node.id, 0.9); // bright warm glow — all DReps clearly visible
         }
       }
 

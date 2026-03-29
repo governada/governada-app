@@ -67,7 +67,7 @@ export const generateEmbeddings = inngest.createFunction(
 
     // Step 3: Generate rationale embeddings — chunked to avoid Railway timeout.
     // 3,567 rationales split into chunks of 700 (~30s per chunk max).
-    const RATIONALE_CHUNK = 700;
+    const RATIONALE_CHUNK = 200;
     const rationaleChunkResults: { generated: number; total: number }[] = [];
 
     for (let chunk = 0; chunk * RATIONALE_CHUNK < 4200; chunk++) {

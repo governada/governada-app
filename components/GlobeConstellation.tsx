@@ -25,6 +25,11 @@ import {
   GloryRing,
 } from '@/components/globe/GlobeEffects';
 import { ConstellationNodes } from '@/components/globe/NodePoints';
+import {
+  IdleCameraWobble,
+  CinematicCamera,
+  TiltedGlobeGroup,
+} from '@/components/globe/GlobeCamera';
 import type {
   ConstellationApiData,
   FindMeTarget,
@@ -1078,13 +1083,4 @@ export const GlobeConstellation = forwardRef<
 // NetworkEdgeLines, EdgeLayer, ConstellationEdges, NeuralMesh extracted to components/globe/GlobeEdges.tsx
 
 // ConstellationNodes + NodePoints extracted to components/globe/NodePoints.tsx
-
-import {
-  IdleCameraWobble,
-  CinematicCamera,
-  TiltedGlobeGroup,
-} from '@/components/globe/GlobeCamera';
-
-// HeartbeatPulse and InnerGlow removed — visually distracting
-
-// Helpers (rotateAroundY, sleep, estimateGPUTier) imported from lib/globe/helpers.ts
+// IdleCameraWobble, CinematicCamera, TiltedGlobeGroup imported at top of file

@@ -3,15 +3,12 @@
  */
 
 import type { GlobeCommand } from '@/lib/globe/types';
-import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 export interface BehaviorContext {
   /** Dispatch a globe command (may be handled by another behavior or the bridge) */
   dispatch: (command: GlobeCommand) => void;
   /** Schedule a command after a delay — returns cancel function */
   schedule: (command: GlobeCommand, delayMs: number) => () => void;
-  /** Get current constellation nodes */
-  getNodes: () => ConstellationNode3D[];
 }
 
 export interface GlobeBehavior {

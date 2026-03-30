@@ -9,12 +9,14 @@
  */
 
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
-import type { ConstellationRef } from '@/lib/globe/types';
-import type { GlobeCommand } from '@/lib/globe/types';
+import type { ConstellationRef, GlobeCommand } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
-// fetchVoteSplit now handled by voteSplitBehavior
 import { createChoreographer, type Choreography } from '@/lib/globe/choreographer';
-import { registerBehavior, executeBehavior } from '@/lib/globe/behaviors/registry';
+import {
+  registerBehavior,
+  unregisterBehavior,
+  executeBehavior,
+} from '@/lib/globe/behaviors/registry';
 import type { BehaviorContext } from '@/lib/globe/behaviors/types';
 import { createMatchBehavior } from '@/lib/globe/behaviors/matchBehavior';
 import { createVoteSplitBehavior } from '@/lib/globe/behaviors/voteSplitBehavior';
@@ -41,15 +43,17 @@ export function useSenecaGlobeBridge(
   // Lazy-initialized choreographer for cancellable sequence execution
   const choreographerRef = useRef<ReturnType<typeof createChoreographer> | null>(null);
 
-  // Register behaviors once per hook instance
-  const behaviorsRegistered = useRef(false);
+  // Register behaviors — re-registers with fresh closures on remount (React StrictMode safe)
   useEffect(() => {
-    if (behaviorsRegistered.current) return;
-    behaviorsRegistered.current = true;
     const getGlobe = () => globeRef.current;
     registerBehavior(createMatchBehavior(getGlobe));
     registerBehavior(createVoteSplitBehavior(getGlobe));
     registerBehavior(createTopicWarmBehavior(getGlobe));
+    return () => {
+      unregisterBehavior('match');
+      unregisterBehavior('voteSplit');
+      unregisterBehavior('topicWarm');
+    };
   }, [globeRef]);
 
   const handleNodeClick = useCallback(
@@ -72,7 +76,6 @@ export function useSenecaGlobeBridge(
           const t = setTimeout(() => executeGlobeCommand(cmd), delayMs);
           return () => clearTimeout(t);
         },
-        getNodes: () => [], // placeholder — behaviors that need nodes access them via globe ref
       };
       if (executeBehavior(command, behaviorCtx)) return;
 

@@ -12,9 +12,18 @@ import type { GlobeBehavior, BehaviorContext } from './types';
 const behaviors: GlobeBehavior[] = [];
 
 export function registerBehavior(behavior: GlobeBehavior): void {
-  // Prevent duplicate registration
-  if (behaviors.some((b) => b.id === behavior.id)) return;
-  behaviors.push(behavior);
+  // Replace existing behavior with same ID (handles React StrictMode remount with fresh closures)
+  const idx = behaviors.findIndex((b) => b.id === behavior.id);
+  if (idx >= 0) {
+    behaviors[idx] = behavior;
+  } else {
+    behaviors.push(behavior);
+  }
+}
+
+export function unregisterBehavior(id: string): void {
+  const idx = behaviors.findIndex((b) => b.id === id);
+  if (idx >= 0) behaviors.splice(idx, 1);
 }
 
 /**

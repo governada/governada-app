@@ -69,7 +69,10 @@ export function createChoreographer(dispatch: (command: GlobeCommand) => void) {
 
     const totalDuration = getTotalDuration(choreography);
 
+    let rejectDone: ((err: Error) => void) | null = null;
+
     const done = new Promise<void>((resolve, reject) => {
+      rejectDone = reject;
       let accumulatedDelay = 0;
 
       for (let i = 0; i < choreography.steps.length; i++) {
@@ -90,20 +93,13 @@ export function createChoreographer(dispatch: (command: GlobeCommand) => void) {
       if (choreography.steps.length === 0) {
         resolve();
       }
-
-      // If cancelled externally, reject
-      // Check periodically isn't needed — cancel() clears timers, so
-      // remaining callbacks won't fire. But we store reject for the cancel method.
-      const cancelCheck = setTimeout(() => {
-        if (ref.cancelled) reject(new Error('Choreography cancelled'));
-      }, totalDuration + 100);
-      timers.push(cancelCheck);
     });
 
     return {
       cancel: () => {
         ref.cancelled = true;
         for (const t of timers) clearTimeout(t);
+        rejectDone?.(new Error('Choreography cancelled'));
       },
       done: done.catch(() => {}), // Swallow cancel rejections — caller doesn't need to handle
       totalDuration,

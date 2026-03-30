@@ -9,7 +9,10 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { computeEngagementQuality } from './engagementQuality';
-import { computeEffectiveParticipation } from './effectiveParticipation';
+import {
+  computeEffectiveParticipation,
+  getExtendedImportanceWeight,
+} from './effectiveParticipation';
 import type { VoteData, ProposalScoringContext, ProposalVotingSummary } from './types';
 import { computeReliability } from './reliability';
 import { computeGovernanceIdentity } from './governanceIdentity';
@@ -72,7 +75,7 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
   const { data: proposals } = await supabase
     .from('proposals')
     .select(
-      'tx_hash, proposal_index, proposal_type, proposed_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, treasury_withdrawal_amount',
+      'tx_hash, proposal_index, proposal_type, proposed_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, treasury_withdrawal_amount, block_time',
     )
     .lte('proposed_epoch', targetEpoch)
     .range(0, 99999);
@@ -104,13 +107,14 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
       else if (amount >= 1_000_000) treasuryTier = 'significant';
       else treasuryTier = 'standard';
     }
+    const proposalType = p.proposal_type ?? 'Unknown';
     proposalContextMap.set(key, {
       proposalKey: key,
-      proposalType: p.proposal_type ?? 'Unknown',
+      proposalType,
       treasuryTier,
       withdrawalAmount: amount,
-      blockTime: 0, // not needed for importance weight
-      importanceWeight: 1, // will be computed by the pillar
+      blockTime: (p.block_time as number) ?? 0,
+      importanceWeight: getExtendedImportanceWeight(proposalType, treasuryTier, amount),
     });
   }
 
@@ -250,16 +254,19 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
 
   // ── Compute Governance Identity ───────────────────────────────────────
   // Use current metadata for all epochs (pragmatic decision — profiles rarely change)
+  // Fetch ALL DReps with metadata — avoid .in() with 500+ IDs (PostgREST URL length limit)
   const { data: drepProfiles } = await supabase
     .from('dreps')
     .select(
       'id, metadata, delegator_count, metadata_hash_verified, profile_last_changed_at, updated_at',
     )
-    .in('id', Array.from(drepIds))
+    .not('metadata', 'is', null)
     .range(0, 99999);
 
   const profiles = new Map<string, DRepProfileData>();
   for (const d of drepProfiles ?? []) {
+    // Only include DReps that actually voted in the epoch range
+    if (!drepIds.has(d.id)) continue;
     profiles.set(d.id, {
       drepId: d.id,
       metadata: d.metadata as Record<string, unknown> | null,

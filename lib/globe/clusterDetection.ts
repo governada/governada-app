@@ -61,26 +61,17 @@ function kmeansppInit(points: number[][], k: number): number[][] {
   centroids.push([...points[firstIdx]]);
 
   for (let c = 1; c < k; c++) {
-    // Compute distance from each point to nearest existing centroid
-    const dists = new Float64Array(n);
-    let totalDist = 0;
+    // Pick the point farthest from any existing centroid (deterministic K-means++)
+    let maxIdx = 0;
+    let maxD = 0;
     for (let i = 0; i < n; i++) {
       let minD = Infinity;
       for (const centroid of centroids) {
         const d = euclideanDistSq(points[i], centroid);
         if (d < minD) minD = d;
       }
-      dists[i] = minD;
-      totalDist += minD;
-    }
-
-    // Pick next centroid with probability proportional to distance squared
-    // Deterministic selection: pick the point with maximum distance
-    let maxIdx = 0;
-    let maxD = 0;
-    for (let i = 0; i < n; i++) {
-      if (dists[i] > maxD) {
-        maxD = dists[i];
+      if (minD > maxD) {
+        maxD = minD;
         maxIdx = i;
       }
     }

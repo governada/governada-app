@@ -61,7 +61,9 @@ Respond as JSON: {"name": "...", "description": "..."}`,
       ],
     });
 
-    const text = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+    const raw = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
+    // Strip markdown code fences Claude may wrap around JSON
+    const text = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
     const parsed = JSON.parse(text);
     if (parsed.name && parsed.description) {
       return { name: String(parsed.name), description: String(parsed.description) };

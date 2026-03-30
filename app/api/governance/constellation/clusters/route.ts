@@ -53,6 +53,7 @@ async function computeClusters(): Promise<ClustersPayload> {
       'id, score, info, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
     )
     .gt('info->>votingPowerLovelace', '0')
+    .order('id')
     .limit(700);
 
   if (!dreps || dreps.length === 0) {

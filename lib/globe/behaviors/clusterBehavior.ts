@@ -7,7 +7,7 @@
  * using the cluster's centroid alignment as the highlight target.
  */
 
-import type { GlobeBehavior } from './types';
+import type { GlobeBehavior, BehaviorContext } from './types';
 import type { GlobeCommand, ConstellationRef } from '@/lib/globe/types';
 
 /** Module-level cluster data cache — populated by ClusterLabels or API fetch */
@@ -26,7 +26,7 @@ export function createClusterBehavior(globeRef: () => ConstellationRef | null): 
   return {
     id: 'cluster',
     handles: ['highlightCluster'],
-    execute(command: GlobeCommand) {
+    execute(command: GlobeCommand, _ctx: BehaviorContext) {
       if (command.type !== 'highlightCluster') return;
       const globe = globeRef();
       if (!globe) return;

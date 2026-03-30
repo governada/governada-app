@@ -21,6 +21,7 @@ interface ClusterData {
   id: string;
   name: string;
   description: string;
+  centroid6D: number[];
   centroidSphere: [number, number]; // [lon, lat]
   centroid3D: [number, number, number];
   memberCount: number;
@@ -76,7 +77,7 @@ export function ClusterLabels() {
         data.clusters.map((c) => ({
           id: c.id,
           memberIds: c.memberIds,
-          centroid6D: [], // Not needed for the behavior
+          centroid6D: c.centroid6D ?? [],
         })),
       );
     } catch {

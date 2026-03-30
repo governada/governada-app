@@ -22,8 +22,8 @@ export const backfillGhi = inngest.createFunction(
     id: 'backfill-ghi',
     retries: 2,
     concurrency: { limit: 1 },
+    triggers: [{ event: 'drepscore/backfill.ghi' }],
   },
-  { event: 'drepscore/backfill.ghi' },
   async ({ step, event }) => {
     const startEpoch = (event.data?.startEpoch as number) ?? 530;
     const endEpoch = (event.data?.endEpoch as number) ?? 621;

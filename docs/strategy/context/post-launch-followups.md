@@ -60,6 +60,23 @@ Single source of truth for work intentionally deferred to post-launch. Every age
 
 ---
 
+### Vote Split Regional Energy
+
+**Source:** Living Republic Epic, Chunk 4 planning session (2026-03-30)
+**Priority:** Medium — fast-follow after Chunk 4 ships
+**Why deferred:** Chunk 4 builds the shader infrastructure (uniform arrays, Gaussian falloff, GPU tier gating). Vote split is a second data pipeline using the same infrastructure. Shipping ambient energy first proves the visual approach before adding contextual mode switching.
+**What's needed:**
+
+- When a proposal is focused (via Seneca or entity peek), each cluster's aggregate vote (Yes/No/Abstain ratio by voting power) determines its atmosphere color
+- Warm (amber/gold) = majority Yes, Cool (blue/cyan) = majority No, Neutral (dim white) = split
+- Same `uRegionColors` uniform from Chunk 4 — just swap the color data when vote split mode is active
+- Smooth 1-second lerp transition between ambient energy colors and vote split colors
+- Data source: per-cluster voting aggregation from `drep_votes` table for the focused proposal
+- Depends on: Chunk 4 shader infrastructure, Chunk 1 cluster data
+  **Success criteria:** User focuses a proposal, atmosphere smoothly shifts to show which governance regions support vs. oppose it. Visually intuitive warm/cool gradient.
+
+---
+
 ## Competitive & Market
 
 (Empty — add items as they arise)

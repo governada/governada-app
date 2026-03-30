@@ -651,86 +651,210 @@ DReps/SPOs/CC members: they ARE real nodes already. No user node needed. Globe c
 
 ---
 
-### Chunk 4: Regional Energy Fields — "The Atmosphere"
+### Chunk 4: Regional Energy Fields + Governance Heartbeat — "The Atmosphere"
 
-**JTBD:** Make governance activity visible as ambient energy on the globe — active regions glow, contested regions pulse, quiet regions dim. The globe _feels_ alive with governance.
+**JTBD:** Make governance activity visible as ambient energy on the globe — active regions glow, quiet regions dim — and give the globe a living pulse tied to epoch progress. Before reading any text or asking Seneca anything, users can _see_ where governance is active and _feel_ the system breathing.
 
-**Why this matters:** Without ambient energy, the globe is static nodes on a sphere. With it, the globe communicates governance dynamics at a glance — before you read any text or ask Seneca anything, you can _see_ where governance is active.
+**What this replaces:** A static globe where every region looks the same regardless of activity level. Currently, the atmosphere shader renders a uniform fresnel glow with a single `uColor` and `uIntensity` — no spatial variation, no temporal pulse.
 
-**Scope:**
+**What this does NOT include (deferred to fast-follow):**
 
-1. Per-cluster activity intensity computed from: recent votes cast, active proposals in dimension, engagement signals
-2. Vote split energy: when viewing a proposal's context, regions color by aggregate stance (warm=Yes, cool=No)
-3. Smooth gradient transitions using noise-based blending in the atmosphere shader
-4. GHI health signal: overall atmosphere intensity/hue reflects governance health score
-5. Feature flag: `globe_region_energy`
+- **Vote split energy** — per-cluster warm/cool coloring based on aggregate voting stance on a focused proposal. Uses the same shader infrastructure built here, but requires a second data pipeline (per-proposal vote aggregation per cluster). Ship after the ambient baseline is proven.
+- **Seneca integration** — Seneca referencing energy in idle cards ("The Innovation Quarter is glowing — 12 votes in the last hour") is a natural Chunk 2 extension after this ships. Not in scope here.
+
+---
+
+### CRITICAL: What already exists in the shader architecture
+
+**`ATMOSPHERE_FRAG` in `lib/globe/shaders.ts`:**
+
+- Uniforms: `uColor` (vec3), `uIntensity` (float)
+- Fresnel calculation: `1.0 - abs(dot(viewDir, vNormal))`, rim power hardcoded to 3.0
+- Final alpha: `rim * uIntensity`
+- Additive blending via `THREE.AdditiveBlending` on the material
+- **No `uTime` uniform** — the shader is static per frame today
+- **No uniform arrays** — all data is either single values or per-vertex attributes
+
+**`GlobeAtmosphere.tsx`:**
+
+- Props: `radius`, `color`, `warmColor`, `intensity`, `matchProgress`
+- Already does color lerp via `matchProgress` (0-1 blends `color` → `warmColor`)
+- Uniforms passed: `{ uColor, uIntensity }` — no arrays
+- Sphere geometry: 48×48 segments, front-side only, transparent, depth-write off
+
+**`estimateGPUTier()` in `lib/globe/helpers.ts`:**
+
+- Returns `'low' | 'mid' | 'high'`
+- Currently exists but is **not wired to anything**. Chunk 4 should be the feature that activates it.
+
+---
+
+### Scope
+
+**1. Region energy computation** (`lib/globe/regionEnergy.ts`)
+
+Pure function. Takes cluster data (from Chunk 1's API or cached) + recent activity counts, returns a fixed-size array of region energy sources:
+
+```typescript
+interface RegionSource {
+  centroid: [number, number, number]; // 3D position from sphereToCartesian(cluster centroid)
+  intensity: number; // 0-1, driven by recent activity (votes, delegations)
+  color: [number, number, number]; // RGB 0-1, driven by cluster's dominant dimension
+}
+
+function computeRegionEnergy(
+  clusters: Cluster[],
+  activityCounts: Map<string, number>, // clusterId → recent event count
+): RegionSource[];
+```
+
+Activity data source: extend Chunk 2's `/api/governance/activity/recent` to include per-cluster counts, or query directly from Supabase (count of votes/delegation changes per cluster in the last 24 hours). This is a lightweight query, not an AI call.
+
+Output: always exactly `MAX_REGIONS` (8) sources. Unused slots have `intensity: 0`. This is critical because GLSL uniform arrays must have a fixed compile-time size.
+
+**2. Atmosphere shader extension** (`lib/globe/shaders.ts`)
+
+This is the core technical work. Modify `ATMOSPHERE_FRAG` to add:
+
+New uniforms:
+
+- `uRegionCentroids` — `vec3[8]` array of 3D centroids
+- `uRegionColors` — `vec3[8]` array of RGB colors
+- `uRegionIntensities` — `float[8]` array of intensities (0-1)
+- `uRegionCount` — `int` number of active regions (shader loops `0..uRegionCount`)
+- `uTime` — `float` elapsed time in seconds (needed for heartbeat + subtle energy animation)
+
+Shader logic (appended AFTER existing fresnel calculation, not replacing it):
+
+```glsl
+// Regional energy — Gaussian falloff from each cluster centroid
+vec3 regionGlow = vec3(0.0);
+for (int i = 0; i < 8; i++) {
+    if (i >= uRegionCount) break;
+    float dist = distance(vWorldPosition, uRegionCentroids[i]);
+    float falloff = exp(-dist * dist / (2.0 * sigma * sigma)); // Gaussian
+    regionGlow += uRegionColors[i] * uRegionIntensities[i] * falloff;
+}
+// Additive blend with existing fresnel glow
+gl_FragColor.rgb += regionGlow * uIntensity;
+```
+
+The `sigma` value (Gaussian spread) controls how wide the glow regions are. Start with `sigma = 3.0` (covers ~30% of the globe per region). Make it a constant at the top of the shader, not a uniform — it doesn't need to change at runtime.
+
+**Key detail:** simplex noise is NOT needed for the ambient glow. Gaussian falloff from centroids with additive blending produces smooth, organic gradients. Noise would add visual complexity that risks looking "procedural." Keep it clean. If organic variation is needed later, it's a follow-up.
+
+**3. GlobeAtmosphere component update** (`components/globe/GlobeAtmosphere.tsx`)
+
+Pass the new uniforms to the shader material:
+
+- Accept new props: `regionSources: RegionSource[]`, `time: number`
+- Convert `RegionSource[]` to the three uniform arrays (centroids, colors, intensities)
+- Pass `uTime` from a `useFrame` clock or `useRef` incrementing per frame
+- **GPU tier gating:** if `estimateGPUTier() === 'low'`, skip region uniforms entirely (pass `uRegionCount: 0`). This is the first production use of the GPU tier system.
+
+**4. GHI health signal** (~5 lines)
+
+Map the current GHI score to the atmosphere's base `color` prop:
+
+- GHI ≥ 70: teal tint (current default — `#2dd4bf`)
+- GHI 50-69: amber tint (`#f59e0b`)
+- GHI < 50: red tint (`#ef4444`)
+
+This uses the existing `matchProgress` / `warmColor` lerp mechanism on `GlobeAtmosphere`. The GHI score is already available from the existing `/api/governance/health` endpoint. One `useQuery` call + a color mapping function.
+
+**5. Governance heartbeat** (absorbed from Chunk 5)
+
+A slow sinusoidal modulation of the atmosphere intensity, tied to epoch progress:
+
+```glsl
+float heartbeat = 1.0 + sin(uTime * 0.628) * 0.05; // 10-second cycle, ±5% intensity
+gl_FragColor.rgb *= heartbeat;
+```
+
+This goes in `ATMOSPHERE_FRAG` after the regional energy addition. `0.628 ≈ 2π/10` gives a 10-second period. The amplitude (0.05 = 5%) is barely perceptible consciously but creates a subliminal "living" sensation.
+
+**6. Region energy behavior + command**
+
+- Add `setRegionEnergy` command to `lib/globe/types.ts` with `{ sources: RegionSource[] }` payload
+- Create `lib/globe/behaviors/regionEnergyBehavior.ts` — handles the command, stores sources in a shared state that `GlobeAtmosphere` reads
+- Register in `useSenecaGlobeBridge.ts` (one line)
+
+**7. Data flow wiring**
+
+On globe mount (in `GlobeLayout.tsx` or `useSenecaGlobeBridge.ts`):
+
+1. Fetch cluster data from `/api/governance/constellation/clusters` (Chunk 1)
+2. Fetch recent activity counts (per-cluster event counts, last 24h)
+3. Call `computeRegionEnergy(clusters, activityCounts)` → `RegionSource[]`
+4. Dispatch `setRegionEnergy` command
+5. Refresh every 5 minutes (lightweight — just counts, not full event lists)
+
+Graceful fallback: if cluster data is unavailable (Chunk 1 not shipped yet), `computeRegionEnergy` returns 8 zero-intensity sources → atmosphere renders normally without regions. No error, no feature-flag gymnastics.
+
+---
 
 **Files to create:**
 
-- `lib/globe/regionEnergy.ts` — compute per-cluster activity intensity + color
+- `lib/globe/regionEnergy.ts` — pure function: clusters + activity → `RegionSource[8]`
 - `lib/globe/behaviors/regionEnergyBehavior.ts` — handles `setRegionEnergy` command
-- `lib/globe/noise.ts` — simplex noise GLSL function string (pure data, ~30 lines)
 
-**Files to modify (shader changes only):**
+**Files to modify (shader + component):**
 
-- `lib/globe/shaders.ts` — add `uRegionData` uniform (vec4 array) to `ATMOSPHERE_FRAG`. Add noise-based Gaussian blending from region centroids. This is the ONE place agents modify rendering — and it's a pure string, not a React component.
-- `lib/globe/types.ts` — add `setRegionEnergy` command type
-- `components/globe/GlobeAtmosphere.tsx` — pass regionData uniform to shader material
+- `lib/globe/shaders.ts` — add uniforms + Gaussian sampling + heartbeat to `ATMOSPHERE_FRAG` (the spec above IS the shader change — append, don't replace existing fresnel)
+- `components/globe/GlobeAtmosphere.tsx` — accept `regionSources` + `time` props, pass new uniforms, wire GPU tier gating
+- `lib/globe/types.ts` — add `setRegionEnergy` command, add `RegionSource` type
+- `hooks/useSenecaGlobeBridge.ts` — register regionEnergyBehavior (one line)
 
-**How regional energy works (shader-only approach):**
+**Files to NOT modify:**
 
-- `regionEnergy.ts` computes: `{ centroid: [x,y,z], intensity: number, color: [r,g,b] }[]` for each cluster
-- This is passed as a uniform array to the atmosphere shader
-- The shader samples each fragment against all centroids using Gaussian falloff
-- Multiple regions blend smoothly where they overlap
-- Result: soft, holographic glow regions on the globe surface
-- Looks like: thermal imaging on a military HUD. NOT like weather forecast regions.
+- `lib/constellation/globe-layout.ts` — pure function, never modify
+- `GlobeConstellation.tsx`, `NodePoints.tsx`, `GlobeCamera.tsx` — rendering layer
+- `NODE_FRAG`, `NODE_VERT` — node shaders are not touched (regional energy is atmosphere-only)
 
-**How vote split energy works:**
+**Feature flag:** `globe_region_energy` — gates region energy uniforms + heartbeat. When off, atmosphere renders as today (single color, no spatial variation, no pulse).
 
-- When a proposal is focused, each cluster's aggregate vote (Yes/No/Abstain ratio) determines its color
-- Warm (amber/gold) = majority Yes, Cool (blue/cyan) = majority No, Neutral (dim white) = split
-- Same shader mechanism — just different color input to the uniform array
-- Transition: smooth 1s lerp between normal energy and vote-split energy
+---
 
-**How GHI health signal works:**
+**Mandatory pre-build reading list:**
 
-- The existing `matchProgress` prop on `GlobeAtmosphere` already lerps the atmosphere color
-- Map GHI score → atmosphere base color: healthy (teal/green tint) → stressed (amber tint) → critical (red tint)
-- This is a 5-line change in the component that passes the atmosphere color
+1. `lib/globe/shaders.ts` — read `ATMOSPHERE_FRAG` and `ATMOSPHERE_VERT` in full. Understand the fresnel calculation, what uniforms exist, how `uColor` and `uIntensity` are used.
+2. `components/globe/GlobeAtmosphere.tsx` — read fully. Understand the material setup, uniform passing, `matchProgress` color lerp, Three.js material settings (additive blending, transparency).
+3. `lib/globe/types.ts` — understand FocusState, GlobeCommand union
+4. `lib/globe/helpers.ts` — find `estimateGPUTier()`. Read it. This is the first feature to actually use it.
+5. `lib/globe/behaviors/` — read existing behaviors before writing regionEnergyBehavior
+6. `components/globe/GlobeConstellation.tsx` — read to understand the `useFrame` loop and how data flows between FocusState and the rendering components. Do NOT modify this file.
 
-**Agent guidance:**
-
-- The main work is the atmosphere shader modification — adding a uniform array and Gaussian sampling
-- Read `lib/globe/shaders.ts` `ATMOSPHERE_FRAG` first — understand the existing fresnel setup
-- Add the region sampling AFTER the fresnel calculation — additive blending
-- Test: set 3 known centroids with known colors, verify smooth gradients appear
-- `regionEnergy.ts` is pure math — given cluster data + recent activity → produce uniform array
-- Performance budget: max 8 region sources. The shader loops over them per fragment.
+---
 
 **Acceptance criteria:**
 
-- [ ] Alignment layout shows visible regional energy differences (active clusters glow brighter)
-- [ ] Vote split mode shows warm/cool regional gradients (not per-node, per-region)
-- [ ] GHI score reflects in overall atmosphere tint
-- [ ] Transitions between normal/vote-split/GHI modes are smooth (1s lerp)
-- [ ] Gradients are smooth (no hard edges) — Gaussian falloff from centroids
-- [ ] Performance: 60fps with 8 region sources on mid-tier GPU
-- [ ] Low-tier GPU: region energy disabled (graceful degradation via `estimateGPUTier()`)
-- [ ] Feature flag `globe_region_energy` controls the feature
+- [ ] Active governance clusters glow brighter on the globe than quiet clusters — visible spatial variation
+- [ ] Gradients are smooth (Gaussian falloff from centroids, no hard edges)
+- [ ] GHI score reflected in atmosphere base tint (teal → amber → red)
+- [ ] Governance heartbeat: 10-second sinusoidal pulse, ±5% intensity modulation
+- [ ] `computeRegionEnergy()` is a pure function, fully testable without Three.js
+- [ ] Shader compiles clean with 8 region sources — no runtime GLSL errors
+- [ ] GPU tier gating: `estimateGPUTier() === 'low'` → region energy disabled (0 active regions)
+- [ ] Performance: 60fps with 8 active region sources on mid-tier GPU (test with 48×48 atmosphere geometry)
+- [ ] Graceful fallback: if cluster data unavailable, atmosphere renders normally (zero-intensity regions)
+- [ ] No simplex noise — Gaussian falloff only (keep it clean)
+- [ ] Feature flag `globe_region_energy` gates all new behavior
+- [ ] `npm run preflight` passes clean
 
-**Effort:** M (5-7 days)
+**Effort:** M (4-6 days — shader work is focused; GHI + heartbeat are near-free additions; no vote split energy in this chunk)
 
 ---
 
 ### Chunk 5: Ambient Intelligence — "The Pulse"
 
-**JTBD:** Make the globe feel alive — governance breathes, recent activity glows, significant events ripple through the constellation. Users feel they're looking at a living system, not a static snapshot.
+**Note:** The governance heartbeat (10s sinusoidal pulse) was absorbed into Chunk 4 since both modify the atmosphere shader.
+
+**JTBD:** Make the globe feel alive beyond the atmosphere — individual nodes brighten with recent activity, live governance events ripple through the constellation. Users feel they're looking at a living system, not a static snapshot.
 
 **Scope:**
 
 1. Activity recency: nodes that were recently active (voted, received votes, had delegation changes) are subtly brighter. Time-decays over hours.
-2. Governance heartbeat: globe atmosphere subtly pulses with a slow rhythm (10s cycle) tied to epoch progress
+2. ~~Governance heartbeat~~ — moved to Chunk 4
 3. New vote notifications: when a DRep votes during the user's session, their node briefly pulses
 4. Delegation flow: when delegation changes happen, a subtle energy pulse flows along the affected edge
 5. Proactive Seneca whispers tied to live events: "DRep Athena just voted on the Developer Fund proposal"
@@ -1225,7 +1349,7 @@ Chunk 8 (Anonymous Journey) ← requires Chunks 1 + 2 + 3 + 7 to be meaningful
 | 7b. CC Accountability           | M (5-7d)        | 2                            |
 | 5. Ambient Intelligence         | S-M (4-6d)      | 2                            |
 | 2. Entity Discovery             | L (8-10d)       | 3                            |
-| 4. Regional Energy              | M (5-7d)        | 3                            |
+| 4. Regional Energy + Heartbeat  | M (4-6d)        | 3                            |
 | 7d. Cross-Entity Links          | M (5-7d)        | 3                            |
 | 6. Globe Entity Elevation       | M (5-7d)        | 4                            |
 | 7e. Universal Search            | M (5-7d)        | 4                            |

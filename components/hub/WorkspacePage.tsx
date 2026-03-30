@@ -7,11 +7,11 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 /**
  * WorkspacePage — Smart redirect to the right workspace sub-page per persona.
  *
- * Each persona has a primary workspace activity:
- * - DReps: Review queue (their #1 JTBD)
- * - SPOs: Performance / gov score dashboard
+ * Workspace is actions-only (Review + Author). Each persona lands on their
+ * primary workspace action:
+ * - DReps/SPOs: Review queue (their #1 workspace JTBD)
  * - Citizens/CC: Proposal authoring
- * - Anonymous: Back to home (shouldn't reach workspace)
+ * - Anonymous: Back to home
  */
 export function WorkspacePage() {
   const { segment } = useSegment();
@@ -20,10 +20,8 @@ export function WorkspacePage() {
   useEffect(() => {
     switch (segment) {
       case 'drep':
-        router.replace('/workspace/review');
-        break;
       case 'spo':
-        router.replace('/workspace/performance');
+        router.replace('/workspace/review');
         break;
       case 'citizen':
       case 'cc':

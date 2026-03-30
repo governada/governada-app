@@ -135,13 +135,13 @@ export function SPOScorecardView() {
           </Button>
         )}
         <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/pool-profile">Pool Profile</Link>
+          <Link href="/you/settings">Pool Profile</Link>
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/delegators">Delegators</Link>
+          <Link href="/you/scorecard">Delegators</Link>
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/position">Competitive Position</Link>
+          <Link href="/you/scorecard">Competitive Position</Link>
         </Button>
       </div>
     </div>

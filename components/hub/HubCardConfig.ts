@@ -105,14 +105,14 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'status',
     priority: 1,
     conditional: false,
-    href: '/workspace/delegators',
+    href: '/you/scorecard',
   },
   'drep-score': {
     id: 'drep-score',
     type: 'status',
     priority: 2,
     conditional: false,
-    href: '/workspace/performance',
+    href: '/you/scorecard',
   },
 
   // SPO cards
@@ -128,7 +128,7 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'status',
     priority: 2,
     conditional: true,
-    href: '/workspace/delegators',
+    href: '/you/scorecard',
   },
 
   // Discovery cards

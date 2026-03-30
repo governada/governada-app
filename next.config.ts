@@ -98,9 +98,8 @@ const nextConfig: NextConfig = {
       // Legacy get-started wizard — replaced by Globe Convergence + Seneca onboarding
       { source: '/get-started', destination: '/', permanent: true },
 
-      // Workspace cockpit consolidation — old sub-pages → cockpit
+      // Workspace IA refactor — old sub-pages → new canonical routes
       { source: '/workspace/rationales', destination: '/workspace', permanent: false },
-      { source: '/workspace/performance', destination: '/workspace', permanent: false },
     ];
   },
   images: {

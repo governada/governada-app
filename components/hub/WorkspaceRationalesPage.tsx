@@ -97,7 +97,7 @@ function RationalesList({ rationales }: { rationales: RationaleRecord[] }) {
           Your published rationales will appear here once you add a rationale to a vote.
         </p>
         <Button asChild variant="outline" className="mt-4">
-          <Link href="/workspace/votes">View your votes</Link>
+          <Link href="/you/record">View your votes</Link>
         </Button>
       </div>
     );

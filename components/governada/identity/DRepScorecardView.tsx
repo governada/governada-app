@@ -173,10 +173,10 @@ export function DRepScorecardView() {
           </Button>
         )}
         <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/votes">Voting Record</Link>
+          <Link href="/you/record">Voting Record</Link>
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href="/workspace/delegators">Delegators</Link>
+          <Link href="/you/scorecard">Delegators</Link>
         </Button>
       </div>
     </div>

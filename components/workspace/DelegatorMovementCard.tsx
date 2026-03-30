@@ -67,7 +67,7 @@ export function DelegatorMovementCard({
         </div>
 
         <Link
-          href="/workspace/delegators"
+          href="/you/scorecard"
           className={cn(
             'text-xs font-medium shrink-0 inline-flex items-center gap-1 hover:underline',
             isGain ? 'text-emerald-500' : 'text-amber-500',

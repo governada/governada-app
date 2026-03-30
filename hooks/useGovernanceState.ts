@@ -21,7 +21,8 @@ async function fetchGovernanceState(stakeAddress?: string): Promise<GovernanceSt
  * Returns urgency, temperature, epoch info, and user-specific state
  * (pending votes, DRep score, delegated DRep, etc.) when authenticated.
  *
- * Shares the same query key as useGovernanceTemperature for cache dedup.
+ * Uses a separate query key from useGovernanceTemperature (which fetches
+ * without stakeAddress) since user-specific data requires authentication.
  */
 export function useGovernanceState() {
   const { stakeAddress } = useSegment();

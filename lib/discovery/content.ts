@@ -191,7 +191,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Declare and share your stance on key governance topics. Delegators want to know where you stand.',
         position: 'top',
-        route: '/workspace/position',
+        route: '/you/scorecard',
       },
     ],
   },
@@ -305,7 +305,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Review proposals and cast your votes. Each vote includes space for your rationale — delegators want to know your reasoning.',
         position: 'bottom',
-        route: '/workspace/votes',
+        route: '/you/record',
       },
       {
         id: 'ws-delegators',
@@ -314,7 +314,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Understand who trusts you: their ADA stake, how long they have delegated, and what they care about.',
         position: 'bottom',
-        route: '/workspace/delegators',
+        route: '/you/scorecard',
       },
       {
         id: 'ws-rationale',
@@ -353,7 +353,7 @@ export const TOURS: MiniTour[] = [
         description:
           'Edit your governance profile. Share your stance on key topics to attract like-minded delegators.',
         position: 'bottom',
-        route: '/workspace/pool-profile',
+        route: '/you/settings',
       },
       {
         id: 'ws-spo-delegators',
@@ -546,7 +546,7 @@ export const FEATURES: DiscoveryFeature[] = [
     section: 'workspace',
     label: 'Cast governance votes',
     description: 'Vote on proposals as a representative',
-    href: '/workspace/votes',
+    href: '/you/record',
     icon: 'Vote',
     category: 'take-action',
     segments: ['drep'],

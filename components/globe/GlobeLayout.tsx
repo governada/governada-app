@@ -34,6 +34,11 @@ import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 
+const ClusterLabels = dynamic(
+  () => import('./ClusterLabels').then((m) => ({ default: m.ClusterLabels })),
+  { ssr: false },
+);
+
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
   { ssr: false },
@@ -350,6 +355,9 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
           />
         )}
       </div>
+
+      {/* Cluster faction labels — z-10: between globe and controls */}
+      <ClusterLabels />
 
       {/* SSR content for SEO — hidden from visual users */}
       <div className="sr-only" aria-label="Governance entity details">

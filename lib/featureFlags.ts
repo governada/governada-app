@@ -28,6 +28,7 @@
  * state_of_governance_report     — Auto-generated epoch report with community intelligence
  * governance_temperature         — Governance Temperature gauge (0-100 aggregate sentiment)
  * research_assistant             — Conversational AI research assistant for proposal analysis
+ * globe_alignment_layout         — Cluster labels on globe + highlightCluster behavior (Living Republic Chunk 1)
  * navigation_rail                — 48px icon rail replacing 240px sidebar (Phase 2 nav renaissance)
  * view_transitions               — View Transitions API for spatial navigation continuity (Phase 6)
  * temporal_adaptation             — Governance temporal mode + ambient temperature tinting (Phase 6)

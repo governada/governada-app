@@ -189,7 +189,9 @@ export type GlobeCommand =
   /** Brief emissive flash on a node (reveal moment) */
   | { type: 'flash'; nodeId: string }
   /** Cinematic state — smooth per-frame camera orbit + node transitions */
-  | { type: 'cinematic'; state: CinematicStateInput };
+  | { type: 'cinematic'; state: CinematicStateInput }
+  /** Highlight a governance faction cluster — dims non-members, glows members */
+  | { type: 'highlightCluster'; clusterId: string };
 
 // ---------------------------------------------------------------------------
 // Color constants

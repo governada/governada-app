@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--turbopack"],
       "port": 3111,
       "autoPort": true
     }

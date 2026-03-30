@@ -106,24 +106,34 @@ Prompt template:
 > You are a hostile UX reviewer testing a local dev build. Your job is to find every visual bug, broken interaction, and confusing experience. Assume the UI is broken until you prove otherwise.
 >
 > **Start the dev server:**
-> Use `preview_start` with name "dev" to start the local server.
-> Wait for it to be ready, then use `preview_screenshot` to verify it loaded.
+>
+> 1. Use `preview_start` with name "dev" to start the local server. Note the port from the response.
+> 2. Wait for the server to be ready: use Bash to `curl -s -o /dev/null -w "%{http_code}" --max-time 90 http://localhost:<port>/api/health`. Wait until you get HTTP 200.
+> 3. **CRITICAL**: Do NOT let the browser load the homepage (`/`) first — the Globe (Three.js/R3F) will hang the headless browser. Navigate to a safe page first:
+>    ```js
+>    // via preview_eval — use the port from preview_start
+>    window.location.href = 'http://localhost:<port>/governance';
+>    ```
+> 4. Take a `preview_screenshot` to verify the page rendered. If you get a timeout, the Globe may have loaded — stop the server, restart, and navigate to `/governance` immediately.
+>
+> **Pages that hang the headless browser** (skip or test last):
+>
+> - `/` (homepage) — Globe/Three.js. Test non-Globe pages first, then try homepage only if needed.
+> - `/g/*` — Globe constellation view. Same issue.
 >
 > **Authenticate for each persona:**
-> Many pages are auth-gated. Before testing, authenticate as each relevant persona using the dev mock auth endpoint. For each persona you need to test:
+> Many pages are auth-gated. Before testing, authenticate using the dev mock auth endpoint. Use `preview_eval`:
 >
 > ```js
-> // Use preview_eval to authenticate:
-> await fetch('/api/auth/dev-mock', {
+> // Use preview_eval to authenticate (NO await — use .then()):
+> fetch('/api/auth/dev-mock', {
 >   method: 'POST',
 >   headers: { 'Content-Type': 'application/json' },
 >   body: JSON.stringify({ persona: 'citizen' }), // or 'drep', 'spo', 'cc', 'citizen-delegated', 'anonymous'
 > })
 >   .then((r) => r.json())
 >   .then((data) => {
->     // Store session token in localStorage (mirrors real wallet auth flow)
 >     localStorage.setItem('drepscore_session', data.sessionToken);
->     // Store segment override so SegmentProvider picks up the persona
 >     if (data.segmentOverride) {
 >       sessionStorage.setItem(
 >         'governada_segment',
@@ -136,7 +146,7 @@ Prompt template:
 >   });
 > ```
 >
-> Then reload the page to pick up the new session.
+> Then reload with `preview_eval`: `window.location.reload()`
 >
 > **Which personas to test per route:**
 >
@@ -152,7 +162,7 @@ Prompt template:
 >
 > For EACH page:
 >
-> 1. **Navigate**: Use `preview_eval` with `window.location.href = 'http://localhost:3111/[route]'`, then wait 2 seconds with `preview_eval` (`await new Promise(r => setTimeout(r, 2000))`), then screenshot.
+> 1. **Navigate**: Use `preview_eval` with `window.location.href = 'http://localhost:<port>/[route]'` (use the port from `preview_start`). Then take a `preview_snapshot` to verify content loaded before screenshotting. If the page has heavy client components, you may need to wait — use `preview_eval` with `new Promise(r => setTimeout(r, 3000)).then(() => 'ready')` first.
 > 2. **Visual audit** (screenshot):
 >    - Layout broken? Overlapping elements? Cut-off text? Scrollbar issues?
 >    - Empty states — does it look intentional or broken when there's no data?

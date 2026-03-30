@@ -1,13 +1,32 @@
 import type { NextConfig } from 'next';
 import path from 'path';
+import { execSync } from 'child_process';
 import { withSentryConfig } from '@sentry/nextjs';
 import withBundleAnalyzer from '@next/bundle-analyzer';
+
+// Resolve the git main checkout root so turbopack can follow node_modules
+// junctions from worktrees back to the main checkout.
+let turbopackRoot: string;
+try {
+  turbopackRoot = execSync('git rev-parse --path-format=absolute --git-common-dir', {
+    encoding: 'utf-8',
+  })
+    .trim()
+    .replace(/[/\\]\.git$/, '');
+} catch {
+  turbopackRoot = __dirname;
+}
 
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  turbopack: {
+    // Worktrees use node_modules junctions pointing to the main checkout.
+    // Root must encompass both the worktree and the junction target.
+    root: turbopackRoot,
+  },
   experimental: {
     // Enable browser-native View Transitions API for smooth route navigation.
     // GPU-accelerated, zero JavaScript cost. Graceful degradation in unsupported browsers.

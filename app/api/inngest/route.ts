@@ -59,6 +59,7 @@ import { generateAiContent } from '@/inngest/functions/generateAiContent';
 import { reconcileData } from '@/inngest/functions/reconcile-data';
 import { precomputeProposalIntelligence } from '@/inngest/functions/precompute-proposal-intelligence';
 import { updatePassagePredictions } from '@/inngest/functions/update-passage-predictions';
+import { backfillGhi } from '@/inngest/functions/backfill-ghi';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   // Self-hosted: tell the Inngest server to reach this app via Railway private network
@@ -126,5 +127,6 @@ export const { GET, POST, PUT } = serve({
     reconcileData,
     precomputeProposalIntelligence,
     updatePassagePredictions,
+    backfillGhi,
   ],
 });

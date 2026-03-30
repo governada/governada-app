@@ -15,7 +15,7 @@ import { saveConversationalProfile, saveAlignmentHistory } from '@/lib/matchStor
 import { blockTimeToEpoch } from '@/lib/koios';
 import { sendMatchSignals } from '@/lib/matchSignals';
 import { cn } from '@/lib/utils';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 
 /* ─── Types ─────────────────────────────────────────────── */
 

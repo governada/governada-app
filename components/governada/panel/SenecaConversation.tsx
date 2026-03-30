@@ -13,6 +13,8 @@ import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import { cn } from '@/lib/utils';
+import { dispatchGlobeCommand as dispatchGlobeCmd } from '@/lib/globe/globeCommandBus';
+import type { GlobeCommand } from '@/lib/globe/types';
 
 /** Heuristic: show "Go deeper" if response is substantive and query implies analysis. */
 const DEEP_QUERY_PATTERNS = /\b(compare|analyz|research|explain|how|why)\b/i;
@@ -148,11 +150,10 @@ export function SenecaConversation({
           setIsStreaming(false);
         },
         abort.signal,
-        // Globe commands — dispatch via CustomEvent so globe listeners receive them
-        (cmd) => {
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('senecaGlobeCommand', { detail: cmd }));
-          }
+        // Globe commands — dispatch via centralized command bus
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (cmd: any) => {
+          dispatchGlobeCmd(cmd);
         },
         (actionPayload) => {
           // Parse parameterized actions: "startMatch", "navigate:/path", "research:query"

@@ -8,59 +8,23 @@
  * 2. Seneca -> Globe: Entity references in responses pulse/fly-to nodes
  */
 
-import { useCallback, type RefObject } from 'react';
-import type { ConstellationRef, CinematicStateInput } from '@/components/GovernanceConstellation';
+import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import type { ConstellationRef, GlobeCommand } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
-import { fetchVoteSplit } from '@/lib/constellation/fetchVoteSplit';
+import { createChoreographer, type Choreography } from '@/lib/globe/choreographer';
+import {
+  registerBehavior,
+  unregisterBehavior,
+  executeBehavior,
+} from '@/lib/globe/behaviors/registry';
+import type { BehaviorContext } from '@/lib/globe/behaviors/types';
+import { createMatchBehavior } from '@/lib/globe/behaviors/matchBehavior';
+import { createVoteSplitBehavior } from '@/lib/globe/behaviors/voteSplitBehavior';
+import { createTopicWarmBehavior } from '@/lib/globe/behaviors/topicWarmBehavior';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export type GlobeCommand =
-  | { type: 'flyTo'; nodeId: string }
-  | { type: 'pulse'; nodeId: string }
-  | {
-      type: 'highlight';
-      alignment: number[];
-      threshold: number;
-      noZoom?: boolean;
-      zoomToCluster?: boolean;
-      /** Filter to specific node type (e.g., 'drep') — others stay dimmed */
-      nodeTypeFilter?: string;
-      /** Camera azimuth offset for dive variety (radians) */
-      cameraAngle?: number;
-      /** Camera elevation offset for dive variety (radians) */
-      cameraElevation?: number;
-      drepOnly?: boolean;
-      /** Take top N closest nodes instead of threshold — guarantees progressive narrowing */
-      topN?: number;
-      /** Override scan progress (0-1) when using topN instead of threshold */
-      scanProgressOverride?: number;
-    }
-  | { type: 'voteSplit'; proposalRef: string }
-  | { type: 'reset' }
-  | { type: 'clear' }
-  /** Dim all nodes — used before progressive reveal during tool execution */
-  | { type: 'dim' }
-  /** Light up all DRep nodes, dim non-DReps — the "entering Cerebro" moment */
-  | { type: 'matchStart' }
-  /** Dramatic cinematic fly to a match result (3-second hold) */
-  | { type: 'matchFlyTo'; nodeId: string }
-  /** Scanning sweep — highlight with wide threshold then narrow, simulating a search */
-  | { type: 'scan'; alignment: number[]; durationMs?: number }
-  /** Warm specific nodes by topic — subtle highlight without camera movement */
-  | { type: 'warmTopic'; topic: 'treasury' | 'participation' | 'delegation' | 'proposals' }
-  /** Sequenced choreography — execute commands in order with delays */
-  | { type: 'sequence'; steps: Array<{ command: GlobeCommand; delayMs: number }> }
-  /** Set globe rotation speed multiplier (1=default, 0=stop, 3=fast) */
-  | { type: 'setRotation'; speed: number }
-  /** Dolly camera to a specific distance from origin */
-  | { type: 'zoomOut'; distance?: number }
-  /** Brief emissive flash on a node (reveal moment) */
-  | { type: 'flash'; nodeId: string }
-  /** Cinematic state — smooth per-frame camera orbit + node transitions */
-  | { type: 'cinematic'; state: CinematicStateInput };
+// GlobeCommand is now canonically defined in lib/globe/types.ts.
+// Re-export for backwards compatibility — existing imports of GlobeCommand from this file still work.
+export type { GlobeCommand } from '@/lib/globe/types';
 
 export interface GlobeBridgeResult {
   /** Handle node click from globe — opens Seneca with entity context */
@@ -76,6 +40,22 @@ export interface GlobeBridgeResult {
 export function useSenecaGlobeBridge(
   globeRef: RefObject<ConstellationRef | null>,
 ): GlobeBridgeResult {
+  // Lazy-initialized choreographer for cancellable sequence execution
+  const choreographerRef = useRef<ReturnType<typeof createChoreographer> | null>(null);
+
+  // Register behaviors — re-registers with fresh closures on remount (React StrictMode safe)
+  useEffect(() => {
+    const getGlobe = () => globeRef.current;
+    registerBehavior(createMatchBehavior(getGlobe));
+    registerBehavior(createVoteSplitBehavior(getGlobe));
+    registerBehavior(createTopicWarmBehavior(getGlobe));
+    return () => {
+      unregisterBehavior('match');
+      unregisterBehavior('voteSplit');
+      unregisterBehavior('topicWarm');
+    };
+  }, [globeRef]);
+
   const handleNodeClick = useCallback(
     (node: ConstellationNode3D) => {
       // Fly to the node on the globe — panel opens via URL navigation in GlobeLayout
@@ -88,6 +68,16 @@ export function useSenecaGlobeBridge(
     (command: GlobeCommand) => {
       const globe = globeRef.current;
       if (!globe) return;
+
+      // Try registered behaviors first — if one handles the command, skip the switch
+      const behaviorCtx: BehaviorContext = {
+        dispatch: (cmd) => executeGlobeCommand(cmd),
+        schedule: (cmd, delayMs) => {
+          const t = setTimeout(() => executeGlobeCommand(cmd), delayMs);
+          return () => clearTimeout(t);
+        },
+      };
+      if (executeBehavior(command, behaviorCtx)) return;
 
       switch (command.type) {
         case 'flyTo':
@@ -108,18 +98,7 @@ export function useSenecaGlobeBridge(
             scanProgressOverride: command.scanProgressOverride,
           });
           break;
-        case 'voteSplit': {
-          // Parse "txHash_index" format and fetch vote data async
-          const lastUnderscore = command.proposalRef.lastIndexOf('_');
-          if (lastUnderscore === -1) break;
-          const txHash = command.proposalRef.slice(0, lastUnderscore);
-          const index = parseInt(command.proposalRef.slice(lastUnderscore + 1), 10);
-          if (!txHash || isNaN(index)) break;
-          void fetchVoteSplit(txHash, index).then((map) => {
-            if (map.size > 0) globe.setVoteSplit(map);
-          });
-          break;
-        }
+        // voteSplit handled by voteSplitBehavior
         case 'reset':
           globe.resetCamera();
           break;
@@ -129,60 +108,29 @@ export function useSenecaGlobeBridge(
 
         // --- Match flow commands ---
 
-        case 'matchStart':
-          globe.matchStart();
-          break;
-
-        case 'matchFlyTo':
-          globe.flyToMatch(command.nodeId);
-          break;
-
-        // --- Advanced choreography commands ---
+        // matchStart, matchFlyTo, scan handled by matchBehavior
+        // voteSplit handled by voteSplitBehavior
+        // warmTopic handled by topicWarmBehavior
 
         case 'dim':
-          // Dim everything — focus active with no focused nodes = all unfocused
           globe.dimAll();
           break;
 
-        case 'scan': {
-          // Scanning sweep: start wide, narrow to target
-          const scanAlignment = command.alignment;
-          // Phase 1: wide glow (everything subtly lit)
-          globe.highlightMatches(scanAlignment, 300, { noZoom: true });
-          // Phase 2: narrow to matches after delay
-          const dur = command.durationMs ?? 800;
-          setTimeout(() => {
-            globe.highlightMatches(scanAlignment, 120, { noZoom: true, zoomToCluster: true });
-          }, dur);
-          break;
-        }
-
-        case 'warmTopic': {
-          // Topic-specific alignment vectors for subtle highlighting
-          const topicAlignments: Record<string, number[]> = {
-            treasury: [85, 20, 50, 50, 50, 50],
-            participation: [50, 80, 50, 50, 50, 50],
-            delegation: [50, 50, 80, 50, 50, 50],
-            proposals: [50, 50, 50, 80, 50, 50],
-          };
-          const align = topicAlignments[command.topic] ?? [50, 50, 50, 50, 50, 50];
-          globe.highlightMatches(align, 200, { noZoom: true });
-          break;
-        }
-
         case 'sequence': {
-          // Execute commands in order with delays
-          let totalDelay = 0;
-          for (const step of command.steps) {
-            totalDelay += step.delayMs;
-            const cmd = step.command;
-            setTimeout(() => {
-              // Recursive — but sequences should not nest deeply
-              if (cmd.type !== 'sequence') {
-                executeGlobeCommand(cmd);
-              }
-            }, totalDelay);
+          // Execute commands via choreographer — cancellable, inspectable
+          const choreography: Choreography = {
+            name: 'sequence',
+            steps: command.steps.map((s) => ({
+              command: s.command,
+              delayMs: s.delayMs,
+            })),
+          };
+          if (!choreographerRef.current) {
+            choreographerRef.current = createChoreographer((cmd) => {
+              if (cmd.type !== 'sequence') executeGlobeCommand(cmd);
+            });
           }
+          choreographerRef.current.play(choreography);
           break;
         }
 

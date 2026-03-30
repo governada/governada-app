@@ -10,8 +10,9 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { GlobeTooltip } from '@/components/governada/GlobeTooltip';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
+import { useGlobeCommandListener } from '@/hooks/useGlobeCommandListener';
 
 const SenecaMatch = dynamic(
   () =>
@@ -51,17 +52,11 @@ export function AnonymousLanding({ pulseData }: AnonymousLandingProps) {
   const { startMatch, mode: senecaMode, returnToIdle } = useSenecaThread();
 
   // Bridge globe node clicks to Seneca panel
-  const { handleNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
+  const bridge = useSenecaGlobeBridge(globeRef);
+  const { handleNodeClick, executeGlobeCommand } = bridge;
 
-  // Listen for globe commands from SenecaMatch panel (CustomEvent bridge)
-  useEffect(() => {
-    function handleGlobeCommand(e: Event) {
-      const detail = (e as CustomEvent).detail;
-      if (detail) executeGlobeCommand(detail);
-    }
-    window.addEventListener('senecaGlobeCommand', handleGlobeCommand);
-    return () => window.removeEventListener('senecaGlobeCommand', handleGlobeCommand);
-  }, [executeGlobeCommand]);
+  // Listen for globe commands from Seneca (via centralized command bus)
+  useGlobeCommandListener(bridge);
 
   // Fetch dynamic governance narrative
   const { data: narrativeData } = useQuery({

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 type FlyInState = 'waiting' | 'flying' | 'settled' | 'idle';

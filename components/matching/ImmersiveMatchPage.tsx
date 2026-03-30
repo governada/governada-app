@@ -7,7 +7,7 @@ import { X } from 'lucide-react';
 import { ConversationalMatchFlow } from '@/components/matching/ConversationalMatchFlow';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { cn } from '@/lib/utils';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 
 const ConstellationScene = dynamic(
   () => import('@/components/ConstellationScene').then((m) => ({ default: m.ConstellationScene })),

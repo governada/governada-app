@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, ArrowLeft } from 'lucide-react';
 import { fadeInUp } from '@/lib/animations';
 import { ConstellationLegend } from './ConstellationLegend';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 const ConstellationScene = dynamic(

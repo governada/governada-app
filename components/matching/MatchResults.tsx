@@ -10,7 +10,7 @@ import { MatchResultCard } from './MatchResultCard';
 import { generateMatchNarrative } from '@/lib/matching/matchNarrative';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { MatchResult, SpoMatchResult } from '@/lib/matching/conversationalMatch';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────── */

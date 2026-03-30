@@ -2,7 +2,7 @@
 
 import { forwardRef } from 'react';
 import dynamic from 'next/dynamic';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 const GlobeConstellation = dynamic(

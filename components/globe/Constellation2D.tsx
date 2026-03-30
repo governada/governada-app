@@ -20,7 +20,7 @@ import {
   forwardRef,
   type Ref,
 } from 'react';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D, ConstellationApiData } from '@/lib/constellation/types';
 import { useGovernanceConstellation } from '@/hooks/queries';
 import { computeLayout } from '@/lib/constellation/layout';

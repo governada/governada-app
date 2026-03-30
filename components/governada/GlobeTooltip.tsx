@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
+import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 
 interface GlobeTooltipProps {
   node: ConstellationNode3D | null;
@@ -33,11 +34,7 @@ const ACTION_BTN =
 // ---------------------------------------------------------------------------
 
 function dispatchResearch(node: ConstellationNode3D) {
-  window.dispatchEvent(
-    new CustomEvent('senecaGlobeCommand', {
-      detail: { type: 'pulse', nodeId: node.id },
-    }),
-  );
+  dispatchGlobeCommand({ type: 'pulse', nodeId: node.id });
   // Also open Seneca thread with a contextual query
   const label =
     node.nodeType === 'drep'

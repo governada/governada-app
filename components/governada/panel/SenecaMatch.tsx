@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import { alignmentsToArray } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
-import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
+import type { GlobeCommand } from '@/lib/globe/types';
+import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
 import { MatchResultOverlay } from '@/components/governada/MatchResultOverlay';
 import {
@@ -93,13 +94,7 @@ const ACKNOWLEDGEMENTS = [
   'Locking on to your best matches\u2026',
 ];
 
-/* ─── Globe command bridge via CustomEvent ─── */
-
-function dispatchGlobeCommand(cmd: GlobeCommand) {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('senecaGlobeCommand', { detail: cmd }));
-  }
-}
+// Globe commands dispatched via lib/globe/globeCommandBus (imported above)
 
 /* ─── Types ─── */
 

@@ -10,7 +10,7 @@ import { generateMatchNarrative } from '@/lib/matching/matchNarrative';
 import { DIMENSION_LABELS } from '@/lib/matching/dimensionAgreement';
 import type { AlignmentScores, AlignmentDimension } from '@/lib/drepIdentity';
 import { getDimensionOrder } from '@/lib/drepIdentity';
-import type { ConstellationRef } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
 import { cn } from '@/lib/utils';
 
 /* ─── Types ─────────────────────────────────────────────── */

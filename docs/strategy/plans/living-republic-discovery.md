@@ -445,84 +445,209 @@ The goal is to stop _rendering_ the old discovery components in Home world conte
 
 ### Chunk 3: Spatial Match Flow — "Your Place in the Republic"
 
-**JTBD:** Transform the match experience from "answer quiz → get ranked list" to "answer questions → the globe reveals where you belong → you see your place in the governance universe."
+**JTBD:** Transform the match experience from "answer quiz → get ranked list" to "answer questions → the globe reveals where you belong → you are placed into the governance constellation as a citizen of this republic."
 
-**Why this matters:** The current match flow has great choreography but ends with a list of DRep cards. In the Living Republic, match results aren't rankings — they're **locations**. Your match result is where your node appears in the constellation. Your top match isn't "DRep #1 on a list" — it's "your closest neighbor in governance space."
+**What this replaces:**
 
-**Scope:**
+- `QuickMatchFlow.tsx` — full-page match UI with no globe integration → delete entirely (audit imports first)
+- The ranked-list result paradigm — match results are no longer "DRep #1 on a list" but "your closest neighbor in governance space"
+- The overlay-centric reveal — `MatchResultOverlay` gets extended to show spatial context (cluster name, neighborhood), not replaced
 
-1. **Match on the globe:** The match flow runs inside the globe view, not on a standalone `/match` page. Seneca's match mode uses the globe as its stage (already partially true — choreography exists, but results show as overlay cards, not spatial positions).
-2. **User node placement:** After match computation, a "user node" appears at the position in the alignment layout that corresponds to the user's answer vector. The user literally sees themselves placed in the constellation.
-3. **Spatial reveal:** Instead of a ranked list reveal, the camera zooms to the user's computed position, and nearby DRep nodes glow with match intensity (brighter = closer match). The user's neighborhood is visible.
-4. **Cluster context:** Seneca narrates: "You belong in the Innovation Quarter — 47 DReps who share your priorities. Your closest match is DRep Athena, just 3 points of alignment away."
-5. **Post-match exploration:** After the reveal, users can explore their neighborhood spatially — click nearby nodes to see peeks, fly to other clusters for comparison, ask Seneca "who else is near me?"
-6. **Progressive deepening:** The existing CuratedVoteFlow (vote on proposals to improve confidence) updates the user's position in real-time — each vote nudges the user node to a more precise location.
-7. **Standalone `/match` page becomes a redirect:** `/?match=true` triggers the globe-integrated flow
-8. **Feature flag:** `globe_spatial_match` (falls back to current match flow if off)
+**What this preserves (already excellent):**
+
+- `SenecaMatch.tsx` quiz flow — 4 questions, Seneca's conversational personality, per-answer choreography with progressive narrowing (200→50→10→5)
+- `matchChoreography.ts` — `buildMatchStartSequence()`, `buildAnswerSequence()`, the camera weaving and dive angles. All of this stays. The reveal sequence gets _extended_, not replaced.
+- `buildAlignmentFromAnswers()` — produces the 6D alignment vector from quiz answers. Already exists. Do not duplicate.
+
+**What already exists that makes this smaller than it looks:**
+
+- `app/match/page.tsx` already redirects to `/?match=true` — no change needed
+- `nodeType === 'user'` is already handled in `NodePoints.tsx` (user nodes are grouped separately)
+- `UserNodeRings.tsx` already renders a Three.js element at a 3D position (bloom-integrated rings for authenticated users)
+- `USER_COLOR = '#f0e6d0'` (warm white-gold) already defined
+- `alignmentsToArray()` in `lib/drepIdentity.ts` converts `AlignmentScores` → `number[]` for `computeSpherePosition()`
+- `computeSpherePosition()` in `lib/constellation/globe-layout.ts` maps 6D alignment → `[lon, lat]` on the globe. **This is how user node position is computed. Not PCA.**
+- `sphereToCartesian()` (also in `globe-layout.ts`) converts `[lat, lon, r]` → `[x, y, z]`
+
+---
+
+### CRITICAL: Globe interaction model
+
+**The globe is NOT directly manipulable by users.** Users do not rotate, zoom, click, or drag the globe. All globe interaction is Seneca-driven. Seneca choreographs the globe; users interact through the Seneca panel (typing or tapping suggestion chips).
+
+This means: post-reveal exploration is NOT "click nearby nodes." It IS "ask Seneca about nearby nodes via suggestion chips that trigger Chunk 2's discovery tools."
+
+---
+
+### Scope
+
+**1. User node placement function** (`lib/globe/userNodePlacement.ts`)
+
+Pure function. Takes `AlignmentScores` from quiz answers, returns `[x, y, z]`:
+
+```typescript
+function computeUserNodePosition(answers: AlignmentScores): [number, number, number] {
+  const alignments = alignmentsToArray(answers);
+  const syntheticInput: LayoutInput = {
+    id: 'user',
+    fullId: 'user',
+    name: 'You',
+    power: 0.5,
+    score: 50,
+    dominant: getDominantDimension(alignments),
+    alignments,
+    nodeType: 'drep', // use drep positioning logic for citizens
+  };
+  const [lon, lat] = computeSpherePosition(syntheticInput);
+  const r = 5.0; // inner-mid shell — prominent but not center
+  return sphereToCartesian(lat, lon, r);
+}
+```
+
+Import `computeSpherePosition`, `sphereToCartesian` from `lib/constellation/globe-layout.ts`. Import `alignmentsToArray` from `lib/drepIdentity.ts`. This is ~20 lines of code.
+
+**2. `placeUserNode` command + FocusState extension**
+
+Add to `lib/globe/types.ts`:
+
+- New command: `placeUserNode { position: [x,y,z], intensity: number }`
+- New FocusState field: `userNode?: { position: [x,y,z], intensity: number } | null`
+
+The command sets `userNode` in FocusState via `setSharedFocus()`. The rendering layer already handles user-type nodes — the agent must verify WHERE `UserNodeRings` is mounted in the component tree and follow the same pattern to render the match-derived user node.
+
+**Important:** Before writing any rendering code, the agent MUST read `GlobeConstellation.tsx` to understand where `UserNodeRings` is rendered. If it's inside `GlobeConstellation`, a small targeted addition (conditionally rendering a match user node when `focusState.userNode` is set) is the right approach. This is an EXCEPTION to the "never modify rendering layer" rule — but it must be minimal and additive only. Document the exact change in the PR description.
+
+**3. Extended reveal sequence**
+
+Extend `buildRevealSequence()` in `matchChoreography.ts`. The current sequence ends with camera flying to the #1 DRep. The new sequence adds steps AFTER the existing ones:
+
+Current flow (preserve all of this):
+
+1. Globe dims, orbits slowly (cinematic state)
+2. Flashes top 5 matches in reverse (5→4→3→2→1)
+3. Escalating delays (500ms runners-up → 900ms #1)
+4. Camera locks on, flies to #1 DRep node
+
+New steps appended: 5. `placeUserNode` — user's warm gold node appears at their computed position with expansion animation 6. Camera pulls to the USER's position (not the DRep's) — reframes from "here's your match" to "here's where YOU belong" 7. Nearby N DRep nodes un-dim and glow with match intensity (brighter = closer alignment) 8. Camera pulls back slightly to show the neighborhood 9. Seneca narrates cluster context: "You belong in the [cluster name] — [N] DReps share your priorities. Your closest match is [name], [score]% aligned."
+
+The key philosophical shift: **the user's position is the destination.** The top DRep is just the closest neighbor, not the main event.
+
+**4. MatchResultOverlay spatial context**
+
+Extend (not replace) `MatchResultOverlay.tsx`:
+
+- Add above the DRep card: cluster name + neighborhood size ("Innovation Quarter — 47 nearby DReps")
+- Keep: DRep name, match %, dimension agreement bars, delegate CTA, view profile link
+- Remove/de-emphasize: rank framing ("#1 match" → "Closest match")
+- Graceful fallback: if cluster data (Chunk 1) is not available, show "Your neighborhood — [N] nearby DReps" without faction name
+
+**5. Post-reveal Seneca suggestion chips**
+
+After the reveal lands and overlay appears, Seneca shows context-appropriate chips:
+
+- "Tell me about [top match name]" → opens DRep peek via Seneca
+- "Who else is near me?" → triggers Chunk 2's `show_neighborhood` tool
+- "Show me a different cluster" → triggers Chunk 2's `highlight_cluster` tool
+- "Connect wallet to save my place" (anonymous only) → wallet prompt
+
+This is NOT new code — it's Chunk 2's discovery tools triggered from the post-match state. The only new work is the chip definitions and the state transition that activates them.
+
+**6. SenecaMatch.tsx result step update**
+
+The `'results'` step in `SenecaMatch.tsx` currently shows `MatchResultOverlay` (portal) + compact match cards scrollable in the panel. Update:
+
+- Still show `MatchResultOverlay` (now with spatial context)
+- Replace compact match card list with the Seneca suggestion chips
+- The panel becomes the guide, not a list — "Explore your neighborhood" heading + chips
+
+**7. QuickMatchFlow cleanup**
+
+Delete `components/governada/match/QuickMatchFlow.tsx` and all its sub-components. Audit all imports first — grep for `QuickMatchFlow`, `ResultsScreen`, `useQuickMatch`. Remove any dead imports. The `/match` redirect is already in place.
+
+**8. Anonymous experience**
+
+- Anonymous visitor → globe view → "Find your place" idle chip → Seneca match mode
+- Quiz plays out on the globe (existing choreography, no changes)
+- Reveal: user node appears → "This is where you belong in Cardano's governance"
+- Post-reveal: suggestion chips for exploration
+- Seneca says: "Connect your wallet to save your place and start delegating" — incentive to authenticate
+- This replaces the generic "Connect to delegate" CTA with a spatially grounded reason to connect
+
+**9. Authenticated user returning to homepage**
+
+If a citizen has previously completed the match quiz:
+
+- Their user node persists at their match-derived alignment position (stored in local state or Supabase user profile)
+- On homepage load, globe subtly highlights their position (not a full reveal, just a warm glow)
+- Seneca greeting: "Welcome back. You're in the [cluster name]." (if cluster data available)
+
+If they haven't matched yet: no user node, "Find your place" chip available.
+
+DReps/SPOs/CC members: they ARE real nodes already. No user node needed. Globe can fly to their position on homepage load.
+
+---
 
 **Files to create:**
 
-- `lib/globe/userNodePlacement.ts` — compute user position from answer vector using same PCA projection
-- `lib/globe/matchRevealChoreography.ts` — new reveal choreography that places user node + highlights neighborhood
-- `lib/globe/behaviors/spatialMatchBehavior.ts` — handles user node placement + neighborhood highlight
+- `lib/globe/userNodePlacement.ts` — compute user position from answer vector via `computeSpherePosition()`
+- `lib/globe/behaviors/spatialMatchBehavior.ts` — handles `placeUserNode` command, updates FocusState
 
 **Files to modify:**
 
-- `components/governada/panel/SenecaMatch.tsx` — replace list-based results with spatial reveal + neighborhood exploration
-- `components/governada/MatchResultOverlay.tsx` — adapt to show spatial context (cluster name, neighborhood size) instead of just rank
-- `lib/globe/matchChoreography.ts` — extend `buildRevealSequence()` with user node placement step
-- `lib/globe/types.ts` — add `placeUserNode` command, add user node to FocusState
-- `app/match/page.tsx` — redirect to `/?match=true` (globe view)
+- `lib/globe/types.ts` — add `placeUserNode` command, add `userNode` to FocusState
+- `lib/globe/matchChoreography.ts` — extend `buildRevealSequence()` with steps 5-9 above
+- `components/governada/panel/SenecaMatch.tsx` — update `'results'` step: spatial context + Seneca chips instead of ranked list
+- `components/governada/MatchResultOverlay.tsx` — add cluster/neighborhood context above DRep card
+- `hooks/useSenecaGlobeBridge.ts` — register spatialMatchBehavior (one line)
+- `GlobeConstellation.tsx` — EXCEPTION: small, targeted addition to render user node when `focusState.userNode` is set (follow `UserNodeRings` pattern exactly)
 
-**How user node placement works:**
+**Files to delete:**
 
-- Take user's answer vector (already computed by `buildAlignmentFromAnswers()`)
-- Project through same PCA as layout computation → x,y position on globe surface
-- Dispatch `placeUserNode` command → globe renders a special "user" node at that position
-- User node has distinct visual: warm gold color, slightly larger, subtle pulse
-- User node data stored in `UserNodeRings` component (already exists for authenticated users)
+- `components/governada/match/QuickMatchFlow.tsx` + sub-components (audit imports first)
 
-**How spatial reveal works (replaces ranked list):**
+**Files to NOT modify:**
 
-1. Match quiz completes → alignment vector computed
-2. Globe dims all nodes (existing `dim` command)
-3. Camera flies to computed user position (new `flyToPosition` command)
-4. User node appears with expansion animation
-5. Nearest N DRep nodes un-dim and glow with match intensity
-6. Camera pulls back slightly to show the neighborhood
-7. Seneca narrates the cluster context
-8. Tapping any glowing node opens PanelOverlay with DRep detail + match-specific data (% match, dimension agreement)
+- `lib/constellation/globe-layout.ts` — pure function, import only
+- `NodePoints.tsx`, `GlobeCamera.tsx` — rendering layer (GlobeConstellation exception above is the ONLY rendering change)
+- `lib/globe/matchChoreography.ts` — extend only (do NOT replace `buildRevealSequence`, append to it)
 
-**How this changes the anonymous experience:**
+**Feature flag:** `globe_spatial_match` — gates user node placement, extended reveal, spatial overlay context. When off, existing `SenecaMatch` flow runs unchanged (ranked list reveal).
 
-- Anonymous visitor → globe view → "Find your place" chip → Seneca match mode
-- Quiz plays out on the globe (existing choreography)
-- At reveal: "This is where you belong in Cardano's governance" — user sees their node
-- "Connect your wallet to save your position" — incentive to authenticate
-- This is dramatically more compelling than the current "Connect to delegate" CTA
+---
 
-**Agent guidance:**
+**Mandatory pre-build reading list:**
 
-- The user node placement is pure math (same PCA projection as Chunk 1)
-- The reveal choreography builds on the existing `buildRevealSequence()` — add steps at the end
-- The spatial match behavior registers alongside the existing match behavior
-- Test: run match with known answers, verify user node appears in the correct region
-- The biggest change is in `SenecaMatch.tsx` — the result step needs to show spatial context instead of a ranked list
+1. `lib/constellation/globe-layout.ts` — understand `computeSpherePosition()` and `sphereToCartesian()`. This is how user node position is computed. NOT PCA.
+2. `lib/matching/answerVectors.ts` — understand `buildAlignmentFromAnswers()` and the answer vector format
+3. `lib/drepIdentity.ts` — understand `alignmentsToArray()` conversion
+4. `components/governada/panel/SenecaMatch.tsx` — understand the full state machine, all steps, how the reveal transitions work
+5. `lib/globe/matchChoreography.ts` — understand `buildRevealSequence()` fully before extending it
+6. `components/governada/MatchResultOverlay.tsx` — understand the current overlay layout before adding spatial context
+7. `components/globe/UserNodeRings.tsx` — understand the Three.js rendering pattern and WHERE it's mounted
+8. `components/globe/GlobeConstellation.tsx` — read to find where `UserNodeRings` is mounted, then follow the same pattern for match user node
+9. `lib/globe/types.ts` — understand FocusState and the command union before extending
+10. `components/governada/match/QuickMatchFlow.tsx` — read + grep all imports before deleting
+
+---
 
 **Acceptance criteria:**
 
-- [ ] Match flow runs on globe view (not standalone `/match` page)
-- [ ] After match, user node appears at correct alignment position on globe
-- [ ] Nearby DReps glow with match intensity (brighter = closer)
-- [ ] Seneca narrates cluster context: name, size, top match identity
-- [ ] Tapping glowing nodes opens DRep detail with match-specific info
-- [ ] Camera smoothly transitions from quiz → user placement → neighborhood view
-- [ ] "Find your place" CTA replaces "Find your match" (language shift)
-- [ ] Existing match choreography (quiz rounds, scanning animation) still works
-- [ ] `/match` page redirects to `/?match=true`
-- [ ] Feature flag `globe_spatial_match` falls back to current flow if off
+- [ ] User node placement uses `computeSpherePosition()` from `globe-layout.ts` — NOT PCA, NOT a new layout function
+- [ ] After match, user node appears as a Three.js element (warm gold, bloom-integrated) at the correct alignment position
+- [ ] Reveal sequence extends existing `buildRevealSequence()` — all current choreography preserved, new steps appended
+- [ ] Camera flies to USER's position (not DRep's) — user is the destination
+- [ ] Nearby DReps glow with match intensity (brighter = closer alignment)
+- [ ] Seneca narrates cluster context with graceful fallback if cluster data unavailable
+- [ ] Post-reveal suggestion chips trigger Chunk 2 discovery tools (not direct globe manipulation)
+- [ ] `MatchResultOverlay` shows cluster name + neighborhood context above DRep card
+- [ ] `QuickMatchFlow.tsx` deleted, no dead imports remain
+- [ ] Anonymous users see "Connect wallet to save your place" after reveal
+- [ ] Authenticated users returning to homepage see their persisted user node position
+- [ ] Feature flag `globe_spatial_match` falls back to current ranked-list flow when off
+- [ ] `computeGlobeLayout()` remains unchanged — pure function, no side effects
+- [ ] `npm run preflight` passes clean
 
-**Effort:** L (8-10 days)
+**Effort:** M-L (6-9 days — smaller than originally estimated: `/match` redirect done, user node infra exists, post-reveal chips reuse Chunk 2 tools)
 
 ---
 
@@ -1007,7 +1132,7 @@ Chunk 1 (Cluster Detection + Labels) ← FOUNDATION — ships first
     ├── NOTE: The alignment layout itself already exists in lib/constellation/globe-layout.ts
     ├── Chunk 1 adds: cluster detection, naming, API endpoint, globe labels, highlightCluster command
     ├── Chunk 2 (Entity Discovery via Globe) ← needs cluster data + highlightCluster command
-    ├── Chunk 3 (Spatial Match) ← needs cluster context for spatial reveal narrative
+    ├── Chunk 3 (Spatial Match) ← needs cluster context for narrative + reuses Chunk 2 discovery tools for post-reveal chips
     ├── Chunk 4 (Regional Energy) ← needs cluster centroids for atmosphere shader
     └── Chunk 6 (Globe Entity Elevation) ← needs spatial context (cluster membership per node)
 
@@ -1096,7 +1221,7 @@ Chunk 8 (Anonymous Journey) ← requires Chunks 1 + 2 + 3 + 7 to be meaningful
 | 1. Cluster Detection + Labels   | S-M (3-5d)      | 1                            |
 | 7a. Treasury Surface            | M (5-7d)        | 1                            |
 | 7c. GHI Discovery               | M (5-7d)        | 1                            |
-| 3. Spatial Match                | L (8-10d)       | 2                            |
+| 3. Spatial Match                | M-L (6-9d)      | 2                            |
 | 7b. CC Accountability           | M (5-7d)        | 2                            |
 | 5. Ambient Intelligence         | S-M (4-6d)      | 2                            |
 | 2. Entity Discovery             | L (8-10d)       | 3                            |

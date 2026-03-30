@@ -45,7 +45,18 @@ Single source of truth for work intentionally deferred to post-launch. Every age
 
 ## UX & Journey
 
-(Empty — add items as they arise)
+### CuratedVoteFlow Real-Time Position Nudging
+
+**Source:** Living Republic Epic, Chunk 3 planning session (2026-03-30)
+**Priority:** Medium
+**Why deferred:** The core spatial match reveal (quiz → user node placement → neighborhood glow → Seneca narrative) needs to ship and be validated first. Progressive position refinement is a second-order feature that depends on the core being solid.
+**What's needed:**
+
+- After spatial match reveal places user node, CuratedVoteFlow lets users vote on real proposals to refine their alignment
+- Each vote updates the user's alignment vector and should animate their node drifting to a more precise position on the globe
+- Requires: position interpolation (lerp user node from old → new position), FocusState update per vote, Seneca narration of the shift ("Your vote on the treasury proposal moved you closer to the Fiscal Conservatives")
+- Depends on: Chunk 3 spatial match reveal being shipped and working
+  **Success criteria:** User votes on 3+ proposals via CuratedVoteFlow; their node visibly shifts position on the globe after each vote; Seneca narrates the movement.
 
 ---
 

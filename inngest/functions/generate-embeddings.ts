@@ -160,7 +160,7 @@ export const generateEmbeddings = inngest.createFunction(
 
       const { data: dreps } = await supabase
         .from('dreps')
-        .select('id, name, metadata')
+        .select('id, metadata')
         .not('metadata', 'is', null)
         .limit(500);
 
@@ -178,7 +178,7 @@ export const generateEmbeddings = inngest.createFunction(
 
           return composeDrepProfile({
             drep_id: d.id,
-            name: d.name,
+            name: null,
             objectives,
             motivations,
             alignment_narrative: null,

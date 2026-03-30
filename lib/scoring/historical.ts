@@ -222,6 +222,28 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
     nowSeconds,
   );
 
+  // Diagnostic: log pillar outputs for first epoch to trace EP=0 / GI=0 bugs
+  if (drepVotes.size > 0) {
+    const sampleDrep = Array.from(drepVotes.keys())[0];
+    const sampleEP = rawParticipation.get(sampleDrep);
+    const sampleEQ = rawEngagement.get(sampleDrep);
+    const proposalSample = Array.from(proposalContextMap.values()).slice(0, 2);
+    logger.info(
+      `[historical-diag] epoch=${targetEpoch} drepVotes=${drepVotes.size} proposals=${proposalContextMap.size} votingSummaries=${votingSummaryMap.size} nowSeconds=${nowSeconds}`,
+      {
+        sampleDrep,
+        sampleEP,
+        sampleEQ,
+        proposalSample: proposalSample.map((p) => ({
+          key: p.proposalKey,
+          bt: p.blockTime,
+          iw: p.importanceWeight,
+          type: p.proposalType,
+        })),
+      },
+    );
+  }
+
   // ── Compute Reliability ───────────────────────────────────────────────
   // Build epoch vote counts per DRep and proposal-epoch map
   const proposalEpochs = new Map<number, number>();
@@ -328,6 +350,27 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
   }
 
   const rawIdentity = computeGovernanceIdentity(profiles, delegationSnapshots, nowSeconds);
+
+  // Diagnostic: GI debugging
+  if (profiles.size > 0) {
+    const sampleId = Array.from(profiles.keys())[0];
+    const sampleProfile = profiles.get(sampleId);
+    const sampleGI = rawIdentity.get(sampleId);
+    logger.info(
+      `[historical-diag-gi] epoch=${targetEpoch} profiles=${profiles.size} delegSnaps=${delegationSnapshots.size}`,
+      {
+        sampleId,
+        sampleGI,
+        hasMetadata: !!sampleProfile?.metadata,
+        metaKeys: sampleProfile?.metadata ? Object.keys(sampleProfile.metadata).slice(0, 5) : [],
+        delegatorCount: sampleProfile?.delegatorCount,
+      },
+    );
+  } else {
+    logger.warn(
+      `[historical-diag-gi] epoch=${targetEpoch} NO PROFILES loaded. drepIds=${drepIds.size} drepProfiles=${(drepProfiles ?? []).length}`,
+    );
+  }
 
   // ── Compute confidence per DRep ───────────────────────────────────────
   const confidences = new Map<string, number>();

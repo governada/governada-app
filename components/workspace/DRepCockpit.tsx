@@ -85,7 +85,7 @@ function DelegatorAnalytics({ delegation }: { delegation: CockpitData['delegatio
           Delegation Health
         </h3>
         <Link
-          href="/workspace/delegators"
+          href="/you/scorecard"
           className="text-xs text-primary hover:underline inline-flex items-center gap-0.5"
         >
           Details

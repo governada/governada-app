@@ -20,7 +20,7 @@ function TrendIcon({ value }: { value: number }) {
  * DRep Delegator Status Card
  *
  * JTBD: "How many people trust me to represent them?"
- * One number + trend, links to /workspace/delegators.
+ * One number + trend, links to /you/scorecard.
  */
 export function DRepDelegatorsCard() {
   const { drepId } = useSegment();
@@ -61,7 +61,7 @@ export function DRepDelegatorsCard() {
 
   return (
     <HubCard
-      href="/workspace/delegators"
+      href="/you/scorecard"
       urgency="default"
       label={`${currentCount} delegators, ${change >= 0 ? '+' : ''}${change} recent change`}
     >
@@ -93,7 +93,7 @@ export function DRepDelegatorsCard() {
  * DRep Score Status Card
  *
  * JTBD: "How am I doing as a DRep?"
- * Score + trend + tier, links to /workspace/performance.
+ * Score + trend + tier, links to /you/scorecard.
  */
 export function DRepScoreCard() {
   const { drepId } = useSegment();
@@ -128,7 +128,7 @@ export function DRepScoreCard() {
 
   return (
     <HubCard
-      href="/workspace/performance"
+      href="/you/scorecard"
       urgency="default"
       label={`Score ${score}, ${tier} tier, ${trend >= 0 ? 'up' : 'down'} ${Math.abs(trend)}`}
     >
@@ -217,7 +217,7 @@ export function SPOGovernanceScoreCard() {
  * SPO Delegator Changes Card (conditional)
  *
  * Only shows when there are meaningful delegator changes.
- * Links to /workspace/delegators.
+ * Links to /you/scorecard.
  */
 export function SPODelegatorsCard() {
   const { poolId } = useSegment();
@@ -236,7 +236,7 @@ export function SPODelegatorsCard() {
 
   return (
     <HubCard
-      href="/workspace/delegators"
+      href="/you/scorecard"
       urgency={change < 0 ? 'warning' : 'default'}
       label={`${currentCount} delegators, ${change >= 0 ? '+' : ''}${change} change`}
     >

@@ -126,7 +126,7 @@ async function getDRepConnections(
     connections.push({
       label: `${drep.delegatorCount} delegators`,
       sublabel: ada ? `${ada} delegated` : undefined,
-      href: `/workspace/delegators`,
+      href: `/you/scorecard`,
       icon: 'users',
       personalized: false,
     });

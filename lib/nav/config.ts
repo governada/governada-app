@@ -127,12 +127,6 @@ export const WORKSPACE_CITIZEN_ITEMS: NavItem[] = [
   },
 ];
 
-// Legacy exports for backwards compatibility (referenced by tests or other modules)
-/** @deprecated Use WORKSPACE_OPERATOR_ITEMS */
-export const WORKSPACE_DREP_ITEMS = WORKSPACE_OPERATOR_ITEMS;
-/** @deprecated Use WORKSPACE_OPERATOR_ITEMS */
-export const WORKSPACE_SPO_ITEMS = WORKSPACE_OPERATOR_ITEMS;
-
 /**
  * Home discovery sub-items — shown in pill bar on the homepage.
  * Each sets a ?filter= URL param on / to activate the discovery overlay + globe highlighting.

@@ -251,7 +251,7 @@ async function generateInsightsUncached(stakeAddress?: string): Promise<HubInsig
           text: `Your score is trending up — improved by ${Math.round(momentum)} points recently`,
           citation: {
             label: 'Score history',
-            href: '/workspace/performance',
+            href: '/you/scorecard',
             type: 'score_data',
           },
           computedAt: now,
@@ -262,7 +262,7 @@ async function generateInsightsUncached(stakeAddress?: string): Promise<HubInsig
           text: `Score dropped ${Math.abs(Math.round(momentum))} points — consider adding rationales to recent votes`,
           citation: {
             label: 'Score breakdown',
-            href: '/workspace/performance',
+            href: '/you/scorecard',
             type: 'score_data',
           },
           computedAt: now,
@@ -277,7 +277,7 @@ async function generateInsightsUncached(stakeAddress?: string): Promise<HubInsig
         text: `Participation at ${Math.round(participation)}% — voting on active proposals will improve your score`,
         citation: {
           label: 'Vote record',
-          href: '/workspace/votes',
+          href: '/you/record',
           type: 'vote_record',
         },
         computedAt: now,

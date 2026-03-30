@@ -219,6 +219,41 @@ export function getAnonOptions(route: PanelRoute): GuidedOption[] {
 }
 
 // ---------------------------------------------------------------------------
+// Discovery-aware chips for home world (gated by seneca_globe_discovery flag)
+// ---------------------------------------------------------------------------
+
+export function getDiscoveryChips(isAuthenticated: boolean): QuickAction[] {
+  if (isAuthenticated) {
+    return [
+      {
+        label: 'What did my DRep vote?',
+        action: 'conversation',
+        query: 'What has my delegated DRep voted on recently?',
+      },
+      {
+        label: "What's controversial?",
+        action: 'conversation',
+        query: 'Show me the most controversial proposals with the biggest voting splits',
+      },
+      { label: 'Where do I fit?', action: 'match' },
+    ];
+  }
+  return [
+    { label: 'Find my place', action: 'match' },
+    {
+      label: "What's being voted on?",
+      action: 'conversation',
+      query: 'What proposals are being voted on right now?',
+    },
+    {
+      label: "Who's most active?",
+      action: 'conversation',
+      query: 'Show me the most active DReps in governance right now',
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Sigil state mapping
 // ---------------------------------------------------------------------------
 

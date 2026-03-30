@@ -224,7 +224,13 @@ export type GlobeCommand =
       cameraElevation?: number;
       scanProgress?: number;
       fly?: boolean;
-    };
+    }
+  /** Discovery: highlight an entity's spatial neighbors */
+  | { type: 'showNeighborhood'; entityId: string; entityType: string; count: number }
+  /** Discovery: show voting controversy on a proposal — colored by stance */
+  | { type: 'showControversy'; proposalId: string }
+  /** Discovery: highlight recently active entities */
+  | { type: 'showActiveEntities'; entityType: string; entityIds: string[] };
 
 // ---------------------------------------------------------------------------
 // Color constants

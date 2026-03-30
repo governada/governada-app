@@ -34,6 +34,13 @@ export type PanelRoute =
   | 'workspace'
   | 'default';
 
+export type World = 'home' | 'workspace' | 'you';
+
+export function getWorldForRoute(route: PanelRoute): World {
+  if (route === 'workspace') return 'workspace';
+  return 'home'; // 'you' introduced in a future chunk
+}
+
 function detectPanelRoute(pathname: string): PanelRoute {
   if (pathname === '/' || pathname === '/hub') return 'hub';
   // Entity routes
@@ -91,6 +98,7 @@ export interface UseSenecaThreadResult {
   messages: ThreadMessage[];
   pendingQuery: string | undefined;
   panelRoute: PanelRoute;
+  world: World;
   entityId: string | undefined;
   persona: SenecaPersona;
   visitedPages: string[];
@@ -147,6 +155,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
 
   // Route derivation
   const panelRoute = useMemo(() => detectPanelRoute(pathname), [pathname]);
+  const world = useMemo(() => getWorldForRoute(panelRoute), [panelRoute]);
   const entityId = useMemo(() => extractEntityId(pathname), [pathname]);
   const persona = useMemo(() => getPersonaForRoute(panelRoute), [panelRoute]);
 
@@ -204,6 +213,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
     messages,
     pendingQuery,
     panelRoute,
+    world,
     entityId,
     persona,
     visitedPages,

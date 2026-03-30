@@ -17,6 +17,8 @@ export interface AdvisorContext {
   conversationMemory?: string;
   /** Navigation event — set when user navigates mid-conversation */
   navigationEvent?: { from: string; to: string; entityId?: string };
+  /** Which world the user is in — determines available tools and behavior */
+  world?: 'home' | 'workspace' | 'you';
 }
 
 export interface GlobeStreamCommand {

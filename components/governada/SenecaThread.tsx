@@ -18,7 +18,7 @@ import { SenecaResearch } from '@/components/governada/panel/SenecaResearch';
 import { SenecaInput } from '@/components/governada/panel/SenecaInput';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
-import type { PanelRoute } from '@/hooks/useSenecaThread';
+import type { PanelRoute, World } from '@/hooks/useSenecaThread';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { readAdvisorStream, detectStreamTopic } from '@/lib/intelligence/streamAdvisor';
@@ -30,10 +30,12 @@ import {
   ROUTE_LABELS,
   getQuickActions,
   getAnonOptions,
+  getDiscoveryChips,
   sigilStateForMode,
   IdleContent,
 } from '@/components/governada/panel/SenecaIdle';
 import type { QuickAction, GuidedOption } from '@/components/governada/panel/SenecaIdle';
+import { useFeatureFlag } from '@/components/FeatureGate';
 import { ConversationContent } from '@/components/governada/panel/SenecaMessages';
 import { SearchInput, SearchResultsContent } from '@/components/governada/panel/SenecaSearchPanel';
 
@@ -52,6 +54,7 @@ interface SenecaThreadProps {
     accentClass?: string;
   };
   panelRoute: PanelRoute;
+  world?: World;
   entityId?: string;
   pendingQuery?: string;
   messages: ThreadMessage[];
@@ -84,6 +87,7 @@ export function SenecaThread({
   mode,
   persona,
   panelRoute,
+  world,
   entityId,
   pendingQuery,
   messages,
@@ -243,6 +247,7 @@ export function SenecaThread({
         entityId,
         persona: persona.id as 'navigator' | 'analyst' | 'partner' | 'guide',
         conversationMemory: memoryContext,
+        world,
         ...(navEvent ? { navigationEvent: navEvent } : {}),
       },
       (delta) => {
@@ -427,8 +432,24 @@ export function SenecaThread({
     return persona.label;
   }, [persona.id, persona.label]);
 
-  const quickActions = useMemo(() => getQuickActions(panelRoute), [panelRoute]);
-  const anonOptions = useMemo(() => getAnonOptions(panelRoute), [panelRoute]);
+  const discoveryFlag = useFeatureFlag('seneca_globe_discovery');
+  const useDiscoveryChips = discoveryFlag === true && world === 'home';
+
+  const quickActions = useMemo(
+    () => (useDiscoveryChips ? getDiscoveryChips(true) : getQuickActions(panelRoute)),
+    [panelRoute, useDiscoveryChips],
+  );
+  const anonOptions = useMemo(
+    () =>
+      useDiscoveryChips
+        ? getDiscoveryChips(false).map((c) => ({
+            label: c.label,
+            action: c.action === 'match' ? ('match' as const) : ('conversation' as const),
+            query: c.query,
+          }))
+        : getAnonOptions(panelRoute),
+    [panelRoute, useDiscoveryChips],
+  );
 
   const sigilState = sigilStateForMode(mode);
 

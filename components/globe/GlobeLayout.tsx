@@ -453,6 +453,7 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
         mode={seneca.mode}
         persona={seneca.persona}
         panelRoute={seneca.panelRoute}
+        world={seneca.world}
         entityId={seneca.entityId}
         pendingQuery={seneca.pendingQuery}
         messages={seneca.messages}

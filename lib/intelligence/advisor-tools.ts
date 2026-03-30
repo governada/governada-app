@@ -168,6 +168,75 @@ export const ADVISOR_TOOLS = [
       properties: {},
     },
   },
+  // --- Discovery tools (Chunk 2) ---
+  {
+    name: 'highlight_cluster',
+    description:
+      'Highlight a governance faction (cluster) on the constellation globe. Use when the user asks about factions, groups, clusters, or governance alignments like "show me the treasury faction" or "who are the innovation advocates".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        cluster_name: {
+          type: 'string',
+          description:
+            'Name or keyword to match a cluster (e.g., "Treasury Conservatives", "innovation", "security")',
+        },
+        dimension: {
+          type: 'string',
+          description:
+            'Governance dimension to highlight (treasury, decentralization, security, innovation, transparency)',
+        },
+      },
+    },
+  },
+  {
+    name: 'show_neighborhood',
+    description:
+      "Show entities that are spatially near a specific DRep in governance alignment space. Use when the user asks about similar DReps, neighbors, or 'who is like X'.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        entity_id: {
+          type: 'string',
+          description: 'DRep ID, name, or handle',
+        },
+        entity_type: {
+          type: 'string',
+          enum: ['drep'],
+          description: 'Entity type (currently only drep supported)',
+        },
+        count: {
+          type: 'number',
+          description: 'Number of neighbors to show (default 5, max 10)',
+        },
+      },
+      required: ['entity_id'],
+    },
+  },
+  {
+    name: 'show_controversy',
+    description:
+      'Find the most controversial proposals — those with the biggest voting split between DReps and SPOs. Use when the user asks about controversy, disagreements, contested proposals, or voting splits.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'show_active_entities',
+    description:
+      'Show the most recently active governance entities — DReps who voted most recently, or proposals currently accepting votes. Use when the user asks "who is active?", "what\'s happening?", or wants to see current activity.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        entity_type: {
+          type: 'string',
+          enum: ['drep', 'proposal'],
+          description: 'Type of entity to show (default: drep)',
+        },
+      },
+    },
+  },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -312,6 +381,64 @@ export function getToolThinkingGlobeCommands(
         },
       ];
 
+    // --- Discovery tools ---
+
+    case 'highlight_cluster':
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [50, 50, 50, 50, 50, 50], durationMs: 800 },
+              delayMs: 200,
+            },
+          ],
+        },
+      ];
+
+    case 'show_neighborhood': {
+      const id = toolInput.entity_id as string | undefined;
+      if (!id) return [];
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            { command: { type: 'pulse', nodeId: `drep_${id}` }, delayMs: 300 },
+          ],
+        },
+      ];
+    }
+
+    case 'show_controversy':
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [50, 50, 50, 50, 50, 50], durationMs: 1000 },
+              delayMs: 200,
+            },
+          ],
+        },
+      ];
+
+    case 'show_active_entities':
+      return [
+        {
+          type: 'sequence',
+          steps: [
+            { command: { type: 'dim' }, delayMs: 0 },
+            {
+              command: { type: 'scan', alignment: [60, 60, 60, 60, 60, 60], durationMs: 600 },
+              delayMs: 200,
+            },
+          ],
+        },
+      ];
+
     default:
       return [];
   }
@@ -339,6 +466,14 @@ function getDisplayStatus(toolName: string): string {
       return 'Checking treasury...';
     case 'get_governance_health':
       return 'Assessing governance health...';
+    case 'highlight_cluster':
+      return 'Exploring governance factions...';
+    case 'show_neighborhood':
+      return 'Finding nearby entities...';
+    case 'show_controversy':
+      return 'Analyzing voting divisions...';
+    case 'show_active_entities':
+      return 'Scanning recent activity...';
     default:
       return 'Looking up data...';
   }
@@ -372,6 +507,22 @@ export async function executeAdvisorTool(
         return { ...(await executeGetTreasuryStatus()), displayStatus };
       case 'get_governance_health':
         return { ...(await executeGetGovernanceHealth()), displayStatus };
+      case 'highlight_cluster': {
+        const { executeHighlightCluster } = await import('./advisor-discovery-tools');
+        return { ...(await executeHighlightCluster(toolInput)), displayStatus };
+      }
+      case 'show_neighborhood': {
+        const { executeShowNeighborhood } = await import('./advisor-discovery-tools');
+        return { ...(await executeShowNeighborhood(toolInput)), displayStatus };
+      }
+      case 'show_controversy': {
+        const { executeShowControversy } = await import('./advisor-discovery-tools');
+        return { ...(await executeShowControversy()), displayStatus };
+      }
+      case 'show_active_entities': {
+        const { executeShowActiveEntities } = await import('./advisor-discovery-tools');
+        return { ...(await executeShowActiveEntities(toolInput)), displayStatus };
+      }
       default:
         return {
           result: `Unknown tool: ${toolName}`,

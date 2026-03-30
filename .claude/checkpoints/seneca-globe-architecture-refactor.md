@@ -2,7 +2,7 @@
 
 **Branch**: `claude/competent-golick`
 **Plan**: `C:\Users\dalto\.claude-personal\plans\goofy-growing-hoare.md`
-**Status**: Phase 3 partially complete — extraction files created, GlobeConstellation.tsx not yet updated
+**Status**: Phase 3 partially complete — 3 of 6 extractions wired (Atmosphere, Camera, Ambient). GlobeConstellation at 2,315 lines (from 2,752).
 
 ## Completed
 
@@ -34,13 +34,15 @@ Created canonical type/utility modules:
 - `components/globe/GlobeEdges.tsx` (266 lines) — NetworkEdgeLines, EdgeLayer, ConstellationEdges, NeuralMesh
 - `components/globe/GlobeEffects.tsx` (387 lines) — NetworkPulses, MatchedEdgeGlow, FlyToParticles, GloryRing
 
+**DONE (wired):** GlobeAtmosphere, GlobeCamera (3 components), GlobeAmbient (2 components) — inline defs removed, imports added. GlobeConstellation.tsx now 2,315 lines.
+
 **STILL NEEDED for Phase 3:**
 
-1. **Update GlobeConstellation.tsx** — Add imports from the 5 new files, remove the inline function definitions. The agents added imports at the top but the inline definitions still exist, causing "conflicts with local declaration" errors.
-2. **Extract NodePoints** — The biggest sub-component (~430 lines, lines 1241-1851). Includes `ConstellationNodes` (grouping layer) and `NodePoints` (GPU-instanced renderer). This is the performance-critical core. Extract to `components/globe/NodePoints.tsx`.
-3. **Remove EDGE_STYLES const** (line 1853) from GlobeConstellation.tsx — now in GlobeEdges.tsx.
-4. **Clean up unused imports** in GlobeConstellation.tsx — shaders (ATMOSPHERE*\*, PULSE*\*), helpers (seededRandom, makeCircleTexture), useThree, AXIAL_TILT are now imported by the extracted components, not needed in the main file.
-5. **Type check** — run `npx tsc --noEmit 2>&1 | grep GlobeConstellation` to verify zero new errors.
+1. **Wire GlobeEdges** — File exists. Remove inline NetworkEdgeLines, EDGE_STYLES, EdgeLayer, ConstellationEdges, NeuralMesh from GlobeConstellation.tsx. Add import.
+2. **Wire GlobeEffects** — File exists. Remove inline NetworkPulses, MatchedEdgeGlow, FlyToParticles, GloryRing, FLY_PARTICLE_COUNT from GlobeConstellation.tsx. Add import.
+3. **Extract NodePoints** — ~430 lines. ConstellationNodes + NodePoints (GPU-instanced renderer). Extract to `components/globe/NodePoints.tsx`.
+4. **Clean up unused imports** in GlobeConstellation.tsx.
+5. **Type check** — `npx tsc --noEmit 2>&1 | grep GlobeConstellation` should return zero errors.
 
 **Key interfaces needed by NodePoints extraction:**
 

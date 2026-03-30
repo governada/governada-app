@@ -29,8 +29,8 @@ export const clusterPerspectives = inngest.createFunction(
     name: 'Cluster Proposal Perspectives',
     retries: 2,
     concurrency: { limit: 3 },
+    triggers: { event: 'governada/proposal.perspectives.cluster' },
   },
-  { event: 'governada/proposal.perspectives.cluster' },
   async ({ event, step }) => {
     const { txHash, proposalIndex } = event.data as {
       txHash: string;

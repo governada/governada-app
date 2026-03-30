@@ -17,8 +17,8 @@ export const trackProposalOutcomes = inngest.createFunction(
     id: 'track-proposal-outcomes',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"proposal-outcomes"' },
+    triggers: { cron: '0 1 * * *' },
   },
-  { cron: '0 1 * * *' },
   async ({ step }) => {
     const result = await step.run('compute-outcomes', () => computeAllProposalOutcomes());
 

@@ -14,8 +14,8 @@ export const generateCitizenAssembly = inngest.createFunction(
   {
     id: 'generate-citizen-assembly',
     retries: 2,
+    triggers: { cron: '0 12 */5 * *' }, // Every 5 days at noon UTC (approx epoch boundary)
   },
-  { cron: '0 12 */5 * *' }, // Every 5 days at noon UTC (approx epoch boundary)
   async ({ step }) => {
     const supabase = getSupabaseAdmin();
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));

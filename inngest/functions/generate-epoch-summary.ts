@@ -16,8 +16,8 @@ export const generateEpochSummary = inngest.createFunction(
     id: 'generate-epoch-summary',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"epoch-summary"' },
+    triggers: { cron: '0 22 * * *' },
   },
-  { cron: '0 22 * * *' },
   async ({ step }) => {
     const epochInfo = await step.run('detect-epoch-transition', async () => {
       const supabase = getSupabaseAdmin();

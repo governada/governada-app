@@ -61,8 +61,8 @@ export const syncDrepScores = inngest.createFunction(
         `DRep scoring failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ event: 'drepscore/sync.scores' }, { cron: '0 2 * * *' }],
   },
-  [{ event: 'drepscore/sync.scores' }, { cron: '0 2 * * *' }],
   async ({ step }) => {
     const result = await step.run('compute-drep-scores', async () => {
       // Guard against hangs that cause 24h+ scoring runs.

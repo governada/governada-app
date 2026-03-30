@@ -50,8 +50,12 @@ export const generateCcBriefing = inngest.createFunction(
     id: 'generate-cc-briefing',
     concurrency: [{ scope: 'env', key: 'cc-briefing', limit: 1 }],
     retries: 1,
+    triggers: [
+      { event: 'cc/analysis.completed' },
+      { event: 'cc/relations.computed' },
+      { cron: '0 0 */2 * *' },
+    ],
   },
-  [{ event: 'cc/analysis.completed' }, { event: 'cc/relations.computed' }, { cron: '0 0 */2 * *' }],
   async ({ step }) => {
     // -----------------------------------------------------------------------
     // Step 1: Generate committee briefing

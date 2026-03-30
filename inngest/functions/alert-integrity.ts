@@ -6,8 +6,8 @@ export const alertIntegrity = inngest.createFunction(
   {
     id: 'alert-integrity',
     retries: 2,
+    triggers: { cron: '0 */6 * * *' },
   },
-  { cron: '0 */6 * * *' },
   async ({ step }) => {
     const checkInId = cronCheckIn('alert-integrity', '0 */6 * * *');
     try {

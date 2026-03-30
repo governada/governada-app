@@ -27,8 +27,8 @@ export const generateCitizenBriefings = inngest.createFunction(
     id: 'generate-citizen-briefings',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"citizen-briefings"' },
+    triggers: { event: 'drepscore/epoch.transition' },
   },
-  { event: 'drepscore/epoch.transition' },
   async ({ event, step }) => {
     const epoch = event.data?.epoch as number | undefined;
     if (!epoch) {

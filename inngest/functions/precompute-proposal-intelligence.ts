@@ -76,8 +76,8 @@ export const precomputeProposalIntelligence = inngest.createFunction(
         .eq('sync_type', 'intelligence_precompute')
         .is('finished_at', null);
     },
+    triggers: [{ cron: '30 */4 * * *' }, { event: 'governada/proposal.intelligence.precompute' }],
   },
-  [{ cron: '30 */4 * * *' }, { event: 'governada/proposal.intelligence.precompute' }],
   async ({ step }) => {
     // Check feature flag
     const enabled = await step.run('check-flag', () =>

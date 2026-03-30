@@ -44,8 +44,8 @@ export const extractMatchingTopics = inngest.createFunction(
     name: 'Extract Matching Topics from Freeform Text',
     retries: 1,
     concurrency: { limit: 1, scope: 'env', key: '"topic-extraction"' },
+    triggers: { cron: '0 3 * * 0' }, // Weekly, Sunday 3am UTC
   },
-  { cron: '0 3 * * 0' }, // Weekly, Sunday 3am UTC
   async ({ step }) => {
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 

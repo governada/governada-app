@@ -48,8 +48,8 @@ export const checkSnapshotCompleteness = inngest.createFunction(
     id: 'check-snapshot-completeness',
     name: 'Snapshot Completeness Check',
     retries: 2,
+    triggers: { cron: '0 6 * * *' },
   },
-  { cron: '0 6 * * *' },
   async ({ step }) => {
     const checkInId = cronCheckIn('check-snapshot-completeness', '0 6 * * *');
     try {

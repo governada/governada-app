@@ -17,8 +17,8 @@ export const snapshotCitizenRings = inngest.createFunction(
     id: 'snapshot-citizen-rings',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"citizen-ring-snapshots"' },
+    triggers: { cron: '30 4 * * *' }, // Daily at 04:30 UTC
   },
-  { cron: '30 4 * * *' }, // Daily at 04:30 UTC
   async ({ step, logger }) => {
     const supabase = getSupabaseAdmin();
 

@@ -23,8 +23,8 @@ export const generateStateOfGovernance = inngest.createFunction(
     id: 'generate-state-of-governance',
     name: 'Generate State of Governance Report',
     retries: 2,
+    triggers: { cron: '0 20 * * 0' },
   },
-  { cron: '0 20 * * 0' },
   async ({ step }) => {
     // Step 1: Generate the existing canonical report
     const result = await step.run('generate-report', async () => {

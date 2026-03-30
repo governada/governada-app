@@ -32,8 +32,8 @@ export const snapshotGhi = inngest.createFunction(
         .eq('sync_type', 'ghi')
         .is('finished_at', null);
     },
+    triggers: [{ cron: '30 4 * * *' }, { event: 'drepscore/sync.ghi' }],
   },
-  [{ cron: '30 4 * * *' }, { event: 'drepscore/sync.ghi' }],
   async ({ step }) => {
     const result = await step.run('compute-ghi', async () => {
       return computeGHI();

@@ -31,8 +31,8 @@ export const syncVotes = inngest.createFunction(
         `Votes sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.votes' }],
   },
-  [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.votes' }],
   async ({ step }) => {
     const checkInId = cronCheckIn('sync-votes', '15 */6 * * *');
     try {

@@ -140,8 +140,8 @@ export const syncAlignment = inngest.createFunction(
         `Alignment sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ event: 'drepscore/sync.alignment' }, { cron: '0 3 * * *' }],
   },
-  [{ event: 'drepscore/sync.alignment' }, { cron: '0 3 * * *' }],
   async ({ step }) => {
     const startTime = Date.now();
 

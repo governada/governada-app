@@ -8,8 +8,8 @@ export const cleanupRevokedSessions = inngest.createFunction(
   {
     id: 'cleanup-revoked-sessions',
     retries: 2,
+    triggers: { cron: '0 5 * * *' },
   },
-  { cron: '0 5 * * *' },
   async ({ step }) => {
     const deleted = await step.run('delete-expired-revocations', async () => {
       const supabase = getSupabaseAdmin();

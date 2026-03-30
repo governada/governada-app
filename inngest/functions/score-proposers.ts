@@ -44,8 +44,8 @@ export const scoreProposers = inngest.createFunction(
     id: 'score-proposers',
     name: 'Score Proposers',
     retries: 2,
+    triggers: [{ cron: '0 3 * * *' }, { event: 'drepscore/sync.proposers' }],
   },
-  [{ cron: '0 3 * * *' }, { event: 'drepscore/sync.proposers' }],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Inngest dual-trigger type inference
   async ({ step }: any) => {
     const resolution = await step.run('resolve-identities', async () => {

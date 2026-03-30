@@ -39,8 +39,12 @@ export const updatePassagePredictions = inngest.createFunction(
         .eq('sync_type', 'passage_predictions')
         .is('finished_at', null);
     },
+    triggers: [
+      { cron: '0 */6 * * *' },
+      { event: 'drepscore/sync.votes' },
+      { event: 'cc/votes.synced' },
+    ],
   },
-  [{ cron: '0 */6 * * *' }, { event: 'drepscore/sync.votes' }, { event: 'cc/votes.synced' }],
   async ({ step }) => {
     const enabled = await step.run('check-flag', () => getFeatureFlag('passage_prediction', false));
     if (!enabled) {

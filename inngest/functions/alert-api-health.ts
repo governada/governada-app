@@ -6,8 +6,8 @@ export const alertApiHealth = inngest.createFunction(
   {
     id: 'alert-api-health',
     retries: 2,
+    triggers: { cron: '*/15 * * * *' },
   },
-  { cron: '*/15 * * * *' },
   async ({ step }) => {
     const checkInId = cronCheckIn('alert-api-health', '*/15 * * * *');
     try {

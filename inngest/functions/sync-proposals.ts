@@ -37,8 +37,8 @@ export const syncProposals = inngest.createFunction(
         `Proposals sync failed after all retries.\nError: ${detail || msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '*/30 * * * *' }, { event: 'drepscore/sync.proposals' }],
   },
-  [{ cron: '*/30 * * * *' }, { event: 'drepscore/sync.proposals' }],
   async ({ step }) => {
     const checkInId = cronCheckIn('sync-proposals', '*/30 * * * *');
     try {

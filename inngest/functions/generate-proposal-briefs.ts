@@ -21,8 +21,8 @@ export const generateProposalBriefOnDemand = inngest.createFunction(
     name: 'Generate Proposal Brief (On-Demand)',
     retries: 2,
     concurrency: { limit: 5 },
+    triggers: { event: 'governada/proposal.brief.generate' },
   },
-  { event: 'governada/proposal.brief.generate' },
   async ({ event, step }) => {
     const { txHash, proposalIndex } = event.data as { txHash: string; proposalIndex: number };
 
@@ -94,8 +94,8 @@ export const generateProposalBriefsBatch = inngest.createFunction(
     name: 'Generate Proposal Briefs (Batch)',
     retries: 1,
     concurrency: { limit: 1 },
+    triggers: { cron: '0 */6 * * *' },
   },
-  { cron: '0 */6 * * *' },
   async ({ step }) => {
     // Find proposals with 3+ rationales
     const proposals = await step.run('find-proposals-needing-briefs', async () => {

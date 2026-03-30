@@ -25,8 +25,8 @@ export const generateGovernanceBrief = inngest.createFunction(
     id: 'generate-governance-brief',
     name: 'Generate Governance Brief',
     retries: 2,
+    triggers: { cron: '0 10 * * 1' },
   },
-  { cron: '0 10 * * 1' },
   async ({ step }) => {
     const activeUsers = await step.run('fetch-active-users', async () => {
       const supabase = getSupabaseAdmin();

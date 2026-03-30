@@ -43,8 +43,8 @@ export const syncCcRationales = inngest.createFunction(
         `CC rationales sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.cc-rationales' }],
   },
-  [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.cc-rationales' }],
   async ({ step }) => {
     // Step 1: Fetch and parse rationale documents for CC votes
     const fetchResult = await step.run('fetch-rationales', async () => {

@@ -20,8 +20,8 @@ export const notifyEngagementOutcomes = inngest.createFunction(
     id: 'notify-engagement-outcomes',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"engagement-outcomes"' },
+    triggers: { cron: '30 1 * * *' }, // Daily at 01:30 UTC, after track-proposal-outcomes
   },
-  { cron: '30 1 * * *' }, // Daily at 01:30 UTC, after track-proposal-outcomes
   async ({ step }) => {
     const supabase = getSupabaseAdmin();
 

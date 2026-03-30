@@ -19,8 +19,8 @@ export const computeAiQuality = inngest.createFunction(
     id: 'compute-ai-quality',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"ai-quality"' },
+    triggers: { cron: '0 */12 * * *' },
   },
-  { cron: '0 */12 * * *' },
   async ({ step }) => {
     // Step 1: Check feature flag
     const enabled = await step.run('check-flag', async () => {

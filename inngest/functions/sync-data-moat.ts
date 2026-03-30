@@ -46,8 +46,8 @@ export const syncDataMoat = inngest.createFunction(
         .eq('sync_type', 'data_moat')
         .is('finished_at', null);
     },
+    triggers: [{ cron: '15 3 * * *' }, { event: 'drepscore/sync.data-moat' }],
   },
-  [{ cron: '15 3 * * *' }, { event: 'drepscore/sync.data-moat' }],
   async ({ step }) => {
     const checkInId = cronCheckIn('sync-data-moat', '15 3 * * *');
     try {

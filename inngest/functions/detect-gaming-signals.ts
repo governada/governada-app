@@ -27,8 +27,8 @@ export const detectGamingSignals = inngest.createFunction(
     id: 'detect-gaming-signals',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"gaming-detection"' },
+    triggers: { cron: '0 */12 * * *' },
   },
-  { cron: '0 */12 * * *' },
   async ({ step }) => {
     // Step 1: Check feature flag
     const enabled = await step.run('check-flag', async () => {

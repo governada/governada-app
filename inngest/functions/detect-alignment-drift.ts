@@ -35,8 +35,11 @@ export const detectAlignmentDrift = inngest.createFunction(
     id: 'detect-alignment-drift',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"alignment-drift"' },
+    triggers: [
+      { event: 'drepscore/sync.scores.complete' },
+      { event: 'drepscore/sync.alignment.complete' },
+    ],
   },
-  [{ event: 'drepscore/sync.scores.complete' }, { event: 'drepscore/sync.alignment.complete' }],
   async ({ step }) => {
     const enabled = await step.run('check-flag', async () => {
       return getFeatureFlag('alignment_drift', false);

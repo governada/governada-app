@@ -59,8 +59,8 @@ export const generateDrepEpochUpdates = inngest.createFunction(
     id: 'generate-drep-epoch-updates',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"drep-epoch-updates"' },
+    triggers: { cron: '30 22 * * *' }, // 30 min after epoch summary
   },
-  { cron: '30 22 * * *' }, // 30 min after epoch summary
   async ({ step }) => {
     // Step 1: Detect which epoch to process
     const epochInfo = await step.run('detect-epoch', async () => {

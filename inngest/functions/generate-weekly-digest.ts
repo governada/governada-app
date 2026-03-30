@@ -2,8 +2,7 @@ import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const generateWeeklyDigest = inngest.createFunction(
-  { id: 'generate-weekly-digest', retries: 2 },
-  [{ cron: '0 9 * * 1' }], // Every Monday at 9am UTC
+  { id: 'generate-weekly-digest', retries: 2, triggers: { cron: '0 9 * * 1' } }, // Every Monday at 9am UTC
   async ({ step, logger }) => {
     const supabase = getSupabaseAdmin();
 

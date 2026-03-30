@@ -84,8 +84,8 @@ export const precomputeEngagementSignals = inngest.createFunction(
     id: 'precompute-engagement-signals',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"engagement-signals"' },
+    triggers: [{ cron: '0 */2 * * *' }, { event: 'drepscore/engagement.precompute' }],
   },
-  [{ cron: '0 */2 * * *' }, { event: 'drepscore/engagement.precompute' }],
   async ({ step }) => {
     const supabase = getSupabaseAdmin();
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));

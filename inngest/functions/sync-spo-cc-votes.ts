@@ -52,8 +52,8 @@ export const syncSpoAndCcVotes = inngest.createFunction(
         `SPO/CC votes sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '45 */6 * * *' }, { event: 'drepscore/sync.spo-cc-votes' }],
   },
-  [{ cron: '45 */6 * * *' }, { event: 'drepscore/sync.spo-cc-votes' }],
   async ({ step }) => {
     const spoResult = await step.run('fetch-spo-votes', async () => {
       const supabase = getSupabaseAdmin();

@@ -18,8 +18,8 @@ export const computeCcRelations = inngest.createFunction(
   {
     id: 'compute-cc-relations',
     concurrency: [{ scope: 'env', key: 'cc-relations', limit: 1 }],
+    triggers: [{ event: 'cc/votes.synced' }, { cron: '0 */6 * * *' }],
   },
-  [{ event: 'cc/votes.synced' }, { cron: '0 */6 * * *' }],
   async ({ step }) => {
     // -----------------------------------------------------------------------
     // Step 1: Compute agreement matrix (vote agreement + reasoning similarity)

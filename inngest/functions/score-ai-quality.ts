@@ -22,8 +22,8 @@ export const scoreAiQuality = inngest.createFunction(
     name: 'AI Quality Scoring Pipeline',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"ai-quality-scoring"' },
+    triggers: [{ cron: '30 2 * * *' }, { event: 'drepscore/sync.ai-quality' }],
   },
-  [{ cron: '30 2 * * *' }, { event: 'drepscore/sync.ai-quality' }],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Inngest dual-trigger type inference
   async ({ step }: any) => {
     // Step 1: Score unscored DRep rationales (batch of 100 per run)

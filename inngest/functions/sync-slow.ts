@@ -27,8 +27,8 @@ export const syncSlow = inngest.createFunction(
         `Slow sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '0 4 * * *' }, { event: 'drepscore/sync.slow' }],
   },
-  [{ cron: '0 4 * * *' }, { event: 'drepscore/sync.slow' }],
   async ({ step }) => {
     const result = await step.run('execute-slow-sync', () => executeSlowSync());
     await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_DAILY'));

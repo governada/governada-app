@@ -27,8 +27,8 @@ export const syncSecondary = inngest.createFunction(
         `Secondary sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '30 */6 * * *' }, { event: 'drepscore/sync.secondary' }],
   },
-  [{ cron: '30 */6 * * *' }, { event: 'drepscore/sync.secondary' }],
   async ({ step }) => {
     const result = await step.run('execute-secondary-sync', () => executeSecondarySync());
     await step.run('heartbeat-batch', () => pingHeartbeat('HEARTBEAT_URL_BATCH'));

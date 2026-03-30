@@ -61,8 +61,8 @@ export const checkNotifications = inngest.createFunction(
     id: 'check-notifications',
     retries: 1,
     concurrency: { limit: 1, scope: 'env', key: '"notifications"' },
+    triggers: { cron: '15 */6 * * *' },
   },
-  { cron: '15 */6 * * *' },
   async ({ step }) => {
     const stats = {
       scoreChange: 0,

@@ -77,8 +77,8 @@ export const syncDreps = inngest.createFunction(
         // Don't let escalation logic crash the onFailure handler
       }
     },
+    triggers: [{ cron: '0 */6 * * *' }, { event: 'drepscore/sync.dreps' }],
   },
-  [{ cron: '0 */6 * * *' }, { event: 'drepscore/sync.dreps' }],
   async ({ step }) => {
     const checkInId = cronCheckIn('sync-dreps', '0 */6 * * *');
     try {

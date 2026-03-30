@@ -139,8 +139,8 @@ export const syncSpoScores = inngest.createFunction(
         `SPO scoring failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ event: 'drepscore/sync.spo-scores' }, { cron: '0 3 * * *' }],
   },
-  [{ event: 'drepscore/sync.spo-scores' }, { cron: '0 3 * * *' }],
   async ({ step }) => {
     const identityEnabled = await step.run('check-feature-flag', async () => {
       return getFeatureFlag('spo_governance_identity', false);

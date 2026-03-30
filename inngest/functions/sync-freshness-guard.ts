@@ -49,8 +49,8 @@ export const syncFreshnessGuard = inngest.createFunction(
     id: 'sync-freshness-guard',
     retries: 1,
     concurrency: { limit: 1, scope: 'env', key: '"freshness-guard"' },
+    triggers: { cron: '*/30 * * * *' },
   },
-  { cron: '*/30 * * * *' },
   async ({ step }) => {
     const recoveries: string[] = [];
 

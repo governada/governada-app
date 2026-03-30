@@ -42,8 +42,8 @@ export const syncGovernanceBenchmarks = inngest.createFunction(
         `Governance benchmarks sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '0 6 * * 0' }, { event: 'drepscore/sync.benchmarks' }],
   },
-  [{ cron: '0 6 * * 0' }, { event: 'drepscore/sync.benchmarks' }],
   async ({ step }) => {
     const cardano = await step.run('fetch-cardano', async () => {
       const result = await fetchCardanoBenchmark();

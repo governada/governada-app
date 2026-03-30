@@ -7,8 +7,8 @@ export const generateGovernanceWrapped = inngest.createFunction(
     id: 'generate-governance-wrapped',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"governance-wrapped"' },
+    triggers: [{ event: 'drepscore/sync.scores' }, { cron: '0 3 * * 0' }],
   },
-  [{ event: 'drepscore/sync.scores' }, { cron: '0 3 * * 0' }],
   async ({ step, logger }) => {
     const supabase = getSupabaseAdmin();
 

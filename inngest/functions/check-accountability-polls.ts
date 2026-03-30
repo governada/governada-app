@@ -19,8 +19,8 @@ export const checkAccountabilityPolls = inngest.createFunction(
     id: 'check-accountability-polls',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"accountability-polls"' },
+    triggers: { cron: '0 23 * * *' },
   },
-  { cron: '0 23 * * *' },
   async ({ step }) => {
     const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 

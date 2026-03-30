@@ -23,8 +23,8 @@ export const consolidateFeedbackFn = inngest.createFunction(
       key: 'event.data.proposalTxHash + "-" + event.data.proposalIndex',
       period: '30s',
     },
+    triggers: { event: 'governada/annotation.created' },
   },
-  { event: 'governada/annotation.created' },
   async ({ event, step }) => {
     const { proposalTxHash, proposalIndex } = event.data as {
       proposalTxHash: string;

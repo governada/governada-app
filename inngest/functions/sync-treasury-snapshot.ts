@@ -43,8 +43,8 @@ export const syncTreasurySnapshot = inngest.createFunction(
         `Treasury snapshot sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
+    triggers: [{ cron: '30 22 * * *' }, { event: 'drepscore/sync.treasury' }],
   },
-  [{ cron: '30 22 * * *' }, { event: 'drepscore/sync.treasury' }],
   async ({ step }) => {
     let snapshotEpoch = 0;
     let errorMessage: string | null = null;

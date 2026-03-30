@@ -32,8 +32,8 @@ export const syncCatalyst = inngest.createFunction(
         .eq('sync_type', 'catalyst')
         .is('finished_at', null);
     },
+    triggers: [{ cron: '30 4 * * *' }, { event: 'drepscore/sync.catalyst' }],
   },
-  [{ cron: '30 4 * * *' }, { event: 'drepscore/sync.catalyst' }],
   async ({ step }) => {
     const checkInId = cronCheckIn('sync-catalyst', '30 4 * * *');
     try {

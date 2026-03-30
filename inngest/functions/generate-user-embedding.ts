@@ -20,8 +20,8 @@ export const generateUserEmbedding = inngest.createFunction(
     id: 'generate-user-embedding',
     retries: 2,
     concurrency: { limit: 5 },
+    triggers: { event: 'governada/user.profile.updated' },
   },
-  { event: 'governada/user.profile.updated' },
   async ({ event, step }) => {
     const { userId } = event.data as { userId: string };
 

@@ -22,8 +22,8 @@ export const notifyEpochRecap = inngest.createFunction(
     id: 'notify-epoch-recap',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"epoch-recap"' },
+    triggers: { event: 'drepscore/sync.scores' },
   },
-  [{ event: 'drepscore/sync.scores' }],
   async ({ step }) => {
     const supabase = getSupabaseAdmin();
 

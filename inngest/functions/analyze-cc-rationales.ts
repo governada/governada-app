@@ -80,8 +80,8 @@ export const analyzeCcRationales = inngest.createFunction(
     id: 'analyze-cc-rationales',
     concurrency: [{ scope: 'env', key: 'cc-analysis', limit: 1 }],
     retries: 1,
+    triggers: { event: 'cc/rationales.synced' },
   },
-  { event: 'cc/rationales.synced' },
   async ({ step }) => {
     // Step 1: Find unanalyzed rationales
     const unanalyzed = await step.run('find-unanalyzed', async () => {

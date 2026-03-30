@@ -75,7 +75,7 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
   const { data: proposals } = await supabase
     .from('proposals')
     .select(
-      'tx_hash, proposal_index, proposal_type, proposed_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, treasury_withdrawal_amount, block_time',
+      'tx_hash, proposal_index, proposal_type, proposed_epoch, treasury_tier, withdrawal_amount, block_time',
     )
     .lte('proposed_epoch', targetEpoch)
     .range(0, 99999);
@@ -98,15 +98,8 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
   const proposalContextMap = new Map<string, ProposalScoringContext>();
   for (const p of proposals ?? []) {
     const key = `${p.tx_hash}-${p.proposal_index}`;
-    const amount = p.treasury_withdrawal_amount
-      ? Number(p.treasury_withdrawal_amount) / 1_000_000
-      : null;
-    let treasuryTier: string | null = null;
-    if (amount !== null) {
-      if (amount >= 10_000_000) treasuryTier = 'major';
-      else if (amount >= 1_000_000) treasuryTier = 'significant';
-      else treasuryTier = 'standard';
-    }
+    const amount = p.withdrawal_amount != null ? Number(p.withdrawal_amount) : null;
+    const treasuryTier = (p.treasury_tier as string) ?? null;
     const proposalType = p.proposal_type ?? 'Unknown';
     proposalContextMap.set(key, {
       proposalKey: key,
@@ -222,28 +215,6 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
     nowSeconds,
   );
 
-  // Diagnostic: log pillar outputs for first epoch to trace EP=0 / GI=0 bugs
-  if (drepVotes.size > 0) {
-    const sampleDrep = Array.from(drepVotes.keys())[0];
-    const sampleEP = rawParticipation.get(sampleDrep);
-    const sampleEQ = rawEngagement.get(sampleDrep);
-    const proposalSample = Array.from(proposalContextMap.values()).slice(0, 2);
-    logger.info(
-      `[historical-diag] epoch=${targetEpoch} drepVotes=${drepVotes.size} proposals=${proposalContextMap.size} votingSummaries=${votingSummaryMap.size} nowSeconds=${nowSeconds}`,
-      {
-        sampleDrep,
-        sampleEP,
-        sampleEQ,
-        proposalSample: proposalSample.map((p) => ({
-          key: p.proposalKey,
-          bt: p.blockTime,
-          iw: p.importanceWeight,
-          type: p.proposalType,
-        })),
-      },
-    );
-  }
-
   // ── Compute Reliability ───────────────────────────────────────────────
   // Build epoch vote counts per DRep and proposal-epoch map
   const proposalEpochs = new Map<number, number>();
@@ -279,9 +250,7 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
   // Fetch ALL DReps with metadata — avoid .in() with 500+ IDs (PostgREST URL length limit)
   const { data: drepProfiles } = await supabase
     .from('dreps')
-    .select(
-      'id, metadata, delegator_count, metadata_hash_verified, profile_last_changed_at, updated_at',
-    )
+    .select('id, metadata, info, metadata_hash_verified, profile_last_changed_at, updated_at')
     .not('metadata', 'is', null)
     .range(0, 99999);
 
@@ -289,10 +258,12 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
   for (const d of drepProfiles ?? []) {
     // Only include DReps that actually voted in the epoch range
     if (!drepIds.has(d.id)) continue;
+    const info = (d.info || {}) as Record<string, unknown>;
+    const delegatorCount = (info.delegatorCount as number) || 0;
     profiles.set(d.id, {
       drepId: d.id,
       metadata: d.metadata as Record<string, unknown> | null,
-      delegatorCount: (d.delegator_count as number) ?? 0,
+      delegatorCount,
       metadataHashVerified: d.metadata_hash_verified ?? false,
       updatedAt: d.profile_last_changed_at
         ? Math.floor(new Date(d.profile_last_changed_at as string).getTime() / 1000)
@@ -350,27 +321,6 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
   }
 
   const rawIdentity = computeGovernanceIdentity(profiles, delegationSnapshots, nowSeconds);
-
-  // Diagnostic: GI debugging
-  if (profiles.size > 0) {
-    const sampleId = Array.from(profiles.keys())[0];
-    const sampleProfile = profiles.get(sampleId);
-    const sampleGI = rawIdentity.get(sampleId);
-    logger.info(
-      `[historical-diag-gi] epoch=${targetEpoch} profiles=${profiles.size} delegSnaps=${delegationSnapshots.size}`,
-      {
-        sampleId,
-        sampleGI,
-        hasMetadata: !!sampleProfile?.metadata,
-        metaKeys: sampleProfile?.metadata ? Object.keys(sampleProfile.metadata).slice(0, 5) : [],
-        delegatorCount: sampleProfile?.delegatorCount,
-      },
-    );
-  } else {
-    logger.warn(
-      `[historical-diag-gi] epoch=${targetEpoch} NO PROFILES loaded. drepIds=${drepIds.size} drepProfiles=${(drepProfiles ?? []).length}`,
-    );
-  }
 
   // ── Compute confidence per DRep ───────────────────────────────────────
   const confidences = new Map<string, number>();

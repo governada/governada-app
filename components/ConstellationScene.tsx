@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { forwardRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
@@ -54,6 +54,8 @@ interface ConstellationSceneProps {
   completedNodeIds?: Set<string>;
   /** Node IDs that have been visited/inspected this session */
   visitedNodeIds?: Set<string>;
+  /** R3F children rendered inside the TiltedGlobeGroup (e.g., Html cluster labels) */
+  children?: ReactNode;
 }
 
 /**

@@ -49,6 +49,23 @@ export interface ConstellationRef {
   flashNode: (nodeId: string) => void;
   /** Set cinematic animation state for smooth per-frame transitions */
   setCinematicState: (state: CinematicStateInput) => void;
+  /** Fly camera to an arbitrary 3D position (no node needed) */
+  flyToPosition: (
+    target: [number, number, number],
+    options?: { distance?: number; duration?: number },
+  ) => Promise<void>;
+  /** Focus on specific node IDs — dims others, flies to centroid */
+  narrowTo: (nodeIds: string[], options?: NarrowToOptions) => void;
+}
+
+export interface NarrowToOptions {
+  cameraAngle?: number;
+  cameraElevation?: number;
+  scanProgress?: number;
+  /** Fly to centroid of the narrowed nodes (default: true) */
+  fly?: boolean;
+  /** Dim non-focused nodes (default: true) */
+  dimOthers?: boolean;
 }
 
 export interface HighlightOptions {
@@ -191,7 +208,23 @@ export type GlobeCommand =
   /** Cinematic state — smooth per-frame camera orbit + node transitions */
   | { type: 'cinematic'; state: CinematicStateInput }
   /** Highlight a governance faction cluster — dims non-members, glows members */
-  | { type: 'highlightCluster'; clusterId: string };
+  | { type: 'highlightCluster'; clusterId: string }
+  /** Fly camera to an arbitrary 3D position (region, cluster centroid, empty space) */
+  | {
+      type: 'flyToPosition';
+      target: [number, number, number];
+      distance?: number;
+      duration?: number;
+    }
+  /** Focus on specific node IDs — dims others, flies to their centroid */
+  | {
+      type: 'narrowTo';
+      nodeIds: string[];
+      cameraAngle?: number;
+      cameraElevation?: number;
+      scanProgress?: number;
+      fly?: boolean;
+    };
 
 // ---------------------------------------------------------------------------
 // Color constants

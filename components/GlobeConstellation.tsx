@@ -87,6 +87,8 @@ interface GlobeConstellationProps {
   urgentNodeIds?: Set<string>;
   /** Set of node IDs that just completed (flash green briefly) */
   completedNodeIds?: Set<string>;
+  /** R3F children rendered inside the TiltedGlobeGroup (e.g., Html cluster labels) */
+  children?: React.ReactNode;
   /** Set of node IDs that have been visited/inspected this session */
   visitedNodeIds?: Set<string>;
 }
@@ -118,6 +120,7 @@ export const GlobeConstellation = forwardRef<
     urgentNodeIds,
     completedNodeIds,
     visitedNodeIds,
+    children,
   },
   ref,
 ) {
@@ -844,6 +847,110 @@ export const GlobeConstellation = forwardRef<
       if (state.transitionDuration !== undefined) c.transitionDuration = state.transitionDuration;
       c.active = true;
     },
+
+    flyToPosition: async (target, options) => {
+      const controls = cameraControlsRef.current;
+      if (!controls) return;
+
+      const [tx, ty, tz] = rotateAroundY(target, rotationAngleRef.current);
+      const dist = options?.distance ?? 12;
+
+      // Camera on outward normal from origin through target
+      const len = Math.sqrt(tx * tx + ty * ty + tz * tz) || 1;
+      const camX = (tx / len) * dist;
+      const camY = (ty / len) * dist + 1.5;
+      const camZ = (tz / len) * dist;
+
+      controls.smoothTime = options?.duration ?? 1.2;
+      setSceneState((prev) => ({ ...prev, animating: true }));
+      await controls.setLookAt(camX, camY, camZ, tx * 0.7, ty * 0.7, tz * 0.7, true);
+      setCinematicDollyTarget(dist);
+      setTimeout(
+        () => {
+          if (cameraControlsRef.current) cameraControlsRef.current.smoothTime = 0.8;
+          setSceneState((prev) => ({ ...prev, animating: false }));
+        },
+        (options?.duration ?? 1.2) * 1000 + 200,
+      );
+    },
+
+    narrowTo: (nodeIds, options) => {
+      if (!nodeIds.length) return;
+
+      const matched = new Set(nodeIds);
+      const intensities = new Map<string, number>();
+      let cx = 0,
+        cy = 0,
+        cz = 0,
+        count = 0;
+
+      for (const node of sceneState.nodes) {
+        if (matched.has(node.id)) {
+          intensities.set(node.id, 1.0);
+          const [rx, ry, rz] = rotateAroundY(node.position, rotationAngleRef.current);
+          cx += rx;
+          cy += ry;
+          cz += rz;
+          count++;
+        }
+      }
+
+      const dimOthers = options?.dimOthers ?? true;
+      const sp = options?.scanProgress ?? 0.7;
+
+      setSceneState((prev) => ({
+        ...prev,
+        focus: {
+          active: true,
+          focusedIds: matched,
+          intensities,
+          scanProgress: dimOthers ? sp : 0,
+          colorOverrides: null,
+          nodeTypeFilter: null,
+          activationDelays: null,
+          intermediateIds: null,
+        },
+      }));
+
+      // Fly to centroid of specified nodes
+      const fly = options?.fly ?? true;
+      if (fly && count > 0 && cameraControlsRef.current) {
+        cx /= count;
+        cy /= count;
+        cz /= count;
+        const dir = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1;
+        const nx = cx / dir;
+        const ny = cy / dir;
+        const nz = cz / dir;
+
+        rotationSpeedRef.current = DEFAULT_ROTATION_SPEED * Math.max(0.05, 0.4 - sp * 0.35);
+
+        const camDist = 13 - sp * 5;
+        let camX = nx * camDist;
+        let camY = ny * camDist + 1.5;
+        let camZ = nz * camDist;
+
+        if (options?.cameraAngle) {
+          const cos = Math.cos(options.cameraAngle);
+          const sin = Math.sin(options.cameraAngle);
+          const rx2 = camX * cos - camZ * sin;
+          const rz2 = camX * sin + camZ * cos;
+          camX = rx2;
+          camZ = rz2;
+        }
+        if (options?.cameraElevation) {
+          camY += camDist * Math.sin(options.cameraElevation);
+        }
+
+        const controls = cameraControlsRef.current;
+        controls.smoothTime = Math.max(0.8, 1.5 - sp * 0.8);
+        controls.setLookAt(camX, camY, camZ, cx * 0.7, cy * 0.7, cz * 0.7, true);
+        setCinematicDollyTarget(camDist);
+        setTimeout(() => {
+          if (cameraControlsRef.current) cameraControlsRef.current.smoothTime = 0.8;
+        }, 1500);
+      }
+    },
   }));
 
   useEffect(() => {
@@ -1014,6 +1121,9 @@ export const GlobeConstellation = forwardRef<
             )}
 
             {/* CC members rendered as sentinel nodes within the constellation (no crown ring) */}
+
+            {/* R3F children (e.g., Html cluster labels) — rendered inside the tilted group */}
+            {children}
           </TiltedGlobeGroup>
 
           {quality !== 'low' && (

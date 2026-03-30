@@ -8,10 +8,14 @@ npx tsc --noEmit 2>/dev/null || {
   exit 1
 }
 
-# Lint only changed files (fast)
+# Lint only changed files that still exist (fast)
 CHANGED_FILES=$(git diff --name-only --cached HEAD~1 2>/dev/null | grep -E '\.(ts|tsx)$' || true)
-if [ -n "$CHANGED_FILES" ]; then
-  echo "$CHANGED_FILES" | xargs npx eslint --cache --quiet 2>/dev/null || {
+EXISTING_FILES=""
+for f in $CHANGED_FILES; do
+  [ -f "$f" ] && EXISTING_FILES="$EXISTING_FILES $f"
+done
+if [ -n "$EXISTING_FILES" ]; then
+  echo "$EXISTING_FILES" | xargs npx eslint --cache --quiet 2>/dev/null || {
     echo "PRE-PUSH BLOCKED: ESLint errors in changed files."
     exit 1
   }

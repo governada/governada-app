@@ -418,6 +418,12 @@ export const Constellation2D = forwardRef(function Constellation2D(
     setCinematicState: () => {
       // No cinematic animation in 2D fallback
     },
+    flyToPosition: async () => {
+      // No fly-to-position in 2D fallback
+    },
+    narrowTo: () => {
+      // No narrow-to in 2D fallback
+    },
   }));
 
   return (

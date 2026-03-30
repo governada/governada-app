@@ -33,11 +33,9 @@ import { useDeviceCapability } from '@/hooks/useDeviceCapability';
 import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
-
-const ClusterLabels = dynamic(
-  () => import('./ClusterLabels').then((m) => ({ default: m.ClusterLabels })),
-  { ssr: false },
-);
+import { ClusterLabels3D } from './ClusterLabels3D';
+import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
+import { useFeatureFlag } from '@/components/FeatureGate';
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -85,6 +83,45 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
 
   // Listen for globe commands from Seneca (via centralized command bus)
   useGlobeCommandListener(bridge);
+
+  // Cluster data for 3D labels (fetched once, flag-gated)
+  const clusterFlagEnabled = useFeatureFlag('globe_alignment_layout');
+  const [clusterLabels, setClusterLabels] = useState<
+    Array<{ id: string; name: string; centroid3D: [number, number, number]; memberCount: number }>
+  >([]);
+  useEffect(() => {
+    if (!clusterFlagEnabled) return;
+    fetch('/api/governance/constellation/clusters')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data?.clusters) return;
+        setClusterLabels(
+          data.clusters.map(
+            (c: {
+              id: string;
+              name: string;
+              centroid3D: [number, number, number];
+              memberCount: number;
+              memberIds: string[];
+              centroid6D: number[];
+            }) => ({
+              id: c.id,
+              name: c.name,
+              centroid3D: c.centroid3D,
+              memberCount: c.memberCount,
+            }),
+          ),
+        );
+        setClusterCache(
+          data.clusters.map((c: { id: string; memberIds: string[]; centroid6D: number[] }) => ({
+            id: c.id,
+            memberIds: c.memberIds,
+            centroid6D: c.centroid6D,
+          })),
+        );
+      })
+      .catch(() => {});
+  }, [clusterFlagEnabled]);
 
   const { segment } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
@@ -352,12 +389,13 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
             onReady={handleGlobeReady}
             onNodeSelect={handleNodeSelect}
             breathing
-          />
+          >
+            {clusterLabels.length > 0 && <ClusterLabels3D clusters={clusterLabels} />}
+          </ConstellationScene>
         )}
       </div>
 
-      {/* Cluster faction labels — z-10: between globe and controls */}
-      <ClusterLabels />
+      {/* Cluster labels moved inside Canvas as children of ConstellationScene */}
 
       {/* SSR content for SEO — hidden from visual users */}
       <div className="sr-only" aria-label="Governance entity details">

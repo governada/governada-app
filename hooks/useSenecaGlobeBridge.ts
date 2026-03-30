@@ -154,6 +154,22 @@ export function useSenecaGlobeBridge(
         case 'cinematic':
           globe.setCinematicState(command.state);
           break;
+
+        case 'flyToPosition':
+          globe.flyToPosition(command.target, {
+            distance: command.distance,
+            duration: command.duration,
+          });
+          break;
+
+        case 'narrowTo':
+          globe.narrowTo(command.nodeIds, {
+            cameraAngle: command.cameraAngle,
+            cameraElevation: command.cameraElevation,
+            scanProgress: command.scanProgress,
+            fly: command.fly,
+          });
+          break;
       }
     },
     [globeRef],

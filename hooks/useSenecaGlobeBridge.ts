@@ -8,11 +8,12 @@
  * 2. Seneca -> Globe: Entity references in responses pulse/fly-to nodes
  */
 
-import { useCallback, type RefObject } from 'react';
+import { useCallback, useRef, type RefObject } from 'react';
 import type { ConstellationRef } from '@/lib/globe/types';
 import type { GlobeCommand } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { fetchVoteSplit } from '@/lib/constellation/fetchVoteSplit';
+import { createChoreographer, type Choreography } from '@/lib/globe/choreographer';
 
 // GlobeCommand is now canonically defined in lib/globe/types.ts.
 // Re-export for backwards compatibility — existing imports of GlobeCommand from this file still work.
@@ -32,6 +33,9 @@ export interface GlobeBridgeResult {
 export function useSenecaGlobeBridge(
   globeRef: RefObject<ConstellationRef | null>,
 ): GlobeBridgeResult {
+  // Lazy-initialized choreographer for cancellable sequence execution
+  const choreographerRef = useRef<ReturnType<typeof createChoreographer> | null>(null);
+
   const handleNodeClick = useCallback(
     (node: ConstellationNode3D) => {
       // Fly to the node on the globe — panel opens via URL navigation in GlobeLayout
@@ -127,18 +131,20 @@ export function useSenecaGlobeBridge(
         }
 
         case 'sequence': {
-          // Execute commands in order with delays
-          let totalDelay = 0;
-          for (const step of command.steps) {
-            totalDelay += step.delayMs;
-            const cmd = step.command;
-            setTimeout(() => {
-              // Recursive — but sequences should not nest deeply
-              if (cmd.type !== 'sequence') {
-                executeGlobeCommand(cmd);
-              }
-            }, totalDelay);
+          // Execute commands via choreographer — cancellable, inspectable
+          const choreography: Choreography = {
+            name: 'sequence',
+            steps: command.steps.map((s) => ({
+              command: s.command,
+              delayMs: s.delayMs,
+            })),
+          };
+          if (!choreographerRef.current) {
+            choreographerRef.current = createChoreographer((cmd) => {
+              if (cmd.type !== 'sequence') executeGlobeCommand(cmd);
+            });
           }
+          choreographerRef.current.play(choreography);
           break;
         }
 

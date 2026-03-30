@@ -261,79 +261,185 @@ If silhouette < 0.15 for all k values, stop and document. Do not proceed with cl
 
 ### Chunk 2: Entity Discovery Through Globe + Seneca — "The Guide"
 
-**JTBD:** Replace the DiscoveryPanel/DiscoveryHub/CompassPanel patchwork with a unified globe-first discovery experience where Seneca guides users to entities through spatial context, not lists and checklists.
+**JTBD:** Make the globe the primary surface for discovering Cardano's governance entities — active proposals, DReps, SPOs, CC members, treasury — where Seneca acts as an intelligent spatial guide. A user should be able to say "show me who's voting on the developer fund proposal" and watch the globe respond, rather than navigating to a flat table at `/governance/proposals`.
 
-**Why this matters:** Current discovery is fragmented: lists on `/governance/representatives`, a checklist in DiscoveryPanel, advisor in CompassPanel, globe nodes as a separate thing. Users should discover governance entities by exploring the globe with Seneca as their guide. "Show me the most active DReps" → globe highlights a cluster. "What proposals are controversial?" → globe shows vote-split regions.
+**What "discovery" means here:** Users finding, browsing, and understanding governance entities. Not an onboarding checklist. Not a progress ring. The experience of a curious person who wants to understand who the major DReps are, what proposals are active, or what's happening in governance right now — delivered through conversation + spatial visualization, not a table with filters.
 
-**Scope:**
+**What this replaces:**
 
-1. **Seneca idle mode reimagined:** When Seneca panel is in idle mode (no active conversation), instead of a static briefing card, show a **"What's alive right now"** digest that highlights 2-3 notable things on the globe with corresponding node highlights
-2. **Seneca-driven entity discovery:** New advisor tools that highlight entities spatially:
-   - `highlight_cluster` — highlights a faction cluster by name or dimension
-   - `show_entity_neighborhood` — highlights an entity + its N nearest neighbors
-   - `show_controversy` — highlights entities with divergent votes on a proposal
-   - `show_active_region` — highlights the most recently-active governance region
-3. **Globe as primary entity discovery:** Entity filter controls in GlobeControls (already exist) become the primary browse mechanism. List overlay stays as secondary. Remove DiscoveryPanel entirely.
-4. **Seneca contextual suggestions:** Replace CompassPanel's suggestion chips with globe-aware suggestions:
-   - Anonymous: "Find your place" (→ match), "What's being voted on?" (→ highlight proposals), "Who are the most active representatives?" (→ highlight top DReps)
-   - Citizen: "What did my DRep do?" (→ fly to DRep, highlight recent votes), "What's controversial?" (→ vote split), "Where do I fit?" (→ highlight user's cluster)
-5. **Remove DiscoveryPanel/DiscoveryHub:** Replace with Seneca thread's idle mode + globe-aware suggestions
-6. **Feature flag:** `seneca_globe_discovery` (controls the new idle mode and tools)
+- `HubPanel.tsx` static AI briefing → replaced by globe-linked "What's alive" digest
+- `CompassPanel.tsx` suggestion chips → absorbed into `SenecaThread` `world === 'home'` idle mode
+- `DiscoveryPanel.tsx` + `DiscoveryHub.tsx` → deleted (onboarding artifact, not a discovery experience)
+- Globe as a passive background → globe as an active, responsive entity browser
+
+**What this does NOT replace (explicitly leave untouched):**
+
+- `/governance/*` flat listing pages — they coexist; they're just no longer promoted as the primary discovery path. Deprecation is a future step.
+- `ListOverlay` — stays as a secondary table-style browse option
+- Anything in `components/workspace/` or `components/studio/` — workspace is strictly out of scope. `StudioActionBar.tsx` imports from `components/discovery/` — do not delete discovery files that workspace depends on without a workspace-scoped cleanup pass first.
+- Globe rendering layer (`GlobeConstellation.tsx`, `NodePoints.tsx`, `GlobeCamera.tsx`)
+
+---
+
+### Step 0: Establish `world` context in SenecaThread (foundational, ~20 lines)
+
+**Do this before any other work in this chunk.** It's small, low-risk, and ensures everything built in Chunk 2 is explicitly scoped to `world === 'home'` rather than hardcoded as the global default.
+
+**In `hooks/useSenecaThread.ts`:**
+
+```typescript
+export type World = 'home' | 'workspace' | 'you';
+
+function getWorldForRoute(route: PanelRoute): World {
+  if (route === 'hub') return 'home';
+  if (route === 'workspace') return 'workspace';
+  return 'home'; // default; 'you' introduced in a future chunk
+}
+```
+
+Expose `world` from `useSenecaThread()` and pass it as a prop into `SenecaThread`. Pass it through to `readAdvisorStream()` options. Every feature built in this chunk checks `world === 'home'` before activating.
+
+---
+
+### Scope
+
+**1. Seneca idle mode — "What's alive right now" (replaces HubPanel)**
+
+When Seneca is idle (no active conversation) and `world === 'home'`, show a live digest of 2-3 notable governance events, each wired to a globe command.
+
+**What cards look like:**
+
+- "Treasury proposal [name] now accepting votes" → `highlightCluster` on relevant dimension + fly to proposal node
+- "DRep [name] just crossed the 80-point threshold" → `flyTo` + pulse that DRep node
+- "Governance health up 4 points this epoch" → atmosphere intensity update
+- "[Proposal] is 6% from passing threshold" → highlight proposal voters (DReps who haven't voted)
+- "[N] ADA re-delegated to DRep [name] this epoch" → flyTo + pulse
+
+Each card has: a short headline, a sub-label (entity name + type), and an icon. Tapping/hovering executes the globe command. This requires **no LLM call** — it's a lightweight data fetch ranked by recency and magnitude of change.
+
+**API:** `GET /api/governance/activity/recent` — returns `ActivityEvent[]`:
+
+```typescript
+interface ActivityEvent {
+  type:
+    | 'proposal_vote'
+    | 'delegation_shift'
+    | 'score_milestone'
+    | 'ghi_change'
+    | 'threshold_approach';
+  headline: string;
+  entityId: string;
+  entityType: 'drep' | 'proposal' | 'spo' | 'cc';
+  globeCommand: GlobeCommand;
+  timestamp: string;
+}
+```
+
+Cached in Redis, TTL = 5 minutes. No Claude needed for this endpoint.
+
+**2. Globe-aware Seneca suggestion chips (replaces CompassPanel chips)**
+
+In `SenecaThread`, when idle and `world === 'home'`, show context-appropriate chips instead of CompassPanel's static list:
+
+- **Anonymous:** "Find my place" → triggers match flow, "What's being voted on?" → highlights proposal nodes, "Who's most active?" → highlights top-scoring DReps
+- **Citizen (wallet connected):** "What did my DRep vote?" → fly to delegated DRep + highlight their recent votes, "What's controversial?" → show vote-split entities, "Where do I fit?" → highlight user's nearest cluster (requires Chunk 1)
+
+These are hardcoded chip definitions — no AI needed. Each chip maps directly to a Seneca pre-prompt or a globe command.
+
+**3. New Seneca advisor discovery tools**
+
+New file: `lib/intelligence/advisor-discovery-tools.ts`. Follow the exact interface in `lib/intelligence/advisor-tools.ts` — same `ToolResult` type, same Anthropic tool definition format.
+
+Tools to add:
+
+- **`highlight_cluster`** — takes `cluster_name` or `dimension`, calls `/api/governance/constellation/clusters` (Chunk 1 endpoint), returns globe command to highlight faction members + a narrative about the faction
+- **`show_neighborhood`** — takes `entity_id` + `entity_type`, returns the N spatially nearest entities with alignment similarity scores + globe command to highlight them
+- **`show_controversy`** — finds active proposals with the most divergent tri-body voting (DRep yes, SPO no, or vice versa), returns top 3 + globe command to highlight the split
+- **`show_active_entities`** — takes `entity_type` (drep/proposal/spo), returns the most recently active entities by vote/delegation/score activity + globe command to highlight them
+
+Register all 4 in `ADVISOR_TOOLS` array in `advisor-tools.ts`.
+
+**4. Globe discovery behavior**
+
+New file: `lib/globe/behaviors/discoveryBehavior.ts`. Handles:
+
+- `showNeighborhood { entityId, entityType, count }` — dims non-neighbors, highlights N nearest nodes
+- `showControversy { proposalId }` — dims non-voters, highlights entities with divergent votes, colors by stance
+- `showActiveEntities { entityType, entityIds }` — highlights the provided node IDs with pulse
+
+Note: `highlightCluster` is already handled by `clusterBehavior` from Chunk 1. `discoveryBehavior` handles the remaining three. Register in `useSenecaGlobeBridge.ts` (one line).
+
+**5. Discovery component cleanup**
+
+Before deleting anything, audit all imports of each file. Safe to delete:
+
+- `components/discovery/DiscoveryPanel.tsx` — if no non-discovery consumers
+- `hooks/useDiscovery.ts` — if only consumed by DiscoveryPanel
+
+**Defer to workspace cleanup pass:**
+
+- `components/discovery/DiscoveryHub.tsx` + `DiscoveryHubContext.tsx` — `StudioActionBar.tsx` imports these; don't delete until workspace unification
+- `components/discovery/CompassPanel.tsx` — audit first; if workspace-referenced, defer
+- `components/discovery/SpotlightProvider.tsx` + `SectionSpotlightTrigger.tsx` — defer until usage is audited
+
+The goal is to stop _rendering_ the old discovery components in Home world contexts, not necessarily to delete every file in the same PR.
+
+---
 
 **Files to create:**
 
-- `lib/intelligence/advisor-discovery-tools.ts` — new tool implementations for spatial discovery
-- `lib/intelligence/idleSynthesis.ts` — compute "what's alive right now" for idle mode
-- `lib/globe/behaviors/discoveryBehavior.ts` — handles `highlightCluster`, `showNeighborhood`, `showControversy`, `showActiveRegion` commands
+- `lib/intelligence/advisor-discovery-tools.ts` — 4 discovery tools
+- `lib/intelligence/idleActivity.ts` — `fetchRecentActivity(): ActivityEvent[]` (server-side, cached)
+- `lib/globe/behaviors/discoveryBehavior.ts` — handles showNeighborhood, showControversy, showActiveEntities
+- `app/api/governance/activity/recent/route.ts` — serves activity events (force-dynamic, Redis-cached)
 
 **Files to modify:**
 
-- `lib/intelligence/advisor-tools.ts` — register new discovery tools
-- `components/governada/panel/HubPanel.tsx` — replace static briefing with "what's alive" digest
-- `components/governada/SenecaThread.tsx` — update idle mode rendering
-- `lib/globe/types.ts` — add new command types
-- `useSenecaGlobeBridge.ts` — register discoveryBehavior
+- `hooks/useSenecaThread.ts` — add `World` type + `getWorldForRoute()` + expose `world`
+- `components/governada/SenecaThread.tsx` — accept `world` prop; scope idle mode cards + suggestion chips to `world === 'home'`
+- `components/governada/panel/HubPanel.tsx` — replace AI briefing with globe-linked activity cards
+- `lib/intelligence/advisor-tools.ts` — register 4 new discovery tools
+- `lib/globe/types.ts` — add `showNeighborhood`, `showControversy`, `showActiveEntities` command types
+- `hooks/useSenecaGlobeBridge.ts` — register discoveryBehavior (one line)
 
-**Files to remove/deprecate:**
+**Files to NOT modify:**
 
-- `components/discovery/DiscoveryPanel.tsx` — replace entirely
-- `components/discovery/DiscoveryHub.tsx` — replace (keep DiscoveryHubContext if other components use `openHub`)
-- `hooks/useDiscovery.ts` — deprecate (exploration progress tracking can be replaced with PostHog events)
+- `GlobeConstellation.tsx`, `NodePoints.tsx`, `GlobeCamera.tsx` — rendering layer
+- `hooks/useSenecaGlobeBridge.ts` — only the one-line registration addition
+- `components/workspace/` or `components/studio/` — workspace is hands-off
+- `lib/constellation/globe-layout.ts` — pure function, do not touch
 
-**How "What's alive right now" works:**
+**Feature flag:** `seneca_globe_discovery` — gates the new idle mode cards, suggestion chips, and discovery tools. When off, `HubPanel` shows its existing AI briefing.
 
-- On globe load, a lightweight API call fetches: 3 most notable recent events (new proposal, large delegation shift, score milestone, GHI change)
-- Each event has a `globeCommand` — the globe command to highlight the relevant entities
-- Idle panel shows these as cards. Hovering/tapping a card executes the globe command.
-- This replaces both the static briefing AND the discovery checklist.
+---
 
-**How new advisor tools work:**
+**Mandatory pre-build reading list:**
 
-- Each tool is a function in `advisor-discovery-tools.ts` following the existing pattern in `advisor-tools.ts`
-- Tool executor returns `{ result: string, globeCommands: GlobeCommand[], displayStatus: string }`
-- The advisor already emits globe commands from tool results — no streaming changes needed
-- Example: `highlight_cluster` tool → queries cluster data → returns `[{ type: 'highlight', alignment, threshold }]` + descriptive text
+1. `hooks/useSenecaThread.ts` — understand `PanelRoute`, mode system, persona selection
+2. `components/governada/SenecaThread.tsx` — understand idle mode, how globe commands are dispatched, how suggestion chips currently work
+3. `hooks/useSenecaGlobeBridge.ts` — read only; understand globe command dispatch + behavior registration
+4. `lib/intelligence/advisor-tools.ts` — read the full file; understand `ToolResult`, `ADVISOR_TOOLS`, executor pattern before writing any new tools
+5. `components/governada/panel/HubPanel.tsx` — understand what's being replaced
+6. `lib/globe/behaviors/` — read all existing behaviors before writing discoveryBehavior
+7. `components/discovery/` — read all files + grep for their imports before deleting anything
 
-**Agent guidance:**
-
-- Read existing `lib/intelligence/advisor-tools.ts` to understand the tool pattern
-- New tools follow the exact same interface — input schema, executor, globe commands
-- The discoveryBehavior handles commands by calling existing globe ref methods (highlight, flyTo, dim, pulse)
-- The idle synthesis is a lightweight computation — it doesn't need Claude, just recent event queries from Supabase
-- Test: ask Seneca "show me active DReps" → verify globe highlights the right nodes
+---
 
 **Acceptance criteria:**
 
-- [ ] Seneca idle mode shows "What's alive right now" with 2-3 globe-linked event cards
-- [ ] Tapping an event card highlights corresponding entities on globe
-- [ ] Seneca responds to "show me [entity type]" by highlighting on globe + providing context
-- [ ] Seneca responds to "what's controversial?" by showing vote-split highlights
-- [ ] Anonymous users get globe-aware suggestion chips (not a checklist)
-- [ ] DiscoveryPanel removed. CompassPanel functionality merged into Seneca thread.
-- [ ] Entity filter controls remain in GlobeControls as secondary browse path
-- [ ] All discovery interactions tracked via PostHog events
+- [ ] `world` type exists in `useSenecaThread.ts`; all Chunk 2 features check `world === 'home'` before activating
+- [ ] Seneca idle mode shows 2-3 live governance event cards with globe commands; cards execute on tap
+- [ ] HubPanel static briefing is replaced; no regression in feature-flag-off state (existing briefing still renders)
+- [ ] Seneca responds to "show me active DReps" → globe highlights relevant nodes
+- [ ] Seneca responds to "what's controversial?" → globe shows vote-split entities
+- [ ] Seneca responds to "show me [faction name]" → globe highlights that cluster (requires Chunk 1)
+- [ ] Anonymous users see globe-aware suggestion chips; citizen users see personalized chips
+- [ ] Activity API returns events in <200ms (Redis-cached)
+- [ ] No workspace regressions — `StudioActionBar` and workspace Seneca unaffected
+- [ ] Feature flag `seneca_globe_discovery` correctly gates all new behavior
+- [ ] `npm run preflight` passes clean
 
-**Effort:** L (8-10 days)
+**Effort:** M-L (6-9 days — Step 0 is small; idle mode + tools is the bulk; cleanup is bounded)
 
 ---
 

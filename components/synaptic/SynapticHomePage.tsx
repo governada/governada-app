@@ -28,6 +28,7 @@ import type { EntityRef } from '@/lib/homepage/parseEntityParam';
 import type { GlobeStreamCommand } from '@/lib/intelligence/streamAdvisor';
 import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
+import { useGlobeCommandListener } from '@/hooks/useGlobeCommandListener';
 import { SynapticBriefPanel } from './SynapticBriefPanel';
 import { TemporalScrubber } from './TemporalScrubber';
 import { EntityDetailSheet } from '@/components/hub/EntityDetailSheet';
@@ -144,15 +145,8 @@ export function SynapticHomePage({
 
   // ── Globe event bridge ──────────────────────────────────
 
-  // Listen for globe commands from SenecaMatch (CustomEvent bridge)
-  useEffect(() => {
-    function handleSenecaGlobeCmd(e: Event) {
-      const detail = (e as CustomEvent).detail;
-      if (detail) bridge.executeGlobeCommand(detail);
-    }
-    window.addEventListener('senecaGlobeCommand', handleSenecaGlobeCmd);
-    return () => window.removeEventListener('senecaGlobeCommand', handleSenecaGlobeCmd);
-  }, [bridge]);
+  // Listen for globe commands from Seneca (via centralized command bus)
+  useGlobeCommandListener(bridge);
 
   // Globe visual state derived from Seneca activity
   const globeUrgency = isStreaming ? 65 : phase === 'briefing' ? 35 : 20;

@@ -23,6 +23,7 @@ import { useSentryFeatureFlags } from '@/hooks/useSentryFeatureFlags';
 import { useGovernanceTemperature } from '@/hooks/useGovernanceTemperature';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useWhisper } from '@/hooks/useWhisper';
+import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import { useSenecaProactiveWhispers } from '@/hooks/useSenecaProactiveWhispers';
 import { useEpochContext } from '@/hooks/useEpochContext';
 
@@ -201,11 +202,9 @@ function SenecaOrbAndThread({
           ? ('thinking' as const)
           : ('idle' as const);
 
-  // 1B: Stable globe command bridge — dispatches CustomEvent to globe listeners
+  // 1B: Stable globe command bridge — dispatches to centralized command bus
   const handleGlobeCommand = useCallback((cmd: unknown) => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('senecaGlobeCommand', { detail: cmd }));
-    }
+    dispatchGlobeCommand(cmd as import('@/lib/globe/types').GlobeCommand);
   }, []);
 
   // Homepage has its own Seneca surfaces: SynapticBriefPanel (auth) or the globe itself (anon).

@@ -11,7 +11,7 @@
  * Used by SenecaMatch to orchestrate the globe during the match flow.
  */
 
-import type { GlobeCommand } from '@/hooks/useSenecaGlobeBridge';
+import type { GlobeCommand } from '@/lib/globe/types';
 
 type SequenceStep = { command: GlobeCommand; delayMs: number };
 

@@ -9,58 +9,14 @@
  */
 
 import { useCallback, type RefObject } from 'react';
-import type { ConstellationRef, CinematicStateInput } from '@/components/GovernanceConstellation';
+import type { ConstellationRef } from '@/lib/globe/types';
+import type { GlobeCommand } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { fetchVoteSplit } from '@/lib/constellation/fetchVoteSplit';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export type GlobeCommand =
-  | { type: 'flyTo'; nodeId: string }
-  | { type: 'pulse'; nodeId: string }
-  | {
-      type: 'highlight';
-      alignment: number[];
-      threshold: number;
-      noZoom?: boolean;
-      zoomToCluster?: boolean;
-      /** Filter to specific node type (e.g., 'drep') — others stay dimmed */
-      nodeTypeFilter?: string;
-      /** Camera azimuth offset for dive variety (radians) */
-      cameraAngle?: number;
-      /** Camera elevation offset for dive variety (radians) */
-      cameraElevation?: number;
-      drepOnly?: boolean;
-      /** Take top N closest nodes instead of threshold — guarantees progressive narrowing */
-      topN?: number;
-      /** Override scan progress (0-1) when using topN instead of threshold */
-      scanProgressOverride?: number;
-    }
-  | { type: 'voteSplit'; proposalRef: string }
-  | { type: 'reset' }
-  | { type: 'clear' }
-  /** Dim all nodes — used before progressive reveal during tool execution */
-  | { type: 'dim' }
-  /** Light up all DRep nodes, dim non-DReps — the "entering Cerebro" moment */
-  | { type: 'matchStart' }
-  /** Dramatic cinematic fly to a match result (3-second hold) */
-  | { type: 'matchFlyTo'; nodeId: string }
-  /** Scanning sweep — highlight with wide threshold then narrow, simulating a search */
-  | { type: 'scan'; alignment: number[]; durationMs?: number }
-  /** Warm specific nodes by topic — subtle highlight without camera movement */
-  | { type: 'warmTopic'; topic: 'treasury' | 'participation' | 'delegation' | 'proposals' }
-  /** Sequenced choreography — execute commands in order with delays */
-  | { type: 'sequence'; steps: Array<{ command: GlobeCommand; delayMs: number }> }
-  /** Set globe rotation speed multiplier (1=default, 0=stop, 3=fast) */
-  | { type: 'setRotation'; speed: number }
-  /** Dolly camera to a specific distance from origin */
-  | { type: 'zoomOut'; distance?: number }
-  /** Brief emissive flash on a node (reveal moment) */
-  | { type: 'flash'; nodeId: string }
-  /** Cinematic state — smooth per-frame camera orbit + node transitions */
-  | { type: 'cinematic'; state: CinematicStateInput };
+// GlobeCommand is now canonically defined in lib/globe/types.ts.
+// Re-export for backwards compatibility — existing imports of GlobeCommand from this file still work.
+export type { GlobeCommand } from '@/lib/globe/types';
 
 export interface GlobeBridgeResult {
   /** Handle node click from globe — opens Seneca with entity context */

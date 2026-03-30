@@ -22,6 +22,7 @@ import type { ConstellationRef } from '@/components/GovernanceConstellation';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
+import { useGlobeCommandListener } from '@/hooks/useGlobeCommandListener';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useWhisper } from '@/hooks/useWhisper';
@@ -74,17 +75,11 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const seneca = useSenecaThread();
-  const { handleNodeClick: bridgeNodeClick, executeGlobeCommand } = useSenecaGlobeBridge(globeRef);
+  const bridge = useSenecaGlobeBridge(globeRef);
+  const { handleNodeClick: bridgeNodeClick, executeGlobeCommand } = bridge;
 
-  // Listen for globe commands from SenecaMatch (CustomEvent bridge)
-  useEffect(() => {
-    function handleSenecaGlobeCmd(e: Event) {
-      const detail = (e as CustomEvent).detail;
-      if (detail) executeGlobeCommand(detail);
-    }
-    window.addEventListener('senecaGlobeCommand', handleSenecaGlobeCmd);
-    return () => window.removeEventListener('senecaGlobeCommand', handleSenecaGlobeCmd);
-  }, [executeGlobeCommand]);
+  // Listen for globe commands from Seneca (via centralized command bus)
+  useGlobeCommandListener(bridge);
 
   const { segment } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
@@ -309,17 +304,7 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
     }
   }, [seneca.pendingGlobeAction, dispatchIntent, consumeGlobeAction]);
 
-  // Listen for senecaGlobeCommand CustomEvents (from SenecaThread/SenecaConversation)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail && typeof detail === 'object' && 'type' in detail) {
-        executeGlobeCommand(detail);
-      }
-    };
-    window.addEventListener('senecaGlobeCommand', handler);
-    return () => window.removeEventListener('senecaGlobeCommand', handler);
-  }, [executeGlobeCommand]);
+  // Globe commands from Seneca already handled by useGlobeCommandListener above
 
   // ---------------------------------------------------------------------------
   // Seneca whisper

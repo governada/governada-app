@@ -28,6 +28,7 @@ import { readAdvisorStream, detectStreamTopic } from '@/lib/intelligence/streamA
 import { useSenecaMemory } from '@/hooks/useSenecaMemory';
 import { cn } from '@/lib/utils';
 import posthog from 'posthog-js';
+import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -473,13 +474,9 @@ export function SenecaThread({
         // 3A: Topic-aware globe warming — detect governance topics in streaming text
         // and subtly warm corresponding nodes on the globe
         const topic = detectStreamTopic(delta, warmedTopics);
-        if (topic && typeof window !== 'undefined') {
+        if (topic) {
           warmedTopics.add(topic);
-          window.dispatchEvent(
-            new CustomEvent('senecaGlobeCommand', {
-              detail: { type: 'warmTopic', topic },
-            }),
-          );
+          dispatchGlobeCommand({ type: 'warmTopic', topic });
         }
       },
       (error) => {
@@ -497,20 +494,16 @@ export function SenecaThread({
         saveConversation(conversationMessages);
         // 3A: Clear globe highlights when streaming completes so the globe
         // returns to its neutral state after the choreography sequence
-        if (warmedTopics.size > 0 && typeof window !== 'undefined') {
+        if (warmedTopics.size > 0) {
           setTimeout(() => {
-            window.dispatchEvent(
-              new CustomEvent('senecaGlobeCommand', { detail: { type: 'clear' } }),
-            );
+            dispatchGlobeCommand({ type: 'clear' });
           }, 2000); // Brief delay so the final warming is visible
         }
       },
       abort.signal,
-      // 1B: Globe commands — dispatch via CustomEvent so globe receives them
+      // 1B: Globe commands — dispatch via centralized command bus
       (cmd) => {
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('senecaGlobeCommand', { detail: cmd }));
-        }
+        dispatchGlobeCommand(cmd as import('@/lib/globe/types').GlobeCommand);
         onGlobeCommand?.(cmd);
       },
       // 1F: Parameterized action handlers
@@ -610,11 +603,7 @@ export function SenecaThread({
           if (action.href) {
             posthog.capture('globe_workspace_pill_clicked', { destination: action.href });
             // Warm the globe with proposals topic before navigating
-            window.dispatchEvent(
-              new CustomEvent('senecaGlobeCommand', {
-                detail: { type: 'warmTopic', topic: 'proposals' },
-              }),
-            );
+            dispatchGlobeCommand({ type: 'warmTopic', topic: 'proposals' });
             router.push(action.href);
             onClose();
           }

@@ -29,6 +29,9 @@ import type {
   ConstellationEdge3D,
 } from '@/lib/constellation/types';
 
+// Canonical type definitions now live in lib/globe/types.ts.
+// This interface is kept for backwards compatibility — 15+ files import from here.
+// New code should import from '@/lib/globe/types' directly.
 export interface ConstellationRef {
   findMe: (target: FindMeTarget) => Promise<void>;
   flyToNode: (nodeId: string) => Promise<ConstellationNode3D | null>;

@@ -11,8 +11,9 @@ import type { GlobeStreamCommand } from '@/lib/intelligence/streamAdvisor';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useGovernanceState } from '@/hooks/useGovernanceState';
+import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
+import type { GlobeCommand } from '@/lib/globe/types';
 import { BriefingText } from './BriefingText';
-import { BriefingChips } from './BriefingChips';
 import { SenecaInput } from '@/components/governada/panel/SenecaInput';
 import { cn } from '@/lib/utils';
 
@@ -279,6 +280,24 @@ export function SynapticBriefPanel({
     ],
   );
 
+  // Globe command handler for SenecaMatch
+  const handleMatchGlobeCommand = useCallback(
+    (cmd: GlobeCommand) => {
+      onGlobeCommand?.(cmd as unknown as GlobeStreamCommand);
+      dispatchGlobeCommand(cmd);
+    },
+    [onGlobeCommand],
+  );
+
+  // Post-match conversation handler — transitions from match to conversation mode
+  const handleMatchConversation = useCallback(
+    (query: string) => {
+      returnToIdle();
+      setTimeout(() => handleFollowUp(query), 100);
+    },
+    [returnToIdle, handleFollowUp],
+  );
+
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
@@ -308,7 +327,11 @@ export function SynapticBriefPanel({
           className,
         )}
       >
-        <SenecaMatch onBack={returnToIdle} />
+        <SenecaMatch
+          onBack={returnToIdle}
+          onGlobeCommand={handleMatchGlobeCommand}
+          onStartConversation={handleMatchConversation}
+        />
       </motion.div>
     );
   }
@@ -363,7 +386,7 @@ export function SynapticBriefPanel({
               error={store.error}
             />
 
-            {/* Discovery chips — always visible after briefing completes */}
+            {/* Action chips — shown after briefing completes */}
             {!store.isStreaming && store.phase === 'briefing' && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {[
@@ -388,11 +411,6 @@ export function SynapticBriefPanel({
                   Find my match
                 </button>
               </div>
-            )}
-
-            {/* Follow-up chips (shown after briefing completes) */}
-            {!store.isStreaming && store.phase === 'briefing' && (
-              <BriefingChips chips={store.chips} onChipClick={handleFollowUp} />
             )}
 
             {/* Conversation messages */}

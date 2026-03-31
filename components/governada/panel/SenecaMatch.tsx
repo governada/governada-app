@@ -109,7 +109,7 @@ interface SenecaMatchProps {
   onStartConversation?: (query: string) => void;
 }
 
-type MatchStep = 'intro' | number | 'loading' | 'revealing' | 'results' | 'error';
+type MatchStep = number | 'loading' | 'revealing' | 'results' | 'error';
 
 /* ─── Answer label lookup ─── */
 
@@ -123,7 +123,7 @@ function getAnswerLabel(questionId: string, value: string): string {
 export function SenecaMatch({ onBack, onGlobeCommand, onStartConversation }: SenecaMatchProps) {
   const prefersReducedMotion = useReducedMotion();
   const spatialMatch = useFeatureFlag('globe_spatial_match');
-  const [step, setStep] = useState<MatchStep>('intro');
+  const [step, setStep] = useState<MatchStep>(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuickMatchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -173,9 +173,11 @@ export function SenecaMatch({ onBack, onGlobeCommand, onStartConversation }: Sen
     [onGlobeCommand],
   );
 
-  // Start the quiz — "entering Cerebro": choreographed sequence
-  const handleStart = useCallback(() => {
-    setStep(0);
+  // Auto-start the globe match choreography on mount (intro step was removed)
+  const hasStartedRef = useRef(false);
+  useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
     if (prefersReducedMotion) {
       sendGlobeCommand({ type: 'matchStart' });
     } else {
@@ -374,7 +376,7 @@ export function SenecaMatch({ onBack, onGlobeCommand, onStartConversation }: Sen
     setOverlayState(null);
     setClusterContext(null);
     userPositionRef.current = null;
-    setStep('intro');
+    setStep(0);
     if (prefersReducedMotion) {
       sendGlobeCommand({ type: 'clear' });
       sendGlobeCommand({ type: 'reset' });
@@ -467,32 +469,6 @@ export function SenecaMatch({ onBack, onGlobeCommand, onStartConversation }: Sen
           )}
 
         <AnimatePresence mode="popLayout">
-          {/* Intro */}
-          {step === 'intro' && (
-            <motion.div
-              key="intro"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
-              className="flex flex-col flex-1 justify-center gap-4"
-            >
-              <SenecaBubble>
-                I&apos;ll help you find a governance representative who shares your priorities. Four
-                quick questions &mdash; each one narrows the field on the globe.
-              </SenecaBubble>
-              <button
-                onClick={handleStart}
-                className={cn(
-                  'w-full rounded-xl border border-primary/30 bg-primary/10',
-                  'hover:bg-primary/20 px-4 py-3 text-sm font-medium text-primary',
-                  'transition-colors text-center min-h-[44px]',
-                )}
-              >
-                Let&apos;s find my match
-              </button>
-            </motion.div>
-          )}
-
           {/* Question card — single card, no stacking */}
           {typeof step === 'number' && MATCH_QUESTIONS[step] && (
             <motion.div
@@ -503,7 +479,14 @@ export function SenecaMatch({ onBack, onGlobeCommand, onStartConversation }: Sen
               transition={{ type: 'spring', stiffness: 300, damping: 28 }}
               className="flex flex-col flex-1 gap-3"
             >
-              <SenecaBubble>{MATCH_QUESTIONS[step].senecaPrompt}</SenecaBubble>
+              {step === 0 && (
+                <SenecaBubble delay={0}>
+                  Four quick questions to find your governance match.
+                </SenecaBubble>
+              )}
+              <SenecaBubble delay={step === 0 ? 0.15 : 0}>
+                {MATCH_QUESTIONS[step].senecaPrompt}
+              </SenecaBubble>
 
               <div className="space-y-1.5">
                 {MATCH_QUESTIONS[step].options.map((opt, i) => (

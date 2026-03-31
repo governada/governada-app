@@ -46,7 +46,7 @@ import {
   DEFAULT_FOCUS,
 } from '@/lib/globe/types';
 import type { FocusState, SceneState } from '@/lib/globe/types';
-import { getSharedFocus, setSharedFocus } from '@/lib/globe/focusState';
+import { getSharedFocus, setSharedFocus, getSharedFocusVersion } from '@/lib/globe/focusState';
 import { rotateAroundY, sleep, estimateGPUTier } from '@/lib/globe/helpers';
 
 interface GlobeConstellationProps {
@@ -180,6 +180,29 @@ export const GlobeConstellation = forwardRef<
   if (getSharedFocus() !== sceneState.focus) {
     setSharedFocus(sceneState.focus);
   }
+
+  // Reverse sync: detect when behaviors (e.g., spatialMatchBehavior) write to
+  // shared focus externally (userNode, etc.) and pull those changes into React
+  // state so JSX components like MatchUserNode can render.
+  const sharedFocusVersionRef = useRef(getSharedFocusVersion());
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentVersion = getSharedFocusVersion();
+      if (currentVersion !== sharedFocusVersionRef.current) {
+        sharedFocusVersionRef.current = currentVersion;
+        const shared = getSharedFocus();
+        // Only sync fields that behaviors set externally (userNode)
+        // to avoid overwriting React-managed focus state
+        if (shared.userNode !== sceneState.focus.userNode) {
+          setSceneState((prev) => ({
+            ...prev,
+            focus: { ...prev.focus, userNode: shared.userNode },
+          }));
+        }
+      }
+    }, 100); // Poll at 10Hz — fast enough for visual updates, light on CPU
+    return () => clearInterval(interval);
+  }, [sceneState.focus.userNode]);
 
   const { data: apiData } = useGovernanceConstellation();
 

@@ -46,6 +46,9 @@ export function useSenecaGlobeBridge(
   // Lazy-initialized choreographer for cancellable sequence execution
   const choreographerRef = useRef<ReturnType<typeof createChoreographer> | null>(null);
 
+  // Command queue: buffer commands arriving before the globe ref is ready (dynamic import timing)
+  const commandQueueRef = useRef<GlobeCommand[]>([]);
+
   // Register behaviors — re-registers with fresh closures on remount (React StrictMode safe)
   useEffect(() => {
     const getGlobe = () => globeRef.current;
@@ -65,6 +68,24 @@ export function useSenecaGlobeBridge(
     };
   }, [globeRef]);
 
+  // Flush queued commands once the globe ref populates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (globeRef.current && commandQueueRef.current.length > 0) {
+        const queued = commandQueueRef.current.splice(0);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`[GlobeBridge] Flushing ${queued.length} queued commands`);
+        }
+        for (const cmd of queued) {
+          executeGlobeCommand(cmd);
+        }
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleNodeClick = useCallback(
     (node: ConstellationNode3D) => {
       // Fly to the node on the globe — panel opens via URL navigation in GlobeLayout
@@ -76,7 +97,14 @@ export function useSenecaGlobeBridge(
   const executeGlobeCommand = useCallback(
     (command: GlobeCommand) => {
       const globe = globeRef.current;
-      if (!globe) return;
+      if (!globe) {
+        // Buffer commands until globe mounts (dynamic import timing)
+        commandQueueRef.current.push(command);
+        if (process.env.NODE_ENV === 'development' && commandQueueRef.current.length === 1) {
+          console.warn('[GlobeBridge] Globe not mounted yet — queuing commands');
+        }
+        return;
+      }
 
       // Try registered behaviors first — if one handles the command, skip the switch
       const behaviorCtx: BehaviorContext = {

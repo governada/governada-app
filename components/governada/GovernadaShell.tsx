@@ -108,7 +108,7 @@ function DeepLinkHandler() {
   return null;
 }
 
-/** Background globe — hidden on homepage only for anonymous users (who have their own hero globe in AnonymousLanding). */
+/** Background globe — hidden on homepage (GlobeLayout provides its own full-viewport interactive globe). */
 function BackgroundGlobe({
   isHomepage,
   governanceTint,
@@ -116,9 +116,8 @@ function BackgroundGlobe({
   isHomepage: boolean;
   governanceTint?: string;
 }) {
-  // Hide the background globe on homepage — anonymous users have their own hero globe
-  // in AnonymousLanding, and authenticated users have InhabitedConstellation which
-  // provides its own full-viewport globe that extends behind the header.
+  // Hide the background globe on homepage — GlobeLayout provides its own full-viewport
+  // interactive globe that extends behind the header.
   if (isHomepage) return null;
   return (
     <div
@@ -161,11 +160,9 @@ function SentryContextSync() {
 function SenecaOrbAndThread({
   seneca,
   isStudioMode,
-  isHomepage,
 }: {
   seneca: ReturnType<typeof useSenecaThread>;
   isStudioMode: boolean;
-  isHomepage: boolean;
 }) {
   const { segment } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
@@ -206,10 +203,6 @@ function SenecaOrbAndThread({
   const handleGlobeCommand = useCallback((cmd: unknown) => {
     dispatchGlobeCommand(cmd as import('@/lib/globe/types').GlobeCommand);
   }, []);
-
-  // Homepage has its own Seneca surfaces: SynapticBriefPanel (auth) or the globe itself (anon).
-  // Don't render the floating thread there — it competes with purpose-built homepage UX.
-  if (isHomepage) return null;
 
   return (
     <>
@@ -325,7 +318,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
             </DiscoveryHub>
           </SpotlightProvider>
           {/* Seneca Orb + Thread — unified floating companion */}
-          <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} isHomepage={isHomepage} />
+          <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />
 
           {!isStudioMode && (
             <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">

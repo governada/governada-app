@@ -24,12 +24,21 @@ import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useGlobeCommandListener } from '@/hooks/useGlobeCommandListener';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { useEpochContext } from '@/hooks/useEpochContext';
-import { useWhisper } from '@/hooks/useWhisper';
+// useEpochContext available via child components
 import type { GlobeFilter } from '@/lib/globe/urlState';
 import type { SortMode } from './FilterBar';
 import type { GlobeIntent } from '@/lib/intelligence/advisor';
 import { useDeviceCapability } from '@/hooks/useDeviceCapability';
+import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
+import { useConstellationProposals } from '@/hooks/useConstellationProposals';
+import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
+import {
+  parseEntityParam,
+  encodeEntityParam,
+  type EntityRef,
+} from '@/lib/homepage/parseEntityParam';
+import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
+import { posthog } from '@/lib/posthog';
 import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
@@ -39,6 +48,27 @@ import { useFeatureFlag } from '@/components/FeatureGate';
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
+  { ssr: false },
+);
+
+const GlobeTooltip = dynamic(
+  () => import('@/components/governada/GlobeTooltip').then((m) => ({ default: m.GlobeTooltip })),
+  { ssr: false },
+);
+
+const EntityDetailSheet = dynamic(
+  () =>
+    import('@/components/hub/EntityDetailSheet').then((m) => ({ default: m.EntityDetailSheet })),
+  { ssr: false },
+);
+
+const SinceLastVisit = dynamic(
+  () => import('@/components/SinceLastVisit').then((m) => ({ default: m.SinceLastVisit })),
+  { ssr: false },
+);
+
+const DiscoveryOverlay = dynamic(
+  () => import('@/components/hub/DiscoveryOverlay').then((m) => ({ default: m.DiscoveryOverlay })),
   { ssr: false },
 );
 
@@ -52,16 +82,6 @@ const Constellation2D = dynamic(
   { ssr: false },
 );
 
-const SenecaOrb = dynamic(
-  () => import('@/components/governada/SenecaOrb').then((m) => ({ default: m.SenecaOrb })),
-  { ssr: false },
-);
-
-const SenecaThread = dynamic(
-  () => import('@/components/governada/SenecaThread').then((m) => ({ default: m.SenecaThread })),
-  { ssr: false },
-);
-
 // ---------------------------------------------------------------------------
 // Filter cycle order for keyboard shortcut
 // ---------------------------------------------------------------------------
@@ -69,10 +89,21 @@ const SenecaThread = dynamic(
 const FILTER_CYCLE: (GlobeFilter | null)[] = [null, 'dreps', 'proposals', 'spos', 'cc'];
 
 interface GlobeLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  /** URL params forwarded from the page (homepage deep-link support) */
+  initialFilter?: string;
+  initialEntity?: string;
+  initialMatch?: boolean;
+  initialSort?: string;
 }
 
-export function GlobeLayout({ children }: GlobeLayoutProps) {
+export function GlobeLayout({
+  children,
+  initialFilter,
+  initialEntity,
+  initialMatch,
+  initialSort,
+}: GlobeLayoutProps) {
   const globeRef = useRef<ConstellationRef>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -123,17 +154,85 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
       .catch(() => {});
   }, [clusterFlagEnabled]);
 
-  const { segment } = useSegment();
+  const { segment, drepId } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
-  const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
-  const daysRemaining = totalDays - day;
+  // Epoch context available via useEpochContext() in child components
   const { use2D } = useDeviceCapability();
+
+  // ---------------------------------------------------------------------------
+  // Homepage features: user node, proposals, entity detail, tooltips, match trigger
+  // ---------------------------------------------------------------------------
+
+  const { userNode, delegationBond } = useUserConstellationNode();
+  const { proposalNodes } = useConstellationProposals();
+
+  // Entity detail sheet state (bottom sheet for entity clicks on homepage)
+  const [activeEntity, setActiveEntity] = useState<EntityRef | null>(
+    parseEntityParam(initialEntity),
+  );
+
+  const handleEntitySelect = useCallback(
+    (entityParam: string) => {
+      const parsed = parseEntityParam(entityParam);
+      setActiveEntity(parsed);
+      if (parsed) {
+        posthog.capture('entity_selected', {
+          type: parsed.type,
+          id: parsed.id,
+          source: 'homepage',
+        });
+        const nodeId =
+          parsed.type === 'proposal' ? `${parsed.id}_${parsed.secondaryId}` : parsed.id;
+        bridge.executeGlobeCommand({ type: 'flyTo', nodeId });
+      }
+    },
+    [bridge],
+  );
+
+  const handleEntityClose = useCallback(() => setActiveEntity(null), []);
+
+  // Tooltip hover state
+  const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
+  const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
+
+  const handleNodeHoverScreen = useCallback(
+    (node: ConstellationNode3D | null, pos: { x: number; y: number } | null) => {
+      setHoveredNode(node);
+      setHoverScreenPos(pos);
+    },
+    [],
+  );
+
+  // Trigger match flow from URL param on mount
+  const matchTriggered = useRef(false);
+  useEffect(() => {
+    if (initialMatch && !matchTriggered.current) {
+      matchTriggered.current = true;
+      useSenecaThreadStore.getState().startMatch();
+    }
+  }, [initialMatch]);
+
+  // SinceLastVisit state (auth only)
+  const [previousVisitAt, setPreviousVisitAt] = useState<string | null>(null);
+  // drepId already destructured from useSegment() above
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isAuthenticated) return;
+    const ts = localStorage.getItem('drepscore_last_visit');
+    if (ts) setPreviousVisitAt(new Date(Number(ts)).toISOString());
+  }, [isAuthenticated]);
+
+  // Funnel tracking for anonymous users
+  useEffect(() => {
+    if (!isAuthenticated) {
+      trackFunnel(FUNNEL_EVENTS.LANDING_VIEWED);
+    }
+  }, [isAuthenticated]);
 
   // ---------------------------------------------------------------------------
   // List overlay state
   // ---------------------------------------------------------------------------
 
-  const urlFilter = searchParams.get('filter') as GlobeFilter | null;
+  const urlFilter = (searchParams.get('filter') ?? initialFilter ?? null) as GlobeFilter | null;
   const [listOpen, setListOpen] = useState(!!urlFilter);
   const [filter, setFilter] = useState<GlobeFilter | null>(urlFilter);
   const [sort, setSort] = useState<SortMode>('score');
@@ -166,11 +265,36 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
 
   const handleNodeSelect = useCallback(
     (node: ConstellationNode3D) => {
-      const route = nodeToRoute(node);
-      if (route) router.push(route);
       bridgeNodeClick(node);
+      // On homepage (/), open entity detail sheet instead of navigating to /g/ route
+      if (pathname === '/') {
+        const nodeType = node.nodeType ?? 'drep';
+        let entityParam: string;
+        if (nodeType === 'proposal') {
+          const lastUnderscore = node.id.lastIndexOf('_');
+          if (lastUnderscore > 0) {
+            entityParam = encodeEntityParam(
+              'proposal',
+              node.id.slice(0, lastUnderscore),
+              node.id.slice(lastUnderscore + 1),
+            );
+          } else {
+            entityParam = encodeEntityParam('proposal', node.id, '0');
+          }
+        } else if (nodeType === 'cc') {
+          entityParam = encodeEntityParam('cc', node.id);
+        } else if (nodeType === 'spo') {
+          entityParam = encodeEntityParam('pool', node.id);
+        } else {
+          entityParam = encodeEntityParam('drep', node.id);
+        }
+        handleEntitySelect(entityParam);
+      } else {
+        const route = nodeToRoute(node);
+        if (route) router.push(route);
+      }
     },
-    [router, bridgeNodeClick],
+    [router, bridgeNodeClick, pathname, handleEntitySelect],
   );
 
   const handlePanelClose = useCallback(() => {
@@ -352,22 +476,6 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
   // Seneca whisper
   // ---------------------------------------------------------------------------
 
-  const { currentWhisper, dismissWhisper } = useWhisper('governance', {
-    activeProposals: activeProposalCount ?? undefined,
-    epochProgress: epoch ? (day / totalDays) * 100 : undefined,
-    daysRemaining,
-    isAuthenticated,
-  });
-
-  const sigilState =
-    seneca.mode === 'matching'
-      ? ('searching' as const)
-      : seneca.mode === 'conversation'
-        ? ('speaking' as const)
-        : seneca.mode === 'research'
-          ? ('thinking' as const)
-          : ('idle' as const);
-
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden">
       {/* Full-viewport constellation — z-0 */}
@@ -388,7 +496,11 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
             className="w-full h-full"
             onReady={handleGlobeReady}
             onNodeSelect={handleNodeSelect}
+            onNodeHoverScreen={handleNodeHoverScreen}
             breathing
+            userNode={userNode}
+            proposalNodes={proposalNodes}
+            delegationBond={delegationBond}
           >
             {clusterLabels.length > 0 && <ClusterLabels3D clusters={clusterLabels} />}
           </ConstellationScene>
@@ -435,37 +547,31 @@ export function GlobeLayout({ children }: GlobeLayoutProps) {
         onExpand={() => seneca.close()}
       />
 
-      {/* Seneca companion — z-40 */}
-      {!seneca.isOpen && (
-        <div className="fixed bottom-6 right-6 z-40">
-          <SenecaOrb
-            onClick={seneca.toggle}
-            sigilState={sigilState}
-            accentColor={seneca.persona.accentColor}
-            whisper={currentWhisper}
-            onWhisperDismiss={dismissWhisper}
-          />
+      {/* Cursor-following tooltip */}
+      <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta={!isAuthenticated} />
+
+      {/* Entity detail sheet — bottom sheet for entity clicks on homepage */}
+      <EntityDetailSheet entity={activeEntity} onClose={handleEntityClose} />
+
+      {/* Discovery overlay — filter-driven entity list */}
+      <DiscoveryOverlay
+        filter={filter}
+        initialSort={initialSort}
+        onEntitySelect={handleEntitySelect}
+        onClose={() => {
+          setFilter(null);
+          bridge.executeGlobeCommand({ type: 'clear' });
+        }}
+      />
+
+      {/* Since last visit — compact activity summary for returning authenticated users */}
+      {previousVisitAt && isAuthenticated && (
+        <div className="fixed bottom-[calc(theme(spacing.6)+14rem)] left-6 z-40 w-[min(440px,calc(100vw-3rem))] max-md:bottom-[calc(14rem)] max-md:left-4 max-md:right-4 max-md:w-auto">
+          <SinceLastVisit previousVisitAt={previousVisitAt} delegatedDrepId={drepId} />
         </div>
       )}
-      <SenecaThread
-        isOpen={seneca.isOpen}
-        onClose={seneca.close}
-        mode={seneca.mode}
-        persona={seneca.persona}
-        panelRoute={seneca.panelRoute}
-        world={seneca.world}
-        entityId={seneca.entityId}
-        pendingQuery={seneca.pendingQuery}
-        messages={seneca.messages}
-        onStartConversation={seneca.startConversation}
-        onStartResearch={seneca.startResearch}
-        onStartMatch={seneca.startMatch}
-        onReturnToIdle={seneca.returnToIdle}
-        onAddMessage={seneca.addMessage}
-        onUpdateLastAssistant={seneca.updateLastAssistant}
-        onClearConversation={seneca.clearConversation}
-        isAuthenticated={isAuthenticated}
-      />
+
+      {/* Seneca companion provided by GovernadaShell (app-wide) — no duplication here */}
     </div>
   );
 }

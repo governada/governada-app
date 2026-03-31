@@ -97,12 +97,12 @@ export function useSenecaGlobeBridge(
   const executeGlobeCommand = useCallback(
     (command: GlobeCommand) => {
       const globe = globeRef.current;
+      // eslint-disable-next-line no-console
+      console.log('%c[GlobeBridge] EXEC:', 'color: lime', command.type, 'globeRef:', !!globe, command);
       if (!globe) {
         // Buffer commands until globe mounts (dynamic import timing)
         commandQueueRef.current.push(command);
-        if (process.env.NODE_ENV === 'development' && commandQueueRef.current.length === 1) {
-          console.warn('[GlobeBridge] Globe not mounted yet — queuing commands');
-        }
+        console.warn('[GlobeBridge] Globe not mounted yet — queuing commands');
         return;
       }
 
@@ -114,7 +114,10 @@ export function useSenecaGlobeBridge(
           return () => clearTimeout(t);
         },
       };
-      if (executeBehavior(command, behaviorCtx)) return;
+      const handled = executeBehavior(command, behaviorCtx);
+      // eslint-disable-next-line no-console
+      if (handled) console.log('%c[GlobeBridge] Handled by behavior:', 'color: orange', command.type);
+      if (handled) return;
 
       switch (command.type) {
         case 'flyTo':

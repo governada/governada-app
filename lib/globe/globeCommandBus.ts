@@ -16,6 +16,8 @@ const EVENT_NAME = 'senecaGlobeCommand';
 /** Dispatch a globe command to all listeners (SSR-safe) */
 export function dispatchGlobeCommand(command: GlobeCommand): void {
   if (typeof window === 'undefined') return;
+  // eslint-disable-next-line no-console
+  console.log('%c[CommandBus] DISPATCH:', 'color: cyan', command.type, command);
   window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: command }));
 }
 

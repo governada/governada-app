@@ -391,6 +391,8 @@ export const GlobeConstellation = forwardRef<
         scanProgressOverride?: number;
       },
     ) => {
+      // eslint-disable-next-line no-console
+      console.log('%c[Globe] highlightMatches', 'color: yellow', { topN: options?.topN, sp: options?.scanProgressOverride, zoom: options?.zoomToCluster, nodes: sceneState.nodes.length });
       const matched = new Set<string>();
       const intensities = new Map<string, number>();
 
@@ -689,6 +691,8 @@ export const GlobeConstellation = forwardRef<
     },
 
     matchStart: () => {
+      // eslint-disable-next-line no-console
+      console.log('%c[Globe] matchStart called', 'color: magenta', { nodesCount: sceneState.nodes.length });
       // "Entering Cerebro" — light up all DRep nodes with shockwave propagation
       const drepIds = new Set<string>();
       const intensities = new Map<string, number>();

@@ -32,6 +32,28 @@ You are likely skipping a mandatory skill if:
 - **"Quick fix" that touches 5+ files**: What started as a small fix has grown → STOP, reassess whether this needs `/build-step` planning
 - **Declaring work "done" without verification**: You're about to mark a task complete but haven't verified it in Preview/Chrome → STOP, verify first
 
+## Whack-a-Mole Detector
+
+**When the user corrects your analysis or asks "but why?", you stopped too early.** Each correction is a signal that you proposed a fix for a symptom, not the root cause. The correct response is NOT to patch the next symptom — it's to restart root cause analysis from scratch.
+
+Pattern to recognize:
+
+1. You propose fix A for symptom X
+2. User says "but what about Y?" or "why does X happen in the first place?"
+3. You propose fix B for symptom Y ← **THIS IS WHACK-A-MOLE**
+4. User says "but why does Y happen?"
+5. You finally investigate and find root cause Z
+
+What you should do at step 2:
+
+1. STOP proposing fixes
+2. Say: "You're right — I'm treating symptoms. Let me reconstruct what actually happened."
+3. Gather forensic evidence (timestamps, reflog, config, file state)
+4. Trace the full causal chain from root to all symptoms
+5. Propose fixes that address the root cause, which will fix symptoms X AND Y
+
+**The test**: If your fix requires the agent to "remember to do something differently," it's a process patch (fragile). If your fix changes the infrastructure so the problem can't occur regardless of agent behavior, it's a root cause fix (durable). Prefer infrastructure fixes.
+
 ## Exceptions
 
 - **Trivial changes** (typos, single-line config, comment updates): No skill needed

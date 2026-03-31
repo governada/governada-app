@@ -10,18 +10,27 @@ This skill enforces disciplined debugging. Do NOT skip phases. Do NOT guess. The
 - A deployed feature doesn't work as expected
 - Any time you're tempted to "try a fix and see if it works"
 
-## Phase 1: Reproduce
+## Phase 1: Reproduce & Reconstruct Timeline
 
-Confirm the issue exists and define exact reproduction steps.
+Confirm the issue exists, define exact reproduction steps, and reconstruct the timeline of events that led to it.
 
 - **If UI bug**: Use Preview tools or Claude Chrome to reproduce. Screenshot the failure.
 - **If API bug**: Craft the exact request that triggers it. Show the response.
 - **If data bug**: Query the specific data that's wrong. Show expected vs actual.
 - **If test failure**: Run the specific test. Show the output.
+- **If environment/infra issue** (wrong state, stale code, broken tools, config drift): Reconstruct the forensic timeline using hard evidence — not assumptions:
+  - `git reflog --date=iso` — when was the branch/worktree created? From what commit?
+  - `git log --format="%H %ai %s"` — when did relevant PRs actually merge?
+  - `git ls-files --eol` — are line endings causing phantom modifications?
+  - `git config --list --show-origin` — what config is inherited from where?
+  - `git diff --numstat` — are reported "modifications" real or zero-change diffs?
+  - Hook output from session start — did any hooks warn or fail?
+
+**The first plausible explanation is usually a symptom, not the root cause.** Before accepting any hypothesis, verify it with timestamped evidence. "The agent didn't commit frequently" is a process symptom. "CRLF phantom diffs prevented auto-rebase" is the infrastructure root cause.
 
 If you cannot reproduce the issue, STOP. Tell the user: "I cannot reproduce this issue. Here's what I tried: [steps]. Can you provide more specific reproduction steps?"
 
-**Output**: "Reproduction confirmed. Steps: [1, 2, 3]. Expected: [X]. Actual: [Y]."
+**Output**: "Reproduction confirmed. Steps: [1, 2, 3]. Expected: [X]. Actual: [Y]. Timeline: [timestamps of key events]."
 
 ## Phase 2: Trace
 

@@ -1,20 +1,13 @@
-# Prevent CRLF phantom diffs on Windows worktrees.
-# Without this, `core.autocrlf=true` converts LF→CRLF on checkout,
-# causing `git diff --quiet` to report shell scripts as modified
-# when they haven't actually changed — which blocks auto-rebase
-# in sync-worktree.sh.
+# Force LF line endings for ALL text files, on every OS.
+#
+# Why: On Windows, Git's default `core.autocrlf=true` converts LF→CRLF on
+# checkout and CRLF→LF on commit. This causes:
+#   1. Phantom diffs in worktrees (blocks auto-rebase)
+#   2. Broken shell scripts (bash can't parse \r\n shebang)
+#   3. Noisy diffs when files round-trip through different OS
+#
+# `text=auto` lets Git detect binary files (images, fonts, etc.) and leave
+# them alone. `eol=lf` forces LF in the working tree for everything else.
+# Every modern tool (VS Code, Node, browsers) handles LF on Windows fine.
 
-*.sh    text eol=lf
-*.bash  text eol=lf
-
-# Keep markdown and config files normalized
-*.md    text eol=lf
-*.yml   text eol=lf
-*.yaml  text eol=lf
-*.json  text eol=lf
-*.ts    text eol=lf
-*.tsx   text eol=lf
-*.js    text eol=lf
-*.jsx   text eol=lf
-*.css   text eol=lf
-*.mjs   text eol=lf
+* text=auto eol=lf

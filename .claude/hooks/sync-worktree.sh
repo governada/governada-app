@@ -16,12 +16,45 @@ if [ -d ".git" ]; then
   exit 0
 fi
 
+# --- CRLF phantom diff cleanup ---
+# After .gitattributes changes (eol=lf), working tree files may still have CRLF
+# while the index expects LF. `git add --renormalize .` aligns the index with
+# .gitattributes rules, eliminating phantom diffs that would otherwise block
+# auto-rebase. This is idempotent — if nothing needs renormalizing, it's a no-op.
+cleanup_crlf_phantoms() {
+  if [ ! -f ".gitattributes" ]; then
+    return 0
+  fi
+
+  # Check: are there unstaged "modifications" that are actually zero-byte diffs?
+  local TOTAL_MODS REAL_MODS
+  TOTAL_MODS=$(git diff --name-only 2>/dev/null | wc -l)
+  REAL_MODS=$(git diff --numstat 2>/dev/null | awk '$1 != 0 || $2 != 0' | wc -l)
+
+  if [ "$TOTAL_MODS" -gt 0 ] && [ "$REAL_MODS" -eq 0 ]; then
+    echo "CRLF phantom diffs detected (${TOTAL_MODS} files) — renormalizing..."
+    git add --renormalize . 2>/dev/null
+    # If renormalize staged changes, commit them so the tree is clean
+    if ! git diff --cached --quiet 2>/dev/null; then
+      git commit -m "fix: renormalize line endings to LF" --no-verify --quiet 2>/dev/null \
+        && echo "CRLF: committed renormalization ✓" \
+        || { git reset HEAD --quiet 2>/dev/null; echo "CRLF: renormalize staged but commit skipped"; }
+    else
+      echo "CRLF: phantom diffs resolved ✓"
+    fi
+  fi
+}
+
 # --- Git sync ---
 sync_git() {
   git fetch origin main --quiet 2>/dev/null || {
     echo "WARN: Could not fetch origin/main — check network/auth." >&2
     return 0
   }
+
+  # Clean CRLF phantom diffs BEFORE dirty-tree detection.
+  # This prevents line-ending noise from blocking auto-rebase.
+  cleanup_crlf_phantoms
 
   local LOCAL MERGE_BASE REMOTE BEHIND_COUNT AHEAD_COUNT
   LOCAL=$(git rev-parse HEAD 2>/dev/null) || return 0

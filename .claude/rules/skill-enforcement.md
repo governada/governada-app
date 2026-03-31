@@ -60,6 +60,39 @@ What you should do at step 2:
 - **User explicitly says "just do it"**: Respect the request, but note which skill was skipped
 - **Mid-skill execution**: Don't invoke a skill recursively (e.g., don't run `/diagnose` inside `/build-step` Phase 4 unless a genuine unexpected bug appears)
 
+## Prevention-First Thinking (Proactive, Not Reactive)
+
+The whack-a-mole detector above triggers when the user catches you treating symptoms. But the goal is to **never need the user to catch you**. Every fix, feature, and change must proactively include a prevention layer.
+
+### The 3-Question Gate (before every commit)
+
+1. **"What class of problem does this fix/feature address?"** — Name the category, not just the instance. "CRLF phantom diffs" is an instance; "line-ending mismatches in Windows worktrees" is the class.
+
+2. **"What would cause this class of problem to recur?"** — Identify the trigger conditions. If the answer involves an agent forgetting something, the fix is incomplete.
+
+3. **"What automated guard prevents recurrence?"** — Name the hook, assertion, CI check, or runtime guard. If none exists, create one. If truly infeasible, document the failure mode in CLAUDE.md troubleshooting.
+
+### Examples
+
+| Fix                                | Instance thinking (incomplete)     | Class thinking (complete)                                                    |
+| ---------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| CRLF phantom diffs                 | Add `.gitattributes` with `eol=lf` | `.gitattributes` + `git add --renormalize` + auto-cleanup in sync hook       |
+| Agent creates branch in wrong repo | Tell agents not to do that         | Add a guard to `sync-worktree.sh` or hook that detects wrong-repo operations |
+| Missing feature flag               | Add the flag                       | Add CI check or lint rule that flags ungated features                        |
+| Stale data in narratives           | Add freshness check                | Staleness guard with carry-forward + alerting + per-page retry               |
+
+**If your PR only has the left column, it's not done.** The right column is what prevents the founder from seeing the same class of bug again.
+
+### Infrastructure > Process > Documentation
+
+Ranked by durability:
+
+1. **Infrastructure fix** (hook, assertion, guard, type system) — can't be bypassed by forgetting
+2. **Process fix** (CI check, pre-commit hook) — requires setup but auto-enforces
+3. **Documentation fix** (troubleshooting table, CLAUDE.md) — helps diagnosis but doesn't prevent
+
+Always aim for level 1. Fall back to 2 if 1 isn't feasible. Level 3 alone is never sufficient for a recurring problem.
+
 ## Self-Check Prompt
 
 Before any commit, ask yourself:
@@ -67,3 +100,7 @@ Before any commit, ask yourself:
 > "If I were the founder reviewing this work tomorrow, would they say I was thorough, or would they say I took shortcuts?"
 
 If the answer is "shortcuts," you're probably skipping a skill or a verification step.
+
+> "If this same class of problem happens again in 2 weeks, will my fix prevent it automatically, or will someone have to catch it again?"
+
+If the answer is "catch it again," your fix is incomplete — add a prevention layer.

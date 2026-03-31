@@ -176,9 +176,14 @@ export const GlobeConstellation = forwardRef<
   // when parent state changes via useState. We store focus in a ref that R3F
   // components read in useFrame, and increment a version counter so useFrame
   // can detect changes without depending on React re-renders.
-  // Sync focus to module-level shared state (readable by R3F useFrame)
-  if (getSharedFocus() !== sceneState.focus) {
-    setSharedFocus(sceneState.focus);
+  //
+  // Forward sync: push React-managed focus to shared state, but PRESERVE
+  // fields set externally by behaviors (userNode from spatialMatchBehavior).
+  // Without this merge, the forward sync clobbers behavior writes before the
+  // reverse sync interval can detect them.
+  const shared = getSharedFocus();
+  if (shared !== sceneState.focus) {
+    setSharedFocus({ ...sceneState.focus, userNode: shared.userNode ?? sceneState.focus.userNode });
   }
 
   // Reverse sync: detect when behaviors (e.g., spatialMatchBehavior) write to
@@ -190,19 +195,17 @@ export const GlobeConstellation = forwardRef<
       const currentVersion = getSharedFocusVersion();
       if (currentVersion !== sharedFocusVersionRef.current) {
         sharedFocusVersionRef.current = currentVersion;
-        const shared = getSharedFocus();
+        const latest = getSharedFocus();
         // Only sync fields that behaviors set externally (userNode)
         // to avoid overwriting React-managed focus state
-        if (shared.userNode !== sceneState.focus.userNode) {
-          setSceneState((prev) => ({
-            ...prev,
-            focus: { ...prev.focus, userNode: shared.userNode },
-          }));
-        }
+        setSceneState((prev) => {
+          if (latest.userNode === prev.focus.userNode) return prev;
+          return { ...prev, focus: { ...prev.focus, userNode: latest.userNode } };
+        });
       }
-    }, 100); // Poll at 10Hz — fast enough for visual updates, light on CPU
+    }, 50); // Poll at 20Hz — fast enough for visual updates, light on CPU
     return () => clearInterval(interval);
-  }, [sceneState.focus.userNode]);
+  }, []);
 
   const { data: apiData } = useGovernanceConstellation();
 

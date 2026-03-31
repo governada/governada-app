@@ -84,7 +84,7 @@ export function MatchResultOverlay({
         transition={{ type: 'spring', stiffness: 260, damping: 28 }}
         className={cn(
           // Desktop: compact card in lower portion, below the glowing match node
-          'fixed z-[45] w-full max-w-[360px] max-h-[50vh] overflow-y-auto',
+          'fixed z-[60] w-full max-w-[360px] max-h-[50vh] overflow-y-auto',
           'left-1/2 bottom-[6%] -translate-x-1/2',
           // Mobile: bottom sheet
           'max-lg:top-auto max-lg:bottom-0 max-lg:left-0 max-lg:right-0',

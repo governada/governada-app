@@ -103,6 +103,18 @@ C:\Users\dalto\governada\
   2. If another PR merged recently, rebase first: `git fetch origin && git rebase origin/main`
   3. Never merge while CI is running on main -- wait for it to finish
 
+### Worktree Lifecycle Rules
+
+**Session start**: `sync-worktree.sh` auto-runs and HARD BLOCKS if behind origin/main with a dirty tree. Fix: stash+rebase or commit+rebase before any work (including planning). Reading stale files produces plans that reference deleted/renamed code.
+
+**During work**: Commit every 2-3 logical steps (even as `wip:`). A clean tree lets the hook auto-rebase when other PRs land.
+
+**Before ending**: Commit or stash all changes. Leftover dirty state from one session blocks the NEXT session's auto-sync.
+
+**Before pushing**: `check-behind-main.sh` blocks `git push` if behind origin/main. Fix: `git rebase origin/main`.
+
+**CI trigger**: CI runs on `pull_request` to main, not on `git push` alone. Create the PR first.
+
 ## Environment
 
 - **Production**: `https://governada.io` (NOT .com)

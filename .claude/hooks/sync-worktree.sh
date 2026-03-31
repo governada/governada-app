@@ -123,6 +123,16 @@ sync_git() {
     exit 2
   fi
 
+  # Auto-discard CRLF-only phantom diffs before rebasing.
+  # We already know IS_DIRTY=false (no real content changes), but git rebase
+  # does its own working-tree check and refuses to run if it sees ANY unstaged
+  # changes — including zero-content CRLF normalization diffs. Silently clean
+  # them so the rebase can proceed.
+  if ! git diff --quiet HEAD 2>/dev/null; then
+    git checkout -- . 2>/dev/null
+    echo "Git: discarded CRLF phantom diffs (0 real content changes) ✓"
+  fi
+
   if ! git rebase origin/main --quiet 2>/dev/null; then
     git rebase --abort 2>/dev/null || true
     echo ""

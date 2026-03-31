@@ -98,7 +98,14 @@ export function useSenecaGlobeBridge(
     (command: GlobeCommand) => {
       const globe = globeRef.current;
       // eslint-disable-next-line no-console
-      console.log('%c[GlobeBridge] EXEC:', 'color: lime', command.type, 'globeRef:', !!globe, command);
+      console.log(
+        '%c[GlobeBridge] EXEC:',
+        'color: lime',
+        command.type,
+        'globeRef:',
+        !!globe,
+        command,
+      );
       if (!globe) {
         // Buffer commands until globe mounts (dynamic import timing)
         commandQueueRef.current.push(command);
@@ -116,7 +123,8 @@ export function useSenecaGlobeBridge(
       };
       const handled = executeBehavior(command, behaviorCtx);
       // eslint-disable-next-line no-console
-      if (handled) console.log('%c[GlobeBridge] Handled by behavior:', 'color: orange', command.type);
+      if (handled)
+        console.log('%c[GlobeBridge] Handled by behavior:', 'color: orange', command.type);
       if (handled) return;
 
       switch (command.type) {

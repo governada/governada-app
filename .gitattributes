@@ -1,0 +1,20 @@
+# Prevent CRLF phantom diffs on Windows worktrees.
+# Without this, `core.autocrlf=true` converts LF→CRLF on checkout,
+# causing `git diff --quiet` to report shell scripts as modified
+# when they haven't actually changed — which blocks auto-rebase
+# in sync-worktree.sh.
+
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Keep markdown and config files normalized
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.css   text eol=lf
+*.mjs   text eol=lf

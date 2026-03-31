@@ -36,9 +36,23 @@ sync_git() {
     return 0
   fi
 
-  # Check if working tree is dirty
+  # Check if working tree has REAL changes (not just CRLF phantom diffs).
+  # On Windows with core.autocrlf=true, `git worktree add` checks out files
+  # with CRLF while the index has LF, causing `git diff --quiet` to report
+  # phantom modifications on shell scripts. .gitattributes fixes this for new
+  # worktrees, but we also filter here as defense-in-depth.
   local IS_DIRTY=false
-  if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet HEAD 2>/dev/null; then
+  local REAL_CHANGES
+  REAL_CHANGES=$(git diff --numstat HEAD 2>/dev/null | awk '$1 != 0 || $2 != 0 { print }' | head -1)
+  local STAGED_CHANGES
+  STAGED_CHANGES=$(git diff --cached --numstat HEAD 2>/dev/null | awk '$1 != 0 || $2 != 0 { print }' | head -1)
+  if [ -n "$REAL_CHANGES" ] || [ -n "$STAGED_CHANGES" ]; then
+    IS_DIRTY=true
+  fi
+  # Also check for untracked files that might matter (not in .gitignore)
+  local UNTRACKED
+  UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null | grep -v '\.claude/' | head -1)
+  if [ -n "$UNTRACKED" ]; then
     IS_DIRTY=true
   fi
 

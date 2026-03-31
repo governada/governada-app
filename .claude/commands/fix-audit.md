@@ -41,7 +41,7 @@ Send notification: `bash scripts/notify.sh "decision_gate" "/fix-audit: Plan rea
 
 Launch agents in worktrees (`isolation: "worktree"`). Two modes:
 
-**Foundation fixes (Tier 1):** Fix ONLY identified gaps. Don't refactor surrounding code. Don't add features. If fixing reveals deeper issue → note but don't fix. Preflight → commit `fix: [description]` → push → PR → CI → STOP.
+**Foundation fixes (Tier 1):** Fix ONLY identified gaps. Don't refactor surrounding code. Don't add features. **Before writing any fix: search for existing patterns that handle the same case elsewhere in the codebase. Reuse existing error handling, validation, or component patterns. Do NOT create new utility functions if a suitable one exists in `lib/` or `utils/`. See `.claude/rules/build-on-existing.md`.** If fixing reveals deeper issue → note but don't fix. Preflight → commit `fix: [description]` → push → PR → CI → STOP.
 
 **Craft items (Tier 2 — intelligence, delight, design):** Creative license within scope. Match the 10/10 spec. Purpose-built over generic. Micro-interactions matter. Dark mode first-class. Commit `feat: [description]` → push → PR with "Craft:" prefix → CI → STOP.
 

@@ -38,6 +38,18 @@ Build failures or production bugs if violated:
 - **Feature flags for proposal workspace.** All proposal features gated behind `proposal_workspace` and sub-flags (`review_inline_annotations`, `review_treasury_impact`, etc.). See `lib/featureFlags.ts`.
 - **Log deferred work.** When intentionally deferring work to post-launch (validation studies, data-dependent features, follow-up improvements), add it to `docs/strategy/context/post-launch-followups.md` with: source, priority, why deferred, what's needed, and success criteria. This is the single source of truth for unfinished work.
 
+## Development Philosophy: Robust & Correct
+
+The default posture is "understand deeply, then act minimally" — not "act quickly, fix later."
+
+- **The burden of proof is on change.** Before modifying or creating code, prove why the change is necessary and why the existing approach is insufficient. "It could be better" is not sufficient justification.
+- **Existing code is the starting point.** Before writing any new function, component, or utility, search for existing implementations that can be extended. Creating a new implementation when a suitable one exists is a defect. See `.claude/rules/build-on-existing.md`.
+- **Root causes, not symptoms.** When fixing bugs, trace the full cause chain before writing a fix. A patch that addresses a symptom will create a new bug. If you can't explain WHY the bug exists, you haven't found the root cause yet. Use `/diagnose` for non-trivial bugs.
+- **Done means done.** Work is not complete until: edge cases are handled, error/loading/empty states are designed, mobile is verified, the feature is gated if risky, and the implementation has been tested against the actual user journey — not just the happy path. Use `/harden` to verify robustness.
+- **Less is more.** Shipping 3 robust features beats shipping 7 fragile ones. Push back on scope if quality would suffer. Recommend deferring work rather than shipping half-baked implementations.
+- **Pushback is valuable.** If a plan feels underspecified, say so. If the scope feels too large for one session, say so. If the approach feels like it's optimizing for speed over correctness, say so. The founder prefers honest friction over compliant speed.
+- **Improve, don't replace.** Unless explicitly using `/explore-feature` or the user requests net-new work, the default for every skill and command is to strengthen, extend, and improve what exists — not to build from scratch.
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 App Router, TypeScript strict, React 19

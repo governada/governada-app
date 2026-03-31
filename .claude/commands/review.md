@@ -10,6 +10,8 @@ Perform comprehensive code review. Be thorough but concise.
 - **Performance** — No unnecessary re-renders, expensive calcs memoized
 - **Security** — Auth checked, inputs validated, RLS policies in place
 - **Architecture** — Follows existing patterns, code in correct directory
+- **Existing Code** — New files/functions justified? Could extend existing instead? Duplicate patterns introduced? See `.claude/rules/build-on-existing.md`
+- **Robustness** — Error/loading/empty states handled? Edge cases (0, 1, many, null)? Mobile verified if UI? See `/harden` checklist for full criteria
 
 ## Output Format
 

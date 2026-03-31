@@ -8,7 +8,35 @@ All code changes compile clean. Execute the full deploy pipeline autonomously. D
 4. **Force-dynamic audit**: Any new `app/` file importing `@/lib/supabase` or `@/lib/data` needs `export const dynamic = 'force-dynamic'`
 5. **Stage + commit**: `git add <specific-files>` → review with `git diff --cached --name-only` → commit
 6. **Push**: `git push -u origin HEAD`
-7. **PR**: `gh pr create --title "feat: description" --body-file PR_BODY.md --base main` → delete PR_BODY.md
+7. **PR**: `gh pr create --title "feat: description" --body-file PR_BODY.md --base main` → delete PR_BODY.md. PR body MUST include these sections (per CLAUDE.md hygiene rules + build-on-existing):
+
+   ```markdown
+   ## Summary
+
+   [1-3 bullet points]
+
+   ## Existing Code Audit
+
+   - **Searched for**: [concepts/patterns you looked for]
+   - **Found**: [existing implementations, or "nothing similar"]
+   - **Decision**: [extended existing / created new because ...]
+
+   ## Robustness
+
+   - [ ] Error states handled
+   - [ ] Loading states meaningful
+   - [ ] Empty states guide users
+   - [ ] Edge cases considered
+   - [ ] Mobile verified (if UI)
+
+   ## Impact
+
+   - **What changed**: [1-2 sentences]
+   - **User-facing**: Yes/No + detail
+   - **Risk**: Low/Medium/High + rationale
+   - **Scope**: Files/modules touched
+   ```
+
 8. **CI**: Wait for CI with minimal context consumption:
    ```bash
    RUN_ID=$(gh run list --branch $(git branch --show-current) --limit 1 --json databaseId --jq '.[0].databaseId')

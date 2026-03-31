@@ -87,16 +87,33 @@ Prove or disprove your hypothesis. Do NOT write a fix yet.
 > - What I haven't checked: [list]
 >   I need your input on where to look next."
 
-## Phase 5: Fix at Root
+## Phase 5: Fix at Root + Prevent Recurrence
 
-ONLY after Phases 1-4, propose and implement a fix that addresses the ROOT cause.
+ONLY after Phases 1-4, propose and implement a fix that addresses the ROOT cause AND prevents the same class of problem from recurring.
 
-Rules:
+Every fix has TWO parts. Both are required:
+
+### Part A: The immediate fix
 
 - The fix must address the root cause identified in Phase 3-4, not the symptom observed in Phase 1
 - Search for other places in the codebase with the same pattern — if this bug exists here, it likely exists elsewhere. Fix all instances.
 - The fix should be minimal — change only what's necessary to resolve the root cause. Do not refactor surrounding code.
 - If the fix requires changing a shared function/utility, verify that all callers still work correctly.
+
+### Part B: The prevention layer
+
+Ask: **"What infrastructure change would make this class of problem impossible, regardless of agent behavior?"**
+
+Examples of prevention layers:
+
+- Bug was caused by missing validation → add a schema/type guard that rejects bad input at the boundary
+- Bug was caused by stale state → add a hook/check that auto-refreshes or blocks on stale data
+- Bug was caused by a process being skipped → add a pre-commit hook, CI check, or runtime assertion that enforces the process
+- Bug was caused by wrong directory/context → add a guard that detects and blocks the wrong context
+
+**The litmus test**: If the prevention layer requires an agent to "remember to do X," it's not a prevention layer — it's a wish. Prevention layers are automated checks, hooks, guards, or assertions that fire without human/agent memory.
+
+If no automated prevention is feasible, document the failure mode in the relevant CLAUDE.md troubleshooting table so future agents can self-diagnose.
 
 ## Phase 6: Verify Fix
 

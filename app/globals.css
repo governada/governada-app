@@ -57,6 +57,7 @@
    ============================================================ */
 
 :root {
+  color-scheme: dark;
   --radius: 0.625rem;
 
   /* ── Light mode fallback (dark forced, but tokens needed for components) ── */

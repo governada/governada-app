@@ -227,25 +227,6 @@ export function computeGlobeLayout(inputs: LayoutInput[], nodeLimit: number): La
  */
 export { positionByAlignment };
 
-export function sphereToCartesian(
-  lat: number,
-  lon: number,
-  radius: number,
-): [number, number, number] {
-  return [
-    radius * Math.cos(lat) * Math.cos(lon),
-    radius * Math.cos(lat) * Math.sin(lon),
-    radius * Math.sin(lat),
-  ];
-}
-
-function dist3D(a: [number, number, number], b: [number, number, number]): number {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  const dz = a[2] - b[2];
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
-
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }

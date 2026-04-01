@@ -144,7 +144,7 @@ async function checkTier1(): Promise<CheckResult[]> {
     supabase
       .from('treasury_snapshots')
       .select('balance_lovelace')
-      .order('snapshot_date', { ascending: false })
+      .order('snapshot_at', { ascending: false })
       .limit(1)
       .single(),
     supabase
@@ -315,7 +315,9 @@ async function checkTier2(): Promise<CheckResult[]> {
     for (const drep of sampled) {
       try {
         const bfDrep = await blockfrost.fetchDRepDetail(drep.id);
-        const ourPower = Number((drep.info as Record<string, unknown>)?.votingPower ?? 0);
+        // Our votingPower is stored in ADA; Blockfrost returns lovelace — convert ours to lovelace
+        const ourPowerAda = Number((drep.info as Record<string, unknown>)?.votingPower ?? 0);
+        const ourPower = Math.round(ourPowerAda * 1_000_000);
         const theirPower = Number(bfDrep.amount ?? 0);
 
         results.push(

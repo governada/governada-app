@@ -52,7 +52,9 @@ export function getKoiosMetrics() {
 
 const MAX_RETRIES = 4;
 const CIRCUIT_BREAKER_COOLDOWN_MS = 60_000;
+const RATE_LIMIT_COOLDOWN_MS = 30_000; // Global 429 cooldown — prevents new requests during backoff
 let _lastKoios503 = 0;
+let _lastKoios429 = 0;
 
 function retryDelay(attempt: number, status?: number): number {
   // 429 rate limits need longer cooldowns: 2s, 8s, 30s, 30s
@@ -85,7 +87,16 @@ async function koiosFetch<T>(
   ) {
     const waitMs = CIRCUIT_BREAKER_COOLDOWN_MS - (Date.now() - _lastKoios503);
     console.warn(
-      `[Koios] Circuit breaker active, waiting ${Math.round(waitMs / 1000)}s before ${endpoint}`,
+      `[Koios] Circuit breaker (503) active, waiting ${Math.round(waitMs / 1000)}s before ${endpoint}`,
+    );
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+
+  // Rate limit breaker: if Koios returned 429 recently, cool down before new requests
+  if (_lastKoios429 && Date.now() - _lastKoios429 < RATE_LIMIT_COOLDOWN_MS && retryCount === 0) {
+    const waitMs = RATE_LIMIT_COOLDOWN_MS - (Date.now() - _lastKoios429);
+    console.warn(
+      `[Koios] Rate limit cooldown active, waiting ${Math.round(waitMs / 1000)}s before ${endpoint}`,
     );
     await new Promise((r) => setTimeout(r, waitMs));
   }
@@ -125,21 +136,40 @@ async function koiosFetch<T>(
 
     if (!response.ok) {
       if (response.status === 503) _lastKoios503 = Date.now();
+      if (response.status === 429) _lastKoios429 = Date.now();
 
       if ((response.status === 429 || response.status === 503) && retryCount < MAX_RETRIES) {
-        const waitTime = retryDelay(retryCount, response.status);
+        // Respect Retry-After header if present (seconds or HTTP-date)
+        const retryAfter = response.headers.get('Retry-After');
+        let waitTime: number;
+        if (retryAfter) {
+          const seconds = parseInt(retryAfter, 10);
+          waitTime = !isNaN(seconds)
+            ? seconds * 1000 + Math.random() * 1000
+            : retryDelay(retryCount, response.status);
+        } else {
+          waitTime = retryDelay(retryCount, response.status);
+        }
+
         console.warn(
-          `[Koios] ${response.status} on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`,
+          `[Koios] ${response.status} on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})${retryAfter ? ` [Retry-After: ${retryAfter}]` : ''}...`,
         );
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         return koiosFetch<T>(endpoint, options, retryCount + 1);
       }
 
+      // Report to Sentry when retries are exhausted
+      Sentry.captureMessage(`Koios API ${response.status} on ${endpoint} (retries exhausted)`, {
+        level: 'error',
+        extra: { endpoint, status: response.status, retryCount },
+      });
+
       throw new Error(`Koios API error: ${response.status} ${response.statusText}`);
     }
 
-    // Clear circuit breaker on success
+    // Clear circuit breakers on success
     if (_lastKoios503) _lastKoios503 = 0;
+    if (_lastKoios429) _lastKoios429 = 0;
 
     const data = await response.json();
     return data as T;
@@ -170,6 +200,14 @@ async function koiosFetch<T>(
       retryCount,
       stack: errorStack,
     });
+
+    // Report to Sentry when retries are exhausted (makes sync errors visible)
+    if (retryCount >= MAX_RETRIES) {
+      Sentry.captureException(error instanceof Error ? error : new Error(msg), {
+        extra: { endpoint, retryCount, isTimeout },
+      });
+    }
+
     throw new Error(msg);
   }
 }

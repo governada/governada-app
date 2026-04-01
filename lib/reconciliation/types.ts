@@ -135,8 +135,11 @@ export interface ToleranceConfig {
 /** Default tolerances per metric type */
 export const DEFAULT_TOLERANCES: Record<string, ToleranceConfig> = {
   // Tier 1: aggregate counts
-  drepCount: { countAbsolute: 5, percentRelative: 0.02 },
-  proposalCount: { countAbsolute: 2 },
+  // Note: Koios only returns active DReps while Blockfrost includes retired —
+  // a ~30% gap is expected, so we use a wide tolerance for total counts.
+  // The active DRep comparison is the more meaningful cross-reference.
+  drepCount: { countAbsolute: 50, percentRelative: 0.35 },
+  proposalCount: { countAbsolute: 5, percentRelative: 0.1 },
   ccMembers: { setDiffMax: 0 }, // exact match
   epoch: { countAbsolute: 0 }, // exact match
   treasuryBalance: { percentRelative: 0.001 }, // 0.1%

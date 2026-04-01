@@ -27,7 +27,7 @@ export const computeCommunityIntelligence = inngest.createFunction(
     name: 'Compute Community Intelligence',
     retries: 2,
     concurrency: { limit: 1, scope: 'env', key: '"community-intelligence"' },
-    triggers: { cron: '*/30 * * * *' },
+    triggers: { cron: '22,52 * * * *' }, // Offset from :00/:30 to avoid Koios-heavy sync collisions
   },
   async ({ step }) => {
     const epoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));

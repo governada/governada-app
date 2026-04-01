@@ -31,7 +31,10 @@ export const syncDreps = inngest.createFunction(
   {
     id: 'sync-dreps',
     retries: 2,
-    concurrency: { limit: 2, scope: 'env', key: '"koios-batch"' },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"sync-dreps"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
@@ -77,10 +80,10 @@ export const syncDreps = inngest.createFunction(
         // Don't let escalation logic crash the onFailure handler
       }
     },
-    triggers: [{ cron: '0 */6 * * *' }, { event: 'drepscore/sync.dreps' }],
+    triggers: [{ cron: '3 */6 * * *' }, { event: 'drepscore/sync.dreps' }], // Offset to :03 to avoid 6h-mark collision
   },
   async ({ step }) => {
-    const checkInId = cronCheckIn('sync-dreps', '0 */6 * * *');
+    const checkInId = cronCheckIn('sync-dreps', '3 */6 * * *');
     try {
       // Step 0: Initialize sync_log and reset metrics
       const { syncLogId, startTime } = await step.run('init-sync', async () => {

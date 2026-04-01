@@ -24,7 +24,10 @@ export const syncTreasurySnapshot = inngest.createFunction(
   {
     id: 'sync-treasury-snapshot',
     retries: 3,
-    concurrency: { limit: 1, scope: 'env', key: '"treasury-sync"' },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"treasury-sync"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);

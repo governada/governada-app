@@ -94,7 +94,7 @@ export const generateProposalBriefsBatch = inngest.createFunction(
     name: 'Generate Proposal Briefs (Batch)',
     retries: 1,
     concurrency: { limit: 1 },
-    triggers: { cron: '0 */6 * * *' },
+    triggers: { cron: '50 */6 * * *' }, // Offset to :50 to avoid :00 collision
   },
   async ({ step }) => {
     // Find proposals with 3+ rationales

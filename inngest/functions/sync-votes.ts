@@ -12,7 +12,10 @@ export const syncVotes = inngest.createFunction(
   {
     id: 'sync-votes',
     retries: 2,
-    concurrency: { limit: 2, scope: 'env', key: '"koios-batch"' },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"sync-votes"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
@@ -31,10 +34,10 @@ export const syncVotes = inngest.createFunction(
         `Votes sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
-    triggers: [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.votes' }],
+    triggers: [{ cron: '18 */6 * * *' }, { event: 'drepscore/sync.votes' }], // Offset to :18 to avoid collision at :15
   },
   async ({ step }) => {
-    const checkInId = cronCheckIn('sync-votes', '15 */6 * * *');
+    const checkInId = cronCheckIn('sync-votes', '18 */6 * * *');
     try {
       const result = await step.run('execute-votes-sync', async () => {
         // Guard against Koios hangs that cause 24h+ sync durations.

@@ -43,6 +43,7 @@ import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
+import { ClusterNebulae } from './ClusterNebula';
 import { ConstellationLines } from './GlobeEdges';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { useFeatureFlag } from '@/components/FeatureGate';
@@ -511,7 +512,12 @@ export function GlobeLayout({
             delegationBond={delegationBond}
             clusters={clusterLabels}
           >
-            {clusterLabels.length > 0 && <ClusterLabels3D clusters={clusterLabels} />}
+            {clusterLabels.length > 0 && (
+              <>
+                <ClusterLabels3D clusters={clusterLabels} />
+                <ClusterNebulae clusters={clusterLabels} />
+              </>
+            )}
           </ConstellationScene>
         )}
       </div>

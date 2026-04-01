@@ -39,14 +39,19 @@ export function CinematicCamera({
   orbitSpeed,
   dollyTarget,
   driftEnabled,
+  mouseRef,
 }: {
   controlsRef: React.RefObject<CameraControls | null>;
   orbitSpeed: number;
   dollyTarget: number;
   /** When true, adds subtle camera micro-drift — "system is alive" feel */
   driftEnabled?: boolean;
+  /** Normalized mouse position for parallax (-1..1). Optional. */
+  mouseRef?: React.RefObject<{ x: number; y: number }>;
 }) {
   const currentDolly = useRef(14);
+  const parallaxX = useRef(0);
+  const parallaxY = useRef(0);
 
   useFrame(({ clock }, delta) => {
     const controls = controlsRef.current;
@@ -58,7 +63,6 @@ export function CinematicCamera({
     }
 
     // Camera micro-drift: subtle sinusoidal oscillation
-    // Creates the "system is alive and scanning" hum between interactions
     if (driftEnabled && Math.abs(orbitSpeed) < 0.002) {
       const t = clock.getElapsedTime();
       const drift = 0.15 * Math.sin(t * 0.6 * Math.PI);
@@ -66,10 +70,22 @@ export function CinematicCamera({
       controls.polarAngle += drift * delta * 0.15;
     }
 
+    // Mouse parallax: subtle camera offset based on cursor position
+    if (mouseRef?.current) {
+      const targetX = mouseRef.current.x * 0.3;
+      const targetY = mouseRef.current.y * 0.2;
+      const smoothFactor = 1 - Math.pow(0.02, delta);
+      parallaxX.current += (targetX - parallaxX.current) * smoothFactor;
+      parallaxY.current += (targetY - parallaxY.current) * smoothFactor;
+
+      // Apply as azimuth/polar offset (small — max ±0.3 radians = ~17°)
+      controls.azimuthAngle += (targetX - parallaxX.current) * delta * 0.5;
+      controls.polarAngle += (targetY - parallaxY.current) * delta * 0.3;
+    }
+
     // Smooth dolly: exponential smoothing toward target distance
     const dollyDiff = dollyTarget - currentDolly.current;
     if (Math.abs(dollyDiff) > 0.05) {
-      // Frame-rate independent exponential decay: approaches target smoothly
       const factor = 1 - Math.pow(0.05, delta);
       currentDolly.current += dollyDiff * factor;
       controls.dollyTo(currentDolly.current, false);

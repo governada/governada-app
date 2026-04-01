@@ -12,7 +12,7 @@ import {
 import { Canvas } from '@react-three/fiber';
 import { useGovernanceConstellation } from '@/hooks/queries';
 import { CameraControls } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, DepthOfField } from '@react-three/postprocessing';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
 import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
 import { AmbientStarfield } from '@/components/globe/GlobeAmbient';
@@ -1126,9 +1126,16 @@ export const GlobeConstellation = forwardRef<
     quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);
 
   // --- Canvas-level interaction handlers ---
-  // Track mouse position for hover tooltip positioning
+  // Track mouse position for hover tooltip positioning + parallax
+  const mouseNormalizedRef = useRef({ x: 0, y: 0 });
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     mouseScreenRef.current = { x: e.clientX, y: e.clientY };
+    // Normalized to -1..1 for parallax
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    mouseNormalizedRef.current = {
+      x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      y: -(((e.clientY - rect.top) / rect.height) * 2 - 1),
+    };
   }, []);
 
   return (
@@ -1252,6 +1259,11 @@ export const GlobeConstellation = forwardRef<
                 luminanceSmoothing={0.9}
                 radius={0.95}
               />
+              <DepthOfField
+                focusDistance={0}
+                focalLength={quality === 'high' ? 0.04 : 0}
+                bokehScale={quality === 'high' ? 2.5 : 0}
+              />
             </EffectComposer>
           )}
 
@@ -1276,6 +1288,7 @@ export const GlobeConstellation = forwardRef<
             orbitSpeed={cinematicOrbitSpeed}
             dollyTarget={cinematicDollyTarget}
             driftEnabled={sceneState.focus.driftEnabled}
+            mouseRef={mouseNormalizedRef}
           />
         </Canvas>
       )}

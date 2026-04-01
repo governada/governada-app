@@ -24,7 +24,10 @@ export const syncCcRationales = inngest.createFunction(
   {
     id: 'sync-cc-rationales',
     retries: 2,
-    concurrency: { limit: 1, scope: 'env', key: '"cc-rationales"' },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"cc-rationales"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
@@ -43,7 +46,7 @@ export const syncCcRationales = inngest.createFunction(
         `CC rationales sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
-    triggers: [{ cron: '15 */6 * * *' }, { event: 'drepscore/sync.cc-rationales' }],
+    triggers: [{ cron: '28 */6 * * *' }, { event: 'drepscore/sync.cc-rationales' }], // Offset to :28 to avoid collision with sync-votes at :18
   },
   async ({ step }) => {
     // Step 1: Fetch and parse rationale documents for CC votes

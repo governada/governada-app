@@ -31,7 +31,7 @@ export const reconcileData = inngest.createFunction(
         `Error: ${error.message}\n\nBlockfrost cross-reference checks are not running. Check BLOCKFROST_PROJECT_ID env var and Blockfrost service status.`,
       ).catch(() => {});
     },
-    triggers: { cron: '15 */2 * * *' }, // Every 2 hours at :15 (offset from syncs)
+    triggers: { cron: '45 */2 * * *' }, // Every 2 hours at :45 (well offset from Koios-heavy syncs)
   },
   async ({ step }) => {
     // Step 1: Check if Blockfrost is configured

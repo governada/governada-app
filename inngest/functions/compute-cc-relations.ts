@@ -18,7 +18,7 @@ export const computeCcRelations = inngest.createFunction(
   {
     id: 'compute-cc-relations',
     concurrency: [{ scope: 'env', key: 'cc-relations', limit: 1 }],
-    triggers: [{ event: 'cc/votes.synced' }, { cron: '0 */6 * * *' }],
+    triggers: [{ event: 'cc/votes.synced' }, { cron: '58 */6 * * *' }], // Offset to :58 to avoid :00 collision
   },
   async ({ step }) => {
     // -----------------------------------------------------------------------

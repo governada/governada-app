@@ -9,11 +9,10 @@ export const syncProposals = inngest.createFunction(
   {
     id: 'sync-proposals',
     retries: 3,
-    concurrency: {
-      limit: 2,
-      scope: 'env',
-      key: '"koios-frequent"',
-    },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"sync-proposals"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
@@ -37,10 +36,10 @@ export const syncProposals = inngest.createFunction(
         `Proposals sync failed after all retries.\nError: ${detail || msg}\nCheck logs for details.`,
       );
     },
-    triggers: [{ cron: '*/30 * * * *' }, { event: 'drepscore/sync.proposals' }],
+    triggers: [{ cron: '7,37 * * * *' }, { event: 'drepscore/sync.proposals' }], // Offset from :00/:30 to avoid collisions
   },
   async ({ step }) => {
-    const checkInId = cronCheckIn('sync-proposals', '*/30 * * * *');
+    const checkInId = cronCheckIn('sync-proposals', '7,37 * * * *');
     try {
       const result = await step.run('execute-proposals-sync', () => executeProposalsSync());
       await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_PROPOSALS'));

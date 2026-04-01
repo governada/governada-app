@@ -21,7 +21,10 @@ export const syncSpoAndCcVotes = inngest.createFunction(
   {
     id: 'sync-spo-cc-votes',
     retries: 2,
-    concurrency: { limit: 1, scope: 'env', key: '"spo-cc-votes"' },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"spo-cc-votes"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
@@ -52,7 +55,7 @@ export const syncSpoAndCcVotes = inngest.createFunction(
         `SPO/CC votes sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
-    triggers: [{ cron: '45 */6 * * *' }, { event: 'drepscore/sync.spo-cc-votes' }],
+    triggers: [{ cron: '48 */6 * * *' }, { event: 'drepscore/sync.spo-cc-votes' }], // Offset to :48
   },
   async ({ step }) => {
     const spoResult = await step.run('fetch-spo-votes', async () => {

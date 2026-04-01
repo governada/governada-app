@@ -40,7 +40,7 @@ export const updatePassagePredictions = inngest.createFunction(
         .is('finished_at', null);
     },
     triggers: [
-      { cron: '0 */6 * * *' },
+      { cron: '40 */6 * * *' }, // Offset to :40 to avoid :00 collision
       { event: 'drepscore/sync.votes' },
       { event: 'cc/votes.synced' },
     ],

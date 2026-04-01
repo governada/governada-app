@@ -8,7 +8,10 @@ export const syncSecondary = inngest.createFunction(
   {
     id: 'sync-secondary',
     retries: 2,
-    concurrency: { limit: 2, scope: 'env', key: '"koios-batch"' },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"sync-secondary"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);
@@ -27,7 +30,7 @@ export const syncSecondary = inngest.createFunction(
         `Secondary sync failed after all retries.\nError: ${msg}\nCheck logs for details.`,
       );
     },
-    triggers: [{ cron: '30 */6 * * *' }, { event: 'drepscore/sync.secondary' }],
+    triggers: [{ cron: '33 */6 * * *' }, { event: 'drepscore/sync.secondary' }], // Offset to :33
   },
   async ({ step }) => {
     const result = await step.run('execute-secondary-sync', () => executeSecondarySync());

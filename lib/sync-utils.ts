@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { withRetry } from '@/lib/retry';
+import * as Sentry from '@sentry/nextjs';
 
 export type SyncType =
   | 'dreps'
@@ -368,6 +369,12 @@ export async function alertEmail(subject: string, body: string): Promise<void> {
  * Never throws — uses allSettled to ensure both channels are attempted.
  */
 export async function alertCritical(title: string, details: string): Promise<void> {
+  // Report to Sentry so sync failures are visible in error monitoring
+  Sentry.captureMessage(`[Sync] ${title}`, {
+    level: 'error',
+    extra: { details },
+    tags: { source: 'sync-pipeline' },
+  });
   await Promise.allSettled([alertDiscord(title, details), alertEmail(title, details)]);
 }
 

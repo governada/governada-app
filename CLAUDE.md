@@ -50,6 +50,28 @@ The default posture is "understand deeply, then act minimally" — not "act quic
 - **Pushback is valuable.** If a plan feels underspecified, say so. If the scope feels too large for one session, say so. If the approach feels like it's optimizing for speed over correctness, say so. The founder prefers honest friction over compliant speed.
 - **Improve, don't replace.** Unless explicitly using `/explore-feature` or the user requests net-new work, the default for every skill and command is to strengthen, extend, and improve what exists — not to build from scratch.
 
+## Autonomous Operation
+
+Agents have **full autonomous permission** to execute without asking. The `settings.json` allow list is the source of truth — if a tool is allowed, use it. Do NOT ask "should I update this file?" or "can I proceed?" before routine operations.
+
+**Never ask permission for:**
+
+- Editing or creating any file (code, docs, skills, rules, CLAUDE.md, configs)
+- Running builds, tests, linters, or any npm script
+- Git operations (commit, push, rebase, branch)
+- Creating PRs, running CI checks, merging (per deploy pipeline)
+- Reading files, searching code, exploring the codebase
+- Running deploy scripts and verification
+
+**DO ask / pause for:**
+
+- Destructive operations on production data (Supabase writes, `.env.local` is production)
+- Architectural decisions with multiple valid approaches (use plan mode)
+- Scope expansion beyond what was requested
+- Anything on the denylist in `settings.json`
+
+"Pushback is valuable" means push back on **bad ideas and scope creep** — it does NOT mean ask permission before every edit. Act, don't ask.
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 App Router, TypeScript strict, React 19

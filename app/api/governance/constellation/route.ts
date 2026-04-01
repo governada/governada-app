@@ -59,14 +59,17 @@ export const GET = withRouteHandler(async () => {
     supabase
       .from('pools')
       .select(
-        'pool_id, ticker, pool_name, governance_score, vote_count, relay_lat, relay_lon, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+        'pool_id, ticker, pool_name, governance_score, vote_count, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
       )
       .gt('vote_count', 0),
 
     supabase
       .from('cc_members')
-      .select('cc_hot_id, cc_cold_id, author_name, fidelity_grade, fidelity_score, status')
-      .eq('status', 'authorized'),
+      .select(
+        'cc_hot_id, cc_cold_id, author_name, fidelity_grade, fidelity_score, status, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+      )
+      .eq('status', 'authorized')
+      .limit(7),
   ]);
 
   // CC rationale name fallback (separate query to avoid TS Promise.all tuple limit)
@@ -160,23 +163,29 @@ export const GET = withRouteHandler(async () => {
       alignments: arr,
       nodeType: 'spo' as const,
       voteCount: p.vote_count || 0,
-      ...(p.relay_lat != null && p.relay_lon != null
-        ? { geoLat: p.relay_lat, geoLon: p.relay_lon }
-        : {}),
     };
   });
 
-  const ccNodes: ConstellationApiData['nodes'] = ccMembers.map((m) => ({
-    id: (m.cc_hot_id as string).slice(0, 16),
-    fullId: m.cc_hot_id as string,
-    name: (m.author_name as string) || ccNameMap.get(m.cc_hot_id as string) || null,
-    power: 0.8,
-    score: (m.fidelity_score as number) ?? 75,
-    dominant: 'transparency' as AlignmentDimension,
-    alignments: [50, 50, 50, 50, 50, 50],
-    nodeType: 'cc' as const,
-    fidelityGrade: (m.fidelity_grade as string) || undefined,
-  }));
+  // CC members — read pre-computed alignment from sync pipeline (columns added via migration)
+  // Falls back to neutral [50,50,50,50,50,50] if alignment not yet computed
+  const ccNodes: ConstellationApiData['nodes'] = ccMembers.map((m) => {
+    const aligns = extractAlignments(m);
+    const arr = alignmentsToArray(aligns);
+    const hasAlignment = arr.some((v) => Math.abs(v - 50) > 3);
+    return {
+      id: (m.cc_hot_id as string).slice(0, 16),
+      fullId: m.cc_hot_id as string,
+      name: (m.author_name as string) || ccNameMap.get(m.cc_hot_id as string) || null,
+      power: 0.8,
+      score: (m.fidelity_score as number) ?? 75,
+      dominant: hasAlignment
+        ? getDominantDimension(aligns)
+        : ('transparency' as AlignmentDimension),
+      alignments: arr,
+      nodeType: 'cc' as const,
+      fidelityGrade: (m.fidelity_grade as string) || undefined,
+    };
+  });
 
   const nodes: ConstellationApiData['nodes'] = [...drepNodes, ...spoNodes, ...ccNodes];
 

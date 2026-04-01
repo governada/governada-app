@@ -1,23 +1,20 @@
 /**
  * User node placement — computes 3D position for a citizen's match-derived
- * alignment on the governance constellation globe.
+ * alignment in the governance constellation.
  *
- * Uses the same positioning logic as DReps (computeSpherePosition) so the
- * user node lands in the correct alignment neighborhood.
+ * Uses the same positionByAlignment() as all entity types so the user node
+ * lands in the correct alignment neighborhood.
  */
 
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { alignmentsToArray, getDominantDimension } from '@/lib/drepIdentity';
 import type { LayoutInput } from '@/lib/constellation/globe-layout';
-import { computeSpherePosition, sphereToCartesian } from '@/lib/constellation/globe-layout';
-
-/** Radius for the match user node — inner-mid shell, prominent but not center. */
-const USER_NODE_RADIUS = 5.0;
+import { positionByAlignment } from '@/lib/constellation/globe-layout';
 
 /**
  * Compute 3D position for a citizen based on their quiz-derived alignment.
- * Uses the same sphere positioning as DReps so the user appears in the
- * correct alignment neighborhood.
+ * Uses the same alignment-based positioning as DReps so the user appears
+ * in the correct alignment neighborhood.
  */
 export function computeUserNodePosition(answers: AlignmentScores): [number, number, number] {
   const alignments = alignmentsToArray(answers);
@@ -29,10 +26,9 @@ export function computeUserNodePosition(answers: AlignmentScores): [number, numb
     score: 50,
     dominant: getDominantDimension(answers),
     alignments,
-    nodeType: 'drep', // use drep positioning logic for citizens
+    nodeType: 'user',
   };
-  const [lon, lat] = computeSpherePosition(syntheticInput);
-  return sphereToCartesian(lat, lon, USER_NODE_RADIUS);
+  return positionByAlignment(syntheticInput);
 }
 
 /** Euclidean distance in 6D alignment space. */

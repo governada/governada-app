@@ -354,6 +354,7 @@ export async function syncEpochGovernanceSummaries(): Promise<{
 
 export async function syncCommitteeMembers(): Promise<{
   membersStored: number;
+  alignmentsComputed: number;
   errors: string[];
 }> {
   const supabase = getSupabaseAdmin();
@@ -362,13 +363,14 @@ export async function syncCommitteeMembers(): Promise<{
 
   const errors: string[] = [];
   let membersStored = 0;
+  let alignmentsComputed = 0;
 
   try {
     const committeeData = await fetchCommitteeInfo();
 
     if (!committeeData?.members?.length) {
       await syncLog.finalize(true, null, { membersStored: 0 });
-      return { membersStored: 0, errors: [] };
+      return { membersStored: 0, alignmentsComputed: 0, errors: [] };
     }
 
     const rows = committeeData.members.map((m) => ({
@@ -389,11 +391,161 @@ export async function syncCommitteeMembers(): Promise<{
     );
     membersStored = result.success;
 
-    await syncLog.finalize(true, null, { membersStored, total: committeeData.members.length });
-    return { membersStored, errors };
+    // --- Compute CC alignment from voting correlation with DRep landscape ---
+    alignmentsComputed = await computeCCAlignments(supabase, errors);
+
+    await syncLog.finalize(true, null, {
+      membersStored,
+      alignmentsComputed,
+      total: committeeData.members.length,
+    });
+    return { membersStored, alignmentsComputed, errors };
   } catch (err) {
-    await syncLog.finalize(false, errMsg(err), { membersStored });
+    await syncLog.finalize(false, errMsg(err), { membersStored, alignmentsComputed });
     throw err;
+  }
+}
+
+/**
+ * Compute governance alignment for CC members based on how their votes
+ * correlate with the DRep alignment landscape. For each proposal a CC member
+ * voted on, find DReps who voted the same way and average their alignment
+ * vectors. This positions CC members near the DReps they philosophically
+ * align with in the constellation.
+ */
+async function computeCCAlignments(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  errors: string[],
+): Promise<number> {
+  try {
+    // Fetch CC votes, DRep votes (recent 5000), and DRep alignment data
+    const [ccVotesRes, drepVotesRes, drepsRes] = await Promise.all([
+      supabase.from('cc_votes').select('cc_hot_id, proposal_tx_hash, vote'),
+      supabase
+        .from('drep_votes')
+        .select('drep_id, proposal_tx_hash, vote')
+        .order('block_time', { ascending: false })
+        .limit(5000),
+      supabase
+        .from('dreps')
+        .select(
+          'id, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
+        )
+        .gt('info->>votingPowerLovelace', '0'),
+    ]);
+
+    const ccVotes = ccVotesRes.data ?? [];
+    const drepVotes = drepVotesRes.data ?? [];
+    const dreps = drepsRes.data ?? [];
+
+    if (ccVotes.length === 0 || drepVotes.length === 0 || dreps.length === 0) {
+      return 0;
+    }
+
+    // Build DRep vote map: drepId (truncated) → Map<proposalTxHash, vote>
+    const drepVoteMaps = new Map<string, Map<string, string>>();
+    for (const v of drepVotes) {
+      const id = (v.drep_id as string).slice(0, 16);
+      let map = drepVoteMaps.get(id);
+      if (!map) {
+        map = new Map();
+        drepVoteMaps.set(id, map);
+      }
+      map.set(v.proposal_tx_hash as string, v.vote as string);
+    }
+
+    // Build DRep alignment refs (DReps with non-neutral alignment who have votes)
+    const drepRefs: Array<{ id: string; alignments: number[]; votes: Map<string, string> }> = [];
+    for (const d of dreps) {
+      const aligns = [
+        Number(d.alignment_treasury_conservative ?? 50),
+        Number(d.alignment_treasury_growth ?? 50),
+        Number(d.alignment_decentralization ?? 50),
+        Number(d.alignment_security ?? 50),
+        Number(d.alignment_innovation ?? 50),
+        Number(d.alignment_transparency ?? 50),
+      ];
+      const id = (d.id as string).slice(0, 16);
+      const voteMap = drepVoteMaps.get(id);
+      if (!voteMap || voteMap.size === 0) continue;
+      if (!aligns.some((v) => Math.abs(v - 50) > 5)) continue;
+      drepRefs.push({ id, alignments: aligns, votes: voteMap });
+    }
+
+    if (drepRefs.length === 0) return 0;
+
+    // Group CC votes by member
+    const ccVotesByMember = new Map<string, Array<{ proposalKey: string; vote: string }>>();
+    for (const v of ccVotes) {
+      const id = v.cc_hot_id as string;
+      let list = ccVotesByMember.get(id);
+      if (!list) {
+        list = [];
+        ccVotesByMember.set(id, list);
+      }
+      list.push({ proposalKey: v.proposal_tx_hash as string, vote: v.vote as string });
+    }
+
+    // Compute and store alignment for each CC member
+    let updated = 0;
+    for (const [ccHotId, memberVotes] of ccVotesByMember) {
+      if (memberVotes.length < 3) continue;
+
+      // For each proposal this CC member voted on, average the alignment of
+      // DReps who voted the same way
+      const accumulated = new Float64Array(6);
+      let totalWeight = 0;
+
+      for (const entityVote of memberVotes) {
+        const agreeing: typeof drepRefs = [];
+        for (const drep of drepRefs) {
+          if (drep.votes.get(entityVote.proposalKey) === entityVote.vote) {
+            agreeing.push(drep);
+          }
+        }
+        if (agreeing.length < 2) continue;
+
+        const avg = new Float64Array(6);
+        for (const drep of agreeing) {
+          for (let d = 0; d < 6; d++) avg[d] += drep.alignments[d];
+        }
+        for (let d = 0; d < 6; d++) avg[d] /= agreeing.length;
+
+        const weight = Math.min(agreeing.length / 10, 1);
+        for (let d = 0; d < 6; d++) accumulated[d] += avg[d] * weight;
+        totalWeight += weight;
+      }
+
+      if (totalWeight < 1) continue;
+
+      const alignment = Array.from({ length: 6 }, (_, d) =>
+        Math.round(Math.max(0, Math.min(100, accumulated[d] / totalWeight))),
+      );
+
+      const { error } = await supabase
+        .from('cc_members')
+        .update({
+          alignment_treasury_conservative: alignment[0],
+          alignment_treasury_growth: alignment[1],
+          alignment_decentralization: alignment[2],
+          alignment_security: alignment[3],
+          alignment_innovation: alignment[4],
+          alignment_transparency: alignment[5],
+        })
+        .eq('cc_hot_id', ccHotId);
+
+      if (error) {
+        errors.push(`CC alignment update failed for ${ccHotId.slice(0, 20)}: ${error.message}`);
+      } else {
+        updated++;
+      }
+    }
+
+    logger.info('CC alignment computation complete', { updated, total: ccVotesByMember.size });
+    return updated;
+  } catch (err) {
+    errors.push(`CC alignment computation failed: ${errMsg(err)}`);
+    return 0;
   }
 }
 

@@ -36,6 +36,8 @@ export function createFocusControlBehavior(globeRef: () => ConstellationRef | nu
             cameraProximity: command.zoomToCluster ? 'cluster' : undefined,
             approachAngle: command.cameraAngle,
             scanProgress: command.scanProgressOverride,
+            atmosphereWarmColor: '#cc8844',
+            atmosphereTemperature: 0.3,
           });
           break;
         }

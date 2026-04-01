@@ -30,6 +30,8 @@ export function createDiscoveryBehavior(): GlobeBehavior {
             focusedIds: new Set([entityNodeId]),
             cameraProximity: 'tight',
             flyToFocus: true,
+            atmosphereWarmColor: '#44bbcc',
+            atmosphereTemperature: 0.3,
           });
 
           // Pulse the target after camera settles
@@ -60,6 +62,8 @@ export function createDiscoveryBehavior(): GlobeBehavior {
             flyToFocus: true,
             scanProgress: 0.8,
             cameraProximity: nodeIds.length <= 4 ? 'tight' : 'cluster',
+            atmosphereWarmColor: '#ccaa44',
+            atmosphereTemperature: 0.5,
           });
 
           // Staggered pulses for visual emphasis

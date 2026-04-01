@@ -39,6 +39,8 @@ export function createClusterBehavior(): GlobeBehavior {
         topN: 150,
         nodeTypeFilter: 'drep',
         cameraProximity: 'cluster',
+        atmosphereWarmColor: '#4488cc',
+        atmosphereTemperature: 0.4,
       });
     },
     cleanup() {

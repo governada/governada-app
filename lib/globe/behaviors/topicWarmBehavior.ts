@@ -33,6 +33,8 @@ export function createTopicWarmBehavior(): GlobeBehavior {
         nodeTypeFilter: 'drep',
         flyToFocus: false,
         dimStrength: 0.3,
+        atmosphereWarmColor: '#886644',
+        atmosphereTemperature: 0.3,
       });
     },
   };

@@ -47,6 +47,8 @@ export function createVoteSplitBehavior(): GlobeBehavior {
           colorOverrides,
           flyToFocus: true,
           cameraProximity: focusedIds.size > 100 ? 'overview' : 'cluster',
+          atmosphereWarmColor: '#cc6644',
+          atmosphereTemperature: 0.4,
         });
       });
     },

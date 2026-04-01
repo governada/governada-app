@@ -193,7 +193,7 @@ export function MatchedEdgeGlow({
     <lineSegments geometry={matchedEdges.geometry}>
       <lineBasicMaterial
         ref={matRef}
-        color={MATCH_COLOR}
+        color={focus.focusColor}
         transparent
         opacity={0.1}
         toneMapped={false}

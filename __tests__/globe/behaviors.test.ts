@@ -69,6 +69,8 @@ describe('topicWarmBehavior', () => {
     expect(intent.topN).toBe(200);
     expect(intent.nodeTypeFilter).toBe('drep');
     expect(intent.flyToFocus).toBe(false);
+    expect(intent.atmosphereWarmColor).toBe('#886644');
+    expect(intent.atmosphereTemperature).toBe(0.3);
   });
 
   it('produces from-alignment intent with participation topic', () => {
@@ -123,6 +125,8 @@ describe('clusterBehavior', () => {
     expect(intent.topN).toBe(150);
     expect(intent.nodeTypeFilter).toBe('drep');
     expect(intent.cameraProximity).toBe('cluster');
+    expect(intent.atmosphereWarmColor).toBe('#4488cc');
+    expect(intent.atmosphereTemperature).toBe(0.4);
   });
 
   it('does nothing for unknown cluster ID', () => {
@@ -201,6 +205,8 @@ describe('discoveryBehavior', () => {
     expect((intent.focusedIds as Set<string>).has('drep_abc123')).toBe(true);
     expect(intent.cameraProximity).toBe('tight');
     expect(intent.flyToFocus).toBe(true);
+    expect(intent.atmosphereWarmColor).toBe('#44bbcc');
+    expect(intent.atmosphereTemperature).toBe(0.3);
 
     // Should schedule a pulse
     expect(ctx.schedule).toHaveBeenCalledWith({ type: 'pulse', nodeId: 'drep_abc123' }, 400);
@@ -242,6 +248,8 @@ describe('discoveryBehavior', () => {
     expect(ids.has('drep_c')).toBe(true);
     expect(intent.scanProgress).toBe(0.8);
     expect(intent.flyToFocus).toBe(true);
+    expect(intent.atmosphereWarmColor).toBe('#ccaa44');
+    expect(intent.atmosphereTemperature).toBe(0.5);
 
     // Staggered pulses for first 3 nodes
     expect(ctx.schedule).toHaveBeenCalledTimes(3);
@@ -298,6 +306,8 @@ describe('voteSplitBehavior', () => {
     expect(intensities.get('drep-a')).toBe(1.0);
 
     expect(intent.flyToFocus).toBe(true);
+    expect(intent.atmosphereWarmColor).toBe('#cc6644');
+    expect(intent.atmosphereTemperature).toBe(0.4);
   });
 
   it('does nothing for empty vote map', async () => {
@@ -368,6 +378,8 @@ describe('focusControlBehavior', () => {
     expect(intent.flyToFocus).toBe(true); // noZoom not set
     expect(intent.approachAngle).toBe(0.5);
     expect(intent.scanProgress).toBe(0.6);
+    expect(intent.atmosphereWarmColor).toBe('#cc8844');
+    expect(intent.atmosphereTemperature).toBe(0.3);
   });
 
   it('produces highlight intent with noZoom', () => {

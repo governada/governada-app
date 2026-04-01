@@ -390,13 +390,34 @@ describe('focusControlBehavior', () => {
     expect(intent.nodeTypeFilter).toBe('drep');
   });
 
-  it('produces dim intent with forceActive', () => {
+  it('falls back threshold to topN when topN is not provided', () => {
+    behavior.execute(
+      { type: 'highlight', alignment: [50, 50, 50, 50, 50, 50], threshold: 120 },
+      makeBehaviorCtx(),
+    );
+
+    const intent = mockSetIntent.mock.calls[0][0];
+    expect(intent.topN).toBe(120);
+  });
+
+  it('prefers topN over threshold when both provided', () => {
+    behavior.execute(
+      { type: 'highlight', alignment: [50, 50, 50, 50, 50, 50], threshold: 200, topN: 30 },
+      makeBehaviorCtx(),
+    );
+
+    const intent = mockSetIntent.mock.calls[0][0];
+    expect(intent.topN).toBe(30);
+  });
+
+  it('produces dim intent with forceActive and scanProgress 0', () => {
     behavior.execute({ type: 'dim' }, makeBehaviorCtx());
 
     const intent = mockSetIntent.mock.calls[0][0];
     expect(intent.focusedIds).toBeInstanceOf(Set);
     expect((intent.focusedIds as Set<string>).size).toBe(0);
     expect(intent.forceActive).toBe(true);
+    expect(intent.scanProgress).toBe(0);
     expect(intent.dimStrength).toBe(0.8);
   });
 

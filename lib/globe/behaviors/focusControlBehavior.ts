@@ -23,10 +23,14 @@ export function createFocusControlBehavior(globeRef: () => ConstellationRef | nu
     execute(command: GlobeCommand, _ctx: BehaviorContext) {
       switch (command.type) {
         case 'highlight': {
+          // topN and threshold have different semantics (exact count vs distance cutoff)
+          // but the engine only supports topN. Fall back threshold → topN for callers
+          // that only specify threshold (Seneca tool results, scan phase 2).
+          const effectiveTopN = command.topN ?? command.threshold;
           setSharedIntent({
             focusedIds: 'from-alignment',
             alignmentVector: command.alignment,
-            topN: command.topN,
+            topN: effectiveTopN,
             nodeTypeFilter: command.nodeTypeFilter ?? (command.drepOnly ? 'drep' : null),
             flyToFocus: !command.noZoom,
             cameraProximity: command.zoomToCluster ? 'cluster' : undefined,
@@ -40,6 +44,7 @@ export function createFocusControlBehavior(globeRef: () => ConstellationRef | nu
           setSharedIntent({
             focusedIds: new Set<string>(),
             forceActive: true,
+            scanProgress: 0,
             dimStrength: 0.8,
           });
           break;

@@ -95,6 +95,7 @@ export function ConstellationBrowse({
         <ConstellationScene
           ref={constellationRef}
           interactive={true}
+          engineEnabled={false}
           onNodeSelect={(node: ConstellationNode3D) => handleNodeSelect(node)}
           onReady={handleReady}
         />

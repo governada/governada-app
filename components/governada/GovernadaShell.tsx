@@ -131,7 +131,7 @@ function BackgroundGlobe({
     >
       {/* Higher opacity on homepage so the transparent header has visible stars behind it */}
       <div className={cn('absolute inset-0', isHomepage ? 'opacity-50' : 'opacity-30')}>
-        <ConstellationScene interactive={false} className="w-full h-full" />
+        <ConstellationScene interactive={false} engineEnabled={false} className="w-full h-full" />
       </div>
       {/* Governance temperature ambient tint overlay */}
       {governanceTint && <div className="governance-tint-overlay" />}

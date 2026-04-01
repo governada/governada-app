@@ -39,10 +39,11 @@ import {
   INITIAL_TARGET,
   DEFAULT_ROTATION_SPEED,
   DEFAULT_FOCUS,
+  DEFAULT_INTENT,
 } from '@/lib/globe/types';
 import type { FocusState, SceneState } from '@/lib/globe/types';
 import { getSharedFocus, setSharedFocus, getSharedFocusVersion } from '@/lib/globe/focusState';
-import { getSharedIntent, getSharedIntentVersion } from '@/lib/globe/focusIntent';
+import { getSharedIntent, getSharedIntentVersion, setSharedIntent } from '@/lib/globe/focusIntent';
 import { deriveFromIntent } from '@/lib/globe/focusEngine';
 import { isEngineLocked } from '@/lib/globe/sequencer';
 import { estimateGPUTier } from '@/lib/globe/helpers';
@@ -93,6 +94,10 @@ interface GlobeConstellationProps {
   visitedNodeIds?: Set<string>;
   /** Cluster data for constellation lines (MST within clusters) */
   clusters?: Array<{ memberIds: string[] }>;
+  /** When false, disables the reactive focus engine tick + shared state sync.
+   *  Decorative/background globe instances should set this to false to prevent
+   *  multiple engine ticks fighting over the shared window globals. */
+  engineEnabled?: boolean;
 }
 
 // FocusState, SceneState, constants, and focus bridge functions are now imported from lib/globe/
@@ -124,6 +129,7 @@ export const GlobeConstellation = forwardRef<
     visitedNodeIds,
     children,
     clusters,
+    engineEnabled = true,
   },
   ref,
 ) {
@@ -148,6 +154,21 @@ export const GlobeConstellation = forwardRef<
   const lastIntentVersionRef = useRef(0);
   const engineActiveRef = useRef(false);
   const prevEngineDollyRef = useRef(14);
+
+  // Clear stale focus state when engine-enabled instance mounts/unmounts.
+  // Prevents stale state from a previous route from affecting the current globe.
+  useEffect(() => {
+    if (!engineEnabled) return;
+    // Reset shared state on mount so no stale focus persists from a previous route
+    setSharedFocus(DEFAULT_FOCUS);
+    setSharedIntent(DEFAULT_INTENT);
+    return () => {
+      // Clean up on unmount so the next route starts fresh
+      setSharedFocus(DEFAULT_FOCUS);
+      setSharedIntent(DEFAULT_INTENT);
+      engineActiveRef.current = false;
+    };
+  }, [engineEnabled]);
 
   // Effective camera position/target — allow overrides from props
   const effectiveCamera = useMemo(
@@ -193,7 +214,8 @@ export const GlobeConstellation = forwardRef<
   // Without this merge, the forward sync clobbers behavior writes before the
   // reverse sync interval can detect them.
   // SKIP when reactive focus engine is active — it writes FocusState directly.
-  if (!engineActiveRef.current) {
+  // SKIP when engine is disabled (decorative/background globe — don't touch shared state).
+  if (engineEnabled && !engineActiveRef.current) {
     const shared = getSharedFocus();
     if (shared !== sceneState.focus) {
       setSharedFocus({
@@ -206,27 +228,30 @@ export const GlobeConstellation = forwardRef<
   // Reverse sync: detect when behaviors (e.g., spatialMatchBehavior) write to
   // shared focus externally (userNode, etc.) and pull those changes into React
   // state so JSX components like MatchUserNode can render.
+  // Disabled for decorative globes — they don't participate in focus state.
   const sharedFocusVersionRef = useRef(getSharedFocusVersion());
   useEffect(() => {
+    if (!engineEnabled) return;
     const interval = setInterval(() => {
       const currentVersion = getSharedFocusVersion();
       if (currentVersion !== sharedFocusVersionRef.current) {
         sharedFocusVersionRef.current = currentVersion;
         const latest = getSharedFocus();
-        // Only sync fields that behaviors set externally (userNode)
-        // to avoid overwriting React-managed focus state
         setSceneState((prev) => {
           if (latest.userNode === prev.focus.userNode) return prev;
           return { ...prev, focus: { ...prev.focus, userNode: latest.userNode } };
         });
       }
-    }, 50); // Poll at 20Hz — fast enough for visual updates, light on CPU
+    }, 50);
     return () => clearInterval(interval);
-  }, []);
+  }, [engineEnabled]);
 
   // Reactive focus engine tick — reads FocusIntent, derives FocusState + camera.
   // Runs at 20Hz. CinematicCamera/CameraControls handle per-frame smooth interpolation.
+  // Disabled for decorative/background globes — they must not write to shared state.
   useEffect(() => {
+    if (!engineEnabled) return;
+
     // Force re-evaluation when nodes change — a previously-processed intent
     // may have resolved to empty when nodes hadn't loaded yet. Without this
     // reset, the version check below sees "already processed" and skips.
@@ -285,8 +310,7 @@ export const GlobeConstellation = forwardRef<
     }, 50);
     return () => clearInterval(interval);
     // sceneState.nodes changes when API data loads — engine must re-resolve intents
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sceneState.nodes]);
+  }, [sceneState.nodes, engineEnabled]);
 
   const { data: apiData } = useGovernanceConstellation();
 
@@ -489,8 +513,9 @@ export const GlobeConstellation = forwardRef<
               }}
               activityMap={activityMap}
             />
-            {/* Intra-cluster constellation lines (MST-based Orion-like patterns) */}
-            {clusters && clusters.length > 0 && (
+            {/* Intra-cluster constellation lines (MST-based Orion-like patterns)
+                Hidden during match mode (nodeTypeFilter set) — lines create visual noise over DRep dots */}
+            {clusters && clusters.length > 0 && !sceneState.focus.nodeTypeFilter && (
               <ConstellationLines nodes={sceneState.nodes} clusters={clusters} />
             )}
             {delegationBond &&
@@ -507,7 +532,9 @@ export const GlobeConstellation = forwardRef<
                   />
                 );
               })()}
-            {quality !== 'low' && (
+            {/* Edge glow between focused nodes — hidden during match mode (nodeTypeFilter set)
+                to keep the visual clean: individual DRep dots only, no connecting lines */}
+            {quality !== 'low' && !sceneState.focus.nodeTypeFilter && (
               <MatchedEdgeGlow
                 nodes={sceneState.nodes}
                 focusedNodeIds={sceneState.focus.focusedIds}
@@ -589,7 +616,6 @@ export const GlobeConstellation = forwardRef<
             controlsRef={cameraControlsRef}
             orbitSpeed={cinematicOrbitSpeed}
             dollyTarget={cinematicDollyTarget}
-            driftEnabled={sceneState.focus.driftEnabled}
             mouseRef={mouseNormalizedRef}
           />
         </Canvas>

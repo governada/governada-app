@@ -58,6 +58,9 @@ interface ConstellationSceneProps {
   children?: ReactNode;
   /** Cluster data for constellation lines (MST within clusters) */
   clusters?: Array<{ memberIds: string[] }>;
+  /** When false, disables the reactive focus engine tick + shared state sync.
+   *  Decorative/background globes should set this to false. */
+  engineEnabled?: boolean;
 }
 
 /**

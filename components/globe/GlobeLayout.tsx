@@ -242,18 +242,20 @@ export function GlobeLayout({
   // ---------------------------------------------------------------------------
 
   const urlFilter = (searchParams.get('filter') ?? initialFilter ?? null) as GlobeFilter | null;
-  const [listOpen, setListOpen] = useState(!!urlFilter);
+  // ListOverlay is only opened explicitly via keyboard shortcut (L) or GlobeControls button.
+  // DiscoveryOverlay handles all filter-driven browsing from URL params.
+  // Previously, both opened simultaneously on ?filter= navigation, creating duplicate panels.
+  const [listOpen, setListOpen] = useState(false);
   const [filter, setFilter] = useState<GlobeFilter | null>(urlFilter);
   const [sort, setSort] = useState<SortMode>('score');
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [workspaceCardsVisible, setWorkspaceCardsVisible] = useState(false);
 
-  // Sync filter from URL on navigation
+  // Sync filter from URL on navigation — only update filter state, don't force list open
   useEffect(() => {
     const f = searchParams.get('filter') as GlobeFilter | null;
     if (f && f !== filter) {
       setFilter(f);
-      setListOpen(true);
     }
   }, [searchParams, filter]);
 

@@ -38,14 +38,11 @@ export function CinematicCamera({
   controlsRef,
   orbitSpeed,
   dollyTarget,
-  driftEnabled,
   mouseRef,
 }: {
   controlsRef: React.RefObject<CameraControls | null>;
   orbitSpeed: number;
   dollyTarget: number;
-  /** When true, adds subtle camera micro-drift — "system is alive" feel */
-  driftEnabled?: boolean;
   /** Normalized mouse position for parallax (-1..1). Optional. */
   mouseRef?: React.RefObject<{ x: number; y: number }>;
 }) {
@@ -56,21 +53,13 @@ export function CinematicCamera({
   const prevParallaxX = useRef(0);
   const prevParallaxY = useRef(0);
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     const controls = controlsRef.current;
     if (!controls) return;
 
     // Smooth orbit: per-frame azimuth accumulation (cinematic takes over from idle wobble)
     if (Math.abs(orbitSpeed) > 0.001) {
       controls.azimuthAngle += orbitSpeed * delta;
-    }
-
-    // Camera micro-drift: subtle sinusoidal oscillation
-    if (driftEnabled && Math.abs(orbitSpeed) < 0.002) {
-      const t = clock.getElapsedTime();
-      const drift = 0.15 * Math.sin(t * 0.6 * Math.PI);
-      controls.azimuthAngle += drift * delta * 0.3;
-      controls.polarAngle += drift * delta * 0.15;
     }
 
     // Mouse parallax: non-accumulating offset (apply delta from previous frame)

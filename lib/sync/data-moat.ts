@@ -420,7 +420,11 @@ async function computeCCAlignments(
   try {
     // Fetch CC votes, DRep votes (recent 5000), and DRep alignment data
     const [ccVotesRes, drepVotesRes, drepsRes] = await Promise.all([
-      supabase.from('cc_votes').select('cc_hot_id, proposal_tx_hash, vote'),
+      supabase
+        .from('cc_votes')
+        .select('cc_hot_id, proposal_tx_hash, vote')
+        .order('block_time', { ascending: false })
+        .limit(2000),
       supabase
         .from('drep_votes')
         .select('drep_id, proposal_tx_hash, vote')

@@ -50,8 +50,11 @@ export function CinematicCamera({
   mouseRef?: React.RefObject<{ x: number; y: number }>;
 }) {
   const currentDolly = useRef(14);
+  // Smoothed parallax offset (non-accumulating — applied as direct offset)
   const parallaxX = useRef(0);
   const parallaxY = useRef(0);
+  const prevParallaxX = useRef(0);
+  const prevParallaxY = useRef(0);
 
   useFrame(({ clock }, delta) => {
     const controls = controlsRef.current;
@@ -70,7 +73,7 @@ export function CinematicCamera({
       controls.polarAngle += drift * delta * 0.15;
     }
 
-    // Mouse parallax: subtle camera offset based on cursor position
+    // Mouse parallax: non-accumulating offset (apply delta from previous frame)
     if (mouseRef?.current) {
       const targetX = mouseRef.current.x * 0.3;
       const targetY = mouseRef.current.y * 0.2;
@@ -78,9 +81,11 @@ export function CinematicCamera({
       parallaxX.current += (targetX - parallaxX.current) * smoothFactor;
       parallaxY.current += (targetY - parallaxY.current) * smoothFactor;
 
-      // Apply as azimuth/polar offset (small — max ±0.3 radians = ~17°)
-      controls.azimuthAngle += (targetX - parallaxX.current) * delta * 0.5;
-      controls.polarAngle += (targetY - parallaxY.current) * delta * 0.3;
+      // Apply as delta from previous smoothed value (prevents drift)
+      controls.azimuthAngle += parallaxX.current - prevParallaxX.current;
+      controls.polarAngle += parallaxY.current - prevParallaxY.current;
+      prevParallaxX.current = parallaxX.current;
+      prevParallaxY.current = parallaxY.current;
     }
 
     // Smooth dolly: exponential smoothing toward target distance
@@ -146,6 +151,3 @@ export function ConstellationGroup({
 
   return <group ref={groupRef}>{children}</group>;
 }
-
-/** @deprecated Use ConstellationGroup instead */
-export const TiltedGlobeGroup = ConstellationGroup;

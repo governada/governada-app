@@ -1,3 +1,10 @@
+---
+paths:
+  - 'lib/admin/**'
+  - 'components/providers/Segment*'
+  - 'components/governada/AdminViewAs*'
+---
+
 # View As Registry — Source of Truth for User States
 
 The admin "View as" persona switcher is the canonical source of truth for all user persona x state combinations that affect UX in Governada. The registry lives at `lib/admin/viewAsRegistry.ts`.

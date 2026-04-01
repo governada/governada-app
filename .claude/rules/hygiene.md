@@ -7,74 +7,64 @@ paths:
 
 ## Branch Hygiene
 
-- **Always start from fresh origin/main.** For worktrees: `git worktree add ../governada-<name> -b feat/<name> origin/main`. For branches: `git checkout main && git pull origin main && git checkout -b feat/<name>`. Never develop on a stale or leftover branch. The sync-worktree hook auto-fast-forwards local main, but always specify `origin/main` as the start point.
-- **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree. Don't leave stale branches around.
-- **Delete local branches after merge.** `gh pr merge --squash --delete-branch` only deletes the remote branch. Always follow up with `git branch -d <branch>` locally. The squash commit SHA differs from the branch commits, so use `-D` if `-d` complains about unmerged work you know was squash-merged.
-- **Prune remotes at session start.** Run `git fetch --prune` to remove stale remote tracking refs. The cleanup script does this automatically.
-- **Drop stashes after merge.** If you stashed work-in-progress for a branch that's now merged, drop those stashes. Don't let stashes accumulate.
-- **Verify branch freshness.** If resuming work in an existing worktree, check `git log --oneline origin/main..HEAD` -- if >10 commits behind, rebase first.
-
-## Context Efficiency
-
-- **Prefer context slices over monolith docs.** When you need product context:
-  - Build status/audit: read `docs/strategy/context/build-manifest.md` (~180 lines)
-  - Persona requirements: read `docs/strategy/context/persona-quick-ref.md` (~60 lines)
-  - Audit scoring: read `docs/strategy/context/audit-rubric.md` (~180 lines)
-  - Work plan structure: read `docs/strategy/context/work-plan-template.md` (~80 lines)
-  - Competitive intelligence: read `docs/strategy/context/competitive-landscape.md` (~150 lines)
-  - UX standards & design principles: read `.claude/rules/product-vision.md` (~54 lines)
-  - Full persona UX specs: read `docs/strategy/personas/[persona].md`
-  - Only read `docs/strategy/ultimate-vision.md` (952 lines) when updating the vision itself or doing a deep strategic audit
-- **Rules files are self-sufficient.** The `.claude/rules/product-strategy.md` contains all principles needed for most feature decisions. Don't read the full vision doc "just in case."
-
-## PR Impact Summary
-
-Every PR must include an impact summary -- both in the GitHub description and in the Claude Code conversation.
-
-### In the PR description (`gh pr create --body`)
-
-Include an **## Impact** section after the standard summary:
-
-```
-## Impact
-- **What changed**: 1-2 sentences on the functional change
-- **User-facing**: Yes/No + brief description of what users will see differently
-- **Risk**: Low/Medium/High + rationale (e.g., "Low -- styling only, no data changes")
-- **Scope**: Files/modules touched, migrations, env vars, Inngest functions added/changed
-```
-
-### In Claude Code (conversation output)
-
-After creating the PR, print a boxed recap:
-
-```
---- PR Impact Recap ---
-PR: #<number> <title>
-What changed: <1-2 sentences>
-User-facing: <Yes/No + detail>
-Risk: <Low/Medium/High + rationale>
-Scope: <files/modules touched>
-URL: <PR URL>
------------------------
-```
-
-This lets the founder quickly assess whether to review now or later, and creates a searchable record in PR history.
+- **Always start from fresh origin/main.** For worktrees: `git worktree add ../governada-<name> -b feat/<name> origin/main`. Never develop on a stale or leftover branch. The sync-worktree hook auto-fast-forwards local main, but always specify `origin/main` as the start point.
+- **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree.
+- **Delete local branches after merge.** `gh pr merge --squash --delete-branch` only deletes the remote branch. Follow up with `git branch -d <branch>` locally. Use `-D` if squash-merged.
+- **Prune remotes at session start.** Run `git fetch --prune` to remove stale remote tracking refs.
+- **Drop stashes after merge.** Don't let stashes accumulate from merged branches.
+- **Verify branch freshness.** If resuming work, check `git log --oneline origin/main..HEAD` -- if >10 commits behind, rebase first.
 
 ## Commit Hygiene
 
 - **Don't leave uncommitted changes.** Before ending a session, either commit work-in-progress or explicitly note what's uncommitted and why.
-- **Update tracking docs.** When shipping a step/WP/QP, update status in the relevant tracking doc (work-packages.md, world-class-packages.md, build-manifest.md) in the same PR.
+- **Update tracking docs.** When shipping a step/WP/QP, update status in the relevant tracking doc (build-manifest.md) in the same PR.
+
+## PR Impact Summary
+
+Every PR must include an **## Impact** section (what changed, user-facing Y/N, risk level, scope). See `/ship` skill for the full template. After creating the PR, print a boxed recap in conversation: PR number, title, what changed, user-facing detail, risk, scope, URL.
 
 ## Documentation Formatting
 
-- **Sequential numbering.** Ordered lists must use correct sequential numbers (1, 2, 3...). Never duplicate a number. After inserting or appending items, verify the full sequence.
-- **Use Edit tool for markdown files, never sed.** `sed` on markdown causes numbering errors, encoding issues, and orphaned formatting. Always use the Edit tool or Write tool for documentation changes.
-- **Validate tables.** Markdown tables must have matching column counts across header, separator, and all rows. Verify pipe alignment after edits.
-- **Preserve heading hierarchy.** Don't skip heading levels (e.g., `##` to `####`). Maintain consistent nesting.
-- **No trailing whitespace or orphaned markers.** After editing a list or section, verify there are no empty list items, dangling bullets, or stray formatting characters.
+- **Sequential numbering.** Ordered lists must use correct sequential numbers (1, 2, 3...). Never duplicate a number. Verify the full sequence after inserting items.
+- **Use Edit tool for markdown files, never sed.** `sed` on markdown causes numbering errors and orphaned formatting.
+- **Validate tables.** Markdown tables must have matching column counts across header, separator, and all rows.
+- **Preserve heading hierarchy.** Don't skip heading levels (e.g., `##` to `####`).
+- **No trailing whitespace or orphaned markers.**
 
 ## Workspace Cleanup
 
 - **Run `bash scripts/cleanup.sh` at the start of major sessions** to detect stale worktrees, orphaned directories, stale branches, and uncommitted changes.
-- **Don't accumulate worktrees.** If a PR is merged, the worktree should be removed promptly. The cleanup script detects these.
-- **Run `bash scripts/cleanup.sh --clean` periodically** to auto-delete branches whose remote is gone and remove merged/stale worktrees.
+- **Don't accumulate worktrees.** Remove promptly after PR merge.
+- **Run `bash scripts/cleanup.sh --clean` periodically** to auto-delete branches whose remote is gone.
+
+## CI Watching
+
+**NEVER** stream `gh pr checks --watch` in the foreground — it polls every 10 seconds and dumps the full status table each time, consuming thousands of tokens with no new information.
+
+Set `run_in_background: true` on the Bash call. When the notification arrives, take a single snapshot:
+
+```bash
+gh pr checks <N>  # single snapshot of final status
+```
+
+If CI fails: `gh run view <run-id> --log-failed 2>&1 | tail -50`
+
+## Deploy Verification
+
+**ALWAYS** run the `deploy-verifier` subagent in the background after merge. Do NOT wait for its result before continuing other work or responding to the user.
+
+```
+Agent(subagent_type="deploy-verifier", run_in_background=true, ...)
+```
+
+Report the result in 1-2 sentences when the notification arrives. Do not dump the full output.
+
+## Research & File Reading
+
+- Read files directly with the Read tool when checkpoint/plan files list specific files to modify. Do NOT spawn Explore agents to re-discover known paths.
+- Only use Explore for genuinely unknown territory.
+- When you need type signatures or component props from files you've already read, note them in the checkpoint — don't re-read.
+
+## Checkpoint Enrichment
+
+When writing checkpoint files for handoff, include: key type signatures and hook return shapes, component prop interfaces, and any non-obvious patterns discovered. This saves the next agent from re-reading 10+ files to rediscover the same information.

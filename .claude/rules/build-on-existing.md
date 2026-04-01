@@ -1,3 +1,8 @@
+---
+paths:
+  - '**'
+---
+
 # Build on Existing — Anti-Rewrite Rule
 
 This rule activates whenever an agent is about to create new files, functions, components, hooks, or utilities. It exists because agents repeatedly create new implementations when suitable ones already exist, producing two half-baked versions instead of one solid one.

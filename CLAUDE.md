@@ -4,22 +4,7 @@ Governance intelligence for the Cardano Nation.
 
 ## Autonomous Deployment Pipeline
 
-Implementation is NOT complete until deployed and validated in production. Use `/ship` or execute manually:
-
-1. `npm run preflight` -- fix all failures
-2. Stage files, commit (conventional: `feat:`, `fix:`, `refactor:`, etc.)
-3. `git push -u origin HEAD`
-4. `gh pr create` -- use `gh pr checks <N> --watch` to wait for CI, fix failures
-5. **Pre-merge check**: `bash scripts/pre-merge-check.sh <PR#>` -- blocks if CI running, branch behind, or Sentry error rate elevated
-6. Merge: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
-7. Apply migrations via Supabase MCP (test on branch first per `.claude/rules/migration-safety.md`) -> `npm run gen:types` if needed
-8. **Verify production**: wait ~3 min, then `bash scripts/check-deploy-health.sh` (includes response time assertions). Use `deploy-verifier` subagent in background if preferred.
-9. PUT `https://governada.io/api/inngest` if Inngest functions changed (registers with self-hosted Inngest at `inngest-server.railway.internal:8288`)
-10. `npm run smoke-test`, verify changed endpoints on `governada.io`
-11. `bash scripts/uptime-check.sh deploy` -- ping BetterStack heartbeat
-12. **Visual verification** (REQUIRED for UI changes): Open production in Claude Chrome, screenshot changed routes at desktop + mobile, verify against build spec. See `.claude/rules/post-deploy-verification.md` for full protocol.
-13. Clean up worktree if applicable
-14. **If deploy fails**: `bash scripts/rollback.sh` -- auto-reverts, verifies, creates GitHub issue
+Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → merge → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `PUT https://governada.io/api/inngest`. If deploy fails: `bash scripts/rollback.sh`.
 
 ## Hard Constraints
 
@@ -40,15 +25,13 @@ Build failures or production bugs if violated:
 
 ## Development Philosophy: Robust & Correct
 
-The default posture is "understand deeply, then act minimally" — not "act quickly, fix later."
-
-- **The burden of proof is on change.** Before modifying or creating code, prove why the change is necessary and why the existing approach is insufficient. "It could be better" is not sufficient justification.
-- **Existing code is the starting point.** Before writing any new function, component, or utility, search for existing implementations that can be extended. Creating a new implementation when a suitable one exists is a defect. See `.claude/rules/build-on-existing.md`.
-- **Root causes, not symptoms.** When fixing bugs, trace the full cause chain before writing a fix. A patch that addresses a symptom will create a new bug. If you can't explain WHY the bug exists, you haven't found the root cause yet. Use `/diagnose` for non-trivial bugs. **Infrastructure fixes > process fixes**: if your fix requires agents to "remember to do something," it's fragile. If it changes the system so the problem can't occur regardless of behavior, it's durable.
-- **Done means done.** Work is not complete until: edge cases are handled, error/loading/empty states are designed, mobile is verified, the feature is gated if risky, and the implementation has been tested against the actual user journey — not just the happy path. Use `/harden` to verify robustness.
-- **Less is more.** Shipping 3 robust features beats shipping 7 fragile ones. Push back on scope if quality would suffer. Recommend deferring work rather than shipping half-baked implementations.
-- **Pushback is valuable.** If a plan feels underspecified, say so. If the scope feels too large for one session, say so. If the approach feels like it's optimizing for speed over correctness, say so. The founder prefers honest friction over compliant speed.
-- **Improve, don't replace.** Unless explicitly using `/explore-feature` or the user requests net-new work, the default for every skill and command is to strengthen, extend, and improve what exists — not to build from scratch.
+- **The burden of proof is on change.** Prove why the change is necessary. "It could be better" is not sufficient.
+- **Existing code is the starting point.** Search before creating. See `.claude/rules/build-on-existing.md`.
+- **Root causes, not symptoms.** Trace the full cause chain. Use `/diagnose` for non-trivial bugs. Infrastructure fixes > process fixes.
+- **Done means done.** Edge cases handled, error/loading/empty states designed, mobile verified, feature gated if risky, tested against real user journeys.
+- **Less is more.** 3 robust features beats 7 fragile ones. Defer rather than ship half-baked.
+- **Pushback is valuable.** Honest friction over compliant speed.
+- **Improve, don't replace.** Extend what exists; build from scratch only when explicitly requested.
 
 ## Autonomous Operation
 
@@ -221,14 +204,13 @@ C:\Users\dalto\governada\
 
 ## Compaction Instructions
 
-When compacting, preserve: the current task/goal, approved plan details, architectural decisions made this session, and any user feedback/corrections. The post-compact hook recovers git state and checkpoints automatically -- do not duplicate that. Focus on retaining the "why" behind decisions and any user preferences expressed during the session.
+When compacting, preserve: the current task/goal, approved plan details, architectural decisions made this session, and any user feedback/corrections. Drop: full file contents already committed, CI output already acted on, tool call results already summarized. The post-compact hook recovers git state and checkpoints automatically -- do not duplicate that. Focus on retaining the "why" behind decisions and any user preferences expressed during the session.
 
 ## Path-Scoped Rules
 
 Detailed context loads automatically from `.claude/rules/` when working on:
 
-- `strategy-session.md` -- CTO/Head of Product thinking discipline for `/strategy` sessions
-- `product-strategy.md` -- principles, build sequence, context efficiency
+- `product-strategy.md` -- principles, build sequence, context efficiency, strategy session discipline
 - `product-vision.md` -- UX execution standards, persona experiences
 - `hygiene.md` -- branch, commit, workspace cleanup rules
 - `scoring.md` -- scoring models, tiers, GHI, alignment

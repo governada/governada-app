@@ -25,3 +25,28 @@ Execute the full Governada deploy pipeline. Do NOT pause between steps.
 18. Clean up: if worktree, switch to main worktree to verify
 
 Report final status only after ALL verification passes.
+
+## PR Impact Template
+
+Every PR description must include:
+
+```
+## Impact
+- **What changed**: 1-2 sentences on the functional change
+- **User-facing**: Yes/No + brief description of what users will see differently
+- **Risk**: Low/Medium/High + rationale (e.g., "Low — styling only, no data changes")
+- **Scope**: Files/modules touched, migrations, env vars, Inngest functions added/changed
+```
+
+After creating the PR, print this in the conversation:
+
+```
+--- PR Impact Recap ---
+PR: #<number> <title>
+What changed: <1-2 sentences>
+User-facing: <Yes/No + detail>
+Risk: <Low/Medium/High + rationale>
+Scope: <files/modules touched>
+URL: <PR URL>
+-----------------------
+```

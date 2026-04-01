@@ -1,3 +1,11 @@
+---
+paths:
+  - 'app/**'
+  - 'components/**'
+  - 'lib/**'
+  - '.claude/launch.json'
+---
+
 # Dev Preview in Worktrees
 
 Rules for running the local dev server via Claude Preview tools. The `sync-worktree.sh` session-start hook auto-provisions `.env.local` and `node_modules` — in most cases, agents can start previewing immediately.

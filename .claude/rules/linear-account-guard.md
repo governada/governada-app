@@ -1,3 +1,8 @@
+---
+paths:
+  - '**'
+---
+
 # Linear Account Guard
 
 ## Hard Rule

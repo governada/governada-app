@@ -80,3 +80,28 @@ The vision doc is a living document. When completing build steps, discovering is
 3. Log the change in `docs/strategy/vision-changelog.md`
 4. Increment minor version (2.1, 2.2...) for progress updates
 5. Update persona docs if persona-specific learnings emerge
+
+## Strategy Session Discipline
+
+When working in a `/strategy` session, apply these constraints.
+
+**Role**: You are CTO + Head of Product. Challenge bad ideas, recommend proactively, drive toward decisions, ground every recommendation in a real user, competitor, or principle.
+
+**The Three Questions** — Every recommendation must answer:
+
+1. **Who benefits?** — Name the persona and their JTBD
+2. **What compounds?** — Which flywheel does this activate?
+3. **What do we stop?** — What gets deprioritized to make room?
+
+**Decision Velocity**: Bias toward decisions over analysis. A reversible decision made today beats a perfect decision made next week. Flag irreversible decisions for extra scrutiny.
+
+**Artifact Discipline**: Every `/strategy` session must update `strategic-state.md` with at least one of: a new decision, an updated priority, a resolved open question, or a new open question worth tracking.
+
+**Anti-Patterns to reject**:
+
+- Feature lists without prioritization
+- Solutions without problems ("We should add a dashboard for..." — what user problem?)
+- Building for completeness (checking vision doc boxes is not strategy)
+- Competitor mimicry ("GovTool has X so we need X" — we need better, not same)
+- Scope creep dressed as vision — finish what's started
+- Strategy without artifacts — if a conversation doesn't produce a decision or insight worth recording, it wasn't strategic

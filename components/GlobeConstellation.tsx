@@ -21,6 +21,9 @@ import { MatchUserNode } from '@/components/globe/MatchUserNode';
 import { MatchedEdgeGlow } from '@/components/globe/MatchedEdgeGlow';
 import { FlyToParticles } from '@/components/globe/FlyToParticles';
 import { GloryRing } from '@/components/globe/GloryRing';
+import { ConvergenceParticles } from '@/components/globe/ConvergenceParticles';
+import { ProximityHalo } from '@/components/globe/ProximityHalo';
+import { RegionHighlight } from '@/components/globe/RegionHighlight';
 import { ConstellationNodes } from '@/components/globe/NodePoints';
 import {
   IdleCameraWobble,
@@ -311,6 +314,34 @@ export const GlobeConstellation = forwardRef<
     return map;
   }, [apiData]);
 
+  // Priority 4: Convergence particle source/target positions (derived from focus state)
+  const convergenceSourcePositions = useMemo(() => {
+    if (!sceneState.focus.convergenceTarget) return [];
+    const positions: Array<[number, number, number]> = [];
+    for (const node of sceneState.nodes) {
+      if (
+        sceneState.focus.focusedIds.has(node.id) &&
+        node.id !== sceneState.focus.convergenceTarget
+      ) {
+        positions.push(node.position);
+      }
+    }
+    return positions.slice(0, 20); // Cap at 20 sources
+  }, [sceneState.focus.convergenceTarget, sceneState.focus.focusedIds, sceneState.nodes]);
+
+  const convergenceTargetPosition = useMemo((): [number, number, number] | null => {
+    if (!sceneState.focus.convergenceTarget) return null;
+    const target = sceneState.nodeMap.get(sceneState.focus.convergenceTarget);
+    return target?.position ?? null;
+  }, [sceneState.focus.convergenceTarget, sceneState.nodeMap]);
+
+  // Priority 4: Cluster memberships for region highlighting
+  const clusterMemberships = useMemo(() => {
+    // Build from node positions — simple proximity clustering
+    // In practice, this would come from the cluster detection module
+    return new Map<string, Set<string>>();
+  }, []);
+
   useImperativeHandle(ref, () =>
     createConstellationCommands({
       cameraControlsRef,
@@ -480,6 +511,25 @@ export const GlobeConstellation = forwardRef<
             {/* R3F children (e.g., Html cluster labels) — rendered inside the tilted group */}
             {children}
 
+            {/* Priority 4: Proximity halos around focused nodes */}
+            {quality !== 'low' && sceneState.focus.haloRadii && (
+              <ProximityHalo
+                nodes={sceneState.nodes}
+                haloRadii={sceneState.focus.haloRadii}
+                focusColor={sceneState.focus.focusColor}
+              />
+            )}
+
+            {/* Priority 4: Region highlighting (convex hulls around clusters) */}
+            {sceneState.focus.highlightedRegions && (
+              <RegionHighlight
+                nodes={sceneState.nodes}
+                highlightedRegions={sceneState.focus.highlightedRegions}
+                clusterMemberships={clusterMemberships}
+                color={sceneState.focus.focusColor}
+              />
+            )}
+
             {/* Match-derived user node (spatial match reveal — Chunk 3) */}
             {sceneState.focus.userNode && (
               <MatchUserNode
@@ -494,7 +544,14 @@ export const GlobeConstellation = forwardRef<
           )}
           <GloryRing target={sceneState.flyToTarget} active={sceneState.flyToActive} />
 
-          {/* HeartbeatPulse removed — the expanding ring was visually distracting */}
+          {/* Priority 4: Convergence particles — focused nodes stream toward target */}
+          {quality !== 'low' && sceneState.focus.convergenceTarget && (
+            <ConvergenceParticles
+              sourcePositions={convergenceSourcePositions}
+              targetPosition={convergenceTargetPosition}
+              active={!!sceneState.focus.convergenceTarget}
+            />
+          )}
 
           <GlobePostProcessing
             quality={quality}

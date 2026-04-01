@@ -271,6 +271,16 @@ export function deriveFromIntent(
     atmosphereTemperature: intent.atmosphereTemperature ?? 0,
     bloomIntensity: intent.bloomIntensity ?? null,
     driftEnabled: intent.driftEnabled ?? false,
+    // Priority 4 visual effects — pass through from intent
+    easingCurve: intent.easingCurve ?? 'linear',
+    transitionDuration: intent.transitionDuration ?? null,
+    pulsingNodeIds: intent.pulsingNodeIds ?? null,
+    pulseFrequency: intent.pulseFrequency ?? 1.5,
+    haloRadii: intent.haloRadii ?? null,
+    activationDirection: intent.activationDirection ?? 'radial',
+    activationSourceNode: intent.activationSourceNode ?? null,
+    convergenceTarget: intent.convergenceTarget ?? null,
+    highlightedRegions: intent.highlightedRegions ?? null,
   };
 
   // --- Derive camera ---

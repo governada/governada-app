@@ -161,7 +161,33 @@ export interface FocusState {
   bloomIntensity: number | null;
   /** Camera micro-drift enabled — "system is alive" feel (default: false) */
   driftEnabled: boolean;
+
+  // --- Priority 4: Advanced visual effects ---
+  /** Easing curve for focus transitions (default: 'linear') */
+  easingCurve: EasingCurve;
+  /** Transition duration override in seconds (null = use exponential decay) */
+  transitionDuration: number | null;
+  /** Node IDs that should breathe continuously (sustained pulse) */
+  pulsingNodeIds: Set<string> | null;
+  /** Pulse frequency in Hz (default: 1.5) */
+  pulseFrequency: number;
+  /** Per-node proximity halo radius (0-1) */
+  haloRadii: Map<string, number> | null;
+  /** Activation wave direction (default: 'radial') */
+  activationDirection: ActivationDirection;
+  /** Source node ID for 'from-node' activation direction */
+  activationSourceNode: string | null;
+  /** Node ID that convergence particles flow toward */
+  convergenceTarget: string | null;
+  /** Cluster IDs for convex hull region highlighting */
+  highlightedRegions: string[] | null;
 }
+
+/** Easing curve type for focus transitions */
+export type EasingCurve = 'linear' | 'ease-in-out' | 'ease-out' | 'spring';
+
+/** Activation wave sweep direction */
+export type ActivationDirection = 'radial' | 'left-right' | 'top-bottom' | 'from-node';
 
 export const DEFAULT_FOCUS: FocusState = {
   active: false,
@@ -181,6 +207,15 @@ export const DEFAULT_FOCUS: FocusState = {
   atmosphereTemperature: 0,
   bloomIntensity: null,
   driftEnabled: false,
+  easingCurve: 'linear',
+  transitionDuration: null,
+  pulsingNodeIds: null,
+  pulseFrequency: 1.5,
+  haloRadii: null,
+  activationDirection: 'radial',
+  activationSourceNode: null,
+  convergenceTarget: null,
+  highlightedRegions: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -247,6 +282,26 @@ export interface FocusIntent {
   bloomIntensity?: number | null;
   /** Camera micro-drift — "system is alive" feel (default: false) */
   driftEnabled?: boolean;
+
+  // --- Priority 4: Advanced visual effects ---
+  /** Easing curve for focus transitions */
+  easingCurve?: EasingCurve;
+  /** Transition duration override in seconds */
+  transitionDuration?: number;
+  /** Node IDs that should breathe continuously */
+  pulsingNodeIds?: Set<string>;
+  /** Pulse frequency in Hz (default: 1.5) */
+  pulseFrequency?: number;
+  /** Per-node proximity halo radius (0-1) */
+  haloRadii?: Map<string, number>;
+  /** Activation wave direction */
+  activationDirection?: ActivationDirection;
+  /** Source node for 'from-node' direction */
+  activationSourceNode?: string;
+  /** Node ID that convergence particles flow toward */
+  convergenceTarget?: string;
+  /** Cluster IDs for convex hull region highlighting */
+  highlightedRegions?: string[];
 
   // --- Alignment resolution (for 'from-alignment' sentinel) ---
   /** 6-D alignment vector for resolving to concrete node IDs */
@@ -354,7 +409,9 @@ export type GlobeCommand =
   /** Discovery: highlight recently active entities */
   | { type: 'showActiveEntities'; entityType: string; entityIds: string[] }
   /** Place match-derived user node on the globe (spatial match reveal) */
-  | { type: 'placeUserNode'; position: [number, number, number]; intensity: number };
+  | { type: 'placeUserNode'; position: [number, number, number]; intensity: number }
+  /** Sustained breathing pulse on nodes Seneca is evaluating */
+  | { type: 'considering'; nodeIds: string[] };
 
 // ---------------------------------------------------------------------------
 // Color constants

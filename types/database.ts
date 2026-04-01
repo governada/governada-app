@@ -1046,6 +1046,12 @@ export type Database = {
       };
       cc_members: {
         Row: {
+          alignment_decentralization: number | null;
+          alignment_innovation: number | null;
+          alignment_security: number | null;
+          alignment_transparency: number | null;
+          alignment_treasury_conservative: number | null;
+          alignment_treasury_growth: number | null;
           author_name: string | null;
           authorization_epoch: number | null;
           avg_article_coverage: number | null;
@@ -1067,6 +1073,12 @@ export type Database = {
           votes_cast: number | null;
         };
         Insert: {
+          alignment_decentralization?: number | null;
+          alignment_innovation?: number | null;
+          alignment_security?: number | null;
+          alignment_transparency?: number | null;
+          alignment_treasury_conservative?: number | null;
+          alignment_treasury_growth?: number | null;
           author_name?: string | null;
           authorization_epoch?: number | null;
           avg_article_coverage?: number | null;
@@ -1088,6 +1100,12 @@ export type Database = {
           votes_cast?: number | null;
         };
         Update: {
+          alignment_decentralization?: number | null;
+          alignment_innovation?: number | null;
+          alignment_security?: number | null;
+          alignment_transparency?: number | null;
+          alignment_treasury_conservative?: number | null;
+          alignment_treasury_growth?: number | null;
           author_name?: string | null;
           authorization_epoch?: number | null;
           avg_article_coverage?: number | null;

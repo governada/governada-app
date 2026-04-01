@@ -9,11 +9,7 @@
  * lib/drepIdentity.ts (for dimension types).
  */
 
-import {
-  computeSpherePosition,
-  sphereToCartesian,
-  GLOBE_RADIUS,
-} from '@/lib/constellation/globe-layout';
+import { positionByAlignment, CONSTELLATION_EXTENT } from '@/lib/constellation/globe-layout';
 import type { LayoutInput } from '@/lib/constellation/globe-layout';
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 import { DIMENSION_ORDER } from '@/lib/drepIdentity';
@@ -299,15 +295,17 @@ export function detectClusters(
       nodeType: 'drep',
     };
 
-    const [lon, lat] = computeSpherePosition(syntheticInput);
-    // Place cluster label at mid-depth in the DRep shell
-    const labelRadius = GLOBE_RADIUS * 0.7;
-    const centroid3D = sphereToCartesian(lat, lon, labelRadius);
+    // Position cluster centroid using same alignment-based positioning as nodes
+    const centroid3D = positionByAlignment(syntheticInput);
+    // Derive lon/lat from 3D position for backward-compatible centroidSphere
+    const cLon = Math.atan2(centroid3D[2], centroid3D[0]);
+    const cR = Math.sqrt(centroid3D[0] ** 2 + centroid3D[1] ** 2 + centroid3D[2] ** 2) || 1;
+    const cLat = Math.asin(Math.max(-1, Math.min(1, centroid3D[1] / cR)));
 
     clusters.push({
       id: `cluster-${c}`,
       centroid6D,
-      centroidSphere: [lon, lat],
+      centroidSphere: [cLon, cLat],
       centroid3D,
       memberIds,
       dominantDimension,

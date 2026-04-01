@@ -2,11 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  computeSpherePosition,
-  sphereToCartesian,
-  GLOBE_RADIUS,
-} from '@/lib/constellation/globe-layout';
+import { positionByAlignment } from '@/lib/constellation/globe-layout';
 import type { LayoutInput } from '@/lib/constellation/globe-layout';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { getDominantDimension } from '@/lib/drepIdentity';
@@ -84,7 +80,7 @@ function computeUrgency(expirationEpoch: number | null, currentEpoch: number): n
 
 const PROPOSAL_MIN_SCALE = 0.08;
 const PROPOSAL_MAX_SCALE = 0.2;
-const PROPOSAL_RADIUS = GLOBE_RADIUS * 0.55; // Inside the globe — inner active layer
+// Proposals positioned by alignment, same as other entity types
 const CURRENT_EPOCH = 621;
 
 export function useConstellationProposals(_userAlignments?: number[]) {
@@ -130,8 +126,7 @@ export function useConstellationProposals(_userAlignments?: number[]) {
           nodeType: 'proposal',
         };
 
-        const [lon, lat] = computeSpherePosition(layoutInput);
-        const pos = sphereToCartesian(lat, lon, PROPOSAL_RADIUS);
+        const pos = positionByAlignment(layoutInput);
         const scale =
           PROPOSAL_MIN_SCALE +
           (power * 0.5 + urgency * 0.5) * (PROPOSAL_MAX_SCALE - PROPOSAL_MIN_SCALE);

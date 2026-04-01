@@ -448,7 +448,7 @@ export function getToolThinkingGlobeCommands(
 // Tool display status messages
 // ---------------------------------------------------------------------------
 
-function getDisplayStatus(toolName: string): string {
+export function getDisplayStatus(toolName: string): string {
   switch (toolName) {
     case 'search_dreps':
       return 'Searching representatives...';

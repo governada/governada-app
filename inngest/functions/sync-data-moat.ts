@@ -31,7 +31,10 @@ export const syncDataMoat = inngest.createFunction(
   {
     id: 'sync-data-moat',
     retries: 2,
-    concurrency: { limit: 1, scope: 'env', key: '"data-moat"' },
+    concurrency: [
+      { limit: 1, scope: 'env', key: '"data-moat"' },
+      { limit: 2, scope: 'env', key: '"koios-global"' }, // Global Koios rate limit guard
+    ],
     onFailure: async ({ error }) => {
       const sb = getSupabaseAdmin();
       const msg = errMsg(error);

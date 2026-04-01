@@ -753,6 +753,9 @@ export async function fetchAllVotesBulk(): Promise<Record<string, DRepVote[]>> {
 
     if (pageData.length < VOTE_LIST_PAGE_SIZE) break;
     offset += VOTE_LIST_PAGE_SIZE;
+
+    // Rate limit guard: pause between pages to avoid exhausting Koios quota
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   return allVotes;
@@ -807,11 +810,14 @@ export async function fetchVotesForProposals(
 
       if (pageData.length < VOTE_LIST_PAGE_SIZE) break;
       offset += VOTE_LIST_PAGE_SIZE;
+      await new Promise((r) => setTimeout(r, 300));
     }
   };
 
   for (let i = 0; i < proposals.length; i += VOTE_FETCH_CONCURRENCY) {
     await Promise.all(proposals.slice(i, i + VOTE_FETCH_CONCURRENCY).map(fetchOne));
+    // Rate limit guard between batches of parallel proposal fetches
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   return allVotes;
@@ -1037,6 +1043,7 @@ export async function fetchAllSPOVotesBulk(): Promise<SPOVote[]> {
 
     if (pageData.length < VOTE_LIST_PAGE_SIZE) break;
     offset += VOTE_LIST_PAGE_SIZE;
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   if (totalInvalid > 0) {
@@ -1090,6 +1097,7 @@ export async function fetchAllCCVotesBulk(): Promise<CCVote[]> {
 
     if (pageData.length < VOTE_LIST_PAGE_SIZE) break;
     offset += VOTE_LIST_PAGE_SIZE;
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   if (totalInvalid > 0) {

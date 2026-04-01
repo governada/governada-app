@@ -1,6 +1,9 @@
 ---
 paths:
-  - '**'
+  - 'scripts/**'
+  - '.claude/skills/ship/**'
+  - '.claude/commands/ship*'
+  - '.claude/commands/hotfix*'
 ---
 
 # Post-Deploy Verification Rules

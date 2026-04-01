@@ -1,6 +1,11 @@
+---
+paths:
+  - '**'
+---
+
 # Skill Enforcement — Meta-Skill
 
-This rule activates on EVERY task. Before writing any code, check whether a mandatory skill applies to the current task. If it does, invoke it. If you're already mid-task and realize you skipped an applicable skill, STOP and invoke it now.
+This rule activates on EVERY task. Before writing any code, check whether a mandatory skill applies. If it does, invoke it. If you're already mid-task and realize you skipped one, STOP and invoke it now.
 
 ## Mandatory Skill Mapping
 
@@ -20,103 +25,42 @@ At the start of every task:
 1. **Classify the task** — Is it a bug fix? Feature build? Hardening? Refactor? Deploy?
 2. **Check the mapping above** — Does a mandatory skill apply?
 3. **If yes: invoke it.** Do not skip it because the task "seems simple" or "I already know the answer."
-4. **If no: proceed normally.** Not every task needs a skill — simple config changes, docs, single-line fixes are fine without.
+4. **If no: proceed normally.** Simple config changes, docs, single-line fixes are fine without a skill.
 
 ## Detection: When You're Skipping a Skill
 
-You are likely skipping a mandatory skill if:
-
-- **Bug fix without `/diagnose`**: You're about to write a fix but can't articulate the root cause → STOP, invoke `/diagnose`
-- **Feature work without `/build-step`**: You're creating multiple files for a feature without a plan → STOP, consider whether `/build-step` applies
-- **Shipping without `/adversarial-review`**: You're about to `/ship` a multi-file change without hostile review → STOP, run `/adversarial-review` first
-- **"Quick fix" that touches 5+ files**: What started as a small fix has grown → STOP, reassess whether this needs `/build-step` planning
-- **Declaring work "done" without verification**: You're about to mark a task complete but haven't verified it in Preview/Chrome → STOP, verify first
+- **Bug fix without `/diagnose`**: Can't articulate root cause in one sentence → STOP, invoke `/diagnose`
+- **Feature work without `/build-step`**: Creating multiple files without a plan → STOP
+- **Shipping without `/adversarial-review`**: Multi-file change without hostile review → STOP
+- **"Quick fix" that touches 5+ files**: What started small has grown → STOP, reassess
+- **Declaring work "done" without verification**: Not verified in Preview/Chrome → STOP
 
 ## Whack-a-Mole Detector
 
-**When the user corrects your analysis or asks "but why?", you stopped too early.** Each correction is a signal that you proposed a fix for a symptom, not the root cause. The correct response is NOT to patch the next symptom — it's to restart root cause analysis from scratch.
+When the user corrects your analysis or asks "but why?", you stopped too early. Do NOT patch the next symptom — restart root cause analysis from scratch. Gather forensic evidence, trace the full causal chain, then propose a fix that addresses the root cause and eliminates all symptoms together.
 
-Pattern to recognize:
-
-1. You propose fix A for symptom X
-2. User says "but what about Y?" or "why does X happen in the first place?"
-3. You propose fix B for symptom Y ← **THIS IS WHACK-A-MOLE**
-4. User says "but why does Y happen?"
-5. You finally investigate and find root cause Z
-
-What you should do at step 2:
-
-1. STOP proposing fixes
-2. Say: "You're right — I'm treating symptoms. Let me reconstruct what actually happened."
-3. Gather forensic evidence (timestamps, reflog, config, file state)
-4. Trace the full causal chain from root to all symptoms
-5. Propose fixes that address the root cause, which will fix symptoms X AND Y
-
-**The test**: If your fix requires the agent to "remember to do something differently," it's a process patch (fragile). If your fix changes the infrastructure so the problem can't occur regardless of agent behavior, it's a root cause fix (durable). Prefer infrastructure fixes.
+**The test**: If your fix requires the agent to "remember to do something differently," it's a process patch (fragile). If it changes the infrastructure so the problem can't occur regardless of behavior, it's durable. Prefer infrastructure fixes.
 
 ## Exceptions
 
 - **Trivial changes** (typos, single-line config, comment updates): No skill needed
 - **User explicitly says "just do it"**: Respect the request, but note which skill was skipped
-- **Mid-skill execution**: Don't invoke a skill recursively (e.g., don't run `/diagnose` inside `/build-step` Phase 4 unless a genuine unexpected bug appears)
+- **Mid-skill execution**: Don't invoke a skill recursively
 
-## Verify Before Hypothesizing — Anti-Assumption Rule
+## Verify Before Hypothesizing
 
-**NEVER form a hypothesis about what's wrong before checking the actual data.** This is the single most expensive agent failure pattern — it wastes hours across sessions as each agent inherits the previous agent's wrong assumption.
+**NEVER form a hypothesis before checking actual data.** Run the most direct diagnostic command first. Name your evidence — "I believe X because line Y of file Z shows..." — if you can't complete that sentence, you're guessing. If your first fix doesn't work, your hypothesis is wrong — go back to raw data.
 
-The discipline:
+Anti-pattern: Multiple agents assumed a phantom diff was CRLF because CRLF warnings appeared in hook output. None ran `git status --short`. It was untracked `perf-snapshots/` files — unrelated to CRLF.
 
-1. **"What does the data say?"** — Run the most direct diagnostic command FIRST. For diff issues: `git status --short`, `git diff --stat`. For errors: read the actual error message and stack trace. For UI bugs: screenshot first. For performance: measure first.
+## Prevention-First Thinking
 
-2. **Name your evidence.** When proposing a cause, cite the specific output/file/line that proves it. "I believe X because line Y of file Z shows..." — if you can't complete this sentence, you're guessing.
+Every fix must include a prevention layer. Before committing, ask:
 
-3. **If your first fix doesn't work, your hypothesis is probably wrong.** Do NOT iterate on the same hypothesis with variations. Go back to raw data and start fresh.
+1. **What class of problem does this address?** (not just this instance)
+2. **What would cause this class to recur?** (if the answer involves an agent forgetting, the fix is incomplete)
+3. **What automated guard prevents recurrence?** (hook, assertion, CI check — create one if none exists)
 
-4. **Contextual clues are not evidence.** "There are CRLF warnings in the output" does not mean "the diff is caused by CRLF." Correlation is not causation. Verify.
+Infrastructure fixes (hooks, type system) beat process fixes (CI checks) beat documentation. Aim for level 1.
 
-Anti-pattern: Three agents across multiple sessions assumed a +3872 diff was CRLF because CRLF warnings appeared in the hook output. None of them ran `git status --short` to check what the diff actually contained. It was untracked `perf-snapshots/` files — completely unrelated to CRLF.
-
-## Prevention-First Thinking (Proactive, Not Reactive)
-
-The whack-a-mole detector above triggers when the user catches you treating symptoms. But the goal is to **never need the user to catch you**. Every fix, feature, and change must proactively include a prevention layer.
-
-### The 3-Question Gate (before every commit)
-
-1. **"What class of problem does this fix/feature address?"** — Name the category, not just the instance. "CRLF phantom diffs" is an instance; "line-ending mismatches in Windows worktrees" is the class.
-
-2. **"What would cause this class of problem to recur?"** — Identify the trigger conditions. If the answer involves an agent forgetting something, the fix is incomplete.
-
-3. **"What automated guard prevents recurrence?"** — Name the hook, assertion, CI check, or runtime guard. If none exists, create one. If truly infeasible, document the failure mode in CLAUDE.md troubleshooting.
-
-### Examples
-
-| Fix                                | Instance thinking (incomplete)     | Class thinking (complete)                                                    |
-| ---------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
-| CRLF phantom diffs                 | Add `.gitattributes` with `eol=lf` | `.gitattributes` + `git add --renormalize` + auto-cleanup in sync hook       |
-| Agent creates branch in wrong repo | Tell agents not to do that         | Add a guard to `sync-worktree.sh` or hook that detects wrong-repo operations |
-| Missing feature flag               | Add the flag                       | Add CI check or lint rule that flags ungated features                        |
-| Stale data in narratives           | Add freshness check                | Staleness guard with carry-forward + alerting + per-page retry               |
-
-**If your PR only has the left column, it's not done.** The right column is what prevents the founder from seeing the same class of bug again.
-
-### Infrastructure > Process > Documentation
-
-Ranked by durability:
-
-1. **Infrastructure fix** (hook, assertion, guard, type system) — can't be bypassed by forgetting
-2. **Process fix** (CI check, pre-commit hook) — requires setup but auto-enforces
-3. **Documentation fix** (troubleshooting table, CLAUDE.md) — helps diagnosis but doesn't prevent
-
-Always aim for level 1. Fall back to 2 if 1 isn't feasible. Level 3 alone is never sufficient for a recurring problem.
-
-## Self-Check Prompt
-
-Before any commit, ask yourself:
-
-> "If I were the founder reviewing this work tomorrow, would they say I was thorough, or would they say I took shortcuts?"
-
-If the answer is "shortcuts," you're probably skipping a skill or a verification step.
-
-> "If this same class of problem happens again in 2 weeks, will my fix prevent it automatically, or will someone have to catch it again?"
-
-If the answer is "catch it again," your fix is incomplete — add a prevention layer.
+**Before any commit**: "If this same class of problem happens again in 2 weeks, will my fix prevent it automatically?" If the answer is "someone has to catch it," add a prevention layer.

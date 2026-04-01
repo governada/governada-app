@@ -1,6 +1,10 @@
 ---
 paths:
-  - '**'
+  - '.claude/commands/audit*'
+  - '.claude/commands/fix*'
+  - '.claude/commands/build*'
+  - '.claude/commands/launch*'
+  - '.claude/commands/adversarial*'
 ---
 
 # Audit Integrity Rules

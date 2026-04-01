@@ -1,6 +1,7 @@
 ---
 paths:
-  - '**'
+  - '.claude/commands/**'
+  - 'scripts/notify.sh'
 ---
 
 # Agent Notification Rules

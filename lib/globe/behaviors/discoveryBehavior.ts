@@ -3,24 +3,22 @@
  *
  * Handles: showNeighborhood, showControversy, showActiveEntities
  *
- * Uses `narrowTo` (Chunk 1) for focused highlighting and delegates to
- * `voteSplit` for controversy visualization.
+ * Produces FocusIntents for neighborhood and active entity highlighting.
+ * Delegates controversy visualization to the voteSplit behavior.
+ * Keeps imperative pulse scheduling for emphasis effects.
  */
 
 import type { GlobeBehavior, BehaviorContext } from './types';
-import type { GlobeCommand, ConstellationRef } from '@/lib/globe/types';
+import type { GlobeCommand } from '@/lib/globe/types';
+import { setSharedIntent } from '@/lib/globe/focusIntent';
 
-export function createDiscoveryBehavior(globeRef: () => ConstellationRef | null): GlobeBehavior {
+export function createDiscoveryBehavior(): GlobeBehavior {
   return {
     id: 'discovery',
     handles: ['showNeighborhood', 'showControversy', 'showActiveEntities'],
     execute(command: GlobeCommand, ctx: BehaviorContext) {
-      const globe = globeRef();
-      if (!globe) return;
-
       switch (command.type) {
         case 'showNeighborhood': {
-          // Use narrowTo to focus on entity + neighbors, then pulse the target
           const entityNodeId =
             command.entityType === 'drep'
               ? `drep_${command.entityId}`
@@ -28,11 +26,10 @@ export function createDiscoveryBehavior(globeRef: () => ConstellationRef | null)
                 ? `proposal_${command.entityId}`
                 : command.entityId;
 
-          // narrowTo handles dim + fly to centroid
-          ctx.dispatch({
-            type: 'narrowTo',
-            nodeIds: [entityNodeId], // Will be enriched by tool — neighborIds in the result
-            fly: true,
+          setSharedIntent({
+            focusedIds: new Set([entityNodeId]),
+            cameraProximity: 'tight',
+            flyToFocus: true,
           });
 
           // Pulse the target after camera settles
@@ -50,7 +47,6 @@ export function createDiscoveryBehavior(globeRef: () => ConstellationRef | null)
         }
 
         case 'showActiveEntities': {
-          // Focus on the active entity nodes
           const nodeIds = command.entityIds.map((id) => {
             if (command.entityType === 'drep') return `drep_${id}`;
             if (command.entityType === 'proposal') return `proposal_${id}`;
@@ -59,12 +55,11 @@ export function createDiscoveryBehavior(globeRef: () => ConstellationRef | null)
 
           if (nodeIds.length === 0) return;
 
-          // narrowTo dims others and flies to their centroid
-          ctx.dispatch({
-            type: 'narrowTo',
-            nodeIds,
-            fly: true,
+          setSharedIntent({
+            focusedIds: new Set(nodeIds),
+            flyToFocus: true,
             scanProgress: 0.8,
+            cameraProximity: nodeIds.length <= 4 ? 'tight' : 'cluster',
           });
 
           // Staggered pulses for visual emphasis

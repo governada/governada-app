@@ -248,10 +248,10 @@ export function deriveFromIntent(
 
   // --- Build FocusState ---
   const focus: FocusState = {
-    active: resolvedIds.size > 0,
+    active: resolvedIds.size > 0 || intent.forceActive === true,
     focusedIds: resolvedIds,
     intensities: resolvedIntensities,
-    scanProgress: intent.scanProgress ?? 0,
+    scanProgress: intent.scanProgress ?? intent.dimStrength ?? 0,
     colorOverrides: intent.colorOverrides ?? null,
     nodeTypeFilter: intent.nodeTypeFilter ?? null,
     activationDelays: resolvedActivationDelays,

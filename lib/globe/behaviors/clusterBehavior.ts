@@ -3,12 +3,13 @@
  *
  * Handles: highlightCluster
  *
- * When activated, dims all non-member nodes and highlights cluster members
- * using the cluster's centroid alignment as the highlight target.
+ * Produces a FocusIntent with 'from-alignment' using the cluster's centroid,
+ * with camera proximity set to 'cluster' for appropriate zoom level.
  */
 
 import type { GlobeBehavior, BehaviorContext } from './types';
-import type { GlobeCommand, ConstellationRef } from '@/lib/globe/types';
+import type { GlobeCommand } from '@/lib/globe/types';
+import { setSharedIntent } from '@/lib/globe/focusIntent';
 
 /** Module-level cluster data cache — populated by ClusterLabels or API fetch */
 let clusterCache: Map<string, { memberIds: string[]; centroid6D: number[] }> = new Map();
@@ -22,27 +23,22 @@ export function setClusterCache(
   );
 }
 
-export function createClusterBehavior(globeRef: () => ConstellationRef | null): GlobeBehavior {
+export function createClusterBehavior(): GlobeBehavior {
   return {
     id: 'cluster',
     handles: ['highlightCluster'],
     execute(command: GlobeCommand, _ctx: BehaviorContext) {
       if (command.type !== 'highlightCluster') return;
-      const globe = globeRef();
-      if (!globe) return;
 
       const cluster = clusterCache.get(command.clusterId);
       if (!cluster) return;
 
-      // Dim everything first
-      globe.dimAll();
-
-      // Then highlight cluster members using centroid alignment
-      // Use a narrow threshold to focus on just the cluster
-      globe.highlightMatches(cluster.centroid6D, 150, {
-        noZoom: false,
-        zoomToCluster: true,
-        drepOnly: true,
+      setSharedIntent({
+        focusedIds: 'from-alignment',
+        alignmentVector: cluster.centroid6D,
+        topN: 150,
+        nodeTypeFilter: 'drep',
+        cameraProximity: 'cluster',
       });
     },
     cleanup() {

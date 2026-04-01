@@ -298,4 +298,53 @@ describe('deriveFromIntent', () => {
     );
     expect(output.camera).toBeNull();
   });
+
+  it('activates focus with empty set when forceActive is true (dim-all mode)', () => {
+    const output = deriveFromIntent(
+      { focusedIds: new Set<string>(), forceActive: true, dimStrength: 0.8 },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.active).toBe(true);
+    expect(output.focus.focusedIds.size).toBe(0);
+    expect(output.focus.scanProgress).toBe(0.8);
+  });
+
+  it('does not activate focus with empty set when forceActive is not set', () => {
+    const output = deriveFromIntent({ focusedIds: new Set<string>() }, nodes, 0, 14);
+    expect(output.focus.active).toBe(false);
+    expect(output.focus.focusedIds.size).toBe(0);
+  });
+
+  it('uses dimStrength as scanProgress fallback', () => {
+    const output = deriveFromIntent(
+      { focusedIds: new Set(['drep-0']), dimStrength: 0.5 },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.scanProgress).toBe(0.5);
+  });
+
+  it('prefers explicit scanProgress over dimStrength', () => {
+    const output = deriveFromIntent(
+      { focusedIds: new Set(['drep-0']), scanProgress: 0.3, dimStrength: 0.7 },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.scanProgress).toBe(0.3);
+  });
+
+  it('passes colorOverrides through to FocusState', () => {
+    const colors = new Map([['drep-0', '#ff0000']]);
+    const output = deriveFromIntent(
+      { focusedIds: new Set(['drep-0']), colorOverrides: colors },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.colorOverrides).toBe(colors);
+  });
 });

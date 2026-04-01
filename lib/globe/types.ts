@@ -182,6 +182,8 @@ export interface FocusIntent {
   activationDelays?: Map<string, number> | null;
   /** Override orbit speed (radians/sec) instead of deriving from proximity */
   orbitSpeedOverride?: number;
+  /** When true, focus is active even with empty focusedIds (dim-all mode) */
+  forceActive?: boolean;
 
   // --- Alignment resolution (for 'from-alignment' sentinel) ---
   /** 6-D alignment vector for resolving to concrete node IDs */

@@ -3,13 +3,13 @@
  *
  * Handles: placeUserNode
  *
- * Sets the userNode field in FocusState so the rendering layer can display
- * the citizen's position in governance space after the match reveal.
+ * Merges the userNode field into the current FocusIntent so the engine
+ * derives the correct FocusState with the citizen's position in governance space.
  */
 
 import type { GlobeBehavior, BehaviorContext } from './types';
 import type { GlobeCommand } from '@/lib/globe/types';
-import { getSharedFocus, setSharedFocus } from '@/lib/globe/focusState';
+import { getSharedIntent, setSharedIntent } from '@/lib/globe/focusIntent';
 
 export function createSpatialMatchBehavior(): GlobeBehavior {
   return {
@@ -18,15 +18,15 @@ export function createSpatialMatchBehavior(): GlobeBehavior {
     execute(command: GlobeCommand, _ctx: BehaviorContext) {
       if (command.type !== 'placeUserNode') return;
 
-      const current = getSharedFocus();
-      setSharedFocus({
+      const current = getSharedIntent();
+      setSharedIntent({
         ...current,
         userNode: { position: command.position, intensity: command.intensity },
       });
     },
     cleanup() {
-      const current = getSharedFocus();
-      setSharedFocus({ ...current, userNode: null });
+      const current = getSharedIntent();
+      setSharedIntent({ ...current, userNode: null });
     },
   };
 }

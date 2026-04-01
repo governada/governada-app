@@ -1,5 +1,5 @@
 /**
- * GlobeCamera — Camera-related R3F components for the constellation globe.
+ * GlobeCamera — Camera-related R3F components for the constellation.
  *
  * Extracted from GlobeConstellation.tsx. These run inside the R3F Canvas
  * so they must NOT have a 'use client' directive of their own.
@@ -9,7 +9,6 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { CameraControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { AXIAL_TILT } from '@/lib/globe/types';
 
 /**
  * Subtle camera wobble: gentle oscillation of azimuth angle
@@ -80,7 +79,12 @@ export function CinematicCamera({
   return null;
 }
 
-export function TiltedGlobeGroup({
+/**
+ * ConstellationGroup — Container for all constellation content.
+ * Applies slow Y-axis rotation and optional breathing animation.
+ * No axial tilt (removed with sphere → free-space transition).
+ */
+export function ConstellationGroup({
   rotationRef,
   speedRef,
   breathing,
@@ -104,17 +108,14 @@ export function TiltedGlobeGroup({
         (targetSpeed - currentSpeedRef.current) * (1 - Math.pow(0.01, delta));
       rotationRef.current += delta * currentSpeedRef.current;
 
-      // Apply axial tilt on X, then spin on Y (local)
-      groupRef.current.rotation.x = AXIAL_TILT;
+      // Spin on Y (no axial tilt — free-space constellation)
       groupRef.current.rotation.y = rotationRef.current;
 
       // Breathing: gentle rhythmic scale pulse
       if (breathing) {
-        // Heartbeat rate: 8-16 bpm based on urgency (0-100)
         const bpm = 8 + ((urgency ?? 30) / 100) * 8;
-        const freq = bpm / 60; // Hz
+        const freq = bpm / 60;
         const t = clock.getElapsedTime();
-        // Double-bump heartbeat shape: two quick pulses then rest
         const phase = (t * freq) % 1;
         const beat =
           phase < 0.1
@@ -122,11 +123,13 @@ export function TiltedGlobeGroup({
             : phase < 0.2
               ? Math.sin(((phase - 0.1) * Math.PI) / 0.1) * 0.0015
               : 0;
-        const scale = 1 + beat;
-        groupRef.current.scale.setScalar(scale);
+        groupRef.current.scale.setScalar(1 + beat);
       }
     }
   });
 
   return <group ref={groupRef}>{children}</group>;
 }
+
+/** @deprecated Use ConstellationGroup instead */
+export const TiltedGlobeGroup = ConstellationGroup;

@@ -16,13 +16,14 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
 import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
 import { AmbientStarfield } from '@/components/globe/GlobeAmbient';
+import { ConstellationLines } from '@/components/globe/GlobeEdges';
 import { MatchUserNode } from '@/components/globe/MatchUserNode';
 import { MatchedEdgeGlow, FlyToParticles, GloryRing } from '@/components/globe/GlobeEffects';
 import { ConstellationNodes } from '@/components/globe/NodePoints';
 import {
   IdleCameraWobble,
   CinematicCamera,
-  TiltedGlobeGroup,
+  ConstellationGroup,
 } from '@/components/globe/GlobeCamera';
 import type {
   ConstellationApiData,
@@ -84,10 +85,12 @@ interface GlobeConstellationProps {
   urgentNodeIds?: Set<string>;
   /** Set of node IDs that just completed (flash green briefly) */
   completedNodeIds?: Set<string>;
-  /** R3F children rendered inside the TiltedGlobeGroup (e.g., Html cluster labels) */
+  /** R3F children rendered inside the ConstellationGroup (e.g., Html cluster labels) */
   children?: React.ReactNode;
   /** Set of node IDs that have been visited/inspected this session */
   visitedNodeIds?: Set<string>;
+  /** Cluster data for constellation lines (MST within clusters) */
+  clusters?: Array<{ memberIds: string[] }>;
 }
 
 // FocusState, SceneState, constants, and focus bridge functions are now imported from lib/globe/
@@ -118,6 +121,7 @@ export const GlobeConstellation = forwardRef<
     completedNodeIds,
     visitedNodeIds,
     children,
+    clusters,
   },
   ref,
 ) {
@@ -1163,7 +1167,7 @@ export const GlobeConstellation = forwardRef<
           <ambientLight intensity={0.05} />
 
           <AmbientStarfield count={quality === 'low' ? 200 : 500} />
-          <TiltedGlobeGroup
+          <ConstellationGroup
             rotationRef={rotationAngleRef}
             speedRef={rotationSpeedRef}
             breathing={breathing && !sceneState.focus.active}
@@ -1185,7 +1189,10 @@ export const GlobeConstellation = forwardRef<
               }}
               activityMap={activityMap}
             />
-            {/* Edge rendering: constellation lines will be added in a later PR */}
+            {/* Intra-cluster constellation lines (MST-based Orion-like patterns) */}
+            {clusters && clusters.length > 0 && (
+              <ConstellationLines nodes={sceneState.nodes} clusters={clusters} />
+            )}
             {delegationBond &&
               userNode &&
               (() => {
@@ -1216,7 +1223,7 @@ export const GlobeConstellation = forwardRef<
                 intensity={sceneState.focus.userNode.intensity}
               />
             )}
-          </TiltedGlobeGroup>
+          </ConstellationGroup>
 
           {quality !== 'low' && (
             <FlyToParticles target={sceneState.flyToTarget} active={sceneState.flyToActive} />
@@ -1278,4 +1285,4 @@ export const GlobeConstellation = forwardRef<
 
 // Node and SPO shaders imported from lib/globe/shaders.ts
 // ConstellationNodes + NodePoints extracted to components/globe/NodePoints.tsx
-// IdleCameraWobble, CinematicCamera, TiltedGlobeGroup imported at top of file
+// IdleCameraWobble, CinematicCamera, ConstellationGroup imported at top of file

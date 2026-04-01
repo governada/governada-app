@@ -2,13 +2,18 @@
  * Treasury Snapshot Sync — runs daily at 22:30 UTC.
  * Fetches current treasury balance from Koios /totals and stores epoch-level snapshots.
  *
- * Resilience: if the current epoch already has a snapshot (from a previous successful run),
- * skip the Koios API call and only update the health score if needed.
+ * Resilience chain: Koios /totals → Blockfrost /network → last-known-good snapshot.
+ * If the current epoch already has a snapshot (from a previous successful run),
+ * skip the API calls and only update the health score if needed.
  */
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { fetchTreasuryBalance } from '@/utils/koios';
+import {
+  fetchNetwork,
+  isAvailable as isBlockfrostAvailable,
+} from '@/lib/reconciliation/blockfrost';
 import { calculateTreasuryHealthScore } from '@/lib/treasury';
 import {
   SyncLogger,
@@ -155,42 +160,72 @@ export const syncTreasurySnapshot = inngest.createFunction(
         });
 
         if (treasuryResult.empty) {
-          // Koios returned no data — serve last-known-good snapshot instead of
-          // skipping entirely. This keeps the treasury surface fresh during outages.
-          const sb = getSupabaseAdmin();
-          const { data: lastGood } = await sb
-            .from('treasury_snapshots')
-            .select('epoch_no, balance_lovelace, reserves_lovelace')
-            .order('epoch_no', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          // Koios returned no data — try Blockfrost as secondary source
+          const bfResult = await step.run('fallback-blockfrost-treasury', async () => {
+            try {
+              if (!(await isBlockfrostAvailable())) return null;
+              const network = await fetchNetwork();
+              const sb = getSupabaseAdmin();
+              const { data: stats } = await sb
+                .from('governance_stats')
+                .select('current_epoch')
+                .eq('id', 1)
+                .single();
+              const currentEpoch = stats?.current_epoch ?? 0;
+              if (!currentEpoch) return null;
+              return {
+                epoch: currentEpoch,
+                balanceLovelace: network.supply.treasury,
+                reservesLovelace: network.supply.reserves,
+              };
+            } catch (err) {
+              logger.warn('[treasury] Blockfrost fallback failed', { error: errMsg(err) });
+              return null;
+            }
+          });
 
-          if (lastGood) {
-            logger.warn('[treasury] Koios /totals empty — using last-known-good snapshot', {
-              epoch: lastGood.epoch_no,
+          if (bfResult) {
+            logger.info('[treasury] Koios empty — using Blockfrost /network as fallback', {
+              epoch: bfResult.epoch,
             });
-            snapshot = {
-              epoch: lastGood.epoch_no,
-              balanceLovelace: lastGood.balance_lovelace,
-              reservesLovelace: lastGood.reserves_lovelace,
-            };
-            // Mark as degraded success — not a failure, not a skip
-            await syncLog.finalize(true, 'Koios empty — served last-known-good', {
-              degraded: true,
-              fallback_epoch: lastGood.epoch_no,
-            });
-            await emitPostHog(true, 'treasury', syncLog.elapsed, {
-              event_override: 'treasury_sync_degraded',
-            });
-            // Skip the full snapshot pipeline — we already have this epoch's data
-            return { degraded: true, fallbackEpoch: lastGood.epoch_no };
+            snapshot = bfResult;
+            snapshotEpoch = bfResult.epoch;
+            // Continue to the normal upsert pipeline below (don't early-return)
+          } else {
+            // Both Koios and Blockfrost failed — serve last-known-good snapshot
+            const sb = getSupabaseAdmin();
+            const { data: lastGood } = await sb
+              .from('treasury_snapshots')
+              .select('epoch_no, balance_lovelace, reserves_lovelace')
+              .order('epoch_no', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (lastGood) {
+              logger.warn('[treasury] Koios + Blockfrost empty — using last-known-good snapshot', {
+                epoch: lastGood.epoch_no,
+              });
+              snapshot = {
+                epoch: lastGood.epoch_no,
+                balanceLovelace: lastGood.balance_lovelace,
+                reservesLovelace: lastGood.reserves_lovelace,
+              };
+              await syncLog.finalize(true, 'Koios + Blockfrost empty — served last-known-good', {
+                degraded: true,
+                fallback_epoch: lastGood.epoch_no,
+              });
+              await emitPostHog(true, 'treasury', syncLog.elapsed, {
+                event_override: 'treasury_sync_degraded',
+              });
+              return { degraded: true, fallbackEpoch: lastGood.epoch_no };
+            }
+
+            // No previous snapshot exists at all — genuine failure
+            logger.warn('[treasury] Koios + Blockfrost empty and no prior snapshot exists');
+            await syncLog.finalize(false, 'No treasury data from Koios or Blockfrost', {});
+            await emitPostHog(false, 'treasury', syncLog.elapsed, {});
+            return { skipped: true, reason: 'all_sources_empty' };
           }
-
-          // No previous snapshot exists at all — genuine failure
-          logger.warn('[treasury] Koios /totals returned empty and no prior snapshot exists');
-          await syncLog.finalize(false, 'No treasury data returned from Koios /totals', {});
-          await emitPostHog(false, 'treasury', syncLog.elapsed, {});
-          return { skipped: true, reason: 'koios_empty_no_fallback' };
         }
 
         snapshot = {

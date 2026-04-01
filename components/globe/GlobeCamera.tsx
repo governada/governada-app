@@ -12,20 +12,19 @@ import * as THREE from 'three';
 import { AXIAL_TILT } from '@/lib/globe/types';
 
 /**
- * Subtle camera wobble: gentle oscillation of azimuth angle
- * to make the globe feel alive even when Seneca is idle.
- * Amplitude ~0.0003 rad/frame, period ~12s.
+ * Slow continuous rotation to keep the globe feeling alive when idle.
+ * Constant angular velocity — no oscillation (oscillation caused motion sickness).
+ * ~0.5° per second at 60 fps, completing a full revolution in ~12 minutes.
  */
 export function IdleCameraWobble({
   controlsRef,
 }: {
   controlsRef: React.RefObject<CameraControls | null>;
 }) {
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!controlsRef.current) return;
-    const t = clock.getElapsedTime();
-    // Gentle azimuth drift
-    controlsRef.current.azimuthAngle += Math.sin(t * 0.52) * 0.0002;
+    // Constant slow rotation — no sinusoidal sway
+    controlsRef.current.azimuthAngle += 0.00015;
   });
   return null;
 }

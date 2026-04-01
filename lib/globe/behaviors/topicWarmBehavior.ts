@@ -16,6 +16,10 @@ const TOPIC_ALIGNMENTS: Record<string, number[]> = {
   participation: [50, 80, 50, 50, 50, 50],
   delegation: [50, 50, 80, 50, 50, 50],
   proposals: [50, 50, 50, 80, 50, 50],
+  // Contested = proposals but with wider spread (highlights more divergent nodes)
+  contested: [50, 50, 50, 85, 50, 50],
+  // Conservative DReps — low risk tolerance, high accountability
+  conservative: [20, 50, 50, 50, 85, 50],
 };
 
 export function createTopicWarmBehavior(): GlobeBehavior {

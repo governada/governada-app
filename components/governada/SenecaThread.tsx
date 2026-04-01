@@ -21,7 +21,11 @@ import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import type { PanelRoute, World } from '@/hooks/useSenecaThread';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { readAdvisorStream, detectStreamTopic } from '@/lib/intelligence/streamAdvisor';
+import {
+  readAdvisorStream,
+  detectStreamTopic,
+  type WarmTopic,
+} from '@/lib/intelligence/streamAdvisor';
 import { useSenecaMemory } from '@/hooks/useSenecaMemory';
 import { cn } from '@/lib/utils';
 import posthog from 'posthog-js';
@@ -234,7 +238,7 @@ export function SenecaThread({
     abortRef.current = abort;
 
     // Track which topics have already warmed the globe this conversation turn
-    const warmedTopics = new Set<'treasury' | 'participation' | 'delegation' | 'proposals'>();
+    const warmedTopics = new Set<WarmTopic>();
 
     readAdvisorStream(
       historyMessages,
@@ -373,6 +377,10 @@ export function SenecaThread({
   // Quick action handler
   const handleQuickAction = useCallback(
     (action: QuickAction) => {
+      // Dispatch globe hint immediately so the globe reacts while Seneca processes
+      if (action.globeHint) {
+        dispatchGlobeCommand({ type: 'warmTopic', topic: action.globeHint });
+      }
       switch (action.action) {
         case 'conversation':
           onStartConversation(action.query);

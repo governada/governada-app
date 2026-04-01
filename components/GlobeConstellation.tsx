@@ -227,6 +227,11 @@ export const GlobeConstellation = forwardRef<
   // Reactive focus engine tick — reads FocusIntent, derives FocusState + camera.
   // Runs at 20Hz. CinematicCamera/CameraControls handle per-frame smooth interpolation.
   useEffect(() => {
+    // Force re-evaluation when nodes change — a previously-processed intent
+    // may have resolved to empty when nodes hadn't loaded yet. Without this
+    // reset, the version check below sees "already processed" and skips.
+    lastIntentVersionRef.current = -1;
+
     const interval = setInterval(() => {
       // Sequencer lock: when a theatrical sequence (reveal, cleanup) is running,
       // the engine must not process intents — the sequencer owns the globe.
@@ -280,6 +285,7 @@ export const GlobeConstellation = forwardRef<
     }, 50);
     return () => clearInterval(interval);
     // sceneState.nodes changes when API data loads — engine must re-resolve intents
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneState.nodes]);
 
   const { data: apiData } = useGovernanceConstellation();

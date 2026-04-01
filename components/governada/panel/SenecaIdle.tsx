@@ -58,6 +58,9 @@ export interface QuickAction {
   action: 'conversation' | 'research' | 'match' | 'navigate';
   query?: string;
   href?: string;
+  /** Globe topic hint — dispatches a warmTopic command when the chip is clicked,
+   *  so the globe reacts immediately while Seneca processes the query. */
+  globeHint?: string;
 }
 
 export function getQuickActions(route: PanelRoute): QuickAction[] {
@@ -68,6 +71,7 @@ export function getQuickActions(route: PanelRoute): QuickAction[] {
           label: 'Summarize today',
           action: 'conversation',
           query: "What's happening in governance today?",
+          globeHint: 'participation',
         },
         { label: 'Find my match', action: 'match' },
         { label: 'Proposals to review', action: 'navigate', href: '/workspace/review' },
@@ -229,11 +233,13 @@ export function getDiscoveryChips(isAuthenticated: boolean): QuickAction[] {
         label: 'What did my DRep vote?',
         action: 'conversation',
         query: 'What has my delegated DRep voted on recently?',
+        globeHint: 'delegation',
       },
       {
         label: "What's controversial?",
         action: 'conversation',
         query: 'Show me the most controversial proposals with the biggest voting splits',
+        globeHint: 'proposals',
       },
       { label: 'Where do I fit?', action: 'match' },
     ];
@@ -244,11 +250,13 @@ export function getDiscoveryChips(isAuthenticated: boolean): QuickAction[] {
       label: "What's being voted on?",
       action: 'conversation',
       query: 'What proposals are being voted on right now?',
+      globeHint: 'proposals',
     },
     {
       label: "Who's most active?",
       action: 'conversation',
       query: 'Show me the most active DReps in governance right now',
+      globeHint: 'participation',
     },
   ];
 }

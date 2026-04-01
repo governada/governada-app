@@ -373,7 +373,7 @@ export type GlobeCommand =
   /** Scanning sweep — highlight with wide threshold then narrow, simulating a search */
   | { type: 'scan'; alignment: number[]; durationMs?: number }
   /** Warm specific nodes by topic — subtle highlight without camera movement */
-  | { type: 'warmTopic'; topic: 'treasury' | 'participation' | 'delegation' | 'proposals' }
+  | { type: 'warmTopic'; topic: string }
   /** Sequenced choreography — execute commands in order with delays */
   | { type: 'sequence'; steps: Array<{ command: GlobeCommand; delayMs: number }> }
   /** Set globe rotation speed multiplier (1=default, 0=stop, 3=fast) */

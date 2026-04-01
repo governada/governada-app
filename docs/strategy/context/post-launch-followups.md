@@ -77,6 +77,57 @@ Single source of truth for work intentionally deferred to post-launch. Every age
 
 ---
 
+## Globe Cerebro Engine — UI Wiring Gaps
+
+### Vote Split Globe Trigger
+
+**Source:** Cerebro QA session (2026-04-01)
+**Priority:** Medium
+**Why deferred:** `voteSplitBehavior` exists and handles `voteSplit` commands, but no UI element dispatches it. Needs a proposal-context trigger (e.g., when viewing a proposal page, show vote split on the globe).
+**What's needed:**
+
+- Proposal detail page or Seneca entity peek dispatches `voteSplit` command with the proposal ref
+- Globe colors nodes by Yes/No/Abstain vote via `colorOverrides`
+- Requires vote data lookup per proposal (existing `drep_votes` table)
+  **Success criteria:** Viewing a proposal page shows the vote split visualization on the globe.
+
+### AI Advisor → Globe Command Bridge
+
+**Source:** Cerebro QA session (2026-04-01)
+**Priority:** High
+**Why deferred:** The advisor CAN dispatch globe commands via tool callbacks, but it doesn't reliably do so. The prompt needs explicit tool definitions for globe commands, and the advisor needs to be instructed to use them when discussing entities, proposals, or spatial concepts.
+**What's needed:**
+
+- Define globe tools in the advisor prompt (flyTo, highlight, warmTopic, showActiveEntities)
+- Advisor should dispatch `flyTo` when mentioning a specific DRep, `warmTopic` for topic discussions
+- Test with common queries: "Tell me about DRep X", "What's controversial?", "Who are the most active?"
+  **Success criteria:** 80%+ of entity-mentioning advisor responses trigger a visible globe reaction.
+
+### Match Flow Atmosphere Warming Progression
+
+**Source:** Cerebro QA session (2026-04-01)
+**Priority:** Medium
+**Why deferred:** The `setSharedIntent` on match start IS wired (focus engine processes it), but progressive atmosphere warming per answer and the atmosphere color lerp need visual verification once the engine tick race condition fix ships.
+**What's needed:**
+
+- Verify per-answer `setSharedIntent` calls update `scanProgress` and `atmosphereTemperature`
+- Verify `GlobeAtmosphere` component reads and lerps atmosphere hints from FocusState
+- May need explicit atmosphere fields in FocusState (currently only in the checkpoint spec, not FocusState type)
+  **Success criteria:** Globe atmosphere visibly warms from teal to amber as user progresses through match questions.
+
+### Seneca Panel Close / Focus Clear Affordance
+
+**Source:** Cerebro QA session (2026-04-01)
+**Priority:** Low
+**Why deferred:** SenecaMatch cleanup does call `setSharedIntent(DEFAULT_INTENT)` on unmount, but the panel UX doesn't have a clear "close" or "navigate away" affordance during the match flow.
+**What's needed:**
+
+- Clear back/close button behavior during match that returns to idle state and clears globe focus
+- Verify globe returns to idle (cool teal, no dimming) when match panel closes
+  **Success criteria:** User can exit match flow and globe cleanly returns to default state.
+
+---
+
 ## Competitive & Market
 
 (Empty — add items as they arise)

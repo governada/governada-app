@@ -36,7 +36,13 @@ export interface GlobeStreamCommand {
 // Topic detection for conversation-aware globe choreography
 // ---------------------------------------------------------------------------
 
-type WarmTopic = 'treasury' | 'participation' | 'delegation' | 'proposals';
+export type WarmTopic =
+  | 'treasury'
+  | 'participation'
+  | 'delegation'
+  | 'proposals'
+  | 'contested'
+  | 'conservative';
 
 const TOPIC_PATTERNS: Array<{ topic: WarmTopic; pattern: RegExp }> = [
   { topic: 'treasury', pattern: /\b(treasury|withdrawal|funding|budget|ADA balance|spending)\b/i },
@@ -49,6 +55,14 @@ const TOPIC_PATTERNS: Array<{ topic: WarmTopic; pattern: RegExp }> = [
     pattern: /\b(delegat(?:ion|ed|or|e)|represent(?:ative|ation)|your DRep)\b/i,
   },
   { topic: 'proposals', pattern: /\b(proposal|governance action|parameter change|hard fork)\b/i },
+  {
+    topic: 'contested',
+    pattern: /\b(controversial|contested|divisive|split|polariz(?:ed|ing)|contentious)\b/i,
+  },
+  {
+    topic: 'conservative',
+    pattern: /\b(conservative|cautious|risk.averse|fiscal(?:ly)? responsible|protect)\b/i,
+  },
 ];
 
 /**

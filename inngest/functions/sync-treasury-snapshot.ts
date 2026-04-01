@@ -226,15 +226,16 @@ export const syncTreasurySnapshot = inngest.createFunction(
             await emitPostHog(false, 'treasury', syncLog.elapsed, {});
             return { skipped: true, reason: 'all_sources_empty' };
           }
+        } else {
+          // Koios returned valid data — use it
+          snapshot = {
+            epoch: treasuryResult.epoch,
+            balanceLovelace: treasuryResult.balanceLovelace,
+            reservesLovelace: treasuryResult.reservesLovelace,
+          };
+
+          snapshotEpoch = snapshot.epoch;
         }
-
-        snapshot = {
-          epoch: treasuryResult.epoch,
-          balanceLovelace: treasuryResult.balanceLovelace,
-          reservesLovelace: treasuryResult.reservesLovelace,
-        };
-
-        snapshotEpoch = snapshot.epoch;
 
         const withdrawals = await step.run('calculate-epoch-withdrawals', async () => {
           const sb = getSupabaseAdmin();

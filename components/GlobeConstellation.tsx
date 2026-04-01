@@ -168,7 +168,6 @@ export const GlobeConstellation = forwardRef<
       setSharedIntent(DEFAULT_INTENT);
       engineActiveRef.current = false;
     };
-     
   }, [engineEnabled]);
 
   // Effective camera position/target — allow overrides from props
@@ -311,7 +310,6 @@ export const GlobeConstellation = forwardRef<
     }, 50);
     return () => clearInterval(interval);
     // sceneState.nodes changes when API data loads — engine must re-resolve intents
-     
   }, [sceneState.nodes, engineEnabled]);
 
   const { data: apiData } = useGovernanceConstellation();

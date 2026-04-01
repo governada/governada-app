@@ -560,6 +560,7 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({
         ...prev,
         focus: {
+          ...DEFAULT_FOCUS,
           // Stay active if already in a focus mode (e.g., matchStart set it) or if we have matches
           active: matched.size > 0 || prev.focus.active,
           focusedIds: matched,
@@ -797,6 +798,7 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({
         ...prev,
         focus: {
+          ...DEFAULT_FOCUS,
           active: true,
           focusedIds: drepIds,
           intensities,
@@ -857,6 +859,7 @@ export const GlobeConstellation = forwardRef<
         ...prev,
         voteSplitMap: map,
         focus: {
+          ...DEFAULT_FOCUS,
           active: true,
           focusedIds,
           intensities,
@@ -885,6 +888,7 @@ export const GlobeConstellation = forwardRef<
         temporalVoteMap: voteMap,
         temporalActive: true,
         focus: {
+          ...DEFAULT_FOCUS,
           active: true,
           focusedIds,
           intensities,
@@ -912,14 +916,8 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({
         ...prev,
         focus: {
+          ...DEFAULT_FOCUS,
           active: true,
-          focusedIds: new Set(),
-          intensities: new Map(),
-          scanProgress: 0,
-          colorOverrides: null,
-          nodeTypeFilter: null,
-          activationDelays: null,
-          intermediateIds: null,
         },
       }));
     },
@@ -932,14 +930,10 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({
         ...prev,
         focus: {
+          ...DEFAULT_FOCUS,
           active: true,
           focusedIds: new Set([nodeId]),
           intensities: new Map([[nodeId, 1.0]]),
-          scanProgress: 0,
-          colorOverrides: null,
-          nodeTypeFilter: null,
-          activationDelays: null,
-          intermediateIds: null,
         },
       }));
     },
@@ -1043,14 +1037,11 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({
         ...prev,
         focus: {
+          ...DEFAULT_FOCUS,
           active: true,
           focusedIds: matched,
           intensities,
           scanProgress: dimOthers ? sp : 0,
-          colorOverrides: null,
-          nodeTypeFilter: null,
-          activationDelays: null,
-          intermediateIds: null,
         },
       }));
 

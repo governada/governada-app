@@ -7,7 +7,7 @@ import {
   computeFocusCentroid,
   deriveFromIntent,
 } from '@/lib/globe/focusEngine';
-import { DEFAULT_FOCUS, DEFAULT_ROTATION_SPEED } from '@/lib/globe/types';
+import { DEFAULT_FOCUS, DEFAULT_ROTATION_SPEED, MATCH_COLOR } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 // ---------------------------------------------------------------------------
@@ -346,5 +346,88 @@ describe('deriveFromIntent', () => {
       14,
     );
     expect(output.focus.colorOverrides).toBe(colors);
+  });
+
+  // --- Visual parameter pass-through ---
+
+  it('uses default visual parameters when intent omits them', () => {
+    const output = deriveFromIntent({ focusedIds: new Set(['drep-0']) }, nodes, 0, 14);
+    expect(output.focus.focusColor).toBe(MATCH_COLOR);
+    expect(output.focus.focusSizeBoost).toBe(1.0);
+    expect(output.focus.unfocusedScale).toBe(0.45);
+    expect(output.focus.emissiveRange).toEqual({ base: 1, intensityFactor: 1.2, max: Infinity });
+  });
+
+  it('passes through custom focusColor', () => {
+    const output = deriveFromIntent(
+      { focusedIds: new Set(['drep-0']), focusColor: '#4488cc' },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.focusColor).toBe('#4488cc');
+  });
+
+  it('passes through custom focusSizeBoost', () => {
+    const output = deriveFromIntent(
+      { focusedIds: new Set(['drep-0']), focusSizeBoost: 3.5 },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.focusSizeBoost).toBe(3.5);
+  });
+
+  it('passes through custom unfocusedScale', () => {
+    const output = deriveFromIntent(
+      { focusedIds: new Set(['drep-0']), unfocusedScale: 0.15 },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.unfocusedScale).toBe(0.15);
+  });
+
+  it('passes through custom emissiveRange', () => {
+    const range = { base: 0.5, intensityFactor: 0.35, max: 1.4 };
+    const output = deriveFromIntent(
+      { focusedIds: new Set(['drep-0']), emissiveRange: range },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.emissiveRange).toBe(range);
+  });
+
+  it('match intent with explicit params produces identical visual params', () => {
+    // Simulate what SenecaMatch sends — verify engine passes through exactly
+    const output = deriveFromIntent(
+      {
+        focusedIds: 'all-dreps',
+        nodeTypeFilter: 'drep',
+        dimStrength: 0.7,
+        focusColor: '#f59e0b',
+        focusSizeBoost: 3.5,
+        unfocusedScale: 0.15,
+        emissiveRange: { base: 0.5, intensityFactor: 0.35, max: 1.4 },
+      },
+      nodes,
+      0,
+      14,
+    );
+    expect(output.focus.focusColor).toBe('#f59e0b');
+    expect(output.focus.focusSizeBoost).toBe(3.5);
+    expect(output.focus.unfocusedScale).toBe(0.15);
+    expect(output.focus.emissiveRange.base).toBe(0.5);
+    expect(output.focus.emissiveRange.intensityFactor).toBe(0.35);
+    expect(output.focus.emissiveRange.max).toBe(1.4);
+  });
+
+  it('null intent returns default visual parameters', () => {
+    const output = deriveFromIntent({ focusedIds: null }, nodes, 0, 14);
+    expect(output.focus.focusColor).toBe(MATCH_COLOR);
+    expect(output.focus.focusSizeBoost).toBe(1.0);
+    expect(output.focus.unfocusedScale).toBe(0.45);
+    expect(output.focus.emissiveRange).toEqual({ base: 1, intensityFactor: 1.2, max: Infinity });
   });
 });

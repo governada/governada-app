@@ -9,7 +9,12 @@
  */
 
 import type { FocusState, FocusIntent } from './types';
-import { DEFAULT_FOCUS, DEFAULT_ROTATION_SPEED } from './types';
+import {
+  DEFAULT_FOCUS,
+  DEFAULT_EMISSIVE_RANGE,
+  DEFAULT_ROTATION_SPEED,
+  MATCH_COLOR,
+} from './types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { rotateAroundY } from './helpers';
 
@@ -257,6 +262,11 @@ export function deriveFromIntent(
     activationDelays: resolvedActivationDelays,
     intermediateIds: resolvedIntermediate,
     userNode: intent.userNode ?? null,
+    // Visual parameters — pass through from intent with defaults
+    focusColor: intent.focusColor ?? MATCH_COLOR,
+    focusSizeBoost: intent.focusSizeBoost ?? 1.0,
+    unfocusedScale: intent.unfocusedScale ?? 0.45,
+    emissiveRange: intent.emissiveRange ?? DEFAULT_EMISSIVE_RANGE,
   };
 
   // --- Derive camera ---

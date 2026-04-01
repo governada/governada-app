@@ -245,7 +245,8 @@ function NodePoints({
   activityMap?: Map<string, number>;
 }) {
   const tmpColor = useMemo(() => new THREE.Color(), []);
-  const matchColor = useMemo(() => new THREE.Color(MATCH_COLOR), []);
+  // Focus color is read from FocusState in computeBuffers — this ref caches the THREE.Color
+  const focusColorRef = useRef(new THREE.Color(MATCH_COLOR));
 
   // Reusable buffer computation function — used by both useMemo (initial) and useFrame (focus updates)
   const computeBuffers = useCallback(
@@ -297,20 +298,19 @@ function NodePoints({
           colors[i * 3 + 2] = tmpColor.b * emissive;
         } else if (isFocused && intensity > 0) {
           tmpColor.set(getColor(node));
+          // Blend toward the focus color (configurable per-intent, default: amber)
+          focusColorRef.current.set(focusState.focusColor);
           const blend = intensity * 0.85;
-          const blendedR = tmpColor.r + (matchColor.r - tmpColor.r) * blend;
-          const blendedG = tmpColor.g + (matchColor.g - tmpColor.g) * blend;
-          const blendedB = tmpColor.b + (matchColor.b - tmpColor.b) * blend;
-          // During match mode (DRep-only filter), cap emissive to prevent bloom wash —
-          // hundreds of nodes at emissive 3.4+ merge into one undifferentiated glow.
-          // Reduced emissive keeps individual nodes visually distinct.
-          const matchEmissive =
-            focusState.nodeTypeFilter === 'drep'
-              ? emissive * (0.5 + intensity * 0.35) // match mode: max ~1.4 — distinct dots, not wash
-              : emissive * (1 + intensity * 1.2);
-          colors[i * 3] = blendedR * matchEmissive;
-          colors[i * 3 + 1] = blendedG * matchEmissive;
-          colors[i * 3 + 2] = blendedB * matchEmissive;
+          const blendedR = tmpColor.r + (focusColorRef.current.r - tmpColor.r) * blend;
+          const blendedG = tmpColor.g + (focusColorRef.current.g - tmpColor.g) * blend;
+          const blendedB = tmpColor.b + (focusColorRef.current.b - tmpColor.b) * blend;
+          // Emissive formula from FocusState — producers control glow intensity.
+          // Match mode uses capped values to prevent bloom wash with 800 nodes.
+          const { base, intensityFactor, max } = focusState.emissiveRange;
+          const focusEmissive = Math.min(emissive * (base + intensity * intensityFactor), max);
+          colors[i * 3] = blendedR * focusEmissive;
+          colors[i * 3 + 1] = blendedG * focusEmissive;
+          colors[i * 3 + 2] = blendedB * focusEmissive;
         } else {
           tmpColor.set(getColor(node));
           const activity = activityMap?.get(node.id) ?? activityMap?.get(node.fullId) ?? 0;
@@ -327,18 +327,20 @@ function NodePoints({
         const baseSize = isPulsing ? node.scale * 1.8 : isHovered ? node.scale * 1.6 : node.scale;
         let finalSize: number;
         if (isFocused) {
-          // Match mode: boost size so 800 nodes are individually visible as distinct glowing orbs
-          const matchSizeBoost = focusState.nodeTypeFilter === 'drep' ? 3.5 : 1.0;
+          // Size boost from FocusState — match mode uses 3.5x for visible dots at 800 nodes
           finalSize =
-            baseSize * (1 + 0.5 * intensity + focusState.scanProgress * 0.3) * matchSizeBoost;
+            baseSize *
+            (1 + 0.5 * intensity + focusState.scanProgress * 0.3) *
+            focusState.focusSizeBoost;
         } else if (isIntermediate) {
           // "Maybe" nodes: partially shrunk based on brightness level
           finalSize = baseSize * (0.4 + intermediateLevel * 0.35);
         } else if (isUnfocused) {
-          // Non-DRep filtered types shrink aggressively during match
+          // Unfocused scale from FocusState — match mode uses 0.15 for aggressive shrink
+          // Filtered types (wrong nodeType for current filter) shrink hard
           finalSize = isFilteredType
             ? baseSize * 0.15
-            : baseSize * (0.45 - focusState.scanProgress * 0.4);
+            : baseSize * focusState.unfocusedScale * (1 - focusState.scanProgress * 0.89);
         } else {
           finalSize = baseSize;
         }

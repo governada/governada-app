@@ -11,7 +11,7 @@ import { buildAlignmentFromAnswers } from '@/lib/matching/answerVectors';
 import { alignmentsToArray } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GlobeCommand } from '@/lib/globe/types';
-import { DEFAULT_INTENT } from '@/lib/globe/types';
+import { DEFAULT_INTENT, MATCH_COLOR } from '@/lib/globe/types';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import { setSharedIntent } from '@/lib/globe/focusIntent';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
@@ -283,6 +283,11 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
       cameraProximity: 'overview',
       flyToFocus: true,
       orbitSpeedOverride: 0.015,
+      // Visual parameters — match mode: amber glow, large dots, aggressive unfocused shrink
+      focusColor: MATCH_COLOR,
+      focusSizeBoost: 3.5,
+      unfocusedScale: 0.15,
+      emissiveRange: { base: 0.5, intensityFactor: 0.35, max: 1.4 },
     });
     posthog.capture('match_started', { source: 'seneca_panel' });
     posthog.capture('match_cerebro_entered');
@@ -322,6 +327,11 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         cameraProximity: questionIndex >= 4 ? 'tight' : 'cluster',
         flyToFocus: true,
         approachAngle: prefersReducedMotion ? undefined : DIVE_ANGLES[questionIndex],
+        // Visual parameters — match mode: amber glow, large dots, aggressive unfocused shrink
+        focusColor: MATCH_COLOR,
+        focusSizeBoost: 3.5,
+        unfocusedScale: 0.15,
+        emissiveRange: { base: 0.5, intensityFactor: 0.35, max: 1.4 },
       });
 
       // Advance to next question or submit — snappy transitions

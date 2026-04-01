@@ -95,6 +95,9 @@ export interface CinematicStateInput {
   transitionDuration?: number;
 }
 
+// Match focus color — declared early because DEFAULT_FOCUS references it
+export const MATCH_COLOR = '#f59e0b'; // Warm amber — distinct from teal, purple, gold
+
 // ---------------------------------------------------------------------------
 // FocusState — universal focus/unfocus abstraction for node visual treatment
 // ---------------------------------------------------------------------------
@@ -105,6 +108,22 @@ export interface CinematicStateInput {
  * this to decide how to render each node — producing consistent "Cerebro" visuals
  * regardless of the trigger.
  */
+/** Emissive formula parameters for focused nodes */
+export interface EmissiveRange {
+  /** Base multiplier (default: 1) */
+  base: number;
+  /** How much intensity contributes (default: 1.2) */
+  intensityFactor: number;
+  /** Upper clamp (default: Infinity) */
+  max: number;
+}
+
+export const DEFAULT_EMISSIVE_RANGE: EmissiveRange = {
+  base: 1,
+  intensityFactor: 1.2,
+  max: Infinity,
+};
+
 export interface FocusState {
   /** Whether any focus mode is active — when true, unfocused nodes dim */
   active: boolean;
@@ -124,6 +143,16 @@ export interface FocusState {
   intermediateIds: Map<string, number> | null;
   /** Match-derived user node position + glow intensity (spatial match flow) */
   userNode?: { position: [number, number, number]; intensity: number } | null;
+
+  // --- Visual parameters (producers set via FocusIntent, engine passes through) ---
+  /** Hex color focused nodes blend toward (default: MATCH_COLOR) */
+  focusColor: string;
+  /** Size multiplier for focused nodes (default: 1.0) */
+  focusSizeBoost: number;
+  /** Base scale for unfocused nodes when focus is active (default: 0.45) */
+  unfocusedScale: number;
+  /** Emissive formula parameters for focused nodes */
+  emissiveRange: EmissiveRange;
 }
 
 export const DEFAULT_FOCUS: FocusState = {
@@ -136,6 +165,10 @@ export const DEFAULT_FOCUS: FocusState = {
   activationDelays: null,
   intermediateIds: null,
   userNode: null,
+  focusColor: MATCH_COLOR,
+  focusSizeBoost: 1.0,
+  unfocusedScale: 0.45,
+  emissiveRange: DEFAULT_EMISSIVE_RANGE,
 };
 
 // ---------------------------------------------------------------------------
@@ -184,6 +217,16 @@ export interface FocusIntent {
   orbitSpeedOverride?: number;
   /** When true, focus is active even with empty focusedIds (dim-all mode) */
   forceActive?: boolean;
+
+  // --- Visual parameters (passed through to FocusState) ---
+  /** Hex color focused nodes blend toward (default: MATCH_COLOR) */
+  focusColor?: string;
+  /** Size multiplier for focused nodes (default: 1.0) */
+  focusSizeBoost?: number;
+  /** Base scale for unfocused nodes when focus is active (default: 0.45) */
+  unfocusedScale?: number;
+  /** Emissive formula parameters for focused nodes */
+  emissiveRange?: EmissiveRange;
 
   // --- Alignment resolution (for 'from-alignment' sentinel) ---
   /** 6-D alignment vector for resolving to concrete node IDs */
@@ -301,7 +344,7 @@ export const DREP_COLOR = '#2dd4bf';
 export const SPO_COLOR = '#a78bfa'; // purple — visually distinct from teal DReps
 export const USER_COLOR = '#f0e6d0'; // warm white-gold — personal, clearly "you"
 export const PROPOSAL_COLOR = '#d4a050'; // warm amber — active governance events
-export const MATCH_COLOR = '#f59e0b'; // Warm amber — distinct from teal, purple, gold
+// MATCH_COLOR is declared above (before DEFAULT_FOCUS which references it)
 
 // ---------------------------------------------------------------------------
 // Camera defaults

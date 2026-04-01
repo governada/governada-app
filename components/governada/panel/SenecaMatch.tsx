@@ -159,6 +159,17 @@ const DIVE_ANGLES = [0.35, -0.5, 0.15, 0, -0.3, 0.1, -0.15];
 /** Minimum questions before "Match me now" CTA appears */
 const MIN_QUESTIONS_FOR_MATCH = 2;
 
+/** Match mode visual parameters — shared by both matchStart and per-answer intents */
+const MATCH_VISUALS = {
+  focusColor: MATCH_COLOR,
+  focusSizeBoost: 3.5,
+  unfocusedScale: 0.15,
+  emissiveRange: { base: 0.5, intensityFactor: 0.35, max: 1.4 },
+  atmosphereWarmColor: '#cc8844',
+  bloomIntensity: 0.3,
+  driftEnabled: true,
+} as const;
+
 /* ─── Seneca acknowledgement messages (evocative, matching globe visual) ─── */
 
 const ACKNOWLEDGEMENTS = [
@@ -283,15 +294,8 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
       cameraProximity: 'overview',
       flyToFocus: true,
       orbitSpeedOverride: 0.015,
-      // Visual parameters — match mode
-      focusColor: MATCH_COLOR,
-      focusSizeBoost: 3.5,
-      unfocusedScale: 0.15,
-      emissiveRange: { base: 0.5, intensityFactor: 0.35, max: 1.4 },
-      atmosphereWarmColor: '#cc8844',
+      ...MATCH_VISUALS,
       atmosphereTemperature: 0.3,
-      bloomIntensity: 0.3,
-      driftEnabled: true,
     });
     posthog.capture('match_started', { source: 'seneca_panel' });
     posthog.capture('match_cerebro_entered');
@@ -331,12 +335,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         cameraProximity: questionIndex >= 4 ? 'tight' : 'cluster',
         flyToFocus: true,
         approachAngle: prefersReducedMotion ? undefined : DIVE_ANGLES[questionIndex],
-        // Visual parameters — match mode
-        focusColor: MATCH_COLOR,
-        focusSizeBoost: 3.5,
-        unfocusedScale: 0.15,
-        emissiveRange: { base: 0.5, intensityFactor: 0.35, max: 1.4 },
-        atmosphereWarmColor: '#cc8844',
+        ...MATCH_VISUALS,
         atmosphereTemperature: SCAN_PROGRESS_PER_ROUND[questionIndex] ?? 0.8,
         bloomIntensity: 0.3,
         driftEnabled: true,

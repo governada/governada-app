@@ -277,7 +277,6 @@ export const GlobeConstellation = forwardRef<
     }, 50);
     return () => clearInterval(interval);
     // sceneState.nodes changes when API data loads — engine must re-resolve intents
-     
   }, [sceneState.nodes]);
 
   const { data: apiData } = useGovernanceConstellation();

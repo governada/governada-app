@@ -43,6 +43,7 @@ import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
+import { ConstellationLines } from './GlobeEdges';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { useFeatureFlag } from '@/components/FeatureGate';
 
@@ -118,7 +119,13 @@ export function GlobeLayout({
   // Cluster data for 3D labels (fetched once, flag-gated)
   const clusterFlagEnabled = useFeatureFlag('globe_alignment_layout');
   const [clusterLabels, setClusterLabels] = useState<
-    Array<{ id: string; name: string; centroid3D: [number, number, number]; memberCount: number }>
+    Array<{
+      id: string;
+      name: string;
+      centroid3D: [number, number, number];
+      memberCount: number;
+      memberIds: string[];
+    }>
   >([]);
   useEffect(() => {
     if (!clusterFlagEnabled) return;
@@ -140,6 +147,7 @@ export function GlobeLayout({
               name: c.name,
               centroid3D: c.centroid3D,
               memberCount: c.memberCount,
+              memberIds: c.memberIds,
             }),
           ),
         );
@@ -501,6 +509,7 @@ export function GlobeLayout({
             userNode={userNode}
             proposalNodes={proposalNodes}
             delegationBond={delegationBond}
+            clusters={clusterLabels}
           >
             {clusterLabels.length > 0 && <ClusterLabels3D clusters={clusterLabels} />}
           </ConstellationScene>

@@ -54,8 +54,10 @@ interface ConstellationSceneProps {
   completedNodeIds?: Set<string>;
   /** Node IDs that have been visited/inspected this session */
   visitedNodeIds?: Set<string>;
-  /** R3F children rendered inside the TiltedGlobeGroup (e.g., Html cluster labels) */
+  /** R3F children rendered inside the ConstellationGroup (e.g., Html cluster labels) */
   children?: ReactNode;
+  /** Cluster data for constellation lines (MST within clusters) */
+  clusters?: Array<{ memberIds: string[] }>;
 }
 
 /**

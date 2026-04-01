@@ -64,6 +64,33 @@ export function detectStreamTopic(text: string, warmedTopics: Set<WarmTopic>): W
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Marker extraction — pure functions for testability
+// ---------------------------------------------------------------------------
+
+/** Extract [[action:payload]] markers from text, returning clean text and actions */
+export function extractActionMarkers(text: string): { cleanText: string; actions: string[] } {
+  const actions: string[] = [];
+  const cleanText = text.replace(/\[\[action:([^\]]+)\]\]/g, (_, action) => {
+    actions.push(action);
+    return '';
+  });
+  return { cleanText, actions };
+}
+
+/** Extract [[globe:cmd:target]] markers from text, returning clean text and commands */
+export function extractGlobeMarkers(text: string): {
+  cleanText: string;
+  commands: GlobeStreamCommand[];
+} {
+  const commands: GlobeStreamCommand[] = [];
+  const cleanText = text.replace(/\[\[globe:(\w+):?([^\]]*)\]\]/g, (_, cmd, target) => {
+    commands.push({ type: cmd, nodeId: target || undefined });
+    return '';
+  });
+  return { cleanText, commands };
+}
+
 export async function readAdvisorStream(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   context: AdvisorContext & { mode?: 'conversation' | 'briefing' },
@@ -128,25 +155,19 @@ export async function readAdvisorStream(
           };
 
           if (data.type === 'text_delta' && data.content) {
-            let cleanText = data.content;
-
-            // Parse [[action:payload]] markers (e.g. [[action:startMatch]], [[action:navigate:/pulse]])
-            const actionRe = /\[\[action:([^\]]+)\]\]/g;
-            let actionMatch: RegExpExecArray | null;
-            while ((actionMatch = actionRe.exec(data.content)) !== null) {
-              const [full, actionPayload] = actionMatch;
-              cleanText = cleanText.replace(full, '');
-              if (onAction) onAction(actionPayload);
+            // Extract action markers
+            const actionResult = extractActionMarkers(data.content);
+            let cleanText = actionResult.cleanText;
+            for (const action of actionResult.actions) {
+              if (onAction) onAction(action);
             }
 
-            // Parse [[globe:cmd:target]] markers from briefing text
+            // Extract globe markers
             if (onGlobeCommand) {
-              const markerRe = /\[\[globe:(\w+):?([^\]]*)\]\]/g;
-              let match: RegExpExecArray | null;
-              while ((match = markerRe.exec(cleanText)) !== null) {
-                const [full, cmd, target] = match;
-                cleanText = cleanText.replace(full, '');
-                onGlobeCommand({ type: cmd, nodeId: target || undefined });
+              const globeResult = extractGlobeMarkers(cleanText);
+              cleanText = globeResult.cleanText;
+              for (const cmd of globeResult.commands) {
+                onGlobeCommand(cmd);
               }
             }
 

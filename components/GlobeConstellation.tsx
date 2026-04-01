@@ -15,16 +15,9 @@ import { CameraControls } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
 import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
-import { GlobeAtmosphere } from '@/components/globe/GlobeAtmosphere';
 import { AmbientStarfield } from '@/components/globe/GlobeAmbient';
 import { MatchUserNode } from '@/components/globe/MatchUserNode';
-import { NetworkEdgeLines, ConstellationEdges, NeuralMesh } from '@/components/globe/GlobeEdges';
-import {
-  NetworkPulses,
-  MatchedEdgeGlow,
-  FlyToParticles,
-  GloryRing,
-} from '@/components/globe/GlobeEffects';
+import { MatchedEdgeGlow, FlyToParticles, GloryRing } from '@/components/globe/GlobeEffects';
 import { ConstellationNodes } from '@/components/globe/NodePoints';
 import {
   IdleCameraWobble,
@@ -295,12 +288,6 @@ export const GlobeConstellation = forwardRef<
   useEffect(() => {
     onNodeHoverScreenRef.current = onNodeHoverScreen;
   }, [onNodeHoverScreen]);
-
-  // Health-driven atmosphere color: teal (healthy) → amber (stressed) → red (critical)
-  const healthProgress = useMemo(() => {
-    // Invert: high health = 0 (cool teal), low health = 1 (warm amber/red)
-    return Math.max(0, Math.min(1, 1 - healthScore / 100));
-  }, [healthScore]);
 
   // Activity map: track which nodes have recent events for brightness boost
   const activityMap = useMemo(() => {
@@ -1175,43 +1162,15 @@ export const GlobeConstellation = forwardRef<
           />
           <ambientLight intensity={0.05} />
 
-          <AmbientStarfield count={quality === 'low' ? 200 : 400} />
+          <AmbientStarfield count={quality === 'low' ? 200 : 500} />
           <TiltedGlobeGroup
             rotationRef={rotationAngleRef}
             speedRef={rotationSpeedRef}
             breathing={breathing && !sceneState.focus.active}
             urgency={urgency}
           >
-            {/* Subtle point light at center (no visible sphere) */}
+            {/* Subtle point light at center for depth cues */}
             <pointLight color="#4466aa" intensity={0.8} distance={10} decay={2} />
-            <GlobeAtmosphere
-              radius={8.1}
-              color={
-                overlayColorMode === 'urgent'
-                  ? '#cc4444'
-                  : overlayColorMode === 'network'
-                    ? '#44bbcc'
-                    : overlayColorMode === 'proposals'
-                      ? '#ccaa44'
-                      : '#4488cc'
-              }
-              warmColor={sceneState.focus.atmosphereWarmColor}
-              intensity={
-                overlayColorMode === 'urgent'
-                  ? 0.6
-                  : overlayColorMode === 'network' || overlayColorMode === 'proposals'
-                    ? 0.5
-                    : 0.4
-              }
-              atmosphereProgress={
-                sceneState.focus.atmosphereTemperature > 0
-                  ? sceneState.focus.atmosphereTemperature
-                  : sceneState.focus.scanProgress > 0
-                    ? sceneState.focus.scanProgress
-                    : healthProgress * 0.3
-              }
-            />
-            {/* Wireframe removed — the latitude lines (especially equator) were visually distracting */}
             <ConstellationNodes
               nodes={sceneState.nodes}
               focus={sceneState.focus}
@@ -1226,14 +1185,7 @@ export const GlobeConstellation = forwardRef<
               }}
               activityMap={activityMap}
             />
-            {/* Hide edges during match mode — they create a starburst that masks node dots */}
-            {sceneState.focus.nodeTypeFilter !== 'drep' && (
-              <ConstellationEdges edges={sceneState.edges} focusActive={sceneState.focus.active} />
-            )}
-            {quality !== 'low' && sceneState.focus.nodeTypeFilter !== 'drep' && (
-              <NeuralMesh nodes={sceneState.nodes} focusActive={sceneState.focus.active} />
-            )}
-            <NetworkEdgeLines nodes={sceneState.nodes} visible={overlayColorMode === 'network'} />
+            {/* Edge rendering: constellation lines will be added in a later PR */}
             {delegationBond &&
               userNode &&
               (() => {
@@ -1250,9 +1202,6 @@ export const GlobeConstellation = forwardRef<
               })()}
             {quality !== 'low' && (
               <MatchedEdgeGlow nodes={sceneState.nodes} focus={sceneState.focus} />
-            )}
-            {quality !== 'low' && (
-              <NetworkPulses edges={sceneState.edges} focusActive={sceneState.focus.active} />
             )}
 
             {/* CC members rendered as sentinel nodes within the constellation (no crown ring) */}
@@ -1327,13 +1276,6 @@ export const GlobeConstellation = forwardRef<
   );
 });
 
-// GlobeWireframe removed — the latitude lines (especially the equator ring) were visually
-// distracting and didn't clearly convey meaning. The atmosphere shells and node positions
-// provide sufficient spatial reference.
-
 // Node and SPO shaders imported from lib/globe/shaders.ts
-
-// NetworkEdgeLines, EdgeLayer, ConstellationEdges, NeuralMesh extracted to components/globe/GlobeEdges.tsx
-
 // ConstellationNodes + NodePoints extracted to components/globe/NodePoints.tsx
 // IdleCameraWobble, CinematicCamera, TiltedGlobeGroup imported at top of file

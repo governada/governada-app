@@ -23,7 +23,7 @@ export function AmbientStarfield({ count }: { count: number }) {
     const rand = seededRandom(42);
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      const r = 20 + rand() * 30;
+      const r = 30 + rand() * 50;
       const theta = rand() * Math.PI * 2;
       const phi = Math.acos(2 * rand() - 1);
       positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);

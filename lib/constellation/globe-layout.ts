@@ -37,7 +37,7 @@ export const GLOBE_RADIUS = 8; // sphere boundary — the constellation's edge
 const MIN_VISIBLE_SCALE = 0.06;
 const MAX_VISIBLE_SCALE = 0.25;
 const SPO_SCALE_FACTOR = 0.6;
-const CC_SCALE_FACTOR = 1.0; // CC nodes render at standard DRep scale (symbology TBD)
+const CC_SCALE_FACTOR = 0.7; // CC nodes render slightly smaller — noticeable but not dominating
 const SPO_LIMIT = 400;
 
 /**
@@ -174,8 +174,8 @@ export function computeGlobeLayout(inputs: LayoutInput[], nodeLimit: number): La
     nodeMap.set(node.id, node);
   }
 
-  const edges = computeGlobeEdges(nodes, spoNodes, ccNodes);
-  return { nodes, edges, nodeMap };
+  // Edge computation removed — constellation lines will be computed client-side from cluster data
+  return { nodes, edges: [], nodeMap };
 }
 
 /**
@@ -221,117 +221,6 @@ export function computeSpherePosition(input: LayoutInput): [number, number] {
   return [lon, clamp(lat, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1)];
 }
 
-/**
- * Compute edges for the globe visualization with three distinct layers:
- * - proximity: DRep-DRep connections within same alignment dimension
- * - infrastructure: SPO-SPO mesh backbone (nearest geo neighbors)
- * - lastmile: faint SPO-to-nearest-DRep connections
- */
-function computeGlobeEdges(
-  allNodes: ConstellationNode3D[],
-  spoNodes: ConstellationNode3D[],
-  ccNodes: ConstellationNode3D[],
-): ConstellationEdge3D[] {
-  const edges: ConstellationEdge3D[] = [];
-  const drepNodes = allNodes.filter((n) => n.nodeType === 'drep');
-
-  // Layer 0: CC sentinel lattice — geometric connections between sentinels
-  for (let i = 0; i < ccNodes.length; i++) {
-    for (let j = i + 1; j < ccNodes.length; j++) {
-      edges.push({
-        from: ccNodes[i].position,
-        to: ccNodes[j].position,
-        edgeType: 'orbital',
-      });
-    }
-  }
-
-  // Layer 1: Proximity edges among DReps in the same dimension
-  const maxProximity = 200;
-  for (let i = 0; i < drepNodes.length && edges.length < maxProximity; i++) {
-    for (let j = i + 1; j < drepNodes.length && edges.length < maxProximity; j++) {
-      const a = drepNodes[i];
-      const b = drepNodes[j];
-      if (a.dominant !== b.dominant) continue;
-      if (dist3D(a.position, b.position) > 3) continue;
-      edges.push({ from: a.position, to: b.position, edgeType: 'proximity' });
-    }
-  }
-
-  // Layer 2: SPO-to-SPO infrastructure mesh — each SPO connects to its 2-3 nearest SPO neighbors
-  const maxInfraEdges = 400;
-  let infraCount = 0;
-  for (let i = 0; i < spoNodes.length && infraCount < maxInfraEdges; i++) {
-    const spo = spoNodes[i];
-    const nearest = spoNodes
-      .filter((_, j) => j !== i)
-      .map((n) => ({ node: n, dist: dist3D(spo.position, n.position) }))
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, 3);
-
-    for (const { node, dist } of nearest) {
-      if (dist > 6) continue; // only connect reasonably close SPOs
-      // Great-circle arc at the average depth of both endpoints
-      const avgR = (dist3DToOrigin(spo.position) + dist3DToOrigin(node.position)) / 2;
-      const arcPoints = greatCircleArc(spo.position, node.position, avgR + 0.3, 6);
-      for (let k = 0; k < arcPoints.length - 1; k++) {
-        edges.push({ from: arcPoints[k], to: arcPoints[k + 1], edgeType: 'infrastructure' });
-        infraCount++;
-      }
-    }
-  }
-
-  // Layer 3: Last-mile connections — each SPO to its nearest DRep
-  const maxLastMile = 300;
-  let lastMileCount = 0;
-  for (const spo of spoNodes) {
-    if (lastMileCount >= maxLastMile) break;
-    if (drepNodes.length === 0) break;
-    const nearest = drepNodes
-      .map((n) => ({ node: n, dist: dist3D(spo.position, n.position) }))
-      .sort((a, b) => a.dist - b.dist)[0];
-
-    if (nearest && nearest.dist < 5) {
-      edges.push({
-        from: spo.position,
-        to: nearest.node.position,
-        edgeType: 'lastmile',
-      });
-      lastMileCount++;
-    }
-  }
-
-  return edges;
-}
-
-/**
- * Generate points along a great-circle arc between two positions,
- * lifted to a given radius (so arcs float above the surface).
- */
-function greatCircleArc(
-  a: [number, number, number],
-  b: [number, number, number],
-  radius: number,
-  segments: number,
-): [number, number, number][] {
-  const points: [number, number, number][] = [];
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    // Slerp between the two positions
-    const x = a[0] * (1 - t) + b[0] * t;
-    const y = a[1] * (1 - t) + b[1] * t;
-    const z = a[2] * (1 - t) + b[2] * t;
-    // Normalize to sphere surface at the given radius
-    const len = Math.sqrt(x * x + y * y + z * z);
-    if (len < 0.001) {
-      points.push([x, y, z]);
-    } else {
-      points.push([(x / len) * radius, (y / len) * radius, (z / len) * radius]);
-    }
-  }
-  return points;
-}
-
 export function sphereToCartesian(
   lat: number,
   lon: number,
@@ -349,10 +238,6 @@ function dist3D(a: [number, number, number], b: [number, number, number]): numbe
   const dy = a[1] - b[1];
   const dz = a[2] - b[2];
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
-
-function dist3DToOrigin(p: [number, number, number]): number {
-  return Math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
 }
 
 function clamp(v: number, min: number, max: number): number {

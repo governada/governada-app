@@ -2,39 +2,8 @@
  * Globe GLSL shaders — all shader strings for the constellation visualization.
  *
  * Pure data module — no React, no runtime dependencies.
- * Imported by globe rendering components (NodePoints, GlobeAtmosphere, etc.)
+ * Imported by globe rendering components (NodePoints, etc.)
  */
-
-// ---------------------------------------------------------------------------
-// Atmosphere (fresnel rim glow)
-// ---------------------------------------------------------------------------
-
-export const ATMOSPHERE_VERT = /* glsl */ `
-varying vec3 vNormal;
-varying vec3 vWorldPosition;
-
-void main() {
-  vNormal = normalize(normalMatrix * normal);
-  vec4 worldPos = modelMatrix * vec4(position, 1.0);
-  vWorldPosition = worldPos.xyz;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
-export const ATMOSPHERE_FRAG = /* glsl */ `
-uniform vec3 uColor;
-uniform float uIntensity;
-varying vec3 vNormal;
-varying vec3 vWorldPosition;
-
-void main() {
-  // Fresnel: bright at edges, transparent in center
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  float fresnel = 1.0 - abs(dot(viewDir, vNormal));
-  float rim = pow(fresnel, 3.0) * uIntensity;
-  gl_FragColor = vec4(uColor, rim);
-}
-`;
 
 // ---------------------------------------------------------------------------
 // Node point sprites (DReps, CC members, user)

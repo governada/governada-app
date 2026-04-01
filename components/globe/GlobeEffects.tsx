@@ -2,8 +2,7 @@
  * GlobeEffects — Visual effect components that react to FocusState changes.
  *
  * Includes:
- * - NetworkPulses: Light particles flowing along edges
- * - MatchedEdgeGlow: Amber energy between matched/focused nodes
+ * - MatchedEdgeGlow: Energy between matched/focused nodes
  * - FlyToParticles: Particle stream from camera to target on match reveal
  * - GloryRing: Golden torus ring around the #1 match result
  */
@@ -11,129 +10,13 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { ConstellationEdge3D, ConstellationNode3D } from '@/lib/constellation/types';
+import type { ConstellationNode3D } from '@/lib/constellation/types';
 import type { FocusState } from '@/lib/globe/types';
-import { MATCH_COLOR, PULSE_COUNT, PULSE_COLORS } from '@/lib/globe/types';
+import { MATCH_COLOR } from '@/lib/globe/types';
 import { PULSE_VERT, PULSE_FRAG } from '@/lib/globe/shaders';
 
 // ---------------------------------------------------------------------------
-// NetworkPulses — Light particles flowing along edges
-// ---------------------------------------------------------------------------
-
-export function NetworkPulses({
-  edges,
-  focusActive,
-}: {
-  edges: ConstellationEdge3D[];
-  focusActive: boolean;
-}) {
-  const pulseEdges = useMemo(() => {
-    if (edges.length === 0) return [];
-    const infra = edges.filter((e) => e.edgeType === 'infrastructure');
-    const prox = edges.filter((e) => e.edgeType === 'proximity');
-
-    const selected: ConstellationEdge3D[] = [];
-    // Spread across infrastructure edges
-    const infraStep = Math.max(1, Math.floor(infra.length / 30));
-    for (let i = 0; i < infra.length && selected.length < 50; i += infraStep) {
-      selected.push(infra[i]);
-    }
-    // Fill remaining with proximity
-    const proxStep = Math.max(1, Math.floor(prox.length / 20));
-    for (let i = 0; i < prox.length && selected.length < PULSE_COUNT; i += proxStep) {
-      selected.push(prox[i]);
-    }
-    return selected;
-  }, [edges]);
-
-  const geoRef = useRef<THREE.BufferGeometry>(null);
-  const progressRef = useRef<Float32Array>(new Float32Array(PULSE_COUNT));
-  // Vary speed per particle for organic feel
-  const speedsRef = useRef<Float32Array | null>(null);
-
-  useEffect(() => {
-    // Staggered start
-    for (let i = 0; i < PULSE_COUNT; i++) {
-      progressRef.current[i] = i / PULSE_COUNT;
-    }
-    // Initialize speeds
-    if (!speedsRef.current) {
-      const s = new Float32Array(PULSE_COUNT);
-      for (let i = 0; i < PULSE_COUNT; i++) {
-        s[i] = 0.2 + (((i * 7) % 13) / 13) * 0.25; // 0.2–0.45
-      }
-      speedsRef.current = s;
-    }
-  }, []);
-
-  useFrame((_, delta) => {
-    const geo = geoRef.current;
-    if (!geo || pulseEdges.length === 0) return;
-
-    const positions = geo.getAttribute('position') as THREE.BufferAttribute | null;
-    const alphas = geo.getAttribute('aAlpha') as THREE.BufferAttribute | null;
-    const colors = geo.getAttribute('aPulseColor') as THREE.BufferAttribute | null;
-    if (!positions || !alphas || !colors) return;
-
-    const speeds = speedsRef.current;
-
-    for (let i = 0; i < PULSE_COUNT; i++) {
-      const edge = pulseEdges[i % pulseEdges.length];
-      const speed = speeds ? speeds[i] : 0.3;
-      progressRef.current[i] = (progressRef.current[i] + delta * speed) % 1.0;
-      const t = progressRef.current[i];
-
-      positions.setXYZ(
-        i,
-        edge.from[0] * (1 - t) + edge.to[0] * t,
-        edge.from[1] * (1 - t) + edge.to[1] * t,
-        edge.from[2] * (1 - t) + edge.to[2] * t,
-      );
-
-      const fade = Math.sin(t * Math.PI);
-      alphas.setX(i, focusActive ? fade * 0.15 : fade * 0.85);
-
-      const c = PULSE_COLORS[edge.edgeType ?? 'proximity'] ?? PULSE_COLORS.proximity;
-      colors.setXYZ(i, c[0], c[1], c[2]);
-    }
-
-    positions.needsUpdate = true;
-    alphas.needsUpdate = true;
-    colors.needsUpdate = true;
-  });
-
-  const buffers = useMemo(() => {
-    const positions = new Float32Array(PULSE_COUNT * 3);
-    const sizes = new Float32Array(PULSE_COUNT).fill(0.12);
-    const alphas = new Float32Array(PULSE_COUNT).fill(0);
-    const pulseColors = new Float32Array(PULSE_COUNT * 3).fill(0.5);
-    return { positions, sizes, alphas, pulseColors };
-  }, []);
-
-  if (pulseEdges.length === 0) return null;
-
-  return (
-    <points frustumCulled={false}>
-      <bufferGeometry ref={geoRef}>
-        <bufferAttribute attach="attributes-position" args={[buffers.positions, 3]} />
-        <bufferAttribute attach="attributes-aSize" args={[buffers.sizes, 1]} />
-        <bufferAttribute attach="attributes-aAlpha" args={[buffers.alphas, 1]} />
-        <bufferAttribute attach="attributes-aPulseColor" args={[buffers.pulseColors, 3]} />
-      </bufferGeometry>
-      <shaderMaterial
-        vertexShader={PULSE_VERT}
-        fragmentShader={PULSE_FRAG}
-        transparent
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        toneMapped={false}
-      />
-    </points>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// MatchedEdgeGlow — Amber energy between matched/focused nodes
+// MatchedEdgeGlow — Energy between matched/focused nodes
 // ---------------------------------------------------------------------------
 
 export function MatchedEdgeGlow({

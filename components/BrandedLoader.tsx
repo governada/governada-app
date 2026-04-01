@@ -5,10 +5,12 @@ import { useState, useEffect } from 'react';
 /**
  * Full-screen branded loading screen shown once per session.
  *
- * Animation: the Governada G constellation assembles node-by-node from the
- * center outward. Each node ignites with a brief flash, and as adjacent
- * nodes' reveal circles overlap, the connecting arcs materialise organically.
- * Uses the exact SVG paths from logo.svg, revealed via animated clipPath.
+ * Three-act animation:
+ * 1. ASSEMBLY (0-2s)  — G constellation assembles node-by-node via animated mask
+ * 2. DISSOLVE (2.3s)  — Filled arcs fade away, leaving bright node stars
+ * 3. BIG BANG (2.5-3.8s) — Nodes disperse outward with parallax, fading into void
+ *
+ * Uses exact SVG paths from logo.svg for pixel-perfect shape fidelity.
  */
 export function BrandedLoader() {
   const [visible, setVisible] = useState(false);
@@ -33,21 +35,21 @@ export function BrandedLoader() {
 
   if (!visible) return null;
 
-  // ── Node positions (viewBox coords) & reveal order ─────────────
-  // Reveal radiates from center outward like a constellation igniting.
-  // Positions correspond to the logo's node bumps on the arcs.
+  // ── Node data ────────────────────────────────────────────────────
+  // cx/cy: viewBox position  |  d: assembly delay
+  // dx/dy: dispersal vector (2.5× offset from center)  |  ring: wave delay
   const nodes = [
-    { cx: 454, cy: 459, d: 0 }, // center
-    { cx: 505, cy: 395, d: 0.25 }, // inner upper
-    { cx: 493, cy: 548, d: 0.25 }, // inner lower
-    { cx: 596, cy: 484, d: 0.5 }, // crossbar (right-center)
-    { cx: 454, cy: 241, d: 0.55 }, // top
-    { cx: 285, cy: 344, d: 0.8 }, // upper-left
-    { cx: 233, cy: 497, d: 0.8 }, // left
-    { cx: 609, cy: 280, d: 0.95 }, // gap top
-    { cx: 285, cy: 613, d: 1.1 }, // lower-left
-    { cx: 467, cy: 677, d: 1.1 }, // bottom
-    { cx: 557, cy: 638, d: 1.25 }, // gap bottom
+    { cx: 454, cy: 459, d: 0, dx: 0, dy: -130, ring: 0 },
+    { cx: 505, cy: 395, d: 0.25, dx: 128, dy: -160, ring: 1 },
+    { cx: 493, cy: 548, d: 0.25, dx: 98, dy: 223, ring: 1 },
+    { cx: 596, cy: 484, d: 0.5, dx: 355, dy: 63, ring: 1 },
+    { cx: 454, cy: 241, d: 0.55, dx: 0, dy: -545, ring: 2 },
+    { cx: 285, cy: 344, d: 0.8, dx: -423, dy: -288, ring: 2 },
+    { cx: 233, cy: 497, d: 0.8, dx: -553, dy: 95, ring: 2 },
+    { cx: 609, cy: 280, d: 0.95, dx: 388, dy: -448, ring: 2 },
+    { cx: 285, cy: 613, d: 1.1, dx: -423, dy: 385, ring: 3 },
+    { cx: 467, cy: 677, d: 1.1, dx: 33, dy: 545, ring: 3 },
+    { cx: 557, cy: 638, d: 1.25, dx: 258, dy: 448, ring: 3 },
   ];
 
   return (
@@ -66,26 +68,28 @@ export function BrandedLoader() {
           50%  { transform: scale(0.97); filter: drop-shadow(0 0 40px rgba(92,222,183,0.5)); }
           100% { transform: scale(1);    filter: drop-shadow(0 0 8px rgba(92,222,183,0.15)); }
         }
-        @keyframes gl-breathe {
-          0%, 100% { filter: drop-shadow(0 0 8px rgba(92,222,183,0.15)); }
-          50%      { filter: drop-shadow(0 0 26px rgba(92,222,183,0.45)); }
-        }
         @keyframes gl-text {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes gl-text-out {
+          from { opacity: 1; transform: translateY(0); }
+          to   { opacity: 0; transform: translateY(-6px); }
         }
         .gl-emerge {
           transform: scale(0.86);
           animation: gl-emerge 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        .gl-breathe {
-          display: block;
-          animation: gl-breathe 2.5s ease-in-out 2.8s infinite;
-        }
       `}</style>
 
       <div className="gl-emerge mb-8">
-        <svg viewBox="207 215 519 513" width={160} height={160} className="gl-breathe">
+        <svg
+          viewBox="207 215 519 513"
+          width={160}
+          height={160}
+          overflow="visible"
+          style={{ display: 'block' }}
+        >
           <defs>
             <linearGradient
               id="gl-g0"
@@ -109,15 +113,9 @@ export function BrandedLoader() {
               <stop offset="0" stopColor="#3AC39A" />
               <stop offset="1" stopColor="#7AEFCB" />
             </linearGradient>
-
-            {/* Soft-edge blur for mask circles — creates feathered reveal */}
             <filter id="gl-soft" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="18" />
             </filter>
-
-            {/* Animated reveal mask — expanding blurred circles at each node.
-                Soft edges prevent hard pop-in; overlapping circles create
-                organic arc reveals between adjacent nodes. */}
             <mask id="gl-reveal">
               {nodes.map((n, i) => (
                 <circle key={`r${i}`} cx={n.cx} cy={n.cy} r={0} fill="white" filter="url(#gl-soft)">
@@ -137,8 +135,16 @@ export function BrandedLoader() {
             </mask>
           </defs>
 
-          {/* ── Logo paths, revealed by expanding node circles ── */}
+          {/* ── ACT 1: Logo revealed by mask, then fades in ACT 2 ── */}
           <g mask="url(#gl-reveal)">
+            <animate
+              attributeName="opacity"
+              from="1"
+              to="0"
+              dur="0.5s"
+              begin="2.3s"
+              fill="freeze"
+            />
             <g transform="matrix(0.973958 0 0 0.973958 0 0)">
               <path
                 fill="url(#gl-g0)"
@@ -155,31 +161,74 @@ export function BrandedLoader() {
             </g>
           </g>
 
-          {/* ── Node flash effects — brief ignition at each star ── */}
-          {nodes.map((n, i) => (
-            <circle key={`f${i}`} cx={n.cx} cy={n.cy} r={0} fill="#ACFFE4" opacity={0}>
-              <animate
-                attributeName="r"
-                values="0;10;4"
-                dur="0.8s"
-                begin={`${n.d}s`}
-                fill="freeze"
-                calcMode="spline"
-                keyTimes="0;0.3;1"
-                keySplines="0.16 1 0.3 1;0.4 0 0.6 1"
-              />
-              <animate
-                attributeName="opacity"
-                values="0;0.4;0.05"
-                dur="0.8s"
-                begin={`${n.d}s`}
-                fill="freeze"
-                calcMode="spline"
-                keyTimes="0;0.3;1"
-                keySplines="0.16 1 0.3 1;0.4 0 0.6 1"
-              />
-            </circle>
-          ))}
+          {/* ── Node stars: flash → brighten → disperse ── */}
+          {nodes.map((n, i) => {
+            const disperseBegin = 2.5 + n.ring * 0.04;
+            return (
+              <circle key={`f${i}`} cx={n.cx} cy={n.cy} r={0} fill="#ACFFE4" opacity={0}>
+                {/* ACT 1: Flash during assembly */}
+                <animate
+                  attributeName="r"
+                  values="0;10;4"
+                  dur="0.8s"
+                  begin={`${n.d}s`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keyTimes="0;0.3;1"
+                  keySplines="0.16 1 0.3 1;0.4 0 0.6 1"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0;0.4;0.05"
+                  dur="0.8s"
+                  begin={`${n.d}s`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keyTimes="0;0.3;1"
+                  keySplines="0.16 1 0.3 1;0.4 0 0.6 1"
+                />
+                {/* ACT 2: Brighten as arcs dissolve */}
+                <animate attributeName="r" values="4;7" dur="0.3s" begin="2.3s" fill="freeze" />
+                <animate
+                  attributeName="opacity"
+                  values="0.05;0.6"
+                  dur="0.3s"
+                  begin="2.3s"
+                  fill="freeze"
+                />
+                {/* ACT 3: Disperse outward (big bang) */}
+                <animateTransform
+                  attributeName="transform"
+                  type="translate"
+                  from="0 0"
+                  to={`${n.dx} ${n.dy}`}
+                  dur="1.3s"
+                  begin={`${disperseBegin}s`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keyTimes="0;1"
+                  keySplines="0.1 0.8 0.3 1"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.6;0"
+                  dur="1.3s"
+                  begin={`${disperseBegin}s`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keyTimes="0;1"
+                  keySplines="0.3 0 0.7 1"
+                />
+                <animate
+                  attributeName="r"
+                  values="7;2"
+                  dur="1.3s"
+                  begin={`${disperseBegin}s`}
+                  fill="freeze"
+                />
+              </circle>
+            );
+          })}
         </svg>
       </div>
 
@@ -190,7 +239,8 @@ export function BrandedLoader() {
           style={{
             color: '#ACFFE4',
             opacity: 0,
-            animation: 'gl-text 600ms ease-out 2000ms forwards',
+            animation:
+              'gl-text 600ms ease-out 1800ms forwards, gl-text-out 500ms ease-in 2.3s forwards',
             fontFamily: 'var(--font-fraunces, serif)',
           }}
         >
@@ -201,7 +251,8 @@ export function BrandedLoader() {
           style={{
             color: 'rgba(172, 255, 228, 0.4)',
             opacity: 0,
-            animation: 'gl-text 600ms ease-out 2300ms forwards',
+            animation:
+              'gl-text 600ms ease-out 2100ms forwards, gl-text-out 500ms ease-in 2.3s forwards',
           }}
         >
           Governance Intelligence for Cardano

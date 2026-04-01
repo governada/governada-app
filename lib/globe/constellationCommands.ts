@@ -8,13 +8,7 @@
  */
 
 import type CameraControls from 'camera-controls';
-import type {
-  ConstellationRef,
-  FocusState,
-  SceneState,
-  CinematicStateInput,
-  NarrowToOptions,
-} from '@/lib/globe/types';
+import type { ConstellationRef, SceneState } from '@/lib/globe/types';
 import { DEFAULT_FOCUS, DEFAULT_ROTATION_SPEED } from '@/lib/globe/types';
 import type { ConstellationNode3D, FindMeTarget } from '@/lib/constellation/types';
 import { rotateAroundY, sleep } from '@/lib/globe/helpers';

@@ -324,21 +324,37 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         remaining_count: topN,
       });
 
+      // Cerebro: compute user's evolving position for progressive placement
+      const userPos = computeUserNodePosition(alignment);
+
+      // Progressive mood: bloom and emissive evolve with each answer
+      const progress = SCAN_PROGRESS_PER_ROUND[questionIndex] ?? 0.95;
+      const bloomForPhase = 0.3 + progress * 1.2; // 0.3 → 1.5 across rounds
+      const emissiveForPhase = {
+        base: 0.5 + progress * 0.5, // 0.5 → 1.0
+        intensityFactor: 0.35 + progress * 0.5, // 0.35 → 0.85
+        max: 1.4 + progress * 0.6, // 1.4 → 2.0
+      };
+
       // Reactive: update focus intent — engine derives FocusState + camera
+      // User node placed progressively (Cerebro first-person navigation)
       setSharedIntent({
         focusedIds: 'from-alignment',
         alignmentVector: vector,
         topN,
         dimStrength: 0.7,
         nodeTypeFilter: 'drep',
-        scanProgress: SCAN_PROGRESS_PER_ROUND[questionIndex] ?? 0.95,
+        scanProgress: progress,
         cameraProximity: questionIndex >= 4 ? 'tight' : 'cluster',
         flyToFocus: true,
         approachAngle: prefersReducedMotion ? undefined : DIVE_ANGLES[questionIndex],
         ...MATCH_VISUALS,
-        atmosphereTemperature: SCAN_PROGRESS_PER_ROUND[questionIndex] ?? 0.8,
-        bloomIntensity: 0.3,
+        bloomIntensity: bloomForPhase,
+        emissiveRange: emissiveForPhase,
         driftEnabled: true,
+        // Progressive user node: citizen sees their position evolving with each answer
+        userNode:
+          questionIndex >= 2 ? { position: userPos, intensity: 0.3 + progress * 0.7 } : null,
       });
 
       // Advance to next question or submit — snappy transitions

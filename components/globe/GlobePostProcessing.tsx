@@ -5,7 +5,7 @@
  * override from FocusState, falling back to overlay-mode-specific values.
  */
 
-import { EffectComposer, Bloom, DepthOfField } from '@react-three/postprocessing';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 
 export function GlobePostProcessing({
   quality,
@@ -36,11 +36,6 @@ export function GlobePostProcessing({
         luminanceThreshold={0.15}
         luminanceSmoothing={0.9}
         radius={0.95}
-      />
-      <DepthOfField
-        focusDistance={0}
-        focalLength={quality === 'high' ? 0.04 : 0}
-        bokehScale={quality === 'high' ? 2.5 : 0}
       />
     </EffectComposer>
   );

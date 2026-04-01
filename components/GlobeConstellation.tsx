@@ -288,6 +288,16 @@ export const GlobeConstellation = forwardRef<
       setSceneState((prev) => ({ ...prev, focus: output.focus }));
       setSharedFocus(output.focus);
 
+      // DIAGNOSTIC: Remove after confirming pipeline works
+
+      console.warn('[GlobeEngine] Focus derived:', {
+        active: output.focus.active,
+        focusedCount: output.focus.focusedIds.size,
+        nodeTypeFilter: output.focus.nodeTypeFilter,
+        scanProgress: output.focus.scanProgress,
+        focusVersion: getSharedFocusVersion(),
+      });
+
       // Apply camera if engine derived one and flyToFocus is not disabled
       if (output.camera && intent.flyToFocus !== false) {
         const controls = cameraControlsRef.current;

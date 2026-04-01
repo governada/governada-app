@@ -494,6 +494,16 @@ function NodePoints({
     if (currentVersion !== lastFocusVersionRef.current) {
       lastFocusVersionRef.current = currentVersion;
       const newFocus = getSharedFocus();
+      // DIAGNOSTIC: Remove after confirming pipeline works
+
+      console.warn('[NodePoints] Focus version changed:', {
+        version: currentVersion,
+        active: newFocus.active,
+        focusedCount: newFocus.focusedIds.size,
+        nodeTypeFilter: newFocus.nodeTypeFilter,
+        nodeCount: nodes.length,
+        nodeTypes: nodes.slice(0, 3).map((n) => n.nodeType),
+      });
       const newTargets = computeBuffers(newFocus);
       targetBuffersRef.current = newTargets;
       geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));

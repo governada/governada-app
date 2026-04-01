@@ -175,6 +175,10 @@ export const GlobeConstellation = forwardRef<
     temporalVoteMap: new Map(),
     temporalActive: false,
   });
+  // Keep a ref to current sceneState for imperative commands (avoids stale closures)
+  const sceneStateRef = useRef(sceneState);
+  sceneStateRef.current = sceneState;
+
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
@@ -349,7 +353,7 @@ export const GlobeConstellation = forwardRef<
       rotationSpeedRef,
       cinematicRef,
       engineActiveRef,
-      sceneState,
+      sceneStateRef,
       setSceneState,
       setCinematicOrbitSpeed,
       setCinematicDollyTarget,

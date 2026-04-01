@@ -5,7 +5,7 @@
  * creating a pulsing web of connections during match flow and focus modes.
  */
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
@@ -56,6 +56,13 @@ export function MatchedEdgeGlow({
       avgIntensity: intensityArr.reduce((a, b) => a + b, 0) / intensityArr.length,
     };
   }, [nodes, focusedNodeIds, intensities]);
+
+  // Dispose previous geometry to prevent GPU memory leak
+  useEffect(() => {
+    return () => {
+      matchedEdges?.geometry.dispose();
+    };
+  }, [matchedEdges]);
 
   useFrame(({ clock }) => {
     if (!matRef.current || !matchedEdges) return;

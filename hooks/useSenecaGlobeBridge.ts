@@ -25,6 +25,7 @@ import { createClusterBehavior } from '@/lib/globe/behaviors/clusterBehavior';
 import { createDiscoveryBehavior } from '@/lib/globe/behaviors/discoveryBehavior';
 import { createSpatialMatchBehavior } from '@/lib/globe/behaviors/spatialMatchBehavior';
 import { createFocusControlBehavior } from '@/lib/globe/behaviors/focusControlBehavior';
+import { createConsideringBehavior } from '@/lib/globe/behaviors/consideringBehavior';
 
 // GlobeCommand is now canonically defined in lib/globe/types.ts.
 // Re-export for backwards compatibility — existing imports of GlobeCommand from this file still work.
@@ -60,6 +61,7 @@ export function useSenecaGlobeBridge(
     registerBehavior(createDiscoveryBehavior());
     registerBehavior(createSpatialMatchBehavior());
     registerBehavior(createFocusControlBehavior(getGlobe));
+    registerBehavior(createConsideringBehavior());
     return () => {
       unregisterBehavior('match');
       unregisterBehavior('voteSplit');
@@ -68,6 +70,7 @@ export function useSenecaGlobeBridge(
       unregisterBehavior('discovery');
       unregisterBehavior('spatialMatch');
       unregisterBehavior('focusControl');
+      unregisterBehavior('considering');
     };
   }, [globeRef]);
 

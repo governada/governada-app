@@ -124,8 +124,12 @@ export function ConvergenceParticles({
       alphas.setX(i, alpha * 0.7);
     }
 
-    // Remove completed particles
-    particlesRef.current = particles.filter((p) => now - p.startTime < TRAVEL_TIME);
+    // Mark completed particles as dead (pool pattern — no array shrinking mid-frame)
+    for (let i = particles.length - 1; i >= 0; i--) {
+      if (now - particles[i].startTime >= TRAVEL_TIME) {
+        particles.splice(i, 1);
+      }
+    }
 
     positions.needsUpdate = true;
     alphas.needsUpdate = true;

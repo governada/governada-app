@@ -35,7 +35,8 @@ export interface CommandDeps {
     active: boolean;
   }>;
   engineActiveRef: React.MutableRefObject<boolean>;
-  sceneState: SceneState;
+  /** Ref to current scene state — avoids stale closure captures */
+  sceneStateRef: React.MutableRefObject<SceneState>;
   setSceneState: React.Dispatch<React.SetStateAction<SceneState>>;
   setCinematicOrbitSpeed: (v: number) => void;
   setCinematicDollyTarget: (v: number) => void;
@@ -56,7 +57,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
     rotationSpeedRef,
     cinematicRef,
     engineActiveRef,
-    sceneState,
+    sceneStateRef,
     setSceneState,
     setCinematicDollyTarget,
     effectiveCamera,
@@ -65,12 +66,15 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
     onContracted,
   } = deps;
 
+  // Helper: always read current state from the ref (avoids stale closures)
+  const getState = () => sceneStateRef.current;
+
   // --- flyToNode implementation (shared by flyToNode and findMe) ---
   const flyToNodeImpl = async (nodeId: string): Promise<ConstellationNode3D | null> => {
     const controls = cameraControlsRef.current;
-    if (!controls || sceneState.nodes.length === 0) return null;
+    if (!controls || getState().nodes.length === 0) return null;
 
-    const node = sceneState.nodes.find((n) => n.id === nodeId || n.fullId === nodeId);
+    const node = getState().nodes.find((n) => n.id === nodeId || n.fullId === nodeId);
     if (!node) return null;
 
     setSceneState((prev) => ({
@@ -95,7 +99,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
   return {
     findMe: async (target: FindMeTarget) => {
       const controls = cameraControlsRef.current;
-      if (!controls || sceneState.nodes.length === 0) return;
+      if (!controls || getState().nodes.length === 0) return;
       setSceneState((prev) => ({ ...prev, animating: true }));
 
       if (target.type === 'undelegated') {
@@ -139,7 +143,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
         return;
       }
 
-      const node = sceneState.nodeMap.get(drepId);
+      const node = getState().nodeMap.get(drepId);
       if (!node) {
         setSceneState((prev) => ({ ...prev, animating: false }));
         onContracted?.();
@@ -195,7 +199,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
       const intensities = new Map<string, number>();
       const scored: Array<{ id: string; distance: number }> = [];
 
-      for (const node of sceneState.nodes) {
+      for (const node of getState().nodes) {
         if (options?.nodeTypeFilter && node.nodeType !== options.nodeTypeFilter) continue;
         if (options?.drepOnly && node.nodeType !== 'drep') continue;
         let sumSq = 0;
@@ -229,7 +233,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
           scz = 0,
           scount = 0;
         for (let i = 0; i < Math.min(options.topN, scored.length); i++) {
-          const node = sceneState.nodes.find((n) => n.id === scored[i].id);
+          const node = getState().nodes.find((n) => n.id === scored[i].id);
           if (node) {
             scx += node.position[0];
             scy += node.position[1];
@@ -246,7 +250,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
         let maxSpatialDist = 0;
         const spatialDists: number[] = [];
         for (let i = 0; i < scored.length; i++) {
-          const node = sceneState.nodes.find((n) => n.id === scored[i].id);
+          const node = getState().nodes.find((n) => n.id === scored[i].id);
           if (node) {
             const dx = node.position[0] - scx,
               dy = node.position[1] - scy,
@@ -298,7 +302,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
           cy = 0,
           cz = 0,
           count = 0;
-        for (const node of sceneState.nodes) {
+        for (const node of getState().nodes) {
           if (matched.has(node.id)) {
             const [rx, ry, rz] = rotateAroundY(node.position, rotationAngleRef.current);
             cx += rx;
@@ -352,7 +356,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
           cy = 0,
           cz = 0,
           count = 0;
-        for (const node of sceneState.nodes) {
+        for (const node of getState().nodes) {
           if (matched.has(node.id)) {
             const [rx, ry, rz] = rotateAroundY(node.position, rotationAngleRef.current);
             cx += rx;
@@ -387,7 +391,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
     },
 
     flyToMatch: async (drepId: string) => {
-      const node = sceneState.nodes.find((n) => n.id === drepId || n.fullId === drepId);
+      const node = getState().nodes.find((n) => n.id === drepId || n.fullId === drepId);
       if (!node || !cameraControlsRef.current) return;
 
       rotationSpeedRef.current = 0;
@@ -454,7 +458,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
 
       let maxDist = 0;
       const drepDistances: Array<{ id: string; dist: number }> = [];
-      for (const node of sceneState.nodes) {
+      for (const node of getState().nodes) {
         if (node.nodeType === 'drep') {
           drepIds.add(node.id);
           intensities.set(node.id, 0.6);
@@ -686,7 +690,7 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
         cz = 0,
         count = 0;
 
-      for (const node of sceneState.nodes) {
+      for (const node of getState().nodes) {
         if (matched.has(node.id)) {
           intensities.set(node.id, 1.0);
           const [rx, ry, rz] = rotateAroundY(node.position, rotationAngleRef.current);

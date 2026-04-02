@@ -42,13 +42,13 @@ All code changes compile clean. Execute the full deploy pipeline autonomously. D
    gh pr checks <PR#> --watch
    ```
    If fails, see [CI Failure Recovery](#ci-failure-recovery) below (max 3 retries)
-9. **Pre-merge check**: `bash scripts/pre-merge-check.sh <PR#>` — includes Sentry error rate gate
+9. **Pre-merge check**: `node scripts/pre-merge-check.mjs <PR#>` — includes Sentry error rate gate
 10. **Merge**: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
 11. **Migrations**: If migrations needed, test on Supabase branch first (see `.claude/rules/migration-safety.md`), then apply via Supabase MCP `apply_migration` → `npm run gen:types`
 12. **Post-merge verification** (background — do NOT block):
     ```
     Agent(subagent_type="deploy-verifier", run_in_background=true,
-      prompt="PR #N merged. Wait 180s, then run: bash scripts/check-deploy-health.sh && npm run smoke-test -- --quiet && bash scripts/uptime-check.sh deploy")
+      prompt="PR #N merged. Wait 180s, then run: node scripts/check-deploy-health.mjs && npm run smoke-test -- --quiet && node scripts/uptime-check.mjs deploy")
     ```
     Continue immediately to step 13 without waiting.
 13. **Update tracking docs**: If this PR adds features, fixes scoring, changes counts:

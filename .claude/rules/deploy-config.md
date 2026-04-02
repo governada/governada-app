@@ -36,5 +36,5 @@ If production breaks after a deploy:
 
 ## Error Rate Gate
 
-Pre-merge check now includes Sentry error rate validation (`scripts/check-error-rate.sh`).
+Pre-merge check now includes Sentry error rate validation (`node scripts/check-error-rate.mjs`).
 If production error rate exceeds 200 errors/hour, merges are blocked until the rate stabilizes.

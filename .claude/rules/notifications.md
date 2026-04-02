@@ -1,14 +1,14 @@
 ---
 paths:
   - '.claude/commands/**'
-  - 'scripts/notify.sh'
+  - 'scripts/notify.mjs'
 ---
 
 # Agent Notification Rules
 
 ## When to Notify
 
-Any orchestrator command (`/build-step`, `/fix-audit`, `/launch-readiness`, `/audit-all`) MUST send a notification via `bash scripts/notify.sh` at these moments:
+Any orchestrator command (`/build-step`, `/fix-audit`, `/launch-readiness`, `/audit-all`) MUST send a notification via `node scripts/notify.mjs` at these moments:
 
 1. **Decision gate reached** — Plan is ready for user review. Agent MUST pause and wait.
 2. **Deploy blocked** — Smoke test failure, pre-merge check blocked, or deploy error.
@@ -24,25 +24,25 @@ Alert types: `decision_gate` | `deploy_blocked` | `escalation` | `complete` | `i
 Run via Bash tool before pausing:
 
 ```bash
-bash scripts/notify.sh "decision_gate" \
+node scripts/notify.mjs "decision_gate" \
   "/build-step 7: Architecture plan ready" \
   "5 chunks proposed (3 backend, 2 frontend). 2 migrations. 1 new Inngest function. Estimated ~45 min build. Review the plan in your Claude Code session and approve or request changes."
 ```
 
 ```bash
-bash scripts/notify.sh "deploy_blocked" \
+node scripts/notify.mjs "deploy_blocked" \
   "Smoke test failed after PR #185 merge" \
   "/api/health returns 503. Error: connection refused on Supabase. Remaining 3 PRs paused. Check Railway logs and your Claude Code session."
 ```
 
 ```bash
-bash scripts/notify.sh "escalation" \
+node scripts/notify.mjs "escalation" \
   "Chunk 3 hit unexpected schema conflict" \
   "build-step 7, chunk 3 (matching engine) needs drep_scores.composite_score column but chunk 1 renamed it to overall_score. Need your decision: rename back, or update chunk 3 to use new name."
 ```
 
 ```bash
-bash scripts/notify.sh "complete" \
+node scripts/notify.mjs "complete" \
   "/build-step 7 finished" \
   "4/5 chunks deployed successfully. 1 chunk descoped (wallet connect — needs MeshJS upgrade). Post-build audit: UX 8/10, Security 7/10, Data 9/10. See session for full report."
 ```

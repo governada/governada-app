@@ -7,7 +7,7 @@ paths:
 
 ## Branch Hygiene
 
-- **Always start from fresh origin/main.** For worktrees: `git worktree add ../governada-<name> -b feat/<name> origin/main`. Never develop on a stale or leftover branch. The sync-worktree hook auto-fast-forwards local main, but always specify `origin/main` as the start point.
+- **Always start from fresh origin/main.** For worktrees: `git worktree add ../governada-<name> -b feat/<name> origin/main`. Never develop on a stale or leftover branch. Session start is diagnostic-only; if you resume an existing worktree, run `npm run worktree:sync` before mutating.
 - **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree.
 - **Delete local branches after merge.** `gh pr merge --squash --delete-branch` only deletes the remote branch. Follow up with `git branch -d <branch>` locally. Use `-D` if squash-merged.
 - **Prune remotes at session start.** Run `git fetch --prune` to remove stale remote tracking refs.

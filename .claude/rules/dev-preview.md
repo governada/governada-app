@@ -8,7 +8,7 @@ paths:
 
 # Dev Preview in Worktrees
 
-Rules for running the local dev server via Claude Preview tools. The `sync-worktree.sh` session-start hook auto-provisions `.env.local` and `node_modules` — in most cases, agents can start previewing immediately.
+Rules for running the local dev server via Claude Preview tools. Session start is now diagnostic-only to avoid cross-agent worktree locks. If a worktree is missing `.env.local`, `node_modules`, or the latest `origin/main`, run `npm run worktree:sync` explicitly before previewing.
 
 ## Starting the Dev Server
 
@@ -73,7 +73,7 @@ For responsive: `preview_resize` with presets `"mobile"` (375x812), `"tablet"` (
 | Symptom                                                  | Cause                                      | Fix                                                                    |
 | -------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `MODULE_NOT_FOUND` errors                                | `node_modules` missing or junction broken  | Run `npm install` in the worktree                                      |
-| Missing env var errors                                   | `.env.local` not copied                    | Copy from main: re-run `bash .claude/hooks/sync-worktree.sh`           |
+| Missing env var errors                                   | `.env.local` not copied                    | Run `npm run worktree:sync`                                            |
 | Port already in use                                      | Another dev server running                 | `autoPort: true` handles this automatically                            |
 | Turbopack panic: "Symlink points out of filesystem root" | `turbopack.root` not set in next.config.ts | Should be auto-configured; check `next.config.ts` has `turbopack.root` |
 | Browser hangs / all preview calls timeout                | Globe/Three.js page loaded first           | Stop server, restart, navigate to `/governance` first                  |
@@ -90,22 +90,16 @@ For responsive: `preview_resize` with presets `"mobile"` (375x812), `"tablet"` (
 
 The server accepts connections immediately but holds requests until the route compiles. API routes compile faster than pages with heavy client components.
 
-## Prerequisites (auto-handled)
+## Prerequisites
 
-The `sync-worktree.sh` hook runs on session start and handles:
-
-- Fetching + rebasing onto `origin/main` (skips with warning if working tree is dirty)
-- Copying `.env.local` from the main checkout (if missing)
-- Junctioning `node_modules` from main checkout; falls back to `npm install` if junction needs admin rights
-- Running `gh auth setup-git` to configure HTTPS push credentials
-
-Read the session-start output — `⚠️` warnings require manual action before starting work.
-
-If the hook didn't run (e.g., non-standard worktree setup), do these manually:
+Session start reports drift and missing setup but does not mutate git state. Before previewing in an older worktree, run:
 
 ```bash
-git fetch origin && git rebase origin/main
-cp /c/Users/dalto/governada/governada-app/.env.local .
-npm install
-gh auth setup-git
+npm run worktree:sync
+```
+
+If GitHub auth or push credentials are broken, run:
+
+```bash
+npm run auth:repair
 ```

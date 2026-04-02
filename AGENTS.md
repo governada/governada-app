@@ -23,7 +23,7 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 ## Workflow
 
 1. If the task is feature work, create a fresh worktree first with `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`. Do not start feature work in the shared checkout.
-2. Start from fresh `origin/main`.
+2. Start from fresh `origin/main`. When resuming an existing worktree or when session diagnostics show drift/setup gaps, run `npm run worktree:sync`.
 3. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
 4. Make the smallest change that solves the actual problem.
 5. Run `npm run agent:validate` and the relevant local verification for the scope.
@@ -45,3 +45,4 @@ Routine reads, edits, local verification, git hygiene, and PR preparation should
 - Local MCP credentials belong in `.mcp.json`, which stays ignored.
 - Local Claude overrides belong in `.claude/settings.local.json`, which stays ignored.
 - Use `.mcp.example.json` as the sanitized template for new machines.
+- Use `npm run auth:repair` if GitHub auth or the remote URL needs repair.

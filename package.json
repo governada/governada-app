@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "auth:repair": "node scripts/repair-gh-auth.mjs",
     "build": "next build --turbopack",
     "cleanup": "node scripts/cleanup.mjs",
     "start": "next start",
@@ -25,6 +26,7 @@
     "sync": "tsx scripts/sync-dreps.ts",
     "seed:staging": "tsx scripts/seed-staging.ts",
     "smoke-test": "tsx scripts/smoke-test.ts",
+    "worktree:sync": "node scripts/sync-worktree.mjs",
     "inngest:status": "tsx scripts/inngest-status.ts",
     "posthog:check": "tsx scripts/posthog-check.ts",
     "test:e2e": "playwright test",

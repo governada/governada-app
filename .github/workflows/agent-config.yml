@@ -11,6 +11,7 @@ on:
       - '.github/workflows/agent-config.yml'
       - '.github/workflows/pr-template.yml'
       - '.mcp.example.json'
+      - 'scripts/*.mjs'
       - 'scripts/*.sh'
       - 'scripts/*.ps1'
       - 'scripts/validate-agent-constraints.mjs'
@@ -25,6 +26,7 @@ on:
       - '.github/workflows/agent-config.yml'
       - '.github/workflows/pr-template.yml'
       - '.mcp.example.json'
+      - 'scripts/*.mjs'
       - 'scripts/*.sh'
       - 'scripts/*.ps1'
       - 'scripts/validate-agent-constraints.mjs'
@@ -45,6 +47,12 @@ jobs:
           shopt -s nullglob
           for file in .claude/hooks/*.sh scripts/*.sh; do
             bash -n "$file"
+          done
+      - name: Validate Node script syntax
+        run: |
+          shopt -s nullglob
+          for file in scripts/*.mjs; do
+            node --check "$file"
           done
       - name: Validate PowerShell syntax
         shell: pwsh

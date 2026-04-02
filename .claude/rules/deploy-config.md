@@ -30,9 +30,9 @@ When the app officially launches, switch the deploy target to `staging` and:
 
 If production breaks after a deploy:
 
-1. Run `bash scripts/rollback.sh` — auto-detects broken state, reverts, verifies health
-2. With git revert: `bash scripts/rollback.sh --revert-commit`
-3. Manual: Railway dashboard → Deployments → Redeploy previous
+1. Run `node scripts/rollback.mjs --revert-commit` — auto-detects the broken head, opens a revert PR, files the incident issue, and sends the alert
+2. Manual: Railway dashboard → Deployments → Rollback previous successful deployment
+3. Merge the revert PR through the normal protected-main flow
 
 ## Error Rate Gate
 

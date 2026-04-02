@@ -60,15 +60,15 @@ All code changes compile clean. Execute the full deploy pipeline autonomously. D
 
 **IMPORTANT: For high-risk changes (scoring, matching, delegation, data migrations), use `/ship-careful` instead.**
 
-**When the deploy-verifier subagent completes, check its result. If it failed, run `bash scripts/rollback.sh` immediately.**
+**When the deploy-verifier subagent completes, check its result. If it failed, run `node scripts/rollback.mjs --revert-commit` immediately, then use the Railway dashboard rollback if production needs immediate recovery.**
 
 ## Rollback
 
 If smoke test or health check fails after merge:
 
-1. Run `bash scripts/rollback.sh` — auto-detects, reverts, verifies, creates issue
-2. With git revert: `bash scripts/rollback.sh --revert-commit`
-3. Notify: script auto-sends Discord/Telegram alert
+1. Run `node scripts/rollback.mjs --revert-commit` — auto-detects the broken head, opens a revert PR, files the incident issue, and sends the alert
+2. If production must recover immediately, use the Railway dashboard rollback to the previous successful deployment
+3. Merge the revert PR through the normal protected-main flow
 
 ## CI Failure Recovery
 

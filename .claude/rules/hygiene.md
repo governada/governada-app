@@ -33,9 +33,9 @@ Every PR must include an **## Impact** section (what changed, user-facing Y/N, r
 
 ## Workspace Cleanup
 
-- **Run `bash scripts/cleanup.sh` at the start of major sessions** to detect stale worktrees, orphaned directories, stale branches, and uncommitted changes.
+- **Run `node scripts/cleanup.mjs` at the start of major sessions** to detect stale worktrees, orphaned directories, stale branches, and uncommitted changes.
 - **Don't accumulate worktrees.** Remove promptly after PR merge.
-- **Run `bash scripts/cleanup.sh --clean` periodically** to auto-delete branches whose remote is gone.
+- **Run `node scripts/cleanup.mjs --clean` periodically** to auto-delete branches whose remote is gone.
 
 ## CI Watching
 

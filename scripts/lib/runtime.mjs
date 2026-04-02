@@ -3,8 +3,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parse } from 'dotenv';
-
 function findRepoRoot(startDir) {
   let current = startDir;
 
@@ -53,7 +51,7 @@ export function loadLocalEnv(metaUrl, keyFilter = null) {
       continue;
     }
 
-    const parsed = parse(readFileSync(envPath, 'utf8'));
+    const parsed = parseEnvFile(readFileSync(envPath, 'utf8'));
     for (const [key, value] of Object.entries(parsed)) {
       if (!keyAllowed(key, keyFilter)) {
         continue;
@@ -68,6 +66,40 @@ export function loadLocalEnv(metaUrl, keyFilter = null) {
   }
 
   return null;
+}
+
+function parseEnvFile(contents) {
+  const parsed = {};
+
+  for (const rawLine of contents.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const normalizedLine = line.startsWith('export ') ? line.slice(7).trimStart() : line;
+    const separatorIndex = normalizedLine.indexOf('=');
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = normalizedLine.slice(0, separatorIndex).trim();
+    let value = normalizedLine.slice(separatorIndex + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    } else {
+      value = value.replace(/\s+#.*$/u, '').trim();
+    }
+
+    parsed[key] = value;
+  }
+
+  return parsed;
 }
 
 export function requireArg(args, index, usage) {

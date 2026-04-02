@@ -4,7 +4,7 @@ Governance intelligence for the Cardano Nation.
 
 ## Autonomous Deployment Pipeline
 
-Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → merge → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `PUT https://governada.io/api/inngest`. If deploy fails: `bash scripts/rollback.sh`.
+Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → merge → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `PUT https://governada.io/api/inngest`. If deploy fails: `node scripts/rollback.mjs --revert-commit`, then use the Railway dashboard rollback if production needs immediate recovery.
 
 ## Hard Constraints
 
@@ -138,15 +138,15 @@ C:\Users\dalto\governada\
 | `posthog:check`              | Verify analytics events                                     |
 | `smoke-test`                 | Production health checks + response time assertions         |
 | `pre-merge-check.sh`         | Block merge if CI running, branch behind, or errors spiking |
-| `cleanup.sh`                 | Worktree/dir cleanup (dry-run or --clean)                   |
+| `cleanup.mjs`                | Worktree/dir cleanup (dry-run or --clean)                   |
 | `new-worktree.ps1`           | Create a fresh feature worktree with `.env.local` setup     |
-| `generate-registry-index.sh` | Product registry staleness detection (--check for CI)       |
-| `notify.sh`                  | Alert founder via Discord/Telegram at decision gates        |
-| `rollback.sh`                | Automated Railway rollback with health verification         |
-| `check-deploy-health.sh`     | Post-deploy health + response time validation               |
-| `check-error-rate.sh`        | Sentry error rate gate (blocks merge if elevated)           |
-| `uptime-check.sh`            | Ping BetterStack heartbeat URLs                             |
-| `test-migration.sh`          | Supabase branch database migration testing guide            |
+| `generate-registry-index.mjs`| Product registry staleness detection (--check for CI)       |
+| `notify.mjs`                 | Alert founder via Discord/Telegram at decision gates        |
+| `rollback.mjs`               | Automated Railway rollback with health verification         |
+| `check-deploy-health.mjs`    | Post-deploy health + response time validation               |
+| `check-error-rate.mjs`       | Sentry error rate gate (blocks merge if elevated)           |
+| `uptime-check.mjs`           | Ping BetterStack heartbeat URLs                             |
+| `test-migration.mjs`         | Supabase branch database migration testing guide            |
 
 ## Context Files (Agent-Optimized)
 

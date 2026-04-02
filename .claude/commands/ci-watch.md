@@ -31,4 +31,4 @@ The unified `smoke-test --quiet` subsumes health checks, response time assertion
 
 The `post-deploy.yml` GitHub Action also runs automatically as a second safety net.
 
-If deploy-verifier reports failure: `bash scripts/rollback.sh`
+If deploy-verifier reports failure: run `node scripts/rollback.mjs --revert-commit`, then use the Railway dashboard rollback if production needs immediate recovery.

@@ -37,7 +37,7 @@ jobs:
 
       - name: Ping deploy heartbeat
         if: success()
-        run: bash scripts/uptime-check.sh deploy
+        run: node scripts/uptime-check.mjs deploy
         env:
           HEARTBEAT_URL_DEPLOY: ${{ secrets.HEARTBEAT_URL_DEPLOY }}
 

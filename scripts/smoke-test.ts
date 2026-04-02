@@ -1,6 +1,6 @@
 /**
  * Unified post-deploy verification — health checks + smoke tests + response time assertions.
- * Replaces the need to run check-deploy-health.sh separately.
+ * Replaces the need to run check-deploy-health.mjs separately.
  *
  * Usage: npx tsx scripts/smoke-test.ts [base-url] [--quiet]
  * Exit 0 = all pass, non-zero = failure details printed.
@@ -23,7 +23,7 @@ interface Check {
 }
 
 const checks: Check[] = [
-  // --- Deploy health checks (subsumes check-deploy-health.sh) ---
+// --- Deploy health checks (subsumes check-deploy-health.mjs) ---
   {
     name: 'Health (readiness)',
     path: '/api/health/ready',

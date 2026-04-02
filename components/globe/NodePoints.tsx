@@ -375,6 +375,9 @@ function NodePoints({
   const focusChangedAtRef = useRef(0);
   // Snapshot of activationDelays at the time of the last focus change
   const activeDelaysRef = useRef<Map<string, number> | null>(null);
+  // Force GPU update for N frames after a focus change — ensures buffers reach the GPU
+  // even if there's a timing issue between attribute creation and the lerp loop.
+  const forceUpdateFramesRef = useRef(0);
 
   // Initial buffer computation uses the focus prop (works on first mount).
   // Subsequent focus changes are detected in useFrame via _sharedFocusVersion.
@@ -452,10 +455,27 @@ function NodePoints({
           }
         }
         if (anySnapped) {
-          const colorAttr = geo.getAttribute('aNodeColor') as THREE.BufferAttribute;
+          // Ensure GPU attributes reference our arrays (may have been orphaned
+          // by R3F reconciler re-creating the geometry after a prop change)
+          let colorAttr = geo.getAttribute('aNodeColor') as THREE.BufferAttribute | undefined;
+          if (!colorAttr || colorAttr.array !== currentColorsRef.current) {
+            geo.setAttribute(
+              'aNodeColor',
+              new THREE.Float32BufferAttribute(currentColorsRef.current!, 3),
+            );
+            geo.setAttribute(
+              'aSize',
+              new THREE.Float32BufferAttribute(currentSizesRef.current!, 1),
+            );
+            geo.setAttribute(
+              'aDimmed',
+              new THREE.Float32BufferAttribute(currentDimmedRef.current!, 1),
+            );
+            colorAttr = geo.getAttribute('aNodeColor') as THREE.BufferAttribute;
+          }
+          if (colorAttr) colorAttr.needsUpdate = true;
           const dimAttr = geo.getAttribute('aDimmed') as THREE.BufferAttribute;
           const sizeAttr = geo.getAttribute('aSize') as THREE.BufferAttribute;
-          if (colorAttr) colorAttr.needsUpdate = true;
           if (dimAttr) dimAttr.needsUpdate = true;
           if (sizeAttr) sizeAttr.needsUpdate = true;
         }
@@ -494,16 +514,6 @@ function NodePoints({
     if (currentVersion !== lastFocusVersionRef.current) {
       lastFocusVersionRef.current = currentVersion;
       const newFocus = getSharedFocus();
-      // DIAGNOSTIC: Remove after confirming pipeline works
-
-      console.warn('[NodePoints] Focus version changed:', {
-        version: currentVersion,
-        active: newFocus.active,
-        focusedCount: newFocus.focusedIds.size,
-        nodeTypeFilter: newFocus.nodeTypeFilter,
-        nodeCount: nodes.length,
-        nodeTypes: nodes.slice(0, 3).map((n) => n.nodeType),
-      });
       const newTargets = computeBuffers(newFocus);
       targetBuffersRef.current = newTargets;
       geo.setAttribute('position', new THREE.Float32BufferAttribute(newTargets.positions, 3));
@@ -511,6 +521,29 @@ function NodePoints({
       // Capture activation time + delays for wave animation
       focusChangedAtRef.current = clock.getElapsedTime();
       activeDelaysRef.current = newFocus.activationDelays ?? null;
+
+      // Force GPU updates for several frames after a focus change.
+      // This ensures the GPU receives updated buffer data even if:
+      // - R3F reconciler recreated the geometry (orphaning our attributes)
+      // - The lerp thresholds are too tight for the first frame
+      // - There's a one-frame delay between attribute creation and GPU upload
+      forceUpdateFramesRef.current = 10;
+
+      // Verify that the geometry's BufferAttribute arrays are our refs.
+      // If R3F's reconciler replaced the geometry or attributes got orphaned,
+      // we need to re-attach our arrays to the GPU attributes.
+      const colorAttr = geo.getAttribute('aNodeColor') as THREE.BufferAttribute | undefined;
+      if (!colorAttr || colorAttr.array !== currentColorsRef.current) {
+        // Attributes are missing or backed by a different array — re-create them.
+        // This is the likely root cause of the dimming bug: the lerp mutates our ref
+        // arrays, but the GPU reads from a different (stale) array.
+        geo.setAttribute(
+          'aNodeColor',
+          new THREE.Float32BufferAttribute(currentColorsRef.current, 3),
+        );
+        geo.setAttribute('aSize', new THREE.Float32BufferAttribute(currentSizesRef.current!, 1));
+        geo.setAttribute('aDimmed', new THREE.Float32BufferAttribute(currentDimmedRef.current!, 1));
+      }
     }
 
     // Use shared targets if available (focus changed), otherwise fall back to initial buffers
@@ -600,8 +633,14 @@ function NodePoints({
       if (elapsed > maxDelay + 0.5) activeDelaysRef.current = null;
     }
 
-    // Only push to GPU when something actually changed
-    if (changed) {
+    // Push to GPU when lerp produced changes OR we're in forced-update window.
+    // The force window covers the first N frames after a focus change, ensuring
+    // the GPU receives data even if the lerp thresholds filter out small diffs
+    // or if the attribute reference was just repaired.
+    const forceUpdate = forceUpdateFramesRef.current > 0;
+    if (forceUpdate) forceUpdateFramesRef.current--;
+
+    if (changed || forceUpdate) {
       const colorAttr = geo.getAttribute('aNodeColor') as THREE.BufferAttribute;
       const sizeAttr = geo.getAttribute('aSize') as THREE.BufferAttribute;
       const dimAttr = geo.getAttribute('aDimmed') as THREE.BufferAttribute;

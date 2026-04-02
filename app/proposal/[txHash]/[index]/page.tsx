@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import {
   getProposalByKey,
@@ -309,10 +310,12 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       name: 'Cardano Governance',
     },
   };
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   return livingBriefEnabled ? (
     <div className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
       <script
+        nonce={nonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
@@ -469,6 +472,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
   ) : (
     <div className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
       <script
+        nonce={nonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

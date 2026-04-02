@@ -13,6 +13,7 @@
  */
 
 import { cache } from 'react';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import nextDynamic from 'next/dynamic';
@@ -533,10 +534,12 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
       name: 'Cardano Governance',
     },
   };
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   const profileContent = (
     <div className="container mx-auto px-4 py-8 space-y-6">
       <script
+        nonce={nonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

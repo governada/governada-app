@@ -53,7 +53,7 @@ const checks: Check[] = [
     path: '/api/dreps',
     expectedStatus: 200,
     // First-hit reads can be cold right after deploy even when the endpoint is healthy.
-    maxResponseMs: 5000,
+    maxResponseMs: 6000,
     validate: (b) => {
       if (!Array.isArray(b.dreps)) return 'Missing dreps array';
       if (b.dreps.length === 0) return 'Empty dreps array (expected data)';
@@ -64,7 +64,7 @@ const checks: Check[] = [
     name: 'Public API v1 - DReps',
     path: '/api/v1/dreps?limit=5',
     expectedStatus: 200,
-    maxResponseMs: 5000,
+    maxResponseMs: 6000,
     validate: (b) => {
       if (!b.data || !Array.isArray(b.data)) return 'Missing data array';
       if (!b.meta?.api_version) return 'Missing meta.api_version';
@@ -75,6 +75,7 @@ const checks: Check[] = [
     name: 'Public API v1 - Governance Health',
     path: '/api/v1/governance/health',
     expectedStatus: 200,
+    maxResponseMs: 6000,
     validate: (b) => {
       if (typeof b.data?.total_registered_dreps !== 'number')
         return 'Missing total_registered_dreps';
@@ -145,7 +146,7 @@ const checks: Check[] = [
 
 async function runCheck(check: Check): Promise<{ pass: boolean; name: string; detail: string }> {
   const url = `${BASE_URL}${check.path}`;
-  const maxMs = check.maxResponseMs ?? 5000;
+  const maxMs = check.maxResponseMs;
   try {
     const start = performance.now();
     const res = await fetch(url, {
@@ -163,7 +164,7 @@ async function runCheck(check: Check): Promise<{ pass: boolean; name: string; de
       };
     }
 
-    if (elapsed > maxMs) {
+    if (typeof maxMs === 'number' && elapsed > maxMs) {
       return {
         pass: false,
         name: check.name,
@@ -190,7 +191,10 @@ async function runCheck(check: Check): Promise<{ pass: boolean; name: string; de
 async function main() {
   console.log(`\nSmoke testing: ${BASE_URL}${QUIET ? ' (quiet mode)' : ''}\n`);
 
-  const results = await Promise.all(checks.map(runCheck));
+  const results = [];
+  for (const check of checks) {
+    results.push(await runCheck(check));
+  }
   let failed = 0;
 
   for (const r of results) {

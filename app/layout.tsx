@@ -14,6 +14,10 @@ import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
 import { LocaleProvider } from '@/components/providers/LocaleProvider';
 import { ModeProvider } from '@/components/providers/ModeProvider';
 
+// Nonce-based CSP requires dynamic rendering so Next can attach a request-scoped
+// nonce to its inline/bootstrap scripts in production mode.
+export const dynamic = 'force-dynamic';
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import Script from 'next/script';
 import { createClient } from '@/lib/supabase';
 import { PageViewTracker } from '@/components/PageViewTracker';
@@ -70,7 +71,12 @@ interface HomePageProps {
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const [pulseData, params] = await Promise.all([getGovernancePulse(), searchParams]);
+  const [pulseData, params, headerStore] = await Promise.all([
+    getGovernancePulse(),
+    searchParams,
+    headers(),
+  ]);
+  const nonce = headerStore.get('x-nonce') ?? undefined;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -97,6 +103,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <>
       <Script
         id="json-ld-organization"
+        nonce={nonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

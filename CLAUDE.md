@@ -10,7 +10,7 @@ Implementation is NOT complete until deployed and validated in production. Use `
 
 Build failures or production bugs if violated. `npm run agent:validate` and CI enforce the critical ones below.
 
-- **Worktree isolation for feature work.** NEVER create feature branches in the main `governada-app` checkout. All feature work MUST happen in a fresh worktree (`powershell -ExecutionPolicy Bypass -File scripts/launch-feature-codex.ps1`, `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git worktree add ../governada-<name> -b feat/<name> origin/main`, or `claude --worktree <name>`). The main checkout stays on `main` at all times. Enforced by `check-branch.sh` hook — edits on feature branches in the main checkout are blocked. Only hotfixes (with `ALLOW_MAIN_EDIT=1`) bypass this.
+- **Worktree isolation for feature work.** NEVER create feature branches in the main `governada-app` checkout. All feature work MUST happen in a fresh worktree (`powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git worktree add ../governada-<name> -b feat/<name> origin/main`, or `claude --worktree <name>`). The main checkout stays on `main` at all times. Enforced by `check-branch.sh` hook — edits on feature branches in the main checkout are blocked. Only hotfixes (with `ALLOW_MAIN_EDIT=1`) bypass this.
 
 - **`force-dynamic`** on any `page.tsx`/`route.ts` touching Supabase/env vars. Railway build has no env vars.
 - **Register Inngest functions** in `app/api/inngest/route.ts` -- same commit as the function file.
@@ -139,7 +139,6 @@ C:\Users\dalto\governada\
 | `smoke-test`                 | Production health checks + response time assertions         |
 | `pre-merge-check.sh`         | Block merge if CI running, branch behind, or errors spiking |
 | `cleanup.sh`                 | Worktree/dir cleanup (dry-run or --clean)                   |
-| `launch-feature-codex.ps1`   | Prompt for a feature name, create a worktree, and launch Codex |
 | `new-worktree.ps1`           | Create a fresh feature worktree with `.env.local` setup     |
 | `generate-registry-index.sh` | Product registry staleness detection (--check for CI)       |
 | `notify.sh`                  | Alert founder via Discord/Telegram at decision gates        |

@@ -22,7 +22,7 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 
 ## Workflow
 
-1. If the task is feature work, create a fresh worktree first with `powershell -ExecutionPolicy Bypass -File scripts/launch-feature-codex.ps1` or `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`. Do not start feature work in the shared checkout.
+1. If the task is feature work, create a fresh worktree first with `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`. Do not start feature work in the shared checkout.
 2. Start from fresh `origin/main`.
 3. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
 4. Make the smallest change that solves the actual problem.

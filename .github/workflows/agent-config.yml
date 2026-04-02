@@ -12,6 +12,7 @@ on:
       - '.github/workflows/pr-template.yml'
       - '.mcp.example.json'
       - 'scripts/*.sh'
+      - 'scripts/*.ps1'
       - 'scripts/validate-agent-constraints.mjs'
   push:
     branches: [main]
@@ -25,6 +26,7 @@ on:
       - '.github/workflows/pr-template.yml'
       - '.mcp.example.json'
       - 'scripts/*.sh'
+      - 'scripts/*.ps1'
       - 'scripts/validate-agent-constraints.mjs'
 
 jobs:
@@ -40,6 +42,16 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('.mcp.example.json', 'utf8'))"
       - name: Validate shell syntax
         run: |
+          shopt -s nullglob
           for file in .claude/hooks/*.sh scripts/*.sh; do
             bash -n "$file"
           done
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile('scripts/new-worktree.ps1', [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) {
+            $errors | ForEach-Object { Write-Error $_ }
+            exit 1
+          }

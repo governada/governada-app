@@ -34,7 +34,7 @@ case "$branch" in
     # Shared checkout on a feature branch is never safe for mutating Bash work.
     echo "BLOCKED: Shared checkout is on '$branch'. Use a worktree before mutating the repo."
     echo "Create one with:"
-    echo "  powershell -ExecutionPolicy Bypass -File scripts/launch-feature-codex.ps1"
+    echo "  powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>"
     exit 2
     ;;
 esac
@@ -65,7 +65,6 @@ readonly_prefixes=(
   "pwd"
   "Get-Location"
   "node scripts/validate-agent-constraints.mjs"
-  "powershell -ExecutionPolicy Bypass -File scripts/launch-feature-codex.ps1"
   "powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1"
 )
 
@@ -81,7 +80,7 @@ echo "Read-only inspection is allowed here, but mutating commands are blocked"
 echo "until you create a fresh worktree for this thread."
 echo ""
 echo "Run:"
-echo "  powershell -ExecutionPolicy Bypass -File scripts/launch-feature-codex.ps1"
+echo "  powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>"
 echo ""
 echo "For intentional hotfixes on main, set ALLOW_MAIN_EDIT=1."
 exit 2

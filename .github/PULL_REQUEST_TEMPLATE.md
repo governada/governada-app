@@ -1,6 +1,6 @@
 ## Summary
 
-- 
+- [fill in]
 
 ## Existing Code Audit
 
@@ -25,4 +25,4 @@
 
 ## Verification
 
-- 
+- [fill in]

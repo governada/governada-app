@@ -404,13 +404,13 @@ By day 90, the founder needs a concrete way to decide whether launch is safe, ri
 
 Use this cadence during the 90-day plan:
 
-| Day | Focus | Output |
-| --- | --- | --- |
-| Monday | Systems scorecard review | Current status, top risk, systems task for the week |
-| Tuesday | Highest-risk hardening chunk | PR or design note |
-| Wednesday | Feature work, but only after systems blocker review | Progress with explicit risk class |
-| Thursday | Verification and adversarial review | Findings and fixes |
-| Friday | Deploy confidence and cleanup | Follow-ups, doc updates, incident log if needed |
+| Day       | Focus                                               | Output                                              |
+| --------- | --------------------------------------------------- | --------------------------------------------------- |
+| Monday    | Systems scorecard review                            | Current status, top risk, systems task for the week |
+| Tuesday   | Highest-risk hardening chunk                        | PR or design note                                   |
+| Wednesday | Feature work, but only after systems blocker review | Progress with explicit risk class                   |
+| Thursday  | Verification and adversarial review                 | Findings and fixes                                  |
+| Friday    | Deploy confidence and cleanup                       | Follow-ups, doc updates, incident log if needed     |
 
 This is intentionally biased toward one systems-hardening move every week even while features continue.
 

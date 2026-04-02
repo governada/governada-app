@@ -26,15 +26,15 @@ The bar is not "add more process." The bar is "increase confidence without crush
 
 ## System Map
 
-| System | Why it matters | Primary questions | Existing anchors |
-| --- | --- | --- | --- |
-| Product promise system | Users need to know what Governada is promising and when it is safe to rely on the product | What is the product guaranteeing? What is the degraded-mode behavior? What is the honest fallback when certainty is low? | `docs/strategy/context/build-manifest.md`, `docs/strategy/context/ux-constraints.md` |
-| Methodology governance | Scoring, alignment, and AI narratives are core product truth, not implementation details | What changed? Why did it change? How was it validated? Can it be reproduced or rolled back? | `lib/scoring/`, `lib/alignment/`, `docs/strategy/context/audit-rubric.md` |
-| Data integrity and freshness | The app is only as good as the pipeline from Koios through sync through Supabase through scoring | Is the data current? Is it complete? Is it internally consistent? Can anomalies be detected before users notice? | `docs/runbook.md`, `app/api/health/deep/route.ts`, `scripts/validate-integrity.ts` |
-| Runtime reliability and performance | Reliability is part of UX, especially for public browse, match, and workspace journeys | Are key routes fast enough? Are APIs resilient? Do failure modes degrade safely? | `.github/workflows/ci.yml`, `.github/workflows/post-deploy.yml`, `docs/operations/performance-baseline.md` |
-| Security and abuse resistance | Wallet auth, API access, rate limits, and admin actions must stay trustworthy under load and attack | What can be abused? What happens when dependencies fail? Are privileged actions observable and constrained? | `lib/api/rateLimit.ts`, `instrumentation.ts`, `docs/observability-setup.md` |
-| Release and incident execution | Shipping quickly only works if bad changes are detected, contained, and learned from | How risky is a change? What verification is required? What is the rollback path? | `CLAUDE.md`, `scripts/pre-merge-check.sh`, `scripts/rollback.sh` |
-| Learning loop | Product quality compounds only if signals from users, analytics, and incidents reach the roadmap | Which journeys are succeeding? Where is trust breaking? Which system deserves the next hardening cycle? | PostHog, Sentry, audits, strategy docs |
+| System                              | Why it matters                                                                                      | Primary questions                                                                                                        | Existing anchors                                                                                           |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Product promise system              | Users need to know what Governada is promising and when it is safe to rely on the product           | What is the product guaranteeing? What is the degraded-mode behavior? What is the honest fallback when certainty is low? | `docs/strategy/context/build-manifest.md`, `docs/strategy/context/ux-constraints.md`                       |
+| Methodology governance              | Scoring, alignment, and AI narratives are core product truth, not implementation details            | What changed? Why did it change? How was it validated? Can it be reproduced or rolled back?                              | `lib/scoring/`, `lib/alignment/`, `docs/strategy/context/audit-rubric.md`                                  |
+| Data integrity and freshness        | The app is only as good as the pipeline from Koios through sync through Supabase through scoring    | Is the data current? Is it complete? Is it internally consistent? Can anomalies be detected before users notice?         | `docs/runbook.md`, `app/api/health/deep/route.ts`, `scripts/validate-integrity.ts`                         |
+| Runtime reliability and performance | Reliability is part of UX, especially for public browse, match, and workspace journeys              | Are key routes fast enough? Are APIs resilient? Do failure modes degrade safely?                                         | `.github/workflows/ci.yml`, `.github/workflows/post-deploy.yml`, `docs/operations/performance-baseline.md` |
+| Security and abuse resistance       | Wallet auth, API access, rate limits, and admin actions must stay trustworthy under load and attack | What can be abused? What happens when dependencies fail? Are privileged actions observable and constrained?              | `lib/api/rateLimit.ts`, `instrumentation.ts`, `docs/observability-setup.md`                                |
+| Release and incident execution      | Shipping quickly only works if bad changes are detected, contained, and learned from                | How risky is a change? What verification is required? What is the rollback path?                                         | `CLAUDE.md`, `scripts/pre-merge-check.sh`, `scripts/rollback.sh`                                           |
+| Learning loop                       | Product quality compounds only if signals from users, analytics, and incidents reach the roadmap    | Which journeys are succeeding? Where is trust breaking? Which system deserves the next hardening cycle?                  | PostHog, Sentry, audits, strategy docs                                                                     |
 
 ---
 
@@ -42,16 +42,16 @@ The bar is not "add more process." The bar is "increase confidence without crush
 
 These are the promises the product should be operated against. Every significant change should name which promise it helps or risks.
 
-| Promise | Launch bar | World-class bar | Evidence source |
-| --- | --- | --- | --- |
-| Public availability | `governada.io` and deep health remain healthy or degraded, not critical, for 99.5% of 30-day windows | 99.9%+ with clear component-level status and no silent degradations | BetterStack, `/api/health`, `/api/health/deep` |
-| Data freshness | No critical sync type is stale by more than one schedule interval plus 15 minutes | Critical data under 5 minutes, all freshness breaches auto-detected and surfaced | Sync freshness checks, health endpoints, Inngest monitoring |
-| Correctness of intelligence | Zero unreviewed scoring or methodology changes reach production | Versioned methodology, reproducible validation, and published quality metrics | Audit reports, methodology changelog, integrity checks |
-| Critical journey success | Match, browse, proposal read, and DRep workspace read paths succeed at >99% request-level success | >99.7% with pre-merge gated journeys and failure drill coverage | Playwright, smoke tests, Sentry transactions |
-| Performance | Key pages hit p75 LCP < 2.5s and key APIs hit p95 < 500ms at launch baseline | p75 LCP < 1.5s, p95 APIs < 250ms, proactive capacity planning | Sentry Web Vitals, k6 baselines, bundle reports |
-| Change safety | Fewer than 15% of deploys need hotfix or rollback | Fewer than 5% with reliable risk-based gates | CI history, post-deploy results, incident log |
-| Incident response | Acknowledge P1 issues in <15 minutes and mitigate in <60 minutes during active launch windows | Acknowledge in <5 minutes, mitigate in <30 minutes, with practiced drills | Alert logs, runbook timestamps, incident log |
-| User honesty | When data is stale or a dependency is degraded, the UI is explicit instead of pretending everything is fine | Graceful degraded UX is designed for every critical surface | Banners, status cards, audits, product review |
+| Promise                     | Launch bar                                                                                                  | World-class bar                                                                  | Evidence source                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Public availability         | `governada.io` and deep health remain healthy or degraded, not critical, for 99.5% of 30-day windows        | 99.9%+ with clear component-level status and no silent degradations              | BetterStack, `/api/health`, `/api/health/deep`              |
+| Data freshness              | No critical sync type is stale by more than one schedule interval plus 15 minutes                           | Critical data under 5 minutes, all freshness breaches auto-detected and surfaced | Sync freshness checks, health endpoints, Inngest monitoring |
+| Correctness of intelligence | Zero unreviewed scoring or methodology changes reach production                                             | Versioned methodology, reproducible validation, and published quality metrics    | Audit reports, methodology changelog, integrity checks      |
+| Critical journey success    | Match, browse, proposal read, and DRep workspace read paths succeed at >99% request-level success           | >99.7% with pre-merge gated journeys and failure drill coverage                  | Playwright, smoke tests, Sentry transactions                |
+| Performance                 | Key pages hit p75 LCP < 2.5s and key APIs hit p95 < 500ms at launch baseline                                | p75 LCP < 1.5s, p95 APIs < 250ms, proactive capacity planning                    | Sentry Web Vitals, k6 baselines, bundle reports             |
+| Change safety               | Fewer than 15% of deploys need hotfix or rollback                                                           | Fewer than 5% with reliable risk-based gates                                     | CI history, post-deploy results, incident log               |
+| Incident response           | Acknowledge P1 issues in <15 minutes and mitigate in <60 minutes during active launch windows               | Acknowledge in <5 minutes, mitigate in <30 minutes, with practiced drills        | Alert logs, runbook timestamps, incident log                |
+| User honesty                | When data is stale or a dependency is degraded, the UI is explicit instead of pretending everything is fine | Graceful degraded UX is designed for every critical surface                      | Banners, status cards, audits, product review               |
 
 These promises should become the weekly operating scorecard.
 
@@ -61,16 +61,16 @@ These promises should become the weekly operating scorecard.
 
 Use this scorecard in the weekly systems review. Green means within bar, yellow means at risk, red means breaching or untrusted.
 
-| Dimension | Metric | Green | Yellow | Red |
-| --- | --- | --- | --- | --- |
-| Availability | 30-day uptime and current health status | >=99.5% and no critical deps | 99.0-99.49% or repeated degraded state | <99.0% or critical state |
-| Freshness | Critical sync age vs expected schedule | Within schedule + 15m | One breach in a week | Multiple breaches or unknown freshness |
-| Correctness | Open integrity anomalies older than 24h | 0 | 1 | 2+ |
-| Performance | p75 LCP / p95 key API latency | Under launch bar | Within 20% of bar | Worse than bar |
-| Change safety | Deploys needing hotfix/rollback in last 30 days | 0-1 | 2 | 3+ |
-| Test health | Critical journey suite pass rate | 100% | 95-99% | <95% or flaky |
-| Incident response | Time to acknowledge / mitigate | Within target | Missed once | Repeated misses |
-| User trust | Known stale-data or misleading UX issues | 0 | 1 known issue with mitigation | 2+ or unresolved critical issue |
+| Dimension         | Metric                                          | Green                        | Yellow                                 | Red                                    |
+| ----------------- | ----------------------------------------------- | ---------------------------- | -------------------------------------- | -------------------------------------- |
+| Availability      | 30-day uptime and current health status         | >=99.5% and no critical deps | 99.0-99.49% or repeated degraded state | <99.0% or critical state               |
+| Freshness         | Critical sync age vs expected schedule          | Within schedule + 15m        | One breach in a week                   | Multiple breaches or unknown freshness |
+| Correctness       | Open integrity anomalies older than 24h         | 0                            | 1                                      | 2+                                     |
+| Performance       | p75 LCP / p95 key API latency                   | Under launch bar             | Within 20% of bar                      | Worse than bar                         |
+| Change safety     | Deploys needing hotfix/rollback in last 30 days | 0-1                          | 2                                      | 3+                                     |
+| Test health       | Critical journey suite pass rate                | 100%                         | 95-99%                                 | <95% or flaky                          |
+| Incident response | Time to acknowledge / mitigate                  | Within target                | Missed once                            | Repeated misses                        |
+| User trust        | Known stale-data or misleading UX issues        | 0                            | 1 known issue with mitigation          | 2+ or unresolved critical issue        |
 
 ---
 
@@ -78,15 +78,15 @@ Use this scorecard in the weekly systems review. Green means within bar, yellow 
 
 Agents should be treated as role players inside a control loop, not as generic task executors.
 
-| Role | Mission | Default output |
-| --- | --- | --- |
-| Strategist | Define the user promise, business importance, and system boundary before work starts | Short spec with promise, constraints, and success metric |
-| Architect | Identify invariants, failure modes, data contracts, and verification needs | Design note or implementation brief |
-| Builder | Implement the change with the smallest safe blast radius | PR-sized code/doc change |
-| Breaker | Attack the proposal for correctness, regressions, abuse risk, and degraded-mode failures | Findings list ordered by severity |
-| Verifier | Confirm behavior with tests, measurement, and manual journey checks | Verification report with pass/fail evidence |
-| Release captain | Control merge, deploy, post-deploy verification, and rollback if needed | Release decision and deploy notes |
-| Scribe | Keep the operating docs, runbooks, scorecards, and follow-ups current | Updated docs and follow-up log |
+| Role            | Mission                                                                                  | Default output                                           |
+| --------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Strategist      | Define the user promise, business importance, and system boundary before work starts     | Short spec with promise, constraints, and success metric |
+| Architect       | Identify invariants, failure modes, data contracts, and verification needs               | Design note or implementation brief                      |
+| Builder         | Implement the change with the smallest safe blast radius                                 | PR-sized code/doc change                                 |
+| Breaker         | Attack the proposal for correctness, regressions, abuse risk, and degraded-mode failures | Findings list ordered by severity                        |
+| Verifier        | Confirm behavior with tests, measurement, and manual journey checks                      | Verification report with pass/fail evidence              |
+| Release captain | Control merge, deploy, post-deploy verification, and rollback if needed                  | Release decision and deploy notes                        |
+| Scribe          | Keep the operating docs, runbooks, scorecards, and follow-ups current                    | Updated docs and follow-up log                           |
 
 For risky work, the same agent should not be both Builder and final Verifier. A solo founder can still move fast, but every risky change needs at least one adversarial pass.
 
@@ -116,12 +116,12 @@ If an agent cannot fill this in, the task is under-specified.
 
 Use the highest matching class:
 
-| Class | Examples | Required gates |
-| --- | --- | --- |
-| R1 | Docs, copy, non-functional refactors, cosmetic UI | Lint/format as needed, visual spot-check if UI |
-| R2 | Read-only UI changes, non-critical analytics, small workflow improvements | Type-check, targeted tests, manual journey check |
-| R3 | Critical journeys, public API behavior, cache behavior, performance-sensitive routes, feature flags | Type-check, targeted tests, critical-path manual verification, adversarial review, post-deploy watch |
-| R4 | Auth, migrations, sync pipeline, scoring/methodology, security, incident response, admin tools, writes to important data paths | Explicit design note, focused tests, adversarial review, rollback plan, runbook update, post-deploy validation, follow-up audit |
+| Class | Examples                                                                                                                       | Required gates                                                                                                                  |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| R1    | Docs, copy, non-functional refactors, cosmetic UI                                                                              | Lint/format as needed, visual spot-check if UI                                                                                  |
+| R2    | Read-only UI changes, non-critical analytics, small workflow improvements                                                      | Type-check, targeted tests, manual journey check                                                                                |
+| R3    | Critical journeys, public API behavior, cache behavior, performance-sensitive routes, feature flags                            | Type-check, targeted tests, critical-path manual verification, adversarial review, post-deploy watch                            |
+| R4    | Auth, migrations, sync pipeline, scoring/methodology, security, incident response, admin tools, writes to important data paths | Explicit design note, focused tests, adversarial review, rollback plan, runbook update, post-deploy validation, follow-up audit |
 
 When in doubt, classify upward.
 
@@ -229,18 +229,18 @@ Goal: operate like launch has already happened.
 
 These artifacts should stay live. If they drift out of date, the operating system weakens.
 
-| Artifact | Purpose | Current state |
-| --- | --- | --- |
-| `docs/strategy/context/strategic-state.md` | Strategic memory for future sessions | Exists |
-| `docs/strategy/context/audit-rubric.md` | Repeatable scoring framework | Exists |
-| `docs/runbook.md` | Operational recovery steps | Exists |
-| `docs/observability-setup.md` | Alerting/dashboard setup | Exists |
-| `docs/operations/performance-baseline.md` | Performance/load baseline and bottlenecks | Exists |
-| `docs/strategy/context/systems-operating-system.md` | Core systems operating model | New in this plan |
-| `docs/operations/systems-scorecard.md` | Ongoing operating review | Created |
-| `docs/operations/incident-log.md` | Record of real failures, mitigations, and lessons | Created |
-| `docs/operations/methodology-changelog.md` | Version history for scoring/alignment logic | Created |
-| Data contract and reconciliation ledger | Critical source -> transform -> storage expectations | Must be created and maintained |
+| Artifact                                            | Purpose                                              | Current state                  |
+| --------------------------------------------------- | ---------------------------------------------------- | ------------------------------ |
+| `docs/strategy/context/strategic-state.md`          | Strategic memory for future sessions                 | Exists                         |
+| `docs/strategy/context/audit-rubric.md`             | Repeatable scoring framework                         | Exists                         |
+| `docs/runbook.md`                                   | Operational recovery steps                           | Exists                         |
+| `docs/observability-setup.md`                       | Alerting/dashboard setup                             | Exists                         |
+| `docs/operations/performance-baseline.md`           | Performance/load baseline and bottlenecks            | Exists                         |
+| `docs/strategy/context/systems-operating-system.md` | Core systems operating model                         | New in this plan               |
+| `docs/operations/systems-scorecard.md`              | Ongoing operating review                             | Created                        |
+| `docs/operations/incident-log.md`                   | Record of real failures, mitigations, and lessons    | Created                        |
+| `docs/operations/methodology-changelog.md`          | Version history for scoring/alignment logic          | Created                        |
+| Data contract and reconciliation ledger             | Critical source -> transform -> storage expectations | Must be created and maintained |
 
 ---
 

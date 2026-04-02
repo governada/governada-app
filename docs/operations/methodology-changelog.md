@@ -12,10 +12,10 @@
 - **Date:** YYYY-MM-DD
 - **Status:** Proposed / Shipped / Rolled back
 - **Area:** DRep scoring / SPO scoring / alignment / GHI / matching / AI narrative / other
-- **Author:** 
-- **Related PR / commit:** 
-- **Reason for change:** 
-- **User promise affected:** 
+- **Author:**
+- **Related PR / commit:**
+- **Reason for change:**
+- **User promise affected:**
 
 #### What changed
 
@@ -38,9 +38,7 @@
 
 #### Outcome after ship
 
--
-
----
+- ***
 
 ## Changelog
 

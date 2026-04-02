@@ -12,19 +12,19 @@
 - **Date:** YYYY-MM-DD
 - **Severity:** P0 / P1 / P2 / Near miss
 - **Status:** Open / Mitigated / Resolved / Follow-up pending
-- **Reported by:** 
+- **Reported by:**
 - **Detected by:** Alert / User report / Manual review / Audit / Other
-- **Systems affected:** 
-- **User impact:** 
-- **Time to acknowledge:** 
-- **Time to mitigate:** 
-- **Time to fully resolve:** 
+- **Systems affected:**
+- **User impact:**
+- **Time to acknowledge:**
+- **Time to mitigate:**
+- **Time to fully resolve:**
 
 #### Timeline
 
 | Time | Event |
-| --- | --- |
-|  |  |
+| ---- | ----- |
+|      |       |
 
 #### Root cause
 
@@ -40,9 +40,7 @@
 
 #### Follow-up owner
 
--
-
----
+- ***
 
 ## Incident History
 

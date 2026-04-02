@@ -17,6 +17,11 @@ export const dynamic = 'force-dynamic';
 
 const MOCK_PERSONAS = {
   anonymous: { address: 'mock_anonymous_000', segment: 'anonymous' },
+  admin: {
+    address: 'stake1uyv8x9n2s3c9y6n6k2y4d8j0s5h8l2w3q9r7m6t4p8c2v5g9u6y',
+    segment: 'citizen',
+    walletAddress: 'mock_admin_local',
+  },
   citizen: {
     address: 'stake1ux8q4rvxrjqlhnnhdhq0t94cxwm02ysnzpnhpmgfqnvmsclh3r6z',
     segment: 'citizen',
@@ -80,7 +85,10 @@ export async function POST(request: Request) {
   }
 
   const supabase = getSupabaseAdmin();
-  const mockAddress = `mock_${persona}_${config.address.slice(-12)}`;
+  const mockAddress =
+    'walletAddress' in config && config.walletAddress
+      ? config.walletAddress
+      : `mock_${persona}_${config.address.slice(-12)}`;
 
   // Find or create the mock dev user
   let userId: string;

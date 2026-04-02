@@ -1,6 +1,13 @@
 import { bech32 } from 'bech32';
 import { logger } from '@/lib/logger';
 
+function getConfiguredWallets(envValue: string | undefined): string[] {
+  return (envValue || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function deriveStakeFromPaymentAddress(paymentAddress: string): string | null {
   try {
     const decoded = bech32.decode(paymentAddress, 256);
@@ -39,19 +46,28 @@ function deriveStakeFromPaymentAddress(paymentAddress: string): string | null {
 }
 
 export function isAdminWallet(address: string): boolean {
-  const adminWallets = (process.env.ADMIN_WALLETS || '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-
   const lower = address.toLowerCase();
+  const adminWallets = getConfiguredWallets(process.env.ADMIN_WALLETS);
+  const devAdminWallets =
+    process.env.NODE_ENV === 'production'
+      ? []
+      : getConfiguredWallets(process.env.DEV_ADMIN_WALLETS);
 
   logger.info('isAdminWallet check', {
     context: 'admin-auth',
     inputAddr: lower.slice(0, 15) + '...',
     adminCount: adminWallets.length,
+    devAdminCount: devAdminWallets.length,
     adminPrefixes: adminWallets.map((w) => w.slice(0, 10) + '...'),
   });
+
+  if (devAdminWallets.includes(lower)) {
+    logger.info('isAdminWallet dev override', {
+      context: 'admin-auth',
+      inputAddr: lower.slice(0, 15) + '...',
+    });
+    return true;
+  }
 
   if (adminWallets.includes(lower)) return true;
 

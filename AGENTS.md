@@ -4,7 +4,7 @@ Provider-agnostic instructions for autonomous agents working in this repo. Treat
 
 ## Core Rules
 
-- Feature work happens in a worktree. The shared `governada-app` checkout stays on `main`. Hotfixes are the only exception.
+- Feature work happens in a fresh worktree. The shared `governada-app` checkout stays on `main`. Hotfixes are the only exception.
 - Search before creating. Extend existing components, hooks, routes, and utilities unless extension is genuinely infeasible.
 - Non-trivial bugs require root-cause analysis before fixing. Do not patch symptoms first.
 - `.env.local` points at production services. Never perform write-heavy syncs, backfills, or destructive data operations without explicit approval.
@@ -22,13 +22,14 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 
 ## Workflow
 
-1. Start from fresh `origin/main`.
-2. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
-3. Make the smallest change that solves the actual problem.
-4. Run `npm run agent:validate` and the relevant local verification for the scope.
-5. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
-6. Before merging, run `scripts/pre-merge-check.sh`.
-7. After merge, verify deploy health and smoke tests.
+1. If the task is feature work, create a fresh worktree first with `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`. Do not start feature work in the shared checkout.
+2. Start from fresh `origin/main`.
+3. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
+4. Make the smallest change that solves the actual problem.
+5. Run `npm run agent:validate` and the relevant local verification for the scope.
+6. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
+7. Before merging, run `scripts/pre-merge-check.sh`.
+8. After merge, verify deploy health and smoke tests.
 
 ## Autonomy Boundary
 

@@ -30,11 +30,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-gh-auth.sh"
+            "command": "bash .claude/hooks/report-gh-auth.sh"
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/sync-worktree.sh"
+            "command": "bash .claude/hooks/report-worktree-status.sh"
           }
         ]
       }

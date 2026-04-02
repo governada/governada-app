@@ -110,11 +110,11 @@ C:\Users\dalto\governada\
 
 ### Worktree Lifecycle Rules
 
-**Session start**: `sync-worktree.sh` auto-runs and HARD BLOCKS if behind origin/main with a dirty tree. Fix: stash+rebase or commit+rebase before any work (including planning). Reading stale files produces plans that reference deleted/renamed code.
+**Session start**: diagnostic-only hooks report branch/auth/freshness without mutating git state. This avoids shared `.git/worktrees/*` lock contention when multiple agents attach at once. If diagnostics show drift or missing setup, run `npm run worktree:sync`. If GitHub auth/remote setup is wrong, run `npm run auth:repair`.
 
-**During work**: Commit every 2-3 logical steps (even as `wip:`). A clean tree lets the hook auto-rebase when other PRs land.
+**During work**: Commit every 2-3 logical steps (even as `wip:`). If another PR lands while you're working, run `npm run worktree:sync` from a clean tree before continuing.
 
-**Before ending**: Commit or stash all changes. Leftover dirty state from one session blocks the NEXT session's auto-sync.
+**Before ending**: Commit or stash all changes. Leftover dirty state will block the next explicit sync/rebase.
 
 **Before pushing**: `check-behind-main.sh` blocks `git push` if behind origin/main. Fix: `git rebase origin/main`.
 
@@ -140,6 +140,8 @@ C:\Users\dalto\governada\
 | `pre-merge-check.sh`          | Block merge if CI running, branch behind, or errors spiking |
 | `cleanup.mjs`                 | Worktree/dir cleanup (dry-run or --clean)                   |
 | `new-worktree.ps1`            | Create a fresh feature worktree with `.env.local` setup     |
+| `sync-worktree.mjs`           | Explicit fetch/rebase/setup for an existing worktree        |
+| `repair-gh-auth.mjs`          | Explicit GitHub auth + remote repair                        |
 | `generate-registry-index.mjs` | Product registry staleness detection (--check for CI)       |
 | `notify.mjs`                  | Alert founder via Discord/Telegram at decision gates        |
 | `rollback.mjs`                | Automated Railway rollback with health verification         |

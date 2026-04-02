@@ -24,7 +24,7 @@ Max 3 retries before escalating.
 
 ```
 Agent(subagent_type="deploy-verifier", run_in_background=true,
-  prompt="PR #N merged. Wait 180s, then: npm run smoke-test -- --quiet && bash scripts/uptime-check.sh deploy")
+  prompt="PR #N merged. Wait 180s, then: npm run smoke-test -- --quiet && node scripts/uptime-check.mjs deploy")
 ```
 
 The unified `smoke-test --quiet` subsumes health checks, response time assertions, and data integrity validation. Only failures are printed.

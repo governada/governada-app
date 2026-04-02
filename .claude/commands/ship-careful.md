@@ -63,11 +63,11 @@ This instantly hides the feature from all users. No redeploy needed.
 After each rollout stage, notify via:
 
 ```bash
-bash scripts/notify.sh "info" "Canary: YOUR_FLAG at X%" "Metrics stable. Next ramp in 24h."
+node scripts/notify.mjs "info" "Canary: YOUR_FLAG at X%" "Metrics stable. Next ramp in 24h."
 ```
 
 If rolling back:
 
 ```bash
-bash scripts/notify.sh "deploy_blocked" "Canary rollback: YOUR_FLAG" "Disabled flag due to [reason]. Feature hidden from all users."
+node scripts/notify.mjs "deploy_blocked" "Canary rollback: YOUR_FLAG" "Disabled flag due to [reason]. Feature hidden from all users."
 ```

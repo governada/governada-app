@@ -12,7 +12,7 @@ You are a deployment verification agent for Governada (governada.io). After a PR
 1. Wait for Railway deploy: `sleep 180` (3 minutes for Docker build)
 2. Run unified smoke test: `npm run smoke-test -- --quiet`
    This covers health endpoints, response times, data integrity, and sync freshness.
-3. Ping heartbeat: `bash scripts/uptime-check.sh deploy`
+3. Ping heartbeat: `node scripts/uptime-check.mjs deploy`
 4. If Inngest functions changed (check your prompt): `curl -X PUT https://governada.io/api/inngest`
 
 ## Output

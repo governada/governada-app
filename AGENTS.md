@@ -4,7 +4,7 @@ Provider-agnostic instructions for autonomous agents working in this repo. Treat
 
 ## Core Rules
 
-- Feature work happens in a fresh worktree. The shared `governada-app` checkout stays on `main`. Hotfixes are the only exception.
+- Feature work happens in a fresh worktree. The shared `governada-app` checkout stays on `main`. Hotfixes are the only exception. Read-only inspection on `main` is fine; the first mutating step must happen only after the agent has created a worktree.
 - Search before creating. Extend existing components, hooks, routes, and utilities unless extension is genuinely infeasible.
 - Non-trivial bugs require root-cause analysis before fixing. Do not patch symptoms first.
 - `.env.local` points at production services. Never perform write-heavy syncs, backfills, or destructive data operations without explicit approval.

@@ -54,6 +54,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash .claude/hooks/check-worktree-before-mutation.sh"
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/check-behind-main.sh"
           }
         ]

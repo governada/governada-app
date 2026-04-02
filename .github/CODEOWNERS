@@ -9,4 +9,9 @@
 /lib/sync/** @governada
 /supabase/** @governada
 /scripts/rollback.sh @governada
+/scripts/rollback.mjs @governada
 /scripts/check-deploy-health.sh @governada
+/scripts/check-deploy-health.mjs @governada
+/scripts/check-error-rate.mjs @governada
+/scripts/notify.mjs @governada
+/scripts/uptime-check.mjs @governada

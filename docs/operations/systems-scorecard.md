@@ -2,7 +2,7 @@
 
 > **Purpose:** Weekly operating review for Governada's launch-critical systems.
 > **Cadence:** Update once per week.
-> **Primary reference:** `docs/strategy/context/systems-operating-system.md`
+> **Primary references:** `docs/strategy/context/systems-operating-system.md`, `docs/operations/slo-ledger.md`, `docs/operations/weekly-systems-review.md`
 
 ---
 

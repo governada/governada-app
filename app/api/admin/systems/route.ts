@@ -16,6 +16,8 @@ import {
   buildOverallNarrative,
   buildPromiseCards,
   buildRecommendedActions,
+  buildSloCards,
+  buildWeeklyReviewLoop,
   type PromiseInput,
 } from '@/lib/admin/systemsStatus';
 
@@ -317,8 +319,10 @@ export const GET = withRouteHandler(
     };
 
     const { cards, coverage } = buildPromiseCards(promiseInput);
+    const slos = buildSloCards(promiseInput);
     const overall = buildOverallNarrative(cards);
     const actions = buildRecommendedActions(cards);
+    const reviewLoop = buildWeeklyReviewLoop(slos, actions);
 
     const wins: string[] = [];
     const watchouts: string[] = [];
@@ -367,8 +371,10 @@ export const GET = withRouteHandler(
         apiPerformance: apiP95 === null ? 'No live sample' : `p95 ${formatLatency(apiP95)}`,
         criticalJourneyCoverage: `${coverage.automatedCount}/${coverage.totalCount} automated`,
       },
+      slos,
       promises: cards,
       actions,
+      reviewLoop,
       journeys: CRITICAL_JOURNEYS,
       automationCandidates: AUTOMATION_CANDIDATES,
       quickLinks: SYSTEMS_QUICK_LINKS,

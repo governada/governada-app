@@ -52,6 +52,38 @@ export interface QuickLink {
   description: string;
 }
 
+export interface SystemsSloCard {
+  id: string;
+  title: string;
+  status: SystemsStatus;
+  objective: string;
+  sli: string;
+  currentValue: string;
+  target: string;
+  alertThreshold: string;
+  summary: string;
+  actionLabel: string;
+  actionHref?: string;
+}
+
+export interface SystemsReviewStep {
+  id: string;
+  title: string;
+  summary: string;
+  output: string;
+  automationReady: boolean;
+}
+
+export interface SystemsReviewLoop {
+  cadence: string;
+  owner: string;
+  duration: string;
+  output: string;
+  currentFocus: string;
+  narrative: string;
+  steps: SystemsReviewStep[];
+}
+
 export interface SystemsDashboardData {
   generatedAt: string;
   overall: {
@@ -72,8 +104,10 @@ export interface SystemsDashboardData {
     apiPerformance: string;
     criticalJourneyCoverage: string;
   };
+  slos: SystemsSloCard[];
   promises: SystemsPromiseCard[];
   actions: SystemsAction[];
+  reviewLoop: SystemsReviewLoop;
   journeys: SystemsJourney[];
   automationCandidates: AutomationCandidate[];
   quickLinks: QuickLink[];
@@ -245,15 +279,16 @@ export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
     id: 'systems-sweep',
     title: 'Daily systems sweep',
     trigger: 'Any promise turns red or the day starts without a fresh review.',
-    action: 'Generate a founder-ready summary of health, freshness, integrity, and top risks.',
+    action:
+      'Review the systems feed, summarize SLO breaches or watch items, and surface the top operating risk for today.',
     whyItMatters: 'This can become a daily agent routine without changing the UI contract.',
   },
   {
     id: 'weekly-scorecard',
-    title: 'Weekly scorecard refresh',
+    title: 'Weekly systems review',
     trigger: 'Every Monday morning.',
     action:
-      'Update the systems scorecard, summarize drift, and recommend the one highest-leverage hardening task.',
+      'Refresh the scorecard, compare current signals against the SLO ledger, and recommend one hardening commitment for the week.',
     whyItMatters: 'This turns the dashboard into a repeatable operating loop.',
   },
   {

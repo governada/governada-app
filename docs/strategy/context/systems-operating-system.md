@@ -55,6 +55,8 @@ These are the promises the product should be operated against. Every significant
 
 These promises should become the weekly operating scorecard.
 
+The formal tracked launch bar for the current phase lives in `docs/operations/slo-ledger.md`.
+
 ---
 
 ## Launch Scorecard
@@ -197,6 +199,7 @@ Goal: detect drift before users do.
 
 Goal: keep the scorecard honest and reprioritize based on evidence.
 
+- Run the loop in `docs/operations/weekly-systems-review.md`
 - Update the Launch Scorecard
 - Review the top 3 system risks
 - Review critical journey regressions and flaky tests
@@ -237,6 +240,8 @@ These artifacts should stay live. If they drift out of date, the operating syste
 | `docs/observability-setup.md`                       | Alerting/dashboard setup                             | Exists                         |
 | `docs/operations/performance-baseline.md`           | Performance/load baseline and bottlenecks            | Exists                         |
 | `docs/strategy/context/systems-operating-system.md` | Core systems operating model                         | New in this plan               |
+| `docs/operations/slo-ledger.md`                     | Formal launch SLO set and breach rules               | Created                        |
+| `docs/operations/weekly-systems-review.md`          | Founder/agent review loop for the systems cockpit    | Created                        |
 | `docs/operations/systems-scorecard.md`              | Ongoing operating review                             | Created                        |
 | `docs/operations/incident-log.md`                   | Record of real failures, mitigations, and lessons    | Created                        |
 | `docs/operations/methodology-changelog.md`          | Version history for scoring/alignment logic          | Created                        |

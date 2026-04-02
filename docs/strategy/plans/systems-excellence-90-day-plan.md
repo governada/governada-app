@@ -44,7 +44,9 @@ Governada stops using vague quality language and starts operating against declar
 ### Required Deliverables
 
 - Systems Operating System published and socialized
+- SLO ledger created for the first formal launch bar
 - Weekly systems scorecard template created
+- Weekly systems review loop documented
 - Incident log created
 - Methodology changelog created for scoring/alignment changes
 - Critical journey matrix defined

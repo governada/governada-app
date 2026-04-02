@@ -6,12 +6,15 @@ import {
   AlertTriangle,
   ArrowRight,
   Bot,
+  CalendarDays,
   CheckCircle2,
   Clock3,
   Gauge,
   HeartPulse,
+  ListChecks,
   ShieldCheck,
   Sparkles,
+  Target,
 } from 'lucide-react';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type {
@@ -19,6 +22,9 @@ import type {
   SystemsDashboardData,
   SystemsJourney,
   SystemsPromiseCard,
+  SystemsReviewLoop,
+  SystemsReviewStep,
+  SystemsSloCard,
   SystemsStatus,
   AutomationCandidate,
 } from '@/lib/admin/systems';
@@ -187,6 +193,57 @@ function PromiseCard({ promise }: { promise: SystemsPromiseCard }) {
   );
 }
 
+function SloCard({ slo }: { slo: SystemsSloCard }) {
+  const classes = statusClasses(slo.status);
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {statusLabel(slo.status)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{slo.title}</h3>
+          </div>
+          <Target className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <p className="text-sm text-muted-foreground">{slo.objective}</p>
+
+        <div className="grid grid-cols-1 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Current</p>
+            <p className="text-sm font-semibold mt-1">{slo.currentValue}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Target</p>
+            <p className="text-sm mt-1">{slo.target}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Alert when</p>
+            <p className="text-sm mt-1">{slo.alertThreshold}</p>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">SLI: {slo.sli}</p>
+          <p className="text-sm text-muted-foreground">{slo.summary}</p>
+        </div>
+
+        {slo.actionHref ? (
+          <Button asChild size="sm" variant="outline" className="w-full justify-between">
+            <Link href={slo.actionHref}>
+              {slo.actionLabel}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function StoryColumn({
   title,
   icon: Icon,
@@ -219,6 +276,37 @@ function StoryColumn({
             </div>
           ))
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewStepCard({ step, index }: { step: SystemsReviewStep; index: number }) {
+  return (
+    <Card>
+      <CardContent className="pt-5 pb-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-chart-1/40 text-xs font-semibold text-chart-1">
+              {index}
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">{step.title}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{step.summary}</p>
+            </div>
+          </div>
+          {step.automationReady ? (
+            <Badge variant="outline" className="text-xs border-emerald-500/30 text-emerald-300">
+              Agent-ready
+            </Badge>
+          ) : null}
+        </div>
+        <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Required output
+          </p>
+          <p className="text-sm mt-1">{step.output}</p>
+        </div>
       </CardContent>
     </Card>
   );
@@ -376,6 +464,22 @@ export function SystemsClient() {
         </CardContent>
       </Card>
 
+      <section id="slos" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Launch SLOs</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          These are the first explicit launch bars for Governada. The purpose is to make it clear
+          what “good enough to trust” actually means week over week.
+        </p>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {data.slos.map((slo) => (
+            <SloCard key={slo.id} slo={slo} />
+          ))}
+        </div>
+      </section>
+
       <section id="actions" className="space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-chart-1" />
@@ -401,6 +505,73 @@ export function SystemsClient() {
             ))}
           </div>
         )}
+      </section>
+
+      <section id="weekly-review" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Weekly operating loop</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This is the weekly rhythm that turns the dashboard into an operating system instead of a
+          passive status page.
+        </p>
+        <Card>
+          <CardContent className="pt-6 space-y-5">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+              <Card className="bg-card/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Cadence
+                  </div>
+                  <p className="text-sm font-semibold mt-2">{data.reviewLoop.cadence}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Owner
+                  </div>
+                  <p className="text-sm font-semibold mt-2">{data.reviewLoop.owner}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    Duration
+                  </div>
+                  <p className="text-sm font-semibold mt-2">{data.reviewLoop.duration}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <ListChecks className="h-3.5 w-3.5" />
+                    Output
+                  </div>
+                  <p className="text-sm font-semibold mt-2">{data.reviewLoop.output}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-card/40 px-4 py-4 space-y-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                This week&apos;s focus
+              </p>
+              <p className="text-sm font-semibold">{data.reviewLoop.currentFocus}</p>
+              <p className="text-sm text-muted-foreground">{data.reviewLoop.narrative}</p>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {data.reviewLoop.steps.map((step, index) => (
+                <ReviewStepCard key={step.id} step={step} index={index + 1} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.45fr_0.85fr] gap-6">

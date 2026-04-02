@@ -23,7 +23,7 @@ interface Check {
 }
 
 const checks: Check[] = [
-// --- Deploy health checks (subsumes check-deploy-health.mjs) ---
+  // --- Deploy health checks (subsumes check-deploy-health.mjs) ---
   {
     name: 'Health (readiness)',
     path: '/api/health/ready',

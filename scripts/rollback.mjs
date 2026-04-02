@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { commandOutput, fetchWithTimeout, getScriptContext, normalizeBaseUrl } from './lib/runtime.mjs';
+import {
+  commandOutput,
+  fetchWithTimeout,
+  getScriptContext,
+  normalizeBaseUrl,
+} from './lib/runtime.mjs';
 
 const REPO = 'governada/governada-app';
 const PROD_URL = 'https://governada.io';
@@ -169,7 +174,9 @@ if (currentHealth.httpCode === '200' && currentHealth.healthStatus === 'healthy'
   process.exit(0);
 }
 
-console.log(`Production is unhealthy: HTTP ${currentHealth.httpCode}, status=${currentHealth.healthStatus}`);
+console.log(
+  `Production is unhealthy: HTTP ${currentHealth.httpCode}, status=${currentHealth.healthStatus}`,
+);
 console.log('');
 
 console.log('Step 2: Identifying commits...');
@@ -205,11 +212,19 @@ console.log('');
 console.log('Step 4: Coordinating rollback...');
 
 if (dryRun) {
-  console.log('  DRY RUN: Railway CLI redeploy is intentionally skipped because it only redeploys the latest deployment.');
-  console.log('  DRY RUN: immediate recovery still requires a Railway dashboard rollback to a previous successful deployment.');
+  console.log(
+    '  DRY RUN: Railway CLI redeploy is intentionally skipped because it only redeploys the latest deployment.',
+  );
+  console.log(
+    '  DRY RUN: immediate recovery still requires a Railway dashboard rollback to a previous successful deployment.',
+  );
 } else {
-  console.log('  Railway CLI redeploy is intentionally skipped because it only redeploys the latest deployment.');
-  console.log('  Immediate recovery requires a Railway dashboard rollback to a previous successful deployment.');
+  console.log(
+    '  Railway CLI redeploy is intentionally skipped because it only redeploys the latest deployment.',
+  );
+  console.log(
+    '  Immediate recovery requires a Railway dashboard rollback to a previous successful deployment.',
+  );
   if (rollbackPrUrl) {
     console.log(`  Revert PR ready for protected merge: ${rollbackPrUrl}`);
   } else {

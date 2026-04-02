@@ -153,7 +153,9 @@ for (const entry of readdirSync(workspace, { withFileTypes: true })) {
   const gitPath = path.join(dir, '.git');
   if (!statSync(gitPath, { throwIfNoEntry: false })) {
     ORPHANED.push(dir);
-    console.log(color(RED, `  ORPHANED: ${entry.name} (no .git -- leftover from removed worktree)`));
+    console.log(
+      color(RED, `  ORPHANED: ${entry.name} (no .git -- leftover from removed worktree)`),
+    );
   }
 }
 
@@ -193,10 +195,14 @@ for (const worktree of parseWorktrees()) {
     console.log(color(GREEN, `  MERGED: ${wtName} (${wtBranch} -- 0 ahead, ${behind} behind)`));
     MERGED_WORKTREES.push(wtPath);
   } else if (behind > 20) {
-    console.log(color(YELLOW, `  STALE: ${wtName} (${wtBranch} -- ${ahead} ahead, ${behind} behind main)`));
+    console.log(
+      color(YELLOW, `  STALE: ${wtName} (${wtBranch} -- ${ahead} ahead, ${behind} behind main)`),
+    );
     STALE_WORKTREES.push(wtPath);
   } else {
-    console.log(color(GREEN, `  ACTIVE: ${wtName} (${wtBranch} -- ${ahead} ahead, ${behind} behind)`));
+    console.log(
+      color(GREEN, `  ACTIVE: ${wtName} (${wtBranch} -- ${ahead} ahead, ${behind} behind)`),
+    );
     ACTIVE_WORKTREES.push(wtPath);
   }
 }
@@ -227,7 +233,11 @@ for (const entry of readdirSync(workspace, { withFileTypes: true })) {
     continue;
   }
 
-  if (!entry.name.endsWith('.zip') && !entry.name.endsWith('.bak') && !entry.name.endsWith('.tar.gz')) {
+  if (
+    !entry.name.endsWith('.zip') &&
+    !entry.name.endsWith('.bak') &&
+    !entry.name.endsWith('.tar.gz')
+  ) {
     continue;
   }
 
@@ -253,7 +263,12 @@ if (manifestExists && visionExists) {
   const manifestMod = statSync(manifest).mtimeMs;
 
   if (visionMod > manifestMod) {
-    console.log(color(YELLOW, '  STALE: build-manifest.md is older than ultimate-vision.md -- consider updating'));
+    console.log(
+      color(
+        YELLOW,
+        '  STALE: build-manifest.md is older than ultimate-vision.md -- consider updating',
+      ),
+    );
   } else {
     console.log(color(GREEN, '  IN SYNC: build-manifest.md is up to date'));
   }
@@ -287,7 +302,12 @@ for (const line of runGitLines([
 }
 
 if (GONE_BRANCHES.length > 0) {
-  console.log(color(YELLOW, `  ${GONE_BRANCHES.length} branches with deleted remote (squash-merged or remote-deleted)`));
+  console.log(
+    color(
+      YELLOW,
+      `  ${GONE_BRANCHES.length} branches with deleted remote (squash-merged or remote-deleted)`,
+    ),
+  );
   for (const branch of GONE_BRANCHES.slice(0, 10)) {
     console.log(color(YELLOW, `    GONE: ${branch}`));
   }
@@ -299,7 +319,12 @@ if (GONE_BRANCHES.length > 0) {
 }
 
 if (LOCAL_ONLY_BRANCHES.length > 0) {
-  console.log(color(YELLOW, `  ${LOCAL_ONLY_BRANCHES.length} local-only branches (never pushed or tracking removed)`));
+  console.log(
+    color(
+      YELLOW,
+      `  ${LOCAL_ONLY_BRANCHES.length} local-only branches (never pushed or tracking removed)`,
+    ),
+  );
   for (const branch of LOCAL_ONLY_BRANCHES.slice(0, 5)) {
     console.log(color(YELLOW, `    LOCAL: ${branch}`));
   }
@@ -375,7 +400,9 @@ if (mode === '--clean' || mode === '--clean-all') {
         deleted += 1;
       } catch {
         failed += 1;
-        console.log(color(RED, `    FAILED: ${branch} (may be current branch or have unmerged work)`));
+        console.log(
+          color(RED, `    FAILED: ${branch} (may be current branch or have unmerged work)`),
+        );
       }
     }
     console.log(`    Deleted: ${color(GREEN, String(deleted))}, Failed: ${failed}`);

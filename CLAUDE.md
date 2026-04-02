@@ -129,24 +129,24 @@ C:\Users\dalto\governada\
 
 ## Scripts
 
-| Script                       | Purpose                                                     |
-| ---------------------------- | ----------------------------------------------------------- |
-| `agent:validate`             | Enforce `force-dynamic` + Inngest registration constraints  |
-| `preflight`                  | format:check + lint + type-check + test                     |
-| `gen:types`                  | Supabase types after migrations                             |
-| `inngest:status`             | Verify function registration                                |
-| `posthog:check`              | Verify analytics events                                     |
-| `smoke-test`                 | Production health checks + response time assertions         |
-| `pre-merge-check.sh`         | Block merge if CI running, branch behind, or errors spiking |
-| `cleanup.mjs`                | Worktree/dir cleanup (dry-run or --clean)                   |
-| `new-worktree.ps1`           | Create a fresh feature worktree with `.env.local` setup     |
-| `generate-registry-index.mjs`| Product registry staleness detection (--check for CI)       |
-| `notify.mjs`                 | Alert founder via Discord/Telegram at decision gates        |
-| `rollback.mjs`               | Automated Railway rollback with health verification         |
-| `check-deploy-health.mjs`    | Post-deploy health + response time validation               |
-| `check-error-rate.mjs`       | Sentry error rate gate (blocks merge if elevated)           |
-| `uptime-check.mjs`           | Ping BetterStack heartbeat URLs                             |
-| `test-migration.mjs`         | Supabase branch database migration testing guide            |
+| Script                        | Purpose                                                     |
+| ----------------------------- | ----------------------------------------------------------- |
+| `agent:validate`              | Enforce `force-dynamic` + Inngest registration constraints  |
+| `preflight`                   | format:check + lint + type-check + test                     |
+| `gen:types`                   | Supabase types after migrations                             |
+| `inngest:status`              | Verify function registration                                |
+| `posthog:check`               | Verify analytics events                                     |
+| `smoke-test`                  | Production health checks + response time assertions         |
+| `pre-merge-check.sh`          | Block merge if CI running, branch behind, or errors spiking |
+| `cleanup.mjs`                 | Worktree/dir cleanup (dry-run or --clean)                   |
+| `new-worktree.ps1`            | Create a fresh feature worktree with `.env.local` setup     |
+| `generate-registry-index.mjs` | Product registry staleness detection (--check for CI)       |
+| `notify.mjs`                  | Alert founder via Discord/Telegram at decision gates        |
+| `rollback.mjs`                | Automated Railway rollback with health verification         |
+| `check-deploy-health.mjs`     | Post-deploy health + response time validation               |
+| `check-error-rate.mjs`        | Sentry error rate gate (blocks merge if elevated)           |
+| `uptime-check.mjs`            | Ping BetterStack heartbeat URLs                             |
+| `test-migration.mjs`          | Supabase branch database migration testing guide            |
 
 ## Context Files (Agent-Optimized)
 

@@ -4,15 +4,43 @@ import { execSync } from 'child_process';
 import { withSentryConfig } from '@sentry/nextjs';
 import withBundleAnalyzer from '@next/bundle-analyzer';
 
+function getCommonAncestor(paths: string[]): string {
+  const [first, ...rest] = paths
+    .map((value) => path.resolve(value))
+    .filter(Boolean)
+    .map((value) => value.split(path.sep));
+
+  if (!first) return __dirname;
+
+  let shared = first;
+  for (const current of rest) {
+    let index = 0;
+    while (index < shared.length && index < current.length && shared[index] === current[index]) {
+      index += 1;
+    }
+    shared = shared.slice(0, index);
+  }
+
+  if (shared.length === 0) {
+    return path.parse(__dirname).root;
+  }
+
+  return shared.join(path.sep) || path.parse(__dirname).root;
+}
+
 // Resolve the git main checkout root so turbopack can follow node_modules
 // junctions from worktrees back to the main checkout.
 let turbopackRoot: string;
 try {
-  turbopackRoot = execSync('git rev-parse --path-format=absolute --git-common-dir', {
+  const gitCommonDirRoot = execSync('git rev-parse --path-format=absolute --git-common-dir', {
     encoding: 'utf-8',
   })
     .trim()
     .replace(/[/\\]\.git$/, '');
+
+  // Worktrees need a root that contains both the worktree path and the
+  // shared git dir/node_modules target.
+  turbopackRoot = getCommonAncestor([__dirname, gitCommonDirRoot]);
 } catch {
   turbopackRoot = __dirname;
 }
@@ -72,21 +100,13 @@ const nextConfig: NextConfig = {
     return [
       // ── Navigation architecture v2 ────────────────────────────────────
       // Old sections → new sections
-      { source: '/discover', destination: '/governance', permanent: true },
-      { source: '/pulse', destination: '/governance/health', permanent: true },
-      { source: '/pulse/history', destination: '/governance/health', permanent: true },
-      {
-        source: '/pulse/report/:epoch',
-        destination: '/governance/health/epoch/:epoch',
-        permanent: true,
-      },
+      { source: '/discover', destination: '/?filter=dreps', permanent: true },
+      { source: '/proposals', destination: '/?filter=proposals', permanent: true },
       { source: '/my-gov', destination: '/', permanent: true },
       { source: '/my-gov/identity', destination: '/you/identity', permanent: true },
       { source: '/my-gov/inbox', destination: '/you', permanent: true },
       { source: '/you/inbox', destination: '/you', permanent: true },
       { source: '/my-gov/profile', destination: '/you/settings', permanent: true },
-      { source: '/engage', destination: '/', permanent: true },
-      { source: '/learn', destination: '/help', permanent: true },
       { source: '/methodology', destination: '/help/methodology', permanent: true },
 
       // Legacy routes (pre-governada)
@@ -102,8 +122,6 @@ const nextConfig: NextConfig = {
         destination: '/proposal/:txHash/:index',
         permanent: true,
       },
-      { source: '/proposals', destination: '/governance/proposals', permanent: true },
-
       // Committee route consolidation
       {
         source: '/discover/committee',

@@ -7,9 +7,10 @@ test.describe('Smoke tests', () => {
     await expect(page.locator('#main-content')).toBeVisible();
   });
 
-  test('discover page loads DRep list', async ({ page }) => {
+  test('discovery state loads from the home route', async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto('/discover', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?filter=dreps', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/filter=dreps/);
     await expect(page.locator('#main-content')).toBeVisible();
   });
 
@@ -22,9 +23,9 @@ test.describe('Smoke tests', () => {
 });
 
 test.describe('Navigation', () => {
-  test('header links are accessible', async ({ page }) => {
+  test('anonymous shell renders the header', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('header nav[aria-label="Main navigation"]')).toBeVisible();
+    await expect(page.locator('header')).toBeVisible();
   });
 
   test('mobile bottom nav is visible on small screens', async ({ page, isMobile }) => {

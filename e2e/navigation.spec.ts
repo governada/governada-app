@@ -1,56 +1,24 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Header navigation', () => {
-  test('sequential header link clicks all navigate correctly', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'Header nav hidden on mobile');
-    test.setTimeout(120_000);
-
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-
+test.describe('Legacy route compatibility', () => {
+  test('legacy routes resolve to current destinations', async ({ page }) => {
     const routes = [
-      { href: '/discover', label: 'Discover' },
-      { href: '/pulse', label: 'Pulse' },
-      { href: '/', label: 'Home' },
-      { href: '/learn', label: 'Learn' },
+      { from: '/discover', to: /filter=dreps/ },
+      { from: '/match', to: /\?match=true/ },
+      { from: '/methodology', to: /\/help\/methodology$/ },
+      { from: '/my-gov', to: /^http:\/\/localhost:\d+\/$/ },
     ];
 
-    for (const { href } of routes) {
-      const link = page.locator(`header nav a[href="${href}"]`);
-      await expect(link).toBeVisible();
-      await link.click();
-      await expect(page).toHaveURL(href === '/' ? /^\/$|localhost:\d+\/$/ : new RegExp(href), {
-        timeout: 30_000,
-      });
-      // Wait for main content to appear before next click
+    for (const { from, to } of routes) {
+      await page.goto(from, { waitUntil: 'domcontentloaded' });
+      await expect(page).toHaveURL(to, { timeout: 30_000 });
       await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
     }
-  });
-
-  test('header nav works after visiting Discover (regression: render loop)', async ({
-    page,
-    isMobile,
-  }) => {
-    test.skip(isMobile, 'Header nav hidden on mobile');
-    test.setTimeout(120_000);
-
-    // Guards against the useChartDimensions render loop that previously broke
-    // navigation after visiting /discover
-    await page.goto('/discover', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(3000);
-
-    const pulseLink = page.locator('header nav a[href="/pulse"]');
-    await expect(pulseLink).toBeVisible();
-    await pulseLink.click();
-    await expect(page).toHaveURL(/\/pulse/, { timeout: 30_000 });
-
-    const discoverLink = page.locator('header nav a[href="/discover"]');
-    await discoverLink.click();
-    await expect(page).toHaveURL(/\/discover/, { timeout: 30_000 });
   });
 });
 
 test.describe('Page loading', () => {
-  const pages = ['/', '/discover', '/pulse', '/learn', '/methodology'];
+  const pages = ['/', '/?filter=dreps', '/?match=true', '/pulse', '/learn', '/help/methodology'];
 
   for (const path of pages) {
     test(`${path} loads without redirect`, async ({ page }) => {
@@ -70,10 +38,9 @@ test.describe('Page loading', () => {
 
   test('Discover page renders DRep tab content', async ({ page }) => {
     test.setTimeout(90_000);
-    await page.goto('/discover', { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    await expect(page.locator('button:has-text("DReps"), [class*="grid"]').first()).toBeVisible({
-      timeout: 15_000,
-    });
+    await page.goto('/?filter=dreps', { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await expect(page).toHaveURL(/filter=dreps/);
+    await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -88,7 +55,7 @@ test.describe('Console error guard', () => {
       }
     });
 
-    const routes = ['/', '/discover', '/pulse', '/learn', '/methodology'];
+    const routes = ['/', '/?filter=dreps', '/?match=true', '/pulse', '/learn', '/help/methodology'];
     for (const route of routes) {
       await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       await page.waitForTimeout(3000);

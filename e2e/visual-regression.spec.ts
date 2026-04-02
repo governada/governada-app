@@ -11,8 +11,7 @@ import { test, expect } from '@playwright/test';
  * Run against production (PLAYWRIGHT_BASE_URL=https://governada.io) for stable baselines.
  */
 
-const PRODUCTION_URL = 'https://governada.io';
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? PRODUCTION_URL;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? '';
 const isProduction = baseURL.includes('governada.io');
 
 test.describe('Visual Regression - Key Pages', () => {
@@ -32,7 +31,7 @@ test.describe('Visual Regression - Key Pages', () => {
   });
 
   test('discover page renders correctly', async ({ page }) => {
-    await page.goto('/discover');
+    await page.goto('/?filter=dreps');
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveScreenshot('discover.png', {
       fullPage: false,
@@ -40,7 +39,7 @@ test.describe('Visual Regression - Key Pages', () => {
   });
 
   test('match page renders correctly', async ({ page }) => {
-    await page.goto('/match');
+    await page.goto('/?match=true');
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveScreenshot('match.png', {
       fullPage: false,

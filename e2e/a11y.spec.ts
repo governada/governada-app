@@ -10,11 +10,11 @@ import type { Result } from 'axe-core';
 
 const KEY_PAGES = [
   { name: 'Home', path: '/' },
-  { name: 'Discover', path: '/discover' },
-  { name: 'Match', path: '/match' },
+  { name: 'Discovery', path: '/?filter=dreps' },
+  { name: 'Match', path: '/?match=true' },
   { name: 'Engage', path: '/engage' },
-  { name: 'My Gov', path: '/my-gov' },
   { name: 'Pulse', path: '/pulse' },
+  { name: 'Learn', path: '/learn' },
 ];
 
 test.describe('a11y: WCAG 2.1 AA audit', () => {
@@ -51,8 +51,8 @@ test.describe('a11y: WCAG 2.1 AA audit', () => {
   test('DRep profile page has no critical or serious violations', async ({ page }) => {
     test.setTimeout(60_000);
     // Navigate to discover and find a DRep link
-    await page.goto('/discover', { waitUntil: 'domcontentloaded' });
-    const drepLink = page.locator('a[href^="/drep/"]').first();
+    await page.goto('/?filter=dreps', { waitUntil: 'domcontentloaded' });
+    const drepLink = page.locator('a[href^="/drep/"], a[href^="/g/drep/"]').first();
     const hasLink = await drepLink.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (!hasLink) {
@@ -78,8 +78,8 @@ test.describe('a11y: WCAG 2.1 AA audit', () => {
 
   test('Proposal detail page has no critical or serious violations', async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto('/discover?tab=proposals', { waitUntil: 'domcontentloaded' });
-    const proposalLink = page.locator('a[href^="/proposal/"]').first();
+    await page.goto('/?filter=proposals', { waitUntil: 'domcontentloaded' });
+    const proposalLink = page.locator('a[href^="/proposal/"], a[href^="/g/proposal/"]').first();
     const hasLink = await proposalLink.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (!hasLink) {

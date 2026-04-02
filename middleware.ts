@@ -27,11 +27,11 @@ const CORS_HEADERS = {
 
 /** Old /discover?tab= → new /governance/* routes */
 const DISCOVER_TAB_MAP: Record<string, string> = {
-  dreps: '/governance/representatives',
-  spos: '/governance/pools',
-  proposals: '/governance/proposals',
+  dreps: '/?filter=dreps',
+  spos: '/?filter=spos',
+  proposals: '/?filter=proposals',
   committee: '/governance/committee',
-  rankings: '/governance/representatives?view=rankings',
+  rankings: '/?filter=dreps&view=rankings',
 };
 
 const AUTH_REQUIRED_PATHS = ['/workspace', '/you'];

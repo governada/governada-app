@@ -139,8 +139,10 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
+          include-hidden-files: true
           name: nextjs-build
           path: |
+            .next/standalone
             .next/static
             .next/BUILD_ID
             .next/build-manifest.json

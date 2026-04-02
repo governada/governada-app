@@ -51,11 +51,10 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
       - name: Start server and run E2E
         run: |
-          npx next start &
+          PORT=3000 node .next/standalone/server.js &
           npx wait-on http://localhost:3000 --timeout 30000
           npx playwright test --project=chromium
         env:
-          PORT: 3000
           PLAYWRIGHT_BASE_URL: http://localhost:3000
       - name: Upload Playwright report
         if: always()

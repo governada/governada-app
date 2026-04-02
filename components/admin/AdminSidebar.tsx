@@ -8,6 +8,7 @@ import {
   Database,
   Eye,
   Flag,
+  Gauge,
   LayoutDashboard,
   Shield,
   TrendingUp,
@@ -27,6 +28,11 @@ const NAV_ITEMS = [
     label: 'Pipeline',
     href: '/admin/pipeline',
     icon: Activity,
+  },
+  {
+    label: 'Systems',
+    href: '/admin/systems',
+    icon: Gauge,
   },
   {
     label: 'Governance',

@@ -25,6 +25,7 @@ import {
   type DRepProfileData,
   type DelegationSnapshotData,
 } from '@/lib/scoring';
+import { buildDelegationSnapshotInsert } from '@/lib/scoring/delegationSnapshots';
 import {
   batchUpsert,
   SyncLogger,
@@ -573,25 +574,6 @@ export const syncDrepScores = inngest.createFunction(
         {
           const snapshotInserts: Record<string, unknown>[] = [];
           for (const [drepId, profile] of profiles) {
-            // Find previous epoch snapshot for this DRep
-            const prevSnap = delegationSnapshots.get(drepId);
-            const prevEpoch = prevSnap?.epochs?.[prevSnap.epochs.length - 1];
-
-            let newDelegators: number | null = null;
-            let lostDelegators: number | null = null;
-
-            if (prevEpoch && prevEpoch.epoch < currentEpoch) {
-              // Estimate new/lost from count difference
-              const diff = profile.delegatorCount - prevEpoch.delegatorCount;
-              if (diff >= 0) {
-                newDelegators = diff;
-                lostDelegators = 0;
-              } else {
-                newDelegators = 0;
-                lostDelegators = Math.abs(diff);
-              }
-            }
-
             // Get total delegated power from info
             const info = (drepRows?.find((r) => r.id === drepId)?.info || {}) as Record<
               string,
@@ -601,11 +583,12 @@ export const syncDrepScores = inngest.createFunction(
 
             snapshotInserts.push({
               drep_id: drepId,
-              epoch: currentEpoch,
-              delegator_count: profile.delegatorCount,
-              total_power_lovelace: totalPower,
-              new_delegators: newDelegators,
-              lost_delegators: lostDelegators,
+              ...buildDelegationSnapshotInsert(
+                delegationSnapshots.get(drepId),
+                currentEpoch,
+                profile.delegatorCount,
+                totalPower,
+              ),
             });
           }
 

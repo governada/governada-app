@@ -32,7 +32,7 @@ const SNAPSHOT_HEAL_MAP: Record<string, string> = {
   drep_power_snapshots: 'drepscore/sync.dreps',
   treasury_snapshots: 'drepscore/sync.treasury',
   treasury_health_snapshots: 'drepscore/sync.treasury',
-  delegation_snapshots: 'drepscore/sync.dreps',
+  delegation_snapshots: 'drepscore/sync.scores',
   spo_score_snapshots: 'drepscore/sync.spo-scores',
   spo_alignment_snapshots: 'drepscore/sync.spo-cc-votes',
   inter_body_alignment_snapshots: 'drepscore/sync.spo-cc-votes',
@@ -182,23 +182,30 @@ export const checkSnapshotCompleteness = inngest.createFunction(
           detail: `${alignSnapCount ?? 0}/${alignCacheCount ?? 0} proposals (${alignSnapCoverage.toFixed(1)}%)`,
         });
 
-        // 9. Proposal vote snapshots for current epoch
+        // 9. Proposal vote snapshots â€” written during epoch transition for prevEpoch
         const { count: voteSnapCount } = await supabase
           .from('proposal_vote_snapshots')
           .select('proposal_tx_hash', { count: 'exact', head: true })
-          .eq('epoch', epoch);
-        const { data: openProposalCount } = await supabase
+          .eq('epoch', prevEpoch);
+        const { data: proposalLifecycleRows } = await supabase
           .from('proposals')
-          .select('tx_hash', { count: 'exact', head: true })
-          .is('ratified_epoch', null)
-          .is('enacted_epoch', null)
-          .is('dropped_epoch', null)
-          .is('expired_epoch', null);
-        const openCount = (openProposalCount as unknown as number) ?? 0;
+          .select('proposed_epoch, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch')
+          .not('proposed_epoch', 'is', null);
+        const proposalsActiveInPrevEpoch = (proposalLifecycleRows ?? []).filter((proposal) => {
+          if (proposal.proposed_epoch == null || proposal.proposed_epoch > prevEpoch) return false;
+          const terminalEpochs = [
+            proposal.ratified_epoch,
+            proposal.enacted_epoch,
+            proposal.dropped_epoch,
+            proposal.expired_epoch,
+          ].filter((epochNo): epochNo is number => epochNo != null);
+          const endEpoch = terminalEpochs.length > 0 ? Math.min(...terminalEpochs) : Infinity;
+          return endEpoch >= prevEpoch;
+        }).length;
         results.push({
           name: 'proposal_vote_snapshots',
-          passed: (voteSnapCount ?? 0) > 0 || openCount === 0,
-          detail: `${voteSnapCount ?? 0} proposals snapshotted for epoch ${epoch}`,
+          passed: (voteSnapCount ?? 0) > 0 || proposalsActiveInPrevEpoch === 0,
+          detail: `${voteSnapCount ?? 0}/${proposalsActiveInPrevEpoch} proposals snapshotted for epoch ${prevEpoch}`,
         });
 
         // 10. Delegation snapshots for current epoch

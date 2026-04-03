@@ -222,6 +222,7 @@ None - execute directly. The documented repo policy already prefers database-fir
 **Expected score impact:** Data Architecture and Compounding: reduce order-dependent partial state risk
 **Depends on:** Chunk 1
 **PR group:** E
+**Implementation status:** In progress in this worktree
 
 ### Context
 
@@ -244,6 +245,18 @@ The executing agent should confirm the final ownership design before building if
 - Each snapshot table has one clear owning sync stage.
 - A failed follow-on sync cannot leave ambiguous mixed-semantic rows.
 - The resulting pipeline is documented in `deep-dive-01-data-plane.md`.
+
+### Progress So Far
+
+- `proposal_vote_snapshots` is now owned by `generate-epoch-summary.ts`.
+- `lib/sync/proposals.ts` no longer writes that table.
+- `inngest/functions/check-snapshot-completeness.ts` now validates proposal vote snapshots against `prevEpoch`, which matches the epoch-transition write path.
+- `sync-dreps` no longer writes current-epoch `drep_score_history`.
+- `sync-dreps` no longer writes current-epoch `delegation_snapshots`.
+- `sync-drep-scores` now uses `lib/scoring/delegationSnapshots.ts` to preserve or backfill delegation deltas on same-epoch reruns.
+- Verified with `npm run test:unit -- __tests__/scoring/delegationSnapshots.test.ts`.
+- Verified with `npm run type-check`.
+- Remaining work: decide the final owner for previous-epoch `delegation_snapshots`, where overlap with `generate-epoch-summary.ts` still exists.
 
 ### Files to Read First
 

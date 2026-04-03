@@ -138,10 +138,19 @@ External consumers asking for active-only DReps are currently receiving a docume
 
 Multiple jobs currently own the same snapshot tables. Final state therefore depends on job order, epoch timing, and follow-on job success. A partial failure can leave partially refreshed rows with different semantics than the fully completed pipeline.
 
+**Implementation status**
+
+- Partially improved in this worktree.
+- `proposal_vote_snapshots` is now treated as a historical previous-epoch snapshot owned by `generate-epoch-summary.ts`.
+- `lib/sync/proposals.ts` no longer writes that table, and `check-snapshot-completeness.ts` now validates the previous epoch instead of the current one.
+- `sync-dreps` no longer writes current-epoch `delegation_snapshots` or `drep_score_history`; `sync-drep-scores` is now the sole current-epoch owner for both tables.
+- `sync-drep-scores` now preserves or backfills `new_delegators` and `lost_delegators` on same-epoch reruns instead of nulling them out.
+- Previous-epoch `delegation_snapshots` ownership still overlaps with `generate-epoch-summary.ts`, so this finding remains open.
+
 ## Risk Ranking
 
 1. Public API contract bug: `active_only` does not mean active.
-2. Split ownership of snapshot tables across sync stages and epoch-summary jobs.
+2. Remaining snapshot ownership overlap in previous-epoch `delegation_snapshots`.
 3. Remaining database-first boundary violations still exist in shared data helpers.
 4. Broader health-policy duplication still exists outside the DRep freshness slice.
 
@@ -149,12 +158,12 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 - Which other read helpers besides the DRep path bypass the database-first boundary under degradation?
 - Should other sync domains adopt the same layered freshness model now used for DReps, or is a broader health-policy refactor still needed first?
-- Which sync stage should be the sole owner of `delegation_snapshots`, `drep_score_history`, and `proposal_vote_snapshots`?
+- Should `generate-epoch-summary.ts` remain the previous-epoch finalizer for `delegation_snapshots`, or should that responsibility move fully into the scoring/data pipeline?
 
 ## Next Actions
 
 1. Continue tracing proposal, engagement, and workspace data paths to see whether the same boundary problems repeat outside the DRep flow.
-2. Decide the target ownership model for DRep snapshots before implementation starts.
+2. Decide the target ownership model for previous-epoch `delegation_snapshots`.
 3. Remove the remaining direct Koios usage from shared data helpers, starting with governance-threshold lookup.
 
 ## Handoff
@@ -179,17 +188,19 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 - `lib/env.ts`
 - `lib/api/handler.ts`
 - `lib/syncPolicy.ts`
+- `lib/scoring/delegationSnapshots.ts`
 - `vitest.config.ts`
 - `playwright.config.ts`
 - `__tests__/lib/data.test.ts`
 - `__tests__/api/health.test.ts`
+- `__tests__/scoring/delegationSnapshots.test.ts`
 
 **Validated findings**
 
 - The main shared DRep list read no longer falls back to Koios, but shared data helpers still contain direct upstream reads for governance thresholds.
 - DRep freshness is now governed by an explicit layered policy instead of a false-stale 15-minute read threshold.
 - The public `active_only` DRep API flag currently maps to documentation completeness rather than active status. Fixed earlier in this worktree.
-- `delegation_snapshots`, `drep_score_history`, and `proposal_vote_snapshots` have split ownership across multiple sync and epoch-summary jobs.
+- `proposal_vote_snapshots` is now owned by the epoch-summary path, and current-epoch `delegation_snapshots` plus `drep_score_history` are now scoring-owned. Previous-epoch `delegation_snapshots` ownership still needs a final decision.
 
 **Open questions**
 
@@ -199,8 +210,8 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 - Continue the deep dive into proposals and engagement paths to determine whether the same anti-patterns repeat.
 - Remove the remaining shared-data direct Koios reads, starting with governance-threshold lookup.
-- Choose a single-owner model for the affected snapshot tables before implementation.
+- Choose a final owner model for previous-epoch `delegation_snapshots` before closing the data-plane review.
 
 **Next agent starts here**
 
-Start with the remaining direct Koios lookup in `lib/data.ts:getVotingPowerSummary()`, then decide whether that data belongs in Supabase or in a clearly isolated upstream-only helper. After that, continue the snapshot-ownership audit across DRep and proposal pipelines.
+Start with the remaining direct Koios lookup in `lib/data.ts:getVotingPowerSummary()`, then decide whether that data belongs in Supabase or in a clearly isolated upstream-only helper. After that, finish the previous-epoch `delegation_snapshots` ownership decision.

@@ -59,3 +59,5 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-03 | Tightened internal route rate limiting to fail closed on shared limiter errors, aligned v1 API key transport with `X-API-Key`, and made tier-gated GETs non-publicly cacheable. |
 | 2026-04-03 | Fixed the DRep freshness mismatch by introducing a shared policy in `lib/syncPolicy.ts`, retriggering background syncs at 8h, degrading health at 12h, and adding regression coverage for `getAllDReps()`. |
 | 2026-04-03 | Removed the Koios fallback from `getAllDReps()`, preserved `/api/dreps` as an explicit degraded payload for existing clients, and added regression coverage for the shared-read contract change. |
+| 2026-04-03 | Narrowed `proposal_vote_snapshots` to a single historical owner by removing the proposals-sync writer and aligning completeness checks to the previous-epoch snapshot contract. |
+| 2026-04-03 | Removed duplicate current-epoch `drep_score_history` and `delegation_snapshots` writes from `sync-dreps`, and made same-epoch delegation-delta computation idempotent in `sync-drep-scores`. |

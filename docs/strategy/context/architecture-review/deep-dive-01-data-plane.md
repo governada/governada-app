@@ -60,9 +60,9 @@ This is the right overall shape. The main review risk is not missing architectur
 
 ## Findings
 
-### 1. The shared DRep read path violates the documented database-first contract
+### 1. The shared DRep read path violated the documented database-first contract
 
-**Severity:** High
+**Severity:** Substantially reduced in this worktree
 
 **Evidence**
 
@@ -76,10 +76,12 @@ The intended architecture is database-first reads through cached Supabase data. 
 
 **Implementation status**
 
-- Partially improved in this worktree.
+- Substantially improved in this worktree.
 - `getAllDReps()` no longer falls back to Koios when the Supabase cache is empty or unavailable.
 - The legacy `/api/dreps` route now returns an explicit degraded payload with empty arrays instead of silently switching sources or shape-breaking client callers.
-- Remaining direct Koios usage in the shared data layer still exists for governance-threshold lookup in `getVotingPowerSummary()`, so this finding remains open.
+- `lib/data.ts:getVotingPowerSummary()` no longer calls Koios directly. Threshold lookup now goes through `lib/governanceThresholds.ts`, which reads Supabase `epoch_params` first and uses Koios only as an isolated fallback inside that resolver.
+- Parameter-change proposals now resolve the maximum applicable DRep threshold across all affected protocol-parameter groups using the stored `param_changes` payload.
+- Follow-up cleanup still exists outside this finding: `epoch_params` is not yet a repo-managed typed table contract, and other non-shared proposal/workspace surfaces still maintain local threshold constants.
 
 ### 2. DRep freshness logic was misaligned with the actual sync cadence
 
@@ -149,22 +151,23 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 ## Risk Ranking
 
-1. Public API contract bug: `active_only` does not mean active.
-2. Remaining snapshot ownership overlap in previous-epoch `delegation_snapshots`.
-3. Remaining database-first boundary violations still exist in shared data helpers.
-4. Broader health-policy duplication still exists outside the DRep freshness slice.
+1. Remaining snapshot ownership overlap in previous-epoch `delegation_snapshots`.
+2. Broader health-policy duplication still exists outside the DRep freshness slice.
+3. Proposal and workspace surfaces still have threshold-constant drift outside the shared resolver path.
+4. Other read helpers may still bypass canonical cached boundaries under degradation.
 
 ## Open Questions
 
 - Which other read helpers besides the DRep path bypass the database-first boundary under degradation?
 - Should other sync domains adopt the same layered freshness model now used for DReps, or is a broader health-policy refactor still needed first?
 - Should `generate-epoch-summary.ts` remain the previous-epoch finalizer for `delegation_snapshots`, or should that responsibility move fully into the scoring/data pipeline?
+- Should `epoch_params` be promoted into a typed, repo-managed Supabase contract now that the shared threshold resolver depends on it?
 
 ## Next Actions
 
 1. Continue tracing proposal, engagement, and workspace data paths to see whether the same boundary problems repeat outside the DRep flow.
 2. Decide the target ownership model for previous-epoch `delegation_snapshots`.
-3. Remove the remaining direct Koios usage from shared data helpers, starting with governance-threshold lookup.
+3. Audit remaining proposal and workspace threshold consumers against the new shared resolver.
 
 ## Handoff
 
@@ -175,7 +178,8 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 - Fixed the DRep freshness-policy mismatch by introducing a shared DRep sync policy.
 - Updated the DRep read path to retrigger only when data is actually overdue.
 - Aligned the main health, sync health, admin integrity alert, and freshness-guard surfaces to the shared DRep policy.
-- Added focused regression coverage for the DRep freshness behavior and revalidated the health endpoint behavior.
+- Removed direct governance-threshold Koios reads from `lib/data.ts` by introducing a Supabase-first shared resolver in `lib/governanceThresholds.ts`.
+- Added focused regression coverage for the threshold resolver and `getVotingPowerSummary()` integration.
 
 **Evidence collected**
 
@@ -188,16 +192,18 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 - `lib/env.ts`
 - `lib/api/handler.ts`
 - `lib/syncPolicy.ts`
+- `lib/governanceThresholds.ts`
 - `lib/scoring/delegationSnapshots.ts`
 - `vitest.config.ts`
 - `playwright.config.ts`
 - `__tests__/lib/data.test.ts`
+- `__tests__/lib/governanceThresholds.test.ts`
 - `__tests__/api/health.test.ts`
 - `__tests__/scoring/delegationSnapshots.test.ts`
 
 **Validated findings**
 
-- The main shared DRep list read no longer falls back to Koios, but shared data helpers still contain direct upstream reads for governance thresholds.
+- The main shared DRep list read no longer falls back to Koios, and governance-threshold lookup is now isolated behind a Supabase-first resolver instead of a direct `lib/data.ts` upstream call.
 - DRep freshness is now governed by an explicit layered policy instead of a false-stale 15-minute read threshold.
 - The public `active_only` DRep API flag currently maps to documentation completeness rather than active status. Fixed earlier in this worktree.
 - `proposal_vote_snapshots` is now owned by the epoch-summary path, and current-epoch `delegation_snapshots` plus `drep_score_history` are now scoring-owned. Previous-epoch `delegation_snapshots` ownership still needs a final decision.
@@ -209,9 +215,9 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 **Next actions**
 
 - Continue the deep dive into proposals and engagement paths to determine whether the same anti-patterns repeat.
-- Remove the remaining shared-data direct Koios reads, starting with governance-threshold lookup.
+- Audit the remaining proposal/workspace threshold consumers against `lib/governanceThresholds.ts`.
 - Choose a final owner model for previous-epoch `delegation_snapshots` before closing the data-plane review.
 
 **Next agent starts here**
 
-Start with the remaining direct Koios lookup in `lib/data.ts:getVotingPowerSummary()`, then decide whether that data belongs in Supabase or in a clearly isolated upstream-only helper. After that, finish the previous-epoch `delegation_snapshots` ownership decision.
+Start with the previous-epoch `delegation_snapshots` ownership decision, then review whether the remaining proposal/workspace threshold consumers should move onto `lib/governanceThresholds.ts`.

@@ -9,6 +9,7 @@ import { isWellDocumented } from '@/utils/documentation';
 import { logger } from '@/lib/logger';
 import { getCurrentEpoch } from '@/lib/constants';
 import { SYNC_FRESHNESS_POLICY } from './syncPolicy';
+import { getGovernanceThresholdForProposal } from './governanceThresholds';
 import type { SizeTier } from '@/utils/scoring';
 
 interface DRepRowInfo {
@@ -2010,32 +2011,6 @@ export interface VotingPowerSummary {
   thresholdLabel: string | null;
 }
 
-const PROPOSAL_TYPE_THRESHOLD_MAP: Record<string, string> = {
-  TreasuryWithdrawals: 'dvt_treasury_withdrawal',
-  ParameterChange: 'dvt_p_p_network_group',
-  HardForkInitiation: 'dvt_hard_fork_initiation',
-  NewConstitution: 'dvt_update_to_constitution',
-  UpdateConstitution: 'dvt_update_to_constitution',
-  NoConfidence: 'dvt_motion_no_confidence',
-  NewCommittee: 'dvt_committee_normal',
-  NewConstitutionalCommittee: 'dvt_committee_normal',
-};
-
-let cachedThresholds: { data: Record<string, number>; fetchedAt: number } | null = null;
-const THRESHOLD_CACHE_MS = 24 * 60 * 60 * 1000;
-
-async function getGovernanceThresholds(): Promise<Record<string, number> | null> {
-  if (cachedThresholds && Date.now() - cachedThresholds.fetchedAt < THRESHOLD_CACHE_MS) {
-    return cachedThresholds.data;
-  }
-  const { fetchGovernanceThresholds } = await import('@/utils/koios');
-  const data = await fetchGovernanceThresholds();
-  if (data) {
-    cachedThresholds = { data, fetchedAt: Date.now() };
-  }
-  return data;
-}
-
 export async function getVotingPowerSummary(
   txHash: string,
   proposalIndex: number,
@@ -2044,25 +2019,32 @@ export async function getVotingPowerSummary(
   try {
     const supabase = createClient();
 
-    // Prefer canonical proposal_voting_summary (from Koios /proposal_voting_summary)
-    const { data: canonical } = await supabase
-      .from('proposal_voting_summary')
-      .select('*')
-      .eq('proposal_tx_hash', txHash)
-      .eq('proposal_index', proposalIndex)
-      .single();
+    const [canonicalResult, proposalResult] = await Promise.all([
+      supabase
+        .from('proposal_voting_summary')
+        .select('*')
+        .eq('proposal_tx_hash', txHash)
+        .eq('proposal_index', proposalIndex)
+        .single(),
+      supabase
+        .from('proposals')
+        .select('proposal_type, param_changes')
+        .eq('tx_hash', txHash)
+        .eq('proposal_index', proposalIndex)
+        .maybeSingle(),
+    ]);
 
-    const thresholdKey = PROPOSAL_TYPE_THRESHOLD_MAP[proposalType];
-    let threshold: number | null = null;
-    let thresholdLabel: string | null = null;
-
-    if (thresholdKey) {
-      const params = await getGovernanceThresholds();
-      if (params && params[thresholdKey] != null) {
-        threshold = params[thresholdKey];
-        thresholdLabel = `${Math.round(threshold * 100)}% of active DRep stake needed`;
-      }
-    }
+    const canonical = canonicalResult.data;
+    const proposalRow = proposalResult.data as
+      | { proposal_type?: string | null; param_changes?: Record<string, unknown> | null }
+      | null;
+    const thresholdResolution = await getGovernanceThresholdForProposal({
+      proposalType: proposalRow?.proposal_type ?? proposalType,
+      paramChanges: proposalRow?.param_changes ?? null,
+    });
+    const threshold = thresholdResolution.threshold;
+    const thresholdLabel =
+      threshold != null ? `${Math.round(threshold * 100)}% of active DRep stake needed` : null;
 
     if (canonical) {
       const yesPower = Number(canonical.drep_yes_vote_power) || 0;

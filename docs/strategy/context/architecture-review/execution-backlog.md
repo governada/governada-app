@@ -175,7 +175,7 @@ None - execute directly unless the review uncovers conflicting product expectati
 **Expected score impact:** Data Architecture and Compounding: restore a single read contract
 **Depends on:** Chunk 1
 **PR group:** D
-**Implementation status:** In progress in this worktree
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -202,13 +202,18 @@ None - execute directly. The documented repo policy already prefers database-fir
 
 - `getAllDReps()` no longer falls back to Koios on empty or unavailable Supabase cache.
 - The legacy `/api/dreps` route now degrades explicitly to `{ dreps: [], allDReps: [], error: true, totalAvailable: 0 }` for existing frontend consumers.
+- `lib/data.ts:getVotingPowerSummary()` now resolves thresholds through `lib/governanceThresholds.ts` instead of calling Koios directly.
+- `lib/governanceThresholds.ts` is Supabase-first via `epoch_params`, with Koios retained only as an isolated fallback inside the resolver.
+- Parameter-change threshold resolution now uses the proposal row `param_changes` payload and the maximum applicable protocol-parameter-group threshold.
+- Verified with `npm run test:unit -- __tests__/lib/governanceThresholds.test.ts __tests__/lib/data.test.ts`.
 - Verified with `npm run test:unit -- __tests__/lib/data.test.ts __tests__/api/dreps.test.ts`.
 - Verified with `npm run type-check`.
-- Remaining work: remove the shared data-layer Koios threshold lookup in `getVotingPowerSummary()` or isolate it behind a clearly non-cache-backed helper.
+- Follow-up work: decide whether non-shared proposal/workspace threshold consumers should adopt the same resolver and whether `epoch_params` should become a repo-managed typed contract.
 
 ### Files to Read First
 
 - `lib/data.ts`
+- `lib/governanceThresholds.ts`
 - `lib/koios.ts`
 - `utils/koios.ts`
 - `app/api/v1/dreps/route.ts`

@@ -120,6 +120,7 @@ function buildDashboardFixture(): SystemsDashboardData {
       resolvedCount: 0,
       createdAt: '2026-04-02T11:55:00.000Z',
     },
+    latestOperatorEscalation: null,
     suggestedReviewDraft: null,
     openCommitments: [],
     reviewHistory: [],

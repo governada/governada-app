@@ -896,7 +896,7 @@ function AutomationInboxSummaryCard({
 
         <p className="text-sm text-muted-foreground">{data.automationSummary.summary}</p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Last sweep</p>
             <p className="text-sm mt-1">
@@ -911,6 +911,16 @@ function AutomationInboxSummaryCard({
             </p>
             <p className="text-sm mt-1">
               {data.latestAutomationRun?.summary || 'No sweep recorded yet.'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Latest escalation
+            </p>
+            <p className="text-sm mt-1">
+              {data.latestOperatorEscalation
+                ? `${new Date(data.latestOperatorEscalation.createdAt).toLocaleString()} (${data.latestOperatorEscalation.status})`
+                : 'No founder digest sent yet.'}
             </p>
           </div>
         </div>
@@ -1821,8 +1831,8 @@ export function SystemsClient() {
             <h3 className="text-base font-semibold">Next automations</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            The daily sweep and weekly draft are live now. These are the next routines that can
-            compound on top of the same feed and audit trail.
+            The daily sweep, weekly draft, and critical follow-up escalation are live now. These
+            are the next routines that can compound on top of the same feed and audit trail.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {data.automationCandidates.map((candidate) => (

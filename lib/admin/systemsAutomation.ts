@@ -3,6 +3,7 @@ import type {
   SystemsAction,
   SystemsAutomationFollowup,
   SystemsAutomationFollowupStatus,
+  SystemsOperatorEscalationRecord,
   SystemsAutomationRunRecord,
   SystemsAutomationSeverity,
   SystemsAutomationSummary,
@@ -14,10 +15,13 @@ import type {
 
 export const SYSTEMS_AUTOMATION_FOLLOWUP_ACTION = 'systems_automation_followup_sync';
 export const SYSTEMS_AUTOMATION_SWEEP_ACTION = 'systems_automation_sweep';
+export const SYSTEMS_OPERATOR_ESCALATION_ACTION = 'systems_operator_escalation';
 export const SYSTEMS_AUTOMATION_AUDIT_ACTIONS = [
   SYSTEMS_AUTOMATION_FOLLOWUP_ACTION,
   SYSTEMS_AUTOMATION_SWEEP_ACTION,
+  SYSTEMS_OPERATOR_ESCALATION_ACTION,
 ] as const;
+export const SYSTEMS_OPERATOR_ESCALATION_REMINDER_HOURS = 24;
 
 type SystemsAutomationAuditRow = {
   action: string;
@@ -42,6 +46,25 @@ type SystemsAutomationState = {
   openFollowups: SystemsAutomationFollowup[];
   latestRun: SystemsAutomationRunRecord | null;
 };
+
+type SystemsOperatorEscalationAuditRow = {
+  action: string;
+  payload: unknown;
+  created_at: string;
+};
+
+export type SystemsOperatorEscalationTarget = {
+  sourceKey: string;
+  title: string;
+  summary: string;
+  actionHref?: string | null;
+  updatedAt: string;
+  reason: 'new' | 'reminder';
+};
+
+function reasonLabel(reason: SystemsOperatorEscalationTarget['reason']) {
+  return reason === 'reminder' ? 'Reminder' : 'New';
+}
 
 const followupStatusSchema = z.enum(['open', 'acknowledged', 'resolved']);
 const triggerTypeSchema = z.enum(['review_discipline', 'overdue_commitment', 'systems_action']);
@@ -70,6 +93,17 @@ const sweepPayloadSchema = z.object({
   openedCount: z.number().int().nonnegative(),
   updatedCount: z.number().int().nonnegative(),
   resolvedCount: z.number().int().nonnegative(),
+});
+
+const operatorEscalationPayloadSchema = z.object({
+  actorType: z.enum(['manual', 'cron']),
+  status: z.enum(['sent', 'failed']),
+  title: z.string().min(1),
+  details: z.string().min(1),
+  criticalCount: z.number().int().positive(),
+  followupSourceKeys: z.array(z.string().min(1)).min(1),
+  channelCount: z.number().int().nonnegative(),
+  channels: z.array(z.string().min(1)),
 });
 
 export const updateSystemsAutomationFollowupSchema = z.object({
@@ -223,6 +257,129 @@ export function buildSystemsAutomationSummary(
     summary:
       'The most recent sweep found no unresolved systems issues that required durable follow-up. Keep the sweep cadence alive so this stays trustworthy.',
     lastSweepAt: latestRun.createdAt,
+  };
+}
+
+export function buildLatestSuccessfulEscalationBySource(
+  rows: SystemsOperatorEscalationAuditRow[],
+): Map<string, string> {
+  const latestBySource = new Map<string, string>();
+
+  for (const row of rows) {
+    if (row.action !== SYSTEMS_OPERATOR_ESCALATION_ACTION) continue;
+
+    const parsed = operatorEscalationPayloadSchema.safeParse(row.payload);
+    if (!parsed.success || parsed.data.status !== 'sent') continue;
+
+    for (const sourceKey of parsed.data.followupSourceKeys) {
+      if (!latestBySource.has(sourceKey)) {
+        latestBySource.set(sourceKey, row.created_at);
+      }
+    }
+  }
+
+  return latestBySource;
+}
+
+export function parseLatestSystemsOperatorEscalation(
+  rows: SystemsOperatorEscalationAuditRow[],
+): SystemsOperatorEscalationRecord | null {
+  for (const row of rows) {
+    if (row.action !== SYSTEMS_OPERATOR_ESCALATION_ACTION) continue;
+
+    const parsed = operatorEscalationPayloadSchema.safeParse(row.payload);
+    if (!parsed.success) continue;
+
+    return {
+      actorType: parsed.data.actorType,
+      status: parsed.data.status,
+      title: parsed.data.title,
+      details: parsed.data.details,
+      criticalCount: parsed.data.criticalCount,
+      followupSourceKeys: parsed.data.followupSourceKeys,
+      channelCount: parsed.data.channelCount,
+      channels: parsed.data.channels,
+      createdAt: row.created_at,
+    };
+  }
+
+  return null;
+}
+
+export function buildSystemsOperatorEscalationTargets(
+  followups: SystemsAutomationFollowup[],
+  latestEscalationBySource: Map<string, string>,
+  now = new Date(),
+): SystemsOperatorEscalationTarget[] {
+  const targets: SystemsOperatorEscalationTarget[] = [];
+
+  for (const followup of followups) {
+    if (followup.severity !== 'critical' || followup.status !== 'open') continue;
+
+    const baseTarget = {
+      sourceKey: followup.sourceKey,
+      title: followup.title,
+      summary: followup.summary,
+      actionHref: followup.actionHref ?? null,
+      updatedAt: followup.updatedAt,
+    };
+    const lastEscalatedAt = latestEscalationBySource.get(followup.sourceKey);
+
+    if (!lastEscalatedAt || followup.updatedAt > lastEscalatedAt) {
+      targets.push({
+        ...baseTarget,
+        reason: 'new',
+      });
+      continue;
+    }
+
+    const reminderAfter =
+      new Date(lastEscalatedAt).getTime() +
+      SYSTEMS_OPERATOR_ESCALATION_REMINDER_HOURS * 60 * 60 * 1000;
+
+    if (now.getTime() >= reminderAfter) {
+      targets.push({
+        ...baseTarget,
+        reason: 'reminder',
+      });
+    }
+  }
+
+  return targets;
+}
+
+export function formatSystemsOperatorEscalationDigest(
+  targets: SystemsOperatorEscalationTarget[],
+  baseUrl: string,
+): { title: string; details: string } {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+  const title =
+    targets.length === 1
+      ? 'Systems cockpit: 1 critical follow-up still open'
+      : `Systems cockpit: ${targets.length} critical follow-ups still open`;
+
+  const lines = [
+    'Critical systems follow-ups are still open after the latest sweep.',
+    '',
+    ...targets.slice(0, 3).flatMap((target, index) => {
+      const nextStep = target.actionHref
+        ? `${normalizedBaseUrl}${target.actionHref}`
+        : `${normalizedBaseUrl}/admin/systems`;
+      return [
+        `${index + 1}. [${reasonLabel(target.reason)}] ${target.title}`,
+        `   Why: ${target.summary}`,
+        `   Next: ${nextStep}`,
+      ];
+    }),
+  ];
+
+  if (targets.length > 3) {
+    lines.push('', `+${targets.length - 3} more critical follow-up(s) in /admin/systems`);
+  }
+
+  return {
+    title,
+    details: lines.join('\n'),
   };
 }
 

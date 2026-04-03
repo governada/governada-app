@@ -26,6 +26,10 @@ import {
   toSystemsCommitment,
   toSystemsReviewRecord,
 } from '@/lib/admin/systemsReview';
+import {
+  parseLatestSystemsReviewDraft,
+  SYSTEMS_REVIEW_DRAFT_ACTION,
+} from '@/lib/admin/systemsReviewDraft';
 
 type DependencyProbe = {
   status: 'healthy' | 'unhealthy' | 'unavailable';
@@ -113,6 +117,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     reviewsResult,
     commitmentsResult,
     automationAuditResult,
+    reviewDraftAuditResult,
   ] = await Promise.all([
     probeSupabase(),
     probeKoios(),
@@ -156,6 +161,12 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
       .in('action', [...SYSTEMS_AUTOMATION_AUDIT_ACTIONS])
       .order('created_at', { ascending: false })
       .limit(200),
+    supabase
+      .from('admin_audit_log')
+      .select('action, payload, created_at')
+      .eq('action', SYSTEMS_REVIEW_DRAFT_ACTION)
+      .order('created_at', { ascending: false })
+      .limit(16),
   ]);
 
   const dependencyStatus: SystemsStatus =
@@ -313,6 +324,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationState.openFollowups,
     automationState.latestRun,
   );
+  const suggestedReviewDraft = parseLatestSystemsReviewDraft(reviewDraftAuditResult.data || []);
 
   const promiseInput: PromiseInput = {
     availability: {
@@ -442,6 +454,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationSummary,
     automationFollowups: automationState.openFollowups,
     latestAutomationRun: automationState.latestRun,
+    suggestedReviewDraft,
     openCommitments,
     reviewHistory,
     journeys: CRITICAL_JOURNEYS,

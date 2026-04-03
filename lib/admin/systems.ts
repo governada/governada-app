@@ -169,6 +169,21 @@ export interface SystemsAutomationSummary {
   lastSweepAt?: string | null;
 }
 
+export interface SystemsReviewDraft {
+  actorType: 'manual' | 'cron';
+  generatedAt: string;
+  reviewDate: string;
+  overallStatus: SystemsStatus;
+  focusArea: string;
+  topRisk: string;
+  changeNotes: string;
+  hardeningCommitmentTitle: string;
+  hardeningCommitmentSummary: string;
+  commitmentOwner: string;
+  commitmentDueDate?: string | null;
+  linkedSloIds: string[];
+}
+
 export interface SystemsDashboardData {
   generatedAt: string;
   overall: {
@@ -197,6 +212,7 @@ export interface SystemsDashboardData {
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
   latestAutomationRun?: SystemsAutomationRunRecord | null;
+  suggestedReviewDraft?: SystemsReviewDraft | null;
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
   journeys: SystemsJourney[];
@@ -375,22 +391,6 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
 
 export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
   {
-    id: 'systems-sweep',
-    title: 'Daily systems sweep',
-    trigger: 'Any promise turns red or the day starts without a fresh review.',
-    action:
-      'Review the systems feed, summarize SLO breaches or watch items, and surface the top operating risk for today.',
-    whyItMatters: 'This can become a daily agent routine without changing the UI contract.',
-  },
-  {
-    id: 'weekly-scorecard',
-    title: 'Weekly systems review',
-    trigger: 'Every Monday morning.',
-    action:
-      'Refresh the cockpit, compare live signals against the SLO ledger, and log one new weekly review plus one hardening commitment.',
-    whyItMatters: 'This turns the dashboard into a repeatable operating loop.',
-  },
-  {
     id: 'commitment-shepherd',
     title: 'Commitment shepherd',
     trigger: 'An open systems commitment becomes overdue or blocked.',
@@ -413,6 +413,23 @@ export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
     trigger: 'Risky route or caching changes land without a fresh baseline.',
     action: 'Run the minimum k6 baseline and attach the result to the systems review.',
     whyItMatters: 'This lets performance discipline become an agentic maintenance loop.',
+  },
+  {
+    id: 'operator-escalation',
+    title: 'Operator escalation digest',
+    trigger: 'Critical follow-ups remain open after the daily sweep.',
+    action:
+      'Push the highest-severity systems follow-ups into the founder operator channel with context and next-action links.',
+    whyItMatters: 'This makes the cockpit useful even when you are not staring at it.',
+  },
+  {
+    id: 'trust-surface-audit',
+    title: 'Degraded-state UX review',
+    trigger: 'Freshness, correctness, or availability drops below healthy.',
+    action:
+      'Capture whether public and authenticated surfaces are telling the truth about degraded system state and log the next honesty fix.',
+    whyItMatters:
+      'Premium reliability is not only uptime. It is also whether the product stays honest under strain.',
   },
 ];
 

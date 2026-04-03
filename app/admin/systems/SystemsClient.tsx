@@ -30,6 +30,7 @@ import type {
   SystemsJourney,
   SystemsPromiseCard,
   SystemsReviewDiscipline,
+  SystemsReviewDraft,
   SystemsReviewRecord,
   SystemsReviewStep,
   SystemsSloCard,
@@ -171,6 +172,26 @@ async function updateSystemsAutomationFollowupStatus(
   return res.json();
 }
 
+async function generateSystemsReviewDraft() {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const res = await fetch('/api/admin/systems/review-draft', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to generate systems review draft');
+  }
+
+  return res.json();
+}
+
 function todayInputValue() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60_000;
@@ -197,6 +218,21 @@ function buildInitialReviewForm(data: SystemsDashboardData): ReviewFormState {
     commitmentOwner: 'Founder + agents',
     commitmentDueDate: '',
     linkedSloIds: buildSuggestedLinkedSloIds(data),
+  };
+}
+
+function buildReviewFormFromDraft(draft: SystemsReviewDraft): ReviewFormState {
+  return {
+    reviewDate: draft.reviewDate,
+    overallStatus: draft.overallStatus,
+    focusArea: draft.focusArea,
+    topRisk: draft.topRisk,
+    changeNotes: draft.changeNotes,
+    hardeningCommitmentTitle: draft.hardeningCommitmentTitle,
+    hardeningCommitmentSummary: draft.hardeningCommitmentSummary,
+    commitmentOwner: draft.commitmentOwner,
+    commitmentDueDate: draft.commitmentDueDate ?? '',
+    linkedSloIds: draft.linkedSloIds,
   };
 }
 
@@ -482,6 +518,135 @@ function ReviewDisciplineCard({ reviewDiscipline }: { reviewDiscipline: SystemsR
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Overdue</p>
             <p className="text-sm font-semibold mt-1">{reviewDiscipline.overdueCommitments}</p>
           </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SuggestedReviewDraftCard({
+  draft,
+  onApply,
+  onRefresh,
+  isRefreshing,
+}: {
+  draft?: SystemsReviewDraft | null;
+  onApply: () => void;
+  onRefresh: () => void;
+  isRefreshing: boolean;
+}) {
+  const classes = statusClasses(draft?.overallStatus ?? 'bootstrap');
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-chart-1" />
+            Suggested weekly review draft
+          </span>
+          {draft ? (
+            <Badge variant="outline" className="capitalize">
+              {draft.actorType === 'cron' ? 'Scheduled' : 'Manual'}
+            </Badge>
+          ) : null}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {draft ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Review date
+                </p>
+                <p className="text-sm font-semibold mt-1">
+                  {new Date(`${draft.reviewDate}T00:00:00`).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Generated
+                </p>
+                <p className="text-sm font-semibold mt-1">
+                  {new Date(draft.generatedAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Focus area
+              </p>
+              <p className="text-sm font-semibold">{draft.focusArea}</p>
+            </div>
+
+            <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Top risk</p>
+              <p className="text-sm mt-1">{draft.topRisk}</p>
+            </div>
+
+            <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Commitment to leave behind
+              </p>
+              <p className="text-sm font-semibold mt-1">{draft.hardeningCommitmentTitle}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {draft.hardeningCommitmentSummary}
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Suggested evidence notes
+              </p>
+              <p className="text-sm text-muted-foreground">{draft.changeNotes}</p>
+            </div>
+
+            {draft.linkedSloIds.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {draft.linkedSloIds.map((sloId) => (
+                  <Badge key={sloId} variant="outline" className="text-xs">
+                    {sloId}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">No weekly draft has been generated yet.</p>
+            <p className="text-sm text-muted-foreground">
+              The Monday cadence will create one automatically. You can also refresh it manually
+              right now and apply it into the review form below.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          {draft ? (
+            <Button type="button" variant="secondary" className="flex-1" onClick={onApply}>
+              Apply draft to form
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant={draft ? 'outline' : 'default'}
+            className="flex-1"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Refreshing draft...
+              </>
+            ) : draft ? (
+              'Refresh draft'
+            ) : (
+              'Generate first draft'
+            )}
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -937,6 +1102,17 @@ export function SystemsClient() {
     },
   });
 
+  const generateDraftMutation = useMutation({
+    mutationFn: generateSystemsReviewDraft,
+    onSuccess: (result: { draft: SystemsReviewDraft; message?: string }) => {
+      toast.success(result.message || 'Weekly systems review draft refreshed');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to generate systems review draft');
+    },
+  });
+
   const updateFollowupMutation = useMutation({
     mutationFn: ({
       sourceKey,
@@ -1026,6 +1202,13 @@ export function SystemsClient() {
     event.preventDefault();
     if (!reviewForm) return;
     await createReviewMutation.mutateAsync(reviewForm);
+  }
+
+  function applySuggestedDraft() {
+    const suggestedReviewDraft = data?.suggestedReviewDraft;
+    if (!suggestedReviewDraft) return;
+    setReviewForm(buildReviewFormFromDraft(suggestedReviewDraft));
+    toast.success('Suggested draft applied to the weekly review form');
   }
 
   return (
@@ -1147,157 +1330,170 @@ export function SystemsClient() {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Log this week&apos;s review</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-4" onSubmit={handleSubmitReview}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <SuggestedReviewDraftCard
+              draft={data.suggestedReviewDraft}
+              onApply={applySuggestedDraft}
+              onRefresh={() => generateDraftMutation.mutate()}
+              isRefreshing={generateDraftMutation.isPending}
+            />
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Log this week&apos;s review</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form className="space-y-4" onSubmit={handleSubmitReview}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="review-date">Review date</Label>
+                      <Input
+                        id="review-date"
+                        type="date"
+                        value={reviewForm.reviewDate}
+                        onChange={(event) => updateReviewForm({ reviewDate: event.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="review-status">Current posture</Label>
+                      <Select
+                        value={reviewForm.overallStatus}
+                        onValueChange={(value) =>
+                          updateReviewForm({ overallStatus: value as SystemsStatus })
+                        }
+                      >
+                        <SelectTrigger id="review-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="good">Healthy</SelectItem>
+                          <SelectItem value="warning">Watch</SelectItem>
+                          <SelectItem value="critical">Act now</SelectItem>
+                          <SelectItem value="bootstrap">Bootstrapping</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="review-date">Review date</Label>
+                    <Label htmlFor="focus-area">Focus area</Label>
                     <Input
-                      id="review-date"
-                      type="date"
-                      value={reviewForm.reviewDate}
-                      onChange={(event) => updateReviewForm({ reviewDate: event.target.value })}
+                      id="focus-area"
+                      value={reviewForm.focusArea}
+                      onChange={(event) => updateReviewForm({ focusArea: event.target.value })}
+                      placeholder="What system are you hardening this week?"
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="review-status">Current posture</Label>
-                    <Select
-                      value={reviewForm.overallStatus}
-                      onValueChange={(value) =>
-                        updateReviewForm({ overallStatus: value as SystemsStatus })
-                      }
-                    >
-                      <SelectTrigger id="review-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="good">Healthy</SelectItem>
-                        <SelectItem value="warning">Watch</SelectItem>
-                        <SelectItem value="critical">Act now</SelectItem>
-                        <SelectItem value="bootstrap">Bootstrapping</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Linked SLOs</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {data.slos.map((slo) => {
+                        const selected = reviewForm.linkedSloIds.includes(slo.id);
+                        return (
+                          <Button
+                            key={slo.id}
+                            type="button"
+                            variant={selected ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => toggleLinkedSlo(slo.id)}
+                          >
+                            {slo.title}
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="focus-area">Focus area</Label>
-                  <Input
-                    id="focus-area"
-                    value={reviewForm.focusArea}
-                    onChange={(event) => updateReviewForm({ focusArea: event.target.value })}
-                    placeholder="What system are you hardening this week?"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Linked SLOs</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {data.slos.map((slo) => {
-                      const selected = reviewForm.linkedSloIds.includes(slo.id);
-                      return (
-                        <Button
-                          key={slo.id}
-                          type="button"
-                          variant={selected ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => toggleLinkedSlo(slo.id)}
-                        >
-                          {slo.title}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="top-risk">Top risk</Label>
-                  <Textarea
-                    id="top-risk"
-                    value={reviewForm.topRisk}
-                    onChange={(event) => updateReviewForm({ topRisk: event.target.value })}
-                    placeholder="What is the clearest launch risk right now?"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="change-notes">Evidence and notes</Label>
-                  <Textarea
-                    id="change-notes"
-                    value={reviewForm.changeNotes}
-                    onChange={(event) => updateReviewForm({ changeNotes: event.target.value })}
-                    placeholder="What changed this week, what you observed, and why it matters."
-                    rows={4}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="commitment-title">Hardening commitment</Label>
-                  <Input
-                    id="commitment-title"
-                    value={reviewForm.hardeningCommitmentTitle}
-                    onChange={(event) =>
-                      updateReviewForm({ hardeningCommitmentTitle: event.target.value })
-                    }
-                    placeholder="Name the one systems move that matters most this week"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="commitment-summary">Commitment scope</Label>
-                  <Textarea
-                    id="commitment-summary"
-                    value={reviewForm.hardeningCommitmentSummary}
-                    onChange={(event) =>
-                      updateReviewForm({ hardeningCommitmentSummary: event.target.value })
-                    }
-                    placeholder="What exactly should this commitment fix or de-risk?"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="commitment-owner">Owner</Label>
+                    <Label htmlFor="top-risk">Top risk</Label>
+                    <Textarea
+                      id="top-risk"
+                      value={reviewForm.topRisk}
+                      onChange={(event) => updateReviewForm({ topRisk: event.target.value })}
+                      placeholder="What is the clearest launch risk right now?"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="change-notes">Evidence and notes</Label>
+                    <Textarea
+                      id="change-notes"
+                      value={reviewForm.changeNotes}
+                      onChange={(event) => updateReviewForm({ changeNotes: event.target.value })}
+                      placeholder="What changed this week, what you observed, and why it matters."
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="commitment-title">Hardening commitment</Label>
                     <Input
-                      id="commitment-owner"
-                      value={reviewForm.commitmentOwner}
+                      id="commitment-title"
+                      value={reviewForm.hardeningCommitmentTitle}
                       onChange={(event) =>
-                        updateReviewForm({ commitmentOwner: event.target.value })
+                        updateReviewForm({ hardeningCommitmentTitle: event.target.value })
                       }
+                      placeholder="Name the one systems move that matters most this week"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="commitment-due-date">Due date</Label>
-                    <Input
-                      id="commitment-due-date"
-                      type="date"
-                      value={reviewForm.commitmentDueDate}
-                      onChange={(event) =>
-                        updateReviewForm({ commitmentDueDate: event.target.value })
-                      }
-                    />
-                  </div>
-                </div>
 
-                <Button type="submit" disabled={createReviewMutation.isPending} className="w-full">
-                  {createReviewMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Logging review...
-                    </>
-                  ) : (
-                    'Log weekly review'
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="commitment-summary">Commitment scope</Label>
+                    <Textarea
+                      id="commitment-summary"
+                      value={reviewForm.hardeningCommitmentSummary}
+                      onChange={(event) =>
+                        updateReviewForm({ hardeningCommitmentSummary: event.target.value })
+                      }
+                      placeholder="What exactly should this commitment fix or de-risk?"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="commitment-owner">Owner</Label>
+                      <Input
+                        id="commitment-owner"
+                        value={reviewForm.commitmentOwner}
+                        onChange={(event) =>
+                          updateReviewForm({ commitmentOwner: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="commitment-due-date">Due date</Label>
+                      <Input
+                        id="commitment-due-date"
+                        type="date"
+                        value={reviewForm.commitmentDueDate}
+                        onChange={(event) =>
+                          updateReviewForm({ commitmentDueDate: event.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={createReviewMutation.isPending}
+                    className="w-full"
+                  >
+                    {createReviewMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Logging review...
+                      </>
+                    ) : (
+                      'Log weekly review'
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 
@@ -1351,7 +1547,8 @@ export function SystemsClient() {
         </div>
         <p className="text-sm text-muted-foreground">
           This is the weekly rhythm that turns the dashboard into an operating system instead of a
-          passive status page.
+          passive status page. The daily sweep and Monday draft generation now run on their own;
+          this section is where you turn that machine output into a founder-grade operating record.
         </p>
         <Card>
           <CardContent className="pt-6 space-y-5">
@@ -1577,9 +1774,9 @@ export function SystemsClient() {
           <h2 className="text-lg font-semibold">Automation cockpit</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          This is the first durable automation loop for the founder operating system. Run the sweep
-          to refresh the machine-readable posture, capture durable follow-ups, and keep a living
-          inbox of systems work that agents can pick up later.
+          This is the live automation layer for the founder operating system. The daily sweep runs
+          on a schedule, and you can still trigger it manually when you want a fresh posture check,
+          new durable follow-ups, or an updated inbox for later agent work.
         </p>
 
         <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-4">
@@ -1624,8 +1821,8 @@ export function SystemsClient() {
             <h3 className="text-base font-semibold">Next automations</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            The inbox above is live today. These are the next routines that can compound on top of
-            the same feed and audit trail.
+            The daily sweep and weekly draft are live now. These are the next routines that can
+            compound on top of the same feed and audit trail.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {data.automationCandidates.map((candidate) => (

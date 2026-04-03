@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Geist, Space_Grotesk, Fraunces } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -73,11 +74,13 @@ export const viewport: Viewport = {
   themeColor: '#0a0b14',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html lang="en" className="dark" style={{ colorScheme: 'dark' }} suppressHydrationWarning>
       <body
@@ -89,6 +92,7 @@ export default function RootLayout({
           defaultTheme="dark"
           forcedTheme="dark"
           disableTransitionOnChange
+          nonce={nonce}
         >
           <LocaleProvider>
             <Providers>

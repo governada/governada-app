@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
     '@emurgo/cardano-serialization-lib-nodejs',
   ],
   async headers() {
-    // CSP is handled per-request in middleware.ts (nonce-based, dynamic).
+    // CSP is handled per-request in proxy.ts (nonce-based, dynamic).
     // Only static security headers remain here.
     return [
       {

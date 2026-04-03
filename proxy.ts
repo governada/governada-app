@@ -1,5 +1,5 @@
 /**
- * Next.js Middleware
+ * Next.js Proxy
  * - CSP nonce generation (per-request, pages only)
  * - Locale detection from Accept-Language header + cookie persistence
  * - Query-param redirects for old /discover?tab= routes
@@ -79,7 +79,7 @@ function withLocale(response: NextResponse, request: NextRequest): NextResponse 
   return response;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   // ── CSP nonce generation (pages only) ─────────────────────────────

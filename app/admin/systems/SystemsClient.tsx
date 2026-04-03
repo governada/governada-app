@@ -22,13 +22,14 @@ import { toast } from 'sonner';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type {
   SystemsAction,
+  SystemsAutomationFollowup,
+  SystemsAutomationFollowupStatus,
   SystemsCommitmentCard,
   SystemsCommitmentStatus,
   SystemsDashboardData,
   SystemsJourney,
   SystemsPromiseCard,
   SystemsReviewDiscipline,
-  SystemsReviewLoop,
   SystemsReviewRecord,
   SystemsReviewStep,
   SystemsSloCard,
@@ -121,6 +122,50 @@ async function updateSystemsCommitmentStatus(id: string, status: SystemsCommitme
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to update commitment');
+  }
+
+  return res.json();
+}
+
+async function runSystemsAutomationSweep() {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const res = await fetch('/api/admin/systems/automation', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to run systems automation sweep');
+  }
+
+  return res.json();
+}
+
+async function updateSystemsAutomationFollowupStatus(
+  sourceKey: string,
+  status: SystemsAutomationFollowupStatus,
+) {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const res = await fetch('/api/admin/systems/followups', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ sourceKey, status }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to update automation follow-up');
   }
 
   return res.json();
@@ -221,6 +266,34 @@ function commitmentStatusClasses(status: SystemsCommitmentStatus) {
     default:
       return 'border-amber-500/30 text-amber-300';
   }
+}
+
+function automationFollowupStatusLabel(status: SystemsAutomationFollowupStatus) {
+  switch (status) {
+    case 'acknowledged':
+      return 'Acknowledged';
+    case 'resolved':
+      return 'Resolved';
+    default:
+      return 'Open';
+  }
+}
+
+function automationFollowupStatusClasses(status: SystemsAutomationFollowupStatus) {
+  switch (status) {
+    case 'acknowledged':
+      return 'border-chart-1/40 text-chart-1';
+    case 'resolved':
+      return 'border-emerald-500/30 text-emerald-300';
+    default:
+      return 'border-amber-500/30 text-amber-300';
+  }
+}
+
+function automationSeverityClasses(severity: SystemsAutomationFollowup['severity']) {
+  return severity === 'critical'
+    ? 'border-red-500/30 text-red-300'
+    : 'border-amber-500/30 text-amber-300';
 }
 
 function coverageLabel(coverage: SystemsJourney['coverage']) {
@@ -626,6 +699,152 @@ function ReviewHistoryCard({ review }: { review: SystemsReviewRecord }) {
   );
 }
 
+function AutomationInboxSummaryCard({
+  data,
+  onRunSweep,
+  isRunning,
+}: {
+  data: SystemsDashboardData;
+  onRunSweep: () => void;
+  isRunning: boolean;
+}) {
+  const classes = statusClasses(data.automationSummary.status);
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {statusLabel(data.automationSummary.status)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{data.automationSummary.headline}</h3>
+          </div>
+          <Bot className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Current state</p>
+          <p className="text-2xl font-bold leading-none">{data.automationSummary.currentValue}</p>
+          <p className="text-xs text-muted-foreground">Target: {data.automationSummary.target}</p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{data.automationSummary.summary}</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Last sweep</p>
+            <p className="text-sm mt-1">
+              {data.automationSummary.lastSweepAt
+                ? new Date(data.automationSummary.lastSweepAt).toLocaleString()
+                : 'Not started'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Latest result
+            </p>
+            <p className="text-sm mt-1">
+              {data.latestAutomationRun?.summary || 'No sweep recorded yet.'}
+            </p>
+          </div>
+        </div>
+
+        <Button onClick={onRunSweep} disabled={isRunning} className="w-full">
+          {isRunning ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Running sweep...
+            </>
+          ) : (
+            'Run sweep now'
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AutomationFollowupCard({
+  followup,
+  onStatusChange,
+  isUpdating,
+}: {
+  followup: SystemsAutomationFollowup;
+  onStatusChange: (status: SystemsAutomationFollowupStatus) => void;
+  isUpdating: boolean;
+}) {
+  return (
+    <Card className={cn(followup.severity === 'critical' && 'border-red-500/40')}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={automationSeverityClasses(followup.severity)}>
+                {followup.severity === 'critical' ? 'Critical' : 'Warning'}
+              </Badge>
+              <Badge variant="outline" className={automationFollowupStatusClasses(followup.status)}>
+                {automationFollowupStatusLabel(followup.status)}
+              </Badge>
+            </div>
+            <h3 className="text-sm font-semibold">{followup.title}</h3>
+          </div>
+          {isUpdating ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+        </div>
+
+        <p className="text-sm text-muted-foreground">{followup.summary}</p>
+
+        <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Recommended action
+          </p>
+          <p className="text-sm mt-1">{followup.recommendedAction}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Trigger</p>
+            <p className="text-sm mt-1">{followup.triggerType.replace(/_/g, ' ')}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Last updated
+            </p>
+            <p className="text-sm mt-1">{new Date(followup.updatedAt).toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor={`followup-status-${followup.sourceKey}`}>Follow-up status</Label>
+          <Select
+            value={followup.status}
+            onValueChange={(value) => onStatusChange(value as SystemsAutomationFollowupStatus)}
+            disabled={isUpdating}
+          >
+            <SelectTrigger id={`followup-status-${followup.sourceKey}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="acknowledged">Acknowledged</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {followup.actionHref ? (
+          <Button asChild size="sm" variant="outline" className="w-full justify-between">
+            <Link href={followup.actionHref}>
+              Open action
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AutomationCard({ candidate }: { candidate: AutomationCandidate }) {
   return (
     <Card>
@@ -659,6 +878,7 @@ export function SystemsClient() {
   });
   const [reviewForm, setReviewForm] = useState<ReviewFormState | null>(null);
   const [pendingCommitmentId, setPendingCommitmentId] = useState<string | null>(null);
+  const [pendingFollowupId, setPendingFollowupId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!data || reviewForm) return;
@@ -691,6 +911,49 @@ export function SystemsClient() {
       toast.error(mutationError.message || 'Failed to update commitment');
     },
     onSettled: () => setPendingCommitmentId(null),
+  });
+
+  const runSweepMutation = useMutation({
+    mutationFn: runSystemsAutomationSweep,
+    onSuccess: (result: {
+      status: string;
+      followupCount: number;
+      criticalCount: number;
+      openedCount: number;
+      updatedCount: number;
+      resolvedCount: number;
+    }) => {
+      const prefix =
+        result.status === 'good'
+          ? 'Sweep is clean'
+          : `Sweep recorded ${result.followupCount} open follow-up${result.followupCount === 1 ? '' : 's'}`;
+      toast.success(
+        `${prefix}. Opened ${result.openedCount}, updated ${result.updatedCount}, resolved ${result.resolvedCount}.`,
+      );
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to run systems automation sweep');
+    },
+  });
+
+  const updateFollowupMutation = useMutation({
+    mutationFn: ({
+      sourceKey,
+      status,
+    }: {
+      sourceKey: string;
+      status: SystemsAutomationFollowupStatus;
+    }) => updateSystemsAutomationFollowupStatus(sourceKey, status),
+    onMutate: ({ sourceKey }) => setPendingFollowupId(sourceKey),
+    onSuccess: () => {
+      toast.success('Automation follow-up updated');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to update automation follow-up');
+    },
+    onSettled: () => setPendingFollowupId(null),
   });
 
   if (isLoading) {
@@ -1045,7 +1308,7 @@ export function SystemsClient() {
         </div>
         <p className="text-sm text-muted-foreground">
           These are the first explicit launch bars for Governada. The purpose is to make it clear
-          what "good enough to trust" actually means week over week.
+          what &quot;good enough to trust&quot; actually means week over week.
         </p>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {data.slos.map((slo) => (
@@ -1311,17 +1574,64 @@ export function SystemsClient() {
       <section id="automation" className="space-y-3">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-chart-1" />
-          <h2 className="text-lg font-semibold">Automation candidates</h2>
+          <h2 className="text-lg font-semibold">Automation cockpit</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          This page is backed by a machine-readable admin feed at{' '}
-          <span className="font-mono">/api/admin/systems</span>. These are the first routines I
-          would automate against it.
+          This is the first durable automation loop for the founder operating system. Run the sweep
+          to refresh the machine-readable posture, capture durable follow-ups, and keep a living
+          inbox of systems work that agents can pick up later.
         </p>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {data.automationCandidates.map((candidate) => (
-            <AutomationCard key={candidate.id} candidate={candidate} />
-          ))}
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-4">
+          <AutomationInboxSummaryCard
+            data={data}
+            isRunning={runSweepMutation.isPending}
+            onRunSweep={() => runSweepMutation.mutate()}
+          />
+
+          {data.automationFollowups.length === 0 ? (
+            <Card>
+              <CardContent className="pt-5 pb-5">
+                <p className="text-sm font-medium">No open automation follow-ups right now.</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Keep the sweep cadence alive so this stays meaningful. The moment a review goes
+                  stale, a commitment slips, or a critical automation-ready action appears, it
+                  should show up here as durable operating work.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {data.automationFollowups.map((followup) => (
+                <AutomationFollowupCard
+                  key={followup.sourceKey}
+                  followup={followup}
+                  isUpdating={
+                    updateFollowupMutation.isPending && pendingFollowupId === followup.sourceKey
+                  }
+                  onStatusChange={(status) =>
+                    updateFollowupMutation.mutate({ sourceKey: followup.sourceKey, status })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-chart-1" />
+            <h3 className="text-base font-semibold">Next automations</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            The inbox above is live today. These are the next routines that can compound on top of
+            the same feed and audit trail.
+          </p>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {data.automationCandidates.map((candidate) => (
+              <AutomationCard key={candidate.id} candidate={candidate} />
+            ))}
+          </div>
         </div>
       </section>
     </div>

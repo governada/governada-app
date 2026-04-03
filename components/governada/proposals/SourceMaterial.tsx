@@ -34,6 +34,7 @@ interface SourceMaterialProps {
   votes: ProposalVoteDetail[];
   status: string;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   // For ProposalDescription
   abstract: string | null;
   // For ProposalLifecycleTimeline
@@ -64,6 +65,7 @@ export function SourceMaterial({
   votes,
   status,
   proposalType,
+  paramChanges,
   abstract,
   proposedEpoch,
   expirationEpoch,
@@ -143,6 +145,7 @@ export function SourceMaterial({
                 proposalIndex={proposalIndex}
                 status={status as ProposalStatus}
                 proposalType={proposalType}
+                paramChanges={paramChanges}
               />
             </AccordionContent>
           </AccordionItem>

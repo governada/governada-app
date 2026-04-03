@@ -383,11 +383,12 @@ None - execute directly unless a consumer needs a materially different product i
 - `lib/actionQueue.ts` now filters CC pending proposals through the shared eligibility rules instead of counting every open proposal.
 - `inngest/functions/generate-cc-briefing.ts` now filters pending CC proposals through the shared eligibility rules.
 - `app/api/workspace/proposals/monitor/route.ts` now uses shared governance-body eligibility and the shared DRep threshold resolver instead of treating its local threshold table as the body-inclusion matrix.
+- The main proposal-detail route now threads `paramChanges` into `ProposalHeroV2`, `ProposalBridge`, `ProposalActionZone`, `ProposalVoterTabs`, `SourceMaterial`, and `LivingBrief`, removing type-only eligibility decisions from that UI path.
 - Added regression coverage in `__tests__/lib/votingBodies.test.ts` and `__tests__/lib/actionQueue.test.ts`.
 - Added regression coverage in `__tests__/api/workspace-proposals-monitor.test.ts`.
 - Verified with `npm run test:unit -- __tests__/lib/governanceThresholds.test.ts __tests__/lib/votingBodies.test.ts __tests__/lib/actionQueue.test.ts __tests__/api/workspace-proposals-monitor.test.ts`.
 - Verified with `npm run type-check`.
-- Follow-up work: thread `param_changes` through proposal-detail and workspace-review contracts, then remove the remaining local body-eligibility assumptions in proposal/workspace UI.
+- Follow-up work: thread `param_changes` through workspace-review contracts, then remove the remaining local body-eligibility assumptions in review/intelligence UI.
 
 ### Files to Read First
 
@@ -400,5 +401,9 @@ None - execute directly unless a consumer needs a materially different product i
 - `app/api/workspace/review-queue/route.ts`
 - `components/ProposalVoterTabs.tsx`
 - `components/TriBodyVotePanel.tsx`
+- `components/governada/proposals/ProposalHeroV2.tsx`
+- `components/governada/proposals/ProposalBridge.tsx`
+- `components/governada/proposals/ProposalActionZone.tsx`
+- `components/governada/proposals/SourceMaterial.tsx`
 - `components/governada/proposals/LivingBrief.tsx`
 - `components/intelligence/sections/StakeholderLandscape.tsx`

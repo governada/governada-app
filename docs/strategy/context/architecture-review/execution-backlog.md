@@ -391,10 +391,11 @@ None - execute directly unless a consumer needs a materially different product i
 - Added regression coverage in `__tests__/lib/votingBodies.test.ts` and `__tests__/lib/actionQueue.test.ts`.
 - Added regression coverage in `__tests__/api/workspace-proposals-monitor.test.ts`.
 - Added focused regression coverage in `__tests__/api/workspace-review-queue.test.ts`, `__tests__/components/StakeholderLandscape.test.tsx`, and `__tests__/lib/passagePrediction.test.ts`.
-- Verified with `npm run test:unit -- __tests__/api/workspace-review-queue.test.ts`.
+- Verified with `npm run test:unit -- __tests__/api/workspace-review-queue.test.ts __tests__/lib/passagePrediction.test.ts __tests__/api/workspace-proposals-monitor.test.ts`.
 - Verified with `npm run test:component -- __tests__/components/StakeholderLandscape.test.tsx`.
-- Verified with `npm run test:unit -- __tests__/lib/passagePrediction.test.ts`.
-- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+- Verified focused static hygiene with `npm run lint -- app/api/workspace/review-queue/route.ts components/intelligence/ReviewIntelBrief.tsx components/intelligence/sections/StakeholderLandscape.tsx components/studio/IntelPanel.tsx components/workspace/review/ReviewBrief.tsx components/workspace/review/ReviewWorkspace.tsx lib/workspace/types.ts lib/passagePrediction.ts inngest/functions/update-passage-predictions.ts inngest/functions/precompute-proposal-intelligence.ts lib/scoring/historical.ts` (warnings only in `components/workspace/review/ReviewWorkspace.tsx`, no errors).
+- Verification caveat: `npm run type-check` did not complete within a 15-minute window in this worktree and should be treated as a separate repo-level verification concern rather than an open Chunk 8 implementation gap.
 
 ## Chunk 9: Normalize Authoring Threshold Copy
 

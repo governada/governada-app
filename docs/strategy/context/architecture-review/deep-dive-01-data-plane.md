@@ -246,6 +246,14 @@ Cached reviewer intelligence and historical scoring should agree with the same g
 - Replaced the hardcoded passage-prediction threshold matrix with shared threshold resolution plus parameter-sensitive eligibility, and aligned the background cache jobs to fetch `param_changes`.
 - Fixed the historical scoring consumer to query `delegation_snapshots.epoch` instead of the old `epoch_no` column.
 
+**Verification**
+
+- Passed `npm run test:unit -- __tests__/api/workspace-review-queue.test.ts __tests__/lib/passagePrediction.test.ts __tests__/api/workspace-proposals-monitor.test.ts`.
+- Passed `npm run test:component -- __tests__/components/StakeholderLandscape.test.tsx`.
+- Passed `npm run agent:validate`.
+- Focused lint for the final Deep Dive 01 files completed with warnings only in `components/workspace/review/ReviewWorkspace.tsx` and no errors.
+- `npm run type-check` did not complete within a 15-minute window in this worktree, so it remains a separate repo-level verification concern rather than a Deep Dive 01 implementation blocker.
+
 **Evidence collected**
 
 - `CLAUDE.md`

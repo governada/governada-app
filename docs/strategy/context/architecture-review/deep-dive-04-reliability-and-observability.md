@@ -45,7 +45,7 @@ The same outage can be labeled differently depending on which monitor or alert p
 
 ### 2. Tier-gated API routes still inherit public CDN cache headers
 
-**Severity:** High
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
@@ -56,6 +56,11 @@ The same outage can be labeled differently depending on which monitor or alert p
 **Why it matters**
 
 Authenticated or tier-gated responses should not silently share the same CDN caching policy as anonymous public reads. Even if the payload is identical for all pro users, this is a brittle default because revocation, entitlement changes, and incident debugging become harder once authorization-sensitive responses are publicly cacheable by default.
+
+**Implementation status**
+
+- Fixed in `lib/api/handler.ts` by switching tier-gated successful GETs to `Cache-Control: private, no-store`.
+- Verified with `__tests__/api/v1-drep-history.test.ts` and `__tests__/api/v1-dreps.test.ts`.
 
 ### 3. Snapshot health failures are swallowed by the main health endpoint
 
@@ -73,20 +78,19 @@ The main health endpoint is supposed to explain compounding and freshness proble
 ## Risk Ranking
 
 1. Fragmented operational diagnosis across multiple threshold models.
-2. Public caching applied to tier-gated API responses.
-3. Snapshot health failures hidden behind best-effort error swallowing.
+2. Snapshot health failures hidden behind best-effort error swallowing.
+3. Remaining alerting/recovery paths may still drift from the canonical health view.
 
 ## Open Questions
 
 - Should the health/freshness thresholds be centralized into a single policy source that both alerting and monitoring consume?
-- Should tier-gated API responses use `private` caching or a separate cache policy entirely?
 - Should snapshot-health failures escalate into an explicit degraded status instead of being swallowed?
 
 ## Next Actions
 
 1. Pull the next scan toward the sync/alert policy layer and decide whether the threshold tables should be unified or merely normalized.
 2. Trace the remaining admin alert and API health paths for duplicated logic and missing correlation data.
-3. Decide whether the pro-tier API cache behavior is intentional enough to keep or should be tightened before further release work.
+3. Decide how snapshot-health failures should surface in the main health response.
 
 ## Handoff
 
@@ -95,7 +99,7 @@ The main health endpoint is supposed to explain compounding and freshness proble
 **What changed this session**
 
 - Investigated env validation, health endpoints, logging, Sentry, cron/heartbeat coverage, and failure diagnosis paths.
-- Validated three concrete reliability/observability issues with file-level evidence.
+- Validated three concrete reliability/observability issues with file-level evidence and fixed the tier-gated cache issue in the worktree.
 - Identified the main operational risk as inconsistent diagnosis rather than missing monitoring surface area.
 
 **Evidence collected**
@@ -115,11 +119,13 @@ The main health endpoint is supposed to explain compounding and freshness proble
 - `inngest/functions/sync-freshness-guard.ts`
 - `app/api/v1/dreps/[drepId]/history/route.ts`
 - `app/api/v1/dreps/[drepId]/votes/route.ts`
+- `__tests__/api/v1-dreps.test.ts`
+- `__tests__/api/v1-drep-history.test.ts`
 
 **Validated findings**
 
 - Operational diagnosis is fragmented across several health models.
-- Tier-gated API routes still inherit public CDN cache headers.
+- Tier-gated API routes previously inherited public CDN cache headers. Fixed in this worktree.
 - Snapshot health failures are swallowed by the main health endpoint.
 
 **Open questions**
@@ -130,7 +136,7 @@ The main health endpoint is supposed to explain compounding and freshness proble
 
 - Continue the observability pass on remaining alerting and recovery paths.
 - Decide whether the health policy should be centralized before implementation work begins.
-- If the cache policy is deemed acceptable, document why; otherwise, treat it as a fix candidate.
+- Decide how snapshot-health failures should affect the main health response.
 
 **Next agent starts here**
 

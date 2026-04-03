@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateRequestId, normalizeEndpoint } from './response';
 import { apiError } from './response';
 import { checkRateLimit, rateLimitHeaders } from './rateLimit';
-import { validateApiKey } from './keys';
+import { resolveApiKeyFromRequest, validateApiKey } from './keys';
 import { logApiRequest, trackFirstRequest } from './logging';
 import { createHash } from 'crypto';
 
@@ -60,7 +60,8 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
 
     try {
       const authHeader = request.headers.get('authorization');
-      const rawKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const rawKey = bearerKey || resolveApiKeyFromRequest(request);
 
       if (rawKey) {
         const result = await validateApiKey(rawKey);
@@ -139,7 +140,10 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
       }
 
       if (request.method === 'GET' && response.status >= 200 && response.status < 300) {
-        response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+        response.headers.set(
+          'Cache-Control',
+          options.requiredTier ? 'private, no-store' : 'public, s-maxage=300, stale-while-revalidate=600',
+        );
       }
 
       return response;

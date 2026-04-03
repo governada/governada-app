@@ -4,6 +4,7 @@ import { createRequest, parseJson } from '../helpers';
 const mockGetDRepById = vi.fn();
 const mockGetScoreHistory = vi.fn();
 const mockValidateApiKey = vi.fn();
+const mockResolveApiKeyFromRequest = vi.fn();
 
 vi.mock('@/lib/data', () => ({
   getDRepById: (id: string) => mockGetDRepById(id),
@@ -23,6 +24,7 @@ vi.mock('@/lib/api/rateLimit', () => ({
 
 vi.mock('@/lib/api/keys', () => ({
   validateApiKey: (...args: unknown[]) => mockValidateApiKey(...args),
+  resolveApiKeyFromRequest: (...args: unknown[]) => mockResolveApiKeyFromRequest(...args),
   getTierDefaults: vi.fn().mockReturnValue({ rateLimit: 100, rateWindow: 'hour' }),
 }));
 
@@ -41,6 +43,7 @@ const fakeDrep = {
 describe('GET /api/v1/dreps/[drepId]/history', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveApiKeyFromRequest.mockReturnValue(null);
     mockGetDRepById.mockResolvedValue(fakeDrep);
     mockGetScoreHistory.mockResolvedValue([
       {
@@ -96,5 +99,30 @@ describe('GET /api/v1/dreps/[drepId]/history', () => {
 
     expect(res.status).toBe(200);
     expect(body.data).toHaveLength(1);
+    expect(res.headers.get('Cache-Control')).toBe('private, no-store');
+  });
+
+  it('accepts X-API-Key as an alternative transport for pro-tier routes', async () => {
+    mockResolveApiKeyFromRequest.mockReturnValue('ds_live_pro_key');
+    mockValidateApiKey.mockResolvedValue({
+      valid: true,
+      key: {
+        id: 'key_pro',
+        keyPrefix: 'ds_live_pro',
+        tier: 'pro',
+        rateLimit: 10000,
+        rateWindow: 'day',
+      },
+    });
+
+    const req = createRequest('/api/v1/dreps/drep1abc123/history', {
+      headers: { 'X-API-Key': 'ds_live_pro_key' },
+    });
+    const res = await GET(req, { params: Promise.resolve({ drepId: 'drep1abc123' }) });
+    const body = (await parseJson(res)) as any;
+
+    expect(res.status).toBe(200);
+    expect(body.data).toHaveLength(1);
+    expect(res.headers.get('Cache-Control')).toBe('private, no-store');
   });
 });

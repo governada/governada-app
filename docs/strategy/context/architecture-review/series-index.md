@@ -55,3 +55,4 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-03 | Fixed the public `/api/v1/dreps` `active_only` contract bug and added regression coverage in the review worktree. |
 | 2026-04-03 | Fixed public API tier enforcement in `lib/api/handler.ts` and corrected dynamic route param forwarding for v1 wrapper-backed endpoints. |
 | 2026-04-03 | Started Deep Dive 02 and Deep Dive 04 in parallel and recorded their first validated findings. |
+| 2026-04-03 | Tightened internal route rate limiting to fail closed on shared limiter errors, aligned v1 API key transport with `X-API-Key`, and made tier-gated GETs non-publicly cacheable. |

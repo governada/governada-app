@@ -58,7 +58,7 @@ That shape is reasonable. The current review risk is not missing a trust layer. 
 
 ### 1. `requiredTier: 'pro'` is not actually enforced for public API key holders
 
-**Severity:** High
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
@@ -69,11 +69,16 @@ That shape is reasonable. The current review risk is not missing a trust layer. 
 
 **Why it matters**
 
-The route wrapper claims to enforce a minimum API tier, but the implementation only blocks anonymous callers. Any authenticated `public` key can pass a `requiredTier: 'pro'` route, so premium endpoints are not actually tier-gated.
+The route wrapper claimed to enforce a minimum API tier, but the implementation only blocked anonymous callers. Any authenticated `public` key could pass a `requiredTier: 'pro'` route, so premium endpoints were not actually tier-gated.
+
+**Implementation status**
+
+- Fixed in `lib/api/handler.ts` by introducing explicit tier ranking comparison.
+- Verified with `__tests__/api/v1-drep-history.test.ts`.
 
 ### 2. Internal route rate limiting silently weakens to per-process memory under Redis failure
 
-**Severity:** High
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
@@ -83,27 +88,47 @@ The route wrapper claims to enforce a minimum API tier, but the implementation o
 
 **Why it matters**
 
-For protected internal routes, a Redis outage does not preserve the intended global control. Enforcement becomes process-local instead of shared across instances, which materially weakens the protection boundary exactly when the system is already degraded.
+For protected internal routes, a Redis outage did not preserve the intended global control. Enforcement became process-local instead of shared across instances, which materially weakened the protection boundary exactly when the system was already degraded.
+
+**Implementation status**
+
+- Fixed in `lib/api/withRouteHandler.ts` by removing the silent in-memory downgrade and failing closed on shared rate-limit initialization/runtime errors.
+- Verified with `__tests__/api/withRouteHandler.test.ts`.
+
+### 3. Public API wrapper previously dropped dynamic route params on v1 endpoints
+
+**Severity:** Fixed in this worktree
+
+**Evidence**
+
+- `lib/api/handler.ts` previously invoked wrapped handlers with `(request, ctx)` only.
+- `app/api/v1/dreps/[drepId]/route.ts`, `app/api/v1/dreps/[drepId]/history/route.ts`, `app/api/v1/dreps/[drepId]/votes/route.ts`, and `app/api/v1/embed/[drepId]/route.ts` all declare a third `params` argument.
+
+**Why it matters**
+
+Tier-gated route tests exposed that the wrapper contract did not actually match the route handler signatures. That meant dynamic v1 routes were depending on a wrapper that did not forward the route params they expected.
+
+**Implementation status**
+
+- Fixed in `lib/api/handler.ts` by forwarding Next.js route `params`.
+- Verified with `__tests__/api/v1-drep-history.test.ts`.
 
 ## Risk Ranking
 
-1. Public API tier enforcement bug on paywalled routes.
-2. Route rate limiting degrades from global to process-local when Redis is unavailable.
+1. Middleware still uses cookie presence as a coarse route gate before server-side auth verification.
+2. Additional privileged route audits are still incomplete.
+3. Observability paths still derive some identity context from decoded cookie payloads.
 
 ## Open Questions
 
-- Are any other v1 routes using `requiredTier` with the same broken comparison, or is the blast radius limited to the two DRep endpoints?
-- Should the internal route wrapper fail closed like `lib/api/rateLimit.ts` instead of falling back to in-memory?
 - Do any protected page flows rely on `middleware.ts` cookie presence as the only gate, or do they always re-verify server-side?
-- Is `Authorization: Bearer` the only supported API key transport, or should `X-API-Key` be accepted as well? The current CORS policy advertises `X-API-Key`, but `withApiHandler` does not read it.
 - Should observability continue trusting decoded session payloads for user tagging in `instrumentation.ts`, or should that be derived only from verified session state?
 
 ## Next Actions
 
-1. Fix the public API tier comparison so `requiredTier` enforces an actual minimum tier level, not just "authenticated vs anonymous."
-2. Rework internal route rate limiting so Redis failure does not silently downgrade to process-local protection.
-3. Continue scanning the remaining auth-sensitive routes for any missing `requireAuth()` / `isAdminWallet()` combinations.
-4. Decide whether API key transport should be normalized to `Authorization` only or dual-supported with `X-API-Key`.
+1. Continue scanning the remaining auth-sensitive routes for any missing `requireAuth()` / `isAdminWallet()` combinations.
+2. Verify whether any protected page flows rely too heavily on middleware cookie presence checks.
+3. Revisit observability paths that derive identity from decoded but unverified session payloads.
 
 ## Handoff
 
@@ -112,7 +137,7 @@ For protected internal routes, a Redis outage does not preserve the intended glo
 **What changed this session**
 
 - Mapped the session, middleware, admin, API key, and rate-limit trust boundaries.
-- Validated two concrete security findings with file-level evidence.
+- Fixed the two initially validated security issues, aligned API key transport with the advertised `X-API-Key` support, and captured a third wrapper-contract issue exposed during verification.
 - Left the remaining trust questions explicit instead of guessing.
 
 **Evidence collected**
@@ -129,13 +154,21 @@ For protected internal routes, a Redis outage does not preserve the intended glo
 - `app/api/admin/overview/route.ts`
 - `app/api/admin/feature-flags/route.ts`
 - `app/api/admin/integrity/route.ts`
+- `app/api/v1/dreps/[drepId]/route.ts`
 - `app/api/v1/dreps/[drepId]/history/route.ts`
 - `app/api/v1/dreps/[drepId]/votes/route.ts`
+- `app/api/v1/embed/[drepId]/route.ts`
+- `__tests__/api/v1-drep-history.test.ts`
+- `__tests__/api/withRouteHandler.test.ts`
+- `__tests__/api/v1-dreps.test.ts`
+- `__tests__/api/v1-governance-health.test.ts`
 
 **Validated findings**
 
-- `requiredTier: 'pro'` does not block `public` API key holders.
-- Internal route rate limiting falls back to in-memory state when Redis is unavailable.
+- `requiredTier: 'pro'` did not block `public` API key holders. Fixed in this worktree.
+- Internal route rate limiting fell back to in-memory state when Redis was unavailable. Fixed in this worktree.
+- The public v1 API wrapper did not forward dynamic route params. Fixed in this worktree.
+- The public v1 API wrapper now accepts both `Authorization: Bearer` and `X-API-Key`, matching the advertised transport contract.
 
 **Open questions**
 
@@ -143,10 +176,9 @@ For protected internal routes, a Redis outage does not preserve the intended glo
 
 **Next actions**
 
-- Patch the API tier comparison.
-- Patch the internal rate-limit fallback behavior.
 - Continue auditing the remaining privileged routes and session-dependent page flows.
+- Review remaining trust assumptions in middleware and instrumentation.
 
 **Next agent starts here**
 
-Start by fixing the two validated issues above, then re-check the route surface for any other auth or trust assumptions that still depend on path presence, unsigned payload data, or degraded-mode fallbacks.
+Start by re-checking the route surface for any remaining auth or trust assumptions that still depend on path presence, unsigned payload data, or degraded-mode fallbacks.

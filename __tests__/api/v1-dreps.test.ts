@@ -20,6 +20,7 @@ vi.mock('@/lib/api/rateLimit', () => ({
 
 vi.mock('@/lib/api/keys', () => ({
   validateApiKey: vi.fn().mockResolvedValue({ valid: false }),
+  resolveApiKeyFromRequest: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('@/lib/api/logging', () => ({
@@ -87,6 +88,7 @@ describe('GET /api/v1/dreps', () => {
     expect(body.pagination).toBeDefined();
     expect(body.pagination.total).toBe(2); // active_only defaults true
     expect(body.data.every((d: any) => d.is_active === true)).toBe(true);
+    expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=300, stale-while-revalidate=600');
   });
 
   it('includes inactive dreps when active_only=false', async () => {

@@ -3,6 +3,12 @@ export type SystemsConfidence = 'live' | 'partial' | 'manual' | 'bootstrap';
 export type JourneyGateLevel = 'L0' | 'L1' | 'L2';
 export type JourneyCoverage = 'automated' | 'partial' | 'manual';
 export type SystemsCommitmentStatus = 'planned' | 'in_progress' | 'blocked' | 'done';
+export type SystemsAutomationSeverity = 'warning' | 'critical';
+export type SystemsAutomationFollowupStatus = 'open' | 'acknowledged' | 'resolved';
+export type SystemsAutomationTriggerType =
+  | 'review_discipline'
+  | 'overdue_commitment'
+  | 'systems_action';
 
 export interface SystemsPromiseCard {
   id: string;
@@ -129,6 +135,40 @@ export interface SystemsReviewDiscipline {
   overdueCommitments: number;
 }
 
+export interface SystemsAutomationFollowup {
+  sourceKey: string;
+  triggerType: SystemsAutomationTriggerType;
+  severity: SystemsAutomationSeverity;
+  status: SystemsAutomationFollowupStatus;
+  title: string;
+  summary: string;
+  recommendedAction: string;
+  actionHref?: string | null;
+  evidence?: Record<string, unknown>;
+  updatedAt: string;
+}
+
+export interface SystemsAutomationRunRecord {
+  actorType: 'manual' | 'cron';
+  status: Exclude<SystemsStatus, 'bootstrap'>;
+  summary: string;
+  followupCount: number;
+  criticalCount: number;
+  openedCount: number;
+  updatedCount: number;
+  resolvedCount: number;
+  createdAt: string;
+}
+
+export interface SystemsAutomationSummary {
+  status: SystemsStatus;
+  headline: string;
+  currentValue: string;
+  target: string;
+  summary: string;
+  lastSweepAt?: string | null;
+}
+
 export interface SystemsDashboardData {
   generatedAt: string;
   overall: {
@@ -154,6 +194,9 @@ export interface SystemsDashboardData {
   actions: SystemsAction[];
   reviewLoop: SystemsReviewLoop;
   reviewDiscipline: SystemsReviewDiscipline;
+  automationSummary: SystemsAutomationSummary;
+  automationFollowups: SystemsAutomationFollowup[];
+  latestAutomationRun?: SystemsAutomationRunRecord | null;
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
   journeys: SystemsJourney[];

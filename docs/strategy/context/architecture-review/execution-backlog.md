@@ -175,6 +175,7 @@ None - execute directly unless the review uncovers conflicting product expectati
 **Expected score impact:** Data Architecture and Compounding: restore a single read contract
 **Depends on:** Chunk 1
 **PR group:** D
+**Implementation status:** In progress in this worktree
 
 ### Context
 
@@ -196,6 +197,14 @@ None - execute directly. The documented repo policy already prefers database-fir
 - Shared DRep reads no longer call upstream live fetches in normal page or public API flows.
 - Supabase failure mode is explicit and testable.
 - User-facing behavior is consistent across healthy and degraded states.
+
+### Progress So Far
+
+- `getAllDReps()` no longer falls back to Koios on empty or unavailable Supabase cache.
+- The legacy `/api/dreps` route now degrades explicitly to `{ dreps: [], allDReps: [], error: true, totalAvailable: 0 }` for existing frontend consumers.
+- Verified with `npm run test:unit -- __tests__/lib/data.test.ts __tests__/api/dreps.test.ts`.
+- Verified with `npm run type-check`.
+- Remaining work: remove the shared data-layer Koios threshold lookup in `getVotingPowerSummary()` or isolate it behind a clearly non-cache-backed helper.
 
 ### Files to Read First
 

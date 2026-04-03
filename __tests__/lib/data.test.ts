@@ -46,6 +46,7 @@ function makeDRepRow(updatedAt: string) {
 }
 
 async function loadDataModule(rows: unknown[]) {
+  const getEnrichedDReps = vi.fn();
   const abortSignal = vi.fn().mockResolvedValue({ data: rows, error: null });
   const range = vi.fn(() => ({ abortSignal }));
   const order = vi.fn(() => ({ range }));
@@ -60,7 +61,7 @@ async function loadDataModule(rows: unknown[]) {
     inngest: { send },
   }));
   vi.doMock('@/lib/koios', () => ({
-    getEnrichedDReps: vi.fn(),
+    getEnrichedDReps,
   }));
   vi.doMock('@/utils/documentation', () => ({
     isWellDocumented: vi.fn(() => true),
@@ -77,7 +78,7 @@ async function loadDataModule(rows: unknown[]) {
   }));
 
   const mod = await import('@/lib/data');
-  return { getAllDReps: mod.getAllDReps, send };
+  return { getAllDReps: mod.getAllDReps, send, getEnrichedDReps };
 }
 
 describe('getAllDReps freshness policy', () => {
@@ -116,5 +117,12 @@ describe('getAllDReps freshness policy', () => {
     expect(result.error).toBe(false);
     expect(result.allDReps).toHaveLength(1);
     expect(send).toHaveBeenCalledWith({ name: 'drepscore/sync.dreps' });
+  });
+
+  it('fails the shared read instead of falling back to Koios when the cache is empty', async () => {
+    const { getAllDReps, getEnrichedDReps } = await loadDataModule([]);
+
+    await expect(getAllDReps()).rejects.toThrow('DRep cache is empty');
+    expect(getEnrichedDReps).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,10 @@
 /**
- * Data Layer - Supabase Cache with Koios Fallback
+ * Data Layer - Supabase Cache
  * Fast reads from Supabase with automatic freshness checks and sync triggering
  */
 
 import { createClient } from './supabase';
-import { getEnrichedDReps, EnrichedDRep } from './koios';
+import { EnrichedDRep } from './koios';
 import { isWellDocumented } from '@/utils/documentation';
 import { logger } from '@/lib/logger';
 import { getCurrentEpoch } from '@/lib/constants';
@@ -65,6 +65,16 @@ interface SupabaseDRepRow {
   governance_identity: number | null;
   governance_identity_raw: number | null;
   score_momentum: number | null;
+}
+
+export class DRepCacheUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'DRepCacheUnavailableError';
+    if (options && 'cause' in options) {
+      this.cause = options.cause;
+    }
+  }
 }
 
 /**
@@ -171,8 +181,7 @@ async function triggerProposalsSync() {
 }
 
 /**
- * Get all DReps with caching and fallback
- * Returns same structure as getEnrichedDReps() for drop-in replacement
+ * Get all DReps from the Supabase read model.
  */
 export async function getAllDReps(): Promise<{
   dreps: EnrichedDRep[];
@@ -223,9 +232,9 @@ export async function getAllDReps(): Promise<{
     }
 
     if (!rows || rows.length === 0) {
-      logger.warn('[Data] No data in Supabase, falling back to Koios');
+      logger.warn('[Data] No DRep data in Supabase cache');
       logger.warn('[Data] Run: npm run sync');
-      return await getEnrichedDReps(false);
+      throw new DRepCacheUnavailableError('DRep cache is empty');
     }
 
     if (isDev) {
@@ -283,16 +292,14 @@ export async function getAllDReps(): Promise<{
     _drepsCache = { data: result, timestamp: Date.now() };
     return result;
   } catch (error: unknown) {
-    logger.error('[Data] Cache read failed, falling back to Koios', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    // Fallback to direct Koios fetch
-    if (isDev) {
-      logger.info('[Data] Fetching directly from Koios (slow)...');
+    if (error instanceof DRepCacheUnavailableError) {
+      throw error;
     }
 
-    return await getEnrichedDReps(false);
+    logger.error('[Data] Cache read failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new DRepCacheUnavailableError('DRep cache unavailable', { cause: error });
   }
 }
 

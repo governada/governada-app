@@ -74,6 +74,13 @@ This is the right overall shape. The main review risk is not missing architectur
 
 The intended architecture is database-first reads through cached Supabase data. In degraded mode, the current implementation silently changes semantics by switching to upstream live fetches. That increases latency variance, couples user-facing availability to upstream health, and makes behavior under failure materially different from normal operation.
 
+**Implementation status**
+
+- Partially improved in this worktree.
+- `getAllDReps()` no longer falls back to Koios when the Supabase cache is empty or unavailable.
+- The legacy `/api/dreps` route now returns an explicit degraded payload with empty arrays instead of silently switching sources or shape-breaking client callers.
+- Remaining direct Koios usage in the shared data layer still exists for governance-threshold lookup in `getVotingPowerSummary()`, so this finding remains open.
+
 ### 2. DRep freshness logic was misaligned with the actual sync cadence
 
 **Severity:** Fixed in this worktree
@@ -134,8 +141,8 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 ## Risk Ranking
 
 1. Public API contract bug: `active_only` does not mean active.
-2. Database-first boundary violation in degraded reads.
-3. Split ownership of snapshot tables across sync stages and epoch-summary jobs.
+2. Split ownership of snapshot tables across sync stages and epoch-summary jobs.
+3. Remaining database-first boundary violations still exist in shared data helpers.
 4. Broader health-policy duplication still exists outside the DRep freshness slice.
 
 ## Open Questions
@@ -148,7 +155,7 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 1. Continue tracing proposal, engagement, and workspace data paths to see whether the same boundary problems repeat outside the DRep flow.
 2. Decide the target ownership model for DRep snapshots before implementation starts.
-3. Remove the remaining direct Koios fallbacks from the shared DRep read layer.
+3. Remove the remaining direct Koios usage from shared data helpers, starting with governance-threshold lookup.
 
 ## Handoff
 
@@ -179,7 +186,7 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 **Validated findings**
 
-- The shared DRep read path falls back to Koios and therefore violates the database-first contract.
+- The main shared DRep list read no longer falls back to Koios, but shared data helpers still contain direct upstream reads for governance thresholds.
 - DRep freshness is now governed by an explicit layered policy instead of a false-stale 15-minute read threshold.
 - The public `active_only` DRep API flag currently maps to documentation completeness rather than active status. Fixed earlier in this worktree.
 - `delegation_snapshots`, `drep_score_history`, and `proposal_vote_snapshots` have split ownership across multiple sync and epoch-summary jobs.
@@ -191,9 +198,9 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 **Next actions**
 
 - Continue the deep dive into proposals and engagement paths to determine whether the same anti-patterns repeat.
-- Remove the remaining shared-read Koios fallback paths.
+- Remove the remaining shared-data direct Koios reads, starting with governance-threshold lookup.
 - Choose a single-owner model for the affected snapshot tables before implementation.
 
 **Next agent starts here**
 
-Start with `lib/data.ts` and the routes that consume `getAllDReps()`, then remove the remaining shared-read Koios fallbacks without breaking callers that currently assume the helper always returns data. After that, continue the snapshot-ownership audit across DRep and proposal pipelines.
+Start with the remaining direct Koios lookup in `lib/data.ts:getVotingPowerSummary()`, then decide whether that data belongs in Supabase or in a clearly isolated upstream-only helper. After that, continue the snapshot-ownership audit across DRep and proposal pipelines.

@@ -57,6 +57,16 @@ Agents have **full autonomous permission** to execute without asking. The `setti
 
 "Pushback is valuable" means push back on **bad ideas and scope creep** — it does NOT mean ask permission before every edit. Act, don't ask.
 
+## Codex Desktop Sandbox
+
+Keep Codex Desktop in `workspace-write`. The target is smooth autonomous shipping with narrow persistent approvals, not unrestricted machine access.
+
+- Best writable root: `C:\Users\dalto\governada\` so `.claude/worktrees/` and git worktree metadata stay inside the writable area.
+- Prefer the repo's `npm run ...` entrypoints for GitHub auth, CI watching, failed-log tails, deploy verification, and Inngest registration. They are designed to produce stable, approval-friendly command prefixes.
+- Recommended persistent approvals: `npm run gh:auth-status`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `npm run session:doctor`, `git add`, `git add -A`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
+- Do **not** persist approvals for broad shells or interpreters like bare `powershell`, `cmd`, `node`, `python`, `git`, or `gh`.
+- Desktop GH context should go through `npm run gh:auth-status` and the helpers in `scripts/lib/runtime.js`; do not rely on `gh` inferring the repo from the `github-governada` SSH alias.
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 App Router, TypeScript strict, React 19

@@ -28,8 +28,8 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 4. Make the smallest change that solves the actual problem.
 5. Run `npm run agent:validate` and the relevant local verification for the scope.
 6. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
-7. Before merging, run `scripts/pre-merge-check.sh`.
-8. After merge, verify deploy health and smoke tests.
+7. Before merging, run `npm run pre-merge-check -- <PR#>`.
+8. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
 
 ## Autonomy Boundary
 
@@ -39,6 +39,16 @@ Routine reads, edits, local verification, git hygiene, and PR preparation should
 - Scope expansion beyond the request
 - Architectural forks with materially different tradeoffs
 - Secrets, credential rotation, or external account changes
+
+## Codex Desktop Sandbox
+
+Keep Codex Desktop in `workspace-write`. The goal is not removing the sandbox; it is removing prompts for routine shipping.
+
+- Preferred writable root: the repo parent, `C:\Users\dalto\governada\`, so worktree metadata and in-repo worktrees stay inside the writable area.
+- Prefer stable `npm run ...` wrappers over ad hoc shell commands for CI, deploy, and GitHub operations. They produce narrower, reusable approval prefixes.
+- Persist approvals for safe recurring prefixes such as `npm run gh:auth-status`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
+- Do not persist approvals for broad shells or interpreters such as bare `powershell`, `cmd`, `node`, `python`, `git`, or `gh`.
+- Repo-local GH context is provided by `npm run gh:auth-status` and the scripts in `scripts/lib/runtime.js`; do not rely on `gh` inferring the repo from the SSH remote alias.
 
 ## Setup Files
 

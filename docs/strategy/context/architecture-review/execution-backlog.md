@@ -227,7 +227,7 @@ None - execute directly. The documented repo policy already prefers database-fir
 **Expected score impact:** Data Architecture and Compounding: reduce order-dependent partial state risk
 **Depends on:** Chunk 1
 **PR group:** E
-**Implementation status:** In progress in this worktree
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -259,9 +259,10 @@ The executing agent should confirm the final ownership design before building if
 - `sync-dreps` no longer writes current-epoch `drep_score_history`.
 - `sync-dreps` no longer writes current-epoch `delegation_snapshots`.
 - `sync-drep-scores` now uses `lib/scoring/delegationSnapshots.ts` to preserve or backfill delegation deltas on same-epoch reruns.
+- `generate-epoch-summary.ts` now finalizes previous-epoch `delegation_snapshots` with canonical `drep_power_snapshots` counts while recomputing delegation deltas against the prior epoch.
 - Verified with `npm run test:unit -- __tests__/scoring/delegationSnapshots.test.ts`.
 - Verified with `npm run type-check`.
-- Remaining work: decide the final owner for previous-epoch `delegation_snapshots`, where overlap with `generate-epoch-summary.ts` still exists.
+- Follow-up work: audit downstream consumers against the explicit lifecycle split rather than ambiguous multi-writer ownership.
 
 ### Files to Read First
 

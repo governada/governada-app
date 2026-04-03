@@ -123,9 +123,9 @@ By policy, normal DRep data can be 6 hours old between scheduled syncs. The old 
 
 External consumers asking for active-only DReps are currently receiving a documentation-quality filter instead of an activity-status filter. This is a contract bug in a public API, not just an internal naming issue.
 
-### 4. Snapshot ownership is split across two sync stages, creating order-dependent writes
+### 4. Snapshot ownership was split across two sync stages, creating order-dependent writes
 
-**Severity:** High
+**Severity:** Substantially reduced in this worktree
 
 **Evidence**
 
@@ -142,32 +142,33 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 **Implementation status**
 
-- Partially improved in this worktree.
+- Substantially improved in this worktree.
 - `proposal_vote_snapshots` is now treated as a historical previous-epoch snapshot owned by `generate-epoch-summary.ts`.
 - `lib/sync/proposals.ts` no longer writes that table, and `check-snapshot-completeness.ts` now validates the previous epoch instead of the current one.
-- `sync-dreps` no longer writes current-epoch `delegation_snapshots` or `drep_score_history`; `sync-drep-scores` is now the sole current-epoch owner for both tables.
+- `sync-dreps` no longer writes current-epoch `delegation_snapshots` or `drep_score_history`; `sync-drep-scores` is now the sole live/current-epoch owner for both tables.
 - `sync-drep-scores` now preserves or backfills `new_delegators` and `lost_delegators` on same-epoch reruns instead of nulling them out.
-- Previous-epoch `delegation_snapshots` ownership still overlaps with `generate-epoch-summary.ts`, so this finding remains open.
+- `generate-epoch-summary.ts` now acts as an explicit previous-epoch finalizer for `delegation_snapshots`: it uses `drep_power_snapshots` for the canonical end-of-epoch counts and recomputes delta fields against the prior epoch instead of overwriting them with null values.
+- The remaining follow-up is broader audit work, not ambiguous table ownership: verify that downstream proposal/workspace consumers consistently use the intended finalized-versus-live snapshot semantics.
 
 ## Risk Ranking
 
-1. Remaining snapshot ownership overlap in previous-epoch `delegation_snapshots`.
-2. Broader health-policy duplication still exists outside the DRep freshness slice.
-3. Proposal and workspace surfaces still have threshold-constant drift outside the shared resolver path.
-4. Other read helpers may still bypass canonical cached boundaries under degradation.
+1. Broader health-policy duplication still exists outside the DRep freshness slice.
+2. Proposal and workspace surfaces still have threshold-constant drift outside the shared resolver path.
+3. Other read helpers may still bypass canonical cached boundaries under degradation.
+4. Proposal and engagement paths still need a broader canonical-read audit beyond the DRep flow.
 
 ## Open Questions
 
 - Which other read helpers besides the DRep path bypass the database-first boundary under degradation?
 - Should other sync domains adopt the same layered freshness model now used for DReps, or is a broader health-policy refactor still needed first?
-- Should `generate-epoch-summary.ts` remain the previous-epoch finalizer for `delegation_snapshots`, or should that responsibility move fully into the scoring/data pipeline?
 - Should `epoch_params` be promoted into a typed, repo-managed Supabase contract now that the shared threshold resolver depends on it?
+- Which proposal and workspace surfaces should consume live current-epoch delegation snapshots versus finalized previous-epoch history?
 
 ## Next Actions
 
 1. Continue tracing proposal, engagement, and workspace data paths to see whether the same boundary problems repeat outside the DRep flow.
-2. Decide the target ownership model for previous-epoch `delegation_snapshots`.
-3. Audit remaining proposal and workspace threshold consumers against the new shared resolver.
+2. Audit remaining proposal and workspace threshold consumers against the new shared resolver.
+3. Verify downstream consumers against the explicit `delegation_snapshots` lifecycle split (current epoch via scoring, previous epoch finalized via epoch summary).
 
 ## Handoff
 
@@ -179,6 +180,7 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 - Updated the DRep read path to retrigger only when data is actually overdue.
 - Aligned the main health, sync health, admin integrity alert, and freshness-guard surfaces to the shared DRep policy.
 - Removed direct governance-threshold Koios reads from `lib/data.ts` by introducing a Supabase-first shared resolver in `lib/governanceThresholds.ts`.
+- Clarified `delegation_snapshots` ownership as a lifecycle split: scoring owns the live epoch, and epoch summary finalizes the previous epoch with recomputed delegation deltas.
 - Added focused regression coverage for the threshold resolver and `getVotingPowerSummary()` integration.
 
 **Evidence collected**
@@ -194,6 +196,7 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 - `lib/syncPolicy.ts`
 - `lib/governanceThresholds.ts`
 - `lib/scoring/delegationSnapshots.ts`
+- `inngest/functions/generate-epoch-summary.ts`
 - `vitest.config.ts`
 - `playwright.config.ts`
 - `__tests__/lib/data.test.ts`
@@ -206,7 +209,7 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 - The main shared DRep list read no longer falls back to Koios, and governance-threshold lookup is now isolated behind a Supabase-first resolver instead of a direct `lib/data.ts` upstream call.
 - DRep freshness is now governed by an explicit layered policy instead of a false-stale 15-minute read threshold.
 - The public `active_only` DRep API flag currently maps to documentation completeness rather than active status. Fixed earlier in this worktree.
-- `proposal_vote_snapshots` is now owned by the epoch-summary path, and current-epoch `delegation_snapshots` plus `drep_score_history` are now scoring-owned. Previous-epoch `delegation_snapshots` ownership still needs a final decision.
+- `proposal_vote_snapshots` is now owned by the epoch-summary path, current-epoch `delegation_snapshots` plus `drep_score_history` are scoring-owned, and previous-epoch `delegation_snapshots` are now explicitly finalized by `generate-epoch-summary.ts`.
 
 **Open questions**
 
@@ -216,8 +219,8 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 - Continue the deep dive into proposals and engagement paths to determine whether the same anti-patterns repeat.
 - Audit the remaining proposal/workspace threshold consumers against `lib/governanceThresholds.ts`.
-- Choose a final owner model for previous-epoch `delegation_snapshots` before closing the data-plane review.
+- Verify downstream consumers against the explicit `delegation_snapshots` lifecycle split before closing the data-plane review.
 
 **Next agent starts here**
 
-Start with the previous-epoch `delegation_snapshots` ownership decision, then review whether the remaining proposal/workspace threshold consumers should move onto `lib/governanceThresholds.ts`.
+Start by reviewing proposal, engagement, and workspace consumers against the now-explicit snapshot lifecycle and threshold resolver, then close any remaining canonical-read boundary drift outside the DRep flow.

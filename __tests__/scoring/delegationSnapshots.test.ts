@@ -79,4 +79,25 @@ describe('buildDelegationSnapshotInsert', () => {
       lost_delegators: 0,
     });
   });
+
+  it('recomputes delta values when finalizing an existing epoch snapshot', () => {
+    const insert = buildDelegationSnapshotInsert(
+      makeHistory([
+        { epoch: 549, delegatorCount: 100 },
+        { epoch: 550, delegatorCount: 112, newDelegators: 12, lostDelegators: 0 },
+      ]),
+      550,
+      95,
+      1003,
+      { preserveExistingCurrentEpochDeltas: false },
+    );
+
+    expect(insert).toEqual({
+      epoch: 550,
+      delegator_count: 95,
+      total_power_lovelace: 1003,
+      new_delegators: 0,
+      lost_delegators: 5,
+    });
+  });
 });

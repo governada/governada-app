@@ -47,6 +47,7 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-02 | Keep execution backlog separate from findings docs | Findings and implementation planning change at different rates |
 | 2026-04-03 | Use a layered DRep freshness policy instead of one stale threshold | Reads should retrigger after the sync is overdue without marking the system degraded at the same instant |
 | 2026-04-03 | Resolve governance thresholds through a Supabase-first shared resolver | The data layer should not make direct upstream threshold reads, and parameter-change proposals require max-threshold logic across multiple groups |
+| 2026-04-03 | Treat `delegation_snapshots` as a lifecycle-owned table instead of a multi-writer race | Scoring should own the live epoch while epoch summary finalizes the previous epoch with authoritative end-of-epoch values |
 
 ## Progress Log
 
@@ -63,3 +64,4 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-03 | Narrowed `proposal_vote_snapshots` to a single historical owner by removing the proposals-sync writer and aligning completeness checks to the previous-epoch snapshot contract. |
 | 2026-04-03 | Removed duplicate current-epoch `drep_score_history` and `delegation_snapshots` writes from `sync-dreps`, and made same-epoch delegation-delta computation idempotent in `sync-drep-scores`. |
 | 2026-04-03 | Replaced the shared data-layer Koios threshold lookup with `lib/governanceThresholds.ts`, using Supabase `epoch_params` first, Koios only as an isolated fallback, and proposal `param_changes` to compute mixed-group parameter-change thresholds. |
+| 2026-04-03 | Clarified `delegation_snapshots` ownership as an epoch lifecycle split by having `generate-epoch-summary.ts` finalize previous-epoch rows with recomputed delegation deltas instead of overwriting scoring-owned values with nulls. |

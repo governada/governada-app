@@ -12,6 +12,8 @@ import { detectClusters } from '@/lib/globe/clusterDetection';
 import { nameAllClusters } from '@/lib/globe/clusterNaming';
 import { extractAlignments, alignmentsToArray, getDominantDimension } from '@/lib/drepIdentity';
 import { getRedis } from '@/lib/redis';
+import { buildDelegationSnapshotInsert } from '@/lib/scoring/delegationSnapshots';
+import type { DelegationSnapshotData } from '@/lib/scoring/types';
 import type { LayoutInput } from '@/lib/constellation/globe-layout';
 
 const USER_BATCH = 50;
@@ -805,11 +807,39 @@ Output ONLY the narrative paragraph, nothing else.`,
 
         if (!powerSnaps || powerSnaps.length === 0) return { skipped: true };
 
-        const rows = powerSnaps.map((s) => ({
-          epoch,
-          drep_id: s.drep_id,
-          delegator_count: s.delegator_count || 0,
-          total_power_lovelace: s.amount_lovelace,
+        const drepIds = [...new Set(powerSnaps.map((snapshot) => snapshot.drep_id))];
+        const { data: existingSnapshots } = await supabase
+          .from('delegation_snapshots')
+          .select(
+            'drep_id, epoch, delegator_count, total_power_lovelace, new_delegators, lost_delegators',
+          )
+          .in('drep_id', drepIds)
+          .gte('epoch', Math.max(0, epoch - 1))
+          .lte('epoch', epoch)
+          .order('epoch', { ascending: true });
+
+        const snapshotHistory = new Map<string, DelegationSnapshotData>();
+        for (const snapshot of existingSnapshots ?? []) {
+          const existingHistory = snapshotHistory.get(snapshot.drep_id)?.epochs ?? [];
+          existingHistory.push({
+            epoch: snapshot.epoch,
+            delegatorCount: snapshot.delegator_count,
+            totalPowerLovelace: Number(snapshot.total_power_lovelace) || 0,
+            newDelegators: snapshot.new_delegators,
+            lostDelegators: snapshot.lost_delegators,
+          });
+          snapshotHistory.set(snapshot.drep_id, { epochs: existingHistory });
+        }
+
+        const rows = powerSnaps.map((snapshot) => ({
+          drep_id: snapshot.drep_id,
+          ...buildDelegationSnapshotInsert(
+            snapshotHistory.get(snapshot.drep_id),
+            epoch,
+            snapshot.delegator_count || 0,
+            Number(snapshot.amount_lovelace) || 0,
+            { preserveExistingCurrentEpochDeltas: false },
+          ),
           snapshot_at: new Date().toISOString(),
         }));
 

@@ -8,24 +8,35 @@ export interface DelegationSnapshotInsert {
   lost_delegators: number | null;
 }
 
+interface BuildDelegationSnapshotOptions {
+  preserveExistingCurrentEpochDeltas?: boolean;
+}
+
 /**
- * Build an idempotent delegation snapshot row for the current epoch.
+ * Build an idempotent delegation snapshot row for a target epoch.
  *
- * If a current-epoch row already exists, preserve its new/lost delegator
- * values. Otherwise compute them against the latest prior epoch.
+ * By default, reruns for the same epoch preserve any existing delta fields.
+ * Finalization callers can disable that behavior and recompute the deltas
+ * against the latest prior epoch instead.
  */
 export function buildDelegationSnapshotInsert(
   snapshotHistory: DelegationSnapshotData | undefined,
-  currentEpoch: number,
+  targetEpoch: number,
   delegatorCount: number,
   totalPowerLovelace: number,
+  options: BuildDelegationSnapshotOptions = {},
 ): DelegationSnapshotInsert {
   const epochs = snapshotHistory?.epochs ?? [];
-  const currentEpochSnapshot = [...epochs].reverse().find((epoch) => epoch.epoch === currentEpoch);
-  const priorEpochSnapshot = [...epochs].reverse().find((epoch) => epoch.epoch < currentEpoch);
+  const currentEpochSnapshot = [...epochs].reverse().find((epoch) => epoch.epoch === targetEpoch);
+  const priorEpochSnapshot = [...epochs].reverse().find((epoch) => epoch.epoch < targetEpoch);
+  const preserveExistingCurrentEpochDeltas = options.preserveExistingCurrentEpochDeltas ?? true;
 
-  let newDelegators = currentEpochSnapshot?.newDelegators ?? null;
-  let lostDelegators = currentEpochSnapshot?.lostDelegators ?? null;
+  let newDelegators = preserveExistingCurrentEpochDeltas
+    ? currentEpochSnapshot?.newDelegators ?? null
+    : null;
+  let lostDelegators = preserveExistingCurrentEpochDeltas
+    ? currentEpochSnapshot?.lostDelegators ?? null
+    : null;
 
   if ((newDelegators == null || lostDelegators == null) && priorEpochSnapshot) {
     const diff = delegatorCount - priorEpochSnapshot.delegatorCount;
@@ -41,7 +52,7 @@ export function buildDelegationSnapshotInsert(
   }
 
   return {
-    epoch: currentEpoch,
+    epoch: targetEpoch,
     delegator_count: delegatorCount,
     total_power_lovelace: totalPowerLovelace,
     new_delegators: newDelegators,
